@@ -93,7 +93,7 @@ Sun                        @ ~               @
 ```bash
 pip install gitwrap
 # 或直接从 GitHub 安装：
-pip install git+https://github.com/your-name/gitwrap
+pip install git+https://github.com/yvichyi/gitwrap
 ```
 
 需要 Python 3.10+ 和 PATH 里的 `git`。**零依赖**——纯标准库，完全离线，100% 只读（只运行 `git log` 和 `git config`，绝不写仓库）。
@@ -123,7 +123,7 @@ gitwrap --no-color          # 无色纯文本
 ## 开发
 
 ```bash
-git clone https://github.com/your-name/gitwrap
+git clone https://github.com/yvichyi/gitwrap
 cd gitwrap
 python -m unittest discover -s tests -v   # 26 个测试，无需联网
 ```

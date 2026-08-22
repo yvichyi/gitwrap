@@ -93,7 +93,7 @@ Sun                        @ ~               @
 ```bash
 pip install gitwrap
 # or straight from git:
-pip install git+https://github.com/your-name/gitwrap
+pip install git+https://github.com/yvichyi/gitwrap
 ```
 
 Requires Python 3.10+ and `git` on your PATH. **Zero dependencies** — pure standard library, fully offline, 100% read-only (it only ever runs `git log` and `git config`).
@@ -123,7 +123,7 @@ Measured end-to-end on a synthetic repo of **10,000 commits: 0.23 s** (budget: 3
 ## Development
 
 ```bash
-git clone https://github.com/your-name/gitwrap
+git clone https://github.com/yvichyi/gitwrap
 cd gitwrap
 python -m unittest discover -s tests -v   # 26 tests, no network needed
 ```

@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-name/gitwrap"
+Homepage = "https://github.com/yvichyi/gitwrap"
 
 [project.scripts]
 gitwrap = "gitwrap.cli:main"
