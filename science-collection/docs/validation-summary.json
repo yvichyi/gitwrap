@@ -1,0 +1,1077 @@
+{
+  "pages": [
+    {
+      "file": "index.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "sishierfei.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "与非之上.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 5
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 5
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "两处栖身.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "临界的形状.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 7
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 7
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "偏振之间.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "偶然的谱系.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "共名.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "共转之处.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "冰川的慢答.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "切片之前.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "十二不归.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 6
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 6
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "半信半疑.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "可学之界.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 7
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 7
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "同影异物.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "四二六七.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "多数的环.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "差之毫厘.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "平方之前.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 9
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 9
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "异步之墙.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "忘记起点.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 9
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 9
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "念起之前.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "拥堵之波.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "搬了多远.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 7
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 7
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "无原稿_最终.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "无序不可能.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 7
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 7
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "星光留痕.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "未选之路.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "此刻.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "比特之漏.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 8
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 8
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "温度的地形.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "熵之彼岸.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "盐桥的账本.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "纸带之上.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "逼近之极.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 9
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 9
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "链之宿命.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 8
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": true,
+          "tabButtonsChecked": 8
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "长浪抵岸.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "雨的去路.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "震源的坐标.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "马后炮.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "马后炮·新生入口.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    },
+    {
+      "file": "驻波之间.html",
+      "views": [
+        {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390,
+          "bootError": null,
+          "renderError": null,
+          "ready": null,
+          "tabButtonsChecked": 0
+        }
+      ],
+      "runtimeErrors": 0,
+      "externalRequests": 0
+    }
+  ],
+  "regressions": {
+    "traffic": {
+      "sampleMs": 2000,
+      "modelSteps": 16,
+      "canvasClears": 48,
+      "pauseStepResume": "passed"
+    },
+    "language": {
+      "before": 200,
+      "after": 201,
+      "nativeButton": "passed",
+      "inputFocus": "passed",
+      "globalShortcut": "passed"
+    },
+    "bandit": {
+      "titleWidths": [
+        {
+          "width": 320,
+          "scrollWidth": 320
+        },
+        {
+          "width": 360,
+          "scrollWidth": 360
+        },
+        {
+          "width": 390,
+          "scrollWidth": 390
+        },
+        {
+          "width": 430,
+          "scrollWidth": 430
+        }
+      ]
+    },
+    "clock": {
+      "viewport": 390,
+      "scrollWidth": 390,
+      "openCloseAndSources": "passed"
+    },
+    "gallery": {
+      "localServer": "passed",
+      "directFile": "not_tested_browser_policy",
+      "search": "passed",
+      "category": "passed",
+      "reset": "passed",
+      "mobile320": "passed",
+      "withoutJavaScript": "passed"
+    }
+  },
+  "result": "passed",
+  "checked_at": "2026-10-02",
+  "environment": {
+    "node": "v24.19.0",
+    "chromium": "Chromium 151.0.7922.173 built on Debian GNU/Linux 13 (trixie)",
+    "playwright": "1.63.0"
+  },
+  "validated_files_sha256": {
+    "catalog.json": "21c1141f78c27a2bed963831cb6348919cd4cf78b363afcbe3805b1c540822b0",
+    "index.html": "1bcae0cd07123ec9e9c7ef03075b863bd0af7b7d58902f970d36b823be59636c",
+    "package-lock.json": "03c532c97153f6b66a7496c143e1d5248a5e29a7387df7e2ba4c31501937d03d",
+    "package.json": "0b6408a39c7ea0a24f4fad66afb6066e5fe846bea98741f6bfc4a090c738dd32",
+    "scripts/browser-check.cjs": "fba80a923b4397b90b19a5bbc645b0a88dc7388f832722e6f8e48a32fecd8270",
+    "scripts/build_catalog.py": "6362883978e73a5bc14d757510e9653b467d503f47d6862b8062cc5c514b398f",
+    "scripts/check.py": "49022fc2c18b9c36c415b5949aeeff09c70c9e3b5167ad295c5154078c91f676",
+    "sishierfei.html": "8cd2cb0add9b3ee8c1a6c0d81c4d951b8091e3ac5dd44307ce2c4b5a63696635",
+    "与非之上.html": "a4db29fa9ae9905bfc59733102e4d324a51c0c33f342e4b67d1bd9b21aee2521",
+    "两处栖身.html": "60dd6717468b20afab0011b3dce5325ff4a54d5716d5d4d87700e16d38a04fae",
+    "临界的形状.html": "8b34ca541f68f48871ef96efb61d8d14a84414ce97d24358880d0a53bc901ee6",
+    "偏振之间.html": "a3de2fdb337c14b2bfb0a9b0a97fbd34139a203d43024ef02d6c61fb5ffe7276",
+    "偶然的谱系.html": "2ff5c1c4b2651978359d691aaab452a0c88597d5d780d32012df921bb2e54076",
+    "共名.html": "f4a3c31313ff46782c88fd794105967124e45a5f5254cf7d01f2f081686960f1",
+    "共转之处.html": "16e7aee94a86b1bec10c944a6a649b7cfe47978df3ba3985f5115c2247f00534",
+    "冰川的慢答.html": "15e727228bfa0a2d57666f674f3572befcf9fecd25e216ce108bee2332e96e54",
+    "切片之前.html": "28617b34d12d24daabd1a1068c9065189e8cc9c4d81fc345221ada3c9b122b0c",
+    "十二不归.html": "17438267c362a24fd063feb8a15d931097a732a1e9185c12818daa20e126f6e5",
+    "半信半疑.html": "bf10698648ea833f0c0926d8773ee7988c7dc054d6968f44be0f5d9c2d35e734",
+    "可学之界.html": "ff9ab58f237434cd5e4e071724760368884984fc1bdc858a6c55ea65de41cf77",
+    "同影异物.html": "06f64ed05cf2e447f8bb1ded3902d7db260949571b0e8227fc66b2ad10bacfef",
+    "四二六七.html": "f28a20abadd15d1c977543a80b85f8041e3560ae9c8a78b0f71cc5d02b1afec2",
+    "多数的环.html": "fca42d0e4db198db2344dba2bbd4b1b8ba65a4eb04044b27c6914a3dcaf6a290",
+    "差之毫厘.html": "456586cf35dac319e440eee1f3c18046422fa658134b7722088ac41bbab31ddc",
+    "平方之前.html": "0686f55c28e30771f606bd5656facb4eb8750f453aeacce350d60c56b5f008c4",
+    "异步之墙.html": "3bce519f69340374e3c4ce4c1e11e3363c41c2f878c4cfd70db1285932f237cf",
+    "忘记起点.html": "e4d30a7085dc45439e1f1c6c00a50bda1ffc50d6b20e6b5de3fe7aacf868a3cc",
+    "念起之前.html": "dfea627df29de30cc60f43f6db617a7558c7aa8e8c2431aa0110bd2b06734019",
+    "拥堵之波.html": "2231f8763d27bef2bf8bada081ce082ead05f3b803da511d9c1e333675941d3e",
+    "搬了多远.html": "758a6456c67b5b1da13d1d26a213dd73670d070959569ededfc9be0699c02d83",
+    "无原稿_最终.html": "19242de8f06e848c35e356c0a6ec48c056107324a590681ed6ebea79c46e93a6",
+    "无序不可能.html": "8352fa34c8aaa9d6fa3068538cfe25f2ca05b4868590dcb9f5d7a3e1b73ccac5",
+    "星光留痕.html": "0b1a27619d416a2afeb6f32841a61fdc7eb0aa094925ed83a35fb610076a14a4",
+    "未选之路.html": "5129b3b493d4a939a8511f83119f5e8c87260c7a44f52d2a58caab05abf59d2a",
+    "此刻.html": "708cc920102fae100e1d97a18447fabd664983e0d61c62b2b43dbd1fd8cb81f2",
+    "比特之漏.html": "e405560383d1881a85bfcffcbe54b5c7adb67c121914554450922242880021a3",
+    "温度的地形.html": "c642c7dbfab2172175908af2f8817cf91f5fad98ce713df5d09f8213a8347e4c",
+    "熵之彼岸.html": "18766cec3030242ae83fb6044480c2a8979505a4bdae2f1fe6345acfa8afa78f",
+    "盐桥的账本.html": "734d8ca43571c8e101803b1620d9bd71cab2f14bfc60cfac42705f1a135845e2",
+    "纸带之上.html": "9ab4f4ea8006102605305929a4f975f5e76e1a5ad5af2c29c897f7455306947c",
+    "逼近之极.html": "c1f650d2fa4b45b2e15467b2c760f612cc4367a5d299d5cd4ba94c7d3301b77e",
+    "链之宿命.html": "80fee91e83aa212aaf2e319ec6b5ef0c8fc955e51d8e1e7f4ba6f9281fc5eb25",
+    "长浪抵岸.html": "73c99088dd21f875b1365e28d72bdece3e740204870ca182eb93d05c7df34c07",
+    "雨的去路.html": "9c4ecb47e60d4bf0c88553496f3bb3c8c0341f1a1c0f52866a7097dbc7a4ee9c",
+    "震源的坐标.html": "fd41e4290ab799be80cb786f2eefae31f288c74b7a86d2d4418599c35344fb02",
+    "马后炮.html": "3bad6ccbc072af1b97c61afffacc4d911947753acf38e78a9820d4e48a81328f",
+    "马后炮·新生入口.html": "d0b4ed1efc1bd995651e744ea97a9bc6cdc96c95971dc10d707702e4976ccb1f",
+    "驻波之间.html": "33e259ef73019256f5dca8876f7ef8e74ad456ea9dccdbda99404e3930a3c9c4"
+  },
+  "static_followup": "Catalogue generator EOF whitespace adjusted after browser checks; static checks passed again, all HTML SHA-256 values unchanged."
+}

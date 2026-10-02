@@ -967,7 +967,8 @@ input[type="range"] { display: block; width: 100%; height: 18px; margin: 0; acce
       while (accumulator >= 1 && updates < 5) {
         tick(); accumulator -= 1; updates++;
       }
-      render();
+      // 道路位置和图表只随模型步改变，无需重复绘制相同状态。
+      if (updates > 0) render();
     }
     requestAnimationFrame(frame);
   }

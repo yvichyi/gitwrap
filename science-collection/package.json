@@ -1,0 +1,14 @@
+{
+  "name": "interactive-science-collection",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Development checks for a collection of standalone offline HTML science experiments",
+  "scripts": {
+    "catalog": "python3 scripts/build_catalog.py",
+    "check": "python3 scripts/check.py",
+    "test:browser": "node scripts/browser-check.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

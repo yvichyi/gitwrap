@@ -1,0 +1,6 @@
+# Preserve the original standalone files, including mixed line endings.
+*.html -text
+*.py text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf

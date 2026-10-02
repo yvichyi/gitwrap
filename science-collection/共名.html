@@ -1403,6 +1403,9 @@ footer b{color:var(--dim);font-weight:600}
       reset(true);
     });
     window.addEventListener('keydown', function (e) {
+      // Keep native keyboard behavior when a control or editable element has focus.
+      if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (e.target && (e.target.isContentEditable || e.target.closest('input, textarea, select, button, a'))) return;
       if (e.code === 'Space') { e.preventDefault(); $('btn-pause').click(); }
       else if (e.key === 's' || e.key === 'S') $('btn-step').click();
       else if (e.key === 'n' || e.key === 'N') $('btn-new').click();
