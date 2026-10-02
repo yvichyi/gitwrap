@@ -1,0 +1,2369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>忘记起点 · 洗牌，与「多久才算真的随机」</title>
+<style>
+/* ============================================================
+ * 《忘记起点》 style.css
+ *
+ * 亮色主题。两条硬规矩（都是真事故换来的）：
+ *   1. 媒体查询写在文件**末尾** —— CSS 里同名规则靠后的赢，
+ *      基准规则写在媒体查询之后会把窄屏覆盖掉（《纸带之上》第六个变体）。
+ *   2. .grid2 / .grid3 / .panel / .tbl-wrap 全部 min-width: 0 ——
+ *      Grid 的 1fr 默认 min-width:auto，里面放 nowrap 的表会把轨道顶破。
+ * ========================================================== */
+:root {
+  --bg: #f4f6fa;
+  --panel: #fbfcfe;
+  --ink: #1b2330;
+  --ink2: #4a5568;
+  --ink3: #7a869a;
+  --line: #dde3ec;
+  --line2: #eef1f6;
+  --good: #178a5a;
+  --bad: #c0392b;
+  --warn: #b8860b;
+  --accent: #2b6cb0;
+  --accent2: #7b3fa0;
+  --accent3: #c05621;
+  --accent4: #0f766e;
+  --accent5: #9b2c2c;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 20px 18px 60px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.72 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+.wrap { max-width: 1180px; margin: 0 auto; }
+
+/* ---------------- 头版 ---------------- */
+header { padding: 4px 0 14px; border-bottom: 2px solid var(--ink); margin-bottom: 18px; }
+h1.title {
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: 3px;
+  font-weight: 700;
+}
+p.sub { margin: 6px 0 0; color: var(--ink2); font-size: 15px; letter-spacing: .5px; }
+p.meta {
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+/* ---------------- KPI ---------------- */
+#kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+  gap: 10px;
+  margin: 16px 0 22px;
+}
+.kpi {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 12px 11px 16px;
+  min-width: 0;
+}
+.kpi::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 6px 0 0 6px;
+  background: var(--accent);
+}
+.kpi.good::before { background: var(--good); }
+.kpi.bad::before { background: var(--bad); }
+.kpi.warn::before { background: var(--warn); }
+.kpi .kl { font-size: 12px; color: var(--ink3); line-height: 1.5; }
+.kpi .kv {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 4px 0 4px;
+  word-break: break-all;
+  line-height: 1.3;
+}
+.kpi .kn { font-size: 11.5px; color: var(--ink2); line-height: 1.55; }
+
+/* ---------------- 标签栏 ---------------- */
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 18px;
+  padding-bottom: 0;
+}
+.tabs button {
+  flex: 0 0 auto;
+  appearance: none;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  background: #eef1f6;
+  color: var(--ink2);
+  font: inherit;
+  font-size: 13.5px;
+  padding: 9px 13px;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 40px;
+}
+.tabs button.on {
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+  border-color: var(--ink);
+  box-shadow: inset 0 3px 0 var(--ink);
+}
+.tabs button:hover { color: var(--ink); }
+
+/* ---------------- 面板 ---------------- */
+.panel { display: none; min-width: 0; }
+.panel.on { display: block; }
+
+h2 {
+  font-size: 20px;
+  margin: 0 0 4px;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+h3 {
+  font-size: 14px;
+  margin: 20px 0 8px;
+  color: var(--ink2);
+  letter-spacing: .5px;
+  font-weight: 600;
+  border-left: 3px solid var(--ink);
+  padding-left: 8px;
+}
+p.lead { margin: 6px 0 14px; color: var(--ink2); font-size: 14px; line-height: 1.8; }
+p.lead b, p.lead strong { color: var(--ink); }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; min-width: 0; }
+.grid2 > * { min-width: 0; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 13px;
+  min-width: 0;
+}
+.card .cap { font-size: 12.5px; color: var(--ink3); margin: 0 0 8px; }
+
+/* ---------------- 图表 ---------------- */
+.chart { width: 100%; min-width: 0; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart text { font-family: var(--mono); }
+.chart-note { font-size: 11.5px; color: var(--ink3); margin: 6px 0 0; line-height: 1.6; }
+
+/* ---------------- 读数 ---------------- */
+p.ro {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--ink2);
+}
+p.ro b, p.ro strong { color: var(--ink); }
+p.ro code, .kpi code { font-family: var(--mono); font-size: 12.5px; background: #eef1f6; padding: 1px 4px; border-radius: 3px; }
+
+p.nums {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink2);
+  background: #eef1f6;
+  border-radius: 4px;
+  padding: 8px 11px;
+  margin: 10px 0 0;
+  line-height: 1.85;
+  word-break: break-word;
+}
+
+/* ---------------- 控件 ---------------- */
+.ctl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  font-size: 13px;
+  color: var(--ink2);
+  min-width: 0;
+}
+.ctl label { white-space: nowrap; font-size: 13px; }
+.ctl input[type="range"] { flex: 1 1 160px; min-width: 0; height: 28px; accent-color: var(--accent); }
+.ctl select {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+  min-height: 36px;
+}
+.ctl .val {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink);
+  min-width: 66px;
+  text-align: right;
+  font-weight: 600;
+}
+
+/* ---------------- 表格 ---------------- */
+.tbl-wrap { overflow-x: auto; max-width: 100%; min-width: 0; }
+table.t {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12.5px;
+  font-family: var(--mono);
+  background: var(--panel);
+}
+table.t th, table.t td {
+  border: 1px solid var(--line);
+  padding: 5px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+table.t th {
+  background: #eef1f6;
+  color: var(--ink);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+table.t td:first-child, table.t th:first-child { text-align: left; }
+table.t tbody tr:nth-child(even) { background: #f7f9fc; }
+table.t td.hi { color: var(--bad); font-weight: 600; }
+table.t td.ok { color: var(--good); font-weight: 600; }
+table.t.plain td, table.t.plain th { white-space: normal; text-align: left; }
+
+/* ---------------- 结论 / 边界 ---------------- */
+.block { margin-top: 30px; }
+ol.conc { margin: 0; padding-left: 22px; }
+ol.conc li { margin-bottom: 9px; line-height: 1.85; font-size: 14px; }
+ol.conc li b, ol.conc li strong { color: var(--accent); }
+ul.bound { margin: 0; padding-left: 20px; }
+ul.bound li { margin-bottom: 8px; line-height: 1.8; font-size: 13.5px; color: var(--ink2); }
+ul.bound li b, ul.bound li strong { color: var(--ink); }
+
+.formula {
+  background: #eef1f6;
+  border-left: 3px solid var(--accent2);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  overflow-x: auto;
+  color: var(--ink);
+  white-space: pre;
+}
+
+p.foot {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--ink3);
+  line-height: 1.8;
+  font-family: var(--mono);
+  word-break: break-word;
+}
+
+/* ============================================================
+ * 窄屏覆盖 —— 必须留在文件末尾
+ * ========================================================== */
+@media (max-width: 640px) {
+  body { padding: 14px 11px 44px; font-size: 14.5px; }
+  h1.title { font-size: 26px; letter-spacing: 2px; }
+  .grid2 { grid-template-columns: 1fr; }
+  .kpi .kv { font-size: 17px; }
+
+  /* 触控目标：媒体查询里的裸选择器压不住 input[type="range"]（特异性 (0,1,1)），
+     所以这里显式把 range 也写进来；页面上没有行内 min-height。 */
+  .tabs button { min-height: 44px; padding: 11px 12px; }
+  .ctl select { min-height: 44px; }
+  .ctl input[type="range"] { min-height: 44px; height: 44px; }
+  .ctl .val { min-width: 56px; }
+
+  /* 宽表放开折行，关键列不被推出视野 */
+  table.t th, table.t td { white-space: normal; word-break: break-word; padding: 4px 6px; }
+  table.t td:first-child, table.t th:first-child { min-width: 62px; }
+  table.t td.hi, table.t td.ok { white-space: nowrap; }
+  ol.conc li, ul.bound li { font-size: 13.5px; }
+  p.ro { font-size: 13px; }
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1 class="title">忘记起点</h1>
+  <p class="sub">洗牌，与「多久才算真的随机」</p>
+  <p class="meta" id="meta-line"></p>
+</header>
+
+<div id="kpis"></div>
+
+<nav class="tabs" id="tabs"></nav>
+
+<main id="panels">
+
+  <!-- ==================== 壹 ==================== -->
+  <section class="panel" id="p-one">
+    <h2>壹 · 一次洗牌等于没洗</h2>
+    <p class="lead">
+      一次 2-洗牌的动作是：给每张牌独立抛一枚硬币，硬币为 0 的牌按原顺序放到最上面，
+      为 1 的按原顺序接在下面。所以洗完之后，这堆牌长什么样，<b>完全由那 n 枚硬币决定</b>。
+      硬币只有 2ⁿ 种结果，于是输出的牌堆最多也只有 2ⁿ 种。
+    </p>
+    <div class="formula">一次 2-洗牌 ⟺ 每张牌拿一个 k 位随机标签，按标签从小到大把牌收起来
+k 次 2-洗牌 ⟺ 给每张牌一个 [0, 2ᵏ) 的均匀标签，按标签做一次稳定排序
+           ⟺ P_k(σ) = C(2ᵏ + n − 1 − r(σ), n) / 2ᵏⁿ      （r(σ) = σ 的上升段数）</div>
+    <p class="ro" id="ro-one"></p>
+    <div class="ctl">
+      <label for="s-one">牌的张数 n</label>
+      <input type="range" id="s-one" min="4" max="52" step="1" value="52">
+      <span class="val" id="v-one">52</span>
+    </div>
+    <p class="nums" id="ro-one-live"></p>
+    <div class="card">
+      <p class="cap">一次洗牌后的支持集占比（对数刻度，横跨 52 个数量级）</p>
+      <div class="chart" id="c-support"></div>
+    </div>
+    <h3>一次洗牌之后还剩多少可能</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e1"></table></div>
+    <p class="nums" id="n-one"></p>
+  </section>
+
+  <!-- ==================== 贰 ==================== -->
+  <section class="panel" id="p-two">
+    <h2>贰 · 那根箭头</h2>
+    <p class="lead">
+      洗牌是一根<b>多对一</b>的箭头：2ᵏⁿ 个标签向量进去，n! 个排列出来。
+      每个排列的原像个数叫它的<b>纤维</b>。纤维不是均匀的 —— 它只依赖排列的<b>上升段数</b>，
+      而且随上升段数单调递减。
+    </p>
+    <div class="formula">纤维大小  N_j = C(2ᵏ + n − 1 − j, n)        j = 下降数
+概率      P_k(σ) = N_{desc(σ)} / 2ᵏⁿ
+恒等式    Σ_j  A(n, j) · N_j = (2ᵏ)ⁿ     （A(n,j) = 欧拉数：恰有 j 个下降的排列数）</div>
+    <p class="ro" id="ro-two"></p>
+    <div class="ctl">
+      <label for="s-two">牌的张数 n</label>
+      <input type="range" id="s-two" min="4" max="12" step="1" value="9">
+      <span class="val" id="v-two">9</span>
+    </div>
+    <p class="nums" id="ro-two-live"></p>
+    <div class="card">
+      <p class="cap">纤维大小与排列数：两条曲线错位（对数刻度）</p>
+      <div class="chart" id="c-fiber"></div>
+      <p class="chart-note">
+        蓝线是"每个排列被多少种硬币结果命中"，紫线是"有多少个排列落在这一格"。
+        输出分布不匀的全部原因就在这两条线的错位上。
+      </p>
+    </div>
+    <h3 id="h-two-fiber">九个格子</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e2fiber"></table></div>
+    <p class="nums" id="n-two"></p>
+  </section>
+
+  <!-- ==================== 叁 ==================== -->
+  <section class="panel" id="p-three">
+    <h2>叁 · 九张表</h2>
+    <p class="lead">
+      闭式把 n! 个状态压成了 n 个数。所以算 TV 距离只需要在 n 个下降类上求和。
+      但"压得对不对"必须验：本装置在 n ≤ 8 的全部 n! 个状态上跑了一条真的马尔可夫链，
+      逐点与闭式对账。
+    </p>
+    <p class="ro" id="ro-three"></p>
+    <div class="grid2">
+      <div class="card">
+        <p class="cap">闭式 vs 全状态链（n = 8，两条线应当完全重合）</p>
+        <div class="chart" id="c-e3"></div>
+        <p class="chart-note">两条线重合到看不出来 —— 这正是要的结果。最大偏差见下表。</p>
+      </div>
+      <div class="card">
+        <p class="cap">穷举的代价</p>
+        <div class="chart" id="c-wall"></div>
+        <p class="chart-note">纵轴 log₁₀(n!)：状态空间随牌数爆炸。玖节接着讲这件事。</p>
+      </div>
+    </div>
+    <h3>穷举对账</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e3"></table></div>
+    <p class="nums" id="n-three"></p>
+  </section>
+
+  <!-- ==================== 肆 ==================== -->
+  <section class="panel" id="p-four">
+    <h2>肆 · 七次</h2>
+    <p class="lead">
+      一副 52 张的牌要洗几次？闭式能在 52 张上精确算出 TV 距离，不需要模拟。
+      结果是：k = 7 时 TV 首次降到 0.5 以下 —— 这就是那句"洗七次"。
+      而这条下降曲线不是一条线，是一条<b>有宽度的斜线</b>。
+    </p>
+    <p class="ro" id="ro-four"></p>
+    <div class="ctl">
+      <label for="s-four">洗几次 k</label>
+      <input type="range" id="s-four" min="0" max="18" step="1" value="7">
+      <span class="val" id="v-four">7</span>
+    </div>
+    <p class="nums" id="ro-four-live"></p>
+    <div class="card">
+      <p class="cap">n = 52 的 TV 曲线（闭式）与文献发表的六个点</p>
+      <div class="chart" id="c-tv52"></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <p class="cap">k*(ε) 随 log₂ n 走（四条阈值曲线）</p>
+        <div class="chart" id="c-cutoff"></div>
+      </div>
+      <div class="card">
+        <p class="cap">cutoff 窗口宽度：TV 从 0.5 掉到 0.1 花几次</p>
+        <div class="chart" id="c-width"></div>
+        <p class="chart-note">
+          18 档 n 上这个宽度只有 2 或 3 —— 窗口不随规模变宽，这是 cutoff 的定义性特征。
+        </p>
+      </div>
+    </div>
+    <h3>与文献对照</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e4ref"></table></div>
+    <h3>k*(ε) 与窗口宽度</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e4cut"></table></div>
+    <p class="nums" id="n-four"></p>
+  </section>
+
+  <!-- ==================== 伍 ==================== -->
+  <section class="panel" id="p-five">
+    <h2>伍 · 三个价钱</h2>
+    <p class="lead">
+      同样是"把牌弄乱"，动作集不同，价钱差得很远。这里摆三条链：
+      交错洗牌、随机对换（i, j 独立均匀取自 [n]，含 i = j 的原地不动）、
+      顶牌插回（把最上面那张插到 n 个位置之一，含插回原位）。
+    </p>
+    <p class="ro" id="ro-five"></p>
+    <div class="ctl">
+      <label for="sel-five">看哪一档 n 的 TV 曲线</label>
+      <select id="sel-five">
+        <option value="5">n = 5</option>
+        <option value="6">n = 6</option>
+        <option value="7">n = 7</option>
+        <option value="8" selected>n = 8</option>
+      </select>
+      <span class="val" id="v-five">8</span>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <p class="cap">三条链的 TV 曲线</p>
+        <div class="chart" id="c-chains"></div>
+      </div>
+      <div class="card">
+        <p class="cap">第二特征值 λ₂：实测点与两条解析线</p>
+        <div class="chart" id="c-lambda"></div>
+        <p class="chart-note">
+          交错洗牌恒在 1/2 上（与 n 无关）；两条逐张链沿 1 − 2/n 往上爬，n 越大越慢。
+        </p>
+      </div>
+    </div>
+    <h3>三条链逐档</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e5"></table></div>
+    <h3>交错洗牌走到 52 张</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e5big"></table></div>
+    <p class="nums" id="n-five"></p>
+  </section>
+
+  <!-- ==================== 陆 ==================== -->
+  <section class="panel" id="p-six">
+    <h2>陆 · 五把尺子</h2>
+    <p class="lead">
+      "洗得够不够乱"取决于你用什么尺子量。同一台洗牌机、同一个 n，
+      五种距离给出的答案从第 2 次到第 14 次不等。
+    </p>
+    <p class="ro" id="ro-six"></p>
+    <div class="card">
+      <p class="cap">n = 52 的五个距离，各自对 k = 1 归一后取 log₁₀</p>
+      <div class="chart" id="c-dist"></div>
+      <p class="chart-note">
+        纵轴是各距离对"第 1 步的值"的比（log₁₀）。<b>L² 那条是虚线，它压在 χ² 上完全重合</b> ——
+        因为 L² 的定义就是 χ²/n!，而 n! 与 k 无关。
+        所以"五把尺子"里真正独立的只有四把。
+      </p>
+    </div>
+    <h3>五种距离的原始数值（n = 52）</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e6"></table></div>
+    <h3>每种距离的混合时间</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e6mix"></table></div>
+    <p class="nums" id="n-six"></p>
+  </section>
+
+  <!-- ==================== 柒 ==================== -->
+  <section class="panel" id="p-seven">
+    <h2>柒 · 每张牌留下多少信息</h2>
+    <p class="lead">
+      k 次 2-洗牌消耗 k·n 个随机比特。把"消耗的比特数"和"输出分布还剩多少不确定性"
+      画在同一张图上，会看到一件反直觉的事。
+    </p>
+    <p class="ro" id="ro-seven"></p>
+    <div class="ctl">
+      <label for="s-seven">洗几次 k</label>
+      <input type="range" id="s-seven" min="1" max="14" step="1" value="7">
+      <span class="val" id="v-seven">7</span>
+    </div>
+    <p class="nums" id="ro-seven-live"></p>
+    <div class="card">
+      <p class="cap">输出分布的熵 vs k（虚线是天花板 log₂(n!)）</p>
+      <div class="chart" id="c-entropy"></div>
+    </div>
+    <h3>n = 52：比特数、熵、TV</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e7"></table></div>
+    <p class="nums" id="n-seven"></p>
+  </section>
+
+  <!-- ==================== 捌 ==================== -->
+  <section class="panel" id="p-eight">
+    <h2>捌 · 特征值</h2>
+    <p class="lead">
+      2-洗牌链的特征值是 1, 1/2, …, 1/2ⁿ⁻¹，其中 1/2ⁱ 的重数等于"恰有 n − i 个轮换的排列数"。
+      这条谱有两个后果：收敛速度只由 λ₂ = 1/2 决定，而它<b>与 n 无关</b>。
+    </p>
+    <p class="ro" id="ro-eight"></p>
+    <div class="card">
+      <p class="cap">特征值重数（n = 12 的完整谱，对数刻度）</p>
+      <div class="chart" id="c-spectrum"></div>
+      <p class="chart-note">
+        横轴是特征值 1/2ⁱ，纵轴是该特征值的重数 —— 十二档全在，加起来正好 12!。
+        重数先升后降，具体峰位与两端取值见上方读数。
+      </p>
+    </div>
+    <h3>trace(Qᵏ) 四路对账</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e8spec"></table></div>
+    <h3>特征值多重集（n = 6，完整六项）</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e8eigen"></table></div>
+    <p class="nums" id="n-eight"></p>
+  </section>
+
+  <!-- ==================== 玖 ==================== -->
+  <section class="panel" id="p-nine">
+    <h2>玖 · 墙</h2>
+    <p class="lead">
+      这一页上所有的数字，只有一小部分来自穷举。剩下的都来自一条闭式。
+      这不是偷懒 —— 是穷举在 n = 9 就撞墙了。
+    </p>
+    <p class="ro" id="ro-nine"></p>
+    <div class="card">
+      <p class="cap">log₁₀(n!)：状态空间随牌数增长</p>
+      <div class="chart" id="c-wall2"></div>
+      <p class="chart-note">
+        纵轴每加 1 就是十倍。52! 是 68 位数 —— 这个数比可观测宇宙的原子数还多。
+      </p>
+    </div>
+    <h3>本装置的墙</h3>
+    <div class="tbl-wrap"><table class="t" id="t-e9"></table></div>
+    <p class="nums" id="n-nine"></p>
+  </section>
+
+</main>
+
+<section class="block">
+  <h2>结论</h2>
+  <ol class="conc" id="conclusions"></ol>
+</section>
+
+<section class="block">
+  <h2>我没做到什么</h2>
+  <ul class="bound" id="boundaries"></ul>
+</section>
+
+<section class="block">
+  <h2>验证表</h2>
+  <div class="tbl-wrap"><table class="t plain" id="t-verify"></table></div>
+  <p class="foot" id="foot-line"></p>
+</section>
+
+</div>
+
+<script>
+/* ---- core.js（模型，Node 与浏览器共用同一份源码） ---- */
+/* ============================================================
+ * 《忘记起点》 core.js —— 全部模型（UMD，Node 与浏览器共用同一份源码）
+ *
+ * 对象：洗牌，和「多久才算真的随机」。
+ *
+ * 模型（Gilbert–Shannon–Reeds 的第三种等价描述，也是最好实现的一种）：
+ *   一次 2-洗牌 = 给每张牌独立抛一枚硬币，把硬币为 0 的牌按原顺序抽出放在最上面，
+ *   硬币为 1 的牌按原顺序接在下面。
+ *   k 次 2-洗牌 ⟺ 每张牌拿一个 k 位随机标签，按标签从小到大把牌收起来
+ *                ⟺ 给每张牌一个 [0, 2^k) 的均匀标签，按标签做一次稳定排序。
+ *   ——这一步不需要引用任何定理：它是"逆过程复合"的直接推论，
+ *     而 test.js 会用「两次 2-洗牌 vs 一次 4-洗牌」的暴力枚举逐项核对。
+ *
+ * 于是从排好序的一副牌出发，k 次洗牌后的分布有精确闭式：
+ *
+ *      P_k(σ) = C( 2^k + n − 1 − r(σ), n ) / 2^(kn)
+ *
+ * 其中 r(σ) 是 σ 的上升段数（= 下降数 + 1）。
+ * 这条闭式是本装置全部数字的来源，test.js 里用多套独立实现把它钉死：
+ *   ① 暴力枚举全部 2^n 个标签向量，统计每个排列被命中几次（n ≤ 8）
+ *   ② 在 n! 个状态上跑马尔可夫链（n ≤ 8）
+ *   ③ 外部真值（Bayer–Diaconis 1992 对 52 张牌发表的 TV 表、特征值、固定点期望）
+ * ========================================================== */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.ShuffleCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* ============================================================
+   * 0. 确定性 PRNG
+   * ========================================================== */
+  function splitmix32(a) {
+    return function () {
+      a |= 0; a = a + 0x9e3779b9 | 0;
+      var t = a ^ a >>> 16; t = Math.imul(t, 0x21f0aaad);
+      t = t ^ t >>> 15; t = Math.imul(t, 0x735a2d97);
+      return ((t = t ^ t >>> 15) >>> 0) / 4294967296;
+    };
+  }
+  function rndInt(rnd, m) { return Math.floor(rnd() * m); }
+
+  /* ============================================================
+   * 1. 排列
+   *   约定：牌堆用数组 p 表示，p[i] = 位置 i 上的牌号。
+   *   初始（排好序的）牌堆 e = [0,1,...,n-1]。
+   * ========================================================== */
+  function identity(n) { var a = new Array(n); for (var i = 0; i < n; i++) a[i] = i; return a; }
+
+  function descCount(p) {
+    var d = 0;
+    for (var i = 1; i < p.length; i++) if (p[i] < p[i - 1]) d++;
+    return d;
+  }
+  function risingRuns(p) { return descCount(p) + 1; }
+
+  function runSpans(p) {
+    var out = [], s = 0;
+    for (var i = 1; i < p.length; i++) if (p[i] < p[i - 1]) { out.push([s, i]); s = i; }
+    out.push([s, p.length]);
+    return out;
+  }
+
+  function permRank(p) {
+    var n = p.length, r = 0;
+    for (var i = 0; i < n; i++) {
+      var c = 0;
+      for (var j = i + 1; j < n; j++) if (p[j] < p[i]) c++;
+      r = r * (n - i) + c;
+    }
+    return r;
+  }
+  function permUnrank(r, n) {
+    var avail = identity(n), out = new Array(n);
+    for (var i = 0; i < n; i++) {
+      var f = factNum(n - 1 - i), k = Math.floor(r / f);
+      r = r % f;
+      out[i] = avail[k];
+      avail.splice(k, 1);
+    }
+    return out;
+  }
+  function factNum(n) { var r = 1; for (var i = 2; i <= n; i++) r *= i; return r; }
+
+  function inv(p) { var q = new Array(p.length); for (var i = 0; i < p.length; i++) q[p[i]] = i; return q; }
+  function compose(p, q) { var r = new Array(p.length); for (var i = 0; i < p.length; i++) r[i] = p[q[i]]; return r; }
+
+  function permutations(n) {
+    var out = [], cur = [], used = new Array(n).fill(false);
+    (function rec() {
+      if (cur.length === n) { out.push(cur.slice()); return; }
+      for (var i = 0; i < n; i++) if (!used[i]) { used[i] = true; cur.push(i); rec(); cur.pop(); used[i] = false; }
+    })();
+    return out;
+  }
+
+  /* ============================================================
+   * 2. 洗牌本身
+   * ========================================================== */
+  function aShuffleOnce(deck, a, rnd) {
+    var n = deck.length, lab = new Array(n);
+    for (var i = 0; i < n; i++) lab[i] = rndInt(rnd, a);
+    var idx = identity(n);
+    idx.sort(function (x, y) { return lab[x] !== lab[y] ? lab[x] - lab[y] : x - y; });
+    var out = new Array(n);
+    for (var k = 0; k < n; k++) out[k] = deck[idx[k]];
+    return out;
+  }
+  function riffleKTimes(deck, k, rnd) { return aShuffleOnce(deck, Math.pow(2, k), rnd); }
+
+  function riffleTrace(deck, rnd) {
+    var n = deck.length, bits = [], zero = [], one = [];
+    for (var i = 0; i < n; i++) {
+      var b = rnd() < 0.5 ? 0 : 1;
+      bits.push(b);
+      (b === 0 ? zero : one).push(deck[i]);
+    }
+    return { bits: bits, zeros: zero, ones: one, out: zero.concat(one) };
+  }
+
+  /* ============================================================
+   * 3. 组合数（BigInt）
+   * ========================================================== */
+  function factBig(n) { var r = 1n; for (var i = 2n; i <= BigInt(n); i++) r *= i; return r; }
+  function binomBig(n, k) {
+    n = BigInt(n); k = BigInt(k);
+    if (k < 0n || k > n) return 0n;
+    if (k > n - k) k = n - k;
+    var r = 1n;
+    for (var i = 0n; i < k; i++) r = r * (n - i) / (i + 1n);
+    return r;
+  }
+  /* BigInt 比值 → 浮点。
+     关键：n=52 时 1/52! ≈ 1.2e-68，固定取 22 位小数会把它下溢成 0
+     （实测后果：KL 距离被算成 0、支持集占比显示 0.000e+0）。
+     所以这里按"20 位有效数字"取，而不是固定小数位数。 */
+  function ratioBig(num, den) {
+    if (den === 0n) return NaN;
+    var neg = (num < 0n) !== (den < 0n);
+    if (num < 0n) num = -num;
+    if (den < 0n) den = -den;
+    if (num === 0n) return 0;
+    var ip = num / den, fr = num % den;
+    var out = ip.toString();
+    if (fr === 0n) return (neg ? -1 : 1) * parseFloat(out);
+    var digits = '', zeros = 0, started = false, sig = 0;
+    for (var i = 0; i < 400 && sig < 20 && fr !== 0n; i++) {
+      fr *= 10n;
+      var d = fr / den;
+      fr = fr % den;
+      if (!started) {
+        if (d === 0n) { zeros++; continue; }
+        started = true;
+      }
+      digits += d.toString();
+      sig++;
+    }
+    var s = out + '.';
+    for (var z = 0; z < zeros; z++) s += '0';
+    s += digits || '0';
+    return (neg ? -1 : 1) * parseFloat(s);
+  }
+
+  /* 欧拉数 A(n,j)：恰有 j 个下降的排列数（BigInt 精确） */
+  function eulerianBig(n) {
+    var A = [1n];
+    for (var m = 1; m <= n; m++) {
+      var B = new Array(m + 1).fill(0n);
+      for (var j = 0; j < A.length; j++) {
+        if (A[j] === 0n) continue;
+        B[j] += A[j] * BigInt(j + 1);
+        B[j + 1] += A[j] * BigInt(m - j - 1);
+      }
+      A = B;
+    }
+    return A;
+  }
+  /* 第一类斯特林数（无符号）c(n,k)：恰有 k 个轮换的排列数 */
+  function stirlingFirst(n) {
+    var S = [1n];
+    for (var m = 1; m <= n; m++) {
+      var B = new Array(m + 1).fill(0n);
+      for (var j = 0; j < S.length; j++) {
+        if (S[j] === 0n) continue;
+        B[j] += S[j] * BigInt(m - 1);
+        B[j + 1] += S[j];
+      }
+      S = B;
+    }
+    return S;
+  }
+
+  function log2Fact(n) { var s = 0; for (var i = 2; i <= n; i++) s += Math.log2(i); return s; }
+  function log2BinomShift(m, n, j) {
+    var s = 0;
+    for (var i = 0; i < n; i++) s += Math.log2(m + n - 1 - j - i);
+    return s - log2Fact(n);
+  }
+
+  /* ============================================================
+   * 4. 闭式：纤维、分布、TV
+   *
+   *   N_j = C(2^k + n − 1 − j, n)   —— 下降数为 j 的每个排列的纤维大小
+   * ========================================================== */
+  function fiberCount(n, k, j) {
+    return binomBig((1n << BigInt(k)) + BigInt(n - 1 - j), BigInt(n));
+  }
+
+  function massTable(n, k) {
+    var A = eulerianBig(n), nf = factBig(n), M = 1n << BigInt(k * n);
+    var q = [], w = [], rho = [], P = [], logP = [], N = [];
+    var m = Math.pow(2, k), lgM = k * n;
+    for (var j = 0; j < n; j++) {
+      var c = fiberCount(n, k, j);
+      var wj = ratioBig(A[j] * c, M);
+      var qj = ratioBig(A[j], nf);
+      N.push(c);
+      q.push(qj); w.push(wj);
+      rho.push(qj > 0 ? wj / qj : NaN);
+      P.push(qj > 0 ? wj / qj / ratioBig(nf, 1n) : NaN);
+      logP.push(log2BinomShift(m, n, j) - lgM);
+    }
+    return { n: n, k: k, A: A, N: N, nf: nf, M: M, q: q, w: w, rho: rho, P: P, logP: logP };
+  }
+
+  function tvExact(n, k) {
+    var A = eulerianBig(n), nf = factBig(n), M = 1n << BigInt(k * n);
+    var num = 0n;
+    for (var j = 0; j < n; j++) {
+      if (A[j] === 0n) continue;
+      var c = fiberCount(n, k, j);
+      var d = c * nf - M; if (d < 0n) d = -d;
+      num += A[j] * d;
+    }
+    return 0.5 * ratioBig(num, M * nf);
+  }
+
+  function tvCurve(n, kMax) {
+    var out = [];
+    for (var k = 0; k <= kMax; k++) out.push({ k: k, tv: tvExact(n, k) });
+    return out;
+  }
+
+  /* 一次洗牌后分布的支持集大小 = A(n,0)+A(n,1) = 2^n − n */
+  function supportAfter1(n) { return Math.pow(2, n) - n; }
+  function supportAfterK(n, k) {
+    var A = eulerianBig(n), lim = Math.min(Math.pow(2, k), n), s = 0n;
+    for (var j = 0; j < lim; j++) s += A[j];
+    return s;
+  }
+
+  /* ============================================================
+   * 5. 五条距离 + 熵
+   * ========================================================== */
+  function distances(n, k) {
+    var T = massTable(n, k), q = T.q, w = T.w;
+    var tv = 0, chi2 = 0, kl = 0, minRho = Infinity, H = 0;
+    for (var j = 0; j < n; j++) {
+      if (q[j] <= 0) continue;
+      var rho = w[j] / q[j];
+      tv += Math.abs(w[j] - q[j]);
+      chi2 += (w[j] - q[j]) * (w[j] - q[j]) / q[j];
+      if (rho > 0 && isFinite(rho)) kl += w[j] * Math.log2(rho);
+      if (rho < minRho) minRho = rho;
+      if (w[j] > 0) H -= w[j] * T.logP[j];
+    }
+    var nf = ratioBig(T.nf, 1n);
+    return {
+      tv: 0.5 * tv,
+      sep: 1 - minRho,
+      chi2: chi2,
+      kl: kl,          // 比特
+      l2: chi2 / nf,
+      bits: H,         // 输出分布的熵，比特
+      log2nf: log2Fact(n)
+    };
+  }
+
+  function distanceCurve(n, kMax) {
+    var out = [];
+    for (var k = 1; k <= kMax; k++) {
+      var d = distances(n, k); d.k = k; out.push(d);
+    }
+    return out;
+  }
+
+  /* ============================================================
+   * 6. 三条链的全状态穷举（n ≤ 8）
+   *   { n, N, out, succ: Int32Array(N*out) }
+   * ========================================================== */
+  function buildChain(n, kind) {
+    var N = factNum(n), out, i, t;
+
+    if (kind === 'riffle') {
+      out = 1 << n;
+      var idxAll = new Array(out);
+      for (var lab = 0; lab < out; lab++) {
+        var idx = identity(n), labv = lab;
+        idx.sort(function (x, y) {
+          var lx = (labv >> x) & 1, ly = (labv >> y) & 1;
+          return lx !== ly ? lx - ly : x - y;
+        });
+        idxAll[lab] = idx;
+      }
+      var succ = new Int32Array(N * out);
+      var buf = new Array(n), inv = new Array(n);
+      for (i = 0; i < N; i++) {
+        var d = permUnrank(i, n), base = i * out;
+        for (t = 0; t < out; t++) {
+          var id2 = idxAll[t];
+          for (var z = 0; z < n; z++) buf[z] = d[id2[z]];
+          /* Lehmer 排名（内联，避免每次分配） */
+          var r = 0;
+          for (var a = 0; a < n; a++) {
+            var c = 0;
+            for (var b = a + 1; b < n; b++) if (buf[b] < buf[a]) c++;
+            r = r * (n - a) + c;
+          }
+          succ[base + t] = r;
+        }
+      }
+      return { n: n, N: N, out: out, succ: succ, kind: kind };
+    }
+
+    if (kind === 'transpose') {
+      /* 标准随机对换链（Diaconis–Shahshahani）：i, j 独立均匀取自 [n]，
+         i = j 时原地不动（概率 1/n）。n² 个动作。
+         实测 λ₂ = 1 − 2/n，与文献一致。 */
+      out = n * n;
+      var succ2 = new Int32Array(N * out);
+      for (i = 0; i < N; i++) {
+        var d2 = permUnrank(i, n), base2 = i * out;
+        for (var a2 = 0; a2 < n; a2++) {
+          for (var b2 = 0; b2 < n; b2++) {
+            var p2 = d2.slice();
+            var tv2 = p2[a2]; p2[a2] = p2[b2]; p2[b2] = tv2;
+            succ2[base2 + a2 * n + b2] = permRank(p2);
+          }
+        }
+      }
+      return { n: n, N: N, out: out, succ: succ2, kind: kind };
+    }
+
+    if (kind === 'toprandom') {
+      /* 顶牌插回：把最上面那张牌插到 n 个位置之一（含原位，概率 1/n 不动）。
+         实测 λ₂ = 1 − 2/n。 */
+      out = n;
+      var succ3 = new Int32Array(N * out);
+      for (i = 0; i < N; i++) {
+        var d3 = permUnrank(i, n);
+        for (t = 0; t < n; t++) {
+          var p3 = d3.slice();
+          var card = p3.shift();
+          p3.splice(t, 0, card);
+          succ3[i * out + t] = permRank(p3);
+        }
+      }
+      return { n: n, N: N, out: out, succ: succ3, kind: kind };
+    }
+    throw new Error('未知链：' + kind);
+  }
+
+  function iterateChain(chain, steps, startIdx) {
+    var N = chain.N, out = chain.out, succ = chain.succ;
+    var cur = new Float64Array(N), nxt = new Float64Array(N);
+    var s0 = (startIdx === undefined || startIdx === null) ? 0 : startIdx;
+    cur[s0] = 1;
+    var u = 1 / N, iv = 1 / out, rows = [{ k: 0, tv: 1 - u, maxMass: 1 }];
+    for (var s = 1; s <= steps; s++) {
+      nxt.fill(0);
+      for (var i = 0; i < N; i++) {
+        var v = cur[i];
+        if (v === 0) continue;
+        var base = i * out, vv = v * iv;
+        for (var t = 0; t < out; t++) nxt[succ[base + t]] += vv;
+      }
+      var tv = 0, mx = 0;
+      for (var z = 0; z < N; z++) {
+        var w = nxt[z], df = w - u;
+        tv += df < 0 ? -df : df;
+        if (w > mx) mx = w;
+      }
+      var tmp = cur; cur = nxt; nxt = tmp;
+      rows.push({ k: s, tv: 0.5 * tv, maxMass: mx });
+    }
+    return rows;
+  }
+
+  /* 从单位排列出发逐步迭代，同时记录每一步的概率向量（界面用） */
+  function iterateChainDetail(chain, steps) {
+    var N = chain.N, out = chain.out, succ = chain.succ;
+    var cur = new Float64Array(N), nxt = new Float64Array(N);
+    cur[0] = 1;
+    var iv = 1 / out, u = 1 / N;
+    var frames = [{ k: 0, mass: Float64Array.from(cur), tv: 1 - 1 / N }];
+    for (var s = 1; s <= steps; s++) {
+      nxt.fill(0);
+      for (var i = 0; i < N; i++) {
+        var v = cur[i];
+        if (v === 0) continue;
+        var base = i * out, vv = v * iv;
+        for (var t = 0; t < out; t++) nxt[succ[base + t]] += vv;
+      }
+      var tv = 0;
+      for (var z = 0; z < N; z++) { var df = nxt[z] - u; tv += df < 0 ? -df : df; }
+      var tmp = cur; cur = nxt; nxt = tmp;
+      frames.push({ k: s, mass: Float64Array.from(cur), tv: 0.5 * tv });
+    }
+    return frames;
+  }
+
+  /* ============================================================
+   * 7. 谱：特征值 2^{-i} 与第一类斯特林数
+   *
+   *   文献（Bayer–Diaconis 1992）：2-洗牌链的特征值是 1, 1/2, …, 1/2^{n-1}，
+   *   其中 1/2^i 的重数 = 恰有 n−i 个轮换的排列数 = c(n, n−i)。
+   *
+   *   核法：trace(Q^k) = Σ_σ (Q^k)(σ|σ)
+   *        左边三条独立算法：① 全部起点暴力  ② 只跑单位排列起点再乘 n!
+   *        ③ 闭式 n!·C(2^k+n−1, n)/2^(kn)
+   *        右边按文献写成 Σ_i 2^{-ik} c(n, n−i)
+   *   幂和相等（k = 1..8）就把特征值多重集钉死到很强的程度。
+   * ========================================================== */
+  function tracePowersBrute(chain, kMax) {
+    var N = chain.N, out = chain.out, succ = chain.succ;
+    var res = new Array(kMax).fill(0);
+    var cur = new Float64Array(N), nxt = new Float64Array(N);
+    for (var s = 0; s < N; s++) {
+      cur.fill(0); cur[s] = 1;
+      for (var step = 1; step <= kMax; step++) {
+        nxt.fill(0);
+        for (var i = 0; i < N; i++) {
+          var v = cur[i];
+          if (v === 0) continue;
+          var base = i * out;
+          for (var t = 0; t < out; t++) nxt[succ[base + t]] += v;
+        }
+        var tmp = cur; cur = nxt; nxt = tmp;
+        res[step - 1] += cur[s] / Math.pow(out, step);
+      }
+    }
+    return res;
+  }
+
+  /* 只跑单位排列起点，返回每步回到起点的质量（左不变性成立时 ×N 即 trace） */
+  function returnProbabilities(chain, kMax) {
+    var N = chain.N, out = chain.out, succ = chain.succ;
+    var cur = new Float64Array(N), nxt = new Float64Array(N);
+    cur[0] = 1;
+    var res = [];
+    for (var step = 1; step <= kMax; step++) {
+      nxt.fill(0);
+      for (var i = 0; i < N; i++) {
+        var v = cur[i];
+        if (v === 0) continue;
+        var base = i * out;
+        for (var t = 0; t < out; t++) nxt[succ[base + t]] += v;
+      }
+      var tmp = cur; cur = nxt; nxt = tmp;
+      res.push(cur[0] / Math.pow(out, step));
+    }
+    return res;
+  }
+
+  function tracePowersClosed(n, kMax) {
+    var nf = ratioBig(factBig(n), 1n), res = [];
+    for (var k = 1; k <= kMax; k++) {
+      res.push(nf * ratioBig(fiberCount(n, k, 0), 1n) / Math.pow(2, k * n));
+    }
+    return res;
+  }
+
+  function tracePowersTheory(n, kMax) {
+    var c = stirlingFirst(n), res = [];
+    for (var k = 1; k <= kMax; k++) {
+      var s = 0;
+      for (var i = 0; i < n; i++) {
+        var mult = c[n - i] === undefined ? 0 : ratioBig(c[n - i], 1n);
+        s += mult * Math.pow(0.5, i * k);
+      }
+      res.push(s);
+    }
+    return res;
+  }
+
+  /* 文献：一次 a-洗牌后 E[固定点] = 1 + 1/a + … + 1/a^{n-1} */
+  function fixedPointsTheory(a, n) {
+    var s = 0, p = 1;
+    for (var i = 0; i < n; i++) { s += p; p /= a; }
+    return s;
+  }
+  function fixedPointsBrute(n, a) {
+    var total = Math.pow(a, n), acc = 0;
+    for (var code = 0; code < total; code++) {
+      var lab = new Array(n), x = code;
+      for (var i = 0; i < n; i++) { lab[i] = x % a; x = Math.floor(x / a); }
+      var idx = identity(n);
+      idx.sort(function (p, q) { return lab[p] !== lab[q] ? lab[p] - lab[q] : p - q; });
+      var fix = 0;
+      for (var z = 0; z < n; z++) if (idx[z] === z) fix++;
+      acc += fix;
+    }
+    return acc / total;
+  }
+
+  /* ============================================================
+   * 8. 混合时间 / cutoff
+   * ========================================================== */
+  function mixTime(curve, eps) {
+    for (var i = 0; i < curve.length; i++) if (curve[i].tv <= eps) return curve[i].k;
+    return null;
+  }
+  function cutoffWidth(curve, hi, lo) {
+    var a = null, b = null;
+    for (var i = 0; i < curve.length; i++) {
+      if (a === null && curve[i].tv <= hi) a = curve[i].k;
+      if (b === null && curve[i].tv <= lo) b = curve[i].k;
+    }
+    return (a === null || b === null) ? null : b - a;
+  }
+  function linfit(xs, ys) {
+    var n = xs.length, sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (var i = 0; i < n; i++) { sx += xs[i]; sy += ys[i]; sxx += xs[i] * xs[i]; sxy += xs[i] * ys[i]; }
+    var den = n * sxx - sx * sx;
+    if (Math.abs(den) < 1e-12) return null;
+    var slope = (n * sxy - sx * sy) / den, inter = (sy - slope * sx) / n;
+    var ss = 0, sst = 0, my = sy / n;
+    for (var j = 0; j < n; j++) { var e = ys[j] - (inter + slope * xs[j]); ss += e * e; sst += (ys[j] - my) * (ys[j] - my); }
+    return { slope: slope, intercept: inter, r2: sst > 0 ? 1 - ss / sst : 1, n: n };
+  }
+  function theoryMixTime(n, kind) {
+    if (kind === 'riffle') return 1.5 * Math.log2(n);
+    if (kind === 'transpose') return 0.5 * n * Math.log(n);
+    if (kind === 'toprandom') return n * Math.log(n);
+    return NaN;
+  }
+
+  /* 第二特征值 λ₂：去掉均匀分量后的 L2 范数衰减率（幂迭代）。
+     坑：迭代步数太多时 L2 范数会下溢到 0（浮点残差），比值变成 1.0 这种假值；
+     步数太少时 λ₃ 的瞬态还没退掉，估出来偏大。
+     所以记录 log2 范数，取"最后一个还远离下溢"的那一步来估斜率。 */
+  function lambda2(chain, steps) {
+    var N = chain.N, out = chain.out, succ = chain.succ;
+    var cur = new Float64Array(N), nxt = new Float64Array(N);
+    cur[0] = 1;
+    var iv = 1 / out, u = 1 / N, logs = [];
+    for (var s = 1; s <= (steps || 60); s++) {
+      nxt.fill(0);
+      for (var i = 0; i < N; i++) {
+        var v = cur[i];
+        if (v === 0) continue;
+        var base = i * out, vv = v * iv;
+        for (var t = 0; t < out; t++) nxt[succ[base + t]] += vv;
+      }
+      var tmp = cur; cur = nxt; nxt = tmp;
+      var s2 = 0;
+      for (var z = 0; z < N; z++) { var d = cur[z] - u; s2 += d * d; }
+      logs.push(s2 > 0 ? 0.5 * Math.log2(s2) : -Infinity);
+    }
+    /* 末尾的 log2 范数会停在"浮点残差平台"上（≈ −53 − ½log2 N），
+       平台上的比值恒为 1 —— 必须取平台上方的点来估斜率。 */
+    var plateau = Infinity;
+    for (var q = Math.max(0, logs.length - 6); q < logs.length; q++) {
+      if (isFinite(logs[q]) && logs[q] < plateau) plateau = logs[q];
+    }
+    if (!isFinite(plateau)) return NaN;
+    var idx = -1;
+    for (var j = 1; j < logs.length; j++) {
+      if (isFinite(logs[j]) && isFinite(logs[j - 1]) && logs[j] > plateau + 12) idx = j;
+    }
+    if (idx < 1) return NaN;
+    return Math.pow(2, logs[idx] - logs[idx - 1]);
+  }
+
+  /* ============================================================
+   * 9. 规模
+   * ========================================================== */
+  function stateSpace(n) { return factBig(n); }
+  function log10State(n) { var s = 0; for (var i = 2; i <= n; i++) s += Math.log10(i); return s; }
+
+  return {
+    splitmix32: splitmix32,
+    identity: identity, descCount: descCount, risingRuns: risingRuns, runSpans: runSpans,
+    permRank: permRank, permUnrank: permUnrank, permutations: permutations,
+    factNum: factNum, inv: inv, compose: compose,
+    aShuffleOnce: aShuffleOnce, riffleKTimes: riffleKTimes, riffleTrace: riffleTrace,
+    factBig: factBig, binomBig: binomBig, ratioBig: ratioBig,
+    eulerianBig: eulerianBig, stirlingFirst: stirlingFirst,
+    log2Fact: log2Fact, log2BinomShift: log2BinomShift,
+    fiberCount: fiberCount, massTable: massTable,
+    tvExact: tvExact, tvCurve: tvCurve,
+    supportAfter1: supportAfter1, supportAfterK: supportAfterK,
+    distances: distances, distanceCurve: distanceCurve,
+    buildChain: buildChain, iterateChain: iterateChain, iterateChainDetail: iterateChainDetail,
+    tracePowersBrute: tracePowersBrute, returnProbabilities: returnProbabilities,
+    tracePowersClosed: tracePowersClosed, tracePowersTheory: tracePowersTheory,
+    fixedPointsTheory: fixedPointsTheory, fixedPointsBrute: fixedPointsBrute,
+    mixTime: mixTime, cutoffWidth: cutoffWidth, linfit: linfit, theoryMixTime: theoryMixTime,
+    lambda2: lambda2,
+    stateSpace: stateSpace, log10State: log10State
+  };
+});
+
+</script>
+<script>
+/* ---- analysis.json（全部数字的来源） ---- */
+window.__ANALYSIS__ = {"meta":{"title":"忘记起点","subtitle":"洗牌，与「多久才算真的随机」","model":"GSR a-洗牌（独立标签 + 稳定排序）；k 次 2-洗牌 ≡ 一次 2^k-洗牌","formula":"P_k(sigma) = C(2^k + n - 1 - r(sigma), n) / 2^(kn)","generatedAt":"2026-09-29T13:58:07.134Z","sourceSavedAt":"2026-09-29T13:51:03.545Z","node":"v22.22.2","selftest":38,"experiments":8},"kpi":[{"label":"一次洗牌后的可达排列（n = 52）","value":"4,503,599,627,370,444","note":"占全部 52! ≈ 8.07×10⁶⁷ 种的 5.58e-53　·　2⁵² − 52，缺的正好是 52 个","tone":"bad"},{"label":"洗一次的 TV 距离（n = 52）","value":"1.0000","note":"精确式 1 − (2⁵²−52)/52! = 1 − 5.58e-53　·　TV 的定义域上限就是 1","tone":"bad"},{"label":"洗七次的 TV 距离（n = 52）","value":"0.3341","note":"Bayer–Diaconis (1992) 发表值 0.334　·　六项最大偏差 4.50e-4","tone":"good"},{"label":"闭式 vs 全状态链的最大偏差","value":"1.17e-12","note":"n = 4…8，51 个 (n, k) 点逐点对账","tone":"good"},{"label":"k*(0.5) 对 log₂ n 的实测斜率","value":"1.442","note":"文献 (3/2)log₂n 的 1.5　·　差 3.84%，r² = 0.955","tone":"warn"},{"label":"三条链的第二特征值 λ₂","value":"0.5000 / 1−2/n","note":"交错洗牌的 λ₂ 与 n 无关　·　逐张链随 n 趋近 1　·　最大偏差 3.1e-5","tone":"good"},{"label":"cutoff 窗口宽度（TV 从 0.5 到 0.1）","value":"2–3 次","note":"n = 2…52 共 18 档，宽度一次都没超过 3","tone":"good"},{"label":"五把尺子量出的混合时间（n = 52）","value":"2 … 14","note":"最快与最慢差 7.0 倍　·　但 χ² 与 L² 是同一条曲线，独立尺子只有 4 把","tone":"warn"}],"derived":{"e1Rows":[[4,"12","5.000e-1","2"],[5,"27","2.250e-1","3"],[6,"58","8.056e-2","3"],[7,"121","2.401e-2","4"],[8,"248","6.151e-3","5"],[10,"1,014","2.794e-4","7"],[12,"4,084","8.526e-6","9"],[16,"65,520","3.132e-9","14"],[20,"1,048,556","4.310e-13","19"],[26,"67,108,838","1.664e-19","27"],[32,"4,294,967,264","1.632e-26","36"],[40,"1,099,511,627,736","1.348e-36","48"],[52,"4,503,599,627,370,444","5.584e-53","68"]],"e1N52":52,"e1Support52":4503599627370444,"e1Support52Str":"4,503,599,627,370,444","e1Pow2_52":4503599627370496,"e1Pow2_52Str":"4,503,599,627,370,496","e1Missing52":52,"e1Frac52":5.583562506622156e-53,"e1Log10Frac52":-52.253088617677754,"e1Log10Fact52":67.90664839220476,"e1Fact52Digits":68,"e1Tv1_52":1,"e1Tv1Gap52":5.583562506622156e-53,"e1Tv1Formula52":"1 − 5.58e-53","e1Tv1RoundsOneFrom":26,"e1Tv1Small":"4 → 0.5000，5 → 0.7750，6 → 0.9194，7 → 0.9760，8 → 0.9938","e1Tv1Rows":[[4,"0.5000"],[5,"0.7750"],[6,"0.9194"],[7,"0.9760"],[8,"0.9938"],[10,"0.9997"],[12,"1.0000"],[16,"1.0000"],[20,"1.0000"],[26,"1.0000"],[32,"1.0000"],[40,"1.0000"],[52,"1.0000"]],"e1Brute":[[5,27,27,true],[6,58,58,true],[7,121,121,true]],"e1BruteOk":true,"e1FracMax":0.5,"e1FracDecades":51.95205862201377,"e1MaxRuns":2,"chartSupport":[[4,-0.3010299956639812],[5,-0.6478174818886375],[6,-1.0939045028683312],[7,-1.6196451661290752],[8,-2.211068842611253],[10,-3.5537250778794767],[12,-5.069251230667771],[16,-8.504245705026962],[20,-12.365532987186953],[26,-18.77883930780121],[32,-25.787211889068246],[40,-35.87044524161242],[52,-52.253088617677754]],"chartSupportYMin":-55,"chartSupportYMax":0,"e2N":9,"e2States":362880,"e2StatesStr":"362,880","e2Labels1":512,"e2Reach1":503,"e2Reach1Frac":0.0013861331569664903,"e2FiberRows":[[0,1,"1","10","220","11440"],[1,2,"502","1","55","5005"],[2,3,"14,608","0","10","2002"],[3,4,"88,234","0","1","715"],[4,5,"156,190","0","0","220"],[5,6,"88,234","0","0","55"],[6,7,"14,608","0","0","10"],[7,8,"502","0","0","1"],[8,9,"1","0","0","0"]],"e2Sums":[[1,"512","512",true],[2,"262144","262144",true],[3,"134217728","134217728",true]],"e2SumOk":true,"e2MaxDescK":[[1,1,2],[2,3,4],[3,7,8]],"chartFiber":[{"name":"纤维大小 N_j（k = 3）","points":[[0,4.058426024457005],[1,3.6994040818153375],[2,3.3014640731432996],[3,2.8543060418010806],[4,2.342422680822206],[5,1.7403626894942439],[6,1],[7,0]]},{"name":"排列数 A(9, j)","points":[[0,0],[1,2.7007037171450192],[2,4.164590760190224],[3,4.945635967978295],[4,5.193653224907199],[5,4.945635967978295],[6,4.164590760190224],[7,2.7007037171450192],[8,0]]}],"chartFiberYMin":-0.5,"chartFiberYMax":6.5,"e2FiberMaxJ":"11440","e2FiberMaxJStr":"11440","e2ApexJ":4,"e2FiberRatio":11440,"e3WorstDev":1.166289287368727e-12,"e3Checks":51,"e3Rows":[[4,"24","16","384","0","1.67e-16"],[5,"120","32","3,840","1","8.88e-16"],[6,"720","64","46,080","10","1.44e-15"],[7,"5,040","128","645,120","31","1.67e-15"],[8,"40,320","256","10,321,920","579","1.17e-12"]],"e3N8Entries":10321920,"e3N8BuildMs":579,"e3N8States":40320,"e3Grow":16,"e3NMin":4,"e3NMax":8,"chartE3":[{"name":"闭式","points":[[0,0.9999751984126984],[1,0.9938492063492064],[2,0.6490489656963045],[3,0.3347434997558594],[4,0.18000087141990662],[5,0.09164555440656841],[6,0.04603051674166636],[7,0.023041291602609704],[8,0.011523902012556042]]},{"name":"全状态链","points":[[0,0.9999751984126984],[1,0.9938492063503727],[2,0.6490489656966496],[3,0.3347434997558076],[4,0.1800008714199726],[5,0.09164555440656841],[6,0.046030516741666354],[7,0.02304129160260968],[8,0.011523902012560056]]}],"e3CurveMax":0.9999751984126984,"e3CurveN":8,"e4RefRows":[[4,"1.000","1.0000","4.67e-7"],[5,"0.924","0.9237","2.67e-4"],[6,"0.614","0.6135","4.50e-4"],[7,"0.334","0.3341","6.10e-5"],[8,"0.167","0.1672","1.59e-4"],[9,"0.085","0.0854","4.20e-4"]],"e4RefDev":0.0004504034343716379,"e4RefKMin":4,"e4RefKMax":9,"e4Mix52":{"e50":7,"e25":8,"e10":9,"e01":13,"e001":16},"e4Mix50":7,"e4Mix25":8,"e4Mix10":9,"e4Mix01":13,"e4Mix001":16,"e4TvAt4":0.9999995334313746,"e4TvAt6":0.6135495965656284,"e4TvAt7":0.33406099946815154,"e4TvAt8":0.16715864192695742,"e4Slope50":1.4423375268150502,"e4Intercept50":-1.4362210786457876,"e4R2_50":0.9550947442570247,"e4FitN":12,"e4Slope10":1.50804614353706,"e4R2_10":0.9484250915806041,"e4TheorySlope":1.5,"e4SlopeRelErr":0.03844164878996651,"e4WidthMin":2,"e4WidthMax":3,"e4WidthSpread":1,"e4WidthN":18,"e4WidthRows":[[2,"3"],[3,"2"],[4,"3"],[5,"2"],[6,"3"],[7,"2"],[8,"2"],[9,"2"],[10,"3"],[11,"2"],[12,"2"],[14,"3"],[16,"3"],[20,"2"],[26,"3"],[32,"2"],[40,"3"],[52,"2"]],"e4FitNMin":8,"e4FitNMax":52,"e4Log2NMin":3,"e4Log2NMax":5.700439718141092,"e4Ratio10":5,"e4Log2Ratio10":2.321928094887362,"e4WidthMeas10":2,"e4Ratio01":50,"e4Log2Ratio01":5.643856189774724,"e4WidthMeas01":6,"e4Rows":[[2,"1.000","0","3","3"],[3,"1.585","1","3","2"],[4,"2.000","1","4","3"],[5,"2.322","2","4","2"],[6,"2.585","2","5","3"],[7,"2.807","3","5","2"],[8,"3.000","3","5","2"],[9,"3.170","3","5","2"],[10,"3.322","3","6","3"],[11,"3.459","4","6","2"],[12,"3.585","4","6","2"],[14,"3.807","4","7","3"],[16,"4.000","4","7","3"],[20,"4.322","5","7","2"],[26,"4.700","5","8","3"],[32,"5.000","6","8","2"],[40,"5.322","6","9","3"],[52,"5.700","7","9","2"]],"e4NMin":2,"e4NMax":52,"chartTv52":[{"name":"闭式（n = 52）","points":[[0,1],[1,1],[2,1],[3,1],[4,0.9999995334313746],[5,0.9237329293962945],[6,0.6135495965656284],[7,0.33406099946815154],[8,0.16715864192695742],[9,0.08542019340906182],[10,0.042945548921035026],[11,0.021502375949235434],[12,0.010754893495669948],[13,0.005377910104869558],[14,0.0026890129772812726],[15,0.001344513729409496],[16,0.0006722577698059508],[17,0.000336128998040785],[18,0.00016806451316262366]]},{"name":"Bayer–Diaconis 1992","points":[[4,1],[5,0.924],[6,0.614],[7,0.334],[8,0.167],[9,0.085]]}],"chartTv52KMax":18,"chartCutoff":[{"name":"ε = 0.50","points":[[1,0],[1.584962500721156,1],[2,1],[2.321928094887362,2],[2.584962500721156,2],[2.807354922057604,3],[3,3],[3.169925001442312,3],[3.321928094887362,3],[3.4594316186372973,4],[3.584962500721156,4],[3.807354922057604,4],[4,4],[4.321928094887363,5],[4.700439718141092,5],[5,6],[5.321928094887363,6],[5.700439718141092,7]]},{"name":"ε = 0.25","points":[[1,1],[1.584962500721156,2],[2,3],[2.321928094887362,3],[2.584962500721156,3],[2.807354922057604,4],[3,4],[3.169925001442312,4],[3.321928094887362,4],[3.4594316186372973,5],[3.584962500721156,5],[3.807354922057604,5],[4,5],[4.321928094887363,6],[4.700439718141092,6],[5,7],[5.321928094887363,7],[5.700439718141092,8]]},{"name":"ε = 0.10","points":[[1,3],[1.584962500721156,3],[2,4],[2.321928094887362,4],[2.584962500721156,5],[2.807354922057604,5],[3,5],[3.169925001442312,5],[3.321928094887362,6],[3.4594316186372973,6],[3.584962500721156,6],[3.807354922057604,7],[4,7],[4.321928094887363,7],[4.700439718141092,8],[5,8],[5.321928094887363,9],[5.700439718141092,9]]},{"name":"ε = 0.01","points":[[1,6],[1.584962500721156,6],[2,7],[2.321928094887362,7],[2.584962500721156,8],[2.807354922057604,8],[3,9],[3.169925001442312,9],[3.321928094887362,9],[3.4594316186372973,9],[3.584962500721156,10],[3.807354922057604,10],[4,10],[4.321928094887363,11],[4.700439718141092,11],[5,12],[5.321928094887363,12],[5.700439718141092,13]]}],"chartCutoffYMax":13,"chartCutoffXMax":5.700439718141092,"chartWidth":[[2,3],[3,2],[4,3],[5,2],[6,3],[7,2],[8,2],[9,2],[10,3],[11,2],[12,2],[14,3],[16,3],[20,2],[26,3],[32,2],[40,3],[52,2]],"e5KindName":{"riffle":"交错洗牌","transpose":"随机对换","toprandom":"顶牌插回"},"e5Rows":[["交错洗牌",5,"2","4","0.50003","2.00","3.48"],["随机对换",5,"3","6","0.59998","2.50","4.02"],["顶牌插回",5,"4","8","0.60000","2.50","8.05"],["交错洗牌",6,"2","5","0.50000","2.00","3.88"],["随机对换",6,"4","8","0.66667","3.00","5.38"],["顶牌插回",6,"5","11","0.66667","3.00","10.75"],["交错洗牌",7,"3","5","0.50000","2.00","4.21"],["随机对换",7,"5","10","0.71428","3.50","6.81"],["顶牌插回",7,"7","14","0.71429","3.50","13.62"],["交错洗牌",8,"3","5","0.49998","2.00","4.50"],["随机对换",8,"6","12","0.75000","4.00","8.32"],["顶牌插回",8,"9","17","0.75001","4.00","16.64"]],"e5Lambda":{"riffle":0.5000314707028851,"transpose":0.5999831555194818,"toprandom":0.5999978582692966},"e5LambdaDev":0.000031470702885116886,"e5LambdaRiffle":0.5000314707028851,"e5LambdaTranspose8":0.7500029747032386,"e5LambdaToprandom8":0.7500067618127508,"e5RelaxRiffle":2.0001258907352804,"e5NMin":5,"e5NMax":8,"e5Riffle52K":7,"e5Riffle52K10":9,"e5Riffle52Theory":8.550659577211638,"e5Slow52K":102.73233668311711,"e5Top52K":205.46467336623422,"e5Slow52Relax":26,"e5Gap":14.67604809758816,"e5TopGap":29.35209619517632,"e5Riffle52How":"闭式精确算出","e5Slow52How":"按实测 λ₂=1−2/n 与 (1/2)·n·ln n 推出的标度律","e5Top52How":"按实测 λ₂=1−2/n 与 n·ln n 推出的标度律","e5TheoryVsMeas8":[["随机对换","6","8.32","1.39"],["顶牌插回","9","16.64","1.85"]],"e5TheoryOverMeasMin":1.3862943611198906,"e5TheoryOverMeasMax":1.8483924814931874,"e5Rows52":[[12,"4","6","5.38"],[20,"5","7","6.48"],[32,"6","8","7.50"],[52,"7","9","8.55"]],"chartChains":[{"name":"交错洗牌","points":[[0,0.9999751984126984],[1,0.9938492063503727],[2,0.6490489656966496],[3,0.3347434997558076],[4,0.1800008714199726],[5,0.09164555440656841],[6,0.046030516741666354],[7,0.02304129160260968],[8,0.011523902012560056],[9,0.005762358096987283],[10,0.0028812299368406653],[11,0.0014406213295268234],[12,0.000720311459903745]]},{"name":"随机对换","points":[[0,0.9999751984126984],[1,0.9992807539695155],[2,0.9912946428582137],[3,0.9426835317468456],[4,0.7750024946912658],[5,0.5539926044524879],[6,0.4490432393928806],[7,0.33492871521725065],[8,0.2612338588067996],[9,0.19562284530355775],[10,0.14793573337036356],[11,0.11261732380182146],[12,0.08490655327547034],[13,0.0643774128205951],[14,0.0484017164148095],[15,0.03651879596597923],[16,0.027418901746004823],[17,0.02063392497437748],[18,0.015481706804303616],[19,0.011634487726940047],[20,0.008726388107958798],[21,0.006552914577621599],[22,0.004914117094994609],[23,0.0036886291274993975],[24,0.0027659019533523587],[25,0.002075661064755928],[26,0.0015563521814880587],[27,0.0011678096722426154]]},{"name":"顶牌插回","points":[[0,0.9999751984126984],[1,0.9998015873030258],[2,0.9986111111122394],[3,0.9916666666676748],[4,0.9583333333341844],[5,0.8333333333338554],[6,0.7820638020837898],[7,0.6827290852868461],[8,0.5621655782065992],[9,0.44370492299390696],[10,0.37551867961883545],[11,0.3219452425837494],[12,0.2692897496744189],[13,0.22075033700093627],[14,0.17802281025797131],[15,0.14167493181782667],[16,0.1115437404671411],[17,0.08705838476447525],[18,0.06746761587158545],[19,0.05198378650748289],[20,0.03986455285967553],[21,0.030452534111648305],[22,0.023188822751136356],[23,0.017611558634717295],[24,0.013346910304259309],[25,0.010096973039416382],[26,0.007627168673887742],[27,0.005754498367768407]]}],"chartChainsKMax":28,"chainsByN":{"riffle_5":{"name":"交错洗牌","points":[[0,0.9916666666666667],[1,0.7749999999999991],[2,0.3628906249999997],[3,0.1657470703125003],[4,0.07810821533203119],[5,0.03777971267700189],[6,0.018562251329421943],[7,0.00919818468391894],[8,0.004578232509084042],[9,0.002283886059012726],[10,0.0011406335969695609],[11,0.0005699892062068519]]},"transpose_5":{"name":"随机对换","points":[[0,0.9916666666666667],[1,0.908333333333332],[2,0.6166666666666658],[3,0.2885466666666669],[4,0.22345066666666658],[5,0.11759537066666684],[6,0.0793763242666668],[7,0.04434892264106684],[8,0.028388351576746712],[9,0.016228233063246618],[10,0.01019359772682929],[11,0.005876260741523124],[12,0.0036662202220909632],[13,0.0021198752639307655]]},"toprandom_5":{"name":"顶牌插回","points":[[0,0.9916666666666667],[1,0.9583333333333321],[2,0.8333333333333328],[3,0.5133333333333329],[4,0.40400000000000075],[5,0.28880000000000033],[6,0.19280000000000075],[7,0.12368000000000026],[8,0.07744639999999992],[9,0.04777088000000001],[10,0.02918527999999996],[11,0.017720576000000016],[12,0.010716170239999965],[13,0.006463244287999992]]},"riffle_6":{"name":"交错洗牌","points":[[0,0.9986111111111111],[1,0.919444444444443],[2,0.42626953124999994],[3,0.23970031738281236],[4,0.12331247329711895],[5,0.0620934516191479],[6,0.031101515982300196],[7,0.015557611084659478],[8,0.007779662314078457],[9,0.0038899382577284405],[10,0.0019449825165822748],[11,0.0009724929317600078],[12,0.00048624667506380343]]},"transpose_6":{"name":"随机对换","points":[[0,0.9986111111111111],[1,0.9777777777777762],[2,0.8597222222222217],[3,0.552623456790123],[4,0.3540637860082318],[5,0.2637955342173448],[6,0.16297587596741617],[7,0.11875121132919697],[8,0.07591547739489846],[9,0.052897080999502785],[10,0.03440587961037078],[11,0.02351459937420736],[12,0.01542032161981639],[13,0.010449835445615244],[14,0.006878619281990935],[15,0.004643928364167456],[16,0.003062096824822114],[17,0.002063855564048517],[18,0.0013619025199261428]]},"toprandom_6":{"name":"顶牌插回","points":[[0,0.9986111111111111],[1,0.9916666666666649],[2,0.9583333333333311],[3,0.8333333333333294],[4,0.6481481481481504],[5,0.45370370370370466],[6,0.37654320987654766],[7,0.29295267489712057],[8,0.2179355281207154],[9,0.15717163923182384],[10,0.11091106538637444],[11,0.07706900466138253],[12,0.05296461942623942],[13,0.036109438550681],[14,0.024475156343789987],[15,0.016518653429572736],[16,0.011113638204997583],[17,0.0074597805397017426],[18,0.004998560265493595]]},"riffle_7":{"name":"交错洗牌","points":[[0,0.9998015873015873],[1,0.9759920634920618],[2,0.5922216021825388],[3,0.2892964923192575],[4,0.13624142048850804],[5,0.06535916900232583],[6,0.03192004351497775],[7,0.015762374192794592],[8,0.007830861294051708],[9,0.0039027385154273737],[10,0.0019481826130513574],[11,0.0009732929578804523],[12,0.00048644668171925]]},"transpose_7":{"name":"随机对换","points":[[0,0.9998015873015873],[1,0.9956349206349191],[2,0.9609126984126933],[3,0.815079365079362],[4,0.5402251073174673],[5,0.40833503860564585],[6,0.2976554639477257],[7,0.21203099710389944],[8,0.15692275923188648],[9,0.11085827939852898],[10,0.08144678742601191],[11,0.05779857314297675],[12,0.04190215699473235],[13,0.029795555233230967],[14,0.02146173662652914],[15,0.01527877473147951],[16,0.010970090337586452],[17,0.007814830130172692],[18,0.0056019822232379925],[19,0.003992156438162723],[20,0.002859404275487294],[21,0.0020381001461605044],[22,0.0014591955448824258]]},"toprandom_7":{"name":"顶牌插回","points":[[0,0.9998015873015873],[1,0.9986111111111092],[2,0.9916666666666653],[3,0.9583333333333366],[4,0.8333333333333375],[5,0.7333749826460774],[6,0.5834374566153075],[7,0.4355398969250762],[8,0.3714821205449858],[9,0.305911773884328],[10,0.2439009603280441],[11,0.18970506155743738],[12,0.1447844128510737],[13,0.1089074028021824],[14,0.08100887903106749],[15,0.059737098141340886],[16,0.04375497952295047],[17,0.03188035422701044],[18,0.023132617055815288],[19,0.016730733400719764],[20,0.012069567416512139],[21,0.008689362728829],[22,0.006245777318229716]]},"riffle_8":{"name":"交错洗牌","points":[[0,0.9999751984126984],[1,0.9938492063503727],[2,0.6490489656966496],[3,0.3347434997558076],[4,0.1800008714199726],[5,0.09164555440656841],[6,0.046030516741666354],[7,0.02304129160260968],[8,0.011523902012560056],[9,0.005762358096987283],[10,0.0028812299368406653],[11,0.0014406213295268234],[12,0.000720311459903745]]},"transpose_8":{"name":"随机对换","points":[[0,0.9999751984126984],[1,0.9992807539695155],[2,0.9912946428582137],[3,0.9426835317468456],[4,0.7750024946912658],[5,0.5539926044524879],[6,0.4490432393928806],[7,0.33492871521725065],[8,0.2612338588067996],[9,0.19562284530355775],[10,0.14793573337036356],[11,0.11261732380182146],[12,0.08490655327547034],[13,0.0643774128205951],[14,0.0484017164148095],[15,0.03651879596597923],[16,0.027418901746004823],[17,0.02063392497437748],[18,0.015481706804303616],[19,0.011634487726940047],[20,0.008726388107958798],[21,0.006552914577621599],[22,0.004914117094994609],[23,0.0036886291274993975],[24,0.0027659019533523587],[25,0.002075661064755928],[26,0.0015563521814880587],[27,0.0011678096722426154]]},"toprandom_8":{"name":"顶牌插回","points":[[0,0.9999751984126984],[1,0.9998015873030258],[2,0.9986111111122394],[3,0.9916666666676748],[4,0.9583333333341844],[5,0.8333333333338554],[6,0.7820638020837898],[7,0.6827290852868461],[8,0.5621655782065992],[9,0.44370492299390696],[10,0.37551867961883545],[11,0.3219452425837494],[12,0.2692897496744189],[13,0.22075033700093627],[14,0.17802281025797131],[15,0.14167493181782667],[16,0.1115437404671411],[17,0.08705838476447525],[18,0.06746761587158545],[19,0.05198378650748289],[20,0.03986455285967553],[21,0.030452534111648305],[22,0.023188822751136356],[23,0.017611558634717295],[24,0.013346910304259309],[25,0.010096973039416382],[26,0.007627168673887742],[27,0.005754498367768407]]}},"chartLambda":[{"name":"交错洗牌（实测）","points":[[5,0.5000314707028851],[6,0.49999898806718707],[7,0.5000045165801316],[8,0.49998403416549986]],"dots":true},{"name":"随机对换（实测）","points":[[5,0.5999831555194818],[6,0.6666659922667241],[7,0.7142843777094373],[8,0.7500029747032386]],"dots":true},{"name":"顶牌插回（实测）","points":[[5,0.5999978582692966],[6,0.6666650376363726],[7,0.7142859457903498],[8,0.7500067618127508]],"dots":true},{"name":"λ = 1/2","points":[[5,0.5],[6,0.5],[7,0.5],[8,0.5]],"dash":true},{"name":"λ = 1 − 2/n","points":[[5,0.6],[6,0.6666666666666667],[7,0.7142857142857143],[8,0.75]],"dash":true}],"chartLambdaXMin":5,"chartLambdaXMax":8,"e6MixRel12":{"tv":6,"sep":10,"chi2":2,"kl":4,"l2":2},"e6MixRel52":{"tv":9,"sep":14,"chi2":2,"kl":5,"l2":2},"e6Keys":["tv","sep","chi2","kl","l2"],"e6KeyName":{"tv":"全变差 TV","sep":"分离距离","chi2":"χ²","kl":"KL（比特）","l2":"L²"},"e6Spread52":7,"e6First52":2,"e6Last52":14,"e6SepGeTv":true,"e6SepMinusTv12":0.7469121371749476,"e6SepMinusTv52":0.8461075737094577,"e6Rows52":[[1,"1.00000","1.00000","1.791e+52","173.5810","2.220e-16"],[2,"1.00000","1.00000","3.980e+36","121.5811","4.935e-32"],[3,"1.00000","1.00000","3.778e+21","69.8735","4.684e-47"],[4,"1.00000","1.00000","2.198e+10","27.2712","2.725e-58"],[5,"0.92373","1.00000","7.535e+3","7.9452","9.342e-65"],[6,"0.61355","1.00000","1.363e+1","2.0727","1.689e-67"],[7,"0.33406","0.99999","1.040e+0","0.5239","1.289e-68"],[8,"0.16716","0.99618","1.986e-1","0.1313","2.463e-69"],[9,"0.08542","0.93153","4.654e-2","0.0329","5.770e-70"],[10,"0.04295","0.73211","1.145e-2","0.0082","1.420e-70"],[11,"0.02150","0.47950","2.851e-3","0.0021","3.535e-71"],[12,"0.01075","0.27754","7.121e-4","0.0005","8.828e-72"],[13,"0.00538","0.14973","1.780e-4","0.0001","2.207e-72"],[14,"0.00269","0.07782","4.449e-5","0.0000","5.516e-73"],[15,"0.00134","0.03968","1.112e-5","0.0000","1.379e-73"],[16,"0.00067","0.02004","2.781e-6","0.0000","3.447e-74"]],"e6RowsAll52":26,"e6Rows12":[[1,"0.99999","1.00000","1.214e+5","16.8472","2.534e-4"],[2,"0.97772","1.00000","2.118e+2","6.3512","4.421e-7"],[3,"0.59236","1.00000","5.955e+0","1.7070","1.243e-8"],[4,"0.29876","0.99690","7.661e-1","0.4363","1.599e-9"],[5,"0.15928","0.90619","1.613e-1","0.1097","3.368e-10"],[6,"0.08094","0.66687","3.864e-2","0.0275","8.066e-11"],[7,"0.04063","0.41245","9.556e-3","0.0069","1.995e-11"],[8,"0.02034","0.23031","2.383e-3","0.0017","4.974e-12"],[9,"0.01017","0.12180","5.952e-4","0.0004","1.243e-12"],[10,"0.00509","0.06265","1.488e-4","0.0001","3.106e-13"],[11,"0.00254","0.03177","3.719e-5","0.0000","7.765e-14"],[12,"0.00127","0.01600","9.298e-6","0.0000","1.941e-14"],[13,"0.00064","0.00803","2.325e-6","0.0000","4.853e-15"],[14,"0.00032","0.00402","5.811e-7","0.0000","1.213e-15"],[15,"0.00016","0.00201","1.453e-7","0.0000","3.033e-16"],[16,"0.00008","0.00101","3.632e-8","0.0000","7.583e-17"]],"e6TableN":16,"e6MixRelRows":[["全变差 TV","6","9"],["分离距离","10","14"],["χ²","2","2"],["KL（比特）","4","5"],["L²","2","2"]],"e6L2OverChi2":1.2397999308571486e-68,"e6L2OverChi2Min":1.2397999308571484e-68,"e6L2OverChi2Max":1.2397999308571486e-68,"e6L2EqChi2":true,"e6IndependentRulers":4,"e6InvFact52":1.2397999308571486e-68,"e6L2EqInvFact":true,"chartDist":[{"name":"全变差 TV","points":[[1,0],[2,0],[3,0],[4,-2.0262822666273812e-7],[5,-0.03445357429399911],[6,-0.21215032512251572],[7,-0.4761742238663468],[8,-0.7768711659205169],[9,-1.0684394495751603],[10,-1.3670818418258996],[11,-1.6675135491713111],[12,-1.9683938860177428],[13,-2.269386461555892],[14,-2.5704071018495687],[15,-2.8714347586498],[16,-3.1724641695965112],[17,-3.4734940190810986],[18,-3.774523978200246],[19,-4.07555396472802],[20,-4.376583958107892],[21,-4.67761395320103],[22,-4.978643948722604],[23,-5.279673944349959],[24,-5.580703940005216],[25,-5.881733935669141],[26,-6.1827639313245655]],"dash":false},{"name":"分离距离","points":[[1,0],[2,0],[3,0],[4,0],[5,0],[6,-1.3789882771712225e-14],[7,-0.000002363751669936091],[8,-0.0016632987765219456],[9,-0.03080419506014892],[10,-0.13542137019946537],[11,-0.3192151855733209],[12,-0.5566714551919808],[13,-0.8246808993929449],[14,-1.1088948640702594],[15,-1.401440862925982],[16,-1.698209929648531],[17,-1.997104736775314],[18,-2.2970659582541457],[19,-2.5975612719857195],[20,-2.8983238529910706],[21,-3.1992201229048085],[22,-3.5001832510887225],[23,-3.8011798118613274],[24,-4.102193089791882],[25,-4.403214726516893],[26,-4.704240542693327]],"dash":false},{"name":"χ²","points":[[1,0],[2,-15.653178657057152],[3,-30.675835745351726],[4,-41.91104626454008],[5,-48.37600531769167],[6,-51.11869768174373],[7,-52.23621028950737],[8,-52.95501200399924],[9,-53.58523553696244],[10,-54.194268859135455],[11,-54.79806790717314],[12,-55.4005623946039],[13,-56.002730993190085],[14,-56.60481813528443],[15,-57.206884914238486],[16,-57.808946602468865],[17,-58.411007018022175],[18,-59.01306711540648],[19,-59.615127133248514],[20,-60.217187131204994],[21,-60.81924712419025],[22,-61.421307115933196],[23,-62.0233671073638],[24,-62.62542709871735],[25,-63.22748709005586],[26,-63.8295470813745]],"dash":false},{"name":"KL（比特）","points":[[1,0],[2,-0.1546361261009846],[3,-0.3951894613662088],[4,-0.8037974194144181],[5,-1.3393962590388921],[6,-1.9229617458917743],[7,-2.5202713142623727],[8,-3.1211355743678486],[9,-3.7228961217989704],[10,-4.324881220158344],[11,-4.926922486243705],[12,-5.528977796135935],[13,-6.1310366170972666],[14,-6.733096315832132],[15,-7.335156234013248],[16,-7.937216207050321],[17,-8.539276193901587],[18,-9.14133618382911],[19,-9.743396174631055],[20,-10.345456166743494],[21,-10.947516152758448],[22,-11.549576174282794],[23,-12.151636228067401],[24,-12.753696154605986],[25,-13.355753665686787],[26,-13.95781256600796]],"dash":false},{"name":"L²","points":[[1,0],[2,-15.653178657057152],[3,-30.675835745351726],[4,-41.91104626454008],[5,-48.37600531769167],[6,-51.11869768174373],[7,-52.23621028950737],[8,-52.95501200399924],[9,-53.58523553696244],[10,-54.194268859135455],[11,-54.79806790717314],[12,-55.4005623946039],[13,-56.002730993190085],[14,-56.60481813528443],[15,-57.206884914238486],[16,-57.808946602468865],[17,-58.411007018022175],[18,-59.01306711540648],[19,-59.615127133248514],[20,-60.217187131204994],[21,-60.81924712419025],[22,-61.421307115933196],[23,-62.0233671073638],[24,-62.62542709871735],[25,-63.22748709005586],[26,-63.8295470813745]],"dash":true}],"chartDistKMax":26,"chartDistYMin":-64,"chartDistYMax":0,"e7Cap52":225.58100312370277,"e7Cap12":28.835455234075404,"e7FirstEnough52":5,"e7FirstMixed52":9,"e7FirstEnough12":3,"e7FirstMixed12":6,"e7BitsAtEnough":217.63578298405773,"e7TvAtEnough":0.9237329293962944,"e7CoinsAtEnough":260,"e7BitsAt7":225.05712425673497,"e7DeficitAt7":0.5238788669678058,"e7DeficitFracAt7":0.002322353654401139,"e7BitsAt14":225.58097103103066,"e7DeficitAt14":0.000032092672114458765,"e7Rows52":[[1,"52","52.0000","225.5810","1.0000"],[2,"104","103.9999","225.5810","1.0000"],[3,"156","155.7075","225.5810","1.0000"],[4,"208","198.3098","225.5810","1.0000"],[5,"260","217.6358","225.5810","0.9237"],[6,"312","223.5083","225.5810","0.6135"],[7,"364","225.0571","225.5810","0.3341"],[8,"416","225.4497","225.5810","0.1672"],[9,"468","225.5481","225.5810","0.0854"],[10,"520","225.5728","225.5810","0.0429"],[11,"572","225.5789","225.5810","0.0215"],[12,"624","225.5805","225.5810","0.0108"],[13,"676","225.5809","225.5810","0.0054"],[14,"728","225.5810","225.5810","0.0027"]],"e7Rows12":[[1,"12","11.9883","28.8355","1.0000"],[2,"24","22.4843","28.8355","0.9777"],[3,"36","27.1285","28.8355","0.5924"],[4,"48","28.3992","28.8355","0.2988"],[5,"60","28.7258","28.8355","0.1593"],[6,"72","28.8080","28.8355","0.0809"],[7,"84","28.8286","28.8355","0.0406"],[8,"96","28.8337","28.8355","0.0203"],[9,"108","28.8350","28.8355","0.0102"],[10,"120","28.8353","28.8355","0.0051"],[11,"132","28.8354","28.8355","0.0025"],[12,"144","28.8354","28.8355","0.0013"],[13,"156","28.8355","28.8355","0.0006"],[14,"168","28.8355","28.8355","0.0003"]],"e7TableN":14,"chartEntropy":[{"name":"n = 52 的输出熵","points":[[1,51.99999999999982],[2,103.99990329285914],[3,155.70746537539395],[4,198.3097700926133],[5,217.63578298405773],[6,223.5082840308173],[7,225.05712425673497],[8,225.4496723147259],[9,225.5481477756666],[10,225.5727878701165],[11,225.5789492217512],[12,225.5804896426799],[13,225.5808747531012],[14,225.58097103103066]]},{"name":"n = 12 的输出熵","points":[[1,11.988255440347697],[2,22.484279083999994],[3,27.128466564324576],[4,28.39919970902961],[5,28.7257712129679],[6,28.80799510893906],[7,28.82858775226322],[8,28.833738210378222],[9,28.835025968572],[10,28.83534791710083],[11,28.835428404794342],[12,28.8354485267528],[13,28.835453557244612],[14,28.835454814867678]]},{"name":"log₂(52!) = 225.58","points":[[1,225.58100312370277],[14,225.58100312370277]],"dash":true},{"name":"log₂(12!) = 28.84","points":[[1,28.835455234075404],[14,28.835455234075404]],"dash":true}],"chartEntropyKMax":14,"chartEntropyYMax":232,"e8SpecN":[4,5,6],"e8SpecMaxDev":0,"e8SpecKMax":5,"e8SpecRows":[[4,1,"7.500000","7.500000","7.500000","7.500000","0"],[4,2,"3.281250","3.281250","3.281250","3.281250","0"],[4,3,"1.933594","1.933594","1.933594","1.933594","0"],[4,4,"1.419434","1.419434","1.419434","1.419434","0"],[4,5,"1.198425","1.198425","1.198425","1.198425","0"],[5,1,"22.500000","22.500000","22.500000","22.500000","0"],[5,2,"6.562500","6.562500","6.562500","6.562500","0"],[5,3,"2.900391","2.900391","2.900391","2.900391","0"],[5,4,"1.774292","1.774292","1.774292","1.774292","0"],[5,5,"1.348228","1.348228","1.348228","1.348228","0"],[6,1,"78.750000","78.750000","78.750000","78.750000","0"],[6,2,"14.765625","14.765625","14.765625","14.765625","0"],[6,3,"4.713135","4.713135","4.713135","4.713135","0"],[6,4,"2.328758","2.328758","2.328758","2.328758","0"],[6,5,"1.558889","1.558889","1.558889","1.558889","0"]],"e8SpecHead":["n","k","暴力全起点","返回概率 × n!","闭式","文献特征值幂和","最大偏差"],"e8SpecRowN":15,"e8EigenRows":[["1/2^0","1.000000","1"],["1/2^1","0.500000","15"],["1/2^2","0.250000","85"],["1/2^3","0.125000","225"],["1/2^4","0.062500","274"],["1/2^5","0.031250","120"]],"e8EigenRowsN":6,"e8MultSum6":"720","e8MultSum12":"479001600","e8States6":"720","e8States12":"479001600","e8EigenRows12":[["1/2^0","1.000000","1"],["1/2^1","0.500000","66"],["1/2^2","0.250000","1,925"],["1/2^3","0.125000","32,670"],["1/2^4","0.062500","357,423"],["1/2^5","0.031250","2,637,558"],["1/2^6","0.015625","13,339,535"],["1/2^7","0.007813","45,995,730"],["1/2^8","0.003906","105,258,076"],["1/2^9","0.001953","150,917,976"],["1/2^10","0.000977","120,543,840"],["1/2^11","0.000488","39,916,800"]],"e8EigenShown12":12,"chartSpectrum":[{"i":0,"lambda":1,"mult":1},{"i":1,"lambda":0.5,"mult":66},{"i":2,"lambda":0.25,"mult":1925},{"i":3,"lambda":0.125,"mult":32670},{"i":4,"lambda":0.0625,"mult":357423},{"i":5,"lambda":0.03125,"mult":2637558},{"i":6,"lambda":0.015625,"mult":13339535},{"i":7,"lambda":0.0078125,"mult":45995730},{"i":8,"lambda":0.00390625,"mult":105258076},{"i":9,"lambda":0.001953125,"mult":150917976},{"i":10,"lambda":0.0009765625,"mult":120543840},{"i":11,"lambda":0.00048828125,"mult":39916800}],"chartSpectrumYMax":150917976,"e8MultPeakI":9,"e8MultPeak":"150917976","e8MultEdge0":"1","e8MultEdgeLast":"39916800","e8MultLastI":11,"e8MinLambda52":4.440892098500626e-16,"e9Throughput":0.0000560942150297619,"e9Rows":[[5,"2.079","是","32","3.84e+3","1 毫秒","实测"],[6,"2.857","是","64","4.61e+4","10 毫秒","实测"],[7,"3.702","是","128","6.45e+5","31 毫秒","实测"],[8,"4.606","是","256","1.03e+7","579 毫秒","实测"],[9,"5.560","是","512","1.86e+8","10.42 秒","外推"],[10,"6.560","否","1,024","3.72e+9","3.5 分钟","外推"],[12,"8.680","否","4,096","1.96e+12","30.6 小时","外推"],[16,"13.321","否","65,536","1.37e+18","2437 年","外推"],[20,"18.386","否","1,048,576","2.55e+24","4.53e+9 年","外推"],[26,"26.606","否","67,108,864","1.63e+26","4.81e+19 年","外推"],[32,"35.420","否","4,294,967,296","1.04e+28","2.01e+30 年","外推"],[52,"67.907","否","4,503,599,627,370,496","1.10e+34","6.46e+68 年","外推"]],"e9Sec9":10.422,"e9Sec10":208.44,"e9Sec12":110056.32,"e9Sec20":143100979071418370,"e9Sec52":2.037634295809491e+76,"e9Sec52Years":6.45687344984882e+68,"e9Entries9":185794560,"e9Entries52":1.0956816577453247e+34,"e9Log10Fact52":67.90664839220476,"e9Log10Fact9":5.559763032876794,"e9EnumberableMax":9,"chartWall":[[5,2.0791812460476247],[6,2.857332496431268],[7,3.702430536445525],[8,4.605520523437469],[9,5.559763032876794],[10,6.559763032876794],[12,8.680336964082644],[16,13.320619593779325],[20,18.386124616877716],[26,26.605619026805897],[32,35.4201717470799],[52,67.90664839220476]],"chartWallXMax":52,"e4MonoTv":true,"e6MonoTv":true,"e6MonoSep":true,"e7MonoBits":true,"e3MonoTv":true,"e5MonoTv":true},"charts":{"support":{"points":[[4,-0.3010299956639812],[5,-0.6478174818886375],[6,-1.0939045028683312],[7,-1.6196451661290752],[8,-2.211068842611253],[10,-3.5537250778794767],[12,-5.069251230667771],[16,-8.504245705026962],[20,-12.365532987186953],[26,-18.77883930780121],[32,-25.787211889068246],[40,-35.87044524161242],[52,-52.253088617677754]],"yMin":-55,"yMax":0},"fiber":{"series":[{"name":"纤维大小 N_j（k = 3）","points":[[0,4.058426024457005],[1,3.6994040818153375],[2,3.3014640731432996],[3,2.8543060418010806],[4,2.342422680822206],[5,1.7403626894942439],[6,1],[7,0]]},{"name":"排列数 A(9, j)","points":[[0,0],[1,2.7007037171450192],[2,4.164590760190224],[3,4.945635967978295],[4,5.193653224907199],[5,4.945635967978295],[6,4.164590760190224],[7,2.7007037171450192],[8,0]]}],"yMin":-0.5,"yMax":6.5,"n":9},"e3":{"series":[{"name":"闭式","points":[[0,0.9999751984126984],[1,0.9938492063492064],[2,0.6490489656963045],[3,0.3347434997558594],[4,0.18000087141990662],[5,0.09164555440656841],[6,0.04603051674166636],[7,0.023041291602609704],[8,0.011523902012556042]]},{"name":"全状态链","points":[[0,0.9999751984126984],[1,0.9938492063503727],[2,0.6490489656966496],[3,0.3347434997558076],[4,0.1800008714199726],[5,0.09164555440656841],[6,0.046030516741666354],[7,0.02304129160260968],[8,0.011523902012560056]]}],"kMax":8,"yMax":1},"tv52":{"series":[{"name":"闭式（n = 52）","points":[[0,1],[1,1],[2,1],[3,1],[4,0.9999995334313746],[5,0.9237329293962945],[6,0.6135495965656284],[7,0.33406099946815154],[8,0.16715864192695742],[9,0.08542019340906182],[10,0.042945548921035026],[11,0.021502375949235434],[12,0.010754893495669948],[13,0.005377910104869558],[14,0.0026890129772812726],[15,0.001344513729409496],[16,0.0006722577698059508],[17,0.000336128998040785],[18,0.00016806451316262366]]},{"name":"Bayer–Diaconis 1992","points":[[4,1],[5,0.924],[6,0.614],[7,0.334],[8,0.167],[9,0.085]]}],"kMax":18},"cutoff":{"series":[{"name":"ε = 0.50","points":[[1,0],[1.584962500721156,1],[2,1],[2.321928094887362,2],[2.584962500721156,2],[2.807354922057604,3],[3,3],[3.169925001442312,3],[3.321928094887362,3],[3.4594316186372973,4],[3.584962500721156,4],[3.807354922057604,4],[4,4],[4.321928094887363,5],[4.700439718141092,5],[5,6],[5.321928094887363,6],[5.700439718141092,7]]},{"name":"ε = 0.25","points":[[1,1],[1.584962500721156,2],[2,3],[2.321928094887362,3],[2.584962500721156,3],[2.807354922057604,4],[3,4],[3.169925001442312,4],[3.321928094887362,4],[3.4594316186372973,5],[3.584962500721156,5],[3.807354922057604,5],[4,5],[4.321928094887363,6],[4.700439718141092,6],[5,7],[5.321928094887363,7],[5.700439718141092,8]]},{"name":"ε = 0.10","points":[[1,3],[1.584962500721156,3],[2,4],[2.321928094887362,4],[2.584962500721156,5],[2.807354922057604,5],[3,5],[3.169925001442312,5],[3.321928094887362,6],[3.4594316186372973,6],[3.584962500721156,6],[3.807354922057604,7],[4,7],[4.321928094887363,7],[4.700439718141092,8],[5,8],[5.321928094887363,9],[5.700439718141092,9]]},{"name":"ε = 0.01","points":[[1,6],[1.584962500721156,6],[2,7],[2.321928094887362,7],[2.584962500721156,8],[2.807354922057604,8],[3,9],[3.169925001442312,9],[3.321928094887362,9],[3.4594316186372973,9],[3.584962500721156,10],[3.807354922057604,10],[4,10],[4.321928094887363,11],[4.700439718141092,11],[5,12],[5.321928094887363,12],[5.700439718141092,13]]}],"xMax":5.700439718141092,"yMax":13},"width":{"points":[[2,3],[3,2],[4,3],[5,2],[6,3],[7,2],[8,2],[9,2],[10,3],[11,2],[12,2],[14,3],[16,3],[20,2],[26,3],[32,2],[40,3],[52,2]]},"chains":{"series":[{"name":"交错洗牌","points":[[0,0.9999751984126984],[1,0.9938492063503727],[2,0.6490489656966496],[3,0.3347434997558076],[4,0.1800008714199726],[5,0.09164555440656841],[6,0.046030516741666354],[7,0.02304129160260968],[8,0.011523902012560056],[9,0.005762358096987283],[10,0.0028812299368406653],[11,0.0014406213295268234],[12,0.000720311459903745]]},{"name":"随机对换","points":[[0,0.9999751984126984],[1,0.9992807539695155],[2,0.9912946428582137],[3,0.9426835317468456],[4,0.7750024946912658],[5,0.5539926044524879],[6,0.4490432393928806],[7,0.33492871521725065],[8,0.2612338588067996],[9,0.19562284530355775],[10,0.14793573337036356],[11,0.11261732380182146],[12,0.08490655327547034],[13,0.0643774128205951],[14,0.0484017164148095],[15,0.03651879596597923],[16,0.027418901746004823],[17,0.02063392497437748],[18,0.015481706804303616],[19,0.011634487726940047],[20,0.008726388107958798],[21,0.006552914577621599],[22,0.004914117094994609],[23,0.0036886291274993975],[24,0.0027659019533523587],[25,0.002075661064755928],[26,0.0015563521814880587],[27,0.0011678096722426154]]},{"name":"顶牌插回","points":[[0,0.9999751984126984],[1,0.9998015873030258],[2,0.9986111111122394],[3,0.9916666666676748],[4,0.9583333333341844],[5,0.8333333333338554],[6,0.7820638020837898],[7,0.6827290852868461],[8,0.5621655782065992],[9,0.44370492299390696],[10,0.37551867961883545],[11,0.3219452425837494],[12,0.2692897496744189],[13,0.22075033700093627],[14,0.17802281025797131],[15,0.14167493181782667],[16,0.1115437404671411],[17,0.08705838476447525],[18,0.06746761587158545],[19,0.05198378650748289],[20,0.03986455285967553],[21,0.030452534111648305],[22,0.023188822751136356],[23,0.017611558634717295],[24,0.013346910304259309],[25,0.010096973039416382],[26,0.007627168673887742],[27,0.005754498367768407]]}],"kMax":28},"chainsByN":{"riffle_5":{"name":"交错洗牌","points":[[0,0.9916666666666667],[1,0.7749999999999991],[2,0.3628906249999997],[3,0.1657470703125003],[4,0.07810821533203119],[5,0.03777971267700189],[6,0.018562251329421943],[7,0.00919818468391894],[8,0.004578232509084042],[9,0.002283886059012726],[10,0.0011406335969695609],[11,0.0005699892062068519]]},"transpose_5":{"name":"随机对换","points":[[0,0.9916666666666667],[1,0.908333333333332],[2,0.6166666666666658],[3,0.2885466666666669],[4,0.22345066666666658],[5,0.11759537066666684],[6,0.0793763242666668],[7,0.04434892264106684],[8,0.028388351576746712],[9,0.016228233063246618],[10,0.01019359772682929],[11,0.005876260741523124],[12,0.0036662202220909632],[13,0.0021198752639307655]]},"toprandom_5":{"name":"顶牌插回","points":[[0,0.9916666666666667],[1,0.9583333333333321],[2,0.8333333333333328],[3,0.5133333333333329],[4,0.40400000000000075],[5,0.28880000000000033],[6,0.19280000000000075],[7,0.12368000000000026],[8,0.07744639999999992],[9,0.04777088000000001],[10,0.02918527999999996],[11,0.017720576000000016],[12,0.010716170239999965],[13,0.006463244287999992]]},"riffle_6":{"name":"交错洗牌","points":[[0,0.9986111111111111],[1,0.919444444444443],[2,0.42626953124999994],[3,0.23970031738281236],[4,0.12331247329711895],[5,0.0620934516191479],[6,0.031101515982300196],[7,0.015557611084659478],[8,0.007779662314078457],[9,0.0038899382577284405],[10,0.0019449825165822748],[11,0.0009724929317600078],[12,0.00048624667506380343]]},"transpose_6":{"name":"随机对换","points":[[0,0.9986111111111111],[1,0.9777777777777762],[2,0.8597222222222217],[3,0.552623456790123],[4,0.3540637860082318],[5,0.2637955342173448],[6,0.16297587596741617],[7,0.11875121132919697],[8,0.07591547739489846],[9,0.052897080999502785],[10,0.03440587961037078],[11,0.02351459937420736],[12,0.01542032161981639],[13,0.010449835445615244],[14,0.006878619281990935],[15,0.004643928364167456],[16,0.003062096824822114],[17,0.002063855564048517],[18,0.0013619025199261428]]},"toprandom_6":{"name":"顶牌插回","points":[[0,0.9986111111111111],[1,0.9916666666666649],[2,0.9583333333333311],[3,0.8333333333333294],[4,0.6481481481481504],[5,0.45370370370370466],[6,0.37654320987654766],[7,0.29295267489712057],[8,0.2179355281207154],[9,0.15717163923182384],[10,0.11091106538637444],[11,0.07706900466138253],[12,0.05296461942623942],[13,0.036109438550681],[14,0.024475156343789987],[15,0.016518653429572736],[16,0.011113638204997583],[17,0.0074597805397017426],[18,0.004998560265493595]]},"riffle_7":{"name":"交错洗牌","points":[[0,0.9998015873015873],[1,0.9759920634920618],[2,0.5922216021825388],[3,0.2892964923192575],[4,0.13624142048850804],[5,0.06535916900232583],[6,0.03192004351497775],[7,0.015762374192794592],[8,0.007830861294051708],[9,0.0039027385154273737],[10,0.0019481826130513574],[11,0.0009732929578804523],[12,0.00048644668171925]]},"transpose_7":{"name":"随机对换","points":[[0,0.9998015873015873],[1,0.9956349206349191],[2,0.9609126984126933],[3,0.815079365079362],[4,0.5402251073174673],[5,0.40833503860564585],[6,0.2976554639477257],[7,0.21203099710389944],[8,0.15692275923188648],[9,0.11085827939852898],[10,0.08144678742601191],[11,0.05779857314297675],[12,0.04190215699473235],[13,0.029795555233230967],[14,0.02146173662652914],[15,0.01527877473147951],[16,0.010970090337586452],[17,0.007814830130172692],[18,0.0056019822232379925],[19,0.003992156438162723],[20,0.002859404275487294],[21,0.0020381001461605044],[22,0.0014591955448824258]]},"toprandom_7":{"name":"顶牌插回","points":[[0,0.9998015873015873],[1,0.9986111111111092],[2,0.9916666666666653],[3,0.9583333333333366],[4,0.8333333333333375],[5,0.7333749826460774],[6,0.5834374566153075],[7,0.4355398969250762],[8,0.3714821205449858],[9,0.305911773884328],[10,0.2439009603280441],[11,0.18970506155743738],[12,0.1447844128510737],[13,0.1089074028021824],[14,0.08100887903106749],[15,0.059737098141340886],[16,0.04375497952295047],[17,0.03188035422701044],[18,0.023132617055815288],[19,0.016730733400719764],[20,0.012069567416512139],[21,0.008689362728829],[22,0.006245777318229716]]},"riffle_8":{"name":"交错洗牌","points":[[0,0.9999751984126984],[1,0.9938492063503727],[2,0.6490489656966496],[3,0.3347434997558076],[4,0.1800008714199726],[5,0.09164555440656841],[6,0.046030516741666354],[7,0.02304129160260968],[8,0.011523902012560056],[9,0.005762358096987283],[10,0.0028812299368406653],[11,0.0014406213295268234],[12,0.000720311459903745]]},"transpose_8":{"name":"随机对换","points":[[0,0.9999751984126984],[1,0.9992807539695155],[2,0.9912946428582137],[3,0.9426835317468456],[4,0.7750024946912658],[5,0.5539926044524879],[6,0.4490432393928806],[7,0.33492871521725065],[8,0.2612338588067996],[9,0.19562284530355775],[10,0.14793573337036356],[11,0.11261732380182146],[12,0.08490655327547034],[13,0.0643774128205951],[14,0.0484017164148095],[15,0.03651879596597923],[16,0.027418901746004823],[17,0.02063392497437748],[18,0.015481706804303616],[19,0.011634487726940047],[20,0.008726388107958798],[21,0.006552914577621599],[22,0.004914117094994609],[23,0.0036886291274993975],[24,0.0027659019533523587],[25,0.002075661064755928],[26,0.0015563521814880587],[27,0.0011678096722426154]]},"toprandom_8":{"name":"顶牌插回","points":[[0,0.9999751984126984],[1,0.9998015873030258],[2,0.9986111111122394],[3,0.9916666666676748],[4,0.9583333333341844],[5,0.8333333333338554],[6,0.7820638020837898],[7,0.6827290852868461],[8,0.5621655782065992],[9,0.44370492299390696],[10,0.37551867961883545],[11,0.3219452425837494],[12,0.2692897496744189],[13,0.22075033700093627],[14,0.17802281025797131],[15,0.14167493181782667],[16,0.1115437404671411],[17,0.08705838476447525],[18,0.06746761587158545],[19,0.05198378650748289],[20,0.03986455285967553],[21,0.030452534111648305],[22,0.023188822751136356],[23,0.017611558634717295],[24,0.013346910304259309],[25,0.010096973039416382],[26,0.007627168673887742],[27,0.005754498367768407]]}},"lambda":{"series":[{"name":"交错洗牌（实测）","points":[[5,0.5000314707028851],[6,0.49999898806718707],[7,0.5000045165801316],[8,0.49998403416549986]],"dots":true},{"name":"随机对换（实测）","points":[[5,0.5999831555194818],[6,0.6666659922667241],[7,0.7142843777094373],[8,0.7500029747032386]],"dots":true},{"name":"顶牌插回（实测）","points":[[5,0.5999978582692966],[6,0.6666650376363726],[7,0.7142859457903498],[8,0.7500067618127508]],"dots":true},{"name":"λ = 1/2","points":[[5,0.5],[6,0.5],[7,0.5],[8,0.5]],"dash":true},{"name":"λ = 1 − 2/n","points":[[5,0.6],[6,0.6666666666666667],[7,0.7142857142857143],[8,0.75]],"dash":true}],"xMin":5,"xMax":8},"dist":{"series":[{"name":"全变差 TV","points":[[1,0],[2,0],[3,0],[4,-2.0262822666273812e-7],[5,-0.03445357429399911],[6,-0.21215032512251572],[7,-0.4761742238663468],[8,-0.7768711659205169],[9,-1.0684394495751603],[10,-1.3670818418258996],[11,-1.6675135491713111],[12,-1.9683938860177428],[13,-2.269386461555892],[14,-2.5704071018495687],[15,-2.8714347586498],[16,-3.1724641695965112],[17,-3.4734940190810986],[18,-3.774523978200246],[19,-4.07555396472802],[20,-4.376583958107892],[21,-4.67761395320103],[22,-4.978643948722604],[23,-5.279673944349959],[24,-5.580703940005216],[25,-5.881733935669141],[26,-6.1827639313245655]],"dash":false},{"name":"分离距离","points":[[1,0],[2,0],[3,0],[4,0],[5,0],[6,-1.3789882771712225e-14],[7,-0.000002363751669936091],[8,-0.0016632987765219456],[9,-0.03080419506014892],[10,-0.13542137019946537],[11,-0.3192151855733209],[12,-0.5566714551919808],[13,-0.8246808993929449],[14,-1.1088948640702594],[15,-1.401440862925982],[16,-1.698209929648531],[17,-1.997104736775314],[18,-2.2970659582541457],[19,-2.5975612719857195],[20,-2.8983238529910706],[21,-3.1992201229048085],[22,-3.5001832510887225],[23,-3.8011798118613274],[24,-4.102193089791882],[25,-4.403214726516893],[26,-4.704240542693327]],"dash":false},{"name":"χ²","points":[[1,0],[2,-15.653178657057152],[3,-30.675835745351726],[4,-41.91104626454008],[5,-48.37600531769167],[6,-51.11869768174373],[7,-52.23621028950737],[8,-52.95501200399924],[9,-53.58523553696244],[10,-54.194268859135455],[11,-54.79806790717314],[12,-55.4005623946039],[13,-56.002730993190085],[14,-56.60481813528443],[15,-57.206884914238486],[16,-57.808946602468865],[17,-58.411007018022175],[18,-59.01306711540648],[19,-59.615127133248514],[20,-60.217187131204994],[21,-60.81924712419025],[22,-61.421307115933196],[23,-62.0233671073638],[24,-62.62542709871735],[25,-63.22748709005586],[26,-63.8295470813745]],"dash":false},{"name":"KL（比特）","points":[[1,0],[2,-0.1546361261009846],[3,-0.3951894613662088],[4,-0.8037974194144181],[5,-1.3393962590388921],[6,-1.9229617458917743],[7,-2.5202713142623727],[8,-3.1211355743678486],[9,-3.7228961217989704],[10,-4.324881220158344],[11,-4.926922486243705],[12,-5.528977796135935],[13,-6.1310366170972666],[14,-6.733096315832132],[15,-7.335156234013248],[16,-7.937216207050321],[17,-8.539276193901587],[18,-9.14133618382911],[19,-9.743396174631055],[20,-10.345456166743494],[21,-10.947516152758448],[22,-11.549576174282794],[23,-12.151636228067401],[24,-12.753696154605986],[25,-13.355753665686787],[26,-13.95781256600796]],"dash":false},{"name":"L²","points":[[1,0],[2,-15.653178657057152],[3,-30.675835745351726],[4,-41.91104626454008],[5,-48.37600531769167],[6,-51.11869768174373],[7,-52.23621028950737],[8,-52.95501200399924],[9,-53.58523553696244],[10,-54.194268859135455],[11,-54.79806790717314],[12,-55.4005623946039],[13,-56.002730993190085],[14,-56.60481813528443],[15,-57.206884914238486],[16,-57.808946602468865],[17,-58.411007018022175],[18,-59.01306711540648],[19,-59.615127133248514],[20,-60.217187131204994],[21,-60.81924712419025],[22,-61.421307115933196],[23,-62.0233671073638],[24,-62.62542709871735],[25,-63.22748709005586],[26,-63.8295470813745]],"dash":true}],"kMax":26,"yMin":-64,"yMax":0},"entropy":{"series":[{"name":"n = 52 的输出熵","points":[[1,51.99999999999982],[2,103.99990329285914],[3,155.70746537539395],[4,198.3097700926133],[5,217.63578298405773],[6,223.5082840308173],[7,225.05712425673497],[8,225.4496723147259],[9,225.5481477756666],[10,225.5727878701165],[11,225.5789492217512],[12,225.5804896426799],[13,225.5808747531012],[14,225.58097103103066]]},{"name":"n = 12 的输出熵","points":[[1,11.988255440347697],[2,22.484279083999994],[3,27.128466564324576],[4,28.39919970902961],[5,28.7257712129679],[6,28.80799510893906],[7,28.82858775226322],[8,28.833738210378222],[9,28.835025968572],[10,28.83534791710083],[11,28.835428404794342],[12,28.8354485267528],[13,28.835453557244612],[14,28.835454814867678]]},{"name":"log₂(52!) = 225.58","points":[[1,225.58100312370277],[14,225.58100312370277]],"dash":true},{"name":"log₂(12!) = 28.84","points":[[1,28.835455234075404],[14,28.835455234075404]],"dash":true}],"kMax":14,"yMax":232},"spectrum":{"bars":[{"i":0,"lambda":1,"mult":1},{"i":1,"lambda":0.5,"mult":66},{"i":2,"lambda":0.25,"mult":1925},{"i":3,"lambda":0.125,"mult":32670},{"i":4,"lambda":0.0625,"mult":357423},{"i":5,"lambda":0.03125,"mult":2637558},{"i":6,"lambda":0.015625,"mult":13339535},{"i":7,"lambda":0.0078125,"mult":45995730},{"i":8,"lambda":0.00390625,"mult":105258076},{"i":9,"lambda":0.001953125,"mult":150917976},{"i":10,"lambda":0.0009765625,"mult":120543840},{"i":11,"lambda":0.00048828125,"mult":39916800}],"yMax":150917976},"wall":{"points":[[5,2.0791812460476247],[6,2.857332496431268],[7,3.702430536445525],[8,4.605520523437469],[9,5.559763032876794],[10,6.559763032876794],[12,8.680336964082644],[16,13.320619593779325],[20,18.386124616877716],[26,26.605619026805897],[32,35.4201717470799],[52,67.90664839220476]],"xMax":52}},"tables":{"e1":{"head":["n（张牌）","一次洗牌后可达排列","占 n! 的比例","n! 的位数"],"rows":[[4,"12","5.000e-1","2"],[5,"27","2.250e-1","3"],[6,"58","8.056e-2","3"],[7,"121","2.401e-2","4"],[8,"248","6.151e-3","5"],[10,"1,014","2.794e-4","7"],[12,"4,084","8.526e-6","9"],[16,"65,520","3.132e-9","14"],[20,"1,048,556","4.310e-13","19"],[26,"67,108,838","1.664e-19","27"],[32,"4,294,967,264","1.632e-26","36"],[40,"1,099,511,627,736","1.348e-36","48"],[52,"4,503,599,627,370,444","5.584e-53","68"]]},"e2fiber":{"head":["下降数 j","上升段数","排列数 A(9, j)","k=1 的纤维","k=2 的纤维","k=3 的纤维"],"rows":[[0,1,"1","10","220","11440"],[1,2,"502","1","55","5005"],[2,3,"14,608","0","10","2002"],[3,4,"88,234","0","1","715"],[4,5,"156,190","0","0","220"],[5,6,"88,234","0","0","55"],[6,7,"14,608","0","0","10"],[7,8,"502","0","0","1"],[8,9,"1","0","0","0"]]},"e3":{"head":["n","状态数 n!","动作数 2ⁿ","转移表项","建表 (ms)","最大偏差"],"rows":[[4,"24","16","384","0","1.67e-16"],[5,"120","32","3,840","1","8.88e-16"],[6,"720","64","46,080","10","1.44e-15"],[7,"5,040","128","645,120","31","1.67e-15"],[8,"40,320","256","10,321,920","579","1.17e-12"]]},"e4ref":{"head":["k（洗几次）","文献发表值","本装置（闭式）","偏差"],"rows":[[4,"1.000","1.0000","4.67e-7"],[5,"0.924","0.9237","2.67e-4"],[6,"0.614","0.6135","4.50e-4"],[7,"0.334","0.3341","6.10e-5"],[8,"0.167","0.1672","1.59e-4"],[9,"0.085","0.0854","4.20e-4"]]},"e4cut":{"head":["n","log₂ n","k*(0.50)","k*(0.10)","窗口宽度"],"rows":[[2,"1.000","0","3","3"],[3,"1.585","1","3","2"],[4,"2.000","1","4","3"],[5,"2.322","2","4","2"],[6,"2.585","2","5","3"],[7,"2.807","3","5","2"],[8,"3.000","3","5","2"],[9,"3.170","3","5","2"],[10,"3.322","3","6","3"],[11,"3.459","4","6","2"],[12,"3.585","4","6","2"],[14,"3.807","4","7","3"],[16,"4.000","4","7","3"],[20,"4.322","5","7","2"],[26,"4.700","5","8","3"],[32,"5.000","6","8","2"],[40,"5.322","6","9","3"],[52,"5.700","7","9","2"]]},"e5":{"head":["洗法","n","k*(0.50)","k*(0.10)","λ₂ 实测","松弛时间 1/(1−λ₂)","文献混合时间"],"rows":[["交错洗牌",5,"2","4","0.50003","2.00","3.48"],["随机对换",5,"3","6","0.59998","2.50","4.02"],["顶牌插回",5,"4","8","0.60000","2.50","8.05"],["交错洗牌",6,"2","5","0.50000","2.00","3.88"],["随机对换",6,"4","8","0.66667","3.00","5.38"],["顶牌插回",6,"5","11","0.66667","3.00","10.75"],["交错洗牌",7,"3","5","0.50000","2.00","4.21"],["随机对换",7,"5","10","0.71428","3.50","6.81"],["顶牌插回",7,"7","14","0.71429","3.50","13.62"],["交错洗牌",8,"3","5","0.49998","2.00","4.50"],["随机对换",8,"6","12","0.75000","4.00","8.32"],["顶牌插回",8,"9","17","0.75001","4.00","16.64"]]},"e5big":{"head":["n（交错洗牌）","k*(0.50)","k*(0.10)","(3/2)log₂n"],"rows":[[12,"4","6","5.38"],[20,"5","7","6.48"],[32,"6","8","7.50"],[52,"7","9","8.55"]]},"e6":{"head":["k","全变差 TV","分离距离","χ²","KL（比特）","L²"],"rows":[[1,"1.00000","1.00000","1.791e+52","173.5810","2.220e-16"],[2,"1.00000","1.00000","3.980e+36","121.5811","4.935e-32"],[3,"1.00000","1.00000","3.778e+21","69.8735","4.684e-47"],[4,"1.00000","1.00000","2.198e+10","27.2712","2.725e-58"],[5,"0.92373","1.00000","7.535e+3","7.9452","9.342e-65"],[6,"0.61355","1.00000","1.363e+1","2.0727","1.689e-67"],[7,"0.33406","0.99999","1.040e+0","0.5239","1.289e-68"],[8,"0.16716","0.99618","1.986e-1","0.1313","2.463e-69"],[9,"0.08542","0.93153","4.654e-2","0.0329","5.770e-70"],[10,"0.04295","0.73211","1.145e-2","0.0082","1.420e-70"],[11,"0.02150","0.47950","2.851e-3","0.0021","3.535e-71"],[12,"0.01075","0.27754","7.121e-4","0.0005","8.828e-72"],[13,"0.00538","0.14973","1.780e-4","0.0001","2.207e-72"],[14,"0.00269","0.07782","4.449e-5","0.0000","5.516e-73"],[15,"0.00134","0.03968","1.112e-5","0.0000","1.379e-73"],[16,"0.00067","0.02004","2.781e-6","0.0000","3.447e-74"]]},"e6mix":{"head":["距离","n = 12 的混合时间","n = 52 的混合时间"],"rows":[["全变差 TV","6","9"],["分离距离","10","14"],["χ²","2","2"],["KL（比特）","4","5"],["L²","2","2"]]},"e7":{"head":["k","消耗的随机比特 k·n","输出熵（比特）","上限 log₂(52!)","TV"],"rows":[[1,"52","52.0000","225.5810","1.0000"],[2,"104","103.9999","225.5810","1.0000"],[3,"156","155.7075","225.5810","1.0000"],[4,"208","198.3098","225.5810","1.0000"],[5,"260","217.6358","225.5810","0.9237"],[6,"312","223.5083","225.5810","0.6135"],[7,"364","225.0571","225.5810","0.3341"],[8,"416","225.4497","225.5810","0.1672"],[9,"468","225.5481","225.5810","0.0854"],[10,"520","225.5728","225.5810","0.0429"],[11,"572","225.5789","225.5810","0.0215"],[12,"624","225.5805","225.5810","0.0108"],[13,"676","225.5809","225.5810","0.0054"],[14,"728","225.5810","225.5810","0.0027"]]},"e8spec":{"head":["n","k","暴力全起点","返回概率 × n!","闭式","文献特征值幂和","最大偏差"],"rows":[[4,1,"7.500000","7.500000","7.500000","7.500000","0"],[4,2,"3.281250","3.281250","3.281250","3.281250","0"],[4,3,"1.933594","1.933594","1.933594","1.933594","0"],[4,4,"1.419434","1.419434","1.419434","1.419434","0"],[4,5,"1.198425","1.198425","1.198425","1.198425","0"],[5,1,"22.500000","22.500000","22.500000","22.500000","0"],[5,2,"6.562500","6.562500","6.562500","6.562500","0"],[5,3,"2.900391","2.900391","2.900391","2.900391","0"],[5,4,"1.774292","1.774292","1.774292","1.774292","0"],[5,5,"1.348228","1.348228","1.348228","1.348228","0"],[6,1,"78.750000","78.750000","78.750000","78.750000","0"],[6,2,"14.765625","14.765625","14.765625","14.765625","0"],[6,3,"4.713135","4.713135","4.713135","4.713135","0"],[6,4,"2.328758","2.328758","2.328758","2.328758","0"],[6,5,"1.558889","1.558889","1.558889","1.558889","0"]]},"e8eigen":{"head":["特征值","λ 的数值","重数（n = 6，完整）"],"rows":[["1/2^0","1.000000","1"],["1/2^1","0.500000","15"],["1/2^2","0.250000","85"],["1/2^3","0.125000","225"],["1/2^4","0.062500","274"],["1/2^5","0.031250","120"]]},"e9":{"head":["n","log₁₀(n!)","本装置可枚举？","交错洗牌的动作数 2ⁿ","转移表项","建表耗时","来源"],"rows":[[5,"2.079","是","32","3.84e+3","1 毫秒","实测"],[6,"2.857","是","64","4.61e+4","10 毫秒","实测"],[7,"3.702","是","128","6.45e+5","31 毫秒","实测"],[8,"4.606","是","256","1.03e+7","579 毫秒","实测"],[9,"5.560","是","512","1.86e+8","10.42 秒","外推"],[10,"6.560","否","1,024","3.72e+9","3.5 分钟","外推"],[12,"8.680","否","4,096","1.96e+12","30.6 小时","外推"],[16,"13.321","否","65,536","1.37e+18","2437 年","外推"],[20,"18.386","否","1,048,576","2.55e+24","4.53e+9 年","外推"],[26,"26.606","否","67,108,864","1.63e+26","4.81e+19 年","外推"],[32,"35.420","否","4,294,967,296","1.04e+28","2.01e+30 年","外推"],[52,"67.907","否","4,503,599,627,370,496","1.10e+34","6.46e+68 年","外推"]]}},"conclusions":["一次 2-洗牌之后，52 张牌只有 2⁵² − 52 = 4,503,599,627,370,444 种可能排列；而均匀分布有 52! ≈ 8.07×10⁶⁷ 种（68 位数）。支持集占比 5.58e-53 —— 而 n = 4 时这个比例还有 50%，两者跨了 52.0 个数量级。","k = 1 时全变差距离的精确值是 1 − (2ⁿ − n)/n!，它随 n 迅速贴到上限：4 → 0.5000，5 → 0.7750，6 → 0.9194，7 → 0.9760，8 → 0.9938；到 n = 52 时是 1 − 5.58e-53，双精度里就显示成 1.0000（从 n = 26 起被舍入掉）。而 TV 的定义域上限就是 1 —— 所以洗一次之后，你手里的牌堆与\"完全随机\"的距离就是**最大可能的那个值**。这不是\"接近没洗\"，是\"等于没洗\"。","一次 2-洗牌最多产生 2 个上升段（下降数 ≤ 1）。所以可达排列恰好是 A(n,0) + A(n,1) = 2ⁿ − n 个 —— 这个数就是支持集，暴力枚举 n = 5, 6, 7 的全部标签向量得到 27 / 58 / 121，逐项相同。","闭式 P_k(σ) = C(2ᵏ + n − 1 − r(σ), n) / 2ᵏⁿ 只依赖 σ 的**上升段数** r(σ)。于是 n! 个状态被压成 n 个数：算 TV 只需要在 n 个下降类上求和，而不是在 n! 个排列上。","n = 9 有 362,880 个排列，而算它的 TV 只需要 9 行表。这就是\"九个格子\"：纤维大小 N_j = C(2ᵏ + n − 1 − j, n) 只随下降数 j 变，与排列的具体形状无关。","纤维和恒等式 Σ_j A(n, j)·N_j = aⁿ 在 n = 9、k = 1…3 上精确成立：512 / 262144 / 134217728 —— 也就是 2⁹ / 4⁹ / 8⁹。它把\"每个标签向量都被算了一次、且只算一次\"变成了一个可核对的等式。","为什么输出分布不匀？看 n = 9、k = 3：纤维大小 N_j 在 j = 0 处最大（11440 个标签向量全都映射到那**一个**排列，也就是原封不动的那副牌），随 j 单调降到 1；而排列数 A(9, j) 是**中间高**的，在 j = 4 处取到峰值。两条曲线错位 —— 一边按 j 递减、一边按 j 中间高 —— 所以\"最容易被洗出来的排列\"和\"最多的排列\"根本不是同一批。这就是 TV 距离的全部来源。","闭式与\"在 n! 个状态上跑马尔可夫链\"的穷举对账，n = 4…8 共 51 个 (n, k) 点，最大偏差 1.17e-12（双精度残差量级）。n = 8 时链有 40,320 个状态 × 256 个动作 = 10,321,920 个表项，建表 579 毫秒。","n = 52 的 TV 表与 Bayer–Diaconis (1992) 发表值 k = 4…9 六项全中，最大偏差 4.50e-4。注意发表值只到三位小数，所以这个偏差里有一部分是**发表的舍入**，不全是模型误差。","「洗七次」不是民间传说。实测 TV 首次 ≤ 0.5 恰好落在 k = 7（值 0.3341）；k = 6 是 0.6135，k = 8 是 0.1672。其余三个阈值：k*(0.25) = 8，k*(0.1) = 9，k*(0.01) = 13。","k*(0.5) 对 log₂ n 的实测斜率是 1.442（n = 8…52 的 12 档），文献那条 (3/2)log₂n 是 1.50，差 3.84%。但 r² 只有 0.955 —— 这个线性关系本身并不完美，见边界段。","cutoff 是一条**有宽度的斜线**，不是一条线。TV 从 0.5 掉到 0.1 只花 2–3 次；而在 n = 2…52 的 18 档上，这个宽度**一次都没超过 3**。洗牌不是\"越洗越随机\"，是\"在某个 k 附近突然掉下去\"。","这条斜线为什么这么窄？因为衰减是**几何**的：离均匀分布的距离每洗一次大约乘上 λ₂ = 1/2。于是阈值从 0.5 改到 0.1（差 5 倍）只需要 log₂5 = 2.32 次，实测宽度是 9 − 7 = 2；改到 0.01（差 50 倍）需要 log₂50 = 5.64 次，实测是 13 − 7 = 6。**窗口的宽度是阈值的对数宽度，不是阈值的宽度。**","三种洗法的价钱随 n 涨得完全不一样。交错洗牌的 λ₂ 恒为 0.5000（与 n 无关，这是 2-洗牌特有的：a-洗牌的特征值是 1/a 的幂）；而两条逐张链的 λ₂ = 1 − 2/n，随 n 趋近 1。实测三条链的 λ₂ 与解析值最大偏差 3.1e-5。","n = 52 时，交错洗牌只要 7 次（闭式精确算出，不是外推）；随机对换按实测 λ₂ 外推要 102.7 次，顶牌插回要 205.5 次 —— 分别差 14.7 倍与 29.4 倍。而且这个倍数**随 n 无界增长**：交错洗牌的价钱是 log n 量级，逐张链是 n log n 量级。","文献的标度律是**上界**不是估计。在 n = 8 上把实测与公式摆在一起：随机对换 实测 6 次 vs 公式 8.32 次（高 1.39 倍）；顶牌插回 实测 9 次 vs 公式 16.64 次（高 1.85 倍）。所以本页凡引用 (1/2)·n·ln n 与 n·ln n，都只当数量级用。","五把尺子量出的混合时间从 2 到 14，差 7.0 倍：χ² 与 L² 在第 2 次就说\"混好了\"，KL 说第 5 次，全变差第 9 次，而分离距离要等到第 14 次。**\"混好了没有\"取决于你用什么尺子量。**","分离距离恒 ≥ 全变差（n = 12 与 n = 52 的全部 k 上成立，最大差 0.8461）。原因很干净：分离距离盯的是**最坏的那个排列**，全变差看的是全部质量的一半。","但\"五把尺子\"这个说法本身被数据修正了：χ² 与 L² 归一化之后是**同一条曲线**，因为 L² 的定义就是 χ²/n!，而 n! 与 k 无关。逐点核了 n = 52 的全部 26 档：l2/chi2 落在 1.240e-68 与 1.240e-68 之间，相对差小于 1e-12，而这个常数就是 1/52! = 1.240e-68。所以五把尺子里真正独立的只有 4 把。","熵那一节给出一个反直觉的数：n = 52 时，k 次洗牌消耗 260 个随机比特，在 k = 5 时就超过了 log₂(52!) = 225.58 比特 —— 但那一刻 TV 还有 0.9237。**比特够 ≠ 随机了。**真正的混合要等到 k = 9。","特征值：2-洗牌链的谱是 1, 1/2, …, 1/2ⁿ⁻¹，其中 1/2ⁱ 的重数等于**恰有 n − i 个轮换的排列数**（第一类斯特林数）。n = 6 的重数是 1 / 15 / 85 / 225 / 274 / 120，加起来正好 720 = 6!。关键在于**除 λ₂ 以外的特征值有多小**：n = 52 时第三大的是 1/4，最小的只有 2⁻⁵¹ ≈ 4.44e-16 —— 一次洗牌就衰减到不可见。所以整条链的收敛速度**只由 1/2 一个数决定**，这正是 λ₂ = 1/2 与 n 无关的原因。","trace(Qᵏ) 四路对账（全起点暴力 / 只跑单位排列起点再乘 n! / 闭式 / 文献特征值幂和）在 n = 4, 5, 6 × k = 1…5 上逐点相同，最大偏差 0。四路算的是同一个量，走的是四条完全不同的路 —— 这才叫对账。","墙在这里：n = 9 的链要 1.86e+8 个表项（按本机实测吞吐约 10.42 秒），n = 10 要 3.72e+9 个表项（3.5 分钟），n = 52 要 1.10e+34 个（约 6.46e+68 年）。**闭式是唯一能走到 52 的路。**"],"boundaries":["本装置的\"洗牌\"是 GSR a-洗牌：给每张牌一个独立的 [0, a) 均匀标签，按标签做一次**稳定**排序。真实人手洗牌还有牌与牌之间的相关性、切牌深度偏差、以及不完美的交错，都不在这个模型里。","n ≤ 8 时有全状态马尔可夫链做对照（8! = 40,320 个状态 × 256 个动作 = 1,032 万表项，建表 579 毫秒）。**n ≥ 9 没有穷举对照，只有闭式。** 闭式本身在 n ≤ 8 上与链逐点吻合，这是它可信的全部理由。","n = 52 的 TV 值来自闭式，不是模拟。它可信的前提是 GSR 模型本身 —— 本装置没有验证\"真实的人手洗牌是不是 GSR\"，那是另一个实验。","文献对照（Bayer–Diaconis 1992）只有 6 个点（k = 4…9），而且是**四舍五入到三位小数**发表的。最大偏差 4.50e-4 里有一部分是发表的舍入，不全是模型误差。本装置没有资格说\"我的比文献更准\"。","k*(0.5) = 1.442·log₂n − 1.436 是 n ∈ [8, 52] 这一区间上的**有效**斜率（拟合只用了 n ≥ 8 的 12 档），不是渐近斜率。r² = 0.955，也就是说这条直线只解释了 95.5% 的方差 —— 剩下的是整数化（k 只能取整数）造成的。小 n 那几档（n = 2…7）根本不在这条线上。","三条链里的\"随机对换\"与\"顶牌插回\"都**含\"原地不动\"**（概率各为 1/n），这才能得到文献标准值 λ₂ = 1 − 2/n。若把动作集换成\"不含原地的对换\"（n(n−1)/2 个动作），λ₂ 会变成 1 − 1/(n−1) —— 自洽但不是文献里的那条链。**并列/原地规则是一等公民，不是实现细节。**","两条逐张链在 n = 52 上**无法枚举**，那两个 102.7 次与 205.5 次都是按实测 λ₂ = 1 − 2/n 加上文献标度律的外推，不是测量值。交错洗牌那个 7 次是闭式精确算出来的。这两类数字在页面上必须分开标注。","五把尺子里，χ² 是相对均匀分布的 χ² 距离（对 2-洗牌它恰好等于在 n 个下降类上的 Σ(w_j−q_j)²/q_j），L² 是 Σ_σ(P_k(σ) − q(σ))²（**未归一化**的平方 ℓ² 距离）。两者的**绝对尺度依赖状态空间大小**，跨 n 不可比 —— 所以本页只报\"衰减到第 1 步的 1/10 所需的 k\"。","更要紧的是：**χ² 与 L² 不是两把独立的尺子**。L² 的定义就是 χ²/n!，而 n! 与 k 无关，所以两者归一化后逐点相等（本装置在 n = 52 的全部 26 档上核过，l2/chi2 恒等于 1/52!，相对差 < 1e-12）。页面上把它们画成一条实线加一条重合的虚线，就是为了让这件事看得见 —— **\"我用了五个指标\"经常等于\"我用了一个指标算了两遍\"。**","熵那一节的\"随机比特数\"是 k·n（每次 2-洗牌每张牌消耗 1 比特），这是**消耗量**不是**信息量**。输出分布的熵是另一回事。两者在 k = 5 处交叉，那个交叉**没有**\"信息够了\"的含义。","λ₂ 是用幂迭代估的（去掉均匀分量后的 L2 范数衰减率）。迭代步数太多时 L2 范数会下溢到浮点残差平台、比值恒为 1.0；本装置的做法是先定位平台、再取平台上方的点估斜率。实测三条链的 λ₂ 与解析值偏差 ≤ 3.1e-5，但这个精度**不是**逐位精确。","交错洗牌的 λ₂ = 1/2 与 n 无关，这是 **2-洗牌**特有的（a-洗牌的特征值是 1/a 的幂）。换成 3-洗牌，λ₂ 就是 1/3，整页的\"七次\"要改成别的数。","本页所有\"混合时间\"都用\"全变差 ≤ ε\"定义，且**从排好序的初始牌堆出发**。从别的初始分布出发数值不同（谱隙相同、常数不同）。","n = 52 的支持集占比 5.584e-53 是用 BigInt 精确算出的分子分母再转成双精度。它的对数（-52.2531）是准的，但那个绝对值本身无法在双精度里逐位表示 —— 双精度能表示的最小正规数是约 2.2×10⁻³⁰⁸，所以本页报的是有效数字，不是精确值。","同样地，k = 1 的 TV 从 n = 26 起在双精度里显示成 1.0000，那是**舍入**不是\"精确等于 1\"。精确式 1 − (2ⁿ − n)/n!在 n = 52 时是 1 − 5.58e-53。本页凡写\"等于 1\"的地方，指的都是\"双精度下不可分辨\"，不是数学上的相等。"],"verify":[["闭式 vs 暴力标签枚举","n = 4…8，枚举全部 2ᵏⁿ 个标签向量逐个统计","逐点相同（自检 B 段）"],["闭式 vs 全状态马尔可夫链","n = 4…8，n! 状态 × 2ⁿ 动作","51 点，最大偏差 1.17e-12"],["n = 52 的 TV 表","对照 Bayer–Diaconis (1992) 发表值","6/6 命中，最大偏差 4.50e-4"],["支持集 = 2ⁿ − n","暴力枚举 n = 5, 6, 7 的全部标签向量","27 / 58 / 121，逐项相同"],["纤维和恒等式","Σ_j A(n,j)·N_j = aⁿ，n = 9，k = 1…3","512 / 262144 / 134217728，精确相等"],["trace(Qᵏ) 四路对账","暴力全起点 / 返回概率×n! / 闭式 / 文献特征值幂和","n = 4,5,6 × k = 1…5 逐点相同"],["特征值重数","c(n, n−i)（第一类斯特林数），n = 6 与 n = 12","n = 6 求和 = 720 = 6!"],["固定点期望","1 + 1/a + … + 1/aⁿ⁻¹ vs 枚举 aⁿ 个标签向量","逐项相同（自检 C 段）"],["λ₂ 实测 vs 解析","幂迭代 vs 0.5 / 1 − 2/n（12 组）","最大偏差 3.1e-5"],["分离距离 ≥ 全变差","n = 12 与 n = 52 的全部 k","恒成立，最大差 0.8461"],["输出熵 ≤ log₂(n!)","n = 12 与 n = 52，k = 1…14","恒成立"],["概率归一 Σ w_j = 1","全部 (n, k) 组合","恒成立（自检 F 段）"],["决定论","同一种子两次运行，状态与输出逐位相同","通过（自检 E 段）"],["模型自检","三套独立真值（暴力枚举 / 外部文献 / 闭式解）","38/38 全绿"],["真实浏览器渲染","chrome-headless-shell，三档视口 1400 / 480 / 360","见页脚"]]};
+</script>
+<script>
+/* ---- ui.js（界面与交互） ---- */
+/* ============================================================
+ * 《忘记起点》 ui.js —— 界面、图表、探针
+ *
+ * 三条不能省的规矩（都是真事故）：
+ *   1. SVG 一律用 openTag() 开 —— tag() 总是补闭标签，用它开 <svg>
+ *      会得到一个当场闭合的空 SVG，后面所有图元都成了它的兄弟节点，
+ *      DOM 里数得出来、屏幕上什么都没有（《熵之彼岸》11 张图全空而 173 项断言全绿）。
+ *   2. 画之前过滤非有限数，并统计丢弃数；探针断言刻度里没有 NaN ——
+ *      一个 NaN 会吃掉整条轴，而刻度文字还在。
+ *   3. 一切"画出来没有"的断言读 getBoundingClientRect()，
+ *      不读 style.width、不数元素个数。
+ * ========================================================== */
+(function () {
+  'use strict';
+  var A = window.__ANALYSIS__;
+  var C = window.ShuffleCore;
+  var D = A.derived;
+
+  /* ---------------- 配色（与 style.css 同一套） ---------------- */
+  var COL = ['#2b6cb0', '#7b3fa0', '#c05621', '#0f766e', '#9b2c2c'];
+  var INK = '#1b2330', INK2 = '#4a5568', INK3 = '#7a869a', GRID = '#eef1f6', LINE = '#dde3ec';
+
+  /* ---------------- 字符串工具 ---------------- */
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function attrsToStr(a) {
+    var out = '';
+    if (!a) return out;
+    for (var k in a) if (Object.prototype.hasOwnProperty.call(a, k)) {
+      out += ' ' + k + '="' + esc(a[k]) + '"';
+    }
+    return out;
+  }
+  /* 只开不闭 —— 开容器（svg / g / table）必须用它 */
+  function openTag(name, attrs) { return '<' + name + attrsToStr(attrs) + '>'; }
+  function tag(name, attrs, text) {
+    return openTag(name, attrs) + esc(text === undefined || text === null ? '' : text) + '</' + name + '>';
+  }
+  function $id(x) { return document.getElementById(x); }
+  /* 显示层统一把 **加粗** 变成 <b>（只做这一个替换，不转义 ——
+     页面上的 <b> 标签是我手写的，转义会把它们变成字面文本）。
+     放在这里而不是每个调用点，是为了让"漏了一个"不可能发生。 */
+  function md(s) { return String(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>'); }
+  function setText(id, s) { var e = $id(id); if (e) e.innerHTML = md(s); }
+
+  function fmt(v, d) {
+    if (v === null || v === undefined || !isFinite(v)) return '—';
+    return Number(v).toFixed(d === undefined ? 3 : d);
+  }
+  function sci(v, d) {
+    if (v === null || v === undefined || !isFinite(v)) return '—';
+    if (v === 0) return '0';
+    return Number(v).toExponential(d === undefined ? 2 : d);
+  }
+  function commas(v) { return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function bigStr(v) { return v === null || v === undefined ? '—' : commas(String(v)); }
+
+  /* ============================================================
+   * 刻度
+   * ========================================================== */
+  function niceTicks(lo, hi, want) {
+    var span = hi - lo;
+    if (!(span > 0)) return [lo];
+    var raw = span / Math.max(1, want);
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var mults = [1, 2, 2.5, 5, 10], step = mag * 10;
+    for (var i = 0; i < mults.length; i++) {
+      if (span / (mag * mults[i]) <= want) { step = mag * mults[i]; break; }
+    }
+    var out = [], v = Math.ceil(lo / step) * step, guard = 0;
+    while (v <= hi + step * 1e-6 && guard++ < 200) {
+      out.push(Math.abs(v) < step * 1e-9 ? 0 : v);
+      v += step;
+    }
+    return out;
+  }
+
+  /* ============================================================
+   * 折线图（唯一的折线渲染器）
+   * ========================================================== */
+  function lineChart(cfg) {
+    var W = cfg.w || 720, H = cfg.h || 320;
+    var logY = !!cfg.logY;
+    var showLegend = cfg.legend !== false;
+
+    /* 先把系列整理出来 —— 因为图例要占的高度取决于有几条线，
+       而绘图区上边界又取决于图例高度。顺序反了就会出现"图例压在曲线上"。 */
+    var series = [];
+    (cfg.series || []).forEach(function (s, i) {
+      var q = [];
+      (s.points || []).forEach(function (p) {
+        var x = p[0], y = p[1];
+        if (!isFinite(x) || !isFinite(y)) return;
+        if (logY && y <= 0) return;
+        q.push([x, y]);
+      });
+      if (q.length) {
+        series.push({
+          name: s.name, points: q, dash: !!s.dash, dots: !!s.dots,
+          color: s.color || COL[i % COL.length]
+        });
+      }
+    });
+    if (!series.length) return '<p class="chart-note">（没有可画的点）</p>';
+
+    var legendH = showLegend ? series.length * 15 + 6 : 0;
+    var M = {
+      l: cfg.ml || 70, r: cfg.mr || 22,
+      t: cfg.mt || (14 + legendH),
+      b: cfg.mb || 48
+    };
+    var pw = W - M.l - M.r, ph = H - M.t - M.b;
+
+    var allX = [], allY = [];
+    series.forEach(function (s) {
+      s.points.forEach(function (p) { allX.push(p[0]); allY.push(p[1]); });
+    });
+    var xMin = cfg.xMin !== undefined ? cfg.xMin : Math.min.apply(null, allX);
+    var xMax = cfg.xMax !== undefined ? cfg.xMax : Math.max.apply(null, allX);
+    var yMin = cfg.yMin !== undefined ? cfg.yMin : Math.min.apply(null, allY);
+    var yMax = cfg.yMax !== undefined ? cfg.yMax : Math.max.apply(null, allY);
+    if (!(xMax > xMin)) xMax = xMin + 1;
+    if (!(yMax > yMin)) yMax = yMin + 1;
+
+    function ly(v) { return logY ? Math.log10(v) : v; }
+    var y0 = ly(yMin), y1 = ly(yMax);
+    function PX(v) { return M.l + pw * (v - xMin) / (xMax - xMin); }
+    function PY(v) { return M.t + ph - ph * (ly(v) - y0) / (y1 - y0); }
+
+    var out = [];
+    out.push(openTag('svg', {
+      viewBox: '0 0 ' + W + ' ' + H, width: W, height: H,
+      role: 'img', 'aria-label': cfg.aria || '折线图'
+    }));
+
+    /* 网格 + y 刻度 */
+    var yt = [];
+    if (logY) {
+      for (var e = Math.floor(y0); e <= Math.ceil(y1); e++) yt.push(Math.pow(10, e));
+    } else {
+      yt = niceTicks(yMin, yMax, 5);
+    }
+    var yFmt = cfg.yFmt || function (v) { return String(Math.round(v * 1000) / 1000); };
+    yt.forEach(function (v) {
+      if (v < yMin * (1 - 1e-9) || v > yMax * (1 + 1e-9)) return;
+      var y = PY(v);
+      out.push(tag('line', { x1: M.l, y1: y, x2: M.l + pw, y2: y, stroke: GRID, 'stroke-width': 1 }));
+      out.push(tag('text', {
+        x: M.l - 7, y: y + 4, 'text-anchor': 'end', 'font-size': 10.5, fill: INK3
+      }, yFmt(v)));
+    });
+
+    /* x 刻度 */
+    var xt = niceTicks(xMin, xMax, cfg.xTicks || 6);
+    var xFmt = cfg.xFmt || function (v) { return String(Math.round(v * 100) / 100); };
+    xt.forEach(function (v) {
+      if (v < xMin - 1e-9 || v > xMax + 1e-9) return;
+      var x = PX(v);
+      out.push(tag('line', { x1: x, y1: M.t, x2: x, y2: M.t + ph, stroke: GRID, 'stroke-width': 1 }));
+      out.push(tag('text', {
+        x: x, y: M.t + ph + 16, 'text-anchor': 'middle', 'font-size': 10.5, fill: INK3
+      }, xFmt(v)));
+    });
+
+    /* 轴线 */
+    out.push(tag('line', { x1: M.l, y1: M.t, x2: M.l, y2: M.t + ph, stroke: LINE, 'stroke-width': 1.2 }));
+    out.push(tag('line', { x1: M.l, y1: M.t + ph, x2: M.l + pw, y2: M.t + ph, stroke: LINE, 'stroke-width': 1.2 }));
+
+    /* 曲线 */
+    series.forEach(function (s) {
+      var d = '';
+      s.points.forEach(function (p, i) {
+        d += (i ? 'L' : 'M') + (Math.round(PX(p[0]) * 100) / 100) + ' ' +
+          (Math.round(PY(p[1]) * 100) / 100) + ' ';
+      });
+      out.push(tag('path', {
+        d: d.trim(), fill: 'none', stroke: s.color,
+        'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+        'stroke-dasharray': s.dash ? '6 4' : ''
+      }));
+      if (s.dots) {
+        s.points.forEach(function (p) {
+          out.push(tag('circle', {
+            cx: Math.round(PX(p[0]) * 100) / 100, cy: Math.round(PY(p[1]) * 100) / 100,
+            r: 3, fill: s.color
+          }));
+        });
+      }
+    });
+
+    /* 轴标题 */
+    if (cfg.xLabel) {
+      out.push(tag('text', {
+        x: M.l + pw / 2, y: H - 8, 'text-anchor': 'middle', 'font-size': 11.5, fill: INK2
+      }, cfg.xLabel));
+    }
+    if (cfg.yLabel) {
+      out.push(tag('text', {
+        x: 12, y: M.t + ph / 2, 'text-anchor': 'middle', 'font-size': 11.5, fill: INK2,
+        transform: 'rotate(-90 12 ' + (M.t + ph / 2) + ')'
+      }, cfg.yLabel));
+    }
+
+    /* 图例：画在绘图区**上方**预留出来的那条带里 */
+    if (showLegend) {
+      var lx = M.l + 6;
+      series.forEach(function (s, i) {
+        var yy = 16 + i * 15;
+        out.push(tag('line', {
+          x1: lx, y1: yy, x2: lx + 18, y2: yy, stroke: s.color, 'stroke-width': 2.4,
+          'stroke-dasharray': s.dash ? '6 4' : ''
+        }));
+        out.push(tag('text', { x: lx + 23, y: yy + 4, 'font-size': 10.5, fill: INK2 }, s.name));
+      });
+    }
+
+    out.push('</svg>');
+    return out.join('');
+  }
+
+  /* ============================================================
+   * 竖条图（对数刻度可选；给渲染下限，别让"干净的"和"没画"长得一样）
+   * ========================================================== */
+  function vBars(cfg) {
+    var W = cfg.w || 720, H = cfg.h || 300;
+    var M = { l: cfg.ml || 66, r: cfg.mr || 18, t: cfg.mt || 26, b: cfg.mb || 52 };
+    var pw = W - M.l - M.r, ph = H - M.t - M.b;
+    var bars = (cfg.bars || []).filter(function (b) { return isFinite(b.value) && b.value >= 0; });
+    if (!bars.length) return '<p class="chart-note">（没有可画的柱子）</p>';
+
+    var maxV = bars.reduce(function (a, b) { return Math.max(a, b.value); }, 0);
+    var log = !!cfg.log;
+    function frac(v) {
+      if (maxV <= 0) return 0;
+      if (log) return Math.log10(v + 1) / Math.log10(maxV + 1);
+      return v / maxV;
+    }
+    var bw = pw / bars.length;
+    var inner = Math.max(4, Math.min(58, bw * 0.62));
+
+    var out = [];
+    out.push(openTag('svg', {
+      viewBox: '0 0 ' + W + ' ' + H, width: W, height: H,
+      role: 'img', 'aria-label': cfg.aria || '条形图'
+    }));
+
+    var yt = log
+      ? [1, 10, 100, 1000, 10000, 100000, 1000000].filter(function (v) { return v <= maxV * 1.02; })
+      : niceTicks(0, maxV, 5);
+    yt.forEach(function (v) {
+      var f = frac(v), y = M.t + ph - ph * f;
+      out.push(tag('line', { x1: M.l, y1: y, x2: M.l + pw, y2: y, stroke: GRID, 'stroke-width': 1 }));
+      out.push(tag('text', {
+        x: M.l - 7, y: y + 4, 'text-anchor': 'end', 'font-size': 10.5, fill: INK3
+      }, cfg.yFmt ? cfg.yFmt(v) : String(v)));
+    });
+    out.push(tag('line', { x1: M.l, y1: M.t + ph, x2: M.l + pw, y2: M.t + ph, stroke: LINE, 'stroke-width': 1.2 }));
+
+    bars.forEach(function (b, i) {
+      var f = frac(b.value);
+      var h = Math.max(cfg.minFrac ? cfg.minFrac * ph : 1.5, ph * f);
+      var x = M.l + i * bw + (bw - inner) / 2;
+      var y = M.t + ph - h;
+      out.push(tag('rect', {
+        class: 'bar', x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100,
+        width: Math.round(inner * 100) / 100, height: Math.round(h * 100) / 100,
+        fill: b.color || COL[i % COL.length], rx: 2
+      }));
+      out.push(tag('text', {
+        x: M.l + i * bw + bw / 2, y: y - 6, 'text-anchor': 'middle',
+        'font-size': 10.5, fill: INK2
+      }, b.top === undefined ? String(b.value) : b.top));
+      out.push(tag('text', {
+        x: M.l + i * bw + bw / 2, y: M.t + ph + 16, 'text-anchor': 'middle',
+        'font-size': 10.5, fill: INK3
+      }, b.label));
+    });
+
+    if (cfg.xLabel) {
+      out.push(tag('text', {
+        x: M.l + pw / 2, y: H - 8, 'text-anchor': 'middle', 'font-size': 11.5, fill: INK2
+      }, cfg.xLabel));
+    }
+    if (cfg.yLabel) {
+      out.push(tag('text', {
+        x: 12, y: M.t + ph / 2, 'text-anchor': 'middle', 'font-size': 11.5, fill: INK2,
+        transform: 'rotate(-90 12 ' + (M.t + ph / 2) + ')'
+      }, cfg.yLabel));
+    }
+    out.push('</svg>');
+    return out.join('');
+  }
+
+  /* ============================================================
+   * 表格
+   * ========================================================== */
+  function renderTable(id, tbl, hiCols, okCols) {
+    var e = $id(id);
+    if (!e || !tbl) return;
+    var h = '<thead><tr>';
+    tbl.head.forEach(function (c) { h += '<th>' + esc(c) + '</th>'; });
+    h += '</tr></thead><tbody>';
+    tbl.rows.forEach(function (r) {
+      h += '<tr>';
+      r.forEach(function (c, i) {
+        var cls = '';
+        if (okCols && okCols.indexOf(i) >= 0) cls = ' class="ok"';
+        else if (hiCols && hiCols.indexOf(i) >= 0) cls = ' class="hi"';
+        h += '<td' + cls + '>' + esc(c) + '</td>';
+      });
+      h += '</tr>';
+    });
+    h += '</tbody>';
+    e.innerHTML = h;
+  }
+
+  /* ============================================================
+   * 头版 / KPI / 结论 / 边界 / 验证表
+   * ========================================================== */
+  function renderMeta() {
+    setText('meta-line',
+      '模型：' + esc(A.meta.model) + '<br>' +
+      '闭式：' + esc(A.meta.formula) + '<br>' +
+      '模型自检 ' + A.meta.selftest + '/38 全绿　·　标定 ' + A.meta.experiments +
+      ' 组实验　·　KPI ' + A.kpi.length + ' 张　·　结论 ' + A.conclusions.length +
+      ' 条　·　边界 ' + A.boundaries.length + ' 条　·　Node ' + esc(A.meta.node));
+  }
+
+  function renderKPI() {
+    var h = '';
+    A.kpi.forEach(function (k, i) {
+      h += '<div class="kpi ' + esc(k.tone || '') + '" id="kpi-' + i + '">' +
+        '<div class="kl">' + esc(k.label) + '</div>' +
+        '<div class="kv">' + esc(k.value) + '</div>' +
+        '<div class="kn">' + esc(k.note) + '</div></div>';
+    });
+    setText('kpis', h);
+  }
+
+  function renderList(id, arr) {
+    var h = '';
+    arr.forEach(function (t) {
+      /* 先转义，再把 **加粗** 变成 <b> —— 顺序反了会把标签也转义掉 */
+      h += '<li>' + esc(t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>') + '</li>';
+    });
+    setText(id, h);
+  }
+
+  function renderVerify() {
+    var e = $id('t-verify');
+    if (!e) return;
+    var h = '<thead><tr><th>检查项</th><th>方法</th><th>结果</th></tr></thead><tbody>';
+    A.verify.forEach(function (r) {
+      h += '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td><td>' + esc(r[2]) + '</td></tr>';
+    });
+    h += '</tbody>';
+    e.innerHTML = h;
+    setText('foot-line',
+      '验证表 ' + A.verify.length + ' 行。模型自检 ' + A.meta.selftest +
+      '/38 全绿；构建期特征串 + 数据完整性 + 硬约束全部通过；' +
+      '真实浏览器（chrome-headless-shell）三档视口 1400 / 480 / 360 px 全部 scrollWidth = clientWidth。' +
+      '　数据源 results.json 生成于 ' + esc(A.meta.sourceSavedAt) + '。');
+  }
+
+  /* ============================================================
+   * 各章图表
+   * ========================================================== */
+  function renderSupport() {
+    setText('c-support', lineChart({
+      w: 900, h: 340, ml: 74,
+      series: [{ name: 'log₁₀（一次洗牌后可达排列 ÷ n!）', points: A.charts.support.points }],
+      xMin: 4, xMax: 52, yMin: A.charts.support.yMin, yMax: 0,
+      xLabel: '牌的张数 n', yLabel: 'log₁₀（占比）',
+      yFmt: function (v) { return String(Math.round(v)); },
+      aria: '一次洗牌后支持集占比的对数曲线'
+    }));
+  }
+
+  function renderFiber(n) {
+    n = n || 9;
+    var A9 = C.eulerianBig(n);
+    var ptsF = [], ptsA = [];
+    for (var j = 0; j < n; j++) {
+      var c = C.fiberCount(n, 3, j);
+      if (c > 0n) ptsF.push([j, Math.log10(Number(c))]);
+      if (A9[j] > 0n) ptsA.push([j, Math.log10(Number(A9[j]))]);
+    }
+    var allY = ptsF.concat(ptsA).map(function (p) { return p[1]; });
+    setText('c-fiber', lineChart({
+      w: 760, h: 340, ml: 66,
+      series: [
+        { name: '纤维大小 N_j（k = 3）', points: ptsF, dots: true },
+        { name: '排列数 A(' + n + ', j)', points: ptsA, dots: true }
+      ],
+      xMin: 0, xMax: n - 1,
+      yMin: Math.floor(Math.min.apply(null, allY)) - 0.5,
+      yMax: Math.ceil(Math.max.apply(null, allY)) + 0.5,
+      xLabel: '下降数 j', yLabel: 'log₁₀（个数）',
+      xTicks: Math.min(7, n),
+      yFmt: function (v) { return String(Math.round(v)); },
+      aria: '纤维大小与排列数随下降数变化'
+    }));
+  }
+
+  function renderE3() {
+    setText('c-e3', lineChart({
+      w: 560, h: 300, ml: 60,
+      series: A.charts.e3.series,
+      xMin: 0, xMax: A.charts.e3.kMax, yMin: 0, yMax: 1,
+      xLabel: '洗几次 k（n = 8）', yLabel: '全变差 TV',
+      aria: '闭式与全状态马尔可夫链的 TV 曲线'
+    }));
+  }
+
+  function renderWallChart(id) {
+    setText(id, lineChart({
+      w: id === 'c-wall' ? 560 : 900, h: id === 'c-wall' ? 300 : 340, ml: 66,
+      series: [{ name: 'log₁₀(n!)', points: A.charts.wall.points, dots: true }],
+      xMin: 4, xMax: A.charts.wall.xMax, yMin: 0, yMax: 70,
+      xLabel: '牌的张数 n', yLabel: 'log₁₀(n!)',
+      yFmt: function (v) { return String(Math.round(v)); },
+      aria: 'log10(n!) 随牌数增长'
+    }));
+  }
+
+  function renderTv52() {
+    setText('c-tv52', lineChart({
+      w: 900, h: 340, ml: 66,
+      series: A.charts.tv52.series,
+      xMin: 0, xMax: A.charts.tv52.kMax, yMin: 0, yMax: 1.02,
+      xLabel: '洗几次 k', yLabel: '全变差 TV',
+      aria: 'n = 52 的 TV 曲线与文献对照点'
+    }));
+  }
+
+  function renderCutoff() {
+    setText('c-cutoff', lineChart({
+      w: 560, h: 350, ml: 60,
+      series: A.charts.cutoff.series,
+      xMin: 1, xMax: A.charts.cutoff.xMax, yMin: 0, yMax: A.charts.cutoff.yMax + 1,
+      xLabel: 'log₂ n', yLabel: 'k*(ε)',
+      yFmt: function (v) { return String(Math.round(v)); },
+      aria: 'k*(ε) 随 log2 n 变化'
+    }));
+  }
+
+  function renderWidth() {
+    setText('c-width', vBars({
+      w: 560, h: 300, ml: 54, mb: 54,
+      bars: A.charts.width.points.map(function (p) {
+        return { label: String(p[0]), value: p[1], color: p[1] >= 3 ? '#c05621' : '#2b6cb0' };
+      }),
+      yFmt: function (v) { return String(Math.round(v)); },
+      xLabel: '牌的张数 n', yLabel: '窗口宽度（次）',
+      aria: 'cutoff 窗口宽度随 n 变化'
+    }));
+  }
+
+  function renderChains(n) {
+    n = n || 8;
+    var kMax = 0, series = [];
+    ['riffle', 'transpose', 'toprandom'].forEach(function (kind, i) {
+      var rec = A.charts.chainsByN && A.charts.chainsByN[kind + '_' + n];
+      if (!rec) return;
+      series.push({ name: rec.name, points: rec.points, color: COL[i] });
+      rec.points.forEach(function (p) { kMax = Math.max(kMax, p[0]); });
+    });
+    if (!series.length) {
+      /* 回退：静态的三条 n = 8 曲线 */
+      series = A.charts.chains.series;
+      kMax = A.charts.chains.kMax;
+    }
+    setText('c-chains', lineChart({
+      w: 560, h: 300, ml: 60,
+      series: series,
+      xMin: 0, xMax: kMax || 28, yMin: 0, yMax: 1.02,
+      xLabel: '洗几次 k（n = ' + n + '）', yLabel: '全变差 TV',
+      aria: '三条链的 TV 曲线'
+    }));
+  }
+
+  function renderLambda() {
+    setText('c-lambda', lineChart({
+      w: 560, h: 370, ml: 62,
+      series: A.charts.lambda.series,
+      xMin: A.charts.lambda.xMin, xMax: A.charts.lambda.xMax,
+      yMin: 0.45, yMax: 0.82, xTicks: 4,
+      xLabel: '牌的张数 n', yLabel: '第二特征值 λ₂',
+      xFmt: function (v) { return String(Math.round(v)); },
+      yFmt: function (v) { return v.toFixed(2); },
+      aria: '三条链的第二特征值'
+    }));
+  }
+
+  function renderDist() {
+    setText('c-dist', lineChart({
+      w: 900, h: 430, ml: 70,
+      series: A.charts.dist.series,
+      xMin: 1, xMax: A.charts.dist.kMax,
+      yMin: A.charts.dist.yMin, yMax: 0,
+      xLabel: '洗几次 k（n = 52）', yLabel: 'log₁₀（距离 ÷ 第 1 步的距离）',
+      yFmt: function (v) { return String(Math.round(v)); },
+      aria: '五种距离的衰减曲线'
+    }));
+  }
+
+  function renderEntropy() {
+    setText('c-entropy', lineChart({
+      w: 900, h: 340, ml: 70,
+      series: A.charts.entropy.series,
+      xMin: 1, xMax: A.charts.entropy.kMax, yMin: 0, yMax: A.charts.entropy.yMax,
+      xLabel: '洗几次 k', yLabel: '比特',
+      yFmt: function (v) { return String(Math.round(v)); },
+      aria: '输出分布的熵随 k 变化'
+    }));
+  }
+
+  function renderSpectrum() {
+    var bars = A.charts.spectrum.bars.map(function (b, i) {
+      return {
+        label: '1/2^' + b.i,
+        value: b.mult,
+        top: commas(b.mult),
+        color: i === 0 ? '#9b2c2c' : (i === 1 ? '#c05621' : '#2b6cb0')
+      };
+    });
+    setText('c-spectrum', vBars({
+      w: 900, h: 340, ml: 70, log: true, minFrac: 0.012,
+      bars: bars,
+      yFmt: function (v) { return commas(v); },
+      xLabel: '特征值 1/2^i（n = 12）', yLabel: '重数（对数刻度）',
+      aria: '特征值重数'
+    }));
+  }
+
+  /* ============================================================
+   * 派生读数
+   * ========================================================== */
+  function oneLive(n) {
+    var nf = C.factBig(n);
+    var sup = C.supportAfter1(n);
+    var frac = C.ratioBig(BigInt(sup), nf);
+    var tv = C.tvExact(n, 1);
+    var runs = 2;
+    return 'n = ' + n + '：一次洗牌后可到 ' + bigStr(sup) + ' 种排列（= 2^' + n + ' − ' + n +
+      '），占 ' + bigStr(String(nf)) + ' 种里的 ' + sci(frac, 3) + '；' +
+      'n! 有 ' + (Math.floor(C.log10State(n)) + 1) + ' 位；最多 ' + runs + ' 个上升段；' +
+      'TV(k = 1) = ' + fmt(tv, 6) + '。';
+  }
+
+  function twoLive(n) {
+    var A9 = C.eulerianBig(n);
+    var sums = [];
+    var ok = true;
+    [1, 2, 3].forEach(function (k) {
+      var acc = 0n;
+      for (var j = 0; j < n; j++) acc += A9[j] * C.fiberCount(n, k, j);
+      var want = 1n << BigInt(k * n);
+      if (acc !== want) ok = false;
+      sums.push('k=' + k + ' → ' + bigStr(String(acc)));
+    });
+    return 'n = ' + n + '：' + bigStr(String(C.factNum(n))) + ' 个排列，被 ' +
+      n + ' 个下降类分开。纤维和恒等式 Σ_j A(n,j)·N_j = (2ᵏ)ⁿ：' +
+      sums.join('，') + ' —— ' + (ok ? '三档全部精确成立。' : '有偏差！');
+  }
+
+  function fourLive(k) {
+    var tv = C.tvExact(52, k);
+    var m = D.e4Mix52;
+    var note = k === m.e50 ? '（TV 首次 ≤ 0.5 就在这里）' :
+      (k < m.e50 ? '（还没到 0.5）' : '（已低于 0.5）');
+    return 'k = ' + k + '：TV(52, ' + k + ') = ' + fmt(tv, 6) + '　' + note +
+      '　·　k*(0.25) = ' + m.e25 + '，k*(0.1) = ' + m.e10 + '，k*(0.01) = ' + m.e01 + '。';
+  }
+
+  function sevenLive(k) {
+    var d = C.distances(52, k);
+    var coins = k * 52;
+    return 'k = ' + k + '：消耗 ' + coins + ' 个随机比特；输出熵 ' + fmt(d.bits, 3) +
+      ' 比特（上限 log₂(52!) = ' + fmt(d.log2nf, 3) + '）；TV = ' + fmt(d.tv, 6) +
+      '；分离距离 = ' + fmt(d.sep, 6) + '；KL = ' + fmt(d.kl, 4) + ' 比特。';
+  }
+
+  /* 章末"关键数"行也跟滑杆走 —— 写死 n 会让正文与上方的表对不上 */
+  function oneKey(n) {
+    var nf = C.factBig(n), sup = C.supportAfter1(n);
+    var frac = C.ratioBig(BigInt(sup), nf);
+    return '壹的关键数（当前 n = ' + n + '）：支持集 ' + bigStr(sup) + '　·　占 n! 的 ' +
+      sci(frac, 3) + '　·　n! 共 ' + (Math.floor(C.log10State(n)) + 1) + ' 位　·　TV(k = 1) = ' +
+      fmt(C.tvExact(n, 1), 6) + '　·　一次洗牌最多 2 个上升段。';
+  }
+
+  function twoKey(n) {
+    var maxF = C.fiberCount(n, 3, 0), minF = null, minJ = 0;
+    for (var j = 0; j < n; j++) {
+      var c = C.fiberCount(n, 3, j);
+      if (c > 0n) { minF = c; minJ = j; }
+    }
+    var ratio = Number(maxF) / Number(minF);
+    return '贰的关键数（当前 n = ' + n + '）：' + bigStr(String(C.factNum(n))) +
+      ' 个排列被 ' + n + ' 个下降类压成 ' + n + ' 行　·　k = 3 的纤维从 j = 0 的 ' +
+      bigStr(String(maxF)) + ' 降到 j = ' + minJ + ' 的 ' +
+      bigStr(String(minF)) + '（差 ' + commas(String(Math.round(ratio))) + ' 倍）' +
+      '　·　恒等式 Σ_j A·N = (2ᵏ)ⁿ 三档精确。';
+  }
+
+  /* ============================================================
+   * 状态与调度
+   * ========================================================== */
+  var TABS = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+  var TAB_LABEL = {
+    one: '壹 · 一次洗牌等于没洗', two: '贰 · 那根箭头', three: '叁 · 九张表',
+    four: '肆 · 七次', five: '伍 · 三个价钱', six: '陆 · 五把尺子',
+    seven: '柒 · 每张牌留下多少信息', eight: '捌 · 特征值', nine: '玖 · 墙'
+  };
+  var state = { tab: 'one', oneN: 52, twoN: 9, fourK: 7, fiveN: 8, sevenK: 7 };
+
+  function renderTabs() {
+    var h = '';
+    TABS.forEach(function (t) {
+      h += '<button type="button" data-tab="' + t + '"' +
+        (t === state.tab ? ' class="on"' : '') + '>' + esc(TAB_LABEL[t]) + '</button>';
+    });
+    setText('tabs', h);
+    var nav = $id('tabs');
+    if (nav) {
+      Array.prototype.forEach.call(nav.querySelectorAll('button'), function (b) {
+        b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); });
+      });
+    }
+  }
+
+  function setTab(t) {
+    if (TABS.indexOf(t) < 0) return;
+    state.tab = t;
+    var nav = $id('tabs');
+    if (nav) {
+      Array.prototype.forEach.call(nav.querySelectorAll('button'), function (b) {
+        if (b.getAttribute('data-tab') === t) b.className = 'on';
+        else b.className = '';
+      });
+    }
+    TABS.forEach(function (x) {
+      var p = $id('p-' + x);
+      if (p) p.className = 'panel' + (x === t ? ' on' : '');
+    });
+  }
+
+  function renderReadouts() {
+    setText('ro-one',
+      '一次洗牌能到达的排列数恰好是 <b>2ⁿ − n</b>，理由很短：' +
+      '恒等排列（下降数 0）的纤维是 C(n + 1, n) = n + 1 —— 有 n + 1 种硬币结果会产出' +
+      '"原封不动"的那副牌（全 0，以及前 k 张全 0、其余全 1 的 n 种切法）；' +
+      '而下降数为 1 的排列纤维都是 1（每种硬币结果唯一确定一个）。' +
+      '于是 A(n,1) = 2ⁿ − (n + 1)，可达总数 = 1 + A(n,1) = <b>2ⁿ − n</b>。' +
+      '缺的那 n 个，正好是牌的张数。具体数字见下方读数与表格。');
+    setText('ro-two',
+      '那根箭头是 <b>多对一</b> 的：2ᵏⁿ 个标签向量进去，n! 个排列出来。' +
+      '每个排列的原像个数（纤维）只依赖它的下降数 j，公式是 N_j = C(2ᵏ + n − 1 − j, n)。' +
+      '<b>纤维随 j 单调递减，而排列数 A(n, j) 是中间高的</b> —— ' +
+      '两条曲线错位，就是"洗出来的分布不匀"的全部原因。具体数字见下方读数与表格。');
+    setText('ro-three',
+      '闭式把 ' + bigStr(D.e2StatesStr) + ' 个排列压成 9 个数（n = 9）。' +
+      '为了确认这个压缩没出错，本装置在 n = 4…8 的<b>全部</b> n! 个状态上跑了一条真的马尔可夫链：' +
+      'n = 8 时 ' + bigStr(String(D.e3N8States)) + ' 个状态 × 256 个动作 = ' +
+      bigStr(String(D.e3N8Entries)) + ' 个转移表项，建表 ' + D.e3N8BuildMs + ' 毫秒，' +
+      '然后与闭式逐点比。' + D.e3Checks + ' 个 (n, k) 点的最大偏差是 ' + sci(D.e3WorstDev, 2) +
+      ' —— 双精度残差量级，也就是"同一个数"。');
+    setText('ro-four',
+      'n = 52 时 TV 距离随 k 的下降：k = 4 还有 ' + fmt(D.e4TvAt4, 7) +
+      '，k = 6 是 ' + fmt(D.e4TvAt6, 4) + '，k = <b>7</b> 是 ' + fmt(D.e4TvAt7, 4) +
+      '（首次 ≤ 0.5），k = 8 是 ' + fmt(D.e4TvAt8, 4) + '。' +
+      'k*(0.5) 对 log₂ n 的实测斜率 ' + fmt(D.e4Slope50, 3) + '，与文献的 ' +
+      fmt(D.e4TheorySlope, 2) + ' 差 ' + fmt(D.e4SlopeRelErr * 100, 2) + '%。' +
+      '而 TV 从 0.5 掉到 0.1 只花 ' + D.e4WidthMin + '–' + D.e4WidthMax +
+      ' 次，在 ' + D.e4WidthN + ' 档 n 上一次都没超过 3 —— 这就是 cutoff 的形状。');
+    setText('ro-five',
+      '三条链的第二特征值：交错洗牌 ' + fmt(D.e5LambdaRiffle, 4) + '（与 n 无关），' +
+      '随机对换与顶牌插回都是 1 − 2/n（n = 8 时 ' + fmt(D.e5LambdaTranspose8, 4) + '）。' +
+      '实测与解析值的最大偏差 ' + sci(D.e5LambdaDev, 1) + '。' +
+      '代价上：n = 52 时交错洗牌 ' + D.e5Riffle52K + ' 次（闭式精确），' +
+      '随机对换约 ' + fmt(D.e5Slow52K, 1) + ' 次、顶牌插回约 ' + fmt(D.e5Top52K, 1) +
+      ' 次（按实测 λ₂ 加文献标度律外推）—— 差 ' + fmt(D.e5Gap, 1) + ' 倍与 ' +
+      fmt(D.e5TopGap, 1) + ' 倍，而且这个倍数随 n 无界增长。');
+    setText('ro-six',
+      '同一台洗牌机、同一个 n = 52，五种距离给出的"混好了"时刻分别是：' +
+      'χ² 第 ' + D.e6MixRel52.chi2 + ' 次、L² 第 ' + D.e6MixRel52.l2 + ' 次、KL 第 ' +
+      D.e6MixRel52.kl + ' 次、全变差第 ' + D.e6MixRel52.tv + ' 次、分离距离第 ' +
+      D.e6MixRel52.sep + ' 次 —— 最快与最慢差 ' + fmt(D.e6Spread52, 1) + ' 倍。' +
+      '分离距离恒 ≥ 全变差（最大差 ' + fmt(Math.max(D.e6SepMinusTv12, D.e6SepMinusTv52), 4) +
+      '），因为它盯的是最坏的那个排列。' +
+      '<b>但 χ² 与 L² 是同一条曲线</b>：l2/chi2 = ' + sci(D.e6L2OverChi2, 3) +
+      ' 在全部 ' + D.e6RowsAll52 + ' 档上恒定（相对差 < 1e-12），而这个常数就是 1/52!。' +
+      '所以五把尺子里独立的是 ' + D.e6IndependentRulers + ' 把。');
+    setText('ro-seven',
+      'n = 52 时，k 次洗牌消耗 k·52 个随机比特。比特数在 k = <b>' + D.e7FirstEnough52 +
+      '</b> 时就超过了 log₂(52!) = ' + fmt(D.e7Cap52, 2) + ' 比特，但那一刻 TV 还有 ' +
+      fmt(D.e7TvAtEnough, 4) + ' —— <b>比特够不等于随机了</b>。' +
+      '真正的混合（TV ≤ 0.1）要等到 k = ' + D.e7FirstMixed52 + '。' +
+      '到 k = 7 时熵还差 ' + fmt(D.e7DeficitAt7, 4) + ' 比特到顶（' +
+      fmt(D.e7DeficitFracAt7 * 100, 3) + '%）。');
+    setText('ro-eight',
+      '2-洗牌链的谱是 1, 1/2, …, 1/2ⁿ⁻¹，重数由第一类斯特林数给出：n = 6 是 ' +
+      '1 / 15 / 85 / 225 / 274 / 120，加起来 ' + bigStr(D.e8MultSum6) + ' = 6!。' +
+      'n = 12 的完整谱里，重数在 1/2^' + D.e8MultPeakI + ' 处取峰值 ' + bigStr(D.e8MultPeak) +
+      '，两端分别是 ' + bigStr(D.e8MultEdge0) + ' 与 ' + bigStr(D.e8MultEdgeLast) + '。' +
+      '关键在于<b>除 λ₂ 以外有多小</b>：第三大的是 1/4，n = 52 时最小的只有 2⁻⁵¹ ≈ ' +
+      sci(D.e8MinLambda52, 2) + '，一次洗牌就衰减到不可见。所以收敛速度只由 1/2 决定。' +
+      'trace(Qᵏ) 四路对账在 n = ' + D.e8SpecN.join('、') + ' × k = 1…' + D.e8SpecKMax +
+      ' 上最大偏差 ' + sci(D.e8SpecMaxDev, 1) + '。');
+    setText('ro-nine',
+      '全状态穷举在 n = 9 还有一口气（' + sci(D.e9Entries9, 2) + ' 个表项，约 ' +
+      durTxt(D.e9Sec9) + '），n = 10 就变成 ' + durTxt(D.e9Sec10) + '，' +
+      'n = 52 需要约 ' + durTxt(D.e9Sec52) + '。' +
+      '所以本页 n = 52 的每一个数都来自闭式，而闭式在 n ≤ 8 上与穷举逐点吻合 —— ' +
+      '这就是它有资格被外推的全部理由。');
+
+    /* n-one / n-two 跟滑杆走，在 syncControls / drive 里刷新 */
+    setText('n-three', '叁的关键数：穷举对账 ' + D.e3Checks + ' 点　·　最大偏差 ' +
+      sci(D.e3WorstDev, 2) + '　·　n = 8 建表 ' + D.e3N8BuildMs + ' 毫秒（' +
+      bigStr(String(D.e3N8Entries)) + ' 个表项）　·　每加一张牌涨 ' + D.e3Grow + ' 倍');
+    setText('n-four', '肆的关键数：k*(0.5) = ' + D.e4Mix50 + '　·　k*(0.1) = ' + D.e4Mix10 +
+      '　·　k*(0.01) = ' + D.e4Mix01 + '　·　斜率 ' + fmt(D.e4Slope50, 3) +
+      '（r² = ' + fmt(D.e4R2_50, 3) + '）　·　窗口宽度 ' + D.e4WidthMin + '–' +
+      D.e4WidthMax + '（' + D.e4WidthN + ' 档）　·　文献最大偏差 ' + sci(D.e4RefDev, 2));
+    setText('n-five', '伍的关键数：λ₂ = ' + fmt(D.e5LambdaRiffle, 4) + ' / 1−2/n　·　λ₂ 最大偏差 ' +
+      sci(D.e5LambdaDev, 1) + '　·　n = 52：' + D.e5Riffle52K + ' 次 vs ' +
+      fmt(D.e5Slow52K, 1) + ' 次 vs ' + fmt(D.e5Top52K, 1) + ' 次');
+    setText('n-six', '陆的关键数：混合时间 χ² ' + D.e6MixRel52.chi2 + ' / L² ' + D.e6MixRel52.l2 +
+      ' / KL ' + D.e6MixRel52.kl + ' / TV ' + D.e6MixRel52.tv + ' / 分离 ' +
+      D.e6MixRel52.sep + '　·　跨度 ' + fmt(D.e6Spread52, 1) + ' 倍　·　分离 ≥ TV 恒成立');
+    setText('n-seven', '柒的关键数：比特够在 k = ' + D.e7FirstEnough52 + '（TV 还有 ' +
+      fmt(D.e7TvAtEnough, 4) + '）　·　混好在 k = ' + D.e7FirstMixed52 +
+      '　·　上限 log₂(52!) = ' + fmt(D.e7Cap52, 2) + ' 比特　·　k = 7 时还差 ' +
+      fmt(D.e7DeficitAt7, 4) + ' 比特');
+    setText('n-eight', '捌的关键数：四路 trace 最大偏差 ' + sci(D.e8SpecMaxDev, 1) +
+      '　·　n = 6 重数和 ' + bigStr(D.e8MultSum6) + ' = 6!　·　n = 12 重数和 ' +
+      bigStr(D.e8MultSum12) + ' = 12!　·　2⁻⁵¹ ≈ ' + sci(D.e8MinLambda52, 2));
+    setText('n-nine', '玖的关键数：n = 9 建表 ' + sci(D.e9Entries9, 2) + ' 项（' +
+      durTxt(D.e9Sec9) + '）　·　n = 10 ' + durTxt(D.e9Sec10) + '　·　n = 52 约 ' +
+      durTxt(D.e9Sec52) + '（' + sci(D.e9Entries52, 2) + ' 个表项）　·　吞吐 ' +
+      sci(D.e9Throughput, 3) + ' 毫秒/表项');
+  }
+
+  function durTxt(sec) {
+    if (sec === null || sec === undefined || !isFinite(sec)) return '—';
+    if (sec < 1) return fmt(sec * 1000, 0) + ' 毫秒';
+    if (sec < 90) return fmt(sec, 2) + ' 秒';
+    if (sec < 3600) return fmt(sec / 60, 1) + ' 分钟';
+    if (sec < 86400 * 2) return fmt(sec / 3600, 1) + ' 小时';
+    if (sec < 31557600 * 2) return fmt(sec / 86400, 1) + ' 天';
+    var yr = sec / 31557600;
+    if (yr < 1e4) return fmt(yr, 0) + ' 年';
+    return sci(yr, 2) + ' 年';
+  }
+
+  function renderTables() {
+    renderTable('t-e1', A.tables.e1, null, null);
+    renderTable('t-e2fiber', A.tables.e2fiber, null, null);
+    renderTable('t-e3', A.tables.e3, null, null);
+    renderTable('t-e4ref', A.tables.e4ref, null, null);
+    renderTable('t-e4cut', A.tables.e4cut, null, null);
+    renderTable('t-e5', A.tables.e5, null, null);
+    renderTable('t-e5big', A.tables.e5big, null, null);
+    renderTable('t-e6', A.tables.e6, null, null);
+    renderTable('t-e6mix', A.tables.e6mix, null, null);
+    renderTable('t-e7', A.tables.e7, null, null);
+    renderTable('t-e8spec', A.tables.e8spec, null, null);
+    renderTable('t-e8eigen', A.tables.e8eigen, null, null);
+    renderTable('t-e9', A.tables.e9, null, null);
+  }
+
+  /* 动态重画 n = 9 那张纤维表（拖动滑杆时跟着变） */
+  function renderFiberTable(n) {
+    var An = C.eulerianBig(n);
+    var rows = [];
+    for (var j = 0; j < n; j++) {
+      rows.push([j, j + 1, bigStr(String(An[j])),
+        String(C.fiberCount(n, 1, j)), String(C.fiberCount(n, 2, j)),
+        String(C.fiberCount(n, 3, j))]);
+    }
+    renderTable('t-e2fiber', {
+      head: ['下降数 j', '上升段数', '排列数 A(' + n + ', j)',
+        'k=1 的纤维', 'k=2 的纤维', 'k=3 的纤维'],
+      rows: rows
+    }, null, null);
+  }
+
+  function renderAll() {
+    renderTabs();
+    setTab(state.tab);
+    renderMeta();
+    renderKPI();
+    renderReadouts();
+    renderList('conclusions', A.conclusions);
+    renderList('boundaries', A.boundaries);
+    renderVerify();
+    renderTables();
+    renderSupport();
+    renderFiber(state.twoN);
+    renderFiberTable(state.twoN);
+    renderE3();
+    renderWallChart('c-wall');
+    renderWallChart('c-wall2');
+    renderTv52();
+    renderCutoff();
+    renderWidth();
+    renderChains(state.fiveN);
+    renderLambda();
+    renderDist();
+    renderEntropy();
+    renderSpectrum();
+    syncControls();
+  }
+
+  function syncControls() {
+    var s;
+    s = $id('s-one'); if (s) s.value = String(state.oneN);
+    setText('v-one', String(state.oneN));
+    setText('ro-one-live', oneLive(state.oneN));
+    setText('n-one', oneKey(state.oneN));
+    s = $id('s-two'); if (s) s.value = String(state.twoN);
+    setText('v-two', String(state.twoN));
+    setText('ro-two-live', twoLive(state.twoN));
+    setText('h-two-fiber', '九个格子（n = ' + state.twoN + '）');
+    setText('n-two', twoKey(state.twoN));
+    s = $id('s-four'); if (s) s.value = String(state.fourK);
+    setText('v-four', String(state.fourK));
+    setText('ro-four-live', fourLive(state.fourK));
+    s = $id('sel-five'); if (s) s.value = String(state.fiveN);
+    setText('v-five', String(state.fiveN));
+    s = $id('s-seven'); if (s) s.value = String(state.sevenK);
+    setText('v-seven', String(state.sevenK));
+    setText('ro-seven-live', sevenLive(state.sevenK));
+  }
+
+  /* ============================================================
+   * 驱动接口（探针与截图共用；不依赖真实时钟）
+   * ========================================================== */
+  function driveOne(n) {
+    n = Math.max(4, Math.min(52, Math.round(n)));
+    state.oneN = n;
+    var s = $id('s-one'); if (s) s.value = String(n);
+    setText('v-one', String(n));
+    setText('ro-one-live', oneLive(n));
+    setText('n-one', oneKey(n));
+    return { n: n, support: C.supportAfter1(n), tv1: C.tvExact(n, 1) };
+  }
+  function driveTwo(n) {
+    n = Math.max(4, Math.min(12, Math.round(n)));
+    state.twoN = n;
+    var s = $id('s-two'); if (s) s.value = String(n);
+    setText('v-two', String(n));
+    renderFiber(n);
+    setText('n-two', twoKey(n));
+    renderFiberTable(n);
+    setText('ro-two-live', twoLive(n));
+    setText('h-two-fiber', '九个格子（n = ' + n + '）');
+    return { n: n, states: C.factNum(n) };
+  }
+  function driveFour(k) {
+    k = Math.max(0, Math.min(18, Math.round(k)));
+    state.fourK = k;
+    var s = $id('s-four'); if (s) s.value = String(k);
+    setText('v-four', String(k));
+    setText('ro-four-live', fourLive(k));
+    return { k: k, tv: C.tvExact(52, k) };
+  }
+  function driveFive(n) {
+    n = Math.max(5, Math.min(8, Math.round(n)));
+    state.fiveN = n;
+    var s = $id('sel-five'); if (s) s.value = String(n);
+    setText('v-five', String(n));
+    renderChains(n);
+    return { n: n };
+  }
+  function driveSeven(k) {
+    k = Math.max(1, Math.min(14, Math.round(k)));
+    state.sevenK = k;
+    var s = $id('s-seven'); if (s) s.value = String(k);
+    setText('v-seven', String(k));
+    setText('ro-seven-live', sevenLive(k));
+    var d = C.distances(52, k);
+    return { k: k, bits: d.bits, tv: d.tv, coins: k * 52, cap: d.log2nf };
+  }
+
+  /* ============================================================
+   * 探针
+   * ========================================================== */
+  function visibleCharts() {
+    var out = [];
+    Array.prototype.forEach.call(document.querySelectorAll('.chart'), function (c) {
+      var r = c.getBoundingClientRect();
+      var svg = c.querySelector('svg');
+      var rec = {
+        id: c.id, visible: r.width > 0, w: Math.round(r.width * 10) / 10,
+        h: Math.round(r.height * 10) / 10,
+        svgs: c.querySelectorAll('svg').length,
+        sw: 0, sh: 0, ticks: 0, nanTicks: 0, stray: 0, kids: 0, nanSample: []
+      };
+      if (svg) {
+        var sr = svg.getBoundingClientRect();
+        rec.sw = Math.round(sr.width * 10) / 10;
+        rec.sh = Math.round(sr.height * 10) / 10;
+        rec.kids = svg.children.length;
+        var texts = svg.querySelectorAll('text');
+        rec.ticks = texts.length;
+        Array.prototype.forEach.call(texts, function (t) {
+          var s = (t.textContent || '');
+          if (/NaN|Infinity|undefined|null/.test(s)) {
+            rec.nanTicks++;
+            if (rec.nanSample.length < 4) rec.nanSample.push(s);
+          }
+        });
+      }
+      Array.prototype.forEach.call(c.children, function (e) {
+        if (e.tagName.toLowerCase() !== 'svg') rec.stray++;
+      });
+      out.push(rec);
+    });
+    return out;
+  }
+
+  function chartBars() {
+    var out = {};
+    Array.prototype.forEach.call(document.querySelectorAll('.chart'), function (c) {
+      var r = c.getBoundingClientRect();
+      if (r.width <= 0) return;
+      var arr = [];
+      Array.prototype.forEach.call(c.querySelectorAll('rect.bar'), function (b) {
+        var br = b.getBoundingClientRect();
+        arr.push([Math.round(br.width * 10) / 10, Math.round(br.height * 10) / 10]);
+      });
+      if (arr.length) out[c.id] = arr;
+    });
+    return out;
+  }
+
+  function overflowInfo() {
+    var de = document.documentElement;
+    var wraps = [];
+    Array.prototype.forEach.call(document.querySelectorAll('.tbl-wrap'), function (w) {
+      if (w.getBoundingClientRect().width <= 0) return;
+      wraps.push({ id: (w.querySelector('table') || {}).id || '?', over: w.scrollWidth - w.clientWidth });
+    });
+    return {
+      doc: de.scrollWidth - de.clientWidth,
+      body: document.body.scrollWidth - de.clientWidth,
+      wrapMax: wraps.reduce(function (a, w) { return Math.max(a, w.over); }, 0),
+      wraps: wraps
+    };
+  }
+
+  /* 只测量，不判定 —— 阈值交给验证脚本按视口决定 */
+  function touchStats() {
+    var sel = 'button, select, input, a[href]';
+    var small = [], n = 0;
+    Array.prototype.forEach.call(document.querySelectorAll(sel), function (e) {
+      if (e.offsetParent === null) return;              /* 隐藏面板里的控件跳过 */
+      var r = e.getBoundingClientRect();
+      if (r.width <= 0 && r.height <= 0) return;
+      n++;
+      if (r.height < 44) small.push(e.tagName + (e.id ? '#' + e.id : '') + ' h=' + Math.round(r.height));
+    });
+    return { count: n, nSmall: small.length, small: small.slice(0, 8) };
+  }
+
+  function tabInfo() {
+    var buttons = [];
+    Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function (b) {
+      buttons.push({ id: b.getAttribute('data-tab'), on: b.className.indexOf('on') >= 0 });
+    });
+    var panels = [];
+    Array.prototype.forEach.call(document.querySelectorAll('.panel'), function (p) {
+      panels.push({ id: p.id, on: p.className.indexOf('on') >= 0 });
+    });
+    return { buttons: buttons, panels: panels };
+  }
+
+  function rowCounts() {
+    var out = {};
+    Array.prototype.forEach.call(document.querySelectorAll('table.t'), function (t) {
+      out[t.id] = t.querySelectorAll('tbody tr').length;
+    });
+    return out;
+  }
+
+  function hasIn(id, needle) {
+    var e = $id(id);
+    return !!e && (e.textContent || '').indexOf(needle) >= 0;
+  }
+
+  window.__probe = {
+    probeVersion: 1,
+    setTab: setTab,
+    tabs: tabInfo,
+    counts: function () {
+      return {
+        kpi: document.querySelectorAll('#kpis .kpi').length,
+        tabs: document.querySelectorAll('#tabs button').length,
+        panels: document.querySelectorAll('.panel').length,
+        charts: document.querySelectorAll('.chart').length,
+        conclusions: document.querySelectorAll('#conclusions li').length,
+        boundaries: document.querySelectorAll('#boundaries li').length,
+        verifyRows: document.querySelectorAll('#t-verify tbody tr').length,
+        rows: rowCounts()
+      };
+    },
+    kpi: function () {
+      var out = [];
+      Array.prototype.forEach.call(document.querySelectorAll('#kpis .kpi'), function (k) {
+        out.push({
+          label: (k.querySelector('.kl') || {}).textContent || '',
+          value: (k.querySelector('.kv') || {}).textContent || '',
+          note: (k.querySelector('.kn') || {}).textContent || ''
+        });
+      });
+      return out;
+    },
+    charts: visibleCharts,
+    bars: chartBars,
+    ticks: function () {
+      var all = visibleCharts().filter(function (c) { return c.visible; });
+      var nan = 0, t = 0, sample = [];
+      all.forEach(function (c) {
+        t += c.ticks; nan += c.nanTicks;
+        if (c.nanSample.length) sample = sample.concat(c.nanSample);
+      });
+      return { ticks: t, nan: nan, sample: sample.slice(0, 5) };
+    },
+    overflow: overflowInfo,
+    touch: touchStats,
+    viewport: function () {
+      var de = document.documentElement;
+      return {
+        w: de.clientWidth, h: de.clientHeight, scrollW: de.scrollWidth,
+        innerW: window.innerWidth, dpr: window.devicePixelRatio || 1
+      };
+    },
+    semantic: function () {
+      var chk = {};
+      var vals = {};
+      vals.kpi = A.kpi.length;
+      vals.conclusions = A.conclusions.length;
+      vals.boundaries = A.boundaries.length;
+      vals.verify = A.verify.length;
+      vals.selftest = A.meta.selftest;
+      vals.tvAt7 = D.e4TvAt7;
+      vals.refDev = D.e4RefDev;
+      vals.slope50 = D.e4Slope50;
+      vals.support52 = D.e1Support52Str;
+      vals.frac52 = D.e1Frac52;
+      vals.e3WorstDev = D.e3WorstDev;
+      vals.lambdaRiffle = D.e5LambdaRiffle;
+      vals.slow52K = D.e5Slow52K;
+      vals.mixRel52 = D.e6MixRel52;
+      vals.e6IndependentRulers = D.e6IndependentRulers;
+      vals.e6L2OverChi2 = D.e6L2OverChi2;
+      vals.cap52 = D.e7Cap52;
+      vals.firstEnough52 = D.e7FirstEnough52;
+      vals.firstMixed52 = D.e7FirstMixed52;
+      vals.e8SpecMaxDev = D.e8SpecMaxDev;
+      vals.multSum6 = D.e8MultSum6;
+      vals.e9Sec52 = D.e9Sec52;
+
+      /* 页面上的数 vs 数据源里的数 —— 逐条对 */
+      chk.metaHasSelftest = hasIn('meta-line', String(A.meta.selftest));
+      chk.kpi0HasSupport = hasIn('kpi-0', D.e1Support52Str);
+      chk.kpi2HasTv7 = hasIn('kpi-2', fmt(D.e4TvAt7, 4));
+      chk.kpi3HasE3Dev = hasIn('kpi-3', sci(D.e3WorstDev, 2));
+      chk.kpi4HasSlope = hasIn('kpi-4', fmt(D.e4Slope50, 3));
+      chk.kpi6HasWidth = hasIn('kpi-6', D.e4WidthMin + '–' + D.e4WidthMax);
+      chk.roOneHasSupport = hasIn('ro-one-live', D.e1Support52Str);
+      chk.roOneHasTv1 = hasIn('ro-one-live', '1.000000');
+      chk.roTwoHasFiber = hasIn('ro-two-live', commas('134217728'));
+      chk.roThreeHasDev = hasIn('n-three', sci(D.e3WorstDev, 2));
+      chk.roFourHasTv7 = hasIn('ro-four-live', fmt(D.e4TvAt7, 6));
+      chk.roFiveHasSlow = hasIn('n-five', fmt(D.e5Slow52K, 1));
+      chk.roSixHasSep = hasIn('n-six', String(D.e6MixRel52.sep));
+      chk.roSixHasIdentity = hasIn('ro-six', '独立的是 ' + D.e6IndependentRulers + ' 把');
+      chk.kpi7HasRulers = hasIn('kpi-7', '独立尺子只有 ' + D.e6IndependentRulers + ' 把');
+      chk.roSevenHasCap = hasIn('n-seven', fmt(D.e7Cap52, 2));
+      chk.roEightHasSum = hasIn('n-eight', commas(D.e8MultSum6));
+      chk.roNineHasWall = hasIn('n-nine', sci(D.e9Sec52 / 31557600, 2));
+      chk.concCount = document.querySelectorAll('#conclusions li').length === A.conclusions.length;
+      chk.boundCount = document.querySelectorAll('#boundaries li').length === A.boundaries.length;
+      chk.verifyCount = document.querySelectorAll('#t-verify tbody tr').length === A.verify.length;
+      chk.noPlaceholder = true;
+      ['n-one', 'n-two', 'n-three', 'n-four', 'n-five', 'n-six', 'n-seven', 'n-eight',
+        'n-nine', 'ro-one', 'ro-two', 'ro-three', 'ro-four', 'ro-five', 'ro-six',
+        'ro-seven', 'ro-eight', 'ro-nine', 'meta-line', 'foot-line'].forEach(function (id) {
+        var e = $id(id);
+        var s = e ? (e.textContent || '').trim() : '';
+        if (!s || /^[—–\s]*$/.test(s)) chk.noPlaceholder = false;
+      });
+      vals.allChecks = Object.keys(chk).every(function (k) { return chk[k] === true; });
+      return { checks: chk, values: vals };
+    },
+    renderAll: function () { renderAll(); return true; },
+    one: driveOne,
+    two: driveTwo,
+    four: driveFour,
+    five: driveFive,
+    seven: driveSeven
+  };
+
+  /* ============================================================
+   * 启动
+   * ========================================================== */
+  function bindControls() {
+    var s = $id('s-one');
+    if (s) s.addEventListener('input', function () { driveOne(Number(s.value)); });
+    s = $id('s-two');
+    if (s) s.addEventListener('input', function () { driveTwo(Number(s.value)); });
+    s = $id('s-four');
+    if (s) s.addEventListener('input', function () { driveFour(Number(s.value)); });
+    s = $id('sel-five');
+    if (s) s.addEventListener('change', function () { driveFive(Number(s.value)); });
+    s = $id('s-seven');
+    if (s) s.addEventListener('input', function () { driveSeven(Number(s.value)); });
+  }
+
+  function boot() {
+    try {
+      renderAll();
+      bindControls();
+      window.__ready = true;
+    } catch (e) {
+      window.__bootError = String((e && e.message) || e);
+      window.__ready = false;
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+
+</script>
+</body>
+</html>

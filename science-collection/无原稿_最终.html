@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>无原稿 · 一份不存在的原文如何被重新制造</title>
+<style>
+:root{
+  --ink:#1e1d1a;--muted:#736f67;--desk:#211d19;--desk2:#171411;
+  --paper:#eee6d5;--paper2:#e4dac5;--red:#8b302c;--blue:#314f67;--green:#52634d;
+  --gold:#c0a56b;--line:rgba(51,42,33,.25);--shadow:0 18px 55px rgba(0,0,0,.32);
+}
+*{box-sizing:border-box} html,body{margin:0;height:100%;background:#13110f;color:#eee;font-family:ui-sans-serif,system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden}
+button{font:inherit}.app{height:100%;position:relative;background:
+ radial-gradient(circle at 20% 15%,rgba(255,235,190,.045),transparent 30%),
+ linear-gradient(135deg,var(--desk),var(--desk2));}
+.grain{position:absolute;inset:0;pointer-events:none;opacity:.16;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E")}
+.topline{position:absolute;left:20px;right:20px;top:16px;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:12px;color:#c9c1b4;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.topline .case{display:flex;align-items:center;gap:10px}.dot{width:7px;height:7px;border-radius:50%;background:#b88b62;box-shadow:0 0 0 3px rgba(184,139,98,.12)}
+.progress{display:flex;gap:6px}.progress i{display:block;width:22px;height:2px;background:#504941}.progress i.on{background:#d4c1a0}
+.stage{position:absolute;inset:54px 18px 18px;perspective:1600px}.desk-shell{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 1s cubic-bezier(.2,.75,.15,1)}.desk-shell.flipped{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;border:1px solid rgba(255,255,255,.08);border-radius:26px;overflow:hidden;box-shadow:0 28px 90px rgba(0,0,0,.25)}
+.front{background:linear-gradient(140deg,#2b241f,#1b1714)}.back{transform:rotateY(180deg);background:linear-gradient(140deg,#efe8da,#d9cfbd);color:var(--ink)}
+.scene{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .45s ease,transform .55s ease;transform:translateY(10px)}.scene.active{opacity:1;pointer-events:auto;transform:none}
+/* intro */
+.evidence-bag{position:absolute;left:50%;top:50%;width:min(680px,82vw);height:min(420px,66vh);transform:translate(-50%,-50%) rotate(-1.2deg);background:linear-gradient(180deg,#d7cdb9,#c8bba2);color:#28231f;border:1px solid rgba(0,0,0,.22);box-shadow:var(--shadow);padding:clamp(24px,5vw,58px);font-family:Georgia,"Songti SC",serif}
+.evidence-bag:before{content:"";position:absolute;inset:18px;border:1px dashed rgba(55,45,37,.32)}
+.kicker{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;letter-spacing:.16em;color:#685f54}.evidence-bag h1{font-size:clamp(52px,10vw,108px);font-weight:500;line-height:.88;margin:28px 0 18px;letter-spacing:-.08em}.evidence-bag p{max-width:480px;font-size:clamp(15px,2vw,19px);line-height:1.8;color:#4f473f}.stamp{position:absolute;right:44px;bottom:35px;width:92px;height:92px;border:3px double var(--red);border-radius:50%;display:grid;place-items:center;color:var(--red);font-family:ui-monospace,monospace;font-size:12px;transform:rotate(-13deg);opacity:.82}
+.action-tag{position:absolute;right:28px;bottom:24px;z-index:30;border:0;background:#e4d6bb;color:#211c18;padding:13px 18px;border-radius:3px;box-shadow:0 7px 22px rgba(0,0,0,.25);cursor:pointer;font-weight:700;letter-spacing:.04em;transition:.2s}.action-tag:hover{transform:translateY(-2px) rotate(.5deg)}
+.note-tag{position:absolute;left:28px;bottom:72px;z-index:30;max-width:min(560px,62vw);font-family:Georgia,"Songti SC",serif;color:#d8d0c4;font-size:14px;line-height:1.7}.note-tag b{color:#fff;font-weight:500}
+/* papers */
+.paper{position:absolute;width:clamp(180px,19vw,285px);min-height:112px;background:linear-gradient(155deg,var(--paper),var(--paper2));color:#2b2722;padding:18px 20px;border:1px solid rgba(88,73,56,.18);box-shadow:0 13px 32px rgba(0,0,0,.28);font-family:Georgia,"Songti SC",serif;transition:transform .5s,box-shadow .3s,opacity .3s;cursor:pointer;transform-origin:center}
+.paper:hover{box-shadow:0 19px 42px rgba(0,0,0,.36);z-index:8}.paper .id{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.12em;color:#786f62;margin-bottom:13px}.paper .txt{font-size:clamp(16px,1.65vw,22px);letter-spacing:.06em;line-height:1.55}.paper .meta{font-family:ui-monospace,monospace;font-size:9px;color:#81786c;margin-top:12px}.paper.selected{outline:2px solid rgba(222,190,129,.75);z-index:9;transform:scale(1.04)!important}
+.p1{left:7%;top:13%;transform:rotate(-4deg)}.p2{left:29%;top:8%;transform:rotate(2deg)}.p3{right:9%;top:14%;transform:rotate(4.5deg)}.p4{left:12%;top:42%;transform:rotate(2deg)}.p5{left:39%;top:35%;transform:rotate(-3deg)}.p6{right:8%;top:43%;transform:rotate(-1deg)}.p7{left:22%;bottom:9%;transform:rotate(-2deg)}.p8{left:49%;bottom:7%;transform:rotate(2.5deg)}.p9{right:7%;bottom:9%;transform:rotate(-4deg)}
+.counter{position:absolute;left:28px;top:26px;color:#cfc5b6;font-family:ui-monospace,monospace;font-size:12px}.counter strong{font-size:30px;font-weight:400;color:#fff}
+/* collation */
+.lightbox{position:absolute;left:5%;right:5%;top:8%;bottom:16%;background:#f4eddf;color:#26231f;border-radius:8px;box-shadow:0 0 55px rgba(250,229,190,.11),var(--shadow);padding:clamp(18px,3vw,34px);overflow:auto}
+.lightbox h2{font-family:Georgia,"Songti SC",serif;font-weight:500;margin:0 0 8px;font-size:clamp(25px,3vw,42px)}.sub{color:#6f675d;font-size:12px;line-height:1.7;margin-bottom:22px;max-width:760px}
+.matrix{display:grid;grid-template-columns:72px repeat(12,minmax(28px,1fr));gap:3px;min-width:670px;font-family:ui-monospace,"PingFang SC",monospace}.cell{height:38px;display:grid;place-items:center;border-bottom:1px solid rgba(0,0,0,.07);font-size:18px}.rowid{font-size:10px;color:#6e665e;justify-content:start}.cell.var{background:#e7d8bd;color:#6a392f}.cell.key{background:#d9b9a5;color:#702f29;font-weight:800}.consensus{margin-top:17px;padding-top:14px;border-top:1px solid #b9af9e;display:grid;grid-template-columns:72px repeat(12,minmax(28px,1fr));gap:3px;min-width:670px}.consensus .cell{background:#e1d8c8}.consensus .cell.wrong{background:#8b302c;color:white}.callout{position:absolute;right:6%;bottom:18%;background:#8b302c;color:#fff;padding:13px 17px;max-width:370px;font-size:12px;line-height:1.7;box-shadow:0 8px 25px rgba(0,0,0,.18)}
+/* genealogy */
+.tree-wrap{position:absolute;inset:6% 4% 15%;background:#eae1d0;color:#2c2721;border-radius:10px;box-shadow:var(--shadow);overflow:hidden}.tree-svg{position:absolute;inset:0;width:100%;height:100%}.edge{stroke:#8f806e;stroke-width:1.4;fill:none}.edge.major{stroke:#8b302c;stroke-width:2.1}.node{position:absolute;transform:translate(-50%,-50%);min-width:68px;text-align:center;background:#f4ecde;border:1px solid #a99983;padding:8px 9px;box-shadow:0 5px 15px rgba(0,0,0,.12);font-family:ui-monospace,monospace;font-size:10px}.node.ancestor{border-radius:50%;min-width:46px;width:46px;height:46px;display:grid;place-items:center;background:#d9cdbb}.node.root{background:#28231f;color:#fff;border-color:#28231f}.node .reading{display:block;margin-top:4px;font-family:Georgia,"Songti SC",serif;font-size:15px}.scoreboard{position:absolute;left:6%;right:22%;bottom:3.5%;display:grid;grid-template-columns:1fr 1fr;gap:12px;color:#29241f}.score{background:#e7ddca;padding:12px 15px;border-left:4px solid #8c7962}.score.good{border-color:#52634d}.score span{font-size:10px;color:#6e6458;letter-spacing:.08em}.score strong{display:block;margin-top:4px;font-size:17px}.thread-note{position:absolute;right:7%;top:8%;max-width:300px;background:#f2eadc;color:#3b342c;padding:14px 16px;border:1px solid #baa98f;font-size:12px;line-height:1.7;box-shadow:0 9px 30px rgba(0,0,0,.13)}
+/* contamination */
+.net-line{stroke-dasharray:7 6;stroke:#315a73;stroke-width:2.5;fill:none}.warning{position:absolute;left:6%;top:7%;max-width:440px;background:#243542;color:#f1efe9;padding:18px 20px;box-shadow:var(--shadow)}.warning h3{margin:0 0 8px;font-family:Georgia,"Songti SC",serif;font-weight:500;font-size:24px}.warning p{margin:0;color:#d7dfe4;font-size:12px;line-height:1.8}.tiny-label{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.12em;opacity:.65}
+/* back / code side */
+.back .scene{color:var(--ink)}.back-header{position:absolute;left:clamp(24px,5vw,70px);top:clamp(26px,6vh,62px);right:clamp(24px,5vw,70px)}.back-header .over{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.16em;color:#746c61}.back-header h2{font-family:Georgia,"Songti SC",serif;font-size:clamp(32px,5vw,66px);font-weight:500;letter-spacing:-.05em;margin:12px 0 6px}.back-header p{max-width:720px;color:#61594f;line-height:1.8;font-size:13px}
+.tape{position:absolute;left:7%;right:7%;top:38%;height:118px;background:#17222a;color:#fff;box-shadow:0 16px 38px rgba(0,0,0,.28);display:flex;align-items:center;justify-content:center;gap:clamp(8px,2vw,22px);padding:18px;overflow:hidden}.tape:before,.tape:after{content:"";position:absolute;left:0;right:0;height:10px;background:repeating-linear-gradient(90deg,transparent 0 20px,#d9cfbd 20px 28px,transparent 28px 40px)}.tape:before{top:8px}.tape:after{bottom:8px}.bit{position:relative;width:clamp(42px,7vw,76px);height:62px;border:1px solid #60717d;display:grid;place-items:center;font-family:ui-monospace,monospace;font-size:27px;cursor:pointer;background:#22323d;transition:.2s}.bit:hover{transform:translateY(-2px)}.bit.parity{background:#4b3432}.bit.flipped{outline:3px solid #d6a256}.bit:after{content:attr(data-pos);position:absolute;bottom:-18px;font-size:8px;color:#a8b5bd}.legend{position:absolute;left:8%;top:57%;font-family:ui-monospace,monospace;font-size:10px;color:#6a6258}.legend b{display:inline-block;width:10px;height:10px;background:#4b3432;margin-right:5px;vertical-align:-1px}.syndrome{position:absolute;left:7%;right:7%;top:65%;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}.s-card{background:rgba(255,255,255,.34);border:1px solid rgba(67,59,50,.16);padding:15px 17px;min-height:94px}.s-card small{display:block;font-family:ui-monospace,monospace;color:#766d62;letter-spacing:.08em;margin-bottom:9px}.s-card strong{font-family:ui-monospace,monospace;font-size:clamp(18px,2.5vw,28px);font-weight:500}.repair{position:absolute;right:7%;bottom:8%;border:0;background:#202c34;color:#fff;padding:12px 17px;cursor:pointer;font-weight:700}.repair:disabled{opacity:.35;cursor:not-allowed}
+/* final */
+.final-card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(840px,86vw);padding:clamp(28px,5vw,64px);background:#eee6d7;color:#25211d;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.15)}.final-card .phrase{font-family:Georgia,"Songti SC",serif;font-size:clamp(30px,5vw,62px);letter-spacing:.08em;margin:20px 0 32px}.two-cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}.two-cols div{padding-top:14px;border-top:1px solid #aa9d8b}.two-cols b{display:block;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.14em;color:#746b60;margin-bottom:10px}.two-cols p{margin:0;line-height:1.8;font-size:13px;color:#514a43}.footnote{margin-top:30px;font-family:ui-monospace,monospace;font-size:10px;line-height:1.7;color:#766e64}.drawer{position:absolute;left:20px;bottom:18px;border:1px solid rgba(255,255,255,.13);color:#c7beb1;background:rgba(20,17,14,.65);padding:9px 11px;font-size:10px;cursor:pointer}.drawer-panel{position:absolute;left:20px;bottom:58px;width:min(520px,calc(100vw - 40px));max-height:46vh;overflow:auto;background:#171513;color:#d8d1c8;border:1px solid #4b443d;padding:16px 18px;font-size:11px;line-height:1.75;display:none;z-index:60;box-shadow:var(--shadow)}.drawer-panel.open{display:block}.drawer-panel b{color:#fff}.drawer-panel a{color:#d6b784}
+@media(max-width:760px){
+ .topline{left:12px;right:12px;top:10px;font-size:9px}.progress i{width:13px}.stage{inset:38px 8px 8px}.face{border-radius:16px}.action-tag{right:14px;bottom:14px;padding:11px 13px;font-size:12px}.note-tag{left:14px;bottom:70px;max-width:calc(100vw - 44px);font-size:11px;background:rgba(20,17,14,.75);padding:8px 10px;border-radius:4px}
+ .evidence-bag{width:88vw;height:62vh;padding:28px 24px}.evidence-bag h1{font-size:58px;margin-top:48px}.evidence-bag p{font-size:13px}.stamp{width:70px;height:70px;right:26px;bottom:24px;font-size:9px}
+ #papers{position:absolute;inset:88px 10px 72px;overflow:auto;display:grid;grid-template-columns:1fr;gap:12px;padding:10px 4px 18px}.paper{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;width:calc(100% - 16px);min-height:96px;padding:13px 15px;margin:auto;transform:rotate(-.7deg)!important}.paper:nth-child(even){transform:rotate(.7deg)!important}.paper .txt{font-size:16px;line-height:1.5}.counter{top:16px;left:18px}
+ .lightbox{left:3%;right:3%;top:4%;bottom:18%;padding:16px 12px}.lightbox h2{font-size:24px}.lightbox .sub:after{content:"  ↔ 横向拖动查看后面的字";display:block;margin-top:5px;font-family:ui-monospace,monospace;font-size:9px;color:#8a7967}.callout{left:6%;right:6%;bottom:76px;max-width:none;font-size:10px}.tree-wrap{inset:3% 2% 22%;overflow:auto}.tree-wrap:after{content:"↔ 拖动查看完整谱系";position:sticky;left:10px;bottom:8px;display:inline-block;background:rgba(43,38,32,.82);color:#f3eee5;padding:6px 8px;font-size:9px;font-family:ui-monospace,monospace;letter-spacing:.04em}.tree-svg{min-width:760px}.tree-canvas{position:relative;min-width:760px;height:100%}.scoreboard{left:4%;right:4%;bottom:70px;gap:7px}.score{padding:9px 10px}.score strong{font-size:13px}.thread-note{right:3%;top:3%;max-width:225px;font-size:10px;padding:10px}.warning{left:3%;top:3%;max-width:280px;padding:12px 14px}.warning h3{font-size:18px}.warning p{font-size:10px}
+ .back-header{left:20px;right:20px;top:24px}.back-header h2{font-size:37px}.back-header p{font-size:11px}.tape{left:3%;right:3%;top:36%;gap:5px;padding:12px}.bit{width:38px;height:54px;font-size:21px}.syndrome{left:4%;right:4%;top:60%;grid-template-columns:1fr;gap:7px}.s-card{min-height:64px;padding:10px 12px}.s-card small{margin-bottom:4px}.s-card strong{font-size:17px}.legend{left:5%;top:54%;font-size:8px}.repair{right:4%;bottom:4%;font-size:11px;padding:10px 12px}
+ .final-card{width:90vw;padding:26px 22px}.final-card .phrase{font-size:31px}.two-cols{grid-template-columns:1fr;gap:14px}.two-cols p{font-size:11px}.footnote{font-size:8.5px;margin-top:20px}.drawer{left:12px;bottom:12px}.drawer-panel{left:12px;bottom:50px;width:calc(100vw - 24px)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="grain"></div>
+<div class="topline"><div class="case"><span class="dot"></span><span>ARCHIVE 17-B · ORIGINAL MISSING</span></div><div class="progress" id="prog"></div></div>
+<div class="stage"><div class="desk-shell" id="shell">
+  <section class="face front">
+    <div class="scene active" data-scene="0">
+      <div class="evidence-bag">
+        <div class="kicker">证物袋 17-B / 原稿状态：不存在</div>
+        <h1>无原稿</h1>
+        <p>只剩九份抄本。它们彼此相似，也彼此矛盾。你要找回一句已经没有任何地方保存着的话。</p>
+        <div class="stamp">NO<br>ORIGINAL</div>
+      </div>
+    </div>
+    <div class="scene" data-scene="1" id="papersScene">
+      <div class="counter"><strong>9</strong><br>surviving witnesses</div>
+      <div id="papers"></div>
+    </div>
+    <div class="scene" data-scene="2">
+      <div class="lightbox">
+        <h2>把九份抄本逐字压在一起。</h2>
+        <div class="sub">最自然的规则是：每个位置，谁出现得最多，就把谁当作原文。先别想历史，只数票。</div>
+        <div class="matrix" id="matrix"></div>
+        <div class="consensus" id="consensus"></div>
+      </div>
+      <div class="callout">第 12 个字，<b>“蓝”以 5 : 4 获胜。</b><br>数量共识非常自信。它也恰好错了。</div>
+    </div>
+    <div class="scene" data-scene="3">
+      <div class="tree-wrap"><div class="tree-canvas" id="treeCanvas"><svg class="tree-svg" viewBox="0 0 1000 560" preserveAspectRatio="none" id="treeSvg"></svg><div id="treeNodes"></div></div></div>
+      <div class="thread-note"><span class="tiny-label">PROVENANCE</span><br><br>五份写着“蓝”的抄本，并不是五次独立证据。它们都继承了同一个早期改写。<br><br><b>共同祖先会制造“虚假的多数”。</b></div>
+      <div class="scoreboard"><div class="score"><span>把每份抄本都算 1 票</span><strong>蓝 5 : 亮 4</strong></div><div class="score good"><span>先在三个独立支系内部归并</span><strong>亮 2 : 蓝 1</strong></div></div>
+    </div>
+    <div class="scene" data-scene="4">
+      <div class="tree-wrap"><div class="tree-canvas" id="netCanvas"><svg class="tree-svg" viewBox="0 0 1000 560" preserveAspectRatio="none" id="netSvg"></svg><div id="netNodes"></div></div></div>
+      <div class="warning"><span class="tiny-label">TREE FAILURE</span><h3>然后，有人同时看了两份母本。</h3><p>一份抄本从自己的母本继承大部分文字，却从另一支抄走了一个词。树不再能完整描述历史。文本校勘称这种情形为“混合 / 污染”；生物学里，重组与水平转移也会让纯树模型失效。</p></div>
+      <div class="scoreboard"><div class="score"><span>树告诉你的</span><strong>谁从谁复制</strong></div><div class="score good"><span>网络迫使你承认</span><strong>一个后代可以有不止一个来源</strong></div></div>
+    </div>
+    <div class="note-tag" id="frontNote"></div>
+    <button class="action-tag" id="nextBtn">拆封证物 →</button>
+    <button class="drawer" id="drawerBtn">模型与边界</button>
+    <div class="drawer-panel" id="drawerPanel">
+      <b>这不是完整的文本校勘算法。</b> 前半段故意使用一个可验证的玩具传统：9 个现存见证来自 3 个一级支系，其中 A 支系的共同祖先先发生“亮→蓝”，随后被 5 个后代共同继承。因此把叶节点当独立票数会得到 5:4 的错误多数，而按三个独立一级支系归并得到 2:1。真实的文本传统会遇到缺失祖本、抄本混合、回改、作者多版本等问题，通常需要更完整的系统发育、最大简约、最大似然或贝叶斯模型。<br><br>
+      文本学使用进化生物学的软件和系统发育方法来推断抄本传播史，并不是这里虚构的类比。Oxford Handbook of Cultural Evolution（Howe & Windram, 2023）直接总结了这类“phylomemetics”工作；近年的文本系统发育研究也讨论了贝叶斯模型以及“污染”让简单树模型变得不足的问题。<br><br>
+      背面的 Hamming (7,4) 使用偶校验：4 个数据位被编码成 7 位，最小汉明距离为 3，因此能定位并纠正任意一个单比特错误。它与前半面的关键差别不是“算法更聪明”，而是<b>发送者在错误发生前主动加入了结构。</b>
+    </div>
+  </section>
+  <section class="face back">
+    <div class="scene" data-back="0" id="codeScene">
+      <div class="back-header"><div class="over">TURN THE DOCUMENT OVER / BEFORE CORRUPTION</div><h2>如果作者事先知道它会被抄坏呢？</h2><p>前半面的问题发生在历史之后：原稿已失，只能从后代的谱系与差异中推断。现在把时间倒过来。你可以在复制开始之前修改信息本身。</p></div>
+      <div class="tape" id="tape"></div>
+      <div class="legend"><b></b> 红褐色 = 校验位　　其余 = 数据位　　点任意一位制造一次错误</div>
+      <div class="syndrome"><div class="s-card"><small>原始 4 位数据</small><strong id="dataBits">1011</strong></div><div class="s-card"><small>接收到的 7 位</small><strong id="recvBits">0110011</strong></div><div class="s-card"><small>校验综合 syndrome</small><strong id="syn">000 · no error</strong></div></div>
+      <button class="repair" id="repairBtn" disabled>根据 syndrome 修复</button>
+    </div>
+    <div class="scene" data-back="1">
+      <div class="final-card">
+        <div class="kicker">CASE CLOSED, WITH A CAVEAT</div>
+        <div class="phrase">北塔熄灯以后，河面仍然发亮。</div>
+        <div class="two-cols"><div><b>历史已经发生</b><p>你不能要求失去的原件回来。只能比较后代、重建谱系、建立复制模型，并给“原文”附上不确定性。</p></div><div><b>历史尚未发生</b><p>你可以改变消息本身：加入校验、冗余和结构，让某些错误不再需要猜，而是能够被检测甚至纠正。</p></div></div>
+        <div class="footnote">同一个问题从“哪份抄本更可信”翻到纸背以后，变成了“能不能让未来不必相信任何一份抄本”。<br>文本校勘与系统发育负责从后果追索历史；编码理论则改变历史开始时的条件。</div>
+      </div>
+    </div>
+    <button class="action-tag" id="backNext" style="display:none">封存档案 →</button>
+  </section>
+</div></div>
+</div>
+<script>
+const original=[...'北塔熄灯以后河面仍然发亮'];
+const witnesses=[
+ {id:'A1',branch:'A',text:'北塔熄灯以后河面仍然发蓝'},
+ {id:'A2',branch:'A',text:'北塔息灯以后河面仍然发蓝'},
+ {id:'A3',branch:'A',text:'北塔熄灯以后河面仍旧发蓝'},
+ {id:'A4',branch:'A',text:'北塔熄灯以侯河面仍然发蓝'},
+ {id:'A5',branch:'A',text:'北塔熄灯以后河面依然发蓝'},
+ {id:'B1',branch:'B',text:'北塔熄灯以后河面仍然发亮'},
+ {id:'B2',branch:'B',text:'北塔熄灯以后河靣仍然发亮'},
+ {id:'C1',branch:'C',text:'北塔熄灯以后河面仍然发亮'},
+ {id:'C2',branch:'C',text:'北塔熄灯以后湖面仍然发亮'}
+];
+const paperPos=['p1','p2','p3','p4','p5','p6','p7','p8','p9'];
+let scene=0, backScene=0, inspected=new Set();
+const shell=document.getElementById('shell'),nextBtn=document.getElementById('nextBtn'),frontNote=document.getElementById('frontNote');
+const prog=document.getElementById('prog'); for(let i=0;i<7;i++){let el=document.createElement('i');prog.append(el)}
+function setProgress(n){[...prog.children].forEach((e,i)=>e.classList.toggle('on',i<=n))}
+function showScene(n){scene=n;document.querySelectorAll('.front .scene').forEach(x=>x.classList.toggle('active',+x.dataset.scene===n));setProgress(n);frontNote.innerHTML='';
+ const labels=['拆封证物 →','逐字压在一起 →','追查这些抄本从哪里来 →','让一份抄本偷看另一支 →','把整张档案翻过来 →']; nextBtn.textContent=labels[n]||'继续';
+ if(n===1) frontNote.innerHTML='点几份抄本看看。<b>不要急着找“最像正确答案”的那一份。</b>';
+ if(n===2) buildMatrix(); if(n===3) buildTree(false); if(n===4) buildTree(true);
+}
+function makePapers(){const box=document.getElementById('papers');witnesses.forEach((w,i)=>{let d=document.createElement('div');d.className='paper '+paperPos[i];{const chars=[...w.text];d.innerHTML=`<div class="id">WITNESS ${w.id} · unknown date</div><div class="txt">${chars.slice(0,6).join('')}<br>${chars.slice(6).join('')}</div><div class="meta">material: paper · exemplar: unknown</div>`;}d.onclick=()=>{d.classList.toggle('selected');inspected.add(w.id);frontNote.innerHTML=inspected.size<4?`已检查 ${inspected.size}/9。它们很像，但“像”还没有告诉你谁来自谁。`:`你已经看到足够多的差异了。<b>下一步先假装它们彼此独立。</b>`};box.append(d)})}
+function buildMatrix(){const m=document.getElementById('matrix'),c=document.getElementById('consensus');m.innerHTML='';c.innerHTML='';let header=document.createElement('div');header.className='cell rowid';header.textContent='见证';m.append(header);original.forEach((ch,i)=>{let x=document.createElement('div');x.className='cell';x.textContent=(i+1);m.append(x)});
+ witnesses.forEach(w=>{let id=document.createElement('div');id.className='cell rowid';id.textContent=w.id;m.append(id);[...w.text].forEach((ch,i)=>{let x=document.createElement('div');x.className='cell';if(ch!==original[i])x.classList.add(i===11?'key':'var');x.textContent=ch;m.append(x)})});
+ let lab=document.createElement('div');lab.className='cell rowid';lab.textContent='多数';c.append(lab);for(let i=0;i<original.length;i++){let counts={};witnesses.forEach(w=>{let ch=[...w.text][i];counts[ch]=(counts[ch]||0)+1});let win=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];let x=document.createElement('div');x.className='cell'+(i===11?' wrong':'');x.textContent=win;c.append(x)}
+}
+const coords={root:[500,70],A:[250,190],B:[500,190],C:[750,190],A1:[100,380],A2:[180,450],A3:[260,390],A4:[340,455],A5:[420,380],B1:[470,390],B2:[555,455],C1:[710,400],C2:[850,435]};
+function addEdge(svg,a,b,cls='edge'){let [x1,y1]=coords[a],[x2,y2]=coords[b];let p=document.createElementNS('http://www.w3.org/2000/svg','path');let my=(y1+y2)/2;p.setAttribute('d',`M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`);p.setAttribute('class',cls);svg.append(p)}
+function buildTree(network){const svg=document.getElementById(network?'netSvg':'treeSvg'),nodes=document.getElementById(network?'netNodes':'treeNodes');svg.innerHTML='';nodes.innerHTML='';[['root','A'],['root','B'],['root','C'],...['A1','A2','A3','A4','A5'].map(x=>['A',x]),['B','B1'],['B','B2'],['C','C1'],['C','C2']].forEach(([a,b])=>addEdge(svg,a,b,a==='A'?'edge major':'edge')); if(network){let [x1,y1]=coords.A,[x2,y2]=coords.C2;let p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',`M${x1+40},${y1+20} C${x1+170},${y1+130} ${x2-130},${y2-100} ${x2},${y2}`);p.setAttribute('class','net-line');svg.append(p)}
+ const labels={root:['失踪原稿','亮'],A:['α','蓝'],B:['β','亮'],C:['γ','亮']};Object.keys(coords).forEach(k=>{let d=document.createElement('div');let [x,y]=coords[k];d.className='node '+(k==='root'?'root ancestor':(['A','B','C'].includes(k)?'ancestor':''));d.style.left=x/10+'%';d.style.top=y/5.6+'%'; if(labels[k])d.innerHTML=`${labels[k][0]}<span class="reading">${labels[k][1]}</span>`;else {let w=witnesses.find(z=>z.id===k);d.innerHTML=`${k}<span class="reading">${[...w.text][11]}</span>`}nodes.append(d)})}
+nextBtn.onclick=()=>{if(scene<4){showScene(scene+1)}else{shell.classList.add('flipped');setProgress(5);nextBtn.style.display='none';initTape();setTimeout(()=>document.getElementById('codeScene').classList.add('active'),50)}};
+makePapers();showScene(0);
+// drawer
+document.getElementById('drawerBtn').onclick=()=>document.getElementById('drawerPanel').classList.toggle('open');
+// Hamming(7,4)
+const data=[1,0,1,1]; const code=[0,1,1,0,0,1,1]; let recv=[...code], flipped=-1;
+function syndrome(bits){const s1=bits[0]^bits[2]^bits[4]^bits[6],s2=bits[1]^bits[2]^bits[5]^bits[6],s4=bits[3]^bits[4]^bits[5]^bits[6];return [s1,s2,s4];}
+function synPos(s){return s[0]+2*s[1]+4*s[2]}
+function initTape(){const tape=document.getElementById('tape');tape.innerHTML='';recv=[...code];flipped=-1;recv.forEach((b,i)=>{let el=document.createElement('button');el.className='bit '+([0,1,3].includes(i)?'parity':'');el.dataset.pos=i+1;el.textContent=b;el.onclick=()=>flipBit(i);tape.append(el)});renderHamming();}
+function flipBit(i){recv=[...code];recv[i]^=1;flipped=i;renderHamming()}
+function renderHamming(){[...document.querySelectorAll('.bit')].forEach((el,i)=>{el.textContent=recv[i];el.classList.toggle('flipped',i===flipped)});document.getElementById('recvBits').textContent=recv.join('');let s=syndrome(recv),p=synPos(s);document.getElementById('syn').textContent=s.join('')+(p?` · position ${p}`:' · no error');let b=document.getElementById('repairBtn');b.disabled=!p;b.textContent=p?`修复第 ${p} 位`:'没有检测到错误'}
+document.getElementById('repairBtn').onclick=()=>{let p=synPos(syndrome(recv));if(p){recv[p-1]^=1;flipped=-1;renderHamming();document.getElementById('backNext').style.display='block'}};
+document.getElementById('backNext').onclick=()=>{document.querySelectorAll('.back .scene').forEach(x=>x.classList.remove('active'));document.querySelector('[data-back="1"]').classList.add('active');document.getElementById('backNext').style.display='none';setProgress(6)};
+</script>
+</body></html>

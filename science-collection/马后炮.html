@@ -1,0 +1,4455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>马后炮 · 在线缓存替换与「不知道未来」的价格</title>
+<meta name="description" content="从零搭七个缓存替换策略、一个离线最优和一个自适应对抗者，量出竞争比：不知道未来的人离最优有多远，以及为什么随机替换能打败 LRU。">
+<style>
+/* ============================================================
+ * 《马后炮》样式
+ * 浅色纸面 + 墨色 + 朱红（确定性/致命）+ 靛青（随机/防御）+ 赭金（离线最优）
+ * 注意：所有"入场动画"一律不用 animation + opacity:0 + forwards，
+ * 否则 headless 下元素永远停在 opacity:0 —— 数得出来，看不见。
+ * ========================================================== */
+:root {
+  --paper: #f5f4f0;
+  --paper2: #fdfcf9;
+  --ink: #17181c;
+  --ink2: #3b3d42;
+  --muted: #74736b;
+  --faint: #a6a49a;
+  --line: #dcd9cf;
+  --line2: #ebe8df;
+  --hot: #b03030;
+  --hot-soft: #e6b6b0;
+  --cool: #1f5f7a;
+  --cool-soft: #a8c8d6;
+  --gold: #96700f;
+  --gold-soft: #e4d3a2;
+  --green: #2f6b46;
+  --green-soft: #b6d3bd;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Cascadia Mono", monospace;
+  --serif: Georgia, "Songti SC", "SimSun", "Noto Serif SC", serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  -webkit-text-size-adjust: 100%;
+}
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px 96px; }
+
+/* ---------- 头部 ---------- */
+.hero { padding: 72px 0 40px; border-bottom: 2px solid var(--ink); }
+.eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .22em;
+  color: var(--muted); text-transform: uppercase; margin-bottom: 18px;
+}
+.starter-link { margin: -3px 0 24px; font-size: 13px; }
+.starter-link a { color: var(--cool); text-underline-offset: 3px; }
+.starter-link a:focus-visible { outline: 2px solid var(--cool); outline-offset: 3px; }
+.title { font-family: var(--serif); font-size: 64px; line-height: 1.05; margin: 0 0 10px; letter-spacing: .04em; }
+.sub { font-family: var(--serif); font-size: 19px; color: var(--ink2); margin: 0 0 26px; }
+.lede { font-size: 16px; color: var(--ink2); max-width: 780px; margin: 0 0 10px; }
+.lede + .lede { margin-top: 12px; }
+.lede b { color: var(--hot); font-weight: 600; }
+.lede .c { color: var(--cool); font-weight: 600; }
+
+/* ---------- KPI ---------- */
+.kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-top: 34px; }
+.kpi {
+  background: var(--paper2); border: 1px solid var(--line);
+  border-top: 3px solid var(--ink); padding: 14px 14px 12px;
+}
+.kpi.hot { border-top-color: var(--hot); }
+.kpi.cool { border-top-color: var(--cool); }
+.kpi.gold { border-top-color: var(--gold); }
+.kpi .k-label { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; line-height: 1.4; }
+.kpi .k-val { font-family: var(--serif); font-size: 28px; line-height: 1.2; margin: 4px 0 2px; }
+.kpi .k-note { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ---------- 章节 ---------- */
+.sec { padding: 62px 0 10px; border-top: 1px solid var(--line); margin-top: 62px; }
+.sec:first-of-type { border-top: none; margin-top: 0; }
+.sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+.sec-num { font-family: var(--serif); font-size: 30px; color: var(--hot); line-height: 1; }
+.sec h2 { font-family: var(--serif); font-size: 30px; margin: 0; letter-spacing: .02em; }
+.sec-sub { color: var(--muted); font-size: 14px; margin: 0 0 22px; font-family: var(--mono); }
+.sec p { margin: 0 0 16px; color: var(--ink2); max-width: 900px; }
+.sec p.wide { max-width: none; }
+.sec b, .sec strong { color: var(--ink); font-weight: 600; }
+.sec .hl { color: var(--hot); font-weight: 600; }
+.sec .hlc { color: var(--cool); font-weight: 600; }
+.sec .hlg { color: var(--gold); font-weight: 600; }
+code, .mono { font-family: var(--mono); font-size: 13px; background: var(--line2); padding: 1px 5px; border-radius: 3px; }
+.sec code { color: var(--ink); }
+
+/* ---------- 面板 ---------- */
+.panel {
+  background: var(--paper2); border: 1px solid var(--line);
+  padding: 20px; margin: 20px 0; min-width: 0;
+}
+.panel-tight { padding: 14px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; min-width: 0; }
+.grid2 > *, .grid3 > * { min-width: 0; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; min-width: 0; }
+.panel h3 {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--muted); margin: 0 0 12px;
+}
+
+/* ---------- 控件 ---------- */
+.ctrls { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; margin-bottom: 16px; }
+.ctrl { display: flex; flex-direction: column; gap: 4px; }
+.ctrl > span { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
+select {
+  font-family: var(--mono); font-size: 14px; background: var(--paper);
+  border: 1px solid var(--line); color: var(--ink); padding: 8px 10px; min-height: 40px;
+}
+button {
+  font-family: var(--mono); font-size: 12px; letter-spacing: .08em;
+  background: var(--ink); color: var(--paper2); border: 1px solid var(--ink);
+  padding: 10px 18px; min-height: 42px; cursor: pointer;
+}
+button:hover { background: var(--hot); border-color: var(--hot); }
+button.ghost { background: transparent; color: var(--ink); }
+button.ghost:hover { background: var(--ink); color: var(--paper2); }
+button.on { background: var(--hot); border-color: var(--hot); color: #fff; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 6px; }
+.btnrow button { padding: 8px 11px; min-height: 38px; font-size: 11px; }
+
+/* ---------- 表格 ---------- */
+.tbl-wrap { overflow-x: auto; max-width: 100%; min-width: 0; margin: 12px 0; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.tbl th, table.tbl td {
+  border-bottom: 1px solid var(--line2); padding: 6px 10px; text-align: right;
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+table.tbl th {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line);
+}
+table.tbl td.l, table.tbl th.l { text-align: left; }
+table.tbl td.mono, table.tbl th.mono { font-family: var(--mono); }
+table.tbl tr.hi td { background: #fbf0ee; }
+table.tbl tr.dim td { color: var(--faint); }
+table.tbl td.best { color: var(--green); font-weight: 600; }
+table.tbl td.worst { color: var(--hot); font-weight: 600; }
+
+/* ---------- 图表 ---------- */
+.chart { width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 0 0 10px; font-size: 12px; color: var(--ink2); }
+.legend i { display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: middle; }
+.legend i.sq { height: 10px; width: 10px; }
+
+/* ---------- 柱状图（行内元素会忽略 width —— 必须 display:block） ---------- */
+.bars { display: block; }
+.bar-row { display: grid; grid-template-columns: 92px 1fr 78px; align-items: center; gap: 10px; margin-bottom: 5px; }
+.bar-lab { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: right; }
+.bar-track { display: block; background: var(--line2); height: 14px; position: relative; overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--hot); width: 0; }
+.bar-fill.cool { background: var(--cool); }
+.bar-fill.gold { background: var(--gold); }
+.bar-fill.green { background: var(--green); }
+.bar-val { font-family: var(--mono); font-size: 11px; color: var(--ink2); }
+
+/* ---------- 缓存槽 ---------- */
+.slots { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+.slot {
+  width: 76px; border: 1px solid var(--line); background: var(--paper);
+  padding: 6px 4px 5px; text-align: center; cursor: default;
+}
+.slot .s-idx { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--faint); }
+.slot .s-page { font-family: var(--mono); font-size: 24px; line-height: 1.25; color: var(--ink); }
+.slot .s-tag { font-family: var(--mono); font-size: 9px; color: var(--muted); min-height: 12px; }
+.slot.pick { cursor: pointer; border-color: var(--hot); background: #fdf3f1; }
+.slot.pick:hover { background: var(--hot); }
+.slot.pick:hover .s-page, .slot.pick:hover .s-idx, .slot.pick:hover .s-tag { color: #fff; }
+.slot.hit { border-color: var(--green); background: #f1f8f2; }
+.slot.evict { border-color: var(--hot); border-width: 2px; background: #fdf3f1; }
+.slot.empty { border-style: dashed; }
+.slot.empty .s-page { color: var(--faint); }
+
+/* ---------- 请求流 ---------- */
+.reqline { display: flex; gap: 4px; overflow-x: auto; max-width: 100%; padding: 8px 2px; min-height: 56px; }
+.req {
+  flex: none; width: 34px; text-align: center; font-family: var(--mono); font-size: 15px;
+  padding: 6px 0; border: 1px solid var(--line); background: var(--paper); color: var(--ink2);
+  position: relative;
+}
+.req .rf { display: block; font-size: 8px; line-height: 1; letter-spacing: 0; }
+.req.now { border-color: var(--ink); border-width: 2px; background: var(--ink); color: var(--paper2); }
+.req.now .rf { color: var(--paper2); }
+.req.past { color: var(--faint); }
+.req.miss { border-bottom: 3px solid var(--hot); }
+.req.hitm { border-bottom: 3px solid var(--green); }
+.req.fog { color: var(--faint); background: var(--line2); border-style: dashed; }
+
+/* ---------- 统计条 ---------- */
+.statrow { display: flex; flex-wrap: wrap; gap: 18px; margin: 12px 0 4px; }
+.stat { min-width: 110px; }
+.stat .st-l { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+.stat .st-v { font-family: var(--serif); font-size: 26px; line-height: 1.25; }
+.stat.hot .st-v { color: var(--hot); }
+.stat.cool .st-v { color: var(--cool); }
+.stat.gold .st-v { color: var(--gold); }
+.stat.green .st-v { color: var(--green); }
+
+/* ---------- 提示块 ---------- */
+.callout {
+  border-left: 3px solid var(--hot); background: #fbf0ee;
+  padding: 14px 18px; margin: 18px 0; font-size: 15px; color: var(--ink2);
+}
+.callout.cool { border-left-color: var(--cool); background: #eef4f7; }
+.callout.gold { border-left-color: var(--gold); background: #faf5e7; }
+.callout.green { border-left-color: var(--green); background: #eff7f1; }
+.callout .ct { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px; }
+.callout b { color: var(--ink); }
+
+/* ---------- 边界清单 ---------- */
+.limits { list-style: none; padding: 0; margin: 0; }
+.limits li { padding: 10px 0 10px 22px; border-bottom: 1px solid var(--line2); position: relative; font-size: 14px; color: var(--ink2); }
+.limits li:before { content: "—"; position: absolute; left: 0; color: var(--faint); }
+.limits li b { color: var(--ink); }
+
+/* ---------- 结论清单 ---------- */
+.cons { list-style: none; padding: 0; margin: 0; counter-reset: cn; }
+.cons li {
+  counter-increment: cn; position: relative; padding: 12px 0 12px 40px;
+  border-bottom: 1px solid var(--line2); font-size: 15px; color: var(--ink2);
+}
+.cons li:before {
+  content: counter(cn); position: absolute; left: 0; top: 12px;
+  font-family: var(--serif); font-size: 20px; color: var(--hot);
+}
+.cons li b { color: var(--ink); }
+
+footer { margin-top: 70px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 980px) {
+  .kpis { grid-template-columns: repeat(3, 1fr); }
+  .grid2, .grid3 { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .wrap { padding: 0 14px 70px; }
+  .hero { padding: 44px 0 28px; }
+  .title { font-size: 40px; }
+  .sub { font-size: 16px; }
+  .kpis { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .kpi .k-val { font-size: 21px; }
+  .sec h2 { font-size: 23px; }
+  .sec-num { font-size: 22px; }
+  table.tbl th, table.tbl td { white-space: normal; }
+  table.tbl td.num, table.tbl th.num { white-space: nowrap; }
+  #tbl-spec td, #tbl-spec th { white-space: normal; word-break: break-word; }
+  .bar-row { grid-template-columns: 70px 1fr 58px; }
+  button, select { min-height: 44px; }
+  .btnrow button { min-height: 44px; }
+  .slot { width: 64px; }
+  .req { width: 30px; font-size: 13px; }
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow">在线算法 · 缓存替换 · 竞争分析</div>
+  <p class="starter-link"><a href="马后炮·新生入口.html">第一次接触缓存？先玩 2 分钟入门小游戏 →</a></p>
+  <h1 class="title serif">马后炮</h1>
+  <p class="sub serif">一台只能看见「现在」的机器，和一个能看见全部未来的对手之间，隔着多少</p>
+  <p class="lede">缓存只有 k 个格子。请求一个接一个地来，格子满了，你必须立刻踢掉一个 —— 而你<b>不知道下一个请求是什么</b>。</p>
+  <p class="lede">如果你能看见全部未来，这个问题有精确的最优解：Belady 算法，1966 年就有了 —— 每次踢掉「下一次被用到最晚」的那个。所以问题从来不是「最优是什么」，而是<b>不知道未来的人，离最优有多远</b>。这个距离有名字，叫竞争比，它是这一页要量的东西。</p>
+  <p class="lede">顺带还有一件更奇怪的事：在让 LRU、FIFO、LFU、CLOCK 四个「聪明」策略命中率<b>精确归零</b>的那条序列上，最笨的随机替换拿到了 <span class="c">88.2%</span>。</p>
+  <div class="kpis" id="kpis"></div>
+</header>
+
+<section class="sec" id="sec1">
+  <div class="sec-head"><span class="sec-num">一</span><h2>一个只有两种选择的游戏</h2></div>
+  <p class="sec-sub">缓存 3 个格子 · 24 次请求 · 未来是灰的</p>
+  <p>规则短得可以一句话说完：<b>格子满了，就必须踢掉一个。</b>踢对了什么也不会发生，踢错了下一次就多一次缺页。</p>
+  <p>下面的请求流里，<b>已经过去的</b>是实打实的页面号，<b>还没来的</b>全是灰格子。这不是为了好看 —— 这就是在线算法真实的处境。你可以把整条序列背下来再玩，那你就变成了马后炮；只要你不背，你就得为「不知道」付钱。</p>
+
+  <div class="panel">
+    <h3>轮到你当缓存</h3>
+    <div class="reqline" id="game-req"></div>
+    <div class="slots" id="game-slots"></div>
+    <div class="statrow" id="game-stat"></div>
+    <div class="btnrow" style="margin-top:12px">
+      <button id="game-reset" class="ghost">重来</button>
+      <button id="game-auto">让 LRU 替我玩</button>
+      <button id="game-opt" class="ghost">让马后炮替我玩</button>
+    </div>
+    <div id="game-msg" class="chart-note"></div>
+  </div>
+
+  <div class="callout">
+    <span class="ct">为什么这件事值得量</span>
+    缓存替换是「在线算法」这门学问里最干净的一个样本：目标明确（缺页越少越好）、对手明确（那条最坏的序列）、
+    而且它有一个<b>能看见未来的完美解</b>当作标尺。有了标尺，「不知道」这件事才能被标价。
+  </div>
+</section>
+
+<section class="sec" id="sec2">
+  <div class="sec-head"><span class="sec-num">二</span><h2>马后炮</h2></div>
+  <p class="sec-sub">Belady 的 MIN：踢掉「下一次被用到最晚」的那个</p>
+  <p>如果允许偷看未来，规则就变得毫不含糊：每次缺页时，看一眼缓存里每个页面<b>下一次会在第几步被用到</b>，踢掉那个最晚的；如果某个页面再也不会出现，就踢它。</p>
+  <p>这不是启发式，是<b>可证明最优</b>的。证明用的是交换论证：假设某个最优解在第一次分歧处踢了 A 而不是 B（B 的下次使用更晚），那把 B 换成 A，后面的缺页数只可能变少不会变多。所以「踢最晚的」可以一路换到最优解而不损失。</p>
+
+  <div class="panel">
+    <h3>同一批请求，让马后炮来踢</h3>
+    <div class="reqline" id="opt-req"></div>
+    <div class="slots" id="opt-slots"></div>
+    <div class="statrow" id="opt-stat"></div>
+    <div class="btnrow" style="margin-top:12px">
+      <button id="opt-step">下一步</button>
+      <button id="opt-run" class="ghost">跑到底</button>
+      <button id="opt-reset" class="ghost">重置</button>
+    </div>
+    <div id="opt-msg" class="chart-note"></div>
+  </div>
+
+  <div class="callout gold">
+    <span class="ct">注意每个槽下面的那行小字</span>
+    那是「这个页面下一次出现的位置」。马后炮的全部优势，就藏在这行小字里 ——
+    它需要读到序列的末尾才能写出来。任何真正在线跑着的系统，都没有这行字。
+  </div>
+</section>
+
+<section class="sec" id="sec3">
+  <div class="sec-head"><span class="sec-num">三</span><h2>七个策略，六种负载</h2></div>
+  <p class="sec-sub">同一个 k = 16，只换访问序列的形状</p>
+  <p>下面七个策略跑在同一批请求上。LRU 踢最久没用过的，FIFO 踢最早进来的，LFU 踢用得最少的，CLOCK 是 LRU 的廉价近似，RANDOM 每次掷硬币，MARKER 是随机标记算法（文献里竞争比 ≤ 2·H<sub>k</sub> 的那个），OPT 是上一节的马后炮 —— 它作弊，所以它是标尺，不是选手。</p>
+  <p>换一下访问模式，看谁赢。<b>重点不是谁总分最高，而是名次会翻。</b></p>
+
+  <div class="panel">
+    <div class="ctrls">
+      <div class="ctrl"><span>访问模式</span><select id="mode-sel"></select></div>
+    </div>
+    <div class="bars" id="bars-policy"></div>
+    <div class="chart-note" id="mode-note"></div>
+  </div>
+
+  <div class="panel">
+    <h3>六种模式 × 七个策略的命中率（k = 16，各 10 万次访问）</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-policy"></table></div>
+  </div>
+
+  <div class="chart" id="chart-modes"></div>
+
+  <div class="callout">
+    <span class="ct">第一行就够吓人，而且那个 88.2% 是能推出来的</span>
+    循环扫描 17 页时，LRU、FIFO、LFU、CLOCK 四个策略的命中率<b>精确为 0.0%</b>，而随机替换拿到 88.2%。<br>
+    为什么 LRU 会归零？因为在环上，「最久没用过」正好就是「下一个要用的」—— 它的驱逐规则在循环扫描上每一步都挑中了最坏的那一个。<br>
+    为什么随机替换是 88.2%？缓存 k 格、页面 k+1 个，任意时刻恰好一个页面在门外；缺页时门外换成谁，在其余 k 个里均匀分布。
+    于是两次缺页之间的命中次数均匀落在 0…k−1，命中率 = <b>(k−1)/(k+1) = 15/17 = 88.235%</b>，实测 88.180%。<br>
+    这不是「随机更好用」，而是<b>确定性在这条序列上是致命的</b> —— 对抗者只要知道你下一步怎么选，就能把你打穿。
+  </div>
+</section>
+
+<section class="sec" id="sec4">
+  <div class="sec-head"><span class="sec-num">四</span><h2>对抗者</h2></div>
+  <p class="sec-sub">量身定做的访问序列，以及它的有效期</p>
+  <p>循环扫描是一条<b>提前写好</b>的坏序列：它同时打死 LRU、FIFO、LFU 和 CLOCK，纯属因为这四个策略在这条序列上的选择恰好都错。但对抗者可以做得更狠 —— <b>不用预先知道你的策略，边看边写。</b></p>
+  <p>办法只有一句话：<b>每一步都请求那个当前不在你缓存里的页面。</b>维护 k+1 个页面，你的格子只有 k 个，所以任意时刻恰好有一个页面在门外 —— 请求它，你必缺页；你踢掉一个，就换另一个出门，下一轮再请求它。如此往复。</p>
+
+  <div class="panel">
+    <div class="ctrls">
+      <div class="ctrl"><span>目标策略</span><select id="adv-sel"></select></div>
+      <div class="ctrl"><span>推进</span>
+        <div class="btnrow">
+          <button id="adv-step">走一步</button>
+          <button id="adv-run" class="ghost">走 200 步</button>
+          <button id="adv-reset" class="ghost">重置</button>
+        </div>
+      </div>
+    </div>
+    <div class="reqline" id="adv-req"></div>
+    <div class="slots" id="adv-slots"></div>
+    <div class="statrow" id="adv-stat"></div>
+    <div id="adv-msg" class="chart-note"></div>
+  </div>
+
+  <div class="panel">
+    <h3>同一条序列，换一个种子还能不能打穿（k = 16，2 万次访问，200 个种子）</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-transfer"></table></div>
+  </div>
+
+  <div class="callout cool">
+    <span class="ct">本次最有用的一条</span>
+    对抗序列对 LRU / FIFO / LFU / CLOCK 是<b>永久致命</b>的 —— 换 200 个种子，命中率全是 0.0%。
+    但对随机替换，它只杀得死一次：把硬币重掷一次，命中率立刻回到 93.7%。
+    <b>随机化不是「更差的确定性」，是另一种东西。</b>这也正是随机标记算法能拿到 2·H<sub>k</sub> 竞争比的原因。
+  </div>
+</section>
+
+<section class="sec" id="sec5">
+  <div class="sec-head"><span class="sec-num">五</span><h2>竞争比</h2></div>
+  <p class="sec-sub">界、实测，以及两者之间那片空气</p>
+  <p>「不知道未来的代价」在文献里被写成一个数：<b>竞争比</b>。LRU 和 FIFO 的竞争比 ≤ k，随机标记算法 ≤ 2·H<sub>k</sub>（H<sub>k</sub> 是第 k 个调和数）。这些是上界 —— 说的是「最坏情况下最多能坏几倍」。</p>
+  <p>下面把界和实测画在同一张图上。横轴是缓存档 k，纵轴是「缺页数 ÷ 离线最优的缺页数」。</p>
+
+  <div class="chart" id="chart-ratio"></div>
+  <div class="panel">
+    <h3>数字版</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-ratio"></table></div>
+    <div class="chart-note" id="ratio-note"></div>
+  </div>
+
+  <div class="panel">
+    <h3>同一批数据，两种读法（k = 16）</h3>
+    <div class="chart" id="chart-loose"></div>
+    <div class="chart-note" id="loose-note"></div>
+  </div>
+
+  <div class="panel">
+    <h3>穷举：最坏的序列到底长什么样</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-worst"></table></div>
+    <div class="chart-note" id="worst-note"></div>
+  </div>
+
+  <div class="callout">
+    <span class="ct">界是存在性命题，不是常见性命题</span>
+    k = 16 时理论界是 16 倍，随机负载下的实测中位数只有 <b>1.72 倍</b> —— 界松了约 9.3 倍。
+    而真的按对抗序列来，实测比值是 15.24 倍，吃到了理论界的 95%。
+    <b>同一个策略，同一句话「最多 16 倍」，在两种负载下的含义差了 9 倍。</b>
+  </div>
+</section>
+
+<section class="sec" id="sec6">
+  <div class="sec-head"><span class="sec-num">六</span><h2>访问模式的力量</h2></div>
+  <p class="sec-sub">栈距离、包含性，以及加内存反而变慢</p>
+  <p>前面每一节都在换负载形状看名次翻。这一节把「形状」本身变成一个可算的量：<b>栈距离</b>。一次访问的栈距离 = 这个页面在「按最近使用排序的队列」里排第几；首次出现的页面距离算无穷。</p>
+  <p>有了它，LRU 的行为可以精确预言。这条定理（Mattson 等，1970）对<b>任意</b>序列成立，不是渐近，是恒等式：</p>
+  <div class="callout green" style="text-align:center;font-size:17px">
+    <b>LRU 的缺页率(k) &nbsp;=&nbsp; P(栈距离 &gt; k)</b>
+  </div>
+  <p>这是本页唯一一个有严格证明的「真值」，所以它同时是<b>对照组</b>：拿它校准我的 LRU 实现，对了，才敢相信后面量出来的每一个差。</p>
+
+  <div class="chart" id="chart-mrc"></div>
+  <div class="panel">
+    <h3>预测 vs 实测</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-mrc"></table></div>
+    <div class="chart-note" id="mrc-note"></div>
+  </div>
+
+  <div class="panel">
+    <h3>包含性：k 档缓存是不是 k+1 档的子集</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-inclusion"></table></div>
+    <div class="chart-note" id="incl-note"></div>
+  </div>
+
+  <div class="panel">
+    <h3>Belady 异常：加内存反而变慢</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-belady"></table></div>
+    <div class="chart-note" id="belady-note"></div>
+  </div>
+
+  <div class="panel">
+    <h3>LFU 的两面性：同一个策略，从最差变成最好</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-lfu"></table></div>
+    <div class="chart-note" id="lfu-note"></div>
+  </div>
+</section>
+
+<section class="sec" id="sec7">
+  <div class="sec-head"><span class="sec-num">七</span><h2>这些数字凭什么可信</h2></div>
+  <p class="sec-sub">验证、对照、边界</p>
+
+  <div class="panel">
+    <h3>验证清单</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-verify"></table></div>
+  </div>
+
+  <div class="panel">
+    <h3>结论</h3>
+    <ul class="cons" id="cons"></ul>
+  </div>
+
+  <div class="panel">
+    <h3>我没做到什么</h3>
+    <ul class="limits" id="limits"></ul>
+  </div>
+</section>
+
+<footer>
+  <p>《马后炮》· 单文件离线装置 · 全部数字由页内模型实时算出，无外部依赖。</p>
+</footer>
+
+</div>
+<script>window.__MH_DATA__ = {results: 
+{"meta":{"generated":"2026-09-28T13:28:36.081Z","only":["E6"],"node":"v22.22.2"},"E1":{"k":16,"len":100000,"modes":[{"id":"cyclic","label":"循环扫描 17 页","note":"工作集比缓存刚好大一个","rows":[{"name":"OPT","misses":6265,"hits":93735,"rate":0.9374,"vsOpt":1},{"name":"LRU","misses":100000,"hits":0,"rate":0,"vsOpt":15.962},{"name":"FIFO","misses":100000,"hits":0,"rate":0,"vsOpt":15.962},{"name":"LFU","misses":100000,"hits":0,"rate":0,"vsOpt":15.962},{"name":"CLOCK","misses":100000,"hits":0,"rate":0,"vsOpt":15.962},{"name":"RANDOM","misses":11823,"hits":88177,"rate":0.8818,"vsOpt":1.887},{"name":"MARKER","misses":21079,"hits":78921,"rate":0.7892,"vsOpt":3.365}]},{"id":"uniform17","label":"均匀随机 17 页","note":"同样多的页，但顺序打乱","rows":[{"name":"OPT","misses":1771,"hits":98229,"rate":0.9823,"vsOpt":1},{"name":"LRU","misses":5963,"hits":94037,"rate":0.9404,"vsOpt":3.367},{"name":"FIFO","misses":5901,"hits":94099,"rate":0.941,"vsOpt":3.332},{"name":"LFU","misses":5718,"hits":94282,"rate":0.9428,"vsOpt":3.229},{"name":"CLOCK","misses":5928,"hits":94072,"rate":0.9407,"vsOpt":3.347},{"name":"RANDOM","misses":5849,"hits":94151,"rate":0.9415,"vsOpt":3.303},{"name":"MARKER","misses":5976,"hits":94024,"rate":0.9402,"vsOpt":3.374}]},{"id":"uniform64","label":"均匀随机 64 页","note":"工作集是缓存的 4 倍","rows":[{"name":"OPT","misses":43416,"hits":56584,"rate":0.5658,"vsOpt":1},{"name":"LRU","misses":75223,"hits":24777,"rate":0.2478,"vsOpt":1.733},{"name":"FIFO","misses":75181,"hits":24819,"rate":0.2482,"vsOpt":1.732},{"name":"LFU","misses":75240,"hits":24760,"rate":0.2476,"vsOpt":1.733},{"name":"CLOCK","misses":75228,"hits":24772,"rate":0.2477,"vsOpt":1.733},{"name":"RANDOM","misses":74978,"hits":25022,"rate":0.2502,"vsOpt":1.727},{"name":"MARKER","misses":75149,"hits":24851,"rate":0.2485,"vsOpt":1.731}]},{"id":"zipf64","label":"Zipf(α=1) 64 页","note":"有热点，接近真实负载","rows":[{"name":"OPT","misses":22310,"hits":77690,"rate":0.7769,"vsOpt":1},{"name":"LRU","misses":41001,"hits":58999,"rate":0.59,"vsOpt":1.838},{"name":"FIFO","misses":46871,"hits":53129,"rate":0.5313,"vsOpt":2.101},{"name":"LFU","misses":33042,"hits":66958,"rate":0.6696,"vsOpt":1.481},{"name":"CLOCK","misses":42910,"hits":57090,"rate":0.5709,"vsOpt":1.923},{"name":"RANDOM","misses":46902,"hits":53098,"rate":0.531,"vsOpt":2.102},{"name":"MARKER","misses":42586,"hits":57414,"rate":0.5741,"vsOpt":1.909}]},{"id":"phase","label":"热点迁移 48 页","note":"中途整个热区换掉，旧热点成垃圾","rows":[{"name":"OPT","misses":13134,"hits":86866,"rate":0.8687,"vsOpt":1},{"name":"LRU","misses":33296,"hits":66704,"rate":0.667,"vsOpt":2.535},{"name":"FIFO","misses":33427,"hits":66573,"rate":0.6657,"vsOpt":2.545},{"name":"LFU","misses":64686,"hits":35314,"rate":0.3531,"vsOpt":4.925},{"name":"CLOCK","misses":33161,"hits":66839,"rate":0.6684,"vsOpt":2.525},{"name":"RANDOM","misses":33460,"hits":66540,"rate":0.6654,"vsOpt":2.548},{"name":"MARKER","misses":33201,"hits":66799,"rate":0.668,"vsOpt":2.528}]},{"id":"scanhot","label":"扫描 + 热点","note":"一半流式扫描，一半热数据","rows":[{"name":"OPT","misses":49247,"hits":50753,"rate":0.5075,"vsOpt":1},{"name":"LRU","misses":76554,"hits":23446,"rate":0.2345,"vsOpt":1.554},{"name":"FIFO","misses":79117,"hits":20883,"rate":0.2088,"vsOpt":1.607},{"name":"LFU","misses":51283,"hits":48717,"rate":0.4872,"vsOpt":1.041},{"name":"CLOCK","misses":77995,"hits":22005,"rate":0.2201,"vsOpt":1.584},{"name":"RANDOM","misses":79053,"hits":20947,"rate":0.2095,"vsOpt":1.605},{"name":"MARKER","misses":77290,"hits":22710,"rate":0.2271,"vsOpt":1.569}]}]},"E2":{"kList":[2,4,8,16,32,64,128],"cyclicLen":200000,"advLen":20000,"rows":[{"k":2,"bound":{"OPT":null,"LRU":2,"FIFO":2,"LFU":2,"CLOCK":2,"RANDOM":2,"MARKER":3},"cyclic":{"LRU":{"misses":200000,"ratio":2},"FIFO":{"misses":200000,"ratio":2},"LFU":{"misses":200000,"ratio":2},"CLOCK":{"misses":200000,"ratio":2},"RANDOM":{"misses":133430,"ratio":1.334},"MARKER":{"misses":149995,"ratio":1.5}},"adv":{"LRU":{"misses":20000,"hits":0,"optMisses":10001,"ratio":2},"FIFO":{"misses":20000,"hits":0,"optMisses":10001,"ratio":2},"LFU":{"misses":20000,"hits":0,"optMisses":10001,"ratio":2},"CLOCK":{"misses":20000,"hits":0,"optMisses":10001,"ratio":2},"RANDOM":{"misses":20000,"hits":0,"optMisses":6674,"ratio":2.997},"MARKER":{"misses":20000,"hits":0,"optMisses":10001,"ratio":2}},"optCyclic":100001,"optAdv":10001,"optAdvRate":0.5,"cyclicOptRate":0.5},{"k":4,"bound":{"OPT":null,"LRU":4,"FIFO":4,"LFU":4,"CLOCK":4,"RANDOM":4,"MARKER":4.166666666666666},"cyclic":{"LRU":{"misses":200000,"ratio":4},"FIFO":{"misses":200000,"ratio":4},"LFU":{"misses":200000,"ratio":4},"CLOCK":{"misses":200000,"ratio":4},"RANDOM":{"misses":79727,"ratio":1.594},"MARKER":{"misses":104119,"ratio":2.082}},"adv":{"LRU":{"misses":20000,"hits":0,"optMisses":5003,"ratio":3.998},"FIFO":{"misses":20000,"hits":0,"optMisses":5003,"ratio":3.998},"LFU":{"misses":20000,"hits":0,"optMisses":5003,"ratio":3.998},"CLOCK":{"misses":20000,"hits":0,"optMisses":5003,"ratio":3.998},"RANDOM":{"misses":20000,"hits":0,"optMisses":2398,"ratio":8.34},"MARKER":{"misses":20000,"hits":0,"optMisses":5003,"ratio":3.998}},"optCyclic":50003,"optAdv":5003,"optAdvRate":0.7499,"cyclicOptRate":0.75},{"k":8,"bound":{"OPT":null,"LRU":8,"FIFO":8,"LFU":8,"CLOCK":8,"RANDOM":8,"MARKER":5.435714285714285},"cyclic":{"LRU":{"misses":200000,"ratio":7.998},"FIFO":{"misses":200000,"ratio":7.998},"LFU":{"misses":200000,"ratio":7.998},"CLOCK":{"misses":200000,"ratio":7.998},"RANDOM":{"misses":44474,"ratio":1.778},"MARKER":{"misses":67790,"ratio":2.711}},"adv":{"LRU":{"misses":20000,"hits":0,"optMisses":2507,"ratio":7.978},"FIFO":{"misses":20000,"hits":0,"optMisses":2507,"ratio":7.978},"LFU":{"misses":20000,"hits":0,"optMisses":2507,"ratio":7.978},"CLOCK":{"misses":20000,"hits":0,"optMisses":2507,"ratio":7.978},"RANDOM":{"misses":20000,"hits":0,"optMisses":944,"ratio":21.186},"MARKER":{"misses":20000,"hits":0,"optMisses":2507,"ratio":7.978}},"optCyclic":25007,"optAdv":2507,"optAdvRate":0.8747,"cyclicOptRate":0.875},{"k":16,"bound":{"OPT":null,"LRU":16,"FIFO":16,"LFU":16,"CLOCK":16,"RANDOM":16,"MARKER":6.761457986457987},"cyclic":{"LRU":{"misses":200000,"ratio":15.981},"FIFO":{"misses":200000,"ratio":15.981},"LFU":{"misses":200000,"ratio":15.981},"CLOCK":{"misses":200000,"ratio":15.981},"RANDOM":{"misses":23544,"ratio":1.881},"MARKER":{"misses":42246,"ratio":3.376}},"adv":{"LRU":{"misses":20000,"hits":0,"optMisses":1265,"ratio":15.81},"FIFO":{"misses":20000,"hits":0,"optMisses":1265,"ratio":15.81},"LFU":{"misses":20000,"hits":0,"optMisses":1265,"ratio":15.81},"CLOCK":{"misses":20000,"hits":0,"optMisses":1265,"ratio":15.81},"RANDOM":{"misses":20000,"hits":0,"optMisses":372,"ratio":53.763},"MARKER":{"misses":20000,"hits":0,"optMisses":1265,"ratio":15.81}},"optCyclic":12515,"optAdv":1265,"optAdvRate":0.9368,"cyclicOptRate":0.9374},{"k":32,"bound":{"OPT":null,"LRU":32,"FIFO":32,"LFU":32,"CLOCK":32,"RANDOM":32,"MARKER":8.11699039087304},"cyclic":{"LRU":{"misses":200000,"ratio":31.842},"FIFO":{"misses":200000,"ratio":31.842},"LFU":{"misses":200000,"ratio":31.842},"CLOCK":{"misses":200000,"ratio":31.842},"RANDOM":{"misses":12118,"ratio":1.929},"MARKER":{"misses":25232,"ratio":4.017}},"adv":{"LRU":{"misses":20000,"hits":0,"optMisses":656,"ratio":30.488},"FIFO":{"misses":20000,"hits":0,"optMisses":656,"ratio":30.488},"LFU":{"misses":20000,"hits":0,"optMisses":656,"ratio":30.488},"CLOCK":{"misses":20000,"hits":0,"optMisses":656,"ratio":30.488},"RANDOM":{"misses":20000,"hits":0,"optMisses":188,"ratio":106.383},"MARKER":{"misses":20000,"hits":0,"optMisses":656,"ratio":30.488}},"optCyclic":6281,"optAdv":656,"optAdvRate":0.9672,"cyclicOptRate":0.9686},{"k":64,"bound":{"OPT":null,"LRU":64,"FIFO":64,"LFU":64,"CLOCK":64,"RANDOM":64,"MARKER":9.487781807411535},"cyclic":{"LRU":{"misses":200000,"ratio":62.735},"FIFO":{"misses":200000,"ratio":62.735},"LFU":{"misses":200000,"ratio":62.735},"CLOCK":{"misses":200000,"ratio":62.735},"RANDOM":{"misses":6273,"ratio":1.968},"MARKER":{"misses":14934,"ratio":4.684}},"adv":{"LRU":{"misses":20000,"hits":0,"optMisses":376,"ratio":53.191},"FIFO":{"misses":20000,"hits":0,"optMisses":376,"ratio":53.191},"LFU":{"misses":20000,"hits":0,"optMisses":376,"ratio":53.191},"CLOCK":{"misses":20000,"hits":0,"optMisses":376,"ratio":53.191},"RANDOM":{"misses":20000,"hits":0,"optMisses":130,"ratio":153.846},"MARKER":{"misses":20000,"hits":0,"optMisses":376,"ratio":53.191}},"optCyclic":3188,"optAdv":376,"optAdvRate":0.9812,"cyclicOptRate":0.9841},{"k":128,"bound":{"OPT":null,"LRU":128,"FIFO":128,"LFU":128,"CLOCK":128,"RANDOM":128,"MARKER":10.866294185178347},"cyclic":{"LRU":{"misses":200000,"ratio":118.343},"FIFO":{"misses":200000,"ratio":118.343},"LFU":{"misses":200000,"ratio":118.343},"CLOCK":{"misses":200000,"ratio":118.343},"RANDOM":{"misses":3292,"ratio":1.948},"MARKER":{"misses":8662,"ratio":5.125}},"adv":{"LRU":{"misses":20000,"hits":0,"optMisses":284,"ratio":70.423},"FIFO":{"misses":20000,"hits":0,"optMisses":284,"ratio":70.423},"LFU":{"misses":20000,"hits":0,"optMisses":284,"ratio":70.423},"CLOCK":{"misses":20000,"hits":0,"optMisses":284,"ratio":70.423},"RANDOM":{"misses":20000,"hits":0,"optMisses":157,"ratio":127.389},"MARKER":{"misses":20000,"hits":0,"optMisses":284,"ratio":70.423}},"optCyclic":1690,"optAdv":284,"optAdvRate":0.9858,"cyclicOptRate":0.9916}]},"E3":{"cases":[{"k":2,"alphabet":3,"n":12,"count":531441,"maxRatio":1.7142857142857142,"maxSeq":[0,1,2,0,1,2,0,1,2,0,1,2],"maxLruMiss":12,"maxOptMiss":7,"top":[{"ratio":1.7142857142857142,"lru":12,"opt":7,"seq":[0,1,2,0,1,2,0,1,2,0,1,2]},{"ratio":1.7142857142857142,"lru":12,"opt":7,"seq":[0,2,1,0,2,1,0,2,1,0,2,1]},{"ratio":1.7142857142857142,"lru":12,"opt":7,"seq":[1,0,2,1,0,2,1,0,2,1,0,2]},{"ratio":1.7142857142857142,"lru":12,"opt":7,"seq":[1,2,0,1,2,0,1,2,0,1,2,0]}],"hist":[0,474327,57114,0,0,0,0],"histMax":6,"minHit":{"hits":0,"lruMiss":12,"optMiss":7,"seq":[0,1,2,0,1,2,0,1,2,0,1,2]},"label":"k=2，页面 3 个，长度 12","ms":381},{"k":2,"alphabet":3,"n":14,"count":4782969,"maxRatio":1.75,"maxSeq":[0,1,2,0,1,2,0,1,2,0,1,2,0,1],"maxLruMiss":14,"maxOptMiss":8,"top":[{"ratio":1.75,"lru":14,"opt":8,"seq":[0,1,2,0,1,2,0,1,2,0,1,2,0,1]},{"ratio":1.75,"lru":14,"opt":8,"seq":[0,2,1,0,2,1,0,2,1,0,2,1,0,2]},{"ratio":1.75,"lru":14,"opt":8,"seq":[1,0,2,1,0,2,1,0,2,1,0,2,1,0]},{"ratio":1.75,"lru":14,"opt":8,"seq":[1,2,0,1,2,0,1,2,0,1,2,0,1,2]}],"hist":[0,4166847,616122,0,0,0,0],"histMax":6,"minHit":{"hits":0,"lruMiss":14,"optMiss":8,"seq":[0,1,2,0,1,2,0,1,2,0,1,2,0,1]},"label":"k=2，页面 3 个，长度 14","ms":3845},{"k":3,"alphabet":4,"n":9,"count":262144,"maxRatio":1.8,"maxSeq":[0,1,2,3,0,1,2,3,0],"maxLruMiss":9,"maxOptMiss":5,"top":[{"ratio":1.8,"lru":9,"opt":5,"seq":[0,1,2,3,0,1,2,3,0]},{"ratio":1.8,"lru":9,"opt":5,"seq":[0,1,3,2,0,1,3,2,0]},{"ratio":1.8,"lru":9,"opt":5,"seq":[0,2,1,3,0,2,1,3,0]},{"ratio":1.8,"lru":9,"opt":5,"seq":[0,2,3,1,0,2,3,1,0]}],"hist":[0,250096,12048,0,0,0,0],"histMax":6,"minHit":{"hits":0,"lruMiss":9,"optMiss":5,"seq":[0,1,2,3,0,1,2,3,0]},"label":"k=3，页面 4 个，长度 9","ms":188},{"k":3,"alphabet":4,"n":11,"count":4194304,"maxRatio":1.8333333333333333,"maxSeq":[0,1,2,3,0,1,2,3,0,1,2],"maxLruMiss":11,"maxOptMiss":6,"top":[{"ratio":1.8333333333333333,"lru":11,"opt":6,"seq":[0,1,2,3,0,1,2,3,0,1,2]},{"ratio":1.8333333333333333,"lru":11,"opt":6,"seq":[0,1,3,2,0,1,3,2,0,1,3]},{"ratio":1.8333333333333333,"lru":11,"opt":6,"seq":[0,2,1,3,0,2,1,3,0,2,1]},{"ratio":1.8333333333333333,"lru":11,"opt":6,"seq":[0,2,3,1,0,2,3,1,0,2,3]}],"hist":[0,3898408,295896,0,0,0,0],"histMax":6,"minHit":{"hits":0,"lruMiss":11,"optMiss":6,"seq":[0,1,2,3,0,1,2,3,0,1,2]},"label":"k=3，页面 4 个，长度 11","ms":3114}]},"E4":{"k":16,"pages":64,"len":5000,"trials":400,"dists":[{"id":"uniform","label":"均匀随机 64 页","min":1.6945,"p50":1.724,"p90":1.7371,"p99":1.748,"max":1.761,"mean":1.7241,"meanLruMiss":3752,"meanOptMiss":2176,"hist":[0,0,0,400,0,0,0,0,0,0,0,0]},{"id":"zipf1","label":"Zipf(α=1) 64 页","min":1.7735,"p50":1.8191,"p90":1.844,"p99":1.8593,"max":1.8761,"mean":1.8197,"meanLruMiss":2043,"meanOptMiss":1123,"hist":[0,0,0,51,349,0,0,0,0,0,0,0]},{"id":"zipf07","label":"Zipf(α=0.7) 64 页","min":1.7661,"p50":1.8056,"p90":1.8245,"p99":1.8378,"max":1.8484,"mean":1.8061,"meanLruMiss":2932,"meanOptMiss":1624,"hist":[0,0,0,137,263,0,0,0,0,0,0,0]}],"advRatio":{"lru":5000,"opt":328,"ratio":15.244}},"E5":{"inclusion":{"trials":200,"LRU":0,"FIFO":200,"OPTfirst":197,"OPTmaxId":0},"monotone":{"trials":200,"LRU":0,"FIFO":0},"belady":[{"k":2,"pages":5,"len":60,"trials":4000,"fifoAnomalies":0,"lruAnomalies":0,"rate":0,"worst":null,"examples":[]},{"k":3,"pages":7,"len":60,"trials":4000,"fifoAnomalies":0,"lruAnomalies":0,"rate":0,"worst":null,"examples":[]},{"k":4,"pages":8,"len":80,"trials":3000,"fifoAnomalies":3,"lruAnomalies":0,"rate":0.001,"worst":{"gap":2,"f1":28,"f2":30,"seq":[7,5,3,3,5,3,1,6,2,6,5,2,3,4,0,0,3,5,5,4,6,0,7,4,6,2,2,0,6,0,6,0,2,2,6,0,0,2,0,0,5,6,2,2,7,1,2,2,2,2,5,2,5,2,3,7,2,7,4,2,7,0,0,1,1,5,6,1,3,7,7,3,2,4,7,3,1,4,7,2]},"examples":[{"gap":1,"f1":37,"f2":38,"seq":[3,1,3,0,4,6,5,3,6,2,7,6,0,7,2,3,4,6,1,4,3,7,1,2,1,4,5,1,1,1,5,6,3,6,6,1,3,1,5,6,6,5,3,3,7,2,2,4,5,1,2,3,4,4,3,4,5,2,2,3,4,0,7,4,7,2,6,5,1,7,2,3,2,3,3,1,7,4,4,2]},{"gap":2,"f1":28,"f2":30,"seq":[7,5,3,3,5,3,1,6,2,6,5,2,3,4,0,0,3,5,5,4,6,0,7,4,6,2,2,0,6,0,6,0,2,2,6,0,0,2,0,0,5,6,2,2,7,1,2,2,2,2,5,2,5,2,3,7,2,7,4,2,7,0,0,1,1,5,6,1,3,7,7,3,2,4,7,3,1,4,7,2]}]},{"k":6,"pages":10,"len":100,"trials":2000,"fifoAnomalies":10,"lruAnomalies":0,"rate":0.005,"worst":{"gap":3,"f1":31,"f2":34,"seq":[7,1,4,4,4,5,1,6,3,4,1,5,2,8,5,9,7,1,3,3,9,1,6,7,4,4,6,8,1,0,4,9,2,6,7,5,6,7,2,1,5,0,1,2,0,1,3,9,9,3,9,5,5,8,7,7,1,1,4,2,9,9,4,2,9,4,1,2,3,4,6,9,5,9,4,6,2,4,6,7,4,8,6,5,3,3,7,3,0,2,6,4,6,0,1,7,4,7,6,0]},"examples":[{"gap":3,"f1":31,"f2":34,"seq":[7,1,4,4,4,5,1,6,3,4,1,5,2,8,5,9,7,1,3,3,9,1,6,7,4,4,6,8,1,0,4,9,2,6,7,5,6,7,2,1,5,0,1,2,0,1,3,9,9,3,9,5,5,8,7,7,1,1,4,2,9,9,4,2,9,4,1,2,3,4,6,9,5,9,4,6,2,4,6,7,4,8,6,5,3,3,7,3,0,2,6,4,6,0,1,7,4,7,6,0]},{"gap":1,"f1":37,"f2":38,"seq":[8,4,8,8,0,5,8,2,7,6,1,5,4,4,7,2,2,6,3,4,4,8,3,8,5,5,4,1,2,5,3,9,7,1,9,2,7,5,2,6,1,8,2,7,0,8,4,1,4,9,5,6,9,2,2,2,6,3,6,7,7,6,5,0,6,5,8,2,8,9,6,7,1,6,4,6,1,3,3,9,2,1,3,1,6,1,2,4,3,4,0,5,6,8,3,3,3,0,4,8]}]},{"k":8,"pages":12,"len":120,"trials":1500,"fifoAnomalies":15,"lruAnomalies":0,"rate":0.01,"worst":{"gap":4,"f1":40,"f2":44,"seq":[5,11,0,8,6,11,8,0,8,0,10,6,10,8,11,11,4,5,3,10,0,1,11,4,4,11,6,4,2,6,5,2,1,7,3,9,4,8,11,7,7,2,5,0,0,7,10,4,0,9,10,0,11,6,10,10,10,3,4,0,1,11,4,3,2,9,11,0,7,3,4,8,3,7,8,4,11,8,6,6,8,3,5,1,0,4,1,11,3,11,5,1,7,8,3,1,2,8,4,9,6,8,11,3,4,1,5,10,4,1,4,4,7,4,4,1,2,0,10,6]},"examples":[{"gap":1,"f1":46,"f2":47,"seq":[11,4,3,7,3,11,7,10,7,10,7,2,0,8,2,10,6,0,1,5,7,7,7,6,6,5,3,4,10,9,11,5,3,8,6,9,10,10,1,9,0,7,11,10,1,11,1,6,8,5,1,8,11,5,4,0,4,6,10,5,8,4,8,7,9,1,3,9,6,8,2,11,0,1,3,7,1,10,8,8,1,6,6,8,0,11,1,10,3,4,9,10,7,10,3,2,8,5,9,3,9,7,5,6,10,9,0,10,9,11,8,5,8,5,5,6,9,6,4,1]},{"gap":1,"f1":39,"f2":40,"seq":[1,8,2,6,6,2,5,7,2,5,8,1,10,0,8,3,10,2,10,5,8,0,9,3,9,4,4,6,0,4,11,11,6,8,2,1,3,9,8,10,2,7,8,8,6,0,8,11,1,11,9,10,11,2,9,6,6,2,7,6,10,7,7,11,3,10,3,6,10,3,9,2,6,7,4,9,5,2,6,11,1,5,11,0,7,2,0,6,10,5,9,7,6,6,0,8,10,9,5,8,5,7,6,0,11,1,7,3,4,10,11,2,9,8,0,9,0,6,1,2]}]}],"classic":{"seq":[1,2,3,4,1,2,5,1,2,3,4,5],"fifo3":9,"fifo4":10,"lru3":10,"lru4":8,"opt3":7,"opt4":6},"exhaustive":{"k":3,"pages":5,"maxLen":12,"perLen":[{"n":1,"total":5,"anomalies":0,"lruAnomalies":0,"rate":0,"first":null,"maxGap":0,"maxGapSeq":null},{"n":2,"total":25,"anomalies":0,"lruAnomalies":0,"rate":0,"first":null,"maxGap":0,"maxGapSeq":null},{"n":3,"total":125,"anomalies":0,"lruAnomalies":0,"rate":0,"first":null,"maxGap":0,"maxGapSeq":null},{"n":4,"total":625,"anomalies":0,"lruAnomalies":0,"rate":0,"first":null,"maxGap":0,"maxGapSeq":null},{"n":5,"total":3125,"anomalies":0,"lruAnomalies":0,"rate":0,"first":null,"maxGap":0,"maxGapSeq":null},{"n":6,"total":15625,"anomalies":0,"lruAnomalies":0,"rate":0,"first":null,"maxGap":0,"maxGapSeq":null},{"n":7,"total":78125,"anomalies":0,"lruAnomalies":0,"rate":0,"first":null,"maxGap":0,"maxGapSeq":null},{"n":8,"total":390625,"anomalies":0,"lruAnomalies":0,"rate":0,"first":null,"maxGap":0,"maxGapSeq":null},{"n":9,"total":1953125,"anomalies":0,"lruAnomalies":0,"rate":0,"first":null,"maxGap":0,"maxGapSeq":null},{"n":10,"total":9765625,"anomalies":0,"lruAnomalies":0,"rate":0,"first":null,"maxGap":0,"maxGapSeq":null},{"n":11,"total":48828125,"anomalies":0,"lruAnomalies":0,"rate":0,"first":null,"maxGap":0,"maxGapSeq":null},{"n":12,"total":244140625,"anomalies":120,"lruAnomalies":0,"rate":4.9152e-7,"first":[4,3,2,1,4,3,0,4,3,2,1,0],"maxGap":1,"maxGapSeq":[4,3,2,1,4,3,0,4,3,2,1,0]}],"firstEver":{"n":12,"seq":[4,3,2,1,4,3,0,4,3,2,1,0]},"ms":110939}},"E6":{"mrc":[{"id":"uniform","label":"均匀随机 64 页","n":20000,"rows":[{"k":1,"predicted":0.98275,"measured":0.98275,"gap":0,"opt":0.98275},{"k":2,"predicted":0.96605,"measured":0.96605,"gap":0,"opt":0.8814},{"k":3,"predicted":0.9507,"measured":0.9507,"gap":0,"opt":0.8151},{"k":4,"predicted":0.9358,"measured":0.9358,"gap":0,"opt":0.76385},{"k":6,"predicted":0.90725,"measured":0.90725,"gap":0,"opt":0.68245},{"k":8,"predicted":0.87615,"measured":0.87615,"gap":0,"opt":0.61705},{"k":12,"predicted":0.81435,"measured":0.81435,"gap":0,"opt":0.5126},{"k":16,"predicted":0.7518,"measured":0.7518,"gap":0,"opt":0.4312},{"k":24,"predicted":0.6236,"measured":0.6236,"gap":0,"opt":0.3073},{"k":32,"predicted":0.496,"measured":0.496,"gap":0,"opt":0.2148}],"maxGap":0},{"id":"zipf","label":"Zipf(α=1) 64 页","n":20000,"rows":[{"k":1,"predicted":0.9272,"measured":0.9272,"gap":0,"opt":0.9272},{"k":2,"predicted":0.8619,"measured":0.8619,"gap":0,"opt":0.72235},{"k":3,"predicted":0.80475,"measured":0.80475,"gap":0,"opt":0.61475},{"k":4,"predicted":0.7529,"measured":0.7529,"gap":0,"opt":0.541},{"k":6,"predicted":0.6687,"measured":0.6687,"gap":0,"opt":0.4419},{"k":8,"predicted":0.598,"measured":0.598,"gap":0,"opt":0.37435},{"k":12,"predicted":0.4881,"measured":0.4881,"gap":0,"opt":0.2836},{"k":16,"predicted":0.40695,"measured":0.40695,"gap":0,"opt":0.2218},{"k":24,"predicted":0.29055,"measured":0.29055,"gap":0,"opt":0.1427},{"k":32,"predicted":0.20715,"measured":0.20715,"gap":0,"opt":0.09175}],"maxGap":0},{"id":"cyclic","label":"循环 33 页","n":20000,"rows":[{"k":1,"predicted":1,"measured":1,"gap":0,"opt":1},{"k":2,"predicted":1,"measured":1,"gap":0,"opt":0.9688},{"k":3,"predicted":1,"measured":1,"gap":0,"opt":0.9376},{"k":4,"predicted":1,"measured":1,"gap":0,"opt":0.9064},{"k":6,"predicted":1,"measured":1,"gap":0,"opt":0.844},{"k":8,"predicted":1,"measured":1,"gap":0,"opt":0.7816},{"k":12,"predicted":1,"measured":1,"gap":0,"opt":0.6568},{"k":16,"predicted":1,"measured":1,"gap":0,"opt":0.532},{"k":24,"predicted":1,"measured":1,"gap":0,"opt":0.2824},{"k":32,"predicted":1,"measured":1,"gap":0,"opt":0.0328}],"maxGap":0},{"id":"stackgen","label":"栈距离生成","n":20000,"rows":[{"k":1,"predicted":0.80285,"measured":0.80285,"gap":0,"opt":0.80285},{"k":2,"predicted":0.69775,"measured":0.69775,"gap":0,"opt":0.58485},{"k":3,"predicted":0.6218,"measured":0.6218,"gap":0,"opt":0.48045},{"k":4,"predicted":0.56645,"measured":0.56645,"gap":0,"opt":0.4104},{"k":6,"predicted":0.48255,"measured":0.48255,"gap":0,"opt":0.3186},{"k":8,"predicted":0.41495,"measured":0.41495,"gap":0,"opt":0.2573},{"k":12,"predicted":0.3186,"measured":0.3186,"gap":0,"opt":0.17785},{"k":16,"predicted":0.24665,"measured":0.24665,"gap":0,"opt":0.12555},{"k":24,"predicted":0.1382,"measured":0.1382,"gap":0,"opt":0.06095},{"k":32,"predicted":0.06235,"measured":0.06235,"gap":0,"opt":0.0227}],"maxGap":0}],"pollution":[{"k":4,"rows":[{"name":"OPT","misses":60199,"rate":0.398},{"name":"LRU","misses":83329,"rate":0.1667},{"name":"FIFO","misses":83396,"rate":0.166},{"name":"LFU","misses":89594,"rate":0.1041},{"name":"CLOCK","misses":83387,"rate":0.1661},{"name":"RANDOM","misses":83317,"rate":0.1668},{"name":"MARKER","misses":83337,"rate":0.1666}]},{"k":8,"rows":[{"name":"OPT","misses":38014,"rate":0.6199},{"name":"LRU","misses":66811,"rate":0.3319},{"name":"FIFO","misses":66727,"rate":0.3327},{"name":"LFU","misses":81286,"rate":0.1871},{"name":"CLOCK","misses":66781,"rate":0.3322},{"name":"RANDOM","misses":66907,"rate":0.3309},{"name":"MARKER","misses":66820,"rate":0.3318}]},{"k":12,"rows":[{"name":"OPT","misses":23634,"rate":0.7637},{"name":"LRU","misses":50131,"rate":0.4987},{"name":"FIFO","misses":49960,"rate":0.5004},{"name":"LFU","misses":73065,"rate":0.2694},{"name":"CLOCK","misses":50044,"rate":0.4996},{"name":"RANDOM","misses":50186,"rate":0.4981},{"name":"MARKER","misses":50065,"rate":0.4994}]},{"k":16,"rows":[{"name":"OPT","misses":13175,"rate":0.8683},{"name":"LRU","misses":33646,"rate":0.6635},{"name":"FIFO","misses":33124,"rate":0.6688},{"name":"LFU","misses":64739,"rate":0.3526},{"name":"CLOCK","misses":33460,"rate":0.6654},{"name":"RANDOM","misses":33392,"rate":0.6661},{"name":"MARKER","misses":33590,"rate":0.6641}]},{"k":24,"rows":[{"name":"OPT","misses":48,"rate":0.9995},{"name":"LRU","misses":48,"rate":0.9995},{"name":"FIFO","misses":48,"rate":0.9995},{"name":"LFU","misses":47943,"rate":0.5206},{"name":"CLOCK","misses":48,"rate":0.9995},{"name":"RANDOM","misses":76,"rate":0.9992},{"name":"MARKER","misses":48,"rate":0.9995}]}],"approx":[{"id":"uniform","label":"均匀随机 64 页","k":16,"rows":[{"name":"OPT","misses":43266,"rate":0.5673},{"name":"LRU","misses":75086,"rate":0.2491},{"name":"CLOCK","misses":75063,"rate":0.2494},{"name":"FIFO","misses":75046,"rate":0.2495},{"name":"LFU","misses":74689,"rate":0.2531},{"name":"MARKER","misses":74970,"rate":0.2503},{"name":"RANDOM","misses":74924,"rate":0.2508}]},{"id":"zipf","label":"Zipf(α=1) 64 页","k":16,"rows":[{"name":"OPT","misses":22366,"rate":0.7763},{"name":"LRU","misses":41004,"rate":0.59},{"name":"CLOCK","misses":43134,"rate":0.5687},{"name":"FIFO","misses":47119,"rate":0.5288},{"name":"LFU","misses":36563,"rate":0.6344},{"name":"MARKER","misses":42743,"rate":0.5726},{"name":"RANDOM","misses":47063,"rate":0.5294}]},{"id":"scanhot","label":"扫描+热点","k":16,"rows":[{"name":"OPT","misses":49309,"rate":0.5069},{"name":"LRU","misses":76629,"rate":0.2337},{"name":"CLOCK","misses":77970,"rate":0.2203},{"name":"FIFO","misses":79160,"rate":0.2084},{"name":"LFU","misses":51275,"rate":0.4873},{"name":"MARKER","misses":77178,"rate":0.2282},{"name":"RANDOM","misses":79074,"rate":0.2093}]}],"kList":[1,2,3,4,6,8,12,16,24,32]},"E7":{"k":16,"len":20000,"seeds":200,"rows":[{"name":"LRU","ownRate":0,"meanRate":0,"minRate":0,"maxRate":0},{"name":"FIFO","ownRate":0,"meanRate":0,"minRate":0,"maxRate":0},{"name":"LFU","ownRate":0,"meanRate":0,"minRate":0,"maxRate":0},{"name":"CLOCK","ownRate":0,"meanRate":0,"minRate":0,"maxRate":0},{"name":"RANDOM","ownRate":0,"meanRate":0.937,"minRate":0.9319,"maxRate":0.9427},{"name":"MARKER","ownRate":0,"meanRate":0.7881,"minRate":0.7813,"maxRate":0.7952}]}}
+, analysis: 
+{
+ "e3": {
+  "rows": [
+   {
+    "label": "k=2，页面 3 个，长度 12",
+    "k": 2,
+    "n": 12,
+    "count": 531441,
+    "ms": 381,
+    "measured": 1.7142857142857142,
+    "formula": 1.7142857142857142,
+    "match": true,
+    "worstSeq": [
+     0,
+     1,
+     2,
+     0,
+     1,
+     2,
+     0,
+     1,
+     2,
+     0,
+     1,
+     2
+    ],
+    "minHit": 0,
+    "asymptote": 2
+   },
+   {
+    "label": "k=2，页面 3 个，长度 14",
+    "k": 2,
+    "n": 14,
+    "count": 4782969,
+    "ms": 3845,
+    "measured": 1.75,
+    "formula": 1.75,
+    "match": true,
+    "worstSeq": [
+     0,
+     1,
+     2,
+     0,
+     1,
+     2,
+     0,
+     1,
+     2,
+     0,
+     1,
+     2,
+     0,
+     1
+    ],
+    "minHit": 0,
+    "asymptote": 2
+   },
+   {
+    "label": "k=3，页面 4 个，长度 9",
+    "k": 3,
+    "n": 9,
+    "count": 262144,
+    "ms": 188,
+    "measured": 1.8,
+    "formula": 1.8,
+    "match": true,
+    "worstSeq": [
+     0,
+     1,
+     2,
+     3,
+     0,
+     1,
+     2,
+     3,
+     0
+    ],
+    "minHit": 0,
+    "asymptote": 3
+   },
+   {
+    "label": "k=3，页面 4 个，长度 11",
+    "k": 3,
+    "n": 11,
+    "count": 4194304,
+    "ms": 3114,
+    "measured": 1.8333333333333333,
+    "formula": 1.8333333333333333,
+    "match": true,
+    "worstSeq": [
+     0,
+     1,
+     2,
+     3,
+     0,
+     1,
+     2,
+     3,
+     0,
+     1,
+     2
+    ],
+    "minHit": 0,
+    "asymptote": 3
+   }
+  ]
+ },
+ "e2": {
+  "rows": [
+   {
+    "k": 2,
+    "lru": 2,
+    "fifo": 2,
+    "lfu": 2,
+    "clock": 2,
+    "random": 1.334,
+    "marker": 1.5,
+    "bound": 2,
+    "markerBound": 3,
+    "optCyclicRate": 0.5,
+    "advRate": 0.5,
+    "advLruRatio": 2,
+    "advMarkerRatio": 2,
+    "markerVsBound": 0.5
+   },
+   {
+    "k": 4,
+    "lru": 4,
+    "fifo": 4,
+    "lfu": 4,
+    "clock": 4,
+    "random": 1.594,
+    "marker": 2.082,
+    "bound": 4,
+    "markerBound": 4.166666666666666,
+    "optCyclicRate": 0.75,
+    "advRate": 0.7499,
+    "advLruRatio": 3.998,
+    "advMarkerRatio": 3.998,
+    "markerVsBound": 0.49968
+   },
+   {
+    "k": 8,
+    "lru": 7.998,
+    "fifo": 7.998,
+    "lfu": 7.998,
+    "clock": 7.998,
+    "random": 1.778,
+    "marker": 2.711,
+    "bound": 8,
+    "markerBound": 5.435714285714285,
+    "optCyclicRate": 0.875,
+    "advRate": 0.8747,
+    "advLruRatio": 7.978,
+    "advMarkerRatio": 7.978,
+    "markerVsBound": 0.4987385019710907
+   },
+   {
+    "k": 16,
+    "lru": 15.981,
+    "fifo": 15.981,
+    "lfu": 15.981,
+    "clock": 15.981,
+    "random": 1.881,
+    "marker": 3.376,
+    "bound": 16,
+    "markerBound": 6.761457986457987,
+    "optCyclicRate": 0.9374,
+    "advRate": 0.9368,
+    "advLruRatio": 15.81,
+    "advMarkerRatio": 15.81,
+    "markerVsBound": 0.4993005956350738
+   },
+   {
+    "k": 32,
+    "lru": 31.842,
+    "fifo": 31.842,
+    "lfu": 31.842,
+    "clock": 31.842,
+    "random": 1.929,
+    "marker": 4.017,
+    "bound": 32,
+    "markerBound": 8.11699039087304,
+    "optCyclicRate": 0.9686,
+    "advRate": 0.9672,
+    "advLruRatio": 30.488,
+    "advMarkerRatio": 30.488,
+    "markerVsBound": 0.49488785948506503
+   },
+   {
+    "k": 64,
+    "lru": 62.735,
+    "fifo": 62.735,
+    "lfu": 62.735,
+    "clock": 62.735,
+    "random": 1.968,
+    "marker": 4.684,
+    "bound": 64,
+    "markerBound": 9.487781807411535,
+    "optCyclicRate": 0.9841,
+    "advRate": 0.9812,
+    "advLruRatio": 53.191,
+    "advMarkerRatio": 53.191,
+    "markerVsBound": 0.49368757577677613
+   },
+   {
+    "k": 128,
+    "lru": 118.343,
+    "fifo": 118.343,
+    "lfu": 118.343,
+    "clock": 118.343,
+    "random": 1.948,
+    "marker": 5.125,
+    "bound": 128,
+    "markerBound": 10.866294185178347,
+    "optCyclicRate": 0.9916,
+    "advRate": 0.9858,
+    "advLruRatio": 70.423,
+    "advMarkerRatio": 70.423,
+    "markerVsBound": 0.4716419335481008
+   }
+  ],
+  "lruRatioAtMax": 118.343,
+  "boundAtMax": 128,
+  "markerBestRatio": 0.4716419335481008,
+  "advHitAtMax": 0.9858,
+  "ratioFirst": 2
+ },
+ "e4": {
+  "rows": [
+   {
+    "id": "uniform",
+    "label": "均匀随机 64 页",
+    "p50": 1.724,
+    "mean": 1.7241,
+    "max": 1.761,
+    "loosening": 8.84
+   },
+   {
+    "id": "zipf1",
+    "label": "Zipf(α=1) 64 页",
+    "p50": 1.8191,
+    "mean": 1.8197,
+    "max": 1.8761,
+    "loosening": 8.38
+   },
+   {
+    "id": "zipf07",
+    "label": "Zipf(α=0.7) 64 页",
+    "p50": 1.8056,
+    "mean": 1.8061,
+    "max": 1.8484,
+    "loosening": 8.44
+   }
+  ],
+  "k": 16,
+  "advRatio": 15.244,
+  "advHits": 0,
+  "optAdvHits": 0.9344,
+  "loosening": 9.3,
+  "advGap": 0.953
+ },
+ "e5": {
+  "inclusion": {
+   "trials": 200,
+   "LRU": 0,
+   "FIFO": 200,
+   "OPTfirst": 197,
+   "OPTmaxId": 0
+  },
+  "monotone": {
+   "trials": 200,
+   "LRU": 0,
+   "FIFO": 0
+  },
+  "classic": {
+   "seq": [
+    1,
+    2,
+    3,
+    4,
+    1,
+    2,
+    5,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "fifo3": 9,
+   "fifo4": 10,
+   "lru3": 10,
+   "lru4": 8,
+   "opt3": 7,
+   "opt4": 6
+  },
+  "belady": [
+   {
+    "k": 2,
+    "pages": 5,
+    "len": 60,
+    "trials": 4000,
+    "rate": 0,
+    "fifoAnomalies": 0,
+    "lruAnomalies": 0,
+    "worst": null,
+    "examples": []
+   },
+   {
+    "k": 3,
+    "pages": 7,
+    "len": 60,
+    "trials": 4000,
+    "rate": 0,
+    "fifoAnomalies": 0,
+    "lruAnomalies": 0,
+    "worst": null,
+    "examples": []
+   },
+   {
+    "k": 4,
+    "pages": 8,
+    "len": 80,
+    "trials": 3000,
+    "rate": 0.001,
+    "fifoAnomalies": 3,
+    "lruAnomalies": 0,
+    "worst": {
+     "gap": 2,
+     "f1": 28,
+     "f2": 30,
+     "seq": [
+      7,
+      5,
+      3,
+      3,
+      5,
+      3,
+      1,
+      6,
+      2,
+      6,
+      5,
+      2,
+      3,
+      4,
+      0,
+      0,
+      3,
+      5,
+      5,
+      4,
+      6,
+      0,
+      7,
+      4,
+      6,
+      2,
+      2,
+      0,
+      6,
+      0,
+      6,
+      0,
+      2,
+      2,
+      6,
+      0,
+      0,
+      2,
+      0,
+      0,
+      5,
+      6,
+      2,
+      2,
+      7,
+      1,
+      2,
+      2,
+      2,
+      2,
+      5,
+      2,
+      5,
+      2,
+      3,
+      7,
+      2,
+      7,
+      4,
+      2,
+      7,
+      0,
+      0,
+      1,
+      1,
+      5,
+      6,
+      1,
+      3,
+      7,
+      7,
+      3,
+      2,
+      4,
+      7,
+      3,
+      1,
+      4,
+      7,
+      2
+     ]
+    },
+    "examples": [
+     {
+      "gap": 1,
+      "f1": 37,
+      "f2": 38,
+      "seq": [
+       3,
+       1,
+       3,
+       0,
+       4,
+       6,
+       5,
+       3,
+       6,
+       2,
+       7,
+       6,
+       0,
+       7,
+       2,
+       3,
+       4,
+       6,
+       1,
+       4,
+       3,
+       7,
+       1,
+       2,
+       1,
+       4,
+       5,
+       1,
+       1,
+       1,
+       5,
+       6,
+       3,
+       6,
+       6,
+       1,
+       3,
+       1,
+       5,
+       6,
+       6,
+       5,
+       3,
+       3,
+       7,
+       2,
+       2,
+       4,
+       5,
+       1,
+       2,
+       3,
+       4,
+       4,
+       3,
+       4,
+       5,
+       2,
+       2,
+       3,
+       4,
+       0,
+       7,
+       4,
+       7,
+       2,
+       6,
+       5,
+       1,
+       7,
+       2,
+       3,
+       2,
+       3,
+       3,
+       1,
+       7,
+       4,
+       4,
+       2
+      ]
+     },
+     {
+      "gap": 2,
+      "f1": 28,
+      "f2": 30,
+      "seq": [
+       7,
+       5,
+       3,
+       3,
+       5,
+       3,
+       1,
+       6,
+       2,
+       6,
+       5,
+       2,
+       3,
+       4,
+       0,
+       0,
+       3,
+       5,
+       5,
+       4,
+       6,
+       0,
+       7,
+       4,
+       6,
+       2,
+       2,
+       0,
+       6,
+       0,
+       6,
+       0,
+       2,
+       2,
+       6,
+       0,
+       0,
+       2,
+       0,
+       0,
+       5,
+       6,
+       2,
+       2,
+       7,
+       1,
+       2,
+       2,
+       2,
+       2,
+       5,
+       2,
+       5,
+       2,
+       3,
+       7,
+       2,
+       7,
+       4,
+       2,
+       7,
+       0,
+       0,
+       1,
+       1,
+       5,
+       6,
+       1,
+       3,
+       7,
+       7,
+       3,
+       2,
+       4,
+       7,
+       3,
+       1,
+       4,
+       7,
+       2
+      ]
+     }
+    ]
+   },
+   {
+    "k": 6,
+    "pages": 10,
+    "len": 100,
+    "trials": 2000,
+    "rate": 0.005,
+    "fifoAnomalies": 10,
+    "lruAnomalies": 0,
+    "worst": {
+     "gap": 3,
+     "f1": 31,
+     "f2": 34,
+     "seq": [
+      7,
+      1,
+      4,
+      4,
+      4,
+      5,
+      1,
+      6,
+      3,
+      4,
+      1,
+      5,
+      2,
+      8,
+      5,
+      9,
+      7,
+      1,
+      3,
+      3,
+      9,
+      1,
+      6,
+      7,
+      4,
+      4,
+      6,
+      8,
+      1,
+      0,
+      4,
+      9,
+      2,
+      6,
+      7,
+      5,
+      6,
+      7,
+      2,
+      1,
+      5,
+      0,
+      1,
+      2,
+      0,
+      1,
+      3,
+      9,
+      9,
+      3,
+      9,
+      5,
+      5,
+      8,
+      7,
+      7,
+      1,
+      1,
+      4,
+      2,
+      9,
+      9,
+      4,
+      2,
+      9,
+      4,
+      1,
+      2,
+      3,
+      4,
+      6,
+      9,
+      5,
+      9,
+      4,
+      6,
+      2,
+      4,
+      6,
+      7,
+      4,
+      8,
+      6,
+      5,
+      3,
+      3,
+      7,
+      3,
+      0,
+      2,
+      6,
+      4,
+      6,
+      0,
+      1,
+      7,
+      4,
+      7,
+      6,
+      0
+     ]
+    },
+    "examples": [
+     {
+      "gap": 3,
+      "f1": 31,
+      "f2": 34,
+      "seq": [
+       7,
+       1,
+       4,
+       4,
+       4,
+       5,
+       1,
+       6,
+       3,
+       4,
+       1,
+       5,
+       2,
+       8,
+       5,
+       9,
+       7,
+       1,
+       3,
+       3,
+       9,
+       1,
+       6,
+       7,
+       4,
+       4,
+       6,
+       8,
+       1,
+       0,
+       4,
+       9,
+       2,
+       6,
+       7,
+       5,
+       6,
+       7,
+       2,
+       1,
+       5,
+       0,
+       1,
+       2,
+       0,
+       1,
+       3,
+       9,
+       9,
+       3,
+       9,
+       5,
+       5,
+       8,
+       7,
+       7,
+       1,
+       1,
+       4,
+       2,
+       9,
+       9,
+       4,
+       2,
+       9,
+       4,
+       1,
+       2,
+       3,
+       4,
+       6,
+       9,
+       5,
+       9,
+       4,
+       6,
+       2,
+       4,
+       6,
+       7,
+       4,
+       8,
+       6,
+       5,
+       3,
+       3,
+       7,
+       3,
+       0,
+       2,
+       6,
+       4,
+       6,
+       0,
+       1,
+       7,
+       4,
+       7,
+       6,
+       0
+      ]
+     },
+     {
+      "gap": 1,
+      "f1": 37,
+      "f2": 38,
+      "seq": [
+       8,
+       4,
+       8,
+       8,
+       0,
+       5,
+       8,
+       2,
+       7,
+       6,
+       1,
+       5,
+       4,
+       4,
+       7,
+       2,
+       2,
+       6,
+       3,
+       4,
+       4,
+       8,
+       3,
+       8,
+       5,
+       5,
+       4,
+       1,
+       2,
+       5,
+       3,
+       9,
+       7,
+       1,
+       9,
+       2,
+       7,
+       5,
+       2,
+       6,
+       1,
+       8,
+       2,
+       7,
+       0,
+       8,
+       4,
+       1,
+       4,
+       9,
+       5,
+       6,
+       9,
+       2,
+       2,
+       2,
+       6,
+       3,
+       6,
+       7,
+       7,
+       6,
+       5,
+       0,
+       6,
+       5,
+       8,
+       2,
+       8,
+       9,
+       6,
+       7,
+       1,
+       6,
+       4,
+       6,
+       1,
+       3,
+       3,
+       9,
+       2,
+       1,
+       3,
+       1,
+       6,
+       1,
+       2,
+       4,
+       3,
+       4,
+       0,
+       5,
+       6,
+       8,
+       3,
+       3,
+       3,
+       0,
+       4,
+       8
+      ]
+     }
+    ]
+   },
+   {
+    "k": 8,
+    "pages": 12,
+    "len": 120,
+    "trials": 1500,
+    "rate": 0.01,
+    "fifoAnomalies": 15,
+    "lruAnomalies": 0,
+    "worst": {
+     "gap": 4,
+     "f1": 40,
+     "f2": 44,
+     "seq": [
+      5,
+      11,
+      0,
+      8,
+      6,
+      11,
+      8,
+      0,
+      8,
+      0,
+      10,
+      6,
+      10,
+      8,
+      11,
+      11,
+      4,
+      5,
+      3,
+      10,
+      0,
+      1,
+      11,
+      4,
+      4,
+      11,
+      6,
+      4,
+      2,
+      6,
+      5,
+      2,
+      1,
+      7,
+      3,
+      9,
+      4,
+      8,
+      11,
+      7,
+      7,
+      2,
+      5,
+      0,
+      0,
+      7,
+      10,
+      4,
+      0,
+      9,
+      10,
+      0,
+      11,
+      6,
+      10,
+      10,
+      10,
+      3,
+      4,
+      0,
+      1,
+      11,
+      4,
+      3,
+      2,
+      9,
+      11,
+      0,
+      7,
+      3,
+      4,
+      8,
+      3,
+      7,
+      8,
+      4,
+      11,
+      8,
+      6,
+      6,
+      8,
+      3,
+      5,
+      1,
+      0,
+      4,
+      1,
+      11,
+      3,
+      11,
+      5,
+      1,
+      7,
+      8,
+      3,
+      1,
+      2,
+      8,
+      4,
+      9,
+      6,
+      8,
+      11,
+      3,
+      4,
+      1,
+      5,
+      10,
+      4,
+      1,
+      4,
+      4,
+      7,
+      4,
+      4,
+      1,
+      2,
+      0,
+      10,
+      6
+     ]
+    },
+    "examples": [
+     {
+      "gap": 1,
+      "f1": 46,
+      "f2": 47,
+      "seq": [
+       11,
+       4,
+       3,
+       7,
+       3,
+       11,
+       7,
+       10,
+       7,
+       10,
+       7,
+       2,
+       0,
+       8,
+       2,
+       10,
+       6,
+       0,
+       1,
+       5,
+       7,
+       7,
+       7,
+       6,
+       6,
+       5,
+       3,
+       4,
+       10,
+       9,
+       11,
+       5,
+       3,
+       8,
+       6,
+       9,
+       10,
+       10,
+       1,
+       9,
+       0,
+       7,
+       11,
+       10,
+       1,
+       11,
+       1,
+       6,
+       8,
+       5,
+       1,
+       8,
+       11,
+       5,
+       4,
+       0,
+       4,
+       6,
+       10,
+       5,
+       8,
+       4,
+       8,
+       7,
+       9,
+       1,
+       3,
+       9,
+       6,
+       8,
+       2,
+       11,
+       0,
+       1,
+       3,
+       7,
+       1,
+       10,
+       8,
+       8,
+       1,
+       6,
+       6,
+       8,
+       0,
+       11,
+       1,
+       10,
+       3,
+       4,
+       9,
+       10,
+       7,
+       10,
+       3,
+       2,
+       8,
+       5,
+       9,
+       3,
+       9,
+       7,
+       5,
+       6,
+       10,
+       9,
+       0,
+       10,
+       9,
+       11,
+       8,
+       5,
+       8,
+       5,
+       5,
+       6,
+       9,
+       6,
+       4,
+       1
+      ]
+     },
+     {
+      "gap": 1,
+      "f1": 39,
+      "f2": 40,
+      "seq": [
+       1,
+       8,
+       2,
+       6,
+       6,
+       2,
+       5,
+       7,
+       2,
+       5,
+       8,
+       1,
+       10,
+       0,
+       8,
+       3,
+       10,
+       2,
+       10,
+       5,
+       8,
+       0,
+       9,
+       3,
+       9,
+       4,
+       4,
+       6,
+       0,
+       4,
+       11,
+       11,
+       6,
+       8,
+       2,
+       1,
+       3,
+       9,
+       8,
+       10,
+       2,
+       7,
+       8,
+       8,
+       6,
+       0,
+       8,
+       11,
+       1,
+       11,
+       9,
+       10,
+       11,
+       2,
+       9,
+       6,
+       6,
+       2,
+       7,
+       6,
+       10,
+       7,
+       7,
+       11,
+       3,
+       10,
+       3,
+       6,
+       10,
+       3,
+       9,
+       2,
+       6,
+       7,
+       4,
+       9,
+       5,
+       2,
+       6,
+       11,
+       1,
+       5,
+       11,
+       0,
+       7,
+       2,
+       0,
+       6,
+       10,
+       5,
+       9,
+       7,
+       6,
+       6,
+       0,
+       8,
+       10,
+       9,
+       5,
+       8,
+       5,
+       7,
+       6,
+       0,
+       11,
+       1,
+       7,
+       3,
+       4,
+       10,
+       11,
+       2,
+       9,
+       8,
+       0,
+       9,
+       0,
+       6,
+       1,
+       2
+      ]
+     }
+    ]
+   }
+  ],
+  "exhaustive": {
+   "k": 3,
+   "pages": 5,
+   "maxLen": 12,
+   "ms": 110939,
+   "minLen": 12,
+   "countAtMin": 120,
+   "lruAtMin": 0,
+   "totalTested": 305175780,
+   "firstEver": {
+    "n": 12,
+    "seq": [
+     4,
+     3,
+     2,
+     1,
+     4,
+     3,
+     0,
+     4,
+     3,
+     2,
+     1,
+     0
+    ]
+   },
+   "perLen": [
+    {
+     "n": 1,
+     "total": 5,
+     "anomalies": 0,
+     "lruAnomalies": 0,
+     "rate": 0
+    },
+    {
+     "n": 2,
+     "total": 25,
+     "anomalies": 0,
+     "lruAnomalies": 0,
+     "rate": 0
+    },
+    {
+     "n": 3,
+     "total": 125,
+     "anomalies": 0,
+     "lruAnomalies": 0,
+     "rate": 0
+    },
+    {
+     "n": 4,
+     "total": 625,
+     "anomalies": 0,
+     "lruAnomalies": 0,
+     "rate": 0
+    },
+    {
+     "n": 5,
+     "total": 3125,
+     "anomalies": 0,
+     "lruAnomalies": 0,
+     "rate": 0
+    },
+    {
+     "n": 6,
+     "total": 15625,
+     "anomalies": 0,
+     "lruAnomalies": 0,
+     "rate": 0
+    },
+    {
+     "n": 7,
+     "total": 78125,
+     "anomalies": 0,
+     "lruAnomalies": 0,
+     "rate": 0
+    },
+    {
+     "n": 8,
+     "total": 390625,
+     "anomalies": 0,
+     "lruAnomalies": 0,
+     "rate": 0
+    },
+    {
+     "n": 9,
+     "total": 1953125,
+     "anomalies": 0,
+     "lruAnomalies": 0,
+     "rate": 0
+    },
+    {
+     "n": 10,
+     "total": 9765625,
+     "anomalies": 0,
+     "lruAnomalies": 0,
+     "rate": 0
+    },
+    {
+     "n": 11,
+     "total": 48828125,
+     "anomalies": 0,
+     "lruAnomalies": 0,
+     "rate": 0
+    },
+    {
+     "n": 12,
+     "total": 244140625,
+     "anomalies": 120,
+     "lruAnomalies": 0,
+     "rate": 4.9152e-7
+    }
+   ]
+  }
+ },
+ "e6": {
+  "mrc": [
+   {
+    "id": "uniform",
+    "label": "均匀随机 64 页",
+    "n": 20000,
+    "maxGap": 0,
+    "rows": [
+     {
+      "k": 1,
+      "predicted": 0.98275,
+      "measured": 0.98275,
+      "gap": 0,
+      "opt": 0.98275
+     },
+     {
+      "k": 2,
+      "predicted": 0.96605,
+      "measured": 0.96605,
+      "gap": 0,
+      "opt": 0.8814
+     },
+     {
+      "k": 3,
+      "predicted": 0.9507,
+      "measured": 0.9507,
+      "gap": 0,
+      "opt": 0.8151
+     },
+     {
+      "k": 4,
+      "predicted": 0.9358,
+      "measured": 0.9358,
+      "gap": 0,
+      "opt": 0.76385
+     },
+     {
+      "k": 6,
+      "predicted": 0.90725,
+      "measured": 0.90725,
+      "gap": 0,
+      "opt": 0.68245
+     },
+     {
+      "k": 8,
+      "predicted": 0.87615,
+      "measured": 0.87615,
+      "gap": 0,
+      "opt": 0.61705
+     },
+     {
+      "k": 12,
+      "predicted": 0.81435,
+      "measured": 0.81435,
+      "gap": 0,
+      "opt": 0.5126
+     },
+     {
+      "k": 16,
+      "predicted": 0.7518,
+      "measured": 0.7518,
+      "gap": 0,
+      "opt": 0.4312
+     },
+     {
+      "k": 24,
+      "predicted": 0.6236,
+      "measured": 0.6236,
+      "gap": 0,
+      "opt": 0.3073
+     },
+     {
+      "k": 32,
+      "predicted": 0.496,
+      "measured": 0.496,
+      "gap": 0,
+      "opt": 0.2148
+     }
+    ]
+   },
+   {
+    "id": "zipf",
+    "label": "Zipf(α=1) 64 页",
+    "n": 20000,
+    "maxGap": 0,
+    "rows": [
+     {
+      "k": 1,
+      "predicted": 0.9272,
+      "measured": 0.9272,
+      "gap": 0,
+      "opt": 0.9272
+     },
+     {
+      "k": 2,
+      "predicted": 0.8619,
+      "measured": 0.8619,
+      "gap": 0,
+      "opt": 0.72235
+     },
+     {
+      "k": 3,
+      "predicted": 0.80475,
+      "measured": 0.80475,
+      "gap": 0,
+      "opt": 0.61475
+     },
+     {
+      "k": 4,
+      "predicted": 0.7529,
+      "measured": 0.7529,
+      "gap": 0,
+      "opt": 0.541
+     },
+     {
+      "k": 6,
+      "predicted": 0.6687,
+      "measured": 0.6687,
+      "gap": 0,
+      "opt": 0.4419
+     },
+     {
+      "k": 8,
+      "predicted": 0.598,
+      "measured": 0.598,
+      "gap": 0,
+      "opt": 0.37435
+     },
+     {
+      "k": 12,
+      "predicted": 0.4881,
+      "measured": 0.4881,
+      "gap": 0,
+      "opt": 0.2836
+     },
+     {
+      "k": 16,
+      "predicted": 0.40695,
+      "measured": 0.40695,
+      "gap": 0,
+      "opt": 0.2218
+     },
+     {
+      "k": 24,
+      "predicted": 0.29055,
+      "measured": 0.29055,
+      "gap": 0,
+      "opt": 0.1427
+     },
+     {
+      "k": 32,
+      "predicted": 0.20715,
+      "measured": 0.20715,
+      "gap": 0,
+      "opt": 0.09175
+     }
+    ]
+   },
+   {
+    "id": "cyclic",
+    "label": "循环 33 页",
+    "n": 20000,
+    "maxGap": 0,
+    "rows": [
+     {
+      "k": 1,
+      "predicted": 1,
+      "measured": 1,
+      "gap": 0,
+      "opt": 1
+     },
+     {
+      "k": 2,
+      "predicted": 1,
+      "measured": 1,
+      "gap": 0,
+      "opt": 0.9688
+     },
+     {
+      "k": 3,
+      "predicted": 1,
+      "measured": 1,
+      "gap": 0,
+      "opt": 0.9376
+     },
+     {
+      "k": 4,
+      "predicted": 1,
+      "measured": 1,
+      "gap": 0,
+      "opt": 0.9064
+     },
+     {
+      "k": 6,
+      "predicted": 1,
+      "measured": 1,
+      "gap": 0,
+      "opt": 0.844
+     },
+     {
+      "k": 8,
+      "predicted": 1,
+      "measured": 1,
+      "gap": 0,
+      "opt": 0.7816
+     },
+     {
+      "k": 12,
+      "predicted": 1,
+      "measured": 1,
+      "gap": 0,
+      "opt": 0.6568
+     },
+     {
+      "k": 16,
+      "predicted": 1,
+      "measured": 1,
+      "gap": 0,
+      "opt": 0.532
+     },
+     {
+      "k": 24,
+      "predicted": 1,
+      "measured": 1,
+      "gap": 0,
+      "opt": 0.2824
+     },
+     {
+      "k": 32,
+      "predicted": 1,
+      "measured": 1,
+      "gap": 0,
+      "opt": 0.0328
+     }
+    ]
+   },
+   {
+    "id": "stackgen",
+    "label": "栈距离生成",
+    "n": 20000,
+    "maxGap": 0,
+    "rows": [
+     {
+      "k": 1,
+      "predicted": 0.80285,
+      "measured": 0.80285,
+      "gap": 0,
+      "opt": 0.80285
+     },
+     {
+      "k": 2,
+      "predicted": 0.69775,
+      "measured": 0.69775,
+      "gap": 0,
+      "opt": 0.58485
+     },
+     {
+      "k": 3,
+      "predicted": 0.6218,
+      "measured": 0.6218,
+      "gap": 0,
+      "opt": 0.48045
+     },
+     {
+      "k": 4,
+      "predicted": 0.56645,
+      "measured": 0.56645,
+      "gap": 0,
+      "opt": 0.4104
+     },
+     {
+      "k": 6,
+      "predicted": 0.48255,
+      "measured": 0.48255,
+      "gap": 0,
+      "opt": 0.3186
+     },
+     {
+      "k": 8,
+      "predicted": 0.41495,
+      "measured": 0.41495,
+      "gap": 0,
+      "opt": 0.2573
+     },
+     {
+      "k": 12,
+      "predicted": 0.3186,
+      "measured": 0.3186,
+      "gap": 0,
+      "opt": 0.17785
+     },
+     {
+      "k": 16,
+      "predicted": 0.24665,
+      "measured": 0.24665,
+      "gap": 0,
+      "opt": 0.12555
+     },
+     {
+      "k": 24,
+      "predicted": 0.1382,
+      "measured": 0.1382,
+      "gap": 0,
+      "opt": 0.06095
+     },
+     {
+      "k": 32,
+      "predicted": 0.06235,
+      "measured": 0.06235,
+      "gap": 0,
+      "opt": 0.0227
+     }
+    ]
+   }
+  ],
+  "mrcChecks": 40,
+  "mrcMaxGap": 0,
+  "pollution": [
+   {
+    "k": 4,
+    "rows": [
+     {
+      "name": "OPT",
+      "misses": 60199,
+      "rate": 0.398
+     },
+     {
+      "name": "LRU",
+      "misses": 83329,
+      "rate": 0.1667
+     },
+     {
+      "name": "FIFO",
+      "misses": 83396,
+      "rate": 0.166
+     },
+     {
+      "name": "LFU",
+      "misses": 89594,
+      "rate": 0.1041
+     },
+     {
+      "name": "CLOCK",
+      "misses": 83387,
+      "rate": 0.1661
+     },
+     {
+      "name": "RANDOM",
+      "misses": 83317,
+      "rate": 0.1668
+     },
+     {
+      "name": "MARKER",
+      "misses": 83337,
+      "rate": 0.1666
+     }
+    ]
+   },
+   {
+    "k": 8,
+    "rows": [
+     {
+      "name": "OPT",
+      "misses": 38014,
+      "rate": 0.6199
+     },
+     {
+      "name": "LRU",
+      "misses": 66811,
+      "rate": 0.3319
+     },
+     {
+      "name": "FIFO",
+      "misses": 66727,
+      "rate": 0.3327
+     },
+     {
+      "name": "LFU",
+      "misses": 81286,
+      "rate": 0.1871
+     },
+     {
+      "name": "CLOCK",
+      "misses": 66781,
+      "rate": 0.3322
+     },
+     {
+      "name": "RANDOM",
+      "misses": 66907,
+      "rate": 0.3309
+     },
+     {
+      "name": "MARKER",
+      "misses": 66820,
+      "rate": 0.3318
+     }
+    ]
+   },
+   {
+    "k": 12,
+    "rows": [
+     {
+      "name": "OPT",
+      "misses": 23634,
+      "rate": 0.7637
+     },
+     {
+      "name": "LRU",
+      "misses": 50131,
+      "rate": 0.4987
+     },
+     {
+      "name": "FIFO",
+      "misses": 49960,
+      "rate": 0.5004
+     },
+     {
+      "name": "LFU",
+      "misses": 73065,
+      "rate": 0.2694
+     },
+     {
+      "name": "CLOCK",
+      "misses": 50044,
+      "rate": 0.4996
+     },
+     {
+      "name": "RANDOM",
+      "misses": 50186,
+      "rate": 0.4981
+     },
+     {
+      "name": "MARKER",
+      "misses": 50065,
+      "rate": 0.4994
+     }
+    ]
+   },
+   {
+    "k": 16,
+    "rows": [
+     {
+      "name": "OPT",
+      "misses": 13175,
+      "rate": 0.8683
+     },
+     {
+      "name": "LRU",
+      "misses": 33646,
+      "rate": 0.6635
+     },
+     {
+      "name": "FIFO",
+      "misses": 33124,
+      "rate": 0.6688
+     },
+     {
+      "name": "LFU",
+      "misses": 64739,
+      "rate": 0.3526
+     },
+     {
+      "name": "CLOCK",
+      "misses": 33460,
+      "rate": 0.6654
+     },
+     {
+      "name": "RANDOM",
+      "misses": 33392,
+      "rate": 0.6661
+     },
+     {
+      "name": "MARKER",
+      "misses": 33590,
+      "rate": 0.6641
+     }
+    ]
+   },
+   {
+    "k": 24,
+    "rows": [
+     {
+      "name": "OPT",
+      "misses": 48,
+      "rate": 0.9995
+     },
+     {
+      "name": "LRU",
+      "misses": 48,
+      "rate": 0.9995
+     },
+     {
+      "name": "FIFO",
+      "misses": 48,
+      "rate": 0.9995
+     },
+     {
+      "name": "LFU",
+      "misses": 47943,
+      "rate": 0.5206
+     },
+     {
+      "name": "CLOCK",
+      "misses": 48,
+      "rate": 0.9995
+     },
+     {
+      "name": "RANDOM",
+      "misses": 76,
+      "rate": 0.9992
+     },
+     {
+      "name": "MARKER",
+      "misses": 48,
+      "rate": 0.9995
+     }
+    ]
+   }
+  ],
+  "approx": [
+   {
+    "id": "uniform",
+    "label": "均匀随机 64 页",
+    "k": 16,
+    "rows": [
+     {
+      "name": "OPT",
+      "misses": 43266,
+      "rate": 0.5673
+     },
+     {
+      "name": "LRU",
+      "misses": 75086,
+      "rate": 0.2491
+     },
+     {
+      "name": "CLOCK",
+      "misses": 75063,
+      "rate": 0.2494
+     },
+     {
+      "name": "FIFO",
+      "misses": 75046,
+      "rate": 0.2495
+     },
+     {
+      "name": "LFU",
+      "misses": 74689,
+      "rate": 0.2531
+     },
+     {
+      "name": "MARKER",
+      "misses": 74970,
+      "rate": 0.2503
+     },
+     {
+      "name": "RANDOM",
+      "misses": 74924,
+      "rate": 0.2508
+     }
+    ]
+   },
+   {
+    "id": "zipf",
+    "label": "Zipf(α=1) 64 页",
+    "k": 16,
+    "rows": [
+     {
+      "name": "OPT",
+      "misses": 22366,
+      "rate": 0.7763
+     },
+     {
+      "name": "LRU",
+      "misses": 41004,
+      "rate": 0.59
+     },
+     {
+      "name": "CLOCK",
+      "misses": 43134,
+      "rate": 0.5687
+     },
+     {
+      "name": "FIFO",
+      "misses": 47119,
+      "rate": 0.5288
+     },
+     {
+      "name": "LFU",
+      "misses": 36563,
+      "rate": 0.6344
+     },
+     {
+      "name": "MARKER",
+      "misses": 42743,
+      "rate": 0.5726
+     },
+     {
+      "name": "RANDOM",
+      "misses": 47063,
+      "rate": 0.5294
+     }
+    ]
+   },
+   {
+    "id": "scanhot",
+    "label": "扫描+热点",
+    "k": 16,
+    "rows": [
+     {
+      "name": "OPT",
+      "misses": 49309,
+      "rate": 0.5069
+     },
+     {
+      "name": "LRU",
+      "misses": 76629,
+      "rate": 0.2337
+     },
+     {
+      "name": "CLOCK",
+      "misses": 77970,
+      "rate": 0.2203
+     },
+     {
+      "name": "FIFO",
+      "misses": 79160,
+      "rate": 0.2084
+     },
+     {
+      "name": "LFU",
+      "misses": 51275,
+      "rate": 0.4873
+     },
+     {
+      "name": "MARKER",
+      "misses": 77178,
+      "rate": 0.2282
+     },
+     {
+      "name": "RANDOM",
+      "misses": 79074,
+      "rate": 0.2093
+     }
+    ]
+   }
+  ],
+  "lfuParadox": {
+   "shiftK": 16,
+   "shiftLfu": 0.3526,
+   "shiftLru": 0.6635,
+   "shiftOpt": 0.8683,
+   "scanLfu": 0.4873,
+   "scanLru": 0.2337,
+   "scanOpt": 0.5069
+  }
+ },
+ "e7": {
+  "k": 16,
+  "len": 20000,
+  "seeds": 200,
+  "rows": [
+   {
+    "name": "LRU",
+    "ownRate": 0,
+    "meanRate": 0,
+    "minRate": 0,
+    "maxRate": 0
+   },
+   {
+    "name": "FIFO",
+    "ownRate": 0,
+    "meanRate": 0,
+    "minRate": 0,
+    "maxRate": 0
+   },
+   {
+    "name": "LFU",
+    "ownRate": 0,
+    "meanRate": 0,
+    "minRate": 0,
+    "maxRate": 0
+   },
+   {
+    "name": "CLOCK",
+    "ownRate": 0,
+    "meanRate": 0,
+    "minRate": 0,
+    "maxRate": 0
+   },
+   {
+    "name": "RANDOM",
+    "ownRate": 0,
+    "meanRate": 0.937,
+    "minRate": 0.9319,
+    "maxRate": 0.9427
+   },
+   {
+    "name": "MARKER",
+    "ownRate": 0,
+    "meanRate": 0.7881,
+    "minRate": 0.7813,
+    "maxRate": 0.7952
+   }
+  ],
+  "deterministic": true,
+  "randomRecovers": {
+   "RANDOM": 0.937,
+   "MARKER": 0.7881
+  }
+ },
+ "e1random": {
+  "k": 16,
+  "formula": 0.8823529411764706,
+  "measured": 0.8818,
+  "gapPp": 0.05529411764705339,
+  "hitsBetween": [
+   0,
+   15
+  ]
+ },
+ "kpis": [
+  {
+   "label": "循环扫描：LRU 命中率",
+   "tone": "hot",
+   "value": "0.0%",
+   "note": "同样这条序列上，随机替换拿到 88.2%，离线最优 93.7%"
+  },
+  {
+   "label": "对抗序列：确定性策略命中率",
+   "tone": "hot",
+   "value": "0.0%",
+   "note": "k = 2…128 全部归零；但随机替换换一个种子就回到 93.7%"
+  },
+  {
+   "label": "随机负载下 LRU/OPT",
+   "tone": "cool",
+   "value": "1.72×",
+   "note": "同一个 k 的对抗界是 16×，界比现实松约 9.3 倍"
+  },
+  {
+   "label": "Belady 异常发生率",
+   "tone": "gold",
+   "value": "120 / 305175780",
+   "note": "穷举长度 1…12 的全部序列，FIFO 加内存反而变慢的只有这么多；LRU 是 0 条"
+  },
+  {
+   "label": "MRC 定理偏差",
+   "tone": "cool",
+   "value": "0.0",
+   "note": "40 次比对（4 种负载 × 10 个缓存档）：LRU 缺页率 === P(栈距离 > k)，一次都没偏"
+  },
+  {
+   "label": "穷举出的最坏序列",
+   "tone": "gold",
+   "value": "循环扫描",
+   "note": "穷举 9,770,858 条序列，最坏的那条永远是最简单的循环扫描"
+  }
+ ],
+ "headline": "在让 LRU 命中率归零的那条序列上，最笨的随机替换拿到 88.2%。对抗者打不败掷硬币的人。",
+ "conclusions": [
+  "确定性是致命的。在循环扫描 17 页上，LRU、FIFO、LFU、CLOCK 四个\"聪明\"策略的命中率精确为 0.0%，而随机替换拿到 88.2%。对抗者只要知道你的下一步怎么选，就能把你打穿——而他只需要把页面排成一个圈。",
+  "而且随机替换的那个数可以事先算出来：k 格缓存、k+1 个页面、任意时刻恰好一个在门外，缺页时门外换成谁在其余 k 个里均匀分布，于是两次缺页之间的命中次数均匀落在 0…15，命中率 = (k−1)/(k+1) = 88.235%。实测 88.180%，差 0.055 个百分点。这个 88.2% 不是撞出来的，是推出来的。",
+  "但对抗序列是有有效期的。同一条序列对 LRU/FIFO/LFU/CLOCK 是永久致命（换 200 个种子，命中率全是 0.0%），对随机替换却只杀得死一次：把硬币重掷一次，命中率立刻回到 93.7%。随机化不是\"更差的确定性\"，是另一种东西。",
+  "竞争比是存在性命题，不是常见性命题。k=16 的理论界是 16 倍，随机负载下的实测中位数只有 1.72 倍——界松了约 9.3 倍。而真的按对抗序列来，实测比值是 15.24 倍，达到理论界的 95.3%。",
+  "穷举 9,770,858 条序列之后，最坏的那条永远是循环扫描，比值精确等于 n/(k+1+⌊(n−k−1)/k⌋)。以 k=2，页面 3 个，长度 12 为例：实测 1.7143，闭式解 1.7143，随 n 增大趋向 k+1 中的 k = 2。没有更聪明的坏序列。",
+  "\"加内存反而变慢\"是真的，但稀有得离谱：穷举长度 1…12 的全部 305,175,780 条序列，FIFO 出现异常的最短长度正好是 12，在那个长度上只有 120 条（0.00005%）。同一批序列上 LRU 的异常数是 0 —— 因为它满足包含性。",
+  "对照组是精确的：MRC 定理说 LRU 的缺页率等于栈距离分布超过 k 的那截尾巴，40 次比对（均匀、Zipf、循环、栈距离生成 × 10 个缓存档）的偏差是 0.0。这条定理只刻画 LRU，它不告诉你 LRU 离最优有多远——那个距离只有把离线最优摆出来才量得到。",
+  "没有全能策略。LFU 在热点整体迁移时崩溃（命中率 35.3%，而 LRU 有 66.3%），却在\"扫描 + 热点\"里大胜（48.7% 对 LRU 的 23.4%）。同一个策略，换个负载形状就从最差变成最好。",
+  "连\"谁算栈算法\"都要看细节：LRU 的包含性在 200 条随机序列上零违例，FIFO 是 200 条全违例，而离线最优按\"缓存顺序\"破并列时违例 197 条，改成\"并列时取页面号最大的\"就变成 0 条。包含性不是某个算法的天赋，是它和它的并列规则一起决定的。"
+ ],
+ "limits": [
+  {
+   "t": "规模上限",
+   "d": "缓存档 k ≤ 128，单条序列最长 20 万次访问；穷举搜索的上限是 2.44 亿条（长度 12、5 个页面）。再往上必须换随机采样，穷举不动。"
+  },
+  {
+   "t": "\"竞争比\"这个词在这里的定义",
+   "d": "本页报的是**实测缺页数之比**（某个策略 ÷ 离线最优）。文献里标准的竞争比还含一个加性常数，并且取所有序列的上确界。所以页面上每一行的实测比值都低于理论界——不是界错了，是有限长度 + 冷启动把比值压下去了。"
+  },
+  {
+   "t": "离线最优只对\"标准分页模型\"最优",
+   "d": "标准模型要求：请求过的页必须进缓存。自检时我在这里栽过一次——我写的第一版 Belady 允许\"缺页但不载入\"，于是它在 2500 个随机小例子里有 836 个比 DP 全状态最优还好。那不是它更聪明，是它在解另一个问题（允许拒绝载入的缓存）。"
+  },
+  {
+   "t": "\"最优\"只是缺页数最优",
+   "d": "真实系统里还要算驱逐成本、写回、预取、并发一致性。本页把缓存抽象成一个装 k 个页面的盒子，代价只数缺页次数。"
+  },
+  {
+   "t": "对抗者的射程",
+   "d": "自适应对抗者对**确定性**策略成立：序列由策略自己的行为决定，所以能保证每次必缺页。本页的 RANDOM / MARKER 用固定种子的 PRNG，因此也是确定性的，同样被打穿。真正掷硬币的算法不存在\"每次必缺页\"的固定序列——这正是随机标记算法能拿到 2·H_k 的原因，也是 E7 量到的东西。"
+  },
+  {
+   "t": "理论界是引用，不是本页的贡献",
+   "d": "LRU/FIFO 的竞争比 ≤ k、随机标记算法 ≤ 2·H_k（Fiat 等 1991）、MRC 定理（Mattson 等 1970）都是文献里的经典结果。本页做的是**实测对照**：把界和实测放在同一张图上，看它们差多远。"
+  },
+  {
+   "t": "所有随机都是决定论的",
+   "d": "全部伪随机来自 splitmix32，由种子唯一确定。同一条序列、同一个种子，两次运行逐位相同（自检里有这一项）。"
+  }
+ ],
+ "verify": [
+  {
+   "what": "模型自检",
+   "how": "三套独立实现互相对账：DP 全状态最优、数组版快速计数、解析闭式解",
+   "result": "82 项全过"
+  },
+  {
+   "what": "OPT 的最优性",
+   "how": "与 DP 全状态最优逐例比对（2500 个随机小实例）",
+   "result": "2500/2500 一致"
+  },
+  {
+   "what": "不变量：没人能比最优更好",
+   "how": "六个在线策略 × 1200 条序列，任何一次缺页数低于 OPT 都算违例",
+   "result": "7200 次比对，0 违例"
+  },
+  {
+   "what": "解析真值：循环扫描",
+   "how": "LRU/FIFO/CLOCK 缺页数 = n；OPT 缺页数 = 闭式解",
+   "result": "4 种页面数全部吻合"
+  },
+  {
+   "what": "随机替换的闭式解",
+   "how": "循环扫描下命中率 = (k−1)/(k+1)，与实测比对（k = 4…64）",
+   "result": "最大偏差 0.06 个百分点"
+  },
+  {
+   "what": "MRC 定理",
+   "how": "LRU 实测缺页率 vs 栈距离分布的尾巴",
+   "result": "40 次比对，最大偏差 0（精确相等）"
+  },
+  {
+   "what": "包含性",
+   "how": "k 档缓存是否为 k+1 档的子集（200 条随机序列 × 8 个档）",
+   "result": "LRU 0 违例 / FIFO 200 违例"
+  },
+  {
+   "what": "Belady 异常",
+   "how": "经典反例的两次独立计算 + 2.44 亿条穷举",
+   "result": "最短长度 12，120 条"
+  },
+  {
+   "what": "对抗者",
+   "how": "六个确定性策略各生成一条量身定做的序列",
+   "result": "命中率全部 0.0%，页面数恰为 k+1"
+  },
+  {
+   "what": "决定论",
+   "how": "同输入两次运行，七个策略的命中/缺页数逐位比对",
+   "result": "逐位相同"
+  },
+  {
+   "what": "真实浏览器内核",
+   "how": "三档视口（1400 / 480 / 360）跑确定性探针",
+   "result": "见构建日志"
+  }
+ ]
+}
+};</script>
+<script>
+/* ============================================================
+ * core.js —— 《马后炮》全部模型
+ *
+ * 对象：在线缓存替换（paging）。
+ * 一台只能看见"现在"的机器（在线算法），和一个能看见全部未来的
+ * 对手（离线最优 Belady MIN）之间，隔着多少 —— 这个距离叫竞争比。
+ *
+ * 内含：
+ *   · 决定论 PRNG（splitmix32）+ 六种访问序列生成器
+ *   · 七个替换策略：OPT / LRU / FIFO / LFU / RANDOM / CLOCK / MARKER
+ *   · 自适应对抗者（对任意确定性策略构造"每次必缺页"的序列）
+ *   · 两套独立的快速缺页计数（供穷举与对账）
+ *   · 栈距离分布、MRC 理论预测、Belady 异常搜索
+ *
+ * UMD：Node 与浏览器共用同一份源码。
+ * ========================================================== */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.MHPCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  var POLICY_NAMES = ['OPT', 'LRU', 'FIFO', 'LFU', 'CLOCK', 'RANDOM', 'MARKER'];
+  /* 在线策略（不含 OPT —— OPT 需要未来，它是裁判不是选手） */
+  var ONLINE_NAMES = ['LRU', 'FIFO', 'LFU', 'CLOCK', 'RANDOM', 'MARKER'];
+
+  /* ---------------- 决定论 PRNG ---------------- */
+  function splitmix32(a) {
+    return function () {
+      a |= 0; a = (a + 0x9e3779b9) | 0;
+      var t = a ^ (a >>> 16); t = Math.imul(t, 0x21f0aaad);
+      t = t ^ (t >>> 15); t = Math.imul(t, 0x735a2d97);
+      return ((t = t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+
+  function harmonic(k) { var s = 0; for (var i = 1; i <= k; i++) s += 1 / i; return s; }
+
+  /* ---------------- 访问序列生成器 ----------------
+   * 每个生成器由 (参数, 种子) 唯一确定 → 扫描顺序改变不影响任何一条序列。
+   */
+
+  /* 循环扫描 k+1 个页面：经典的 LRU 杀手 */
+  function traceCyclic(pages, len) {
+    var out = new Array(len);
+    for (var i = 0; i < len; i++) out[i] = i % pages;
+    return out;
+  }
+
+  /* 均匀随机 */
+  function traceUniform(pages, len, seed) {
+    var r = splitmix32(seed), out = new Array(len);
+    for (var i = 0; i < len; i++) out[i] = Math.min(pages - 1, Math.floor(r() * pages));
+    return out;
+  }
+
+  /* Zipf 倾斜（alpha 越大越集中） */
+  function traceZipf(pages, len, seed, alpha) {
+    var w = new Float64Array(pages), tot = 0, i;
+    for (i = 0; i < pages; i++) { w[i] = Math.pow(i + 1, -alpha); tot += w[i]; }
+    var cum = new Float64Array(pages), acc = 0;
+    for (i = 0; i < pages; i++) { acc += w[i] / tot; cum[i] = acc; }
+    cum[pages - 1] = 1;
+    var r = splitmix32(seed), out = new Array(len);
+    for (i = 0; i < len; i++) {
+      var u = r(), lo = 0, hi = pages - 1;
+      while (lo < hi) { var mid = (lo + hi) >> 1; if (cum[mid] < u) lo = mid + 1; else hi = mid; }
+      out[i] = lo;
+    }
+    return out;
+  }
+
+  /* 阶段切换：前半段热点 {0..h-1}，后半段换成 {h..2h-1}
+   * —— 专门用来量 LFU 的"陈旧污染"（老热点锁死缓存） */
+  function tracePhaseShift(len, hot, seed) {
+    var r = splitmix32(seed), out = new Array(len);
+    var half = len >> 1;
+    for (var i = 0; i < len; i++) {
+      var base = i < half ? 0 : hot;
+      out[i] = base + Math.min(hot - 1, Math.floor(r() * hot));
+    }
+    return out;
+  }
+
+  /* 顺序扫描 + 热点随机：流式数据与热数据混在一起 */
+  function traceScanHot(pages, hot, len, seed, scanFrac) {
+    var r = splitmix32(seed), out = new Array(len), cur = 0;
+    for (var i = 0; i < len; i++) {
+      if (r() < scanFrac) { cur = (cur + 1) % pages; out[i] = cur; }
+      else out[i] = Math.min(hot - 1, Math.floor(r() * hot));
+    }
+    return out;
+  }
+
+  /* 栈式访问序列：由「栈距离分布」直接采样生成，与 k 无关。
+   * 这是栈算法（LRU 家族）的地盘 —— LRU 在此序列上对任意 k 都是最优的。
+   * 返回 {trace, dist}，dist[i] 是该次访问的栈距离（LRU(k) 命中 ⟺ dist ≤ k）。 */
+  function traceStack(len, seed, opts) {
+    opts = opts || {};
+    var dmax = opts.dmax || 40;
+    var alpha = opts.alpha === undefined ? 1.0 : opts.alpha;
+    var r = splitmix32(seed);
+    var w = new Float64Array(dmax + 1), tot = 0, d;
+    for (d = 1; d <= dmax; d++) { w[d] = Math.pow(d, -alpha); tot += w[d]; }
+    var cum = new Float64Array(dmax + 1), acc = 0;
+    for (d = 1; d <= dmax; d++) { acc += w[d] / tot; cum[d] = acc; }
+    cum[dmax] = 1;
+    var stack = [], nextNew = 0, out = new Array(len), dist = new Int32Array(len);
+    for (var i = 0; i < len; i++) {
+      var u = r(), lo = 1, hi = dmax;
+      while (lo < hi) { var mid = (lo + hi) >> 1; if (cum[mid] < u) lo = mid + 1; else hi = mid; }
+      var dd = lo, p, isNew = false;
+      if (dd > stack.length) { p = nextNew++; isNew = true; }
+      else { p = stack[dd - 1]; stack.splice(dd - 1, 1); }
+      stack.unshift(p);
+      /* 首次出现的页，栈距离是"无穷" —— 对任何 k ≤ dmax 都是缺页。
+       * 曾经写成 stack.length+1，于是 k 大于当时栈大小时被误判成命中。 */
+      dist[i] = isNew ? (dmax + 1) : dd;
+      out[i] = p;
+    }
+    return { trace: out, dist: dist };
+  }
+
+  /* ---------------- 策略 ----------------
+   * 统一接口：access(page) -> bool(命中)；contains(page)；contents()
+   */
+
+  function makeLRU(k) {
+    var m = new Map(), hits = 0, misses = 0;
+    return {
+      name: 'LRU', k: k,
+      hits: function () { return hits; }, misses: function () { return misses; },
+      access: function (p) {
+        if (m.has(p)) { m.delete(p); m.set(p, 1); hits++; return true; }
+        misses++;
+        if (m.size >= k) m.delete(m.keys().next().value);
+        m.set(p, 1);
+        return false;
+      },
+      contains: function (p) { return m.has(p); },
+      contents: function () { return Array.from(m.keys()); }
+    };
+  }
+
+  function makeFIFO(k) {
+    var m = new Map(), hits = 0, misses = 0;
+    return {
+      name: 'FIFO', k: k,
+      hits: function () { return hits; }, misses: function () { return misses; },
+      access: function (p) {
+        if (m.has(p)) { hits++; return true; }   /* 命中不改变队列位置 */
+        misses++;
+        if (m.size >= k) m.delete(m.keys().next().value);
+        m.set(p, 1);
+        return false;
+      },
+      contains: function (p) { return m.has(p); },
+      contents: function () { return Array.from(m.keys()); }
+    };
+  }
+
+  function makeLFU(k) {
+    var m = new Map(), t = 0, hits = 0, misses = 0;
+    return {
+      name: 'LFU', k: k,
+      hits: function () { return hits; }, misses: function () { return misses; },
+      access: function (p) {
+        t++;
+        var e = m.get(p);
+        if (e) { e.f++; e.t = t; hits++; return true; }
+        misses++;
+        if (m.size >= k) {
+          var wk = null, wf = Infinity, wt = Infinity;
+          m.forEach(function (v, key) {
+            if (v.f < wf || (v.f === wf && v.t < wt)) { wf = v.f; wt = v.t; wk = key; }
+          });
+          m.delete(wk);
+        }
+        m.set(p, { f: 1, t: t });
+        return false;
+      },
+      contains: function (p) { return m.has(p); },
+      contents: function () { return Array.from(m.keys()); }
+    };
+  }
+
+  function makeRANDOM(k, seed) {
+    var arr = [], inC = new Set(), r = splitmix32(seed === undefined ? 1 : seed);
+    var hits = 0, misses = 0;
+    return {
+      name: 'RANDOM', k: k,
+      hits: function () { return hits; }, misses: function () { return misses; },
+      access: function (p) {
+        if (inC.has(p)) { hits++; return true; }
+        misses++;
+        if (arr.length >= k) {
+          var i = Math.min(arr.length - 1, Math.floor(r() * arr.length));
+          inC.delete(arr[i]); arr[i] = p;
+        } else arr.push(p);
+        inC.add(p);
+        return false;
+      },
+      contains: function (p) { return inC.has(p); },
+      contents: function () { return arr.slice(); }
+    };
+  }
+
+  function makeCLOCK(k) {
+    var frames = new Array(k), ref = new Uint8Array(k), map = {};
+    for (var i = 0; i < k; i++) frames[i] = -1;
+    var hand = 0, filled = 0, hits = 0, misses = 0;
+    return {
+      name: 'CLOCK', k: k,
+      hits: function () { return hits; }, misses: function () { return misses; },
+      access: function (p) {
+        if (map[p] !== undefined) { ref[map[p]] = 1; hits++; return true; }
+        misses++;
+        if (filled < k) {
+          frames[filled] = p; ref[filled] = 1; map[p] = filled; filled++;
+        } else {
+          var guard = 0;
+          while (ref[hand] === 1 && guard++ < 4 * k) { ref[hand] = 0; hand = (hand + 1) % k; }
+          var v = frames[hand];
+          delete map[v];
+          frames[hand] = p; ref[hand] = 1; map[p] = hand;
+          hand = (hand + 1) % k;
+        }
+        return false;
+      },
+      contains: function (p) { return map[p] !== undefined; },
+      contents: function () { return frames.filter(function (x) { return x >= 0; }); }
+    };
+  }
+
+  /* 随机标记算法（Fiat et al. 1991）：竞争比 ≤ 2·H_k —— 本次的"理论界"选手 */
+  function makeMARKER(k, seed) {
+    var c = new Set(), mk = new Set(), r = splitmix32(seed === undefined ? 1 : seed);
+    var hits = 0, misses = 0;
+    return {
+      name: 'MARKER', k: k,
+      hits: function () { return hits; }, misses: function () { return misses; },
+      access: function (p) {
+        if (c.has(p)) { mk.add(p); hits++; return true; }
+        misses++;
+        if (c.size < k) { c.add(p); mk.add(p); return false; }
+        var un = [];
+        c.forEach(function (x) { if (!mk.has(x)) un.push(x); });
+        if (un.length === 0) { mk.clear(); c.forEach(function (x) { un.push(x); }); }
+        var v = un[Math.min(un.length - 1, Math.floor(r() * un.length))];
+        c.delete(v); mk.delete(v);
+        c.add(p); mk.add(p);
+        return false;
+      },
+      contains: function (p) { return c.has(p); },
+      contents: function () { return Array.from(c); }
+    };
+  }
+
+  /* 离线最优：Belady 的 MIN —— 驱逐"下一次被用到最晚"的那个。
+   * 需要完整的未来，所以它拿到整条 trace。
+   * tie = 'first'（按缓存顺序取第一个并列者）| 'maxId'（并列时取页面号最大的）
+   * —— 并列规则不影响缺页数的最优性，但会决定它是不是栈算法（见 test.js）。 */
+  function makeOPT(k, trace, tie) {
+    tie = tie || 'first';
+    var n = trace.length, i;
+    var occ = new Map();
+    for (i = 0; i < n; i++) {
+      var p = trace[i], a = occ.get(p);
+      if (!a) { a = []; occ.set(p, a); }
+      a.push(i);
+    }
+    var ptr = new Map(), nextPos = new Map();
+    occ.forEach(function (a, key) { ptr.set(key, 0); nextPos.set(key, a[0]); });
+    var cache = [], inC = new Set(), hits = 0, misses = 0;
+    return {
+      name: 'OPT', k: k,
+      hits: function () { return hits; }, misses: function () { return misses; },
+      access: function (p) {
+        var hit = inC.has(p);
+        if (hit) hits++; else misses++;
+        var a = occ.get(p) || [], j = ptr.get(p) || 0;
+        j++; ptr.set(p, j);
+        nextPos.set(p, j < a.length ? a[j] : n);
+        if (!hit) {
+          if (cache.length < k) { cache.push(p); inC.add(p); }
+          else {
+            /* 标准分页模型：请求过的页必须进缓存。所以只从**已在缓存中**的页里挑最远的。
+             * （曾经在这里加过一个"若 p 自己最远就不载入"的优化 —— 那是在解另一个问题，
+             *   见 test.js 的 DP 对账。） */
+            var wi = 0, wv = -1, z;
+            for (z = 0; z < cache.length; z++) {
+              var v = nextPos.get(cache[z]);
+              if (v > wv || (v === wv && tie === 'maxId' && cache[z] > cache[wi])) { wv = v; wi = z; }
+            }
+            inC.delete(cache[wi]); cache[wi] = p; inC.add(p);
+          }
+        }
+        return hit;
+      },
+      contains: function (p) { return inC.has(p); },
+      contents: function () { return cache.slice(); }
+    };
+  }
+
+  function makePolicy(name, k, trace, seed, tie) {
+    switch (name) {
+      case 'OPT': return makeOPT(k, trace, tie);
+      case 'LRU': return makeLRU(k);
+      case 'FIFO': return makeFIFO(k);
+      case 'LFU': return makeLFU(k);
+      case 'RANDOM': return makeRANDOM(k, seed);
+      case 'CLOCK': return makeCLOCK(k);
+      case 'MARKER': return makeMARKER(k, seed);
+      default: throw new Error('未知策略：' + name);
+    }
+  }
+
+  /* 跑完整条 trace */
+  function runTrace(k, trace, name, seed) {
+    var pol = makePolicy(name, k, trace, seed);
+    var n = trace.length;
+    for (var i = 0; i < n; i++) pol.access(trace[i]);
+    var h = pol.hits(), m = pol.misses();
+    return { name: name, k: k, n: n, hits: h, misses: m, rate: n ? h / n : 0 };
+  }
+
+  /* ---------------- 两套独立的快速缺页计数 ----------------
+   * 与上面的策略对象零共享代码，专门用于：
+   *   (a) 穷举几万~几十万条序列（对象分配太慢）
+   *   (b) 与策略实现对账（两个实现同错才算过）
+   */
+
+  function lruMisses(k, seq, n) {
+    var cache = new Int32Array(k), sz = 0, misses = 0, i, j;
+    for (i = 0; i < n; i++) {
+      var p = seq[i], found = -1;
+      for (j = 0; j < sz; j++) if (cache[j] === p) { found = j; break; }
+      if (found >= 0) {
+        for (j = found; j > 0; j--) cache[j] = cache[j - 1];
+        cache[0] = p;
+      } else {
+        misses++;
+        var lim = sz < k ? sz : k - 1;
+        for (j = lim; j > 0; j--) cache[j] = cache[j - 1];
+        cache[0] = p;
+        if (sz < k) sz++;
+      }
+    }
+    return misses;
+  }
+
+  function fifoMisses(k, seq, n) {
+    var cache = new Int32Array(k), sz = 0, misses = 0, i, j;
+    for (i = 0; i < n; i++) {
+      var p = seq[i], found = -1;
+      for (j = 0; j < sz; j++) if (cache[j] === p) { found = j; break; }
+      if (found >= 0) continue;
+      misses++;
+      if (sz < k) { cache[sz++] = p; }
+      else { for (j = 0; j < k - 1; j++) cache[j] = cache[j + 1]; cache[k - 1] = p; }
+    }
+    return misses;
+  }
+
+  function optMisses(k, seq, n, maxPage) {
+    var next = new Int32Array(n), last = new Int32Array(maxPage + 1), p, i, j;
+    for (p = 0; p <= maxPage; p++) last[p] = n;
+    for (i = n - 1; i >= 0; i--) { next[i] = last[seq[i]]; last[seq[i]] = i; }
+    var cache = new Int32Array(k), nxt = new Int32Array(k), sz = 0, misses = 0;
+    for (i = 0; i < n; i++) {
+      p = seq[i];
+      var found = -1;
+      for (j = 0; j < sz; j++) if (cache[j] === p) { found = j; break; }
+      if (found >= 0) { nxt[found] = next[i]; continue; }
+      misses++;
+      if (sz < k) { cache[sz] = p; nxt[sz] = next[i]; sz++; }
+      else {
+        var wi = 0;
+        for (j = 1; j < k; j++) if (nxt[j] > nxt[wi]) wi = j;
+        cache[wi] = p; nxt[wi] = next[i];
+      }
+    }
+    return misses;
+  }
+
+  /* ---------------- 自适应对抗者 ----------------
+   * 对任意确定性策略：维护 k+1 个页面，每一步请求"当前不在缓存里的那一个"。
+   * 容量 k 装不下 k+1 个页面 → 任意时刻恰好有一个不在缓存 → 每一步都缺页。
+   * 序列由策略自己的行为决定（自适应），所以是"量身定做"的。
+   */
+  function adversarialTrace(k, name, len, seed) {
+    var pol = makePolicy(name, k, null, seed);
+    var pages = k + 1, out = new Array(len);
+    for (var i = 0; i < len; i++) {
+      var p = -1;
+      for (var q = 0; q < pages; q++) { if (!pol.contains(q)) { p = q; break; } }
+      if (p < 0) p = 0;
+      out[i] = p;
+      pol.access(p);
+    }
+    return out;
+  }
+
+  /* ---------------- 穷举：小规模下最坏的访问序列 ----------------
+   * 遍历 alphabet^n 条序列，对每条算 LRU 与 OPT 的缺页数。
+   * 输出最大比值、比值直方图、最少命中的序列。 */
+  function enumerateWorst(k, alphabet, n, opts) {
+    opts = opts || {};
+    var topN = opts.topN || 5, histMax = opts.histMax || 6;
+    var seq = new Int32Array(n);
+    var top = [], hist = new Array(histMax + 1).fill(0);
+    var minHit = { hits: Infinity, lruMiss: 0, optMiss: 0, seq: null };
+    var maxOpt = { miss: -1, seq: null };
+    var count = 0, maxRatio = -1, maxSeq = null, maxLru = 0, maxOptM = 0;
+    for (;;) {
+      var lru = lruMisses(k, seq, n);
+      var opt = optMisses(k, seq, n, alphabet - 1);
+      var ratio = opt > 0 ? lru / opt : 0;
+      count++;
+      hist[Math.min(histMax, Math.round(ratio))]++;
+      if (ratio > maxRatio) {
+        maxRatio = ratio; maxSeq = Array.from(seq); maxLru = lru; maxOptM = opt;
+      }
+      top.push({ ratio: ratio, lru: lru, opt: opt, seq: Array.from(seq) });
+      top.sort(function (a, b) { return b.ratio - a.ratio; });
+      if (top.length > topN) top.length = topN;
+      var hits = n - lru;
+      if (hits < minHit.hits) minHit = { hits: hits, lruMiss: lru, optMiss: opt, seq: Array.from(seq) };
+      if (opt > maxOpt.miss) maxOpt = { miss: opt, seq: Array.from(seq) };
+      /* 里程表式枚举 */
+      var i = n - 1;
+      while (i >= 0 && seq[i] === alphabet - 1) { seq[i] = 0; i--; }
+      if (i < 0) break;
+      seq[i]++;
+    }
+    return {
+      k: k, alphabet: alphabet, n: n, count: count,
+      maxRatio: maxRatio, maxSeq: maxSeq, maxLruMiss: maxLru, maxOptMiss: maxOptM,
+      top: top, hist: hist, histMax: histMax, minHit: minHit
+    };
+  }
+
+  /* ---------------- 单调性 / Belady 异常 ----------------
+   * 栈算法（LRU）的缺页数随 k 单调不增（栈性质）。
+   * FIFO 不是栈算法 —— 加内存反而可能更慢（Belady 异常）。
+   */
+  function monotonicityProbe(seq, kLo, kHi) {
+    var n = seq.length, maxP = 0;
+    for (var i = 0; i < n; i++) if (seq[i] > maxP) maxP = seq[i];
+    var out = [];
+    for (var k = kLo; k <= kHi; k++) {
+      out.push({
+        k: k,
+        lru: lruMisses(k, seq, n),
+        fifo: fifoMisses(k, seq, n),
+        opt: optMisses(k, seq, n, maxP)
+      });
+    }
+    return out;
+  }
+
+  /* 随机搜索 Belady 异常：FIFO(k) < FIFO(k+1) 的序列占多大比例 */
+  function beladyAnomalyScan(k, pages, len, trials, seed, sampleLimit) {
+    var r = splitmix32(seed), anomalies = 0, lruAnomalies = 0;
+    var worst = null, examples = [];
+    var seq = new Int32Array(len);
+    for (var t = 0; t < trials; t++) {
+      for (var i = 0; i < len; i++) seq[i] = Math.min(pages - 1, Math.floor(r() * pages));
+      var f1 = fifoMisses(k, seq, len), f2 = fifoMisses(k + 1, seq, len);
+      var l1 = lruMisses(k, seq, len), l2 = lruMisses(k + 1, seq, len);
+      if (f1 < f2) {
+        anomalies++;
+        var gap = f2 - f1;
+        if (!worst || gap > worst.gap) { worst = { gap: gap, f1: f1, f2: f2, seq: Array.from(seq) }; }
+        if (examples.length < (sampleLimit || 3)) examples.push({ gap: gap, f1: f1, f2: f2, seq: Array.from(seq) });
+      }
+      if (l1 < l2) lruAnomalies++;
+    }
+    return {
+      k: k, pages: pages, len: len, trials: trials,
+      fifoAnomalies: anomalies, lruAnomalies: lruAnomalies,
+      rate: anomalies / trials, worst: worst, examples: examples
+    };
+  }
+
+  /* 穷举全部 alphabet^n 条序列，逐长度数出 Belady 异常有多少条，并给出首个反例。
+   * 用来回答"最短的异常序列有多长"和"发生率是多少"这两个问题。 */
+  function beladyAnomalyExhaustive(k, pages, maxLen) {
+    var seq = new Int32Array(maxLen), perLen = [], firstEver = null;
+    for (var n = 1; n <= maxLen; n++) {
+      var total = Math.pow(pages, n), anom = 0, lruAnom = 0, first = null;
+      var maxGap = 0, maxGapSeq = null;
+      for (var c = 0; c < total; c++) {
+        var x = c;
+        for (var i = 0; i < n; i++) { seq[i] = x % pages; x = (x - x % pages) / pages; }
+        var f1 = fifoMisses(k, seq, n), f2 = fifoMisses(k + 1, seq, n);
+        if (f1 < f2) {
+          anom++;
+          if (!first) { first = Array.from(seq.slice(0, n)); if (!firstEver) firstEver = { n: n, seq: first }; }
+          if (f2 - f1 > maxGap) { maxGap = f2 - f1; maxGapSeq = Array.from(seq.slice(0, n)); }
+        }
+        if (lruMisses(k, seq, n) < lruMisses(k + 1, seq, n)) lruAnom++;
+      }
+      perLen.push({ n: n, total: total, anomalies: anom, lruAnomalies: lruAnom, rate: anom / total, first: first, maxGap: maxGap, maxGapSeq: maxGapSeq });
+    }
+    return { k: k, pages: pages, maxLen: maxLen, perLen: perLen, firstEver: firstEver };
+  }
+
+  /* ---------------- 栈距离 → MRC 理论预测 ----------------
+   * 定理（Mattson et al. 1970）：对**任意**访问序列，
+   *   缺页率(k) = P(栈距离 > k)
+   * 精确成立，不是渐近。这是本次唯一一个有严格证明的真值的对照。
+   * （注意：这条定理只刻画 LRU，不说 LRU 等于 OPT —— 见 test.js。）
+   */
+
+  /* 任意序列的栈距离：用双向链表维护"最近使用顺序"，栈距离 = 该页在链表中的 1-based 位置。
+   * 首次出现的页距离记为 Infinity。这是与 traceStack 的采样版完全独立的实现。 */
+  function stackDistances(trace) {
+    var n = trace.length, out = new Float64Array(n);
+    var map = new Map(), head = null, tail = null;
+    function detach(node) {
+      if (node.prev) node.prev.next = node.next; else head = node.next;
+      if (node.next) node.next.prev = node.prev; else tail = node.prev;
+      node.prev = node.next = null;
+    }
+    function pushFront(node) {
+      node.next = head; node.prev = null;
+      if (head) head.prev = node; else tail = node;
+      head = node;
+    }
+    for (var i = 0; i < n; i++) {
+      var p = trace[i], node = map.get(p);
+      if (!node) {
+        out[i] = Infinity;
+        node = { page: p, prev: null, next: null };
+        map.set(p, node);
+        pushFront(node);
+      } else {
+        var d = 1, cur = head;
+        while (cur !== node) { cur = cur.next; d++; }
+        out[i] = d;
+        detach(node); pushFront(node);
+      }
+    }
+    return out;
+  }
+
+  function stackDistHistogram(dist, dmax) {
+    var h = new Int32Array(dmax + 2), i;
+    for (i = 0; i < dist.length; i++) h[Math.min(dmax + 1, dist[i])]++;
+    return h;
+  }
+
+  function mrcFromStackDist(hist, total, kList) {
+    var out = [];
+    for (var i = 0; i < kList.length; i++) {
+      var k = kList[i], over = 0;
+      for (var d = k + 1; d < hist.length; d++) over += hist[d];
+      out.push({ k: k, predicted: over / total });
+    }
+    return out;
+  }
+
+  /* 包含性检查（栈性质）：策略在 k 档的缓存内容，是否恒为 k+1 档的子集。
+   * 栈算法（LRU / OPT）满足；FIFO 不满足 —— 那正是 Belady 异常的根。 */
+  function inclusionCheck(name, seq, kLo, kHi, tie) {
+    var pols = [];
+    for (var k = kLo; k <= kHi; k++) pols.push(makePolicy(name, k, seq, 7, tie));
+    var viol = 0, firstViol = null;
+    for (var i = 0; i < seq.length; i++) {
+      for (var j = 0; j < pols.length; j++) pols[j].access(seq[i]);
+      for (var j = 0; j + 1 < pols.length; j++) {
+        var small = pols[j].contents(), big = pols[j + 1].contents();
+        for (var z = 0; z < small.length; z++) {
+          if (big.indexOf(small[z]) < 0) {
+            viol++;
+            if (!firstViol) firstViol = { at: i, k: kLo + j, page: small[z], small: small.slice(), big: big.slice() };
+            break;
+          }
+        }
+      }
+    }
+    return { violations: viol, first: firstViol };
+  }
+
+  /* 同一 trace 上 LRU 的完整 MRC（缺页率随 k 的曲线） */
+  function lruMRC(trace, kList) {
+    var n = trace.length, out = [];
+    for (var i = 0; i < kList.length; i++) {
+      out.push({ k: kList[i], rate: lruMisses(kList[i], trace, n) / n });
+    }
+    return out;
+  }
+
+  /* 同一 trace 上 OPT 的完整 MRC —— 曲线下的面积就是"可压缩的上限" */
+  function optMRC(trace, kList) {
+    var n = trace.length, maxP = 0, i;
+    for (i = 0; i < n; i++) if (trace[i] > maxP) maxP = trace[i];
+    var out = [];
+    for (i = 0; i < kList.length; i++) {
+      out.push({ k: kList[i], rate: optMisses(kList[i], trace, n, maxP) / n });
+    }
+    return out;
+  }
+
+  /* ---------------- 理论界 ---------------- */
+  function competitiveBound(name, k) {
+    if (name === 'LRU' || name === 'FIFO' || name === 'LFU' || name === 'CLOCK') return k;
+    if (name === 'MARKER') return 2 * harmonic(k);
+    if (name === 'RANDOM') return k;       /* 确定性版本的下界同样是 k 量级 */
+    return null;
+  }
+
+  return {
+    POLICY_NAMES: POLICY_NAMES, ONLINE_NAMES: ONLINE_NAMES,
+    splitmix32: splitmix32, harmonic: harmonic,
+    traceCyclic: traceCyclic, traceUniform: traceUniform, traceZipf: traceZipf,
+    tracePhaseShift: tracePhaseShift, traceScanHot: traceScanHot, traceStack: traceStack,
+    makePolicy: makePolicy, runTrace: runTrace,
+    lruMisses: lruMisses, fifoMisses: fifoMisses, optMisses: optMisses,
+    adversarialTrace: adversarialTrace,
+    enumerateWorst: enumerateWorst,
+    monotonicityProbe: monotonicityProbe,
+    beladyAnomalyScan: beladyAnomalyScan, beladyAnomalyExhaustive: beladyAnomalyExhaustive,
+    stackDistances: stackDistances,
+    stackDistHistogram: stackDistHistogram, mrcFromStackDist: mrcFromStackDist,
+    inclusionCheck: inclusionCheck,
+    lruMRC: lruMRC, optMRC: optMRC,
+    competitiveBound: competitiveBound
+  };
+});
+
+</script>
+<script>
+/* ============================================================
+ * ui.js —— 《马后炮》界面
+ * 全部数字来自 window.__MH_DATA__（标定产物）与页内实时重算的模型。
+ * 探针 window.__probe 暴露确定性驱动接口，供真实浏览器内核验证。
+ * ========================================================== */
+(function () {
+  'use strict';
+  var C = window.MHPCore;
+  var D = window.__MH_DATA__ || { results: {}, analysis: {} };
+  var R = D.results || {};
+  var A = D.analysis || {};
+
+  var COL = {
+    hot: '#b03030', cool: '#1f5f7a', gold: '#96700f', green: '#2f6b46',
+    ink: '#17181c', muted: '#a6a49a', faint: '#c9c6bc', line: '#dcd9cf', line2: '#ebe8df'
+  };
+  var NS = 'http://www.w3.org/2000/svg';
+
+  function $(s, root) { return (root || document).querySelector(s); }
+  function $$(s, root) { return Array.prototype.slice.call((root || document).querySelectorAll(s)); }
+  function ce(tag, cls, txt) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (txt !== undefined) e.textContent = String(txt);
+    return e;
+  }
+  function sv(tag, attrs) {
+    var e = document.createElementNS(NS, tag);
+    if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function clear(n) { while (n && n.firstChild) n.removeChild(n.firstChild); }
+  function fx(x, n) {
+    if (x === null || x === undefined || (typeof x === 'number' && !isFinite(x))) return '—';
+    return Number(x).toFixed(n === undefined ? 2 : n);
+  }
+  function num(x) { return (x === null || x === undefined || isNaN(x)) ? '—' : String(x); }
+
+  /* ============================================================
+   * 通用折线图
+   * ========================================================== */
+  function chart(host, spec) {
+    var node = typeof host === 'string' ? $(host) : host;
+    if (!node) return null;
+    clear(node);
+    var series = (spec.series || []).filter(function (s) { return s.points && s.points.length; });
+    if (!series.length) { node.appendChild(ce('div', 'chart-note', '（无数据）')); return null; }
+    /* 防御：任何非有限值都不能进入坐标范围计算 —— 一个 NaN 会把整条纵轴变成 NaN */
+    var dropped = 0;
+    series = series.map(function (s) {
+      var pts = s.points.filter(function (p) { return isFinite(p[0]) && isFinite(p[1]); });
+      dropped += s.points.length - pts.length;
+      return { name: s.name, color: s.color, dash: s.dash, dots: s.dots, width: s.width, dotR: s.dotR, points: pts };
+    }).filter(function (s) { return s.points.length; });
+    if (!series.length) { node.appendChild(ce('div', 'chart-note', '（数据含非有限值，已全部剔除）')); return null; }
+    var W = 720, H = spec.height || 300;
+    var pad = { l: spec.padL || 58, r: spec.padR || 20, t: 16, b: spec.padB || 42 };
+    var xs = [], ys = [];
+    series.forEach(function (s) { s.points.forEach(function (p) { xs.push(p[0]); ys.push(p[1]); }); });
+    (spec.refLines || []).forEach(function (r) { ys.push(r.y); });
+    var xMin = spec.xMin !== undefined ? spec.xMin : Math.min.apply(null, xs);
+    var xMax = spec.xMax !== undefined ? spec.xMax : Math.max.apply(null, xs);
+    if (xMax === xMin) xMax = xMin + 1;
+    var yMin = spec.yMin !== undefined ? spec.yMin : Math.min.apply(null, ys);
+    var yMax = spec.yMax !== undefined ? spec.yMax : Math.max.apply(null, ys);
+    if (spec.yFromZero) yMin = 0;
+    if (yMax === yMin) yMax = yMin + 1;
+    var span = yMax - yMin;
+    if (spec.yMin === undefined) yMin = spec.yFromZero ? 0 : yMin - span * 0.06;
+    if (spec.yMax === undefined) yMax = yMax + span * 0.08;
+    if (spec.yFromZero && spec.yMin === undefined) yMin = 0;
+    var X = function (v) { return pad.l + (v - xMin) / (xMax - xMin) * (W - pad.l - pad.r); };
+    var Y = function (v) { return H - pad.b - (v - yMin) / (yMax - yMin) * (H - pad.t - pad.b); };
+
+    var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img' });
+
+    /* y 网格 + 刻度 */
+    var yTicks = spec.yTicks || 5, i;
+    for (i = 0; i <= yTicks; i++) {
+      var vy = yMin + (yMax - yMin) * i / yTicks;
+      svg.appendChild(sv('line', { x1: pad.l, y1: Y(vy), x2: W - pad.r, y2: Y(vy), stroke: COL.line2, 'stroke-width': 1 }));
+      var tl = sv('text', { x: pad.l - 8, y: Y(vy) + 4, 'text-anchor': 'end', 'font-size': 11, fill: COL.muted, 'font-family': 'monospace' });
+      tl.textContent = spec.yFmt ? spec.yFmt(vy) : fx(vy, spec.yDec === undefined ? 2 : spec.yDec);
+      svg.appendChild(tl);
+    }
+    /* x 刻度 */
+    var xTicks = spec.xTicks;
+    if (!xTicks) {
+      xTicks = [];
+      var n = 6;
+      for (i = 0; i <= n; i++) xTicks.push(xMin + (xMax - xMin) * i / n);
+    }
+    xTicks.forEach(function (v) {
+      var t = sv('text', { x: X(v), y: H - pad.b + 18, 'text-anchor': 'middle', 'font-size': 11, fill: COL.muted, 'font-family': 'monospace' });
+      t.textContent = spec.xFmt ? spec.xFmt(v) : fx(v, spec.xDec === undefined ? 1 : spec.xDec);
+      svg.appendChild(t);
+    });
+    /* 轴 */
+    svg.appendChild(sv('line', { x1: pad.l, y1: H - pad.b, x2: W - pad.r, y2: H - pad.b, stroke: COL.ink, 'stroke-width': 1 }));
+    svg.appendChild(sv('line', { x1: pad.l, y1: pad.t, x2: pad.l, y2: H - pad.b, stroke: COL.ink, 'stroke-width': 1 }));
+
+    /* 参考线 */
+    (spec.refLines || []).forEach(function (r) {
+      svg.appendChild(sv('line', {
+        x1: pad.l, y1: Y(r.y), x2: W - pad.r, y2: Y(r.y),
+        stroke: r.color || COL.faint, 'stroke-width': 1, 'stroke-dasharray': '5 4'
+      }));
+      if (r.label) {
+        var t2 = sv('text', { x: W - pad.r - 4, y: Y(r.y) - 5, 'text-anchor': 'end', 'font-size': 11, fill: r.color || COL.muted, 'font-family': 'monospace' });
+        t2.textContent = r.label;
+        svg.appendChild(t2);
+      }
+    });
+
+    /* 数据 */
+    series.forEach(function (s) {
+      var d = s.points.map(function (p, k) { return (k ? 'L' : 'M') + X(p[0]).toFixed(2) + ' ' + Y(p[1]).toFixed(2); }).join(' ');
+      if (s.dash) {
+        svg.appendChild(sv('path', { d: d, fill: 'none', stroke: s.color, 'stroke-width': s.width || 2, 'stroke-dasharray': s.dash, 'stroke-linejoin': 'round' }));
+      } else {
+        svg.appendChild(sv('path', { d: d, fill: 'none', stroke: s.color, 'stroke-width': s.width || 2, 'stroke-linejoin': 'round' }));
+      }
+      if (s.dots) {
+        s.points.forEach(function (p) {
+          svg.appendChild(sv('circle', { cx: X(p[0]), cy: Y(p[1]), r: s.dotR || 3, fill: s.color }));
+        });
+      }
+    });
+
+    /* 轴标题 */
+    if (spec.xLabel) {
+      var xl = sv('text', { x: (pad.l + W - pad.r) / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': 11, fill: COL.muted, 'font-family': 'monospace' });
+      xl.textContent = spec.xLabel; svg.appendChild(xl);
+    }
+    if (spec.yLabel) {
+      var yl = sv('text', { x: 12, y: (pad.t + H - pad.b) / 2, 'text-anchor': 'middle', 'font-size': 11, fill: COL.muted, 'font-family': 'monospace', transform: 'rotate(-90 12 ' + ((pad.t + H - pad.b) / 2) + ')' });
+      yl.textContent = spec.yLabel; svg.appendChild(yl);
+    }
+    node.appendChild(svg);
+    return svg;
+  }
+
+  /* ---------- 条形图（.bar-fill 必须 display:block） ---------- */
+  function bars(host, items, opts) {
+    var node = typeof host === 'string' ? $(host) : host;
+    if (!node) return;
+    clear(node);
+    opts = opts || {};
+    var max = opts.max;
+    if (max === undefined) {
+      max = 0;
+      items.forEach(function (it) { if (Math.abs(it.v) > max) max = Math.abs(it.v); });
+    }
+    if (max <= 0) max = 1;
+    items.forEach(function (it) {
+      var row = ce('div', 'bar-row');
+      row.appendChild(ce('div', 'bar-lab', it.label));
+      var track = ce('div', 'bar-track');
+      var fill = ce('div', 'bar-fill' + (it.tone ? ' ' + it.tone : ''));
+      fill.style.width = Math.max(0, Math.min(100, Math.abs(it.v) / max * 100)) + '%';
+      fill.setAttribute('data-v', String(it.v));
+      track.appendChild(fill);
+      row.appendChild(track);
+      row.appendChild(ce('div', 'bar-val', it.text !== undefined ? it.text : fx(it.v, 2)));
+      node.appendChild(row);
+    });
+  }
+
+  /* ---------- SVG 横向条形图（要放在 .chart 容器里，所以得是 SVG） ---------- */
+  function hbars(host, items, opts) {
+    var node = typeof host === 'string' ? $(host) : host;
+    if (!node) return null;
+    clear(node);
+    opts = opts || {};
+    var W = 720, rowH = 42, padL = 128, padR = 84, padT = 8, padB = 8;
+    var H = padT + padB + items.length * rowH;
+    var max = opts.max || Math.max.apply(null, items.map(function (i) { return i.v; })) || 1;
+    var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img' });
+    var barMax = W - padL - padR;
+    items.forEach(function (it, i) {
+      var y = padT + i * rowH + 6;
+      var t = sv('text', { x: padL - 10, y: y + 15, 'text-anchor': 'end', 'font-size': 14, fill: COL.muted, 'font-family': 'monospace' });
+      t.textContent = it.label;
+      svg.appendChild(t);
+      svg.appendChild(sv('rect', { x: padL, y: y, width: barMax, height: 20, fill: COL.line2 }));
+      var w = Math.max(0, Math.min(1, it.v / max)) * barMax;
+      svg.appendChild(sv('rect', { x: padL, y: y, width: w, height: 20, fill: it.color }));
+      var v = sv('text', { x: padL + w + 8, y: y + 15, 'font-size': 14, fill: COL.ink, 'font-family': 'monospace' });
+      v.textContent = it.text;
+      svg.appendChild(v);
+    });
+    node.appendChild(svg);
+    return svg;
+  }
+
+  /* ---------- 表格 ---------- */
+  function table(host, heads, rows, cls) {
+    var node = typeof host === 'string' ? $(host) : host;
+    if (!node) return;
+    clear(node);
+    var thead = ce('thead'), tr = ce('tr');
+    heads.forEach(function (h, i) {
+      var th = ce('th', (i === 0 ? 'l ' : '') + (h.cls || ''), h.t !== undefined ? h.t : h);
+      tr.appendChild(th);
+    });
+    thead.appendChild(tr); node.appendChild(thead);
+    var tb = ce('tbody');
+    rows.forEach(function (r) {
+      var t = ce('tr', r.cls || '');
+      r.cells.forEach(function (c, i) {
+        var td = ce('td', (i === 0 ? 'l ' : '') + (c.cls || (typeof c === 'object' && c.cls) || ''));
+        td.textContent = (c && typeof c === 'object') ? (c.t === undefined ? '' : c.t) : String(c);
+        if (c && typeof c === 'object' && c.tone) td.className = (td.className + ' ' + c.tone).trim();
+        t.appendChild(td);
+      });
+      tb.appendChild(t);
+    });
+    node.appendChild(tb);
+  }
+
+  /* ============================================================
+   * KPI
+   * ============================================================ */
+  (function () {
+    var host = $('#kpis');
+    if (!host || !A.kpis) return;
+    A.kpis.forEach(function (k) {
+      var d = ce('div', 'kpi' + (k.tone ? ' ' + k.tone : ''));
+      d.appendChild(ce('div', 'k-label', k.label));
+      d.appendChild(ce('div', 'k-val', k.value));
+      d.appendChild(ce('div', 'k-note', k.note));
+      host.appendChild(d);
+    });
+  })();
+
+  /* ============================================================
+   * 第一节：手动缓存游戏
+   * ============================================================ */
+  var GAME_K = 3, GAME_LEN = 24;
+  var GAME_TRACE = C.traceZipf(6, GAME_LEN, 20260928, 0.85);
+  var game = { pos: 0, cache: [], misses: 0, over: false, waiting: false, hist: [] };
+
+  function gameResolve() {
+    while (!game.over) {
+      if (game.pos >= GAME_LEN) { game.over = true; break; }
+      var p = GAME_TRACE[game.pos];
+      if (game.cache.indexOf(p) >= 0) { game.hist[game.pos] = true; game.pos++; continue; }
+      if (game.cache.length < GAME_K) { game.hist[game.pos] = false; game.cache.push(p); game.misses++; game.pos++; continue; }
+      game.waiting = true; break;
+    }
+  }
+
+  function gameRender() {
+    var reqHost = $('#game-req'), slotHost = $('#game-slots'), statHost = $('#game-stat'), msg = $('#game-msg');
+    if (!reqHost) return;
+    clear(reqHost);
+    GAME_TRACE.forEach(function (p, i) {
+      var d = ce('div', 'req' + (i === game.pos && !game.over ? ' now' : i < game.pos ? ' past' : ' fog'));
+      if (i < game.pos) {
+        d.textContent = String(p);
+        d.appendChild(ce('span', 'rf', game.hist[i] ? '命中' : '缺页'));
+      } else if (i === game.pos && !game.over) {
+        d.textContent = String(p);
+        d.appendChild(ce('span', 'rf', '现在'));
+      } else {
+        d.textContent = '?';
+        d.appendChild(ce('span', 'rf', ''));
+      }
+      reqHost.appendChild(d);
+    });
+
+    clear(slotHost);
+    for (var s = 0; s < GAME_K; s++) {
+      var page = game.cache[s];
+      var isNew = game.waiting && game.pos < GAME_LEN && page === GAME_TRACE[game.pos];
+      var d2 = ce('div', 'slot' + (game.waiting ? ' pick' : '') + (page === undefined ? ' empty' : '') + (isNew ? ' hit' : ''));
+      d2.setAttribute('data-slot', String(s));
+      d2.appendChild(ce('div', 's-idx', '格 ' + (s + 1)));
+      d2.appendChild(ce('div', 's-page', page === undefined ? '—' : String(page)));
+      d2.appendChild(ce('div', 's-tag', game.waiting ? '点我踢掉' : (page === undefined ? '空' : '')));
+      if (game.waiting) {
+        d2.addEventListener('click', (function (idx) {
+          return function () { gameEvict(idx); };
+        })(s));
+      }
+      slotHost.appendChild(d2);
+    }
+
+    clear(statHost);
+    function st(label, val, tone) {
+      var d = ce('div', 'stat' + (tone ? ' ' + tone : ''));
+      d.appendChild(ce('div', 'st-l', label));
+      d.appendChild(ce('div', 'st-v', val));
+      return d;
+    }
+    statHost.appendChild(st('你的缺页数', String(game.misses), 'hot'));
+    statHost.appendChild(st('已处理', game.pos + ' / ' + GAME_LEN));
+    if (game.over) {
+      var lru = C.runTrace(GAME_K, GAME_TRACE, 'LRU').misses;
+      var opt = C.runTrace(GAME_K, GAME_TRACE, 'OPT').misses;
+      statHost.appendChild(st('LRU', String(lru), 'cool'));
+      statHost.appendChild(st('马后炮', String(opt), 'gold'));
+    }
+    if (msg) {
+      if (game.over) {
+        var lruM = C.runTrace(GAME_K, GAME_TRACE, 'LRU').misses;
+        var optM = C.runTrace(GAME_K, GAME_TRACE, 'OPT').misses;
+        var verdict = game.misses < lruM ? '比 LRU 还好' : (game.misses === lruM ? '与 LRU 打平' : ('比 LRU 多 ' + (game.misses - lruM) + ' 次'));
+        msg.textContent = '结束。你缺页 ' + game.misses + ' 次，LRU ' + lruM + ' 次，马后炮 ' + optM +
+          ' 次 —— ' + verdict + '。马后炮赢你 ' + (game.misses - optM) + ' 次，那就是「知道未来」在这个规模上的价格。';
+      } else if (game.waiting) {
+        msg.textContent = '缺页：页面 ' + GAME_TRACE[game.pos] + ' 不在缓存里，挑一个格子踢掉。';
+      } else {
+        msg.textContent = '';
+      }
+    }
+  }
+
+  function gameEvict(idx) {
+    if (!game.waiting) return;
+    var p = GAME_TRACE[game.pos];
+    game.hist[game.pos] = false;
+    game.cache[idx] = p;
+    game.misses++;
+    game.pos++;
+    game.waiting = false;
+    gameResolve();
+    gameRender();
+  }
+
+  function gameReset() {
+    game = { pos: 0, cache: [], misses: 0, over: false, waiting: false, hist: [] };
+    gameResolve();
+    gameRender();
+  }
+
+  function gameAuto(name) {
+    var pol = C.makePolicy(name, GAME_K, GAME_TRACE);
+    game = { pos: 0, cache: [], misses: 0, over: false, waiting: false, hist: [] };
+    for (var i = 0; i < GAME_LEN; i++) {
+      var hit = pol.access(GAME_TRACE[i]);
+      if (!hit) game.misses++;
+      game.hist[i] = hit;
+      game.pos = i + 1;
+    }
+    game.over = true;
+    game.waiting = false;
+    gameRender();
+    var msg = $('#game-msg');
+    if (msg) {
+      msg.textContent = (name === 'LRU' ? 'LRU 替你玩完了' : '马后炮替你玩完了') + '：缺页 ' + game.misses + ' 次。' +
+        (name === 'LRU' ? '它全程不知道未来，所以也就只能这样。' : '它每一步都读到了序列末尾 —— 这不是能力，是特权。');
+    }
+  }
+
+  if ($('#game-req')) {
+    gameReset();
+    var br = $('#game-reset'); if (br) br.addEventListener('click', gameReset);
+    var ba = $('#game-auto'); if (ba) ba.addEventListener('click', function () { gameAuto('LRU'); });
+    var bo = $('#game-opt'); if (bo) bo.addEventListener('click', function () { gameAuto('OPT'); });
+  }
+
+  /* ============================================================
+   * 第二节：马后炮逐帧
+   * ============================================================ */
+  var OPT_K = 3;
+  var optRun = null, optStep = 0;
+
+  function nextUseFrom(trace, i, page) {
+    for (var j = i + 1; j < trace.length; j++) if (trace[j] === page) return j;
+    return -1;
+  }
+
+  function buildOptRun() {
+    var trace = GAME_TRACE, k = OPT_K;
+    var pol = C.makePolicy('OPT', k, trace);
+    var states = [], cache = [];
+    for (var i = 0; i < trace.length; i++) {
+      var before = cache.slice();
+      var hit = pol.access(trace[i]);
+      var after = pol.contents();
+      var evicted = before.filter(function (p) { return after.indexOf(p) < 0; });
+      states.push({ i: i, page: trace[i], before: before, after: after, hit: hit, evicted: evicted });
+      cache = after;
+    }
+    return { trace: trace, k: k, states: states, misses: pol.misses(), hits: pol.hits() };
+  }
+
+  function optRender() {
+    var reqHost = $('#opt-req'), slotHost = $('#opt-slots'), statHost = $('#opt-stat'), msg = $('#opt-msg');
+    if (!reqHost || !optRun) return;
+    clear(reqHost);
+    var shown = optStep;   /* 已经处理了 shown 步 */
+    optRun.trace.forEach(function (p, i) {
+      var cls = 'req';
+      if (i < shown) cls += (optRun.states[i].hit ? ' hitm' : ' miss') + ' past';
+      else if (i === shown) cls += ' now';
+      else cls += ' fog';
+      var d = ce('div', cls);
+      d.textContent = (i <= shown) ? String(p) : '?';
+      d.appendChild(ce('span', 'rf', i < shown ? (optRun.states[i].hit ? '命中' : '缺页') : (i === shown ? '现在' : '')));
+      reqHost.appendChild(d);
+    });
+
+    clear(slotHost);
+    var st = shown > 0 ? optRun.states[shown - 1] : null;
+    var cacheNow = st ? st.after : [];
+    for (var s = 0; s < optRun.k; s++) {
+      var page = cacheNow[s];
+      var willEvict = (optStep < optRun.trace.length) && st && optRun.states[shown] && optRun.states[shown].evicted.indexOf(page) >= 0;
+      var d2 = ce('div', 'slot' + (willEvict ? ' evict' : '') + (page === undefined ? ' empty' : ''));
+      d2.setAttribute('data-slot', String(s));
+      d2.appendChild(ce('div', 's-idx', '格 ' + (s + 1)));
+      d2.appendChild(ce('div', 's-page', page === undefined ? '—' : String(page)));
+      var tag = '';
+      if (page !== undefined) {
+        var nu = nextUseFrom(optRun.trace, shown - 1, page);
+        tag = (willEvict ? '→ ' : '') + (nu < 0 ? '不再出现' : ('第 ' + nu + ' 步'));
+      }
+      d2.appendChild(ce('div', 's-tag', tag));
+      slotHost.appendChild(d2);
+    }
+
+    clear(statHost);
+    function stt(label, val, tone) {
+      var d = ce('div', 'stat' + (tone ? ' ' + tone : ''));
+      d.appendChild(ce('div', 'st-l', label));
+      d.appendChild(ce('div', 'st-v', val));
+      return d;
+    }
+    var done = optRun.states.slice(0, shown);
+    var missSoFar = done.filter(function (x) { return !x.hit; }).length;
+    statHost.appendChild(stt('已处理', shown + ' / ' + optRun.trace.length));
+    statHost.appendChild(stt('缺页数', String(missSoFar), 'gold'));
+    statHost.appendChild(stt('最终缺页', String(optRun.misses), 'gold'));
+    var lruM = C.runTrace(OPT_K, optRun.trace, 'LRU').misses;
+    statHost.appendChild(stt('LRU 会缺页', String(lruM), 'cool'));
+
+    if (msg) {
+      if (shown === 0) msg.textContent = '还没开始。点「下一步」，看马后炮怎么踢。';
+      else if (shown >= optRun.trace.length) msg.textContent = '跑完了：马后炮缺页 ' + optRun.misses + ' 次，LRU 缺页 ' + lruM + ' 次。';
+      else {
+        var x = optRun.states[shown - 1];
+        msg.textContent = x.hit ? ('第 ' + x.i + ' 步请求 ' + x.page + '：命中。')
+          : ('第 ' + x.i + ' 步请求 ' + x.page + '：缺页，踢掉 ' + (x.evicted.length ? x.evicted.join('、') : '（有空格子，不用踢）') + '。');
+      }
+    }
+  }
+
+  function optGo(n) {
+    if (!optRun) return;
+    optStep = Math.max(0, Math.min(optRun.trace.length, optStep + n));
+    optRender();
+  }
+
+  if ($('#opt-req')) {
+    optRun = buildOptRun();
+    optStep = 0;
+    optRender();
+    var s1 = $('#opt-step'); if (s1) s1.addEventListener('click', function () { optGo(1); });
+    var s2 = $('#opt-run'); if (s2) s2.addEventListener('click', function () { optGo(optRun.trace.length); });
+    var s3 = $('#opt-reset'); if (s3) s3.addEventListener('click', function () { optStep = 0; optRender(); });
+  }
+
+  /* ============================================================
+   * 第三节：七策略 × 六模式
+   * ============================================================ */
+  var modeSel = $('#mode-sel');
+  var curMode = null;
+
+  function renderMode(modeId) {
+    if (!R.E1) return;
+    var m = null;
+    R.E1.modes.forEach(function (x) { if (x.id === modeId) m = x; });
+    if (!m) m = R.E1.modes[0];
+    curMode = m;
+    var items = m.rows.map(function (r) {
+      var tone = r.name === 'OPT' ? 'gold' : (r.name === 'LRU' ? 'hot' : (r.name === 'RANDOM' || r.name === 'MARKER' ? 'cool' : ''));
+      return { label: r.name, v: r.rate * 100, text: fx(r.rate * 100, 1) + '%', tone: tone };
+    });
+    bars('#bars-policy', items, { max: 100 });
+    var note = $('#mode-note');
+    if (note) note.textContent = m.label + '（' + m.note + '）· 每条序列 10 万次访问 · 条形长度即命中率。';
+  }
+
+  if (modeSel && R.E1) {
+    R.E1.modes.forEach(function (m) {
+      var o = ce('option', null, m.label);
+      o.value = m.id;
+      modeSel.appendChild(o);
+    });
+    modeSel.value = 'cyclic';
+    renderMode('cyclic');
+    modeSel.addEventListener('change', function () { renderMode(modeSel.value); });
+  }
+
+  (function () {
+    if (!R.E1) return;
+    var heads = [{ t: '访问模式', cls: 'l' }].concat(C.POLICY_NAMES.map(function (n) { return { t: n }; }))
+      .concat([{ t: 'OPT÷最差在线' }]);
+    var rows = R.E1.modes.map(function (m) {
+      var worst = 1;
+      m.rows.forEach(function (r) { if (r.name !== 'OPT' && r.vsOpt > worst) worst = r.vsOpt; });
+      var cells = [{ t: m.label, cls: 'l' }];
+      m.rows.forEach(function (r) {
+        var cls = '';
+        if (r.name === 'OPT') cls = 'best';
+        else if (r.rate === 0) cls = 'worst';
+        cells.push({ t: fx(r.rate * 100, 1) + '%', cls: cls });
+      });
+      cells.push({ t: fx(worst, 2) + '×' });
+      return { cells: cells, cls: m.id === 'cyclic' ? 'hi' : '' };
+    });
+    table('#tbl-policy', heads, rows);
+  })();
+
+  (function () {
+    if (!R.E1) return;
+    var idx = { cyclic: 0, uniform17: 1, uniform64: 2, zipf64: 3, phase: 4, scanhot: 5 };
+    var series = C.POLICY_NAMES.map(function (nm) {
+      var color = nm === 'OPT' ? COL.gold : nm === 'LRU' ? COL.hot : nm === 'RANDOM' ? COL.cool : nm === 'MARKER' ? COL.green : COL.muted;
+      return {
+        name: nm, color: color, dots: true,
+        points: R.E1.modes.map(function (m) {
+          var r = null; m.rows.forEach(function (x) { if (x.name === nm) r = x; });
+          return [idx[m.id], r ? r.rate * 100 : 0];
+        })
+      };
+    });
+    chart('#chart-modes', {
+      height: 300, yFromZero: true, yMax: 100,
+      series: series,
+      xTicks: R.E1.modes.map(function (m, i) { return i; }),
+      xFmt: function (v) { var m = R.E1.modes[Math.round(v)]; return m ? m.label.replace(/ /g, '') : ''; },
+      yLabel: '命中率 %', yDec: 0, yTicks: 5
+    });
+    var lg = $('#chart-modes');
+    if (lg && !$('.legend', lg.parentNode)) {
+      var lgd = ce('div', 'legend');
+      series.forEach(function (s) {
+        var i = ce('i'); i.style.background = s.color;
+        var sp = ce('span', null, s.name);
+        lgd.appendChild(i); lgd.appendChild(sp);
+      });
+      lg.parentNode.insertBefore(lgd, lg);
+    }
+  })();
+
+  /* ============================================================
+   * 第四节：对抗者
+   * ============================================================ */
+  var ADV_K = 4, ADV_LEN = 200;
+  var adv = null, advLog = [];
+  var advSel = $('#adv-sel');
+
+  function advInit(name) {
+    adv = { name: name, pol: C.makePolicy(name, ADV_K, null, 4242), pos: 0, misses: 0 };
+    advLog = [];
+    advRender();
+  }
+
+  function advStepOnce() {
+    if (!adv || adv.pos >= ADV_LEN) return;
+    var p = -1;
+    for (var q = 0; q <= ADV_K; q++) { if (!adv.pol.contains(q)) { p = q; break; } }
+    if (p < 0) p = 0;
+    var hit = adv.pol.access(p);
+    if (!hit) adv.misses++;
+    advLog.push({ p: p, hit: hit, cache: adv.pol.contents() });
+    adv.pos++;
+  }
+
+  function advRender() {
+    var reqHost = $('#adv-req'), slotHost = $('#adv-slots'), statHost = $('#adv-stat'), msg = $('#adv-msg');
+    if (!reqHost || !adv) return;
+    clear(reqHost);
+    var from = Math.max(0, advLog.length - 26);
+    for (var i = from; i < advLog.length; i++) {
+      var e = advLog[i];
+      var d = ce('div', 'req past' + (e.hit ? ' hitm' : ' miss'));
+      d.textContent = String(e.p);
+      d.appendChild(ce('span', 'rf', e.hit ? '命中' : '缺页'));
+      reqHost.appendChild(d);
+    }
+    if (adv.pos < ADV_LEN) {
+      var nxt = -1;
+      for (var q = 0; q <= ADV_K; q++) { if (!adv.pol.contains(q)) { nxt = q; break; } }
+      var d2 = ce('div', 'req now');
+      d2.textContent = String(nxt < 0 ? 0 : nxt);
+      d2.appendChild(ce('span', 'rf', '下一个'));
+      reqHost.appendChild(d2);
+      for (var k2 = 0; k2 < 6; k2++) {
+        var d3 = ce('div', 'req fog');
+        d3.textContent = '?';
+        reqHost.appendChild(d3);
+      }
+    }
+
+    clear(slotHost);
+    var cache = adv.pol.contents();
+    for (var s = 0; s < ADV_K; s++) {
+      var page = cache[s];
+      var d4 = ce('div', 'slot' + (page === undefined ? ' empty' : ''));
+      d4.setAttribute('data-slot', String(s));
+      d4.appendChild(ce('div', 's-idx', '格 ' + (s + 1)));
+      d4.appendChild(ce('div', 's-page', page === undefined ? '—' : String(page)));
+      d4.appendChild(ce('div', 's-tag', ''));
+      slotHost.appendChild(d4);
+    }
+
+    clear(statHost);
+    function st(label, val, tone) {
+      var d = ce('div', 'stat' + (tone ? ' ' + tone : ''));
+      d.appendChild(ce('div', 'st-l', label));
+      d.appendChild(ce('div', 'st-v', val));
+      return d;
+    }
+    var rate = adv.pos ? (adv.pos - adv.misses) / adv.pos : 0;
+    statHost.appendChild(st('已请求', String(adv.pos), ''));
+    statHost.appendChild(st('命中次数', String(adv.pos - adv.misses), 'hot'));
+    statHost.appendChild(st('命中率', fx(rate * 100, 1) + '%', 'hot'));
+    statHost.appendChild(st('页面池', (ADV_K + 1) + ' 个 / 格子 ' + ADV_K + ' 个', ''));
+
+    if (msg) {
+      if (!adv.pos) msg.textContent = '点「走一步」，看对抗者怎么挑下一个请求。';
+      else {
+        var last = advLog[advLog.length - 1];
+        msg.textContent = '第 ' + adv.pos + ' 步：请求页面 ' + last.p + '，缓存里没有它（页面池 ' + (ADV_K + 1) +
+          ' 个，格子只有 ' + ADV_K + ' 个，必然有一个在门外）→ 缺页。踢掉一个之后，门外换成了另一个，下一轮再请求它。';
+      }
+    }
+  }
+
+  if (advSel && R.E7) {
+    C.ONLINE_NAMES.forEach(function (n) {
+      var o = ce('option', null, n);
+      o.value = n;
+      advSel.appendChild(o);
+    });
+    advInit('LRU');
+    advSel.addEventListener('change', function () { advInit(advSel.value); });
+    var a1 = $('#adv-step'); if (a1) a1.addEventListener('click', function () { advStepOnce(); advRender(); });
+    var a2 = $('#adv-run'); if (a2) a2.addEventListener('click', function () { for (var i = 0; i < 200; i++) advStepOnce(); advRender(); });
+    var a3 = $('#adv-reset'); if (a3) a3.addEventListener('click', function () { advInit(adv.name); });
+  }
+
+  (function () {
+    if (!R.E7) return;
+    var heads = [{ t: '策略', cls: 'l' }, { t: '对抗序列上（量身定做）' }, { t: '换 ' + R.E7.seeds + ' 个种子后均值' }, { t: '最低' }, { t: '最高' }];
+    var rows = R.E7.rows.map(function (r) {
+      var isRand = (r.name === 'RANDOM' || r.name === 'MARKER');
+      return {
+        cls: isRand ? 'hi' : '',
+        cells: [
+          { t: r.name, cls: 'l' },
+          { t: fx(r.ownRate * 100, 1) + '%', tone: 'worst' },
+          { t: fx(r.meanRate * 100, 1) + '%', tone: isRand ? 'best' : 'worst' },
+          { t: fx(r.minRate * 100, 1) + '%' },
+          { t: fx(r.maxRate * 100, 1) + '%' }
+        ]
+      };
+    });
+    table('#tbl-transfer', heads, rows);
+  })();
+
+  /* ============================================================
+   * 第五节：竞争比
+   * ============================================================ */
+  (function () {
+    if (!A.e2) return;
+    var rows = A.e2.rows;
+    var series = [
+      { name: '理论界 k', color: COL.ink, dash: '6 4', dots: false, points: rows.map(function (r) { return [r.k, r.bound]; }) },
+      { name: 'LRU 实测', color: COL.hot, dots: true, points: rows.map(function (r) { return [r.k, r.lru]; }) },
+      { name: 'FIFO 实测', color: COL.muted, dots: true, points: rows.map(function (r) { return [r.k, r.fifo]; }) },
+      { name: 'MARKER 实测', color: COL.cool, dots: true, points: rows.map(function (r) { return [r.k, r.marker]; }) },
+      { name: 'MARKER 的界 2H(k)', color: COL.green, dash: '4 4', dots: false, points: rows.map(function (r) { return [r.k, r.markerBound]; }) }
+    ];
+    chart('#chart-ratio', {
+      height: 320, yFromZero: true,
+      series: series,
+      xTicks: rows.map(function (r) { return r.k; }),
+      xFmt: function (v) { return String(Math.round(v)); },
+      yLabel: '缺页数 ÷ 离线最优', xLabel: '缓存档 k', yDec: 0
+    });
+    var host = $('#chart-ratio');
+    if (host && !$('.legend', host.parentNode)) {
+      var lgd = ce('div', 'legend');
+      series.forEach(function (s) {
+        var i = ce('i'); i.style.background = s.color; if (s.dash) i.style.opacity = '0.55';
+        lgd.appendChild(i); lgd.appendChild(ce('span', null, s.name));
+      });
+      host.parentNode.insertBefore(lgd, host);
+    }
+
+    var heads = [{ t: 'k', cls: 'l' }, { t: 'LRU 实测' }, { t: 'FIFO 实测' }, { t: 'MARKER 实测' }, { t: 'LRU 的界' }, { t: 'MARKER 的界 2H(k)' }, { t: 'MARKER ÷ 界' }];
+    table('#tbl-ratio', heads, rows.map(function (r) {
+      return {
+        cells: [
+          { t: String(r.k), cls: 'l mono' },
+          { t: fx(r.lru, 2) + '×', tone: 'worst' },
+          { t: fx(r.fifo, 2) + '×' },
+          { t: fx(r.marker, 2) + '×', tone: 'best' },
+          { t: String(r.bound) },
+          { t: fx(r.markerBound, 2) },
+          { t: fx(r.markerVsBound, 2) }
+        ]
+      };
+    }));
+    var note = $('#ratio-note');
+    if (note) note.textContent = '循环扫描 k+1 个页面（20 万次访问）。LRU/FIFO 的实测比值紧贴理论界 k，' +
+      'MARKER 却只有界的 ' + fx(A.e2.markerBestRatio, 2) + ' 倍左右 —— 同一个「上界」，松紧差得很远。';
+  })();
+
+  (function () {
+    if (!A.e4) return;
+    var items = A.e4.rows.map(function (r) {
+      return { label: r.label.replace(/ 64 页/, ''), v: r.p50, text: fx(r.p50, 2) + '×', color: COL.cool };
+    });
+    items.push({ label: '对抗序列实测', v: A.e4.advRatio, text: fx(A.e4.advRatio, 2) + '×', color: COL.hot });
+    items.push({ label: '理论界 = k', v: A.e4.k, text: A.e4.k + '×', color: COL.ink });
+    hbars('#chart-loose', items, { max: A.e4.k });
+    var n = $('#loose-note');
+    if (n) n.textContent = '同一批 400 条随机序列（每条 5000 次访问）的中位比值，对比真按对抗序列构造出来的实测比值。' +
+      '理论界 k=' + A.e4.k + ' 比随机负载的中位数松约 ' + fx(A.e4.loosening, 1) + ' 倍；' +
+      '而对抗实测 ' + fx(A.e4.advRatio, 2) + ' 倍已经吃到理论界的 ' + fx(A.e4.advGap * 100, 1) + '%。';
+  })();
+
+  (function () {
+    if (!A.e3) return;
+    var heads = [{ t: '穷举场景', cls: 'l' }, { t: '序列条数' }, { t: '最大 LRU/OPT' }, { t: '闭式解' }, { t: '一致' }, { t: '最少命中' }];
+    table('#tbl-worst', heads, A.e3.rows.map(function (r) {
+      return {
+        cells: [
+          { t: r.label, cls: 'l' },
+          { t: r.count.toLocaleString('en-US') },
+          { t: fx(r.measured, 4), tone: 'worst' },
+          { t: fx(r.formula, 4) },
+          { t: r.match ? '✓' : '✗', tone: r.match ? 'best' : 'worst' },
+          { t: String(r.minHit) + ' 次' }
+        ]
+      };
+    }));
+    var n = $('#worst-note');
+    if (n && A.e3.rows.length) {
+      var r0 = A.e3.rows[0];
+      n.textContent = '穷举 ' + A.e3.rows.reduce(function (a, b) { return a + b.count; }, 0).toLocaleString('en-US') +
+        ' 条序列。最坏的那条永远是循环扫描，比值精确等于 n/(k+1+⌊(n−k−1)/k⌋)：' +
+        '以 ' + r0.label + ' 为例，实测 ' + fx(r0.measured, 4) + '，闭式解 ' + fx(r0.formula, 4) + '。' +
+        '最坏序列是 ' + JSON.stringify(r0.worstSeq) + '。';
+    }
+  })();
+
+  /* ============================================================
+   * 第六节：MRC / 包含性 / Belady / LFU
+   * ============================================================ */
+  (function () {
+    if (!A.e6 || !A.e6.mrc.length) return;
+    var m = null;
+    A.e6.mrc.forEach(function (x) { if (x.id === 'zipf') m = x; });
+    if (!m) m = A.e6.mrc[0];
+    chart('#chart-mrc', {
+      height: 300, yFromZero: true,
+      series: [
+        { name: '实测 LRU 缺页率', color: COL.hot, dots: true, points: m.rows.map(function (r) { return [r.k, r.measured * 100]; }) },
+        { name: '定理预测 P(栈距离>k)', color: COL.ink, dash: '6 4', width: 3, points: m.rows.map(function (r) { return [r.k, r.predicted * 100]; }) },
+        { name: '离线最优（马后炮）', color: COL.gold, dots: true, points: m.rows.map(function (r) { return [r.k, r.opt * 100]; }) }
+      ],
+      xTicks: m.rows.map(function (r) { return r.k; }),
+      xFmt: function (v) { return String(Math.round(v)); },
+      xLabel: '缓存档 k', yLabel: '缺页率 %', yDec: 0
+    });
+    var host = $('#chart-mrc');
+    if (host && !$('.legend', host.parentNode)) {
+      var lgd = ce('div', 'legend');
+      [['实测 LRU 缺页率', COL.hot, 0], ['定理预测 P(栈距离>k)', COL.ink, 1], ['离线最优（马后炮）', COL.gold, 0]].forEach(function (x) {
+        var i = ce('i'); i.style.background = x[1]; if (x[2]) i.style.opacity = '0.55';
+        lgd.appendChild(i); lgd.appendChild(ce('span', null, x[0]));
+      });
+      host.parentNode.insertBefore(lgd, host);
+    }
+
+    var heads = [{ t: '负载', cls: 'l' }, { t: 'k' }, { t: '定理预测' }, { t: '实测 LRU' }, { t: '偏差' }, { t: '离线最优' }, { t: 'LRU ÷ 最优' }];
+    var rows = [];
+    A.e6.mrc.forEach(function (mm) {
+      mm.rows.forEach(function (r, i) {
+        rows.push({
+          cls: mm.maxGap === 0 ? '' : '',
+          cells: [
+            { t: i === 0 ? mm.label : '', cls: 'l' },
+            { t: String(r.k) },
+            { t: fx(r.predicted * 100, 4) + '%' },
+            { t: fx(r.measured * 100, 4) + '%' },
+            { t: fx(r.gap, 12), tone: r.gap === 0 ? 'best' : '' },
+            { t: fx(r.opt * 100, 2) + '%' },
+            { t: r.opt > 0 ? fx(r.measured / r.opt, 2) + '×' : '—' }
+          ]
+        });
+      });
+    });
+    table('#tbl-mrc', heads, rows);
+    var n = $('#mrc-note');
+    if (n) n.textContent = A.e6.mrcChecks + ' 次比对（4 种负载 × ' + A.e6.mrc[0].rows.length +
+      ' 个缓存档）的最大偏差是 ' + fx(A.e6.mrcMaxGap, 1) + '。定理是精确的，所以它才有资格当对照组。' +
+      '注意最后一列：定理只管 LRU，它不知道 LRU 离最优还有多远 —— 那个距离只有把马后炮摆出来才量得到。';
+  })();
+
+  (function () {
+    if (!A.e5) return;
+    var inc = A.e5.inclusion;
+    var heads = [{ t: '策略', cls: 'l' }, { t: '包含性违例条数' }, { t: '共测' }, { t: '结论' }];
+    var rows = [
+      { cells: [{ t: 'LRU', cls: 'l' }, { t: String(inc.LRU), tone: 'best' }, { t: String(inc.trials) }, { t: '栈算法：k 档缓存恒为 k+1 档的子集' }] },
+      { cells: [{ t: 'FIFO', cls: 'l' }, { t: String(inc.FIFO), tone: 'worst' }, { t: String(inc.trials) }, { t: '不是栈算法 —— 这就是 Belady 异常的根' }] },
+      { cells: [{ t: '离线最优（并列取缓存顺序）', cls: 'l' }, { t: String(inc.OPTfirst), tone: 'worst' }, { t: String(inc.trials) }, { t: '大量违例' }] },
+      { cells: [{ t: '离线最优（并列取最大页号）', cls: 'l' }, { t: String(inc.OPTmaxId), tone: 'best' }, { t: String(inc.trials) }, { t: '零违例 —— 换一条并列规则就变成栈算法' }] }
+    ];
+    table('#tbl-inclusion', heads, rows);
+    var n = $('#incl-note');
+    if (n) n.textContent = '200 条随机序列（每条 500 次访问，12 个页面）× 8 个缓存档。' +
+      '包含性不是某个算法的天赋，是它和它的并列规则一起决定的。';
+
+    var c = A.e5.classic;
+    var heads2 = [{ t: '序列', cls: 'l' }, { t: 'FIFO k=3' }, { t: 'FIFO k=4' }, { t: 'LRU k=3' }, { t: 'LRU k=4' }, { t: 'OPT k=3' }, { t: 'OPT k=4' }];
+    var rows2 = [{ cls: 'hi', cells: [{ t: JSON.stringify(c.seq), cls: 'l mono' }, { t: String(c.fifo3), tone: 'worst' }, { t: String(c.fifo4), tone: 'worst' }, { t: String(c.lru3) }, { t: String(c.lru4), tone: 'best' }, { t: String(c.opt3) }, { t: String(c.opt4), tone: 'best' }] }];
+    A.e5.belady.forEach(function (b) {
+      rows2.push({
+        cells: [
+          { t: '随机负载，' + b.pages + ' 页，长度 ' + b.len + '，' + b.trials.toLocaleString('en-US') + ' 条', cls: 'l' },
+          { t: b.k + '→' + (b.k + 1), cls: 'l' }, { t: fx(b.rate * 100, 3) + '%' },
+          { t: '异常条数 ' + b.fifoAnomalies, tone: b.fifoAnomalies > 0 ? 'worst' : '' },
+          { t: 'LRU 异常 ' + b.lruAnomalies, tone: 'best' }, { t: '' }, { t: '' }
+        ]
+      });
+    });
+    table('#tbl-belady', heads2, rows2);
+    var n2 = $('#belady-note');
+    if (n2 && A.e5.exhaustive) {
+      var ex = A.e5.exhaustive;
+      n2.textContent = '经典反例（第一行）是手工构造的，9 对 10。穷举 ' + ex.totalTested.toLocaleString('en-US') +
+        ' 条序列（' + ex.pages + ' 个页面，长度 1…' + ex.maxLen + '，k=' + ex.k + '→' + (ex.k + 1) + '）之后：' +
+        '最短的异常序列长度正好是 ' + ex.minLen + '，在那个长度上只有 ' + ex.countAtMin + ' 条；同一批序列上 LRU 的异常数是 ' + ex.lruAtMin +
+        '。首个反例是 ' + JSON.stringify(ex.firstEver.seq) + ' —— 和经典反例结构完全一样。';
+    }
+  })();
+
+  (function () {
+    if (!A.e6 || !A.e6.lfuParadox) return;
+    var lp = A.e6.lfuParadox;
+    var heads = [{ t: '负载', cls: 'l' }, { t: 'k' }, { t: 'OPT' }, { t: 'LRU' }, { t: 'LFU' }, { t: '谁赢' }];
+    var rows = [
+      {
+        cls: 'hi',
+        cells: [
+          { t: '热点整体迁移（前一半热 0–23，后一半换成 24–47）', cls: 'l' },
+          { t: String(lp.shiftK) }, { t: fx(lp.shiftOpt * 100, 1) + '%' }, { t: fx(lp.shiftLru * 100, 1) + '%' },
+          { t: fx(lp.shiftLfu * 100, 1) + '%', tone: 'worst' }, { t: 'LRU 赢 LFU 一大截' }
+        ]
+      },
+      {
+        cells: [
+          { t: '扫描 + 热点（一半顺序扫 512 页，一半热 16 页）', cls: 'l' },
+          { t: '16' }, { t: fx(lp.scanOpt * 100, 1) + '%' }, { t: fx(lp.scanLru * 100, 1) + '%' },
+          { t: fx(lp.scanLfu * 100, 1) + '%', tone: 'best' }, { t: 'LFU 反超 LRU 一倍' }
+        ]
+      }
+    ];
+    table('#tbl-lfu', heads, rows);
+    var n = $('#lfu-note');
+    if (n) n.textContent = '同一个 LFU，换个负载形状就从最差变成最好。' +
+      '它在热点迁移下被旧热点锁死（' + fx(lp.shiftLfu * 100, 1) + '% 对 LRU 的 ' + fx(lp.shiftLru * 100, 1) + '%），' +
+      '却在扫描污染下因为"热点频率高、扫描页面频率低"而稳赢（' + fx(lp.scanLfu * 100, 1) + '% 对 ' + fx(lp.scanLru * 100, 1) + '%）。';
+  })();
+
+  /* ============================================================
+   * 第七节：验证 / 结论 / 边界
+   * ============================================================ */
+  (function () {
+    if (A.verify) {
+      table('#tbl-verify', [{ t: '验的是什么', cls: 'l' }, { t: '怎么验的', cls: 'l' }, { t: '结果' }],
+        A.verify.map(function (v) { return { cells: [{ t: v.what, cls: 'l' }, { t: v.how, cls: 'l' }, { t: v.result }] }; }));
+    }
+    if (A.conclusions) {
+      var ul = $('#cons');
+      if (ul) A.conclusions.forEach(function (t) { ul.appendChild(ce('li', null, t)); });
+    }
+    if (A.limits) {
+      var ul2 = $('#limits');
+      if (ul2) A.limits.forEach(function (l) {
+        var li = ce('li');
+        li.appendChild(ce('b', null, l.t + '：'));
+        li.appendChild(document.createTextNode(l.d));
+        ul2.appendChild(li);
+      });
+    }
+  })();
+
+  /* ============================================================
+   * 探针
+   * ========================================================== */
+  function boxOf(n) {
+    if (!n) return { w: 0, h: 0 };
+    var r = n.getBoundingClientRect();
+    return { w: Math.round(r.width), h: Math.round(r.height) };
+  }
+
+  window.__probe = {
+    counts: function () {
+      var charts = $$('.chart');
+      return {
+        sections: $$('.sec').length,
+        kpis: $$('.kpi').length,
+        charts: charts.length,
+        emptyCharts: charts.filter(function (c) { return !c.querySelector('svg'); }).map(function (c) { return c.id || '(anon)'; }),
+        chartSvg: charts.filter(function (c) { return !!c.querySelector('svg'); }).length,
+        modeOptions: $$('#mode-sel option').length,
+        advOptions: $$('#adv-sel option').length,
+        gameSlots: $$('#game-slots .slot').length,
+        gameReqs: $$('#game-req .req').length,
+        optSlots: $$('#opt-slots .slot').length,
+        optReqs: $$('#opt-req .req').length,
+        advSlots: $$('#adv-slots .slot').length,
+        verifyRows: $$('#tbl-verify tbody tr').length,
+        limitItems: $$('#limits li').length,
+        consItems: $$('#cons li').length,
+        kpiNodes: $$('.kpi').length
+      };
+    },
+    kpi: function () {
+      return $$('.kpi').map(function (k) {
+        var b = boxOf(k.querySelector('.k-val'));
+        return { w: b.w, h: b.h, val: (k.querySelector('.k-val') || {}).textContent || '' };
+      });
+    },
+    charts: function () {
+      return $$('.chart').map(function (c) {
+        var svg = c.querySelector('svg');
+        var b = boxOf(c);
+        var texts = svg ? Array.prototype.slice.call(svg.querySelectorAll('text')) : [];
+        var nan = texts.filter(function (t) { return /NaN|undefined/.test(t.textContent); }).length;
+        return { id: c.id || '(anon)', w: b.w, h: b.h, ticks: texts.length, nanTicks: nan };
+      });
+    },
+    tables: function () {
+      return $$('table.tbl').map(function (t) {
+        return { id: t.id, rows: t.querySelectorAll('tbody tr').length, heads: t.querySelectorAll('thead th').length };
+      });
+    },
+    bars: function (sel) {
+      return $$(sel + ' .bar-fill').map(function (f) {
+        var r = f.getBoundingClientRect();
+        return { w: Math.round(r.width * 100) / 100, h: Math.round(r.height * 100) / 100, v: f.getAttribute('data-v') };
+      });
+    },
+    viewport: function () {
+      return {
+        innerW: window.innerWidth,
+        w: document.documentElement.clientWidth,
+        innerH: window.innerHeight
+      };
+    },
+    overflow: function () {
+      return document.documentElement.scrollWidth - document.documentElement.clientWidth;
+    },
+    touch: function () {
+      var bad = [];
+      var min = window.innerWidth <= 700 ? 44 : 36;
+      $$('button, select, input').forEach(function (b) {
+        var r = b.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0 && r.height < min - 0.5) bad.push((b.id || b.tagName) + ':' + Math.round(r.height));
+      });
+      return bad;
+    },
+    sectionText: function (sel) {
+      var n = $(sel);
+      return n ? n.textContent.replace(/\s+/g, ' ').slice(0, 4000) : '';
+    },
+    /* ---- 驱动接口 ---- */
+    setMode: function (id) {
+      var sel = $('#mode-sel');
+      if (!sel) return null;
+      sel.value = id;
+      sel.dispatchEvent(new Event('change'));
+      return { mode: id, bars: this.bars('#bars-policy') };
+    },
+    gamePlay: function (n) {
+      for (var i = 0; i < n && !game.over; i++) {
+        if (game.waiting) gameEvict(0); else break;
+      }
+      return {
+        pos: game.pos, misses: game.misses, over: game.over, waiting: game.waiting,
+        slots: $$('#game-slots .slot').length,
+        pickable: $$('#game-slots .slot.pick').length,
+        fog: $$('#game-req .req.fog').length,
+        now: $$('#game-req .req.now').length,
+        text: ($('#game-msg') || {}).textContent || ''
+      };
+    },
+    gameReset: function () {
+      gameReset();
+      return {
+        pos: game.pos, misses: game.misses, over: game.over, waiting: game.waiting,
+        pickable: $$('#game-slots .slot.pick').length,
+        fog: $$('#game-req .req.fog').length
+      };
+    },
+    gameAuto: function (name) {
+      gameAuto(name || 'LRU');
+      return { misses: game.misses, over: game.over, text: ($('#game-msg') || {}).textContent || '' };
+    },
+    optStep: function (n) {
+      optGo(n === undefined ? 1 : n);
+      return {
+        shown: optStep, slots: $$('#opt-slots .slot').length, evict: $$('#opt-slots .slot.evict').length,
+        fog: $$('#opt-req .req.fog').length, text: ($('#opt-msg') || {}).textContent || '',
+        tags: $$('#opt-slots .s-tag').map(function (t) { return t.textContent; })
+      };
+    },
+    advSet: function (name) {
+      var sel = $('#adv-sel');
+      if (sel) { sel.value = name; sel.dispatchEvent(new Event('change')); }
+      return { name: adv ? adv.name : null, slots: $$('#adv-slots .slot').length };
+    },
+    advStep: function (n) {
+      for (var i = 0; i < (n === undefined ? 1 : n); i++) advStepOnce();
+      advRender();
+      var rate = adv.pos ? (adv.pos - adv.misses) / adv.pos : 0;
+      return { pos: adv.pos, misses: adv.misses, hits: adv.pos - adv.misses, rate: rate, text: ($('#adv-msg') || {}).textContent || '' };
+    },
+    advReset: function () { advInit(adv.name); return { pos: adv.pos, slots: $$('#adv-slots .slot').length }; }
+  };
+})();
+
+</script>
+</body>
+</html>

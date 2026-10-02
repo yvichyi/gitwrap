@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="调高雪线、改变降雪补给，再让一条理想化山谷冰川经过几十年，观察冰川如何迟到地回应环境变化。">
+<title>冰川的慢答 · 山谷流线实验</title>
+<style>
+@charset "UTF-8";
+:root{
+  color-scheme:light;
+  --paper:#f4f0e8;--paper-deep:#e9e2d6;--panel:#fffdf8;--ink:#1e2d31;--dim:#626e6d;--dim2:#87908a;
+  --line:#d9d2c6;--line-strong:#c9c0b1;--rust:#b8583d;--rust-pale:#f1e1d7;--teal:#4c7779;--teal-pale:#e2eeea;
+  --ice:#9fc5c3;--ice-light:#d7e6df;--rock:#aaa493;--serif:"Iowan Old Style","Palatino Linotype","Songti SC","Noto Serif CJK SC","STSong",serif;
+  --sans:"Avenir Next","PingFang SC","Microsoft YaHei",sans-serif;--mono:ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{margin:0;min-width:320px;color:var(--ink);background:radial-gradient(ellipse at 22% 0%,rgba(193,164,126,.11),transparent 36rem),var(--paper);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+button,input{font:inherit}
+a{color:inherit}
+button,a,input{-webkit-tap-highlight-color:transparent}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid rgba(184,88,61,.75);outline-offset:3px}
+[hidden]{display:none!important}
+.skip-link{position:fixed;z-index:20;left:12px;top:12px;padding:10px 14px;color:#fff;background:var(--ink);transform:translateY(-160%)}
+.skip-link:focus{transform:translateY(0)}
+.site-header,.page-shell,.site-footer{width:min(1320px,calc(100% - 72px));margin:0 auto}
+.site-header{height:76px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.wordmark{display:flex;align-items:center;gap:11px;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:.04em}
+.wordmark small{display:block;margin-top:3px;color:var(--dim);font-size:9px;font-weight:500;letter-spacing:.09em}
+.brand-mark{width:24px;height:25px;position:relative;display:block;overflow:hidden}
+.brand-mark i{position:absolute;bottom:2px;display:block;width:8px;border-left:1px solid var(--teal);border-top:1px solid var(--teal);transform:skewY(-36deg) rotate(-24deg)}
+.brand-mark i:nth-child(1){left:0;height:12px;opacity:.58}.brand-mark i:nth-child(2){left:7px;height:21px}.brand-mark i:nth-child(3){left:15px;height:15px;opacity:.68}
+.site-header nav{display:flex;align-items:center;gap:31px}.site-header nav a{font-size:12px;color:#536164;text-decoration:none;transition:color .18s}.site-header nav a:hover{color:var(--rust)}
+.header-index{font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:#6a7775;text-decoration:none}.header-index span{padding-left:8px;color:var(--rust);font-size:14px}
+.hero{min-height:630px;display:grid;grid-template-columns:minmax(0,.95fr) minmax(420px,1.05fr);align-items:center;gap:clamp(46px,7vw,104px);padding:68px 0 73px}
+.hero-copy{padding:6px 0 0 2px}.eyebrow,.section-number{color:var(--rust);font-size:10px;font-weight:700;letter-spacing:.14em}
+.eyebrow{display:flex;align-items:center;gap:9px;margin:0}.eyebrow-mark{width:7px;height:7px;border-radius:50%;background:var(--rust);box-shadow:0 0 0 4px rgba(184,88,61,.09)}
+.hero h1,.chapter-heading h2,.closing-note h2{font-family:var(--serif);font-weight:500;letter-spacing:-.06em}
+.hero h1{margin:23px 0 21px;font-size:clamp(47px,6vw,77px);line-height:1.16}
+.hero h1 span,.chapter-heading h2 em,.closing-note h2 em{color:var(--rust);font-style:normal}
+.hero-question{margin:0 0 13px;color:#394e50;font-family:var(--serif);font-size:22px;line-height:1.6}
+.hero-description{max-width:480px;margin:0;color:#617073;font-size:13px;line-height:1.9}
+.hero-link{display:inline-flex;align-items:center;gap:18px;margin-top:25px;padding-bottom:6px;border-bottom:1px solid #a9917e;text-decoration:none;font-size:12px;font-weight:700}
+.hero-link span{color:var(--rust);font-size:17px;transition:transform .18s}.hero-link:hover span{transform:translateY(3px)}
+.hero-plate{margin:0;padding:18px 20px 12px;color:#f3eee2;background:#23363a;box-shadow:14px 16px 0 rgba(34,53,56,.07)}
+.plate-meta{display:flex;justify-content:space-between;color:#b4c0bb;font-family:var(--mono);font-size:9px;letter-spacing:.1em}
+.hero-plate svg{display:block;width:100%;height:auto;margin:9px 0 4px}
+.hero-plate figcaption{display:flex;justify-content:space-between;gap:12px;padding:10px 2px 2px;border-top:1px solid rgba(232,226,210,.18);color:#c3cbc3;font-size:9px}
+.hero-plate figcaption span:first-child,.legend-line{display:inline-flex;align-items:center;gap:6px}.legend-line{width:18px;height:1px;margin-right:5px;vertical-align:middle}.glacier-line{background:#a6c9c5}.ela-line{border-top:1px dashed #d18466}
+.hero-footnote{grid-column:1/-1;display:grid;grid-template-columns:110px 1fr;gap:20px;align-items:baseline;padding:18px 22px;background:#ebe4d8;border-left:3px solid var(--rust)}
+.hero-footnote>span{color:var(--rust);font-size:10px;font-weight:700;letter-spacing:.11em}.hero-footnote p{margin:0;color:#4f6061;font-family:var(--serif);font-size:15px;line-height:1.7}
+.chapter{padding:34px 0 82px;border-top:1px solid var(--line)}
+.chapter-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:35px;margin-bottom:31px}
+.section-number{display:inline-grid;width:22px;height:22px;place-items:center;margin-right:9px;border:1px solid #d6a08d;border-radius:50%;font-family:var(--mono);font-size:9px;letter-spacing:0}
+.chapter-heading h2{margin:14px 0 0;font-size:clamp(34px,4vw,49px);line-height:1.16}
+.chapter-intro{max-width:395px;margin:0 0 4px;color:#657173;font-size:12px;line-height:1.9}
+.lab-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:17px;align-items:start}
+.controls-panel,.map-card,.history-card{background:rgba(255,253,248,.77);border:1px solid var(--line);border-radius:3px}
+.controls-panel{padding:17px 16px 15px}
+.panel-heading{display:flex;align-items:center;justify-content:space-between;padding-bottom:11px;margin-bottom:15px;border-bottom:1px solid var(--line)}
+.panel-heading span:first-child{font-size:12px;font-weight:700}.panel-heading span:last-child{font-family:var(--mono);font-size:8px;letter-spacing:.1em;color:#92938a}
+.range-control{display:block;margin:17px 0 19px}
+.range-title{display:flex;justify-content:space-between;align-items:baseline;gap:7px;font-size:11px;font-weight:600}
+.range-title output{color:var(--rust);font-family:var(--mono);font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;height:18px;margin:10px 0 4px;accent-color:var(--rust);cursor:pointer}
+.range-hint{display:flex;justify-content:space-between;color:#91958e;font-size:8px;letter-spacing:.02em}
+.scenario-row{display:flex;gap:5px;margin:-3px 0 20px}
+.scenario-button{flex:1;min-height:29px;padding:0 5px;color:#5c6766;background:transparent;border:1px solid var(--line);border-radius:2px;font-size:8px;cursor:pointer;transition:all .18s}
+.scenario-button:hover,.scenario-button[aria-pressed=true]{color:#fffaf2;background:var(--teal);border-color:var(--teal)}
+.control-note{display:flex;gap:9px;padding:10px 9px;margin:17px 0 21px;background:#eee9df}
+.note-mark{flex:0 0 16px;width:16px;height:16px;display:grid;place-items:center;color:#fff;background:var(--teal);border-radius:50%;font-family:var(--serif);font-size:11px}
+.control-note p{margin:0;color:#65706d;font-size:9px;line-height:1.8}
+.time-heading{margin-top:22px}.time-buttons{display:grid;grid-template-columns:.72fr 1fr 1fr;gap:5px}
+.time-button{min-height:40px;padding:0 7px;color:#fffdf7;background:var(--ink);border:1px solid var(--ink);border-radius:2px;font-size:10px;font-weight:600;cursor:pointer;transition:background .16s,transform .16s}
+.time-button:hover{background:#395054;transform:translateY(-1px)}.time-button span{color:#d99a7c;font-size:14px;font-weight:400}
+.quiet-button{color:#576664;background:transparent;border-color:#cfc9bd}.quiet-button:hover{color:var(--ink);background:#ece8df}
+.play-button{width:100%;min-height:43px;display:flex;align-items:center;gap:10px;margin-top:9px;padding:0 10px;color:#fffaf2;background:var(--rust);border:1px solid var(--rust);border-radius:2px;text-align:left;cursor:pointer;transition:background .18s}
+.play-button:hover{background:#a7462e}.play-icon{font-size:10px}.play-button>span:nth-child(2){font-size:10px;font-weight:700}.play-button small{margin-left:auto;color:#f2d0c0;font-size:8px}
+.play-button[aria-pressed=true] .play-icon{font-size:0}.play-button[aria-pressed=true] .play-icon::after{content:"Ⅱ";font-size:11px}
+.reset-button{width:100%;display:flex;justify-content:space-between;padding:13px 1px 1px;color:#737c78;background:transparent;border:0;font-size:9px;cursor:pointer}.reset-button:hover{color:var(--rust)}.reset-button span{font-size:14px}
+.lab-main{min-width:0}.readout-strip{display:grid;grid-template-columns:repeat(3,minmax(100px,1fr)) auto;align-items:center;gap:12px;padding:13px 16px;margin-bottom:12px;background:#eae3d8;border-top:2px solid var(--teal)}
+.readout-strip>div:not(.readout-live){display:grid;gap:3px}.readout-strip>div>span{color:#747d77;font-size:8px;letter-spacing:.05em}.readout-strip strong{font-family:var(--serif);font-size:22px;font-weight:500;line-height:1.1;font-variant-numeric:tabular-nums}.readout-strip strong small{margin-left:3px;color:#717b77;font-family:var(--sans);font-size:9px}
+.volume-positive{color:#4d7779}.volume-negative{color:var(--rust)!important}
+.readout-live{display:flex;align-items:center;gap:7px;white-space:nowrap}.readout-live i{width:6px;height:6px;border-radius:50%;background:#90a69a}.readout-live.is-running i{background:#b8583d;box-shadow:0 0 0 4px rgba(184,88,61,.13);animation:pulse 1.2s infinite}.readout-live span{color:#75807a;font-size:9px}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(184,88,61,0)}}
+.map-card{padding:16px 16px 11px}.plot-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.plot-kicker{margin:0 0 5px;color:var(--rust);font-family:var(--mono);font-size:8px;letter-spacing:.1em}
+.plot-heading h3{margin:0;font-family:var(--serif);font-size:19px;font-weight:500;letter-spacing:-.02em}.scale-chip,.axis-note{color:#8a908a;font-family:var(--mono);font-size:8px;white-space:nowrap}
+.profile-legend{display:flex;gap:17px;margin:13px 0 0 42px;color:#707b77;font-size:9px}.profile-legend>span{display:flex;align-items:center;gap:6px}
+.swatch{width:15px;height:7px;display:inline-block}.ice-swatch{background:#a4c8c4}.initial-swatch{height:0;border-top:1px dashed #b8583d}.bed-swatch{background:#aaa493}
+.profile-frame{position:relative;padding:3px 3px 20px 35px}.profile-frame canvas{width:100%;height:315px;display:block}
+.profile-axis-y{position:absolute;left:0;top:48%;color:#838a83;font-family:var(--mono);font-size:8px;writing-mode:vertical-rl;transform:rotate(180deg)}.profile-axis-y span{color:#a1a298}
+.profile-axis-x{position:absolute;right:2px;bottom:1px;color:#838a83;font-family:var(--mono);font-size:8px}.profile-axis-x span{color:var(--rust)}
+.profile-readout{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-top:10px;border-top:1px solid #e7e1d7;color:#7c8580;font-size:8px}
+.profile-readout>span:first-child{color:#60706d}.profile-readout strong{color:var(--rust);font-family:var(--mono);font-weight:500}.line-key{width:15px;height:0;display:inline-block;margin-right:5px;vertical-align:middle;border-top:1.5px dashed var(--rust)}
+.profile-readout>span:nth-child(2){flex:1}
+.history-card{margin-top:12px;padding:14px 16px 9px}.history-heading h3{font-size:17px}
+.history-card canvas{width:100%;height:147px;display:block;margin-top:9px}
+.history-caption{display:flex;align-items:center;gap:16px;padding-top:8px;border-top:1px solid #e7e1d7;color:#838981;font-size:8px}
+.history-caption span:last-child{margin-left:auto}.history-key{display:inline-block;width:15px;margin-right:5px;border-top:2px solid var(--teal);vertical-align:middle}.history-dot{display:inline-block;width:6px;height:6px;margin-right:5px;background:var(--rust);border-radius:50%;vertical-align:middle}
+.lab-insight{display:grid;grid-template-columns:100px 1fr;gap:15px;align-items:baseline;padding:15px 16px;margin-top:12px;background:#edf0e9;border-left:3px solid var(--teal)}
+.insight-label{color:var(--teal);font-size:9px;font-weight:700;letter-spacing:.1em}.lab-insight p{margin:0;color:#566865;font-family:var(--serif);font-size:13px;line-height:1.7}
+.method-chapter{padding-top:36px}.method-heading{margin-bottom:28px}
+.equation-board{display:grid;grid-template-columns:repeat(3,1fr);background:#26383b;color:#f1eee5}
+.equation-item{min-height:157px;padding:18px 20px 17px;border-right:1px solid rgba(235,229,215,.15)}.equation-item:last-child{border:0}
+.equation-label{color:#dfa389;font-size:9px;letter-spacing:.08em}.equation-item p{margin:18px 0 11px;color:#e9e6da;font-family:var(--serif);font-size:21px;line-height:1.3}.equation-item small{display:block;color:#bac3bb;font-size:9px;line-height:1.8}
+.boundary-grid{display:grid;grid-template-columns:1.4fr .6fr;gap:22px;margin-top:15px}
+.boundary-main,.boundary-links{padding:19px 20px;background:rgba(255,253,248,.66);border:1px solid var(--line)}
+.stamp-small{display:inline-block;padding:4px 7px;color:var(--rust);background:var(--rust-pale);font-size:8px;font-weight:700;letter-spacing:.09em}
+.boundary-main h3{margin:13px 0 8px;font-family:var(--serif);font-size:20px;font-weight:500}
+.boundary-main p{margin:0 0 9px;color:#687371;font-size:10px;line-height:1.9}.boundary-main p:last-child{margin-bottom:0}
+.boundary-links{display:flex;flex-direction:column;gap:11px}.boundary-links>span{color:#87908a;font-size:8px;letter-spacing:.11em}
+.boundary-links a{display:flex;justify-content:space-between;gap:9px;padding:10px 0;border-bottom:1px solid var(--line);color:#4e6464;font-size:9px;line-height:1.6;text-decoration:none}
+.boundary-links a:last-child{border-bottom:0}.boundary-links a:hover{color:var(--rust)}.boundary-links a i{color:var(--rust);font-size:13px;font-style:normal}
+.closing-note{padding:65px 0 74px;border-top:1px solid var(--line);text-align:center}
+.closing-note .eyebrow{justify-content:center}.closing-note h2{margin:21px 0 15px;font-size:clamp(39px,5vw,61px);line-height:1.2}
+.closing-note>p:not(.eyebrow){max-width:460px;margin:0 auto;color:#697472;font-size:12px;line-height:1.8}
+.back-top{display:inline-flex;gap:17px;align-items:center;margin-top:22px;color:#4b5e60;text-decoration:none;font-size:10px;font-weight:700}
+.back-top span{color:var(--rust);font-size:16px;transition:transform .18s}.back-top:hover span{transform:translateY(-3px)}
+.site-footer{min-height:61px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);color:#89908a;font-size:9px}
+.noscript{padding:12px;text-align:center;color:var(--rust)}
+@media(max-width:980px){
+ .site-header,.page-shell,.site-footer{width:min(100% - 42px,820px)}
+ .hero{grid-template-columns:.9fr 1.1fr;gap:34px;min-height:580px}
+ .hero h1{font-size:clamp(44px,6.5vw,62px)}
+ .lab-layout{grid-template-columns:220px minmax(0,1fr);gap:12px}
+ .controls-panel{padding:14px 12px}.readout-strip{grid-template-columns:repeat(3,1fr);gap:8px}.readout-live{grid-column:1/-1}
+ .profile-frame canvas{height:280px}.profile-readout{gap:8px}
+}
+@media(max-width:720px){
+ .site-header,.page-shell,.site-footer{width:min(100% - 34px,640px)}
+ .site-header{height:66px}.site-header nav{gap:14px}.site-header nav a{font-size:10px}.header-index{display:none}
+ .hero{display:flex;flex-direction:column;align-items:stretch;gap:30px;padding:49px 0 48px}
+ .hero h1{font-size:clamp(47px,10vw,67px)}.hero-question{font-size:20px}.hero-description{font-size:12px}
+ .hero-plate{padding:15px 14px 10px}.hero-plate figcaption{font-size:8px}
+ .hero-footnote{grid-template-columns:75px 1fr;gap:10px;padding:13px}.hero-footnote p{font-size:13px}
+ .chapter{padding:29px 0 58px}.chapter-heading{display:block;margin-bottom:24px}.chapter-heading h2{font-size:37px}.chapter-intro{margin-top:15px}
+ .lab-layout{display:flex;flex-direction:column}.controls-panel{width:100%}.lab-main{width:100%}
+ .controls-panel{display:grid;grid-template-columns:1fr 1fr;column-gap:16px}.controls-panel>.panel-heading:first-child,.controls-panel>.control-note,.controls-panel>.time-heading,.controls-panel>.time-buttons,.controls-panel>.play-button,.controls-panel>.reset-button{grid-column:1/-1}
+ .controls-panel>.range-control:first-of-type{grid-column:1}.scenario-row{grid-column:2;align-self:end;margin:0 0 23px}
+ .controls-panel>.range-control:nth-of-type(2){grid-column:1/-1}
+ .panel-heading{margin-bottom:10px}
+ .readout-strip{grid-template-columns:repeat(3,minmax(0,1fr));padding:12px 10px;gap:5px}
+ .readout-strip strong{font-size:19px}.readout-strip>div>span{font-size:7px}.readout-live{padding-top:7px}
+ .map-card{padding:13px 10px 9px}.plot-heading h3{font-size:16px}.scale-chip,.axis-note{font-size:7px}
+ .profile-legend{gap:10px;margin-left:33px;font-size:8px}.profile-frame{padding-left:29px}.profile-frame canvas{height:250px}
+ .profile-readout{font-size:7px}.history-card{padding:13px 10px 9px}.history-card canvas{height:130px}
+ .history-caption{gap:9px;font-size:7px}.history-caption span:last-child{max-width:42%;text-align:right}
+ .lab-insight{grid-template-columns:76px 1fr;padding:12px 10px}.lab-insight p{font-size:12px}
+ .equation-board{grid-template-columns:1fr}.equation-item{min-height:auto;padding:15px 16px;border-right:0;border-bottom:1px solid rgba(235,229,215,.15)}.equation-item p{margin:12px 0 7px;font-size:19px}
+ .boundary-grid{grid-template-columns:1fr;gap:10px}.boundary-main,.boundary-links{padding:15px}
+ .closing-note{padding:49px 0 55px}.closing-note h2{font-size:42px}
+ .site-footer{gap:14px;font-size:8px}.site-footer span:last-child{text-align:right}
+}
+@media(max-width:440px){
+ .site-header,.page-shell,.site-footer{width:calc(100% - 26px)}
+ .site-header nav{gap:10px}.site-header nav a{font-size:9px}.wordmark{font-size:11px}
+ .hero h1{font-size:45px}.hero-plate figcaption{gap:6px}
+ .controls-panel{grid-template-columns:1fr;column-gap:0}.controls-panel>.range-control:first-of-type,.scenario-row,.controls-panel>.range-control:nth-of-type(2){grid-column:1}
+ .scenario-row{margin:-6px 0 17px}.readout-strip{grid-template-columns:repeat(3,1fr)}
+ .readout-strip strong{font-size:17px}.readout-strip>div>span{font-size:6.5px}
+ .profile-frame canvas{height:217px}.profile-legend{gap:8px;font-size:7px}.profile-legend>span{gap:4px}
+ .profile-axis-y,.profile-axis-x{font-size:7px}.profile-readout{gap:7px}
+ .history-caption span:last-child{max-width:36%}
+ .closing-note h2{font-size:37px}.site-footer{align-items:flex-start;padding:15px 0;line-height:1.6}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+</style>
+</head>
+<body>
+<a class="skip-link" href="#experiment">跳到冰川实验</a>
+<header class="site-header">
+  <a class="wordmark" href="#top" aria-label="冰川的慢答，回到顶部">
+    <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span>冰川的慢答<small>一条山谷 · 一百年</small></span>
+  </a>
+  <nav aria-label="页面导航">
+    <a href="#experiment">冰川剖面</a>
+    <a href="#model">模型说明</a>
+  </nav>
+  <a class="header-index" href="#experiment">GLACIER / FLOWLINE <span>↘</span></a>
+</header>
+
+<main id="top" class="page-shell">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="eyebrow-mark"></span> 冰川不会立刻回答</p>
+      <h1 id="hero-title">雪线上升了。<br>冰舌却还在<span>向前。</span></h1>
+      <p class="hero-question">给气候一个变化，<br>再给冰川一点时间。</p>
+      <p class="hero-description">冰川的边缘，记录的不是今天的天气，而是多年积雪、融化与缓慢流动留下的总和。调高雪线，向前走几十年，看看一条山谷里的冰怎样迟到地回应。</p>
+      <a class="hero-link" href="#experiment">进入流线实验 <span>↓</span></a>
+    </div>
+    <figure class="hero-plate">
+      <div class="plate-meta"><span>示意剖面 / IDEALIZED FLOWLINE</span><span>30 KM</span></div>
+      <svg viewBox="0 0 620 340" role="img" aria-labelledby="hero-svg-title hero-svg-desc">
+        <title id="hero-svg-title">冰川越过山谷的侧面剖面</title>
+        <desc id="hero-svg-desc">一条浅蓝色冰川从高山积累区流过平衡线，向较低的山谷延伸，铜色虚线表示雪线。</desc>
+        <defs>
+          <pattern id="plate-grid" width="28" height="28" patternUnits="userSpaceOnUse">
+            <path d="M28 0H0V28" fill="none" stroke="#d8d1c3" stroke-width=".7"/>
+          </pattern>
+          <linearGradient id="ice-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#d3e4df"/>
+            <stop offset="1" stop-color="#90b9b9"/>
+          </linearGradient>
+          <clipPath id="plate-clip"><path d="M106 210 208 107 266 143 345 202 426 220 496 251 585 272 585 311 35 311 35 250Z"/></clipPath>
+        </defs>
+        <rect x="0" y="0" width="620" height="340" fill="url(#plate-grid)" opacity=".7"/>
+        <path d="M35 250 132 210 208 107 266 143 345 202 426 220 496 251 585 272 585 311 35 311Z" fill="#bdb6a4" opacity=".62" stroke="#625f54" stroke-width="2"/>
+        <path d="M32 172 119 152 191 147 268 167 348 192 429 207 498 230 588 251 588 272 496 251 426 220 345 202 266 143 208 107 132 210 35 250Z" fill="url(#ice-fill)" stroke="#4d777c" stroke-width="2.5"/>
+        <g clip-path="url(#plate-clip)" opacity=".5">
+          <rect x="0" y="0" width="620" height="340" fill="url(#plate-grid)"/>
+          <path d="M171 98C242 131 290 175 367 196S493 228 597 252" fill="none" stroke="#fffdf8" stroke-width="1.5"/>
+          <path d="M157 122C223 153 280 188 357 208S493 239 598 263" fill="none" stroke="#648c8d" stroke-width="1" stroke-dasharray="3 6"/>
+          <path d="M143 144C218 177 270 202 350 220S492 250 597 274" fill="none" stroke="#648c8d" stroke-width="1" stroke-dasharray="3 6"/>
+        </g>
+        <path d="M18 166H603" stroke="#b8583d" stroke-width="1.4" stroke-dasharray="6 6"/>
+        <rect x="430" y="151" width="148" height="22" fill="#f5f1e8"/>
+        <text x="440" y="166" fill="#a94d35" font-size="10" letter-spacing="1.2">平衡线 / ELA</text>
+        <path d="M265 174 340 196" fill="none" stroke="#4d777c" stroke-width="2" stroke-dasharray="5 5"/>
+        <path d="m335 191 8 6-9 2" fill="none" stroke="#4d777c" stroke-width="2"/>
+        <path d="M355 206 425 219" fill="none" stroke="#4d777c" stroke-width="2" stroke-dasharray="5 5"/>
+        <path d="m420 214 8 6-9 2" fill="none" stroke="#4d777c" stroke-width="2"/>
+        <circle cx="493" cy="249" r="5" fill="#b8583d" stroke="#fffdf8" stroke-width="2"/>
+        <text x="487" y="298" fill="#3c5254" font-size="11">冰舌末端</text>
+        <text x="94" y="192" fill="#3c5254" font-size="11">积累区</text>
+        <text x="364" y="250" fill="#3c5254" font-size="11">消融区</text>
+        <text x="37" y="327" fill="#9fb1ae" font-size="9" letter-spacing="1">山脊</text>
+        <text x="533" y="327" fill="#9fb1ae" font-size="9" letter-spacing="1">谷口</text>
+      </svg>
+      <figcaption><span><i class="legend-line glacier-line"></i>冰面</span><span><i class="legend-line ela-line"></i>平衡线</span><span>垂直夸张示意</span></figcaption>
+    </figure>
+    <div class="hero-footnote"><span>先记住</span><p>一场暖夏可以马上融掉表面的一点冰，但山谷里那条长长的冰舌，要靠几十年的质量收支才能改写。</p></div>
+  </section>
+
+  <section id="experiment" class="chapter experiment-chapter" aria-labelledby="experiment-title">
+    <div class="chapter-heading">
+      <div><p class="eyebrow"><span class="section-number">01</span> 互动实验 / GLACIER LAB</p><h2 id="experiment-title">移动雪线，<br><em>别急着看末端。</em></h2></div>
+      <p class="chapter-intro">冰从积累较多的高处缓慢流向山谷。雪线以下，表面质量平衡转为负值。先设好环境，再推进时间，看输入怎样穿过整条冰川。</p>
+    </div>
+
+    <div class="lab-layout">
+      <aside class="controls-panel" aria-label="冰川模型参数与时间控制">
+        <div class="panel-heading"><span>环境参数</span><span>INPUT / 01</span></div>
+        <label class="range-control" for="ela">
+          <span class="range-title">平衡线高度 <output id="ela-value" for="ela">2,750 m</output></span>
+          <input id="ela" type="range" min="2250" max="3250" step="10" value="2750">
+          <span class="range-hint"><span>较冷 · 2,250 m</span><span>较暖 · 3,250 m</span></span>
+        </label>
+        <div class="scenario-row" role="group" aria-label="快速设置平衡线">
+          <button type="button" class="scenario-button" data-ela="2750">基准</button>
+          <button type="button" class="scenario-button" data-ela="3050">抬高 300 m</button>
+          <button type="button" class="scenario-button" data-ela="3250">抬高 500 m</button>
+        </div>
+        <label class="range-control" for="snowfall">
+          <span class="range-title">降雪补给 <output id="snowfall-value" for="snowfall">1.00 ×</output></span>
+          <input id="snowfall" type="range" min="0.60" max="1.40" step="0.05" value="1.00">
+          <span class="range-hint"><span>较少 · 0.60 ×</span><span>较多 · 1.40 ×</span></span>
+        </label>
+        <div class="control-note"><span class="note-mark">i</span><p>环境变化只影响接下来新增或消融的冰。已经形成的冰川仍需要时间流动、变薄或变短。</p></div>
+        <div class="panel-heading time-heading"><span>推进模型时间</span><span>TIME / 02</span></div>
+        <div class="time-buttons" role="group" aria-label="逐步推进冰川模型">
+          <button id="step-one" class="time-button quiet-button" type="button">＋1 年</button>
+          <button id="step-twenty-five" class="time-button" type="button">＋25 年 <span>→</span></button>
+          <button id="step-hundred" class="time-button" type="button">＋100 年 <span>→</span></button>
+        </div>
+        <button id="play-toggle" class="play-button" type="button" aria-pressed="false"><span class="play-icon">▶</span><span id="play-label">连续演化</span><small>约 10 年 / 秒</small></button>
+        <button id="reset" class="reset-button" type="button">恢复初始剖面 <span>↺</span></button>
+      </aside>
+
+      <div class="lab-main">
+        <div class="readout-strip" aria-label="当前模型状态">
+          <div><span>模型时间</span><strong><b id="year-value">0</b><small>年</small></strong></div>
+          <div><span>冰舌距源头</span><strong><b id="terminus-value">30.0</b><small>km</small></strong></div>
+          <div><span>剖面冰量变化</span><strong id="volume-value" class="volume-positive">0.0<small>%</small></strong></div>
+          <div class="readout-live"><i></i><span id="run-status">等待环境设定</span></div>
+        </div>
+        <article class="map-card" aria-labelledby="profile-title">
+          <div class="plot-heading">
+            <div><p class="plot-kicker">沿山谷的纵剖面 / ALONG-FLOW SECTION</p><h3 id="profile-title">冰往低处流，变化留在路上</h3></div>
+            <span class="scale-chip">高程 1,500–4,100 m</span>
+          </div>
+          <div class="profile-legend">
+            <span><i class="swatch ice-swatch"></i>当前冰面</span>
+            <span><i class="swatch initial-swatch"></i>初始冰面</span>
+            <span><i class="swatch bed-swatch"></i>基岩</span>
+          </div>
+          <div class="profile-frame"><canvas id="profile" role="img" tabindex="0" aria-label="冰川山谷流线剖面图，横轴为沿山谷距离，纵轴为高程。显示当前和初始冰面，以及平衡线。"></canvas><div class="profile-axis-y">高程 <span>m</span></div><div class="profile-axis-x">沿山谷距离 <span>→</span></div></div>
+          <div class="profile-readout"><span><i class="line-key ela-key"></i>平衡线 <strong id="ela-profile-value">2,750 m</strong></span><span id="profile-note">虚线标出初始冰面与当前冰舌。</span><span>一维示意 · 非真实地形</span></div>
+        </article>
+        <article class="history-card" aria-labelledby="history-title">
+          <div class="plot-heading history-heading">
+            <div><p class="plot-kicker">延迟响应 / MEMORY OF THE VALLEY</p><h3 id="history-title">末端走到哪里了？</h3></div>
+            <span class="axis-note">距源头 / km</span>
+          </div>
+          <canvas id="history" role="img" aria-label="冰川末端位置随模型年份变化的轨迹图。"></canvas>
+          <div class="history-caption"><span><i class="history-key"></i>末端位置</span><span><i class="history-dot"></i>现在</span><span id="history-summary">推进时间后，轨迹会从这里开始。</span></div>
+        </article>
+        <div class="lab-insight"><span class="insight-label">观察问题</span><p id="insight-text">先把雪线抬高 300 米，再推进 25 年。冰舌的变化，跟参数变化是同一时刻发生的吗？</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="model" class="chapter method-chapter" aria-labelledby="model-title">
+    <div class="chapter-heading method-heading">
+      <div><p class="eyebrow"><span class="section-number">02</span> 计算说明 / MODEL NOTES</p><h2 id="model-title">一个简化模型，<br><em>一个清楚的边界。</em></h2></div>
+      <p class="chapter-intro">这台装置只为展示“收支—流动—长度变化”的时间关系。每个参数都能改写结果，所以它不能替代野外观测，也不代表任何一条真实冰川。</p>
+    </div>
+    <div class="equation-board">
+      <div class="equation-item"><span class="equation-label">厚度守恒</span><p>∂H / ∂t = b − ∂q / ∂x</p><small>H 是冰厚；b 是雪线两侧的积累减去消融；冰流通量的变化使一处变厚或变薄。</small></div>
+      <div class="equation-item"><span class="equation-label">浅冰流量</span><p>q ∝ H<sup>5</sup> |∂s / ∂x|<sup>2</sup> (−∂s / ∂x)</p><small>n = 3 的 Glen 变形律：冰越厚、表面坡度越大，沿流线的变形通量越强。</small></div>
+      <div class="equation-item"><span class="equation-label">雪线两侧</span><p>高于 ELA：补给 · 低于 ELA：消融</p><small>本模型使用固定线性梯度。改变 ELA 会移动零收支高度，降雪滑块只改变积累区的补给强度。</small></div>
+    </div>
+    <div class="boundary-grid">
+      <div class="boundary-main"><span class="stamp-small">模型边界</span><h3>这是概念实验，不是冰川预报。</h3><p>模型把一条冰川压缩成 30 km 长的单条流线，假设宽度不变。床面、初始冰厚、雪线收支梯度和冰流参数都是示意值。浅冰近似只展示由表面坡度驱动的冰体变形；页面没有计算基底滑动、横向阻力、冰川湖崩解、雪崩、季节性积雪、地形侵蚀和真实气候序列。</p><p>因此，结果只适合比较“较高雪线”与“较低雪线”等定性变化。它给出的公里数、年份和冰量百分比都不是可用于现实决策的测量值。</p></div>
+      <div class="boundary-links"><span>模型背景</span><a href="https://gmd.copernicus.org/articles/12/909/2019/" target="_blank" rel="noreferrer">Maussion et al. · The Open Global Glacier Model <i>↗</i></a><a href="https://www.pism.io/docs/manual/modeling-choices/dynamics/sia.html" target="_blank" rel="noreferrer">PISM · Shallow ice approximation <i>↗</i></a></div>
+    </div>
+  </section>
+
+  <section class="closing-note" aria-label="结语">
+    <p class="eyebrow">再走一次时间</p>
+    <h2>天气发生在今天。<br>冰川的回答，<br><em>写在漫长之后。</em></h2>
+    <p>让参数变成问题，让一百年成为可以亲手推进的距离。</p>
+    <a href="#experiment" class="back-top">再做一次实验 <span>↑</span></a>
+  </section>
+</main>
+
+<footer class="site-footer"><span>冰川的慢答 · 山谷流线实验</span><span>单文件 · 离线运行 · 计算留在本机</span></footer>
+<noscript><p class="noscript">冰川模拟需要启用浏览器 JavaScript；所有计算都在本机页面中完成。</p></noscript>
+
+<script id="glacier-core">
+'use strict';
+
+/*
+ * An idealized, one-dimensional valley-glacier teaching model.
+ * It evolves ice thickness through surface mass balance and Glen n=3
+ * shallow-ice deformation flux. It is not calibrated to a real glacier.
+ */
+const GlacierModel = (() => {
+  const CELLS = 181;
+  const LENGTH = 30000;
+  const DX = LENGTH / (CELLS - 1);
+  const N = 3;
+  const RHO_ICE = 900;
+  const GRAVITY = 9.81;
+  const GLEN_A = 2.4e-24;
+  const SECONDS_PER_YEAR = 365.25 * 24 * 60 * 60;
+  const FLOW_FACTOR = (2 * GLEN_A / (N + 2)) * Math.pow(RHO_ICE * GRAVITY, N) * SECONDS_PER_YEAR;
+  const STEPS_PER_YEAR = 5;
+  const DT = 1 / STEPS_PER_YEAR;
+  const INITIAL_ELA = 2750;
+
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+  function makeBed() {
+    return Array.from({ length: CELLS }, (_, i) => {
+      const u = i / (CELLS - 1);
+      const broad = 3540 - 1850 * u;
+      const ridges = 76 * Math.sin(2 * Math.PI * 2.2 * u) * Math.sin(Math.PI * u);
+      const rock = 25 * Math.sin(2 * Math.PI * 6.1 * u + 0.4) * Math.sin(Math.PI * u);
+      return broad + ridges + rock;
+    });
+  }
+
+  const BED = makeBed();
+
+  function initialThickness() {
+    return Array.from({ length: CELLS }, (_, i) => {
+      const u = i / (CELLS - 1);
+      const dome = Math.pow(Math.max(0, Math.sin(Math.PI * u)), 0.62);
+      const shoulder = 0.73 + 0.27 * Math.sin(Math.PI * (u + 0.07));
+      return Math.max(0, 285 * dome * shoulder);
+    });
+  }
+
+  function getTerminus(thickness) {
+    for (let i = thickness.length - 1; i >= 0; i -= 1) {
+      if (thickness[i] >= 1.5) return i * DX / 1000;
+    }
+    return 0;
+  }
+
+  function getSectionArea(thickness) {
+    let sum = 0;
+    for (let i = 0; i < thickness.length; i += 1) sum += thickness[i];
+    return sum * DX;
+  }
+
+  function getMassBalance(surface, ela, snowfall) {
+    if (surface >= ela) {
+      const altitudeFraction = clamp((surface - ela) / 650, 0, 1);
+      return 0.52 * snowfall * altitudeFraction;
+    }
+    const altitudeFraction = clamp((ela - surface) / 780, 0, 1);
+    return -0.76 * altitudeFraction;
+  }
+
+  function step(thickness, ela, snowfall) {
+    const count = thickness.length;
+    const surface = new Float64Array(count);
+    const flux = new Float64Array(count + 1);
+    const change = new Float64Array(count);
+
+    for (let i = 0; i < count; i += 1) surface[i] = BED[i] + thickness[i];
+
+    for (let i = 0; i < count - 1; i += 1) {
+      const averageThickness = (thickness[i] + thickness[i + 1]) * 0.5;
+      if (averageThickness < 0.01) continue;
+      const slope = (surface[i + 1] - surface[i]) / DX;
+      flux[i + 1] = -FLOW_FACTOR * Math.pow(averageThickness, 5) * Math.pow(Math.abs(slope), 2) * slope;
+    }
+
+    for (let i = 0; i < count; i += 1) {
+      const divergence = (flux[i + 1] - flux[i]) / DX;
+      const balance = thickness[i] > 0.01 || BED[i] >= ela
+        ? getMassBalance(surface[i], ela, snowfall)
+        : 0;
+      change[i] = -divergence * DT + balance * DT;
+    }
+
+    for (let i = 0; i < count; i += 1) thickness[i] = Math.max(0, thickness[i] + change[i]);
+  }
+
+  function advance(thickness, years, ela, snowfall) {
+    const steps = Math.round(years * STEPS_PER_YEAR);
+    for (let i = 0; i < steps; i += 1) step(thickness, ela, snowfall);
+  }
+
+  return {
+    CELLS,
+    LENGTH,
+    DX,
+    BED,
+    DT,
+    INITIAL_ELA,
+    clamp,
+    initialThickness,
+    getTerminus,
+    getSectionArea,
+    advance
+  };
+})();
+
+</script>
+<script id="glacier-ui">
+'use strict';
+
+(() => {
+  const $ = (selector) => document.querySelector(selector);
+  const elements = {
+    ela: $('#ela'),
+    snowfall: $('#snowfall'),
+    elaValue: $('#ela-value'),
+    snowfallValue: $('#snowfall-value'),
+    elaProfileValue: $('#ela-profile-value'),
+    yearValue: $('#year-value'),
+    terminusValue: $('#terminus-value'),
+    volumeValue: $('#volume-value'),
+    runStatus: $('#run-status'),
+    profile: $('#profile'),
+    history: $('#history'),
+    profileNote: $('#profile-note'),
+    historySummary: $('#history-summary'),
+    insight: $('#insight-text'),
+    play: $('#play-toggle'),
+    playLabel: $('#play-label'),
+    liveDot: $('.readout-live')
+  };
+
+  const state = {
+    thickness: GlacierModel.initialThickness(),
+    initialThickness: GlacierModel.initialThickness(),
+    year: 0,
+    history: [],
+    initialArea: 0,
+    playing: false,
+    lastFrame: 0,
+    yearCarry: 0,
+    frame: 0
+  };
+
+  const formatInteger = (value) => Math.round(value).toLocaleString('zh-CN');
+  const formatKm = (value) => value.toFixed(1);
+  const currentEla = () => Number(elements.ela.value);
+  const currentSnowfall = () => Number(elements.snowfall.value);
+
+  function recordHistory() {
+    state.history.push({
+      year: state.year,
+      terminus: GlacierModel.getTerminus(state.thickness)
+    });
+  }
+
+  function setStatus(message) {
+    elements.runStatus.textContent = message;
+  }
+
+  function updateScenarioButtons() {
+    document.querySelectorAll('.scenario-button').forEach((button) => {
+      const active = Number(button.dataset.ela) === currentEla();
+      button.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  function updateLabels() {
+    const ela = currentEla();
+    elements.elaValue.textContent = formatInteger(ela) + ' m';
+    elements.snowfallValue.textContent = currentSnowfall().toFixed(2) + ' ×';
+    elements.elaProfileValue.textContent = formatInteger(ela) + ' m';
+    elements.yearValue.textContent = String(state.year);
+
+    const terminus = GlacierModel.getTerminus(state.thickness);
+    elements.terminusValue.textContent = formatKm(terminus);
+    const area = GlacierModel.getSectionArea(state.thickness);
+    const change = state.initialArea > 0 ? (area / state.initialArea - 1) * 100 : 0;
+    const rounded = Math.abs(change) < 0.05 ? 0 : change;
+    elements.volumeValue.innerHTML = (rounded > 0 ? '+' : '') + rounded.toFixed(1) + '<small>%</small>';
+    elements.volumeValue.classList.toggle('volume-negative', rounded < 0);
+    elements.volumeValue.classList.toggle('volume-positive', rounded >= 0);
+    const initialTerminus = state.history[0] ? state.history[0].terminus : terminus;
+    const delta = terminus - initialTerminus;
+    const direction = Math.abs(delta) < 0.08 ? '仍在初始位置附近' : (delta > 0 ? '前进 ' : '回撤 ') + Math.abs(delta).toFixed(1) + ' km';
+    elements.profileNote.textContent = state.year === 0
+      ? '虚线标出初始冰面；推进时间后观察冰舌。'
+      : '初始冰舌 ' + formatKm(initialTerminus) + ' km · 当前冰舌 ' + formatKm(terminus) + ' km';
+    elements.historySummary.textContent = state.year === 0
+      ? '推进时间后，轨迹会从这里开始。'
+      : direction + ' · 当前第 ' + state.year + ' 年';
+
+    if (state.year === 0) {
+      elements.insight.textContent = currentEla() === GlacierModel.INITIAL_ELA
+        ? '先把雪线抬高 300 米，再推进 25 年。冰舌的变化，跟参数变化是同一时刻发生的吗？'
+        : '雪线已经移动，但冰面还没有变。推进时间，看看这份环境变化怎样逐段传向冰舌。';
+    } else if (rounded < -0.5) {
+      elements.insight.textContent = '这一组条件下，剖面冰量已经减少。留意：冰川厚度会先响应，末端位置通常要累积更久的变化。';
+    } else if (rounded > 0.5) {
+      elements.insight.textContent = '这一组条件下，剖面冰量正在增加。再观察冰量增加需要多久才会传到冰舌。';
+    } else {
+      elements.insight.textContent = '末端变化很小，冰量也接近初始值。试着进一步移动雪线，或把时间拉长到一百年。';
+    }
+    updateScenarioButtons();
+  }
+
+  function canvasContext(canvas) {
+    const bounds = canvas.getBoundingClientRect();
+    const width = Math.max(1, bounds.width);
+    const height = Math.max(1, bounds.height);
+    const ratio = Math.min(2, window.devicePixelRatio || 1);
+    const pixelWidth = Math.round(width * ratio);
+    const pixelHeight = Math.round(height * ratio);
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
+    }
+    const context = canvas.getContext('2d');
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.clearRect(0, 0, width, height);
+    return { context, width, height };
+  }
+
+  function drawProfile() {
+    const surface = state.thickness.map((thickness, i) => GlacierModel.BED[i] + thickness);
+    const original = state.initialThickness.map((thickness, i) => GlacierModel.BED[i] + thickness);
+    const chart = canvasContext(elements.profile);
+    const ctx = chart.context;
+    const pad = { left: 39, right: 14, top: 15, bottom: 27 };
+    const plotW = chart.width - pad.left - pad.right;
+    const plotH = chart.height - pad.top - pad.bottom;
+    const minZ = 1450;
+    const maxZ = 4150;
+    const xAt = (i) => pad.left + i / (GlacierModel.CELLS - 1) * plotW;
+    const yAt = (z) => pad.top + (maxZ - z) / (maxZ - minZ) * plotH;
+    const baseY = yAt(minZ);
+    const elaY = yAt(currentEla());
+
+    ctx.fillStyle = '#faf8f2';
+    ctx.fillRect(pad.left, pad.top, plotW, plotH);
+    ctx.fillStyle = 'rgba(76,119,121,.045)';
+    ctx.fillRect(pad.left, pad.top, plotW, Math.max(0, elaY - pad.top));
+    ctx.fillStyle = 'rgba(184,88,61,.025)';
+    ctx.fillRect(pad.left, elaY, plotW, Math.max(0, baseY - elaY));
+
+    ctx.font = '9px "Cascadia Code",Consolas,monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    [1500, 2000, 2500, 3000, 3500, 4000].forEach((elevation) => {
+      const y = yAt(elevation);
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(chart.width - pad.right, y);
+      ctx.strokeStyle = '#e5e1d7';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#858d86';
+      ctx.fillText(String(elevation), pad.left - 7, y);
+    });
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    [0, 5, 10, 15, 20, 25, 30].forEach((km) => {
+      const x = pad.left + km / 30 * plotW;
+      ctx.beginPath();
+      ctx.moveTo(x, pad.top);
+      ctx.lineTo(x, baseY);
+      ctx.strokeStyle = '#efebe3';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#858d86';
+      ctx.fillText(String(km), x, baseY + 6);
+    });
+
+    ctx.beginPath();
+    for (let i = 0; i < GlacierModel.CELLS; i += 1) {
+      if (i === 0) ctx.moveTo(xAt(i), yAt(GlacierModel.BED[i]));
+      else ctx.lineTo(xAt(i), yAt(GlacierModel.BED[i]));
+    }
+    ctx.lineTo(xAt(GlacierModel.CELLS - 1), baseY);
+    ctx.lineTo(xAt(0), baseY);
+    ctx.closePath();
+    ctx.fillStyle = '#c2bcad';
+    ctx.fill();
+    ctx.beginPath();
+    GlacierModel.BED.forEach((bed, i) => {
+      if (i === 0) ctx.moveTo(xAt(i), yAt(bed));
+      else ctx.lineTo(xAt(i), yAt(bed));
+    });
+    ctx.strokeStyle = '#817c70';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.beginPath();
+    for (let i = 0; i < GlacierModel.CELLS; i += 1) {
+      if (i === 0) ctx.moveTo(xAt(i), yAt(surface[i]));
+      else ctx.lineTo(xAt(i), yAt(surface[i]));
+    }
+    for (let i = GlacierModel.CELLS - 1; i >= 0; i -= 1) ctx.lineTo(xAt(i), yAt(GlacierModel.BED[i]));
+    ctx.closePath();
+    const iceGradient = ctx.createLinearGradient(0, pad.top, 0, baseY);
+    iceGradient.addColorStop(0, '#d8e7dd');
+    iceGradient.addColorStop(1, '#91b9b7');
+    ctx.fillStyle = iceGradient;
+    ctx.fill();
+    ctx.beginPath();
+    surface.forEach((elevation, i) => {
+      if (i === 0) ctx.moveTo(xAt(i), yAt(elevation));
+      else ctx.lineTo(xAt(i), yAt(elevation));
+    });
+    ctx.strokeStyle = '#3e7074';
+    ctx.lineWidth = 2.1;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath();
+    original.forEach((elevation, i) => {
+      if (i === 0) ctx.moveTo(xAt(i), yAt(elevation));
+      else ctx.lineTo(xAt(i), yAt(elevation));
+    });
+    ctx.strokeStyle = '#b8583d';
+    ctx.lineWidth = 1.3;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pad.left, pad.top, plotW, plotH);
+    ctx.clip();
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, elaY);
+    ctx.lineTo(chart.width - pad.right, elaY);
+    ctx.strokeStyle = '#b8583d';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.font = '10px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = '#4f7774';
+    ctx.fillText('积累区', pad.left + 8, Math.max(pad.top + 15, elaY - 7));
+    ctx.fillStyle = '#ae634c';
+    ctx.textBaseline = 'top';
+    ctx.fillText('消融区', pad.left + 8, Math.min(baseY - 16, elaY + 7));
+    ctx.fillStyle = '#9b513a';
+    ctx.textAlign = 'right';
+    ctx.fillText('ELA ' + formatInteger(currentEla()) + ' m', chart.width - pad.right - 5, elaY - 14);
+
+    const currentTerminus = GlacierModel.getTerminus(state.thickness);
+    const originalTerminus = state.history[0] ? state.history[0].terminus : currentTerminus;
+    const markTerminus = (km, color, label, offset) => {
+      const index = GlacierModel.clamp(Math.round(km * 1000 / GlacierModel.DX), 0, GlacierModel.CELLS - 1);
+      const x = xAt(index);
+      const y = yAt(surface[index]);
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = '#fffdf8';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.font = '8px "Cascadia Code",Consolas,monospace';
+      ctx.textAlign = x > chart.width - 88 ? 'right' : 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = color;
+      ctx.fillText(label, x > chart.width - 88 ? x - 7 : x + 7, y + offset);
+    };
+    markTerminus(originalTerminus, '#b8583d', '初始', -5);
+    if (Math.abs(currentTerminus - originalTerminus) > 0.3) markTerminus(currentTerminus, '#31676b', '现在', -7);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,253,248,.94)';
+    ctx.lineWidth = 1.4;
+    [0.27, 0.41, 0.55, 0.68, 0.79].forEach((fraction) => {
+      const i = Math.round(fraction * (GlacierModel.CELLS - 1));
+      if (state.thickness[i] < 20) return;
+      const x = xAt(i);
+      const upper = surface[i] - Math.max(12, state.thickness[i] * 0.28);
+      const slope = (surface[Math.min(i + 2, GlacierModel.CELLS - 1)] - surface[Math.max(0, i - 2)]) / (4 * GlacierModel.DX);
+      const y = yAt(upper);
+      const dx = 15;
+      const dy = GlacierModel.clamp(-slope * 130, -6, 6);
+      ctx.beginPath();
+      ctx.moveTo(x - dx, y - dy);
+      ctx.lineTo(x + dx, y + dy);
+      ctx.moveTo(x + dx, y + dy);
+      ctx.lineTo(x + dx - 5, y + dy - 3);
+      ctx.moveTo(x + dx, y + dy);
+      ctx.lineTo(x + dx - 4, y + dy + 4);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    ctx.strokeStyle = '#8f9187';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, baseY);
+    ctx.lineTo(chart.width - pad.right, baseY);
+    ctx.stroke();
+  }
+
+  function drawHistory() {
+    const chart = canvasContext(elements.history);
+    const ctx = chart.context;
+    const pad = { left: 37, right: 16, top: 12, bottom: 25 };
+    const plotW = chart.width - pad.left - pad.right;
+    const plotH = chart.height - pad.top - pad.bottom;
+    const maxYear = Math.max(50, Math.ceil(Math.max(1, state.year) / 50) * 50);
+    const xAt = (year) => pad.left + year / maxYear * plotW;
+    const yAt = (km) => pad.top + (30 - km) / 30 * plotH;
+    const baseY = yAt(0);
+
+    ctx.fillStyle = '#faf8f2';
+    ctx.fillRect(pad.left, pad.top, plotW, plotH);
+    ctx.font = '8px "Cascadia Code",Consolas,monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    [0, 10, 20, 30].forEach((km) => {
+      const y = yAt(km);
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(chart.width - pad.right, y);
+      ctx.strokeStyle = '#e5e1d7';
+      ctx.stroke();
+      ctx.fillStyle = '#899088';
+      ctx.fillText(String(km), pad.left - 7, y);
+    });
+
+    const yearTicks = maxYear <= 50 ? [0, 25, 50] : [0, maxYear / 2, maxYear];
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    yearTicks.forEach((year) => {
+      const x = xAt(year);
+      ctx.beginPath();
+      ctx.moveTo(x, pad.top);
+      ctx.lineTo(x, baseY);
+      ctx.strokeStyle = '#efebe3';
+      ctx.stroke();
+      ctx.fillStyle = '#899088';
+      ctx.fillText(String(Math.round(year)), x, baseY + 6);
+    });
+
+    if (state.history.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(xAt(state.history[0].year), baseY);
+      state.history.forEach((point) => ctx.lineTo(xAt(point.year), yAt(point.terminus)));
+      ctx.lineTo(xAt(state.history[state.history.length - 1].year), baseY);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(76,119,121,.09)';
+      ctx.fill();
+
+      ctx.beginPath();
+      state.history.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(xAt(point.year), yAt(point.terminus));
+        else ctx.lineTo(xAt(point.year), yAt(point.terminus));
+      });
+      ctx.strokeStyle = '#4c7779';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      const last = state.history[state.history.length - 1];
+      ctx.beginPath();
+      ctx.arc(xAt(last.year), yAt(last.terminus), 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#b8583d';
+      ctx.fill();
+      ctx.strokeStyle = '#fffdf8';
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+    } else {
+      const point = state.history[0];
+      ctx.beginPath();
+      ctx.arc(xAt(point.year), yAt(point.terminus), 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#b8583d';
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.moveTo(pad.left, baseY);
+    ctx.lineTo(chart.width - pad.right, baseY);
+    ctx.strokeStyle = '#a7a69c';
+    ctx.stroke();
+  }
+
+  function render() {
+    updateLabels();
+    drawProfile();
+    drawHistory();
+  }
+
+  function stepYear() {
+    GlacierModel.advance(state.thickness, 1, currentEla(), currentSnowfall());
+    state.year += 1;
+    recordHistory();
+  }
+
+  function advanceYears(years) {
+    if (state.playing) stopPlayback();
+    setStatus('正在计算 ' + years + ' 年…');
+    for (let i = 0; i < years; i += 1) stepYear();
+    setStatus('演化至第 ' + state.year + ' 年');
+    render();
+  }
+
+  function stopPlayback() {
+    state.playing = false;
+    state.lastFrame = 0;
+    state.yearCarry = 0;
+    if (state.frame) cancelAnimationFrame(state.frame);
+    state.frame = 0;
+    elements.play.setAttribute('aria-pressed', 'false');
+    elements.playLabel.textContent = '连续演化';
+    elements.liveDot.classList.remove('is-running');
+    setStatus(state.year > 0 ? '演化至第 ' + state.year + ' 年' : '等待环境设定');
+  }
+
+  function animate(timestamp) {
+    if (!state.playing) return;
+    if (!state.lastFrame) state.lastFrame = timestamp;
+    const elapsed = Math.min(0.15, Math.max(0, (timestamp - state.lastFrame) / 1000));
+    state.lastFrame = timestamp;
+    state.yearCarry += elapsed * 10;
+    const wholeYears = Math.min(2, Math.floor(state.yearCarry));
+    if (wholeYears > 0) {
+      state.yearCarry -= wholeYears;
+      for (let i = 0; i < wholeYears; i += 1) stepYear();
+      setStatus('演化至第 ' + state.year + ' 年');
+      render();
+    }
+    state.frame = requestAnimationFrame(animate);
+  }
+
+  function startPlayback() {
+    state.playing = true;
+    state.lastFrame = 0;
+    state.yearCarry = 0;
+    elements.play.setAttribute('aria-pressed', 'true');
+    elements.playLabel.textContent = '暂停演化';
+    elements.liveDot.classList.add('is-running');
+    setStatus('冰川正在缓慢响应…');
+    state.frame = requestAnimationFrame(animate);
+  }
+
+  function resetModel() {
+    stopPlayback();
+    elements.ela.value = String(GlacierModel.INITIAL_ELA);
+    elements.snowfall.value = '1.00';
+    state.thickness = GlacierModel.initialThickness();
+    state.initialThickness = GlacierModel.initialThickness();
+    state.year = 0;
+    state.initialArea = GlacierModel.getSectionArea(state.initialThickness);
+    state.history = [];
+    recordHistory();
+    setStatus('等待环境设定');
+    render();
+  }
+
+  elements.ela.addEventListener('input', () => {
+    setStatus('环境已更新 · 推进时间后生效');
+    render();
+  });
+  elements.snowfall.addEventListener('input', () => {
+    setStatus('环境已更新 · 推进时间后生效');
+    render();
+  });
+  document.querySelectorAll('.scenario-button').forEach((button) => {
+    button.addEventListener('click', () => {
+      elements.ela.value = button.dataset.ela;
+      setStatus('平衡线已设为 ' + formatInteger(currentEla()) + ' m · 推进时间后生效');
+      render();
+    });
+  });
+  $('#step-one').addEventListener('click', () => advanceYears(1));
+  $('#step-twenty-five').addEventListener('click', () => advanceYears(25));
+  $('#step-hundred').addEventListener('click', () => advanceYears(100));
+  elements.play.addEventListener('click', () => state.playing ? stopPlayback() : startPlayback());
+  $('#reset').addEventListener('click', resetModel);
+  window.addEventListener('resize', render);
+
+  state.initialArea = GlacierModel.getSectionArea(state.initialThickness);
+  recordHistory();
+  render();
+})();
+
+</script>
+</body>
+</html>

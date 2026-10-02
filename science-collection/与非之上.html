@@ -1,0 +1,2526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>与非之上 · 一台从逻辑门里长出来的八位计算机</title>
+<style>
+/* 与非之上 · 界面 */
+:root{
+  --paper:#f5f3ee; --panel:#fffefa; --ink:#1c1a17; --dim:#6d675d; --dim2:#948d80;
+  --line:#e4dfd3; --line2:#cfc8b8;
+  --hot:#b5561f; --hot2:#d97a35; --hotbg:#fdf2e8;
+  --teal:#1f6f6b; --tealbg:#e9f3f2;
+  --cool:#b9b3a6;
+  --mono:ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper); color:var(--ink); font-family:var(--sans);
+  font-size:14px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  background-image:linear-gradient(rgba(28,26,23,.028) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(28,26,23,.028) 1px,transparent 1px);
+  background-size:22px 22px;
+}
+code{font-family:var(--mono);font-size:.92em;background:#efece4;padding:1px 5px;border-radius:3px}
+
+/* ---------- 头部 ---------- */
+.hdr{
+  max-width:1240px;margin:0 auto;padding:26px 22px 12px;
+  display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;
+}
+.hdr h1{
+  margin:0;font-size:31px;letter-spacing:.14em;font-weight:700;
+}
+.hdr h1::after{content:"";display:block;width:56px;height:3px;background:var(--hot);margin-top:7px;border-radius:2px}
+.hdr .sub{margin:9px 0 0;color:var(--dim);font-size:13px;letter-spacing:.02em}
+.hdr-r{display:flex;gap:8px;flex-wrap:wrap}
+.stat{
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:6px 12px;text-align:center;min-width:74px;
+}
+.stat b{display:block;font-family:var(--mono);font-size:17px;color:var(--hot);line-height:1.25}
+.stat span{font-size:11px;color:var(--dim2);letter-spacing:.06em}
+
+/* ---------- 标签页 ---------- */
+.tabs{
+  max-width:1240px;margin:0 auto;padding:0 22px;display:flex;gap:4px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line2);
+}
+.tab{
+  appearance:none;border:1px solid transparent;border-bottom:none;background:transparent;
+  font-family:var(--sans);font-size:14px;color:var(--dim);cursor:pointer;
+  padding:9px 16px;border-radius:8px 8px 0 0;position:relative;top:1px;
+  transition:color .15s,background .15s;
+}
+.tab:hover{color:var(--ink);background:#efece4}
+.tab.on{color:var(--ink);background:var(--panel);border-color:var(--line2);font-weight:600}
+.tab.on::before{
+  content:"";position:absolute;left:14px;right:14px;top:0;height:2px;background:var(--hot);border-radius:0 0 2px 2px;
+}
+
+main{max-width:1240px;margin:0 auto;padding:20px 22px 40px}
+.panel{display:none}
+.panel.on{display:block}
+
+/* ---------- 卡片 ---------- */
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;
+  padding:18px 20px;margin-bottom:16px;
+}
+.card h2{margin:0 0 4px;font-size:16px;letter-spacing:.05em;font-weight:650}
+.card h3{margin:14px 0 6px;font-size:13px;letter-spacing:.05em;color:var(--dim);font-weight:600}
+.card h3.mt{margin-top:18px}
+.lead{margin:6px 0 14px;color:var(--dim);font-size:13px;max-width:76ch}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.note{
+  margin-top:12px;padding:9px 12px;background:#f4f1ea;border-left:3px solid var(--line2);
+  border-radius:0 6px 6px 0;font-size:12.5px;color:var(--dim);font-family:var(--mono);line-height:1.65;
+}
+.note b{color:var(--hot);font-weight:600}
+.note.warn{border-left-color:var(--hot);background:var(--hotbg)}
+
+/* ---------- 按钮 ---------- */
+.btn{
+  appearance:none;font-family:var(--sans);font-size:13px;cursor:pointer;
+  background:var(--ink);color:#fff;border:1px solid var(--ink);
+  padding:6px 14px;border-radius:7px;transition:opacity .15s,background .15s;
+}
+.btn:hover{opacity:.84}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line2)}
+.btn.ghost:hover{background:#efece4;opacity:1}
+.btn.on{background:var(--hot);border-color:var(--hot)}
+.btn.sm{padding:4px 10px;font-size:12px}
+
+/* ---------- ① 门 ---------- */
+.play{display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:6px 0 2px}
+.sw-wrap{display:flex;flex-direction:column;gap:10px}
+.sw{
+  appearance:none;cursor:pointer;font-family:var(--mono);
+  display:flex;align-items:center;gap:10px;background:#f1eee6;border:1px solid var(--line2);
+  border-radius:9px;padding:7px 13px;min-width:104px;transition:all .15s;
+}
+.sw .sw-lbl{font-size:12px;color:var(--dim);letter-spacing:.1em}
+.sw .sw-val{font-size:19px;font-weight:700;color:var(--dim2);margin-left:auto}
+.sw[data-v="1"]{background:var(--hotbg);border-color:var(--hot2)}
+.sw[data-v="1"] .sw-val{color:var(--hot)}
+.gate-sym svg{display:block}
+.wire{stroke:var(--cool);stroke-width:2.4;transition:stroke .15s}
+.wire.on{stroke:var(--hot)}
+.gbody{fill:#efece4;stroke:var(--ink);stroke-width:2}
+.gdot{fill:var(--panel);stroke:var(--ink);stroke-width:2}
+.glab{font-family:var(--mono);font-size:13px;fill:var(--dim2);text-anchor:middle}
+.lamp-wrap{text-align:center}
+.lamp{
+  width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:26px;font-weight:700;
+  background:#efece4;color:var(--dim2);border:2px solid var(--line2);transition:all .18s;
+}
+.lamp.on{background:var(--hot);color:#fff;border-color:var(--hot);box-shadow:0 0 0 5px var(--hotbg)}
+.lamp-cap{font-size:11px;color:var(--dim2);letter-spacing:.1em}
+
+table.tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+table.tbl th,table.tbl td{padding:6px 8px;text-align:center;border-bottom:1px solid var(--line)}
+table.tbl th{color:var(--dim);font-weight:600;font-size:11.5px;letter-spacing:.06em}
+table.tbl td:first-child,table.tbl th:first-child{text-align:left;color:var(--dim)}
+table.tbl tr.cur{background:var(--hotbg)}
+table.tbl tr.cur td{color:var(--hot);font-weight:700}
+table.tbl .one{color:var(--hot);font-weight:700}
+table.tbl .zero{color:var(--dim2)}
+
+/* ---------- ② 加法器 ---------- */
+.ad-ctrl{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.ad-ctrl label{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim)}
+.ad-ctrl input[type=number]{
+  width:72px;font-family:var(--mono);font-size:13px;padding:4px 7px;
+  border:1px solid var(--line2);border-radius:6px;background:#fbfaf6;color:var(--ink);
+}
+.ad-ctrl input[type=checkbox]{accent-color:var(--hot)}
+.ad-bits{display:flex;flex-direction:column;gap:3px}
+.ad-wrap{display:grid;grid-template-columns:auto minmax(260px,1fr);gap:30px;align-items:start}
+.ad-gates table.tbl td:last-child{text-align:left;color:var(--dim);font-family:var(--sans);font-size:12px}
+.ad-row{display:flex;align-items:center;gap:6px}
+.ad-row .bit{
+  width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:14px;font-weight:600;cursor:pointer;user-select:none;
+  background:#efece4;color:var(--dim2);border:1px solid var(--line2);transition:all .12s;
+}
+.ad-row .bit.one{background:var(--hot);color:#fff;border-color:var(--hot)}
+.ad-row .bit:hover{border-color:var(--hot)}
+.ad-row .rlab{
+  width:26px;font-family:var(--mono);font-size:11.5px;color:var(--dim2);text-align:right;
+}
+.ad-row .rname{width:64px;font-size:12px;color:var(--dim);text-align:right}
+.ad-row .carry{
+  width:26px;height:30px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:12px;color:var(--dim2);
+}
+.ad-row .carry.one{color:var(--hot);font-weight:700}
+.ad-row .arrow{color:var(--cool);font-size:13px;width:14px;text-align:center}
+.ad-row .bit.ro{cursor:default;background:#eae7de;border-color:var(--line2)}
+.ad-row .bit.ro.one{background:var(--teal);border-color:var(--teal)}
+.ad-row .bit.ro:hover{border-color:var(--line2)}
+.ad-row.hd .bit,.ad-row.hd .carry{
+  background:transparent;border:none;color:var(--dim2);font-size:11px;
+  cursor:default;font-weight:400;height:18px;
+}
+.ad-row.hd .bit:hover{border:none}
+.ad-row.live .bit{border-color:var(--hot);box-shadow:0 0 0 3px var(--hotbg)}
+.ad-res{
+  margin-top:14px;font-family:var(--mono);font-size:15px;display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;
+}
+.ad-res b{font-size:22px;color:var(--hot)}
+.ad-res .small{font-size:12px;color:var(--dim)}
+
+/* ---------- ③ 处理器 ---------- */
+.cpu-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.cpu-btns{display:flex;gap:7px;flex-wrap:wrap}
+#cpu-svg svg{display:block;width:100%;height:auto}
+.blk{fill:#f1eee6;stroke:var(--line2);stroke-width:1.6;transition:fill .16s,stroke .16s}
+.blk.on{fill:var(--hotbg);stroke:var(--hot);stroke-width:2.2}
+.blk-t{font-family:var(--mono);font-size:11px;fill:var(--ink);text-anchor:middle;pointer-events:none}
+.blk-s{font-family:var(--mono);font-size:9.5px;fill:var(--dim2);text-anchor:middle;pointer-events:none}
+.wire2{stroke:var(--cool);stroke-width:2;fill:none;transition:stroke .16s}
+.wire2.on{stroke:var(--hot);stroke-width:2.8}
+.busline{stroke:var(--line2);stroke-width:5;stroke-linecap:round}
+.busline.on{stroke:var(--hot2)}
+.cpu-busline{
+  display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:12px;
+  font-family:var(--mono);font-size:12.5px;padding-top:12px;border-top:1px dashed var(--line2);
+}
+.bl-cap{color:var(--dim2);font-size:11.5px;letter-spacing:.06em}
+.bl-val{background:var(--hot);color:#fff;padding:2px 10px;border-radius:5px;font-weight:700}
+.bl-phase{background:var(--tealbg);color:var(--teal);padding:2px 10px;border-radius:5px;font-weight:600}
+.bl-ctl{color:var(--dim);font-size:11.5px}
+.regs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:7px}
+.reg{
+  background:#f7f5ef;border:1px solid var(--line);border-radius:7px;padding:6px 9px;
+  transition:border-color .15s,background .15s;
+}
+.reg.hit{background:var(--hotbg);border-color:var(--hot2)}
+.reg .rn{font-size:11px;color:var(--dim2);letter-spacing:.07em;font-family:var(--mono)}
+.reg .rv{font-family:var(--mono);font-size:17px;font-weight:700;line-height:1.3}
+.reg .rb{font-family:var(--mono);font-size:10.5px;color:var(--dim2);letter-spacing:.06em}
+.reg.flag .rv{font-size:15px}
+.reg.flag.on .rv{color:var(--hot)}
+.reg.flag.on{background:var(--hotbg);border-color:var(--hot2)}
+.log{
+  font-family:var(--mono);font-size:11.5px;line-height:1.85;max-height:268px;overflow-y:auto;
+  background:#f7f5ef;border:1px solid var(--line);border-radius:7px;padding:9px 11px;
+}
+.log .ln{white-space:pre-wrap;word-break:break-word;color:var(--dim)}
+.log .ln.exec{color:var(--ink);font-weight:600}
+.log .ln .tt{color:var(--hot);font-weight:700}
+.log .ln .cc{color:var(--teal)}
+.ram{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;font-family:var(--mono);font-size:10px}
+.ram .cell{
+  text-align:center;padding:2px 0;border-radius:3px;background:#f4f1ea;color:var(--dim2);
+  border:1px solid transparent;
+}
+.ram .cell.nz{color:var(--ink);background:#eae6dc}
+.ram .cell.pc{background:var(--hotbg);color:var(--hot);font-weight:700;border-color:var(--hot2)}
+.ram .cell.mar{background:var(--tealbg);color:var(--teal);font-weight:700;border-color:var(--teal)}
+.ram .cell.both{background:var(--teal);color:#fff;font-weight:700}
+
+/* ---------- ④ 编程 ---------- */
+.prog-pick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.prog-grid{display:grid;grid-template-columns:1.15fr 1fr .9fr;gap:16px}
+.pg-col h3{margin-top:0}
+#pg-src{
+  width:100%;height:400px;resize:vertical;font-family:var(--mono);font-size:12px;line-height:1.62;
+  background:#f7f5ef;border:1px solid var(--line);border-radius:8px;padding:11px 13px;color:var(--ink);
+  tab-size:8;
+}
+.pg-btns{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.listing{
+  font-family:var(--mono);font-size:11.5px;line-height:1.62;height:400px;overflow:auto;
+  background:#f7f5ef;border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+}
+.listing .ll{white-space:pre;color:var(--dim)}
+.listing .ll .ad{color:var(--dim2)}
+.listing .ll .by{color:var(--teal);font-weight:600}
+.listing .ll .tx{color:var(--ink)}
+.listing .ll.cur{background:var(--hotbg);border-radius:3px}
+.listing .ll.cur .tx{color:var(--hot);font-weight:600}
+.listing .ll.err{background:#fdeceb;border-radius:3px;color:#a02b20}
+.outbox{
+  font-family:var(--mono);font-size:12px;height:400px;overflow:auto;
+  background:#f7f5ef;border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+}
+.outbox .orow{display:flex;gap:9px;padding:2px 0;border-bottom:1px dotted var(--line)}
+.outbox .on{color:var(--dim2);width:28px;text-align:right}
+.outbox .ov{color:var(--ink);font-weight:600;min-width:44px}
+.outbox .oc{color:var(--teal)}
+.outbox .empty{color:var(--dim2)}
+#isa table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
+#isa th,#isa td{padding:4px 7px;border-bottom:1px solid var(--line);text-align:left}
+#isa th{color:var(--dim);font-size:11px;letter-spacing:.05em}
+#isa td.c{color:var(--hot);font-weight:600}
+#isa td.n{color:var(--ink)}
+#isa td.d{color:var(--dim)}
+#isa tr:hover{background:#f7f5ef}
+
+/* 宽表在窄屏下必须自己横向滚动。nowrap 的表格最小宽度会远大于视口，
+   直接放在块级容器里会把整个文档撑出横向滚动条。 */
+#isa,#ft-table{overflow-x:auto;max-width:100%}
+
+/* ---------- ⑤ 故障 ---------- */
+.ft-ctrl{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.ft-ctrl label{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--dim)}
+.ft-ctrl input[type=range]{width:230px;accent-color:var(--hot)}
+.ft-ctrl b{font-family:var(--mono);color:var(--hot);font-size:15px;min-width:34px;display:inline-block}
+.ft-ctrl select{
+  font-family:var(--mono);font-size:13px;padding:3px 8px;border:1px solid var(--line2);
+  border-radius:6px;background:#fbfaf6;color:var(--ink);
+}
+table.ft{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+table.ft th,table.ft td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+table.ft th{color:var(--dim);font-size:11px;letter-spacing:.05em}
+table.ft td.pn{color:var(--ink);font-weight:600}
+table.ft td.ok{color:var(--teal)}
+table.ft td.bad{color:#a02b20;font-weight:700}
+table.ft td.num{text-align:right}
+.sum-block{margin-bottom:20px}
+.sum-block h3{margin:0 0 8px;font-size:13px;color:var(--ink);font-weight:650;letter-spacing:.04em}
+.big-num{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:12px}
+.big-num div{min-width:112px}
+.big-num b{display:block;font-family:var(--mono);font-size:27px;line-height:1.2;color:var(--hot)}
+.big-num span{font-size:11.5px;color:var(--dim2);letter-spacing:.05em}
+.bars{display:flex;flex-direction:column;gap:4px}
+.bar-row{display:grid;grid-template-columns:78px 1fr 96px;gap:9px;align-items:center;font-family:var(--mono);font-size:11.5px}
+.bar-row .bl{color:var(--dim);text-align:right}
+.bar-row .bt{display:block;background:#f1eee6;border-radius:4px;height:15px;overflow:hidden}
+.bar-row .bf{display:block;height:100%;background:var(--hot);border-radius:4px;transition:width .3s}
+.bar-row .bf.alt{background:var(--teal)}
+.bar-row .bv{color:var(--dim);font-size:11px}
+.hist{display:flex;flex-direction:column;gap:3px}
+.hist-row{display:grid;grid-template-columns:60px 1fr 56px;gap:9px;align-items:center;font-family:var(--mono);font-size:11.5px}
+.hist-row .hl{color:var(--dim);text-align:right}
+.hist-row .ht{display:block;background:#f1eee6;border-radius:4px;height:13px;overflow:hidden}
+.hist-row .hf{display:block;height:100%;background:var(--teal);border-radius:4px}
+.hist-row .hv{color:var(--dim2);font-size:11px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-family:var(--mono);font-size:12px}
+.kv dt{color:var(--dim2)}
+.kv dd{margin:0;color:var(--ink)}
+
+.ftr{
+  max-width:1240px;margin:0 auto;padding:16px 22px 34px;color:var(--dim2);font-size:11.5px;
+  border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+}
+
+@media(max-width:1040px){
+  .grid2{grid-template-columns:1fr}
+  .prog-grid{grid-template-columns:1fr}
+  .ad-wrap{grid-template-columns:1fr;gap:18px}
+  .hdr h1{font-size:25px}
+  .bar-row{grid-template-columns:64px 1fr 80px}
+}
+
+/* 手机竖屏：把能挤的都挤一挤，让指令集表不必滚动就能放下 */
+@media(max-width:640px){
+  main{padding:16px 13px 32px}
+  .tabs{padding:0 13px}
+  .ftr{padding:14px 13px 28px}
+  .card{padding:14px 13px;border-radius:9px}
+  .hdr h1{font-size:22px}
+  #isa th,#isa td{padding:3px 5px}
+  #isa table{font-size:10.5px}
+  #isa th{font-size:10px}
+  table.ft{font-size:11px}
+  table.ft th,table.ft td{padding:4px 6px}
+  /* 窄屏下让长输出自己折行，别把「判定」列推出视野 */
+  table.ft th,table.ft td{white-space:normal}
+  table.ft td.pn,table.ft td.ok,table.ft td.bad{white-space:nowrap}
+  .bar-row{grid-template-columns:52px 1fr 62px;gap:6px;font-size:10.5px}
+  .hist-row{grid-template-columns:44px 1fr 44px;gap:6px;font-size:10.5px}
+  .ft-ctrl input[type=range]{width:150px}
+  .big-num{gap:16px}
+  .big-num div{min-width:88px}
+}
+
+</style>
+</head>
+<body>
+<!--BUILD:MARKER-->
+<header class="hdr">
+  <div class="hdr-l">
+    <h1>与非之上</h1>
+    <p class="sub">一台从逻辑门里长出来的八位计算机 · 门 → 加法器 → 处理器 → 程序 → 故障</p>
+  </div>
+  <div class="hdr-r">
+    <div class="stat"><b id="st-gates">—</b><span>与非门</span></div>
+    <div class="stat"><b id="st-isa">—</b><span>条指令</span></div>
+    <div class="stat"><b id="st-prog">—</b><span>个程序</span></div>
+    <div class="stat"><b id="st-fault">—</b><span>个故障</span></div>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab on" data-tab="gate">① 门</button>
+  <button class="tab" data-tab="adder">② 加法器</button>
+  <button class="tab" data-tab="cpu">③ 处理器</button>
+  <button class="tab" data-tab="prog">④ 编程</button>
+  <button class="tab" data-tab="fault">⑤ 故障</button>
+</nav>
+
+<main>
+  <!-- ============ ① 门 ============ -->
+  <section class="panel on" id="p-gate">
+    <div class="grid2">
+      <div class="card">
+        <h2>一台与非门</h2>
+        <p class="lead">整个计算机里只有这一种门。它的规则只有一行：<b>两个输入都是 1 时输出 0，否则输出 1</b>。
+          点下面的开关试试——这是这台机器唯一「知道」的事。</p>
+        <div class="play" id="g-play">
+          <div class="sw-wrap">
+            <button class="sw" id="sw-a" data-v="0"><span class="sw-lbl">A</span><span class="sw-val">0</span></button>
+            <button class="sw" id="sw-b" data-v="0"><span class="sw-lbl">B</span><span class="sw-val">0</span></button>
+          </div>
+          <div class="gate-sym">
+            <svg viewBox="0 0 190 92" width="190" height="92">
+              <line x1="4" y1="26" x2="46" y2="26" class="wire" id="w-a"/>
+              <line x1="4" y1="66" x2="46" y2="66" class="wire" id="w-b"/>
+              <path d="M46 14 L46 78 L74 78 A34 34 0 0 0 74 14 Z" class="gbody"/>
+              <circle cx="112" cy="46" r="6" class="gdot"/>
+              <line x1="118" y1="46" x2="170" y2="46" class="wire" id="w-y"/>
+              <text x="14" y="20" class="glab" id="t-a">0</text>
+              <text x="14" y="60" class="glab" id="t-b">0</text>
+              <text x="176" y="52" class="glab" id="t-y">1</text>
+            </svg>
+          </div>
+          <div class="lamp-wrap">
+            <div class="lamp" id="g-lamp">1</div>
+            <span class="lamp-cap">输出</span>
+          </div>
+        </div>
+        <div class="note" id="g-note"></div>
+      </div>
+
+      <div class="card">
+        <h2>一个门就够了</h2>
+        <p class="lead">与非门是<b>功能完备</b>的：拿它去拼，能搭出逻辑世界里的全部基本门。
+          下表由门级电路真跑出来，不是查表——当前开关所在的那一行会被点亮。</p>
+        <div id="g-table"></div>
+        <div class="note" id="g-cost"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ② 加法器 ============ -->
+  <section class="panel" id="p-adder">
+    <div class="card">
+      <h2>八位加法器，逐门展开</h2>
+      <p class="lead">点任意一位切换 0/1。加法是<b>串行</b>的：第 0 位算出的进位要交给第 1 位，
+        一路爬到第 7 位。这条进位链就是这台机器的心跳。</p>
+      <div class="ad-ctrl">
+        <label>加数 A <input type="number" id="ad-a" min="0" max="255" value="200"></label>
+        <label>加数 B <input type="number" id="ad-b" min="0" max="255" value="100"></label>
+        <label class="chk"><input type="checkbox" id="ad-sub"> 改成减法（A − B）</label>
+        <button class="btn" id="ad-step">单步传播进位</button>
+        <button class="btn ghost" id="ad-reset">复位进位链</button>
+      </div>
+      <div class="ad-wrap">
+        <div id="ad-bits"></div>
+        <div class="ad-gates" id="ad-gates"></div>
+      </div>
+      <div class="ad-res" id="ad-res"></div>
+      <div class="note" id="ad-note"></div>
+    </div>
+  </section>
+
+  <!-- ============ ③ 处理器 ============ -->
+  <section class="panel" id="p-cpu">
+    <div class="card">
+      <div class="cpu-head">
+        <h2>数据通路</h2>
+        <div class="cpu-btns">
+          <button class="btn" id="cpu-micro">走一个微步</button>
+          <button class="btn" id="cpu-insn">走一整条指令</button>
+          <button class="btn" id="cpu-run">连续运行</button>
+          <button class="btn ghost" id="cpu-reset">复位</button>
+        </div>
+      </div>
+      <p class="lead">一条指令被拆成 3~5 个微步（T0…T4）。点「走一个微步」，
+        亮起来的那一段就是这一刻电流走过的路。</p>
+      <div id="cpu-svg"></div>
+      <div class="cpu-busline">
+        <span class="bl-cap">总线</span>
+        <span class="bl-val" id="cpu-bus">00</span>
+        <span class="bl-cap">相位</span>
+        <span class="bl-phase" id="cpu-phase">停机</span>
+        <span class="bl-cap">控制信号</span>
+        <span class="bl-ctl" id="cpu-ctl">—</span>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>寄存器与标志</h2>
+        <div id="cpu-regs"></div>
+        <h3 class="mt">正在执行</h3>
+        <div id="cpu-cur"></div>
+      </div>
+      <div class="card">
+        <h2>微指令流水</h2>
+        <div class="log" id="cpu-log"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>内存（256 字节）</h2>
+      <p class="lead">十六进制。琥珀色是 PC 指向的字节，青色是 MAR 指向的字节，灰底是当前指令的操作数。
+        程序和数据住在同一块内存里，谁也不比谁高级。</p>
+      <div class="ram" id="cpu-ram"></div>
+    </div>
+  </section>
+
+  <!-- ============ ④ 编程 ============ -->
+  <section class="panel" id="p-prog">
+    <div class="card">
+      <h2>写一段汇编，让它跑</h2>
+      <div class="prog-pick" id="pg-list"></div>
+      <div class="prog-grid">
+        <div class="pg-col">
+          <h3>汇编源码</h3>
+          <textarea id="pg-src" spellcheck="false"></textarea>
+          <div class="pg-btns">
+            <button class="btn" id="pg-asm">汇编</button>
+            <button class="btn" id="pg-run">运行到停机</button>
+            <button class="btn ghost" id="pg-micro">单步</button>
+            <button class="btn ghost" id="pg-reset">复位</button>
+          </div>
+          <div class="note" id="pg-note"></div>
+        </div>
+        <div class="pg-col">
+          <h3>汇编清单</h3>
+          <div class="listing" id="pg-listing"></div>
+        </div>
+        <div class="pg-col">
+          <h3>输出台</h3>
+          <div class="outbox" id="pg-out"></div>
+          <div class="note" id="pg-cmp"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>指令集</h2>
+      <div id="isa"></div>
+    </div>
+  </section>
+
+  <!-- ============ ⑤ 故障 ============ -->
+  <section class="panel" id="p-fault">
+    <div class="card">
+      <h2>把某个门焊死</h2>
+      <p class="lead">真实芯片最常见的失效方式叫「卡死」：某个门的输出被永久钉在 0 或 1。
+        下面这 384 个故障，每一个都被真的注入过，真的重跑了全部八个程序。</p>
+      <div class="ft-ctrl">
+        <label>门编号 <input type="range" id="ft-gate" min="0" max="191" value="0"><b id="ft-gno">0</b></label>
+        <label>卡死为
+          <select id="ft-val"><option value="0">0</option><option value="1">1</option></select>
+        </label>
+        <button class="btn" id="ft-run">注入并重跑全部程序</button>
+      </div>
+      <div class="note" id="ft-info"></div>
+      <div id="ft-table"></div>
+    </div>
+
+    <div class="card">
+      <h2>全量扫描的结论</h2>
+      <div id="ft-summary"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="ftr">
+  <span>全部数字由 <code>nand/core.js</code> 在同一台模型上跑出，Node 与浏览器共用一份源码。</span>
+  <span id="ftr-build"></span>
+</footer>
+
+<script>
+/* 与非之上 · core.js
+   纯模型，零依赖、无随机、无 DOM。Node 与浏览器共用同一份源码（UMD）。
+
+   层次（自下而上）：
+     1. Circuit   门级网表：只有 NAND 一种门，其余全靠它拼
+     2. ALU8      8 位加减法器，真·门级展开（192 个与非门）
+     3. ISA/CPU   8 位处理器，T 状态机逐微步推进
+     4. assemble  两遍汇编器
+     5. PROGRAMS  8 个可运行程序 + 独立算出的期望输出
+     6. faultScan 单门卡死故障注入
+*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.NAND = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+'use strict';
+
+/* ---------------- 小工具 ---------------- */
+function hex(v) {
+  v = v & 255;
+  return (v < 16 ? '0' : '') + v.toString(16).toUpperCase();
+}
+function bin8(v) {
+  v = v & 255;
+  var s = '';
+  for (var i = 7; i >= 0; i--) s += (v >> i) & 1;
+  return s;
+}
+function u8(v) { return v & 255; }
+
+/* ---------------- 1. 门级网表 ----------------
+   网表里只有一种门：NAND。每个门消耗两个已有网络、产出一个新网络。
+   网络编号 = 输入网络（0..nIn-1）+ 门序号偏移。门按拓扑序排列，求值就是一遍线性扫描。
+   故障注入就是把某个门的输出强制成 0 或 1——真实芯片里的「卡死故障」。 */
+function Circuit() {
+  this.nIn = 0;
+  this.gates = [];   // {a,b,out,role}
+}
+Circuit.prototype.in = function () { return this.nIn++; };
+Circuit.prototype.nand = function (a, b, role) {
+  var out = this.nIn + this.gates.length;
+  this.gates.push({ a: a, b: b, out: out, role: role || 'nand' });
+  return out;
+};
+/* 以下四个全部由与非门搭出——与非门是「功能完备」的，一个就够。 */
+Circuit.prototype.not = function (a, role) { return this.nand(a, a, role || 'not'); };
+Circuit.prototype.and = function (a, b, role) {
+  var r = role || 'and';
+  return this.not(this.nand(a, b, r), r);
+};
+Circuit.prototype.or = function (a, b, role) {
+  var r = role || 'or';
+  return this.nand(this.not(a, r), this.not(b, r), r);
+};
+Circuit.prototype.xor = function (a, b, role) {
+  var r = role || 'xor';
+  var n = this.nand(a, b, r);
+  return this.nand(this.nand(a, n, r), this.nand(b, n, r), r);
+};
+Circuit.prototype.mux = function (s, a, b, role) {   // s=0 → a，s=1 → b
+  var r = role || 'mux';
+  var ns = this.not(s, r);
+  return this.or(this.and(ns, a, r), this.and(s, b, r), r);
+};
+Circuit.prototype.nets = function () { return this.nIn + this.gates.length; };
+
+/* 求值：inputs 按网络编号给输入；faultGate/faultVal 强制某个门卡死。 */
+Circuit.prototype.eval = function (inputs, faultGate, faultVal, buf) {
+  var n = this.gates.length;
+  var v = buf || new Uint8Array(this.nets());
+  var i;
+  for (i = 0; i < this.nIn; i++) v[i] = inputs[i] & 1;
+  var g = this.gates;
+  for (i = 0; i < n; i++) {
+    var G = g[i];
+    v[G.out] = (i === faultGate) ? faultVal : ((v[G.a] & v[G.b]) ? 0 : 1);
+  }
+  return v;
+};
+/* 扁平化，供高频调用（故障扫描要跑几十万次） */
+Circuit.prototype.flat = function () {
+  var n = this.gates.length, A = new Int32Array(n), B = new Int32Array(n), O = new Int32Array(n);
+  for (var i = 0; i < n; i++) { A[i] = this.gates[i].a; B[i] = this.gates[i].b; O[i] = this.gates[i].out; }
+  return { n: n, nIn: this.nIn, nets: this.nIn + n, A: A, B: B, O: O };
+};
+
+/* ---------------- 1b. 从与非门搭出五个基本门（供真值表展示） ---------------- */
+function buildBasicGates() {
+  var c = new Circuit();
+  var a = c.in(), b = c.in();
+  var o = {
+    NAND: c.nand(a, b, 'nand'),
+    NOT: c.not(a, 'not'),
+    AND: c.and(a, b, 'and'),
+    OR: c.or(a, b, 'or'),
+    XOR: c.xor(a, b, 'xor')
+  };
+  var buf = new Uint8Array(c.nets());
+  return {
+    circuit: c,
+    nGates: c.gates.length,
+    outs: o,
+    /* 返回 x,y 输入下五个门的输出 */
+    run: function (x, y) {
+      var inp = [0, 0];
+      inp[a] = x & 1; inp[b] = y & 1;
+      var v = c.eval(inp, -1, 0, buf);
+      return { NAND: v[o.NAND], NOT: v[o.NOT], AND: v[o.AND], OR: v[o.OR], XOR: v[o.XOR] };
+    }
+  };
+}
+
+/* ---------------- 2. 8 位加减法器（门级） ----------------
+   每位：B 的反相器 + 二选一 + 全加器（进位从低位串上来）。
+   减法 = A + ~B + 1，即把 sub 同时当「B 取反」的选择位和进位输入。 */
+function buildALU8() {
+  var c = new Circuit();
+  var A = [], B = [], i;
+  for (i = 0; i < 8; i++) A.push(c.in());
+  for (i = 0; i < 8; i++) B.push(c.in());
+  var sub = c.in();
+
+  var sum = [], bits = [];
+  var carry = sub;
+  for (i = 0; i < 8; i++) {
+    var from = c.gates.length;
+    var nb = c.not(B[i], 'inv');                    // 1 门
+    var bi = c.mux(sub, B[i], nb, 'mux');           // 8 门
+    var t = c.xor(A[i], bi, 'xor');                 // 4 门
+    var s = c.xor(t, carry, 'xor');                 // 4 门
+    var co = c.or(c.and(t, carry, 'and'), c.and(A[i], bi, 'and'), 'or');  // 7 门
+    bits.push({ bit: i, from: from, to: c.gates.length - 1, ci: carry, co: co });
+    sum.push(s);
+    carry = co;
+  }
+  var flat = c.flat();
+  var buf = new Uint8Array(flat.nets);
+  var inp = new Uint8Array(flat.nets);
+
+  var api = {
+    circuit: c,
+    nGates: c.gates.length,
+    bits: bits,
+    sumNets: sum,
+    coutNet: carry,
+    /* a,b: 0..255；s: 0 加 / 1 减。返回 {r, carry, cout} */
+    eval: function (a, b, s, faultGate, faultVal) {      for (var k = 0; k < 8; k++) {
+        inp[A[k]] = (a >> k) & 1;
+        inp[B[k]] = (b >> k) & 1;
+      }
+      inp[sub] = s ? 1 : 0;
+      var v = c.eval(inp, faultGate === undefined ? -1 : faultGate,
+                     faultVal === undefined ? 0 : faultVal, buf);
+      var r = 0;
+      for (var j = 0; j < 8; j++) if (v[sum[j]]) r |= (1 << j);
+      return { r: r, carry: v[carry], cout: v[carry] };
+    },
+    /* 快路径：不查 bit 数组 */
+    evalFast: function (a, b, s, faultGate, faultVal, vbuf) {
+      var v = vbuf;
+      for (var k = 0; k < 8; k++) {
+        v[A[k]] = (a >> k) & 1;
+        v[B[k]] = (b >> k) & 1;
+      }
+      v[sub] = s ? 1 : 0;
+      var g = flat.n, GA = flat.A, GB = flat.B, GO = flat.O;
+      for (var i2 = 0; i2 < g; i2++) {
+        v[GO[i2]] = (i2 === faultGate) ? faultVal : ((v[GA[i2]] & v[GB[i2]]) ? 0 : 1);
+      }
+      var r = 0;
+      for (var j = 0; j < 8; j++) if (v[sum[j]]) r |= (1 << j);
+      return r | (v[carry] << 8);
+    },
+    _flat: flat,
+    _vbuf: function () { return new Uint8Array(flat.nets); },
+    /* 读真实导线电平：每一位的进位输入、和、以及最终进位输出。
+       界面画进位链时用它 —— 显示的是电路里真跑出来的电平，不是另算一遍的。 */
+    probe: function (a, b, s, faultGate, faultVal) {
+      for (var k = 0; k < 8; k++) {
+        inp[A[k]] = (a >> k) & 1;
+        inp[B[k]] = (b >> k) & 1;
+      }
+      inp[sub] = s ? 1 : 0;
+      var v = c.eval(inp, faultGate === undefined ? -1 : faultGate,
+                     faultVal === undefined ? 0 : faultVal, buf);
+      var sOut = [], cIn = [];
+      for (var j = 0; j < 8; j++) { sOut.push(v[sum[j]]); cIn.push(v[bits[j].ci]); }
+      cIn.push(v[carry]);
+      return { sum: sOut, cin: cIn, cout: v[carry] };
+    },
+    /* 门 → 归属位（用于故障归因） */
+    bitOf: function (g) {
+      for (var k = 0; k < 8; k++) if (g >= bits[k].from && g <= bits[k].to) return k;
+      return -1;
+    }
+  };
+  return api;
+}
+var _alu = null;
+function ALU() { if (!_alu) _alu = buildALU8(); return _alu; }
+
+/* ---------------- 3. 指令集 ----------------
+   标志位约定（写死在这，汇编程序全部依赖它）：
+     C 在加法后 = 无符号进位；在减法/CMP 后 = 借位（A < 操作数时为 1）
+     Z = 结果为零；N = 结果最高位
+   所以 CMP 之后 JC 就是「A 小于对方」。
+   装载类指令（LDI/LDA/LDB/LDX/LDXI/LDAX）也更新 Z/N——沿 6502 的惯例。
+   它们不动 C，所以「LDA 之后跟 JC」能读到上一次算术留下的进位。
+   （这条是被 bug 逼出来的：最初装载不改标志，于是 JZ 读的是陈旧零标志，
+     排序只扫了一轮就以为排完了、字符串程序打完最后一个字节还不肯停。） */
+var ISA = {};
+var MNEM = {};
+function instr(code, name, o) {
+  var e = { code: code, name: name, addr: !!o.addr, imm: !!o.imm, f: o.f, ctl: o.ctl || '', note: o.note || '' };
+  ISA[code] = e;
+  MNEM[name] = e;
+  return e;
+}
+function setZN(cpu, r) { cpu.Z = (r & 255) === 0 ? 1 : 0; cpu.N = (r >> 7) & 1; }
+function addA(cpu, b) {
+  var r = ALU().eval(cpu.A, b, 0, cpu.faultGate, cpu.faultVal);
+  cpu.A = r.r; cpu.C = r.carry; setZN(cpu, r.r);
+  return r.r;
+}
+function subA(cpu, b) {
+  var r = ALU().eval(cpu.A, b, 1, cpu.faultGate, cpu.faultVal);
+  cpu.A = r.r; cpu.C = r.carry ? 0 : 1;   // 借位
+  setZN(cpu, r.r);
+  return r.r;
+}
+function cmpA(cpu, b) {
+  var r = ALU().eval(cpu.A, b, 1, cpu.faultGate, cpu.faultVal);
+  cpu.C = r.carry ? 0 : 1; cpu.Z = r.r === 0 ? 1 : 0; cpu.N = (r.r >> 7) & 1;
+  return r.r;
+}
+
+instr(0x00, 'NOP', { f: function () { return '空操作'; }, ctl: '—' });
+instr(0x01, 'LDI', { imm: 1, f: function (v) { this.A = v; setZN(this, v); return 'A ← ' + v; }, ctl: 'MDRout,Ain' });
+instr(0x02, 'LDA', { addr: 1, f: function (a) { this.A = this.ram[a]; setZN(this, this.A); return 'A ← M[' + hex(a) + '] = ' + hex(this.A); }, ctl: 'RAMout,Ain' });
+instr(0x03, 'STA', { addr: 1, f: function (a) { this.ram[a] = this.A; return 'M[' + hex(a) + '] ← A = ' + hex(this.A); }, ctl: 'Aout,RAMin' });
+instr(0x04, 'LDIB', { imm: 1, f: function (v) { this.B = v; setZN(this, v); return 'B ← ' + v; }, ctl: 'MDRout,Bin' });
+instr(0x05, 'LDB', { addr: 1, f: function (a) { this.B = this.ram[a]; setZN(this, this.B); return 'B ← M[' + hex(a) + ']'; }, ctl: 'RAMout,Bin' });
+instr(0x06, 'STB', { addr: 1, f: function (a) { this.ram[a] = this.B; return 'M[' + hex(a) + '] ← B'; }, ctl: 'Bout,RAMin' });
+instr(0x07, 'ADDI', { imm: 1, f: function (v) { var r = addA(this, v); return 'A ← A + ' + v + ' = ' + r + (this.C ? '（进位）' : ''); }, ctl: 'Aout,MDRout,ALU,Ain' });
+instr(0x08, 'LDX', { addr: 1, f: function (a) { this.X = this.ram[a]; setZN(this, this.X); return 'X ← M[' + hex(a) + '] = ' + hex(this.X); }, ctl: 'RAMout,Xin' });
+instr(0x09, 'LDAX', { f: function () { this.A = this.ram[this.X]; setZN(this, this.A); return 'A ← M[X=' + hex(this.X) + '] = ' + hex(this.A); }, ctl: 'Xout,RAMout,Ain' });
+instr(0x0A, 'STAX', { f: function () { this.ram[this.X] = this.A; return 'M[X=' + hex(this.X) + '] ← A = ' + hex(this.A); }, ctl: 'Xout,Aout,RAMin' });
+instr(0x0B, 'INX', { f: function () { this.X = u8(this.X + 1); return 'X ← ' + hex(this.X); }, ctl: 'Xout,Xin,Xinc' });
+instr(0x0C, 'DEX', { f: function () { this.X = u8(this.X - 1); return 'X ← ' + hex(this.X); }, ctl: 'Xout,Xin,Xdec' });
+instr(0x0D, 'LDXI', { imm: 1, f: function (v) { this.X = v; setZN(this, v); return 'X ← ' + hex(this.X); }, ctl: 'MDRout,Xin' });
+instr(0x10, 'ADD', { addr: 1, f: function (a) { var r = addA(this, this.ram[a]); return 'A ← A + M[' + hex(a) + '] = ' + r + (this.C ? '（进位）' : ''); }, ctl: 'Aout,RAMout,ALU,Ain' });
+instr(0x11, 'SUB', { addr: 1, f: function (a) { var r = subA(this, this.ram[a]); return 'A ← A − M[' + hex(a) + '] = ' + r + (this.C ? '（借位）' : ''); }, ctl: 'Aout,RAMout,ALU,Ain' });
+instr(0x12, 'AND', { addr: 1, f: function (a) { this.A = this.A & this.ram[a]; this.C = 0; setZN(this, this.A); return 'A ← A & M[' + hex(a) + '] = ' + hex(this.A); }, ctl: 'Aout,RAMout,ALU,Ain' });
+instr(0x13, 'OR', { addr: 1, f: function (a) { this.A = this.A | this.ram[a]; this.C = 0; setZN(this, this.A); return 'A ← A | M[' + hex(a) + '] = ' + hex(this.A); }, ctl: 'Aout,RAMout,ALU,Ain' });
+instr(0x14, 'XOR', { addr: 1, f: function (a) { this.A = this.A ^ this.ram[a]; this.C = 0; setZN(this, this.A); return 'A ← A ^ M[' + hex(a) + '] = ' + hex(this.A); }, ctl: 'Aout,RAMout,ALU,Ain' });
+instr(0x15, 'ADDB', { f: function () { var r = addA(this, this.B); return 'A ← A + B = ' + r; }, ctl: 'Aout,Bout,ALU,Ain' });
+instr(0x16, 'SHL', { f: function () { this.C = (this.A >> 7) & 1; this.A = u8(this.A << 1); setZN(this, this.A); return 'A ← A << 1 = ' + hex(this.A) + '，C ← ' + this.C; }, ctl: 'Aout,ALU,Ain,flagC' });
+instr(0x17, 'SHR', { f: function () { this.C = this.A & 1; this.A = this.A >> 1; setZN(this, this.A); return 'A ← A >> 1 = ' + hex(this.A) + '，C ← ' + this.C; }, ctl: 'Aout,ALU,Ain,flagC' });
+instr(0x18, 'ROL', { f: function () { var c0 = this.C; this.C = (this.A >> 7) & 1; this.A = u8((this.A << 1) | c0); setZN(this, this.A); return 'A ← A << 1 | C = ' + hex(this.A) + '，C ← ' + this.C; }, ctl: 'Aout,ALU,Ain,flagC' });
+instr(0x19, 'ROR', { f: function () { var c0 = this.C; this.C = this.A & 1; this.A = u8((this.A >> 1) | (c0 << 7)); setZN(this, this.A); return 'A ← A >> 1 | C<<7 = ' + hex(this.A) + '，C ← ' + this.C; }, ctl: 'Aout,ALU,Ain,flagC' });
+instr(0x1A, 'INC', { f: function () { var r = addA(this, 1); return 'A ← A + 1 = ' + r; }, ctl: 'Aout,ALU,Ain' });
+instr(0x1B, 'DEC', { f: function () { var r = subA(this, 1); return 'A ← A − 1 = ' + r; }, ctl: 'Aout,ALU,Ain' });
+instr(0x1C, 'NOT', { f: function () { this.A = u8(~this.A); this.C = 0; setZN(this, this.A); return 'A ← ~A = ' + hex(this.A); }, ctl: 'Aout,ALU,Ain' });
+instr(0x1D, 'CMP', { addr: 1, f: function (a) { cmpA(this, this.ram[a]); return 'A − M[' + hex(a) + '] 只置标志：Z=' + this.Z + ' C(借位)=' + this.C + ' N=' + this.N; }, ctl: 'Aout,RAMout,ALU,flagZ,flagC,flagN' });
+instr(0x1E, 'CMPB', { f: function () { cmpA(this, this.B); return 'A − B 只置标志：Z=' + this.Z + ' C=' + this.C + ' N=' + this.N; }, ctl: 'Aout,Bout,ALU,flagZ,flagC,flagN' });
+instr(0x20, 'JMP', { addr: 1, f: function (a) { this.PC = a; return 'PC ← ' + hex(a); }, ctl: 'MDRout,PCin' });
+instr(0x21, 'JZ', { addr: 1, f: function (a) { var t = this.Z === 1; if (t) this.PC = a; return 'Z=' + this.Z + ' → ' + (t ? 'PC ← ' + hex(a) : '不跳转'); }, ctl: 'MDRout,PCin' });
+instr(0x22, 'JC', { addr: 1, f: function (a) { var t = this.C === 1; if (t) this.PC = a; return 'C=' + this.C + ' → ' + (t ? 'PC ← ' + hex(a) : '不跳转'); }, ctl: 'MDRout,PCin' });
+instr(0x23, 'JN', { addr: 1, f: function (a) { var t = this.N === 1; if (t) this.PC = a; return 'N=' + this.N + ' → ' + (t ? 'PC ← ' + hex(a) : '不跳转'); }, ctl: 'MDRout,PCin' });
+instr(0x24, 'JNZ', { addr: 1, f: function (a) { var t = this.Z === 0; if (t) this.PC = a; return 'Z=' + this.Z + ' → ' + (t ? 'PC ← ' + hex(a) : '不跳转'); }, ctl: 'MDRout,PCin' });
+instr(0x25, 'JNC', { addr: 1, f: function (a) { var t = this.C === 0; if (t) this.PC = a; return 'C=' + this.C + ' → ' + (t ? 'PC ← ' + hex(a) : '不跳转'); }, ctl: 'MDRout,PCin' });
+instr(0x30, 'OUT', { f: function () { this.out.push({ t: 'num', v: this.A }); return '输出 A = ' + this.A; }, ctl: 'Aout,OUTin' });
+instr(0x31, 'OUTC', { f: function () { this.out.push({ t: 'chr', v: this.A }); return '输出字符 ' + JSON.stringify(String.fromCharCode(this.A)); }, ctl: 'Aout,OUTin' });
+instr(0x32, 'OUTB', { f: function () { this.out.push({ t: 'num', v: this.B }); return '输出 B = ' + this.B; }, ctl: 'Bout,OUTin' });
+instr(0xFF, 'HLT', { f: function () { this.halt = true; return '停机'; }, ctl: 'HLT' });
+
+/* 一句话说明，给界面上的指令集速查表用 */
+(function () {
+  var NOTES = {
+    NOP: '什么都不做，只占一个时钟',
+    LDI: '把立即数装进累加器 A',
+    LDA: 'A ← M[地址]',
+    STA: 'M[地址] ← A',
+    LDIB: '把立即数装进 B',
+    LDB: 'B ← M[地址]',
+    STB: 'M[地址] ← B',
+    ADDI: 'A ← A + 立即数',
+    LDX: 'X ← M[地址]',
+    LDAX: 'A ← M[X]，变址取数',
+    STAX: 'M[X] ← A，变址存数',
+    INX: 'X ← X + 1',
+    DEX: 'X ← X − 1',
+    LDXI: 'X ← 立即数',
+    ADD: 'A ← A + M[地址]，置进位',
+    SUB: 'A ← A − M[地址]，置借位',
+    AND: 'A ← A & M[地址]',
+    OR: 'A ← A | M[地址]',
+    XOR: 'A ← A ^ M[地址]',
+    ADDB: 'A ← A + B，寄存器相加',
+    SHL: '左移一位，移出的最高位进 C',
+    SHR: '右移一位，移出的最低位进 C',
+    ROL: '带进位左循环',
+    ROR: '带进位右循环',
+    INC: 'A ← A + 1',
+    DEC: 'A ← A − 1',
+    NOT: 'A ← ~A',
+    CMP: '只置标志：A − M[地址]',
+    CMPB: '只置标志：A − B',
+    JMP: '无条件跳转',
+    JZ: 'Z = 1 时跳转（相等）',
+    JC: 'C = 1 时跳转（加法进位 / 减法借位）',
+    JN: 'N = 1 时跳转（结果为负）',
+    JNZ: 'Z = 0 时跳转（不相等）',
+    JNC: 'C = 0 时跳转',
+    OUT: '把 A 当数字输出',
+    OUTC: '把 A 当字符输出',
+    OUTB: '把 B 当数字输出',
+    HLT: '停机'
+  };
+  Object.keys(NOTES).forEach(function (k) { if (MNEM[k]) MNEM[k].note = NOTES[k]; });
+})();
+
+/* ---------------- 3b. 处理器 ---------------- */
+function CPU(code) {
+  this.ram = new Uint8Array(256);
+  if (code) for (var i = 0; i < code.length && i < 256; i++) this.ram[i] = code[i];
+  this.A = 0; this.B = 0; this.X = 0;
+  this.IR = 0; this.MAR = 0; this.MDR = 0; this.PC = 0; this.OUT = 0;
+  this.T = 0; this.Z = 0; this.C = 0; this.N = 0;
+  this.halt = false;
+  this.out = [];
+  this.insn = 0;     // 已完成指令数
+  this.steps = 0;    // 微步数
+  this.insnAddr = 0; // 当前指令的起始地址（界面高亮用）
+  this.bus = 0;      // 当前总线上的数据（显示用）
+  this.log = [];     // 最近若干条微指令
+  this.faultGate = -1;
+  this.faultVal = 0;
+  this.overflow = false;
+  this._vbuf = ALU()._vbuf();
+}
+CPU.prototype.reset = function (code) {
+  if (code) { this.ram = new Uint8Array(256); for (var i = 0; i < code.length && i < 256; i++) this.ram[i] = code[i]; }
+  this.A = 0; this.B = 0; this.X = 0;
+  this.IR = 0; this.MAR = 0; this.MDR = 0; this.PC = 0; this.OUT = 0;
+  this.T = 0; this.Z = 0; this.C = 0; this.N = 0;
+  this.halt = false; this.out = []; this.insn = 0; this.steps = 0;
+  this.bus = 0; this.log = []; this.overflow = false;
+  return this;
+};
+CPU.prototype.phase = function () {
+  if (this.halt) return '停机';
+  if (this.T === 0 || this.T === 1) return '取指';
+  if (this.T === 2) return ISA[this.IR] && (ISA[this.IR].addr || ISA[this.IR].imm) ? '取操作数' : '执行';
+  return this.T === 3 ? '取操作数' : '执行';
+};
+/* 一条微指令。返回 {t, phase, desc, ctl, bus} */
+CPU.prototype.micro = function () {
+  if (this.halt) return null;
+  if (this.steps >= 400000) { this.halt = true; this.overflow = true; return null; }
+  this.steps++;
+  var t = this.T, d = '', ctl = '', ph;
+  var op;
+
+  if (t === 0) {
+    this.insnAddr = this.PC;
+    this.MAR = this.PC; this.bus = this.PC;
+    ph = '取指'; ctl = 'PCout, MARin';
+    d = 'T0  MAR ← PC = ' + hex(this.PC);
+  } else if (t === 1) {
+    this.IR = this.ram[this.MAR]; this.bus = this.IR;
+    this.PC = u8(this.PC + 1);
+    ph = '取指'; ctl = 'RAMout, IRin, PCinc';
+    d = 'T1  IR ← M[' + hex(this.MAR) + '] = ' + hex(this.IR) + '，PC++ → ' + hex(this.PC);
+  } else {
+    op = ISA[this.IR];
+    if (!op) {
+      this.halt = true;
+      return { t: t, phase: '停机', ctl: 'HLT', desc: 'T' + t + '  指令 ' + hex(this.IR) + ' 不存在 → 停机', bus: this.bus, illegal: true };
+    }
+    var need = op.addr || op.imm;
+    if (t === 2) {
+      if (need) {
+        this.MAR = this.PC; this.bus = this.PC;
+        ph = '取操作数'; ctl = 'PCout, MARin';
+        d = 'T2  MAR ← PC = ' + hex(this.PC) + '（' + op.name + ' 需要一个操作数）';
+      } else {
+        ph = '执行'; ctl = op.ctl;
+        d = 'T2  ' + op.f.call(this);
+        this.T = 0; this.insn++;
+        this._push(t, ph, ctl, d);
+        return { t: t, phase: ph, ctl: ctl, desc: d, bus: this.bus, exec: op.name };
+      }
+    } else if (t === 3) {
+      this.MDR = this.ram[this.MAR]; this.bus = this.MDR;
+      this.PC = u8(this.PC + 1);
+      ph = '取操作数'; ctl = 'RAMout, MDRin, PCinc';
+      d = 'T3  MDR ← M[' + hex(this.MAR) + '] = ' + hex(this.MDR) + '，PC++ → ' + hex(this.PC);
+    } else {
+      ph = '执行'; ctl = op.ctl;
+      d = 'T4  ' + op.f.call(this, this.MDR);
+      this.T = 0; this.insn++;
+      this._push(t, ph, ctl, d);
+      return { t: t, phase: ph, ctl: ctl, desc: d, bus: this.bus, exec: op.name };
+    }
+  }
+  this.T = t + 1;
+  this._push(t, ph, ctl, d);
+  return { t: t, phase: ph, ctl: ctl, desc: d, bus: this.bus };
+};
+CPU.prototype._push = function (t, ph, ctl, d) {
+  this.log.push({ t: t, phase: ph, ctl: ctl, desc: d, ir: this.IR, pc: this.PC });
+  if (this.log.length > 60) this.log.shift();
+};
+CPU.prototype.run = function (maxSteps) {
+  var lim = maxSteps || 400000, n = 0;
+  while (!this.halt && n < lim) { if (!this.micro()) break; n++; }
+  return this;
+};
+CPU.prototype.sig = function () {
+  var s = this.halt ? 'H' : 'R', i;
+  for (i = 0; i < this.out.length; i++) s += ',' + this.out[i].v;
+  return s;
+};
+CPU.prototype.outNums = function () { return this.out.map(function (o) { return o.v; }); };
+CPU.prototype.outText = function () { return this.out.map(function (o) { return String.fromCharCode(o.v); }).join(''); };
+
+/* ---------------- 4. 汇编器 ----------------
+   两遍：第一遍定标签与地址，第二遍出机器码。
+   支持：标签、.org、.byte、.string、数字（十进制 / 0x / 0b / '字符'）、; 与 // 注释。 */
+function parseNum(s, labels) {
+  s = String(s).trim();
+  if (!s) return { ok: false, msg: '缺少操作数' };
+  var m = /^'(\\?.)'$/.exec(s);
+  if (m) {
+    var ch = m[1];
+    var esc = { n: 10, t: 9, r: 13, '0': 0, '\\': 92, "'": 39 };
+    return { ok: true, v: ch.length === 2 && esc[ch[1]] !== undefined ? esc[ch[1]] : ch.charCodeAt(0) };
+  }
+  if (/^0x[0-9a-f]+$/i.test(s)) return { ok: true, v: parseInt(s.slice(2), 16) };
+  if (/^0b[01]+$/i.test(s)) return { ok: true, v: parseInt(s.slice(2), 2) };
+  if (/^\d+$/.test(s)) return { ok: true, v: parseInt(s, 10) };
+  if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(s)) {
+    if (labels && labels[s] !== undefined) return { ok: true, v: labels[s], label: s };
+    return { ok: false, msg: '未定义的标签：' + s };
+  }
+  return { ok: false, msg: '无法解析操作数：' + s };
+}
+function stripComment(line) {
+  var c = line.indexOf(';');
+  if (c >= 0) line = line.slice(0, c);
+  var c2 = line.indexOf('//');
+  if (c2 >= 0) line = line.slice(0, c2);
+  return line;
+}
+function assemble(src) {
+  var lines = String(src == null ? '' : src).split(/\r?\n/);
+  var errs = [], labels = {}, stmts = [], pc = 0, i;
+
+  function splitLabels(text, lineNo) {
+    var guard = 0;
+    for (;;) {
+      var m = /^([A-Za-z_][A-Za-z0-9_]*)\s*:/.exec(text);
+      if (!m || guard++ > 50) break;
+      if (labels[m[1]] !== undefined) errs.push({ line: lineNo, msg: '标签重复定义：' + m[1] });
+      labels[m[1]] = pc;
+      text = text.slice(m[0].length).replace(/^\s+/, '');
+      if (!text) return '';
+    }
+    return text;
+  }
+
+  /* --- 第一遍：算地址 --- */
+  for (i = 0; i < lines.length; i++) {
+    var text = splitLabels(stripComment(lines[i]).trim(), i + 1);
+    if (!text) continue;
+    var head = text.split(/\s+/)[0];
+    var rest = text.slice(head.length).trim();
+    var up = head.toUpperCase();
+    var st = { line: i + 1, addr: pc, text: text, kind: '', name: up, arg: rest, bytes: [] };
+
+    if (head.charAt(0) === '.') {
+      if (up === '.ORG') {
+        var p = parseNum(rest, labels);
+        if (!p.ok) { errs.push({ line: i + 1, msg: '.org ' + p.msg }); }
+        else if (p.v < 0 || p.v > 255) errs.push({ line: i + 1, msg: '.org 越界：' + p.v });
+        else { pc = p.v; st.addr = pc; }
+        st.kind = 'org';
+      } else if (up === '.BYTE') {
+        st.kind = 'byte';
+        var parts = rest.split(',').map(function (x) { return x.trim(); }).filter(function (x) { return x !== ''; });
+        if (!parts.length) errs.push({ line: i + 1, msg: '.byte 后面没有数据' });
+        for (var q = 0; q < parts.length; q++) {
+          var pv = parseNum(parts[q], labels);
+          if (!pv.ok) errs.push({ line: i + 1, msg: '.byte ' + pv.msg });
+          else if (pv.v < 0 || pv.v > 255) errs.push({ line: i + 1, msg: '.byte 越界：' + pv.v });
+        }
+        pc += parts.length;
+      } else if (up === '.STRING') {
+        var sm = /^"([^"]*)"$/.exec(rest);
+        if (!sm) errs.push({ line: i + 1, msg: '.string 需要双引号' });
+        st.kind = 'string';
+        st.arg = sm ? sm[1] : '';
+        pc += sm ? sm[1].length : 0;
+      } else {
+        errs.push({ line: i + 1, msg: '未知伪指令：' + head });
+      }
+    } else {
+      var spec = MNEM[up];
+      if (!spec) errs.push({ line: i + 1, msg: '未知助记符：' + head });
+      else {
+        st.kind = 'ins';
+        st.spec = spec;
+        if (spec.addr || spec.imm) {
+          if (!rest) errs.push({ line: i + 1, msg: spec.name + ' 需要一个操作数' });
+          pc += 2;
+        } else if (rest) {
+          errs.push({ line: i + 1, msg: spec.name + ' 不接受操作数' });
+          pc += 1;
+        } else pc += 1;
+      }
+    }
+    if (pc > 256) errs.push({ line: i + 1, msg: '代码超出 256 字节内存' });
+    stmts.push(st);
+  }
+
+  /* --- 第二遍：出机器码 --- */
+  var code = new Uint8Array(256), maxAddr = 0;
+  for (i = 0; i < stmts.length; i++) {
+    var s2 = stmts[i];
+    var at = s2.addr;
+    if (s2.kind === 'org') {
+      var p2 = parseNum(s2.arg, labels);
+      if (p2.ok) at = p2.v;
+      s2.addr = at;
+    } else if (s2.kind === 'byte') {
+      var ps = s2.arg.split(',').map(function (x) { return x.trim(); }).filter(function (x) { return x !== ''; });
+      for (var k = 0; k < ps.length; k++) {
+        var bv = parseNum(ps[k], labels);
+        if (bv.ok) { s2.bytes.push(bv.v); if (at + k < 256) code[at + k] = bv.v; }
+      }
+      maxAddr = Math.max(maxAddr, at + ps.length - 1);
+    } else if (s2.kind === 'string') {
+      for (var k2 = 0; k2 < s2.arg.length; k2++) {
+        var cv = s2.arg.charCodeAt(k2) & 255;
+        s2.bytes.push(cv);
+        if (at + k2 < 256) code[at + k2] = cv;
+      }
+      maxAddr = Math.max(maxAddr, at + s2.arg.length - 1);
+    } else if (s2.kind === 'ins') {
+      s2.bytes.push(s2.spec.code);
+      if (at < 256) code[at] = s2.spec.code;
+      maxAddr = Math.max(maxAddr, at);
+      if (s2.spec.addr || s2.spec.imm) {
+        var ov = parseNum(s2.arg, labels);
+        if (!ov.ok) errs.push({ line: s2.line, msg: ov.msg });
+        else if (ov.v < 0 || ov.v > 255) errs.push({ line: s2.line, msg: '操作数越界：' + ov.v });
+        else { s2.bytes.push(ov.v); if (at + 1 < 256) code[at + 1] = ov.v; maxAddr = Math.max(maxAddr, at + 1); }
+      }
+    }
+  }
+  return { code: code, listing: stmts, labels: labels, errs: errs, maxAddr: maxAddr };
+}
+
+/* ---------------- 5. 程序库 ----------------
+   每个程序自带一段「用普通 JS 独立算出来」的期望输出，用来和处理器实际输出对拍。 */
+function mulExpect(a, b) { var p = a * b; return [Math.floor(p / 256), p % 256]; }
+function sieveCount(n) { var c = 0, k, j, ok; for (k = 2; k <= n; k++) { ok = true; for (j = 2; j * j <= k; j++) if (k % j === 0) { ok = false; break; } if (ok) c++; } return c; }
+function gcdRef(a, b) { while (b) { var t = a % b; a = b; b = t; } return a; }
+function fibRef(n) { var a = 1, b = 1, o = []; for (var i = 0; i < n; i++) { o.push(a); var t = (a + b) & 255; a = b; b = t; } return o; }
+
+var PROGRAMS = [
+  {
+    id: 'add', name: '进位', title: '加法与进位',
+    note: '200 + 100 = 300，低八位 44，进位标志 C 置 1。八位机器第一次碰到自己的天花板。',
+    expect: [44, 1],
+    src: [
+      '; 200 + 100：结果被截成 44，进位为 1',
+      '.org 0x00',
+      '        LDI 200',
+      '        STA 0xE0',
+      '        LDI 100',
+      '        ADD 0xE0        ; 300 → A = 44，C = 1',
+      '        OUT             ; 打印 44',
+      '        LDI 0',
+      '        JC  carry',
+      '        OUT             ; 没进位就打 0',
+      '        HLT',
+      'carry:  LDI 1',
+      '        OUT             ; 有进位就打 1',
+      '        HLT'
+    ].join('\n')
+  },
+  {
+    id: 'mul', name: '乘法', title: '十六位乘法（移位加法）',
+    note: '199 × 201 = 39999。八位机器算不出这个数，于是把结果摊到两个字节里，靠进位串起来。',
+    expect: mulExpect(199, 201),
+    src: [
+      '; 199 × 201 = 39999 → 高字节 156、低字节 63',
+      '; 用「移位加法」：乘数右移，被乘数左移，逐位累加',
+      '.org 0x00',
+      '        LDI 199',
+      '        STA 0xE0        ; 被乘数低八位',
+      '        LDI 0',
+      '        STA 0xE1        ; 被乘数高八位',
+      '        LDI 201',
+      '        STA 0xE2        ; 乘数',
+      '        LDI 0',
+      '        STA 0xE3        ; 积低',
+      '        STA 0xE4        ; 积高',
+      '        LDI 8',
+      '        STA 0xE5        ; 循环 8 次',
+      '        LDI 1',
+      '        STA 0xE6        ; 掩码 1',
+      'loop:   LDA 0xE2',
+      '        AND 0xE6        ; 乘数最低位是 1 吗',
+      '        JZ  shift',
+      '        LDA 0xE3',
+      '        ADD 0xE0        ; 积低 += 被乘数低',
+      '        STA 0xE3',
+      '        LDA 0xE4',
+      '        JC  pcarry      ; 低位有进位',
+      '        ADD 0xE1',
+      '        JMP pst',
+      'pcarry: INC             ; 高位先 +1，再加重',
+      '        ADD 0xE1',
+      'pst:    STA 0xE4',
+      'shift:  LDA 0xE0',
+      '        SHL             ; 被乘数 <<= 1（16 位）',
+      '        STA 0xE0',
+      '        LDA 0xE1',
+      '        ROL             ; 高八位带着进位一起转',
+      '        STA 0xE1',
+      '        LDA 0xE2',
+      '        SHR             ; 乘数 >>= 1',
+      '        STA 0xE2',
+      '        LDA 0xE5',
+      '        DEC',
+      '        STA 0xE5',
+      '        JNZ loop',
+      '        LDA 0xE4        ; 先打印高字节',
+      '        OUT',
+      '        LDA 0xE3',
+      '        OUT',
+      '        HLT'
+    ].join('\n')
+  },
+  {
+    id: 'fib', name: '斐波那契', title: '斐波那契前十二项',
+    note: '只用加法和一个计数器。第十二项 144，第十三项就会溢出八位——所以只走十二步。',
+    expect: fibRef(12),
+    src: [
+      '; 打印斐波那契前 12 项',
+      '.org 0x00',
+      '        LDI 1',
+      '        STA 0xE0        ; a',
+      '        LDI 1',
+      '        STA 0xE1        ; b',
+      '        LDI 12',
+      '        STA 0xE2        ; 计数',
+      'loop:   LDA 0xE0',
+      '        OUT',
+      '        ADD 0xE1        ; t = a + b',
+      '        STA 0xE3',
+      '        LDA 0xE1',
+      '        STA 0xE0        ; a ← b',
+      '        LDA 0xE3',
+      '        STA 0xE1        ; b ← t',
+      '        LDA 0xE2',
+      '        DEC',
+      '        STA 0xE2',
+      '        JNZ loop',
+      '        HLT'
+    ].join('\n')
+  },
+  {
+    id: 'sort', name: '冒泡排序', title: '冒泡排序八个字节',
+    note: '这台机器没有「数组」这个概念，只有一个 X 寄存器当游标。整个排序就是反复比较、必要时交换。',
+    memBase: 0xA0,
+    expect: [1, 2, 3, 4, 5, 7, 8, 9],
+    src: [
+      '; 把 0xA0 起的 8 个字节升序排好，再依次打印',
+      '; X 寄存器当数组游标，CMP 之后 JC 表示「左边更小」',
+      '.org 0x00',
+      'outer:  LDI 0',
+      '        STA 0xE1        ; 本轮有没有交换过',
+      '        LDXI 0xA0',
+      '        LDI 7',
+      '        STA 0xE2        ; 每轮比较 7 次',
+      'inner:  LDAX            ; 左值',
+      '        STA 0xE3',
+      '        INX',
+      '        LDAX            ; 右值',
+      '        STA 0xE4',
+      '        LDA 0xE3',
+      '        CMP 0xE4',
+      '        JC  noswap      ; 左 < 右，顺序对',
+      '        LDA 0xE4',
+      '        DEX',
+      '        STAX            ; M[i] ← 右值',
+      '        INX',
+      '        LDA 0xE3',
+      '        STAX            ; M[i+1] ← 左值',
+      '        LDI 1',
+      '        STA 0xE1        ; 标记：发生过交换',
+      'noswap: LDA 0xE2',
+      '        DEC',
+      '        STA 0xE2',
+      '        JNZ inner',
+      '        LDA 0xE1',
+      '        JNZ outer       ; 还在换，再扫一轮',
+      '        LDXI 0xA0',
+      '        LDI 8',
+      '        STA 0xE5',
+      'pr:     LDAX',
+      '        OUT',
+      '        INX',
+      '        LDA 0xE5',
+      '        DEC',
+      '        STA 0xE5',
+      '        JNZ pr',
+      '        HLT',
+      '.org 0xA0',
+      '        .byte 5, 3, 9, 1, 7, 2, 8, 4'
+    ].join('\n')
+  },
+  {
+    id: 'sieve', name: '素数筛', title: '埃拉托斯特尼筛到 63',
+    note: '在内存里开 64 个格子当筛子，每找到一个素数就把它的倍数划掉。最后数出 18 个。'
+      + '注意 X 寄存器装的是绝对地址而不是下标——写错这一处，筛子会开始擦自己的代码。',
+    memBase: 0x90,
+    expect: [sieveCount(63)],
+    src: [
+      '; 筛出 2..63 之间的素数并计数',
+      '; 筛子占 0x90..0xCF 这 64 个字节；X 里始终放绝对地址',
+      '.org 0x00',
+      '        LDXI 0x90',
+      '        LDI 64',
+      '        STA 0xE0',
+      'clr:    LDI 1',
+      '        STAX            ; 先把 64 个格子全置 1',
+      '        INX',
+      '        LDA 0xE0',
+      '        DEC',
+      '        STA 0xE0',
+      '        JNZ clr',
+      '        LDXI 0x90',
+      '        LDI 0',
+      '        STAX            ; 0 不是素数',
+      '        INX',
+      '        STAX            ; 1 也不是',
+      '        LDI 2',
+      '        STA 0xE1        ; p = 2',
+      '        LDI 0x90',
+      '        STA 0xEA        ; 筛子基址',
+      '        LDI 0xD0',
+      '        STA 0xE6        ; 筛子末尾之后',
+      '        LDI 8',
+      '        STA 0xE7        ; p 只走到 7',
+      'outer:  LDI 0',
+      '        STA 0xE3',
+      '        LDA 0xE1',
+      '        STA 0xE4',
+      'sq:     LDA 0xE3        ; 用重复加法算 p*p',
+      '        ADD 0xE1',
+      '        STA 0xE3',
+      '        LDA 0xE4',
+      '        DEC',
+      '        STA 0xE4',
+      '        JNZ sq',
+      '        LDA 0xE1',
+      '        ADD 0xEA',
+      '        STA 0xEB        ; 地址 = 基址 + p',
+      '        LDX 0xEB',
+      '        LDAX',
+      '        JZ  nextp       ; p 已被划掉，不用再筛',
+      '        LDA 0xE3',
+      '        ADD 0xEA',
+      '        STA 0xE5        ; idx = 基址 + p*p',
+      'mark:   LDA 0xE5',
+      '        CMP 0xE6',
+      '        JNC nextp       ; idx 越过筛子末尾，这一轮完了',
+      '        LDX 0xE5',
+      '        LDI 0',
+      '        STAX            ; 划掉 idx',
+      '        LDA 0xE5',
+      '        ADD 0xE1',
+      '        STA 0xE5',
+      '        JMP mark',
+      'nextp:  LDA 0xE1',
+      '        INC',
+      '        STA 0xE1',
+      '        CMP 0xE7        ; p+1 < 8 ?',
+      '        JC  outer',
+      '        LDXI 0x90',
+      '        LDI 0',
+      '        STA 0xE8',
+      '        LDI 64',
+      '        STA 0xE9',
+      'cnt:    LDAX',
+      '        JZ  skip',
+      '        LDA 0xE8',
+      '        INC',
+      '        STA 0xE8',
+      'skip:   INX',
+      '        LDA 0xE9',
+      '        DEC',
+      '        STA 0xE9',
+      '        JNZ cnt',
+      '        LDA 0xE8',
+      '        OUT',
+      '        HLT'
+    ].join('\n')
+  },
+  {
+    id: 'div', name: '除法', title: '八位除法（恢复余数法）',
+    note: '200 ÷ 7 = 28 余 4。除法不是硬件给的，是加法、移位和比较凑出来的——这台机器只会加。',
+    expect: [Math.floor(200 / 7), 200 % 7],
+    src: [
+      '; 200 ÷ 7 = 28 余 4',
+      '; 恢复余数法：余数逐位左移，够减就减并给商补 1',
+      '.org 0x00',
+      '        LDI 200',
+      '        STA 0xE0        ; 被除数（同时当商在左移）',
+      '        LDI 7',
+      '        STA 0xE1        ; 除数',
+      '        LDI 0',
+      '        STA 0xE2        ; 商',
+      '        STA 0xE3        ; 余数',
+      '        LDI 8',
+      '        STA 0xE4        ; 八位',
+      'loop:   LDA 0xE0',
+      '        SHL             ; 被除数左移，最高位进 C',
+      '        STA 0xE0',
+      '        LDA 0xE3',
+      '        ROL             ; 余数 = (余数 << 1) | C',
+      '        STA 0xE3',
+      '        LDA 0xE2',
+      '        SHL             ; 商腾出最低位',
+      '        STA 0xE2',
+      '        LDA 0xE3',
+      '        CMP 0xE1',
+      '        JC  next        ; 余数 < 除数',
+      '        SUB 0xE1',
+      '        STA 0xE3',
+      '        LDA 0xE2',
+      '        INC             ; 商最低位置 1',
+      '        STA 0xE2',
+      'next:   LDA 0xE4',
+      '        DEC',
+      '        STA 0xE4',
+      '        JNZ loop',
+      '        LDA 0xE2',
+      '        OUT',
+      '        LDA 0xE3',
+      '        OUT',
+      '        HLT'
+    ].join('\n')
+  },
+  {
+    id: 'gcd', name: '最大公约数', title: '辗转相除求最大公约数',
+    note: 'gcd(252, 105) = 21。没有取模指令，就一遍遍相减，直到两边相等。',
+    expect: [gcdRef(252, 105)],
+    src: [
+      '; gcd(252, 105) = 21，用减法版欧几里得',
+      '.org 0x00',
+      '        LDI 252',
+      '        STA 0xE0',
+      '        LDI 105',
+      '        STA 0xE1',
+      'loop:   LDA 0xE0',
+      '        CMP 0xE1',
+      '        JZ  done        ; 两边相等，这个数就是答案',
+      '        JC  blt         ; a < b',
+      '        SUB 0xE1',
+      '        STA 0xE0',
+      '        JMP chk',
+      'blt:    LDA 0xE1',
+      '        SUB 0xE0',
+      '        STA 0xE1',
+      'chk:    LDA 0xE0',
+      '        JNZ loop',
+      '        LDA 0xE1        ; a 减到 0，答案是 b',
+      '        OUT',
+      '        HLT',
+      'done:   LDA 0xE0',
+      '        OUT',
+      '        HLT'
+    ].join('\n')
+  },
+  {
+    id: 'text', name: '字符输出', title: '让机器说出话',
+    note: '同一个输出端口，数字就是数字、字符就是字符——只是看的人怎么解释那八个比特。',
+    memBase: 0xA0,
+    expect: [78, 65, 78, 68, 32, 79, 75],
+    src: [
+      '; 把内存里的一串字节当字符打出来',
+      '.org 0x00',
+      '        LDXI 0xA0',
+      'pr:     LDAX',
+      '        JZ  done        ; 碰到 0 结束',
+      '        OUTC',
+      '        INX',
+      '        JMP pr',
+      'done:   HLT',
+      '.org 0xA0',
+      '        .string "NAND OK"',
+      '        .byte 0'
+    ].join('\n')
+  }
+];
+
+/* ---------------- 5b. 跑一个程序 ---------------- */
+function runProgram(prog, opt) {
+  opt = opt || {};
+  var asm = assemble(prog.src);
+  var cpu = new CPU(asm.code);
+  if (opt.gate !== undefined && opt.gate >= 0) { cpu.faultGate = opt.gate; cpu.faultVal = opt.val ? 1 : 0; }
+  var lim = opt.maxSteps || 400000, n = 0;
+  while (!cpu.halt && n < lim) { if (!cpu.micro()) break; n++; }
+  return { cpu: cpu, asm: asm, steps: n };
+}
+function programResult(prog, opt) {
+  var r = runProgram(prog, opt);
+  return {
+    out: r.cpu.outNums(),
+    text: r.cpu.outText(),
+    halt: r.cpu.halt,
+    overflow: r.cpu.overflow,
+    insn: r.cpu.insn,
+    micro: r.cpu.steps,
+    ok: sameOut(r.cpu.outNums(), prog.expect) && r.cpu.halt && !r.cpu.overflow
+  };
+}
+function sameOut(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+/* ---------------- 6. 故障注入 ----------------
+   把加法器里某一个与非门的输出强行钉死成 0 或 1（真实芯片最常见的「卡死故障」），
+   然后重跑所有程序。两层判据分开记：
+     显性-输出（out）：程序的输出序列变了 —— 用户看得见的错
+     显性-状态（state）：输出没变，但停机状态或内存内容变了 —— 只有检查内部状态才发现
+   只改输出判据下仍然「全部程序输出不变」的故障，才是真正危险的静默故障。 */
+function faultScan(progs, opt) {
+  opt = opt || {};
+  var alu = ALU();
+  var gates = alu.circuit.gates;
+  var n = gates.length;
+  var golden = [], i, k;
+  for (i = 0; i < progs.length; i++) {
+    var g = runProgram(progs[i], { maxSteps: 400000 });
+    golden.push({ out: g.cpu.outNums().join(','), halt: g.cpu.halt, ram: ramHash(g.cpu.ram) });
+  }
+  var rows = [];
+  var onProgress = opt.onProgress;
+  for (var gi = 0; gi < n; gi++) {
+    for (var v = 0; v < 2; v++) {
+      var outFails = [], stateFails = [];
+      for (i = 0; i < progs.length; i++) {
+        var r = runProgram(progs[i], { gate: gi, val: v, maxSteps: 400000 });
+        var out = r.cpu.outNums().join(',');
+        var oBad = out !== golden[i].out;
+        var sBad = oBad || r.cpu.halt !== golden[i].halt || ramHash(r.cpu.ram) !== golden[i].ram;
+        outFails.push(oBad ? 1 : 0);
+        stateFails.push(sBad ? 1 : 0);
+      }
+      var nOut = 0, nState = 0;
+      for (i = 0; i < outFails.length; i++) { nOut += outFails[i]; nState += stateFails[i]; }
+      rows.push({
+        gate: gi, val: v, bit: alu.bitOf(gi), role: gates[gi].role,
+        outFails: outFails, stateFails: stateFails,
+        nOutFail: nOut, nStateFail: nState,
+        silent: nOut === 0,
+        fullySilent: nState === 0
+      });
+    }
+    if (onProgress && (gi % 24 === 0)) onProgress(gi, n);
+  }
+  if (onProgress) onProgress(n, n);
+
+  /* --- 汇总 --- */
+  var nFault = rows.length, nSilentOut = 0, nSilentStrict = 0;
+  var perProgOut = [], perProgState = [];
+  for (i = 0; i < progs.length; i++) { perProgOut.push(0); perProgState.push(0); }
+  var perBit = [];
+  for (i = 0; i < 8; i++) perBit.push({ faults: 0, silent: 0, outFail: 0 });
+  var errHist = {};
+  for (i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    if (r.silent) nSilentOut++;
+    if (r.fullySilent) nSilentStrict++;
+    for (k = 0; k < progs.length; k++) {
+      if (r.outFails[k]) perProgOut[k]++;
+      if (r.stateFails[k]) perProgState[k]++;
+    }
+    if (r.bit >= 0) {
+      perBit[r.bit].faults++;
+      if (r.silent) perBit[r.bit].silent++;
+      if (r.nOutFail > 0) perBit[r.bit].outFail++;
+    }
+    if (r.outFails[0]) {
+      /* 加法程序看得见的故障：它把 44 变成了什么 */
+      var rr = runProgram(progs[0], { gate: r.gate, val: r.val, maxSteps: 400000 });
+      var got0 = rr.cpu.outNums()[0];
+      if (got0 === undefined) { errHist['失控'] = (errHist['失控'] || 0) + 1; }
+      else if (got0 !== progs[0].expect[0]) {
+        var d = ((got0 - progs[0].expect[0]) + 256) % 256;
+        if (d > 128) d -= 256;
+        var mag = Math.abs(d);
+        errHist[mag] = (errHist[mag] || 0) + 1;
+      } else {
+        errHist['只错进位'] = (errHist['只错进位'] || 0) + 1;
+      }
+    }
+  }
+  var errList = Object.keys(errHist).map(function (k2) { return { mag: k2 === '失控' || k2 === '只错进位' ? k2 : +k2, n: errHist[k2] }; })
+    .sort(function (x, y) { return (typeof x.mag === 'number' ? x.mag : 1e9) - (typeof y.mag === 'number' ? y.mag : 1e9); });
+
+  /* --- 贪心挑最小测试集：每次挑能新抓最多故障的程序 --- */
+  var remain = rows.slice(), suite = [], order = [];
+  var coverAt = [];
+  while (order.length < progs.length) {
+    var best = -1, bestGain = -1;
+    for (k = 0; k < progs.length; k++) {
+      if (order.indexOf(k) >= 0) continue;
+      var gain = 0;
+      for (i = 0; i < remain.length; i++) if (remain[i].outFails[k]) gain++;
+      if (gain > bestGain) { bestGain = gain; best = k; }
+    }
+    if (best < 0) break;
+    order.push(best);
+    var kept = [];
+    for (i = 0; i < remain.length; i++) if (!remain[i].outFails[best]) kept.push(remain[i]);
+    remain = kept;
+    suite.push({ id: progs[best].id, name: progs[best].name, caught: bestGain, left: remain.length });
+    coverAt.push({ after: order.length, undetected: remain.length });
+  }
+
+  return {
+    nGates: n, nFault: nFault,
+    nSilent: nSilentOut, silentRate: nSilentOut / nFault,
+    nSilentStrict: nSilentStrict, silentStrictRate: nSilentStrict / nFault,
+    perProgram: progs.map(function (p, idx) {
+      return { id: p.id, name: p.name, nOut: perProgOut[idx], nState: perProgState[idx], rate: perProgOut[idx] / nFault };
+    }),
+    perBit: perBit,
+    errHist: errList,
+    suiteOrder: suite,
+    coverAt: coverAt,
+    rows: rows,
+    golden: golden
+  };
+}
+function firstDiff(exp, got) {
+  var n = Math.max(exp.length, got.length);
+  for (var i = 0; i < n; i++) {
+    if (exp[i] !== got[i]) {
+      if (exp[i] === undefined || got[i] === undefined) return 999;
+      return got[i] - exp[i];
+    }
+  }
+  return 0;
+}
+function ramHash(ram) {
+  var h = 0;
+  for (var i = 0; i < ram.length; i++) h = (h * 31 + ram[i]) & 0x7fffffff;
+  return h;
+}
+/* 精简版：只扫一个程序的若干门（给页面里现场重跑用） */
+function faultScanPartial(prog, gateList) {
+  var alu = ALU();
+  var base = runProgram(prog, { maxSteps: 400000 });
+  var baseOut = base.cpu.outNums().join(',');
+  var baseRam = ramHash(base.cpu.ram);
+  var out = [];
+  for (var i = 0; i < gateList.length; i++) {
+    var gi = gateList[i];
+    var row = { gate: gi, bit: alu.bitOf(gi), role: alu.circuit.gates[gi].role, vals: [] };
+    for (var v = 0; v < 2; v++) {
+      var r = runProgram(prog, { gate: gi, val: v, maxSteps: 400000 });
+      var bad = (r.cpu.outNums().join(',') !== baseOut) || (ramHash(r.cpu.ram) !== baseRam) || !r.cpu.halt;
+      row.vals.push(bad ? 1 : 0);
+    }
+    out.push(row);
+  }
+  return out;
+}
+
+/* ---------------- 导出 ---------------- */
+return {
+  hex: hex, bin8: bin8, u8: u8,
+  Circuit: Circuit,
+  buildBasicGates: buildBasicGates,
+  buildALU8: buildALU8,
+  get ALU() { return ALU(); },
+  CPU: CPU,
+  ISA: ISA, MNEM: MNEM,
+  assemble: assemble, parseNum: parseNum,
+  PROGRAMS: PROGRAMS,
+  runProgram: runProgram, programResult: programResult, sameOut: sameOut,
+  faultScan: faultScan, faultScanPartial: faultScanPartial,
+  ramHash: ramHash,
+  ref: { mulExpect: mulExpect, sieveCount: sieveCount, gcdRef: gcdRef, fibRef: fibRef }
+};
+});
+
+</script>
+<script>
+window.NAND_FAULTS = {"meta":{"gates":192,"faults":384,"silentOut":0,"silentStrict":0,"perBitGates":24,"scanSeconds":91,"programs":[{"id":"add","name":"进位"},{"id":"mul","name":"乘法"},{"id":"fib","name":"斐波那契"},{"id":"sort","name":"冒泡排序"},{"id":"sieve","name":"素数筛"},{"id":"div","name":"除法"},{"id":"gcd","name":"最大公约数"},{"id":"text","name":"字符输出"}]},"perProgram":[{"id":"add","name":"进位","nOut":150,"nState":150,"rate":0.390625},{"id":"mul","name":"乘法","nOut":311,"nState":336,"rate":0.8098958333333334},{"id":"fib","name":"斐波那契","nOut":330,"nState":339,"rate":0.859375},{"id":"sort","name":"冒泡排序","nOut":255,"nState":255,"rate":0.6640625},{"id":"sieve","name":"素数筛","nOut":350,"nState":354,"rate":0.9114583333333334},{"id":"div","name":"除法","nOut":277,"nState":277,"rate":0.7213541666666666},{"id":"gcd","name":"最大公约数","nOut":333,"nState":333,"rate":0.8671875},{"id":"text","name":"字符输出","nOut":0,"nState":0,"rate":0}],"perBit":[{"faults":48,"silent":0,"outFail":48},{"faults":48,"silent":0,"outFail":48},{"faults":48,"silent":0,"outFail":48},{"faults":48,"silent":0,"outFail":48},{"faults":48,"silent":0,"outFail":48},{"faults":48,"silent":0,"outFail":48},{"faults":48,"silent":0,"outFail":48},{"faults":48,"silent":0,"outFail":48}],"errHist":[{"mag":1,"n":13},{"mag":2,"n":20},{"mag":4,"n":20},{"mag":8,"n":18},{"mag":16,"n":20},{"mag":32,"n":20},{"mag":64,"n":19},{"mag":128,"n":16},{"mag":"只错进位","n":4}],"suiteOrder":[{"id":"sieve","name":"素数筛","caught":350,"left":34},{"id":"mul","name":"乘法","caught":21,"left":13},{"id":"gcd","name":"最大公约数","caught":13,"left":0},{"id":"add","name":"进位","caught":0,"left":0},{"id":"fib","name":"斐波那契","caught":0,"left":0},{"id":"sort","name":"冒泡排序","caught":0,"left":0},{"id":"div","name":"除法","caught":0,"left":0},{"id":"text","name":"字符输出","caught":0,"left":0}],"compact":[[0,0,64],[0,1,126],[1,0,54],[1,1,126],[2,0,127],[2,1,54],[3,0,54],[3,1,127],[4,0,127],[4,1,64],[5,0,64],[5,1,127],[6,0,127],[6,1,54],[7,0,127],[7,1,64],[8,0,118],[8,1,127],[9,0,126],[9,1,86],[10,0,127],[10,1,126],[11,0,127],[11,1,54],[12,0,126],[12,1,127],[13,0,126],[13,1,126],[14,0,127],[14,1,54],[15,0,127],[15,1,126],[16,0,126],[16,1,127],[17,0,127],[17,1,126],[18,0,126],[18,1,127],[19,0,127],[19,1,94],[20,0,94],[20,1,127],[21,0,127],[21,1,126],[22,0,127],[22,1,94],[23,0,126],[23,1,127],[24,0,124],[24,1,104],[25,0,22],[25,1,104],[26,0,127],[26,1,22],[27,0,22],[27,1,127],[28,0,127],[28,1,124],[29,0,124],[29,1,127],[30,0,127],[30,1,22],[31,0,127],[31,1,124],[32,0,126],[32,1,127],[33,0,126],[33,1,126],[34,0,127],[34,1,126],[35,0,127],[35,1,126],[36,0,126],[36,1,127],[37,0,126],[37,1,126],[38,0,127],[38,1,126],[39,0,127],[39,1,126],[40,0,126],[40,1,127],[41,0,127],[41,1,126],[42,0,126],[42,1,127],[43,0,127],[43,1,124],[44,0,124],[44,1,127],[45,0,127],[45,1,126],[46,0,127],[46,1,124],[47,0,126],[47,1,127],[48,0,124],[48,1,104],[49,0,22],[49,1,104],[50,0,127],[50,1,22],[51,0,22],[51,1,127],[52,0,127],[52,1,124],[53,0,124],[53,1,127],[54,0,127],[54,1,22],[55,0,127],[55,1,124],[56,0,126],[56,1,127],[57,0,127],[57,1,126],[58,0,126],[58,1,127],[59,0,126],[59,1,126],[60,0,127],[60,1,126],[61,0,127],[61,1,126],[62,0,126],[62,1,127],[63,0,126],[63,1,126],[64,0,127],[64,1,126],[65,0,127],[65,1,126],[66,0,126],[66,1,127],[67,0,127],[67,1,124],[68,0,124],[68,1,127],[69,0,127],[69,1,126],[70,0,127],[70,1,124],[71,0,126],[71,1,127],[72,0,124],[72,1,88],[73,0,7],[73,1,88],[74,0,126],[74,1,7],[75,0,7],[75,1,126],[76,0,126],[76,1,124],[77,0,124],[77,1,126],[78,0,126],[78,1,7],[79,0,126],[79,1,124],[80,0,127],[80,1,126],[81,0,127],[81,1,116],[82,0,126],[82,1,94],[83,0,126],[83,1,127],[84,0,127],[84,1,126],[85,0,87],[85,1,126],[86,0,126],[86,1,87],[87,0,126],[87,1,86],[88,0,87],[88,1,126],[89,0,127],[89,1,126],[90,0,126],[90,1,127],[91,0,127],[91,1,108],[92,0,108],[92,1,127],[93,0,127],[93,1,126],[94,0,127],[94,1,108],[95,0,126],[95,1,127],[96,0,124],[96,1,80],[97,0,22],[97,1,80],[98,0,119],[98,1,22],[99,0,22],[99,1,119],[100,0,119],[100,1,124],[101,0,124],[101,1,119],[102,0,119],[102,1,22],[103,0,119],[103,1,124],[104,0,126],[104,1,119],[105,0,126],[105,1,84],[106,0,119],[106,1,86],[107,0,119],[107,1,62],[108,0,126],[108,1,119],[109,0,86],[109,1,126],[110,0,127],[110,1,86],[111,0,127],[111,1,84],[112,0,86],[112,1,127],[113,0,127],[113,1,124],[114,0,124],[114,1,127],[115,0,127],[115,1,84],[116,0,84],[116,1,127],[117,0,127],[117,1,124],[118,0,127],[118,1,84],[119,0,124],[119,1,127],[120,0,124],[120,1,64],[121,0,6],[121,1,64],[122,0,119],[122,1,6],[123,0,6],[123,1,119],[124,0,119],[124,1,124],[125,0,124],[125,1,119],[126,0,119],[126,1,6],[127,0,119],[127,1,124],[128,0,126],[128,1,119],[129,0,127],[129,1,86],[130,0,118],[130,1,87],[131,0,118],[131,1,126],[132,0,127],[132,1,118],[133,0,87],[133,1,126],[134,0,126],[134,1,87],[135,0,126],[135,1,84],[136,0,87],[136,1,126],[137,0,127],[137,1,124],[138,0,124],[138,1,127],[139,0,127],[139,1,70],[140,0,70],[140,1,127],[141,0,127],[141,1,124],[142,0,127],[142,1,70],[143,0,126],[143,1,127],[144,0,120],[144,1,80],[145,0,7],[145,1,80],[146,0,86],[146,1,7],[147,0,7],[147,1,86],[148,0,86],[148,1,120],[149,0,120],[149,1,86],[150,0,86],[150,1,7],[151,0,86],[151,1,120],[152,0,127],[152,1,86],[153,0,126],[153,1,3],[154,0,87],[154,1,82],[155,0,87],[155,1,126],[156,0,126],[156,1,87],[157,0,22],[157,1,126],[158,0,127],[158,1,18],[159,0,127],[159,1,20],[160,0,22],[160,1,127],[161,0,126],[161,1,126],[162,0,126],[162,1,126],[163,0,126],[163,1,83],[164,0,83],[164,1,126],[165,0,126],[165,1,126],[166,0,126],[166,1,83],[167,0,127],[167,1,126],[168,0,120],[168,1,16],[169,0,19],[169,1,16],[170,0,22],[170,1,19],[171,0,19],[171,1,22],[172,0,22],[172,1,120],[173,0,120],[173,1,22],[174,0,22],[174,1,19],[175,0,22],[175,1,120],[176,0,123],[176,1,22],[177,0,127],[177,1,66],[178,0,86],[178,1,18],[179,0,86],[179,1,127],[180,0,127],[180,1,86],[181,0,86],[181,1,127],[182,0,127],[182,1,18],[183,0,127],[183,1,70],[184,0,86],[184,1,127],[185,0,122],[185,1,121],[186,0,121],[186,1,122],[187,0,122],[187,1,66],[188,0,66],[188,1,122],[189,0,122],[189,1,121],[190,0,122],[190,1,66],[191,0,123],[191,1,122]]};
+</script>
+<script>
+/* 与非之上 · 界面 */
+(function () {
+'use strict';
+var N = window.NAND;
+var FD = window.NAND_FAULTS || null;
+var $ = function (id) { return document.getElementById(id); };
+
+var GATES = null;
+var S = {
+  tab: 'gate',
+  sw: [0, 0],
+  ad: { a: 200, b: 100, sub: false, reveal: 8 },
+  progIdx: 0,
+  src: '',
+  asm: null,
+  cpu: null,
+  running: false,
+  timer: null,
+  ftGate: 0,
+  ftVal: 0,
+  ftOut: null,
+  ftCheck: null,
+  ramCells: null,
+  listRows: null
+};
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function pad2(v) { v = v & 255; return (v < 16 ? '0' : '') + v.toString(16).toUpperCase(); }
+function pct(x) { return (100 * x).toFixed(1) + '%'; }
+
+/* ==================== ① 门 ==================== */
+var TRUTH = null;
+function renderGate() {
+  var a = S.sw[0], b = S.sw[1];
+  var ea = $('sw-a'), eb = $('sw-b');
+  ea.setAttribute('data-v', a); eb.setAttribute('data-v', b);
+  ea.querySelector('.sw-val').textContent = a;
+  eb.querySelector('.sw-val').textContent = b;
+
+  var r = GATES.run(a, b);
+  $('t-a').textContent = a; $('t-b').textContent = b; $('t-y').textContent = r.NAND;
+  $('w-a').classList.toggle('on', !!a);
+  $('w-b').classList.toggle('on', !!b);
+  $('w-y').classList.toggle('on', !!r.NAND);
+  var lamp = $('g-lamp');
+  lamp.textContent = r.NAND;
+  lamp.className = 'lamp' + (r.NAND ? ' on' : '');
+
+  /* 真值表：逐格用门级电路实算，并与 JS 运算符对拍 */
+  var names = ['NAND', 'NOT', 'AND', 'OR', 'XOR'];
+  var h = '<table class="tbl"><thead><tr><th>A</th><th>B</th>';
+  names.forEach(function (n) { h += '<th>' + n + '</th>'; });
+  h += '</tr></thead><tbody>';
+  var mismatch = 0;
+  for (var x = 0; x < 2; x++) for (var y = 0; y < 2; y++) {
+    var o = GATES.run(x, y);
+    var want = { NAND: (x && y) ? 0 : 1, NOT: x ? 0 : 1, AND: x & y, OR: x | y, XOR: x ^ y };
+    var cur = (x === a && y === b) ? ' class="cur"' : '';
+    h += '<tr' + cur + '><td>' + x + '</td><td>' + y + '</td>';
+    names.forEach(function (n) {
+      if (o[n] !== want[n]) mismatch++;
+      h += '<td class="' + (o[n] ? 'one' : 'zero') + '">' + o[n] + '</td>';
+    });
+    h += '</tr>';
+  }
+  h += '</tbody></table>';
+  $('g-table').innerHTML = h;
+  $('g-cost').innerHTML = '五个门一共用掉 <b>' + GATES.nGates + '</b> 个与非门：'
+    + 'NAND 1 门、NOT 1 门、AND 2 门、OR 3 门、XOR 4 门。'
+    + '<br>20 个格子全部由电路真算出来，与 JS 的 &amp; | ^ 对拍：'
+    + (mismatch ? '<b>不一致 ' + mismatch + ' 处</b>' : '完全一致。');
+  $('g-note').innerHTML = '与非门的规则是 <b>!(A &amp; B)</b>。把 A 接到两个输入上，它就变成 NOT；'
+    + '把输出再取一次反，就是 AND。所有逻辑都能从这一个门长出来——这台计算机也一样。';
+}
+
+/* ==================== ② 加法器 ==================== */
+function renderAdder() {
+  var alu = N.ALU;
+  var a = S.ad.a & 255, b = S.ad.b & 255, sub = S.ad.sub ? 1 : 0;
+  var p = alu.probe(a, b, sub);
+  var res = alu.eval(a, b, sub);
+
+  var h = '<div class="ad-row hd">'
+    + '<span class="rlab">位</span>'
+    + '<span class="bit hd">A</span><span class="bit hd">B</span>'
+    + '<span class="carry hd">进</span><span class="arrow">→</span>'
+    + '<span class="bit hd">和</span><span class="carry hd">出</span>'
+    + '</div>';
+  for (var i = 7; i >= 0; i--) {
+    var ai = (a >> i) & 1, bi = (b >> i) & 1;
+    var live = i < S.ad.reveal;
+    h += '<div class="ad-row' + (live ? ' live' : '') + '" data-bit="' + i + '">'
+      + '<span class="rlab">' + i + '</span>'
+      + '<button class="bit' + (ai ? ' one' : '') + '" data-k="a" data-i="' + i + '">' + ai + '</button>'
+      + '<button class="bit' + (bi ? ' one' : '') + '" data-k="b" data-i="' + i + '">' + bi + '</button>'
+      + '<span class="carry' + (p.cin[i] ? ' one' : '') + '">' + p.cin[i] + '</span>'
+      + '<span class="arrow">→</span>'
+      + '<span class="bit ro' + (p.sum[i] ? ' one' : '') + '">' + p.sum[i] + '</span>'
+      + '<span class="carry' + (p.cin[i + 1] ? ' one' : '') + '">' + p.cin[i + 1] + '</span>'
+      + '</div>';
+  }
+  $('ad-bits').innerHTML = h;
+
+  /* 每位 24 个与非门到底用在哪：直接从电路里数，不手写 */
+  var ROLE = {
+    inv: ['反相器', '减法时把 B 取反'],
+    mux: ['二选一', '决定这一位用 B 还是 ~B'],
+    xor: ['异或 ×2', '半加：两个异或串出「和」'],
+    and: ['与 ×2', '两个与门找出会产生进位的两种情形'],
+    or: ['或', '把两种情形并成一个进位出']
+  };
+  var cnt = {};
+  for (var g = alu.bits[0].from; g <= alu.bits[0].to; g++) {
+    var rl = alu.circuit.gates[g].role;
+    cnt[rl] = (cnt[rl] || 0) + 1;
+  }
+  var gh = '<h3 class="mt">每一位的 24 个与非门用在哪</h3><table class="tbl"><thead><tr>'
+    + '<th>部件</th><th>门数</th><th>干什么</th></tr></thead><tbody>';
+  Object.keys(ROLE).forEach(function (k) {
+    if (!cnt[k]) return;
+    gh += '<tr><td>' + ROLE[k][0] + '</td><td class="one">' + cnt[k] + '</td><td>' + ROLE[k][1] + '</td></tr>';
+  });
+  gh += '<tr><td><b>合计</b></td><td><b>' + (alu.bits[0].to - alu.bits[0].from + 1)
+    + '</b></td><td>× 8 位 = ' + alu.nGates + ' 门</td></tr>';
+  gh += '</tbody></table>';
+  gh += '<div class="note">这 192 个门是整台机器里<b>唯一</b>真正做算术的地方。'
+    + '乘法、除法、排序、素数筛——所有程序最后都落到这 192 个与非门上，一遍遍地加减。</div>';
+  $('ad-gates').innerHTML = gh;
+
+  var op = sub ? ' − ' : ' + ';
+  $('ad-res').innerHTML =
+    '<span>' + a + op + b + ' = <b>' + res.r + '</b></span>'
+    + '<span class="small">十六进制 ' + pad2(a) + (sub ? ' − ' : ' + ') + pad2(b)
+    + ' = ' + pad2(res.r) + '</span>'
+    + '<span class="small">进位输出 ' + p.cin[8]
+    + (sub ? '（0 表示 A &lt; B，借位）' : '（1 表示超过 255，溢出）') + '</span>';
+
+  $('ad-note').innerHTML = '每一位都要等上一位的进位。链条从第 0 位一路爬到第 7 位，'
+    + '八位加法器的快慢由这条链决定——这就是「串行进位」的代价。'
+    + '<br>点「单步传播进位」可以看进位一位一位往上爬。减法走的是同一条链：'
+    + '把 B 取反、进位输入置 1，加法器就变成了减法器。';
+}
+
+/* ==================== ③ 处理器 ==================== */
+var BLOCKS = [
+  ['pc', 104, 18, 100, 34, 'PC', '程序计数器'],
+  ['mar', 104, 68, 100, 34, 'MAR', '地址寄存器'],
+  ['ram', 104, 116, 100, 52, 'RAM', '256 字节'],
+  ['mdr', 104, 182, 100, 34, 'MDR', '数据寄存器'],
+  ['ir', 104, 232, 100, 34, 'IR', '指令寄存器'],
+  ['a', 434, 18, 100, 34, 'A', '累加器'],
+  ['b', 434, 68, 100, 34, 'B', '辅助寄存器'],
+  ['x', 434, 125, 100, 34, 'X', '变址寄存器'],
+  ['alu', 434, 173, 100, 52, 'ALU', '门级加减法'],
+  ['fl', 434, 232, 100, 34, '标志', 'Z / C / N'],
+  ['out', 434, 286, 100, 34, 'OUT', '输出端口']
+];
+var BUSY = [35, 85, 142, 199, 249, 303];
+var SIGMAP = {
+  pc: 'PCout PCin PCinc', mar: 'MARin', ram: 'RAMout RAMin',
+  mdr: 'MDRin MDRout', ir: 'IRin', a: 'Ain Aout', b: 'Bin Bout',
+  x: 'Xout Xin Xinc Xdec', alu: 'ALU', fl: 'flagZ flagC flagN', out: 'OUTin'
+};
+
+function datapathSvg() {
+  var h = '<svg viewBox="0 0 660 340" role="img" aria-label="数据通路">';
+  /* 总线 */
+  h += '<line class="busline" id="w-bus" x1="318" y1="35" x2="318" y2="303"/>';
+  BUSY.forEach(function (y) {
+    h += '<line class="wire2" x1="204" y1="' + y + '" x2="434" y2="' + y + '"/>';
+  });
+  h += '<text class="blk-s" x="318" y="322">总线</text>';
+  /* 控制单元 */
+  h += '<rect class="blk" id="b-ctl" x="250" y="2" width="136" height="30" rx="5"/>'
+    + '<text class="blk-t" x="318" y="15">控制单元</text>'
+    + '<text class="blk-s" x="318" y="27" id="v-ctl">—</text>'
+    + '<line class="wire2" x1="318" y1="32" x2="318" y2="35"/>';
+  /* 方块 */
+  BLOCKS.forEach(function (bl) {
+    var id = bl[0], x = bl[1], y = bl[2], w = bl[3], ht = bl[4], nm = bl[5], sub = bl[6];
+    var cx = x + w / 2, cy = y + ht / 2;
+    h += '<rect class="blk" id="b-' + id + '" x="' + x + '" y="' + y + '" width="' + w + '" height="' + ht + '" rx="5"/>'
+      + '<text class="blk-t" x="' + cx + '" y="' + (cy - 3) + '">' + esc(nm) + '</text>'
+      + '<text class="blk-s" x="' + cx + '" y="' + (cy + 11) + '" id="v-' + id + '">' + esc(sub) + '</text>';
+  });
+  h += '</svg>';
+  return h;
+}
+
+function highlightCtl(ctl) {
+  var set = {};
+  String(ctl || '').split(/[,\s]+/).forEach(function (s) { if (s) set[s] = 1; });
+  Object.keys(SIGMAP).forEach(function (id) {
+    var hit = SIGMAP[id].split(' ').some(function (s) { return set[s]; });
+    var e = $('b-' + id);
+    if (e) e.classList.toggle('on', hit);
+  });
+  var bus = $('w-bus');
+  if (bus) bus.classList.toggle('on', Object.keys(set).length > 0);
+}
+
+function renderCpu() {
+  var cpu = S.cpu;
+  if (!$('cpu-svg').firstChild) $('cpu-svg').innerHTML = datapathSvg();
+  var last = cpu.log.length ? cpu.log[cpu.log.length - 1] : null;
+  highlightCtl(cpu.halt ? '' : (last ? last.ctl : ''));
+
+  var vals = {
+    pc: pad2(cpu.PC), mar: pad2(cpu.MAR), ram: pad2(cpu.ram[cpu.MAR]),
+    mdr: pad2(cpu.MDR), ir: pad2(cpu.IR), a: pad2(cpu.A), b: pad2(cpu.B),
+    x: pad2(cpu.X), alu: pad2(cpu.A), fl: 'Z' + cpu.Z + ' C' + cpu.C + ' N' + cpu.N,
+    out: pad2(cpu.OUT)
+  };
+  Object.keys(vals).forEach(function (k) {
+    var e = $('v-' + k);
+    if (e) e.textContent = vals[k];
+  });
+  var vc = $('v-ctl');
+  if (vc) vc.textContent = cpu.halt ? '停机' : ('T' + cpu.T + ' · ' + cpu.phase());
+
+  var bus = $('cpu-bus'); if (bus) bus.textContent = pad2(cpu.bus);
+  var ph = $('cpu-phase'); if (ph) ph.textContent = cpu.halt ? (cpu.overflow ? '跑飞' : '停机') : cpu.phase();
+  var ct = $('cpu-ctl'); if (ct) ct.textContent = cpu.halt ? '—' : (last ? last.ctl : '—');
+
+  /* 寄存器芯片 */
+  var regs = [
+    ['PC', cpu.PC, true], ['MAR', cpu.MAR, true], ['MDR', cpu.MDR, true], ['IR', cpu.IR, true],
+    ['A', cpu.A, false], ['B', cpu.B, false], ['X', cpu.X, false], ['OUT', cpu.OUT, false]
+  ];
+  var rh = '';
+  regs.forEach(function (r) {
+    rh += '<div class="reg"><div class="rn">' + r[0] + '</div><div class="rv">' + pad2(r[1]) + '</div>'
+      + '<div class="rb">' + N.bin8(r[1]) + '</div></div>';
+  });
+  [['Z', cpu.Z], ['C', cpu.C], ['N', cpu.N]].forEach(function (f) {
+    rh += '<div class="reg flag' + (f[1] ? ' on' : '') + '"><div class="rn">标志 ' + f[0] + '</div>'
+      + '<div class="rv">' + f[1] + '</div><div class="rb">' + (f[1] ? '置位' : '清零') + '</div></div>';
+  });
+  $('cpu-regs').innerHTML = rh;
+
+  var op = N.ISA[cpu.IR];
+  $('cpu-cur').innerHTML = '<div class="kv">'
+    + '<dt>机器码</dt><dd>' + pad2(cpu.IR) + '</dd>'
+    + '<dt>助记符</dt><dd>' + (op ? esc(op.name) : '（非法指令）') + '</dd>'
+    + '<dt>T 状态</dt><dd>' + cpu.T + ' / ' + cpu.phase() + '</dd>'
+    + '<dt>指令数</dt><dd>' + cpu.insn + '</dd>'
+    + '<dt>微步数</dt><dd>' + cpu.steps + '</dd>'
+    + '<dt>状态</dt><dd>' + (cpu.halt ? (cpu.overflow ? '失控停机' : '已停机') : '运行中') + '</dd>'
+    + '</div>';
+
+  /* 微指令流水 */
+  var lh = '';
+  var tail = cpu.log.slice(-16);
+  tail.forEach(function (l) {
+    lh += '<div class="ln' + (l.t >= 2 ? ' exec' : '') + '"><span class="tt">T' + l.t + '</span> '
+      + '<span class="cc">' + esc(l.ctl) + '</span>  ' + esc(l.desc) + '</div>';
+  });
+  if (!lh) lh = '<div class="ln">（还没有执行任何微指令）</div>';
+  var lg = $('cpu-log');
+  lg.innerHTML = lh;
+  lg.scrollTop = lg.scrollHeight;
+
+  renderRam();
+}
+
+function renderRam() {
+  var cpu = S.cpu;
+  if (!S.ramCells) {
+    var h = '';
+    for (var i = 0; i < 256; i++) h += '<div class="cell" data-a="' + i + '">' + pad2(i) + '</div>';
+    $('cpu-ram').innerHTML = h;
+    S.ramCells = $('cpu-ram').querySelectorAll('.cell');
+  }
+  for (var j = 0; j < 256; j++) {
+    var c = S.ramCells[j], v = cpu.ram[j];
+    c.textContent = pad2(v);
+    var isPc = j === cpu.PC, isMar = j === cpu.MAR;
+    c.className = 'cell' + (v ? ' nz' : '') + (isPc ? ' pc' : '') + (isMar ? ' mar' : '')
+      + (isPc && isMar ? ' both' : '');
+  }
+}
+
+/* ==================== ④ 编程 ==================== */
+/* 文本框的内容只由 loadProgram / 用户编辑决定，renderProg 一律不碰它。 */
+function loadProgram(i) {
+  S.progIdx = i;
+  $('pg-src').value = N.PROGRAMS[i].src;
+  applySrc();
+}
+function applySrc() {
+  stopRun();
+  S.src = $('pg-src').value;
+  S.asm = N.assemble(S.src);
+  S.cpu = new N.CPU(S.asm.code);
+  S.ramCells = null;
+  renderProg();
+  renderCpu();
+}
+
+function renderProg() {
+  /* 程序按钮 */
+  if (!$('pg-list').childNodes.length) {
+    var bh = '';
+    N.PROGRAMS.forEach(function (p, i) {
+      bh += '<button class="btn ghost sm" data-p="' + i + '">' + esc(p.name) + '</button>';
+    });
+    $('pg-list').innerHTML = bh;
+  }
+  var btns = $('pg-list').querySelectorAll('button');
+  for (var i = 0; i < btns.length; i++) btns[i].className = 'btn sm' + (i === S.progIdx ? '' : ' ghost');
+
+  var p = N.PROGRAMS[S.progIdx];
+
+  /* 清单 */
+  var asm = S.asm || N.assemble(S.src);
+  var h = '';
+  asm.listing.forEach(function (s) {
+    var by = s.bytes.map(pad2).join(' ').padEnd(8);
+    var cls = 'll';
+    if (s.kind === 'ins' && s.addr === S.cpu.insnAddr && !S.cpu.halt) cls += ' cur';
+    h += '<div class="' + cls + '" data-a="' + s.addr + '" data-k="' + s.kind + '"><span class="ad">'
+      + pad2(s.addr) + '</span> <span class="by">' + by + '</span>'
+      + '<span class="tx">' + esc(s.text) + '</span></div>';
+  });
+  asm.errs.forEach(function (e) {
+    h += '<div class="ll err">第 ' + e.line + ' 行：' + esc(e.msg) + '</div>';
+  });
+  if (!asm.listing.length) h = '<div class="ll">（空程序）</div>';
+  $('pg-listing').innerHTML = h;
+  S.listRows = $('pg-listing').querySelectorAll('.ll');
+
+  /* 输出台 */
+  var cpu = S.cpu;
+  var oh = '';
+  cpu.out.forEach(function (o, k) {
+    var ch = o.v >= 32 && o.v < 127 ? String.fromCharCode(o.v) : '·';
+    oh += '<div class="orow"><span class="on">#' + (k + 1) + '</span>'
+      + '<span class="ov">' + o.v + '</span>'
+      + '<span class="oc">' + pad2(o.v) + '  ' + esc(ch) + '</span></div>';
+  });
+  if (!oh) oh = '<div class="empty">（还没有输出）</div>';
+  $('pg-out').innerHTML = oh;
+
+  /* 与独立参考对拍 */
+  var got = cpu.outNums();
+  var cmpH = '';
+  if (!asm.errs.length) {
+    if (!cpu.halt) cmpH = '运行中……已走 ' + cpu.insn + ' 条指令、' + cpu.steps + ' 个微步。';
+    else {
+      var ok = N.sameOut(got, p.expect);
+      cmpH = (ok ? '<b>与独立参考一致</b>' : '<b>与参考不符</b>') + '：模型输出 ['
+        + got.join(' ') + ']（' + got.length + ' 项），参考实现 ['
+        + p.expect.join(' ') + ']（' + p.expect.length + ' 项）。'
+        + '<br>指令 ' + cpu.insn + ' 条 / 微步 ' + cpu.steps + ' 个。'
+        + '<br>参考值是用普通 JS 另算的（乘法 199×201、素数个数、gcd、斐波那契），不是处理器自己的结果。';
+    }
+  } else {
+    cmpH = '<b>' + asm.errs.length + ' 处汇编错误</b>，先修好再运行。';
+  }
+  $('pg-cmp').innerHTML = cmpH;
+  $('pg-note').innerHTML = esc(p.note);
+}
+
+function renderIsa() {
+  if ($('isa').childNodes.length) return;
+  var keys = Object.keys(N.ISA).map(Number).sort(function (a, b) { return a - b; });
+  var h = '<table><thead><tr><th>机器码</th><th>助记符</th><th>操作数</th><th>做什么</th><th>控制信号</th></tr></thead><tbody>';
+  keys.forEach(function (k) {
+    var e = N.ISA[k];
+    var kind = e.addr ? '地址' : (e.imm ? '立即数' : '—');
+    h += '<tr><td class="c">' + pad2(k) + '</td><td class="n">' + e.name + '</td>'
+      + '<td class="d">' + kind + '</td><td class="d">' + esc(e.note || e.name) + '</td>'
+      + '<td class="d">' + esc(e.ctl) + '</td></tr>';
+  });
+  h += '</tbody></table>';
+  $('isa').innerHTML = h;
+}
+
+/* ==================== ⑤ 故障 ==================== */
+function gateInfo(g) {
+  var alu = N.ALU;
+  var gate = alu.circuit.gates[g];
+  var bit = alu.bitOf(g);
+  return { gate: gate, bit: bit, role: gate.role };
+}
+
+function ftMaskOf(g, v) {
+  if (!FD) return null;
+  for (var i = 0; i < FD.compact.length; i++) {
+    if (FD.compact[i][0] === g && FD.compact[i][1] === v) return FD.compact[i][2];
+  }
+  return null;
+}
+
+function renderFaultInfo() {
+  var gi = gateInfo(S.ftGate);
+  var mask = ftMaskOf(S.ftGate, S.ftVal);
+  var names = N.PROGRAMS.map(function (p) { return p.name; });
+  var broken = [];
+  if (mask !== null) for (var i = 0; i < names.length; i++) if (mask & (1 << i)) broken.push(names[i]);
+  $('ft-gno').textContent = S.ftGate;
+  $('ft-info').innerHTML = '门 #' + S.ftGate + ' 属于加法器第 <b>' + gi.bit + '</b> 位，是个 <b>' + gi.gate.role
+    + '</b> 门（共 ' + N.ALU.nGates + ' 门）。'
+    + (mask === null ? '' : '<br>Node 全量扫描记录：卡死在 ' + S.ftVal + ' 时，'
+      + (broken.length ? '打破 <b>' + broken.length + '</b> 个程序（' + broken.join('、') + '）'
+        : '所有程序输出都不变'));
+}
+
+function runFault() {
+  var host = $('ft-table');
+  host.innerHTML = '<div class="note">正在注入门 #' + S.ftGate + '（卡死 ' + S.ftVal + '）并重跑 8 个程序……</div>';
+  var t0 = Date.now();
+  var h = '<table class="ft"><thead><tr><th>程序</th><th>基准输出</th><th>注入后</th><th>判定</th></tr></thead><tbody>';
+  var nBad = 0, nRunaway = 0;
+  /* 故障可能把一个会停机的程序变成不停吐数的程序——显示时截断，但要标出来 */
+  function brief(x, p) {
+    if (p.id === 'text') return JSON.stringify(x.text) + (x.halt ? '' : ' 跑飞');
+    var a = x.out;
+    var s = '[' + a.slice(0, 8).join(' ') + (a.length > 8 ? ' …' : '') + ']';
+    if (a.length > 8) s += '（共 ' + a.length + ' 项）';
+    if (!x.halt) s += ' 跑飞';
+    return s;
+  }
+  N.PROGRAMS.forEach(function (p) {
+    var g = N.programResult(p);
+    var r = N.programResult(p, { gate: S.ftGate, val: S.ftVal });
+    var same = N.sameOut(g.out, r.out) && g.halt === r.halt;
+    if (!same) nBad++;
+    if (!r.halt) nRunaway++;
+    h += '<tr><td class="pn">' + esc(p.name) + '</td><td>' + esc(brief(g, p)) + '</td><td>'
+      + (same ? esc(brief(r, p)) : '<span style="color:#a02b20">' + esc(brief(r, p)) + '</span>')
+      + '</td><td class="' + (same ? 'ok' : 'bad') + '">' + (same ? '照样正确' : '出错') + '</td></tr>';
+  });
+  h += '</tbody></table>';
+  h += '<div class="note">' + (nBad === 0
+    ? '这个门在全部 8 个程序里都没被用到——它的输出没有一条路径通往用户看得见的地方。'
+    : '8 个程序里有 <b>' + nBad + '</b> 个出错'
+      + (nRunaway ? '，其中 <b>' + nRunaway + '</b> 个不是算错而是<b>停不下来</b>——'
+        + '进位坏掉会让循环的退出条件永远不成立，于是一个本来 178 条指令收工的程序开始无限吐数' : '')
+      + '。用时 ' + (Date.now() - t0) + ' ms。')
+    + '</div>';
+  host.innerHTML = h;
+}
+
+function renderFaultSummary() {
+  if (!FD) { $('ft-summary').innerHTML = '<div class="note">没有嵌入扫描数据。</div>'; return; }
+  var m = FD.meta;
+  var h = '';
+
+  h += '<div class="sum-block"><h3>总账</h3><div class="big-num">'
+    + '<div><b>' + m.gates + '</b><span>个与非门</span></div>'
+    + '<div><b>' + m.faults + '</b><span>个单点故障</span></div>'
+    + '<div><b>' + m.silentOut + '</b><span>输出级静默</span></div>'
+    + '<div><b>' + m.silentStrict + '</b><span>完全静默</span></div>'
+    + '</div><div class="note">把加法器里每一个与非门的输出轮流钉死在 0 和 1，'
+    + '共 ' + m.faults + ' 个故障，每个都重跑全部 ' + m.programs.length + ' 个程序。'
+    + '结果是<b>一个静默故障都没有</b>：' + m.gates + ' 个门里没有任何一个是冗余的，'
+    + '随便哪一处焊死，都会被这套程序抓到。扫描耗时 ' + m.scanSeconds + ' 秒。</div></div>';
+
+  h += '<div class="sum-block"><h3>单个程序能抓到多少故障</h3><div class="bars">';
+  FD.perProgram.slice().sort(function (a, b) { return b.rate - a.rate; }).forEach(function (p) {
+    h += '<div class="bar-row"><span class="bl">' + esc(p.name) + '</span>'
+      + '<span class="bt"><span class="bf' + (p.rate === 0 ? ' alt' : '') + '" style="width:'
+      + (100 * p.rate).toFixed(1) + '%"></span></span>'
+      + '<span class="bv">' + p.nOut + ' / ' + m.faults + '  ' + pct(p.rate) + '</span></div>';
+  });
+  h += '</div><div class="note">「字符输出」是这次实验的对照组：它只搬字节、从不做算术，'
+    + '所以加法器坏成什么样它都照样输出 NAND OK。<b>覆盖率 0 不是缺陷，是设计。</b>'
+    + '真正的问题在另一头：只跑「进位」这一个程序，会漏掉 <b>'
+    + (m.faults - FD.perProgram[0].nOut) + '</b> 个故障（'
+    + pct(1 - FD.perProgram[0].rate) + '）。</div></div>';
+
+  h += '<div class="sum-block"><h3>最少几个程序能把故障抓干净</h3><div class="bars">';
+  FD.suiteOrder.forEach(function (s) {
+    h += '<div class="bar-row"><span class="bl">' + esc(s.name) + '</span>'
+      + '<span class="bt"><span class="bf" style="width:'
+      + (100 * (m.faults - s.left) / m.faults).toFixed(1) + '%"></span></span>'
+      + '<span class="bv">新抓 ' + s.caught + '，剩 ' + s.left + '</span></div>';
+  });
+  var need = FD.suiteOrder.findIndex(function (s) { return s.left === 0; }) + 1;
+  h += '</div><div class="note">贪心挑法：每次挑能新抓最多故障的程序。'
+    + '结果<b>三个程序就够</b>——素数筛抓 ' + FD.suiteOrder[0].caught + ' 个，'
+    + '乘法再抓 ' + FD.suiteOrder[1].caught + ' 个，最大公约数补上最后 ' + FD.suiteOrder[2].caught + ' 个，'
+    + '合计 ' + m.faults + ' 个一个不漏。剩下的五个程序一个都没多抓。</div></div>';
+
+  h += '<div class="sum-block"><h3>按位分解</h3><div class="bars">';
+  FD.perBit.forEach(function (b, i) {
+    h += '<div class="bar-row"><span class="bl">第 ' + i + ' 位</span>'
+      + '<span class="bt"><span class="bf" style="width:' + (100 * b.outFail / b.faults).toFixed(1) + '%"></span></span>'
+      + '<span class="bv">' + b.outFail + ' / ' + b.faults + ' 显性</span></div>';
+  });
+  h += '</div><div class="note">每一位都是 48 个故障、48 个显性，一条水平线。'
+    + '进位链没有让任何一位变成「安全的」——八位一样脆弱，也一样重要。</div></div>';
+
+  h += '<div class="sum-block"><h3>偏差有多大</h3><div class="hist">';
+  FD.errHist.forEach(function (e) {
+    var label = typeof e.mag === 'number' ? ('±' + e.mag) : String(e.mag);
+    var maxN = Math.max.apply(null, FD.errHist.map(function (x) { return x.n; }));
+    h += '<div class="hist-row"><span class="hl">' + label + '</span>'
+      + '<span class="ht"><span class="hf" style="width:' + (100 * e.n / maxN).toFixed(1) + '%"></span></span>'
+      + '<span class="hv">' + e.n + ' 个</span></div>';
+  });
+  h += '</div><div class="note">在「200 + 100 = 44」这个程序上，被加法器故障改坏的结果，'
+    + '偏差<b>全部恰好落在 2 的幂上</b>：±1、±2、±4 …… ±128，外加几个只错进位标志、'
+    + '数值没变的。没有「差不多对」这回事——错就是整整一位的权重。'
+    + '<br>这个不变量在 7 组操作数 × 加减 × 384 个故障 = 5376 次注入下全部成立。</div></div>';
+
+  h += '<div class="sum-block"><h3>浏览器现算 vs Node 全量扫描</h3>'
+    + '<p class="lead" style="margin-bottom:8px">下面这个按钮会在你的浏览器里现场重跑选定位的全部 48 个门，'
+    + '与上面那份 Node 扫描结果逐门对拍。数字是活的，不是写死的。</p>'
+    + '<button class="btn ghost" id="ft-cross">现场重跑第 ' + gateInfo(S.ftGate).bit
+    + ' 位的 24 个门（× 2 种卡死 = 48 个故障）</button>'
+    + '<div class="note" id="ft-cross-out">还没跑。</div></div>';
+
+  $('ft-summary').innerHTML = h;
+}
+
+function crossCheck() {
+  var alu = N.ALU;
+  var bit = gateInfo(S.ftGate).bit;
+  var from = alu.bits[bit].from, to = alu.bits[bit].to;
+  var out = $('ft-cross-out');
+  if (!out) return;
+  out.innerHTML = '正在重跑第 ' + bit + ' 位的 ' + (to - from + 1) + ' 个门 × 2 种卡死值，'
+    + '每个都跑一遍「进位」程序……';
+  setTimeout(function () {
+    var prog = N.PROGRAMS[0];
+    var base = N.programResult(prog);
+    var rows = [], match = 0, n = 0;
+    for (var g = from; g <= to; g++) {
+      for (var v = 0; v < 2; v++) {
+        var r = N.programResult(prog, { gate: g, val: v });
+        var bad = !N.sameOut(base.out, r.out) || base.halt !== r.halt;
+        var rec = ftMaskOf(g, v);
+        var ref = rec === null ? null : ((rec & 1) ? true : false);
+        n++;
+        if (ref === bad) match++;
+        rows.push([g, v, bad, ref]);
+      }
+    }
+    var badRows = rows.filter(function (r) { return r[2] !== r[3]; });
+    out.innerHTML = '现场重跑 <b>' + n + '</b> 个故障，与 Node 扫描结果一致 <b>' + match + ' / ' + n
+      + '</b>。' + (badRows.length ? '不一致：' + JSON.stringify(badRows.slice(0, 6)) : '逐门一致。')
+      + '<br>第 ' + bit + ' 位在这一个程序上，有 <b>'
+      + rows.filter(function (r) { return r[2]; }).length + '</b> / ' + n + ' 个故障可见。';
+  }, 30);
+}
+
+/* ==================== 标签与事件 ==================== */
+function setTab(name) {
+  S.tab = name;
+  var tabs = $('tabs').querySelectorAll('.tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].dataset.tab === name);
+  ['gate', 'adder', 'cpu', 'prog', 'fault'].forEach(function (t) {
+    $('p-' + t).classList.toggle('on', t === name);
+  });
+  if (name === 'cpu') { renderCpu(); }
+  if (name === 'prog') { renderProg(); renderIsa(); }
+  if (name === 'fault') { renderFaultInfo(); renderFaultSummary(); }
+  if (name === 'adder') { renderAdder(); }
+}
+
+function stopRun() {
+  S.running = false;
+  if (S.timer) { clearInterval(S.timer); S.timer = null; }
+  var b = $('cpu-run');
+  if (b) { b.textContent = '连续运行'; b.classList.remove('on'); }
+}
+
+function runTick() {
+  var cpu = S.cpu;
+  if (cpu.halt) { stopRun(); renderCpu(); renderProg(); return; }
+  var guard = 0;
+  do { if (!cpu.micro()) break; guard++; } while (cpu.T !== 0 && guard < 12);
+  renderCpu(); renderProg();
+  if (cpu.halt || cpu.overflow) stopRun();
+}
+
+function init() {
+  GATES = N.buildBasicGates();
+  N.ALU;                       /* 预热：把 192 门的电路建好 */
+  S.src = N.PROGRAMS[0].src;
+  $('st-gates').textContent = N.ALU.nGates;
+  $('st-isa').textContent = Object.keys(N.ISA).length;
+  $('st-prog').textContent = N.PROGRAMS.length;
+  $('st-fault').textContent = FD ? FD.meta.faults : '—';
+  $('ft-gate').max = String(N.ALU.nGates - 1);
+  $('ftr-build').textContent = '与非门 ' + N.ALU.nGates + ' · 指令 '
+    + Object.keys(N.ISA).length + ' · 程序 ' + N.PROGRAMS.length
+    + (FD && FD.meta ? ' · 扫描 ' + FD.meta.scanSeconds + ' 秒' : '');
+
+  S.cpu = new N.CPU(N.assemble(S.src).code);
+  S.asm = N.assemble(S.src);
+
+  /* --- 事件 --- */
+  $('tabs').addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('.tab') : null;
+    if (t) setTab(t.dataset.tab);
+  });
+  ['sw-a', 'sw-b'].forEach(function (id, i) {
+    $(id).addEventListener('click', function () { S.sw[i] = S.sw[i] ? 0 : 1; renderGate(); });
+  });
+
+  $('ad-a').addEventListener('input', function () {
+    var v = parseInt(this.value, 10); S.ad.a = isNaN(v) ? 0 : Math.max(0, Math.min(255, v)); renderAdder();
+  });
+  $('ad-b').addEventListener('input', function () {
+    var v = parseInt(this.value, 10); S.ad.b = isNaN(v) ? 0 : Math.max(0, Math.min(255, v)); renderAdder();
+  });
+  $('ad-sub').addEventListener('change', function () { S.ad.sub = this.checked; S.ad.reveal = 8; renderAdder(); });
+  $('ad-step').addEventListener('click', function () {
+    S.ad.reveal = (S.ad.reveal + 1) % 9; renderAdder();
+  });
+  $('ad-reset').addEventListener('click', function () { S.ad.reveal = 0; renderAdder(); });
+  $('ad-bits').addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('button.bit') : null;
+    if (!t || !t.dataset.k) return;
+    var i = +t.dataset.i;
+    if (t.dataset.k === 'a') S.ad.a = (S.ad.a ^ (1 << i)) & 255;
+    else S.ad.b = (S.ad.b ^ (1 << i)) & 255;
+    $('ad-a').value = S.ad.a; $('ad-b').value = S.ad.b;
+    S.ad.reveal = 8;
+    renderAdder();
+  });
+
+  $('cpu-micro').addEventListener('click', function () {
+    stopRun(); S.cpu.micro(); renderCpu(); renderProg();
+  });
+  $('cpu-insn').addEventListener('click', function () {
+    stopRun();
+    var g = 0;
+    do { if (!S.cpu.micro()) break; g++; } while (S.cpu.T !== 0 && g < 12);
+    renderCpu(); renderProg();
+  });
+  $('cpu-run').addEventListener('click', function () {
+    if (S.running) { stopRun(); return; }
+    if (S.cpu.halt) { applySrc(); }
+    S.running = true;
+    this.textContent = '暂停';
+    this.classList.add('on');
+    S.timer = setInterval(runTick, 90);
+  });
+  $('cpu-reset').addEventListener('click', function () { stopRun(); applySrc(); });
+
+  $('pg-list').addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('button[data-p]') : null;
+    if (!t) return;
+    loadProgram(+t.dataset.p);
+  });
+  $('pg-asm').addEventListener('click', function () { stopRun(); applySrc(); });
+  $('pg-run').addEventListener('click', function () {
+    stopRun();
+    if (S.cpu.halt) applySrc();
+    var t0 = Date.now(), g = 0;
+    while (!S.cpu.halt && g++ < 400000) if (!S.cpu.micro()) break;
+    renderCpu(); renderProg();
+    $('pg-note').innerHTML = esc(N.PROGRAMS[S.progIdx].note)
+      + '<br>本次运行用了 ' + (Date.now() - t0) + ' ms 真实时间。';
+  });
+  $('pg-micro').addEventListener('click', function () { stopRun(); S.cpu.micro(); renderCpu(); renderProg(); });
+  $('pg-reset').addEventListener('click', function () { stopRun(); applySrc(); });
+
+  $('ft-gate').addEventListener('input', function () {
+    S.ftGate = +this.value;
+    renderFaultInfo();
+    var b = $('ft-cross');
+    if (b) b.textContent = '现场重跑第 ' + gateInfo(S.ftGate).bit + ' 位的 24 个门（× 2 种卡死 = 48 个故障）';
+  });
+  $('ft-val').addEventListener('change', function () { S.ftVal = +this.value; renderFaultInfo(); });
+  $('ft-run').addEventListener('click', runFault);
+  $('ft-summary').addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('#ft-cross') : null;
+    if (t) crossCheck();
+  });
+
+  /* --- 首屏 --- */
+  $('pg-src').value = S.src;
+  S.asm = N.assemble(S.src);
+  S.cpu = new N.CPU(S.asm.code);
+  renderGate();
+  renderAdder();
+  renderCpu();
+  renderProg();
+  renderIsa();
+  renderFaultInfo();
+  renderFaultSummary();
+  setTab('gate');
+}
+
+/* ==================== 验证探针 ==================== */
+window.__probe = {
+  counts: function () {
+    return {
+      tabs: document.querySelectorAll('#tabs .tab').length,
+      gateRows: document.querySelectorAll('#g-table tbody tr').length,
+      gateCells: document.querySelectorAll('#g-table tbody td').length,
+      adRows: document.querySelectorAll('#ad-bits .ad-row[data-bit]').length,
+      adLive: document.querySelectorAll('#ad-bits .ad-row.live').length,
+      adGateRows: document.querySelectorAll('#ad-gates tbody tr').length,
+      regs: document.querySelectorAll('#cpu-regs .reg').length,
+      ramCells: document.querySelectorAll('#cpu-ram .cell').length,
+      ramNz: document.querySelectorAll('#cpu-ram .cell.nz').length,
+      ramPc: document.querySelectorAll('#cpu-ram .cell.pc').length,
+      ramMar: document.querySelectorAll('#cpu-ram .cell.mar').length,
+      blocks: document.querySelectorAll('#cpu-svg rect.blk').length,
+      blocksOn: document.querySelectorAll('#cpu-svg rect.blk.on').length,
+      logLines: document.querySelectorAll('#cpu-log .ln').length,
+      isaRows: document.querySelectorAll('#isa tbody tr').length,
+      progBtns: document.querySelectorAll('#pg-list button').length,
+      listRows: document.querySelectorAll('#pg-listing .ll').length,
+      outRows: document.querySelectorAll('#pg-out .orow').length,
+      sumBars: document.querySelectorAll('#ft-summary .bar-row').length,
+      histRows: document.querySelectorAll('#ft-summary .hist-row').length,
+      panelsOn: document.querySelectorAll('main .panel.on').length
+    };
+  },
+  tabs: function () { return ['gate', 'adder', 'cpu', 'prog', 'fault']; },
+  setTab: setTab,
+  setSw: function (a, b) { S.sw = [a ? 1 : 0, b ? 1 : 0]; renderGate(); },
+  gateState: function () {
+    var out = {};
+    document.querySelectorAll('#g-table tbody tr').forEach(function (tr, i) {
+      out['row' + i] = Array.prototype.map.call(tr.querySelectorAll('td'), function (td) {
+        return td.textContent;
+      }).join('');
+    });
+    out.lamp = $('g-lamp').textContent;
+    out.lampOn = $('g-lamp').className.indexOf('on') >= 0;
+    out.y = $('t-y').textContent;
+    return out;
+  },
+  adder: function (a, b, sub, reveal) {
+    S.ad.a = a; S.ad.b = b; S.ad.sub = !!sub; S.ad.reveal = reveal === undefined ? 8 : reveal;
+    $('ad-a').value = a; $('ad-b').value = b;
+    renderAdder();
+    var rows = [];
+    document.querySelectorAll('#ad-bits .ad-row[data-bit]').forEach(function (r) {
+      var t = Array.prototype.map.call(r.querySelectorAll('.bit,.carry'), function (e) { return e.textContent; });
+      rows.push({ bit: +r.dataset.bit, cells: t, live: r.className.indexOf('live') >= 0 });
+    });
+    return { rows: rows, res: $('ad-res').textContent };
+  },
+  cpuState: function () {
+    var c = S.cpu;
+    return {
+      PC: c.PC, MAR: c.MAR, MDR: c.MDR, IR: c.IR, A: c.A, B: c.B, X: c.X, OUT: c.OUT,
+      T: c.T, Z: c.Z, C: c.C, N: c.N, halt: c.halt, overflow: c.overflow,
+      insn: c.insn, steps: c.steps, bus: c.bus, phase: c.phase(),
+      ctl: $('cpu-ctl').textContent, out: c.outNums(),
+      onBlocks: Array.prototype.map.call(document.querySelectorAll('#cpu-svg rect.blk.on'), function (e) { return e.id; })
+    };
+  },
+  cpuMicro: function (n) {
+    stopRun();
+    var d = [];
+    for (var i = 0; i < (n || 1); i++) { var r = S.cpu.micro(); if (r) d.push(r.desc); }
+    renderCpu(); renderProg();
+    return d;
+  },
+  cpuInsn: function (n) {
+    stopRun();
+    for (var i = 0; i < (n || 1); i++) {
+      var g = 0;
+      do { if (!S.cpu.micro()) break; g++; } while (S.cpu.T !== 0 && g < 12);
+    }
+    renderCpu(); renderProg();
+    return { insn: S.cpu.insn, halt: S.cpu.halt };
+  },
+  cpuRun: function (max) {
+    stopRun();
+    var g = 0, lim = max || 400000;
+    while (!S.cpu.halt && g++ < lim) if (!S.cpu.micro()) break;
+    renderCpu(); renderProg();
+    return { halt: S.cpu.halt, insn: S.cpu.insn, steps: S.cpu.steps, out: S.cpu.outNums() };
+  },
+  cpuReset: function () { stopRun(); applySrc(); return true; },
+  asm: function (src) {
+    var r = N.assemble(src);
+    return {
+      errs: r.errs, maxAddr: r.maxAddr, labels: r.labels,
+      bytes: Array.prototype.slice.call(r.code, 0, r.maxAddr + 1)
+    };
+  },
+  loadSrc: function (src) {
+    $('pg-src').value = src;
+    for (var i = 0; i < N.PROGRAMS.length; i++) {
+      if (N.PROGRAMS[i].src === src) { S.progIdx = i; break; }
+    }
+    applySrc();
+    return { errs: S.asm.errs.length, maxAddr: S.asm.maxAddr, progIdx: S.progIdx };
+  },
+  listCur: function () {
+    var e = document.querySelector('#pg-listing .ll.cur');
+    return e ? e.textContent.trim() : null;
+  },
+  outText: function () { return $('pg-out').textContent.trim(); },
+  isaText: function () { return $('isa').textContent.replace(/\s+/g, ' '); },
+  adGatesText: function () { return $('ad-gates').textContent.replace(/\s+/g, ' '); },
+  cmpText: function () { return $('pg-cmp').textContent; },
+  fault: function (gate, val) {
+    S.ftGate = gate; S.ftVal = val;
+    $('ft-gate').value = String(gate);
+    $('ft-val').value = String(val);
+    renderFaultInfo();
+    runFault();
+    var rows = [];
+    document.querySelectorAll('#ft-table tbody tr').forEach(function (tr) {
+      var td = tr.querySelectorAll('td');
+      rows.push([td[0].textContent, td[1].textContent, td[2].textContent, td[3].textContent]);
+    });
+    return { rows: rows, info: $('ft-info').textContent };
+  },
+  faultMeta: function () { return FD ? FD.meta : null; },
+  faultSummaryText: function () { return $('ft-summary').textContent.replace(/\s+/g, ' ').trim(); },
+  cross: function () { crossCheck(); return true; },
+  crossText: function () {
+    var e = $('ft-cross-out');
+    return e ? e.textContent.replace(/\s+/g, ' ').trim() : '(容器不存在)';
+  },
+  model: function () {
+    return {
+      gates: N.ALU.nGates, perBit: N.ALU.bits[0].to - N.ALU.bits[0].from + 1,
+      isa: Object.keys(N.ISA).length, progs: N.PROGRAMS.length,
+      silent: FD ? FD.meta.silentOut : null, faults: FD ? FD.meta.faults : null
+    };
+  },
+  probeAlu: function (a, b, sub) { return N.ALU.probe(a, b, sub ? 1 : 0); },
+  overflow: function () {
+    return document.documentElement.scrollWidth - document.documentElement.clientWidth;
+  },
+  /* 每次验证都必须把真实视口报出来：只看图会以为测了 390，实际可能拿到别的宽度 */
+  viewport: function () {
+    return {
+      w: document.documentElement.clientWidth,
+      h: document.documentElement.clientHeight,
+      scrollW: document.documentElement.scrollWidth,
+      innerW: window.innerWidth,
+      dpr: window.devicePixelRatio || 1
+    };
+  },
+  visible: function (sel) {
+    var es = document.querySelectorAll(sel), n = 0;
+    for (var i = 0; i < es.length; i++) {
+      var st = getComputedStyle(es[i]);
+      if (st.opacity !== '0' && st.display !== 'none' && st.visibility !== 'hidden') n++;
+    }
+    return { total: es.length, visible: n };
+  },
+  /* 条形图必须读真实渲染尺寸：DOM 里有元素、width 也对，屏幕上一片空白是真实事故 */
+  barFill: function () {
+    var out = [];
+    document.querySelectorAll('#ft-summary .bf').forEach(function (e) {
+      var w = e.getBoundingClientRect().width;
+      var tw = e.parentNode.getBoundingClientRect().width;
+      out.push([Math.round(w * 10) / 10, Math.round(tw * 10) / 10, tw ? Math.round(1000 * w / tw) / 10 : -1]);
+    });
+    return out;
+  }
+};
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+})();
+
+</script>
+
+</body>
+</html>

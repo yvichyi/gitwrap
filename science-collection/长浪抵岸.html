@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="改变海底地形，推动二维浅水长波，比较深海、陆架与两处潮位计的记录。">
+<title>长浪抵岸 · 海底地形与海啸传播实验</title>
+<style>
+:root { --paper:#f3efe6; --ink:#243b3a; --muted:#687770; --line:#d5d4c6; --teal:#315b57; --dark:#173d3d; --rust:#b96447; --mint:#a9cbbb; --sea:#417682; --serif:"Palatino Linotype","Songti SC","STSong","SimSun",serif; --sans:"Avenir Next","Microsoft YaHei","PingFang SC",sans-serif; }
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; background:var(--paper); }
+body { margin:0; color:var(--ink); background:var(--paper); font:12px/1.65 var(--sans); }
+button,input { font:inherit; }
+button { color:var(--ink); background:#f8f5ec; border:1px solid #c9cec2; border-radius:2px; cursor:pointer; padding:7px 10px; transition:background .16s,color .16s,border-color .16s; }
+button:hover:not(:disabled) { border-color:var(--teal); color:var(--teal); }
+button:disabled { cursor:not-allowed; opacity:.48; }
+button:focus-visible,input:focus-visible,canvas:focus-visible { outline:2px solid var(--rust); outline-offset:2px; }
+button.selected,button[aria-pressed="true"] { color:var(--dark); background:#e3e9df; border-color:#95aa9c; }
+button.primary { color:#f7f2e8; background:var(--teal); border-color:var(--teal); }
+button.primary:hover:not(:disabled) { color:#fffaf0; background:#244b48; }
+.sheet { width:min(1320px,calc(100% - 64px)); margin:0 auto; }
+.mast { min-height:65px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); }
+.brand { color:var(--ink); font-size:12px; display:flex; align-items:center; gap:9px; }.brand i { color:var(--rust); padding:0 4px; font-style:normal; }.brand-icon { color:var(--teal); font:28px var(--serif); }
+.mast>span { color:var(--muted); font-size:9px; letter-spacing:.11em; }.mast>span b,.footer b { color:var(--rust); padding:0 5px; }
+.hero { display:grid; grid-template-columns:1.3fr 1fr; gap:8%; padding:43px 0 25px; align-items:center; }
+.eyebrow,.small-cap,.card-kicker { color:var(--teal); font-size:10px; letter-spacing:.12em; font-weight:600; }
+.eyebrow::before { content:""; display:inline-block; width:6px; height:6px; background:var(--rust); margin-right:9px; border-radius:50%; }
+h1,h2,h3,p,figure { margin:0; }
+h1 { font:500 clamp(52px,7vw,90px)/1.2 var(--serif); letter-spacing:-.055em; margin:8px 0 12px; white-space:nowrap; }
+h1 span { color:var(--teal); margin-left:7px; }
+.deck { max-width:660px; font:17px/1.9 var(--serif); color:#52635c; }
+.hero-aside { max-width:385px; justify-self:end; width:100%; border-left:1px solid #a8b8a6; padding-left:30px; }
+.hero-aside svg { display:block; width:100%; height:138px; }.hero-aside p { color:var(--muted); font-size:10px; line-height:1.9; }.hero-aside p b { color:var(--teal); font-family:var(--serif); font-size:13px; }
+.folio { display:flex; justify-content:space-between; border-top:1px solid var(--line); padding:10px 0; font-size:10px; letter-spacing:.07em; color:var(--muted); }.folio b { color:var(--rust); padding-left:7px; }
+.laboratory { margin-top:25px; }.section-head { display:flex; justify-content:space-between; align-items:end; gap:16px; margin-bottom:17px; }
+h2 { font:500 clamp(22px,2.5vw,30px)/1.5 var(--serif); letter-spacing:-.025em; margin-top:5px; }.status { max-width:48%; font-size:10px; color:var(--muted); border-left:2px solid var(--rust); padding-left:10px; }
+.lab-grid { display:grid; grid-template-columns:minmax(0,1fr) 294px; gap:18px; align-items:start; }.visuals,.map-card,.trace-card,.controls { min-width:0; }
+.map-card,.trace-card,.control-card { background:#faf7ef; border:1px solid var(--line); }
+.map-card { padding:13px; }.plate-head { display:flex; justify-content:space-between; gap:10px; align-items:center; padding:2px 2px 10px; }
+.plate-head h3 { font:500 16px/1.5 var(--serif); }.plate-head h3 span,.plate-head>span { color:var(--muted); font:9px var(--sans); }
+.map-wrap { position:relative; overflow:hidden; background:#1b474c; }#ocean-map { display:block; width:100%; height:auto; aspect-ratio:12/7; touch-action:none; cursor:crosshair; }
+.map-label,.map-axis { position:absolute; pointer-events:none; color:#f1efe4; background:#102f32c4; font-size:9px; letter-spacing:.08em; }
+.map-label { right:8px; top:8px; padding:3px 7px; }.map-axis { padding:2px 5px; opacity:.8; }.axis-left { left:8px; top:50%; writing-mode:vertical-rl; }.axis-bottom { left:50%; bottom:7px; transform:translateX(-50%); white-space:nowrap; }
+.map-foot { min-height:30px; display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 1px 0; color:var(--muted); font-size:9px; }.legend { display:flex; align-items:center; gap:5px; white-space:nowrap; }.legend-swatch { width:9px; height:9px; display:inline-block; border:1px solid #8b948a; border-radius:50%; }.wave-pos { background:#d88466; margin-left:5px; }.wave-neg { background:#8ec7c8; margin-left:7px; }.hover-readout { text-align:right; }
+.control-strip { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; }.transport { display:flex; flex-wrap:wrap; gap:5px; }.transport button { font-size:10px; min-width:75px; }.clockbox { display:grid; grid-template-columns:auto auto; align-items:baseline; column-gap:8px; border-left:1px solid var(--line); padding-left:14px; white-space:nowrap; }.clockbox span,.clockbox i { color:var(--muted); font-size:9px; font-style:normal; }.clockbox strong { font:20px var(--serif); letter-spacing:.05em; color:var(--teal); }.clockbox i { grid-column:2; text-align:right; margin-top:-4px; }
+.trace-card { padding:12px 13px 9px; }.trace-card .plate-head { padding-bottom:2px; }#trace-chart { display:block; width:100%; height:auto; aspect-ratio:960/212; }.trace-card figcaption { display:flex; flex-wrap:wrap; align-items:center; gap:7px 15px; border-top:1px solid #e1ded3; padding:6px 2px 0; color:var(--muted); font-size:9px; }.trace-key { display:inline-flex; align-items:center; gap:5px; }.trace-key i { width:13px; height:2px; display:inline-block; background:currentColor; }.key-a { color:var(--teal); }.key-b { color:var(--rust); }
+.controls { display:grid; gap:11px; }.control-card { padding:13px; }.control-card h3 { font:500 17px/1.5 var(--serif); margin-top:2px; }.control-card>p { color:var(--muted); font-size:9px; line-height:1.65; margin:3px 0 10px; }.card-kicker { font-size:8px; letter-spacing:.1em; }.preset-stack { display:grid; gap:5px; margin-top:8px; }.preset { width:100%; display:grid; grid-template-columns:32px minmax(0,1fr) 12px; align-items:center; gap:7px; padding:6px 7px; text-align:left; }.preset b { display:block; font-size:10px; font-weight:600; }.preset small { display:block; color:var(--muted); font-size:8px; line-height:1.4; margin-top:1px; }.preset .check { font-size:9px; color:#92a49a; }.preset.selected .check { color:var(--rust); }.profile-icon { display:block; position:relative; width:28px; height:20px; background:#d8e5df; border-bottom:2px solid #315b57; overflow:hidden; }.profile-icon::before { content:""; position:absolute; left:-2px; right:-1px; bottom:0; background:#4d8790; border-top:1px solid #f3efe6; }.narrow-icon::before { height:7px; clip-path:polygon(0 0,56% 0,78% 18%,100% 100%,0 100%); }.wide-icon::before { height:12px; clip-path:polygon(0 0,26% 5%,74% 10%,100% 45%,100% 100%,0 100%); }.ridge-icon::before { height:10px; clip-path:polygon(0 0,35% 22%,55% 0,72% 23%,100% 50%,100% 100%,0 100%); }
+.source-card label,.view-card label { display:flex; justify-content:space-between; align-items:baseline; gap:8px; color:#455852; font-size:9px; }.source-card output,.view-card output { color:var(--rust); font:14px var(--serif); white-space:nowrap; }
+input[type="range"] { display:block; width:100%; height:16px; margin:5px 0 0; accent-color:var(--teal); cursor:pointer; }.range-ends { display:flex; justify-content:space-between; color:#87918a; font-size:8px; margin-top:-2px; }.tool-row,.view-toggle { display:flex; flex-wrap:wrap; gap:4px; margin-top:9px; }.tool-row button,.view-toggle button { font-size:8px; padding:5px 7px; }.tool.selected { border-color:#93ab9d; background:#e4eae1; }
+.readings-card h3 { margin-bottom:7px; }.reading-row { display:grid; grid-template-columns:23px minmax(0,1fr) auto; align-items:center; gap:7px; min-height:43px; border-top:1px solid #e4e0d5; }.station-dot { display:inline-grid; place-items:center; width:19px; height:19px; border-radius:50%; color:#faf7ef; font:10px var(--serif); }.dot-a { background:#315b57; }.dot-b { background:#b96447; }.reading-row>div b { display:block; font:12px var(--serif); }.reading-row small { display:block; font-size:8px; color:var(--muted); }.reading-row>strong { color:var(--teal); font:14px var(--serif); white-space:nowrap; }.arrival-list { display:flex; justify-content:space-between; gap:8px; border-top:1px solid #e4e0d5; padding:7px 0 1px; color:var(--muted); font-size:8px; }.arrival-list b { color:var(--ink); font-weight:500; }.arrival-list i { color:var(--rust); font-style:normal; }.control-card .micro-note { color:#899189; font-size:8px; margin:3px 0 0; }
+.view-card { padding-bottom:10px; }.view-toggle { border-top:1px solid #e4e0d5; padding-top:8px; }.view-toggle button { flex:1; }.readout-chip { display:flex; justify-content:space-between; align-items:center; padding:10px 13px; background:#e6ebe0; border-left:2px solid var(--rust); color:var(--muted); font-size:9px; }.readout-chip strong { color:var(--ink); font:15px var(--serif); }
+.explanation { border-top:1px solid #bbc7b9; margin-top:46px; padding:25px 0 24px; }.explanation-head { display:flex; align-items:end; gap:20px; }.explanation-head h2 { margin:0; }.explanation-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; padding:20px 0 17px; }.explanation-grid>div { border-left:1px solid #b8c5b8; padding-left:14px; }.explanation-grid h3 { font:500 16px var(--serif); margin:0 0 5px; }.explanation-grid p { max-width:360px; color:#62716a; font-size:10px; line-height:1.9; }.explanation-grid b { color:var(--teal); font-family:var(--serif); font-size:13px; }.source-note { color:#808b83; border-top:1px solid var(--line); padding-top:9px; font-size:9px; }
+.footer { min-height:47px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--line); color:var(--muted); font-size:9px; letter-spacing:.04em; }
+@media (max-width:900px) { .sheet { width:min(100% - 40px,760px); }.hero { gap:5%; }.hero-aside { padding-left:20px; }.lab-grid { grid-template-columns:minmax(0,1fr) 260px; gap:12px; }.map-card { padding:9px; }.plate-head h3 { font-size:14px; }.map-foot { align-items:flex-start; flex-direction:column; }.hover-readout { text-align:left; }.control-card { padding:11px; } }
+@media (max-width:760px) { .sheet { width:calc(100% - 36px); }.hero { grid-template-columns:1fr; padding:32px 0 20px; }.hero-aside { justify-self:start; max-width:none; border-left:0; border-top:1px solid #a8b8a6; padding:13px 0 0; display:grid; grid-template-columns:minmax(130px,.8fr) 1fr; align-items:center; gap:18px; }.hero-aside svg { height:100px; }.lab-grid { grid-template-columns:1fr; }.controls { grid-template-columns:repeat(2,minmax(0,1fr)); }.view-card,.readout-chip { align-self:stretch; }.map-foot { flex-direction:row; align-items:center; }.hover-readout { text-align:right; }.explanation-grid { gap:17px; }.explanation-grid>div { padding-left:10px; } }
+@media (max-width:520px) { body { font-size:11px; }.sheet { width:calc(100% - 28px); }.mast { min-height:53px; }.mast>span { font-size:7px; }.brand { font-size:10px; }.hero { padding-top:24px; }.deck { font-size:15px; line-height:1.75; }.hero-aside { grid-template-columns:1fr; gap:4px; }.hero-aside svg { height:90px; }.section-head { align-items:flex-start; flex-direction:column; gap:6px; }.status { max-width:100%; }.map-card { padding:7px; }.plate-head { align-items:flex-start; }.plate-head h3 { font-size:12px; }.plate-head h3 span,.plate-head>span { font-size:7px; }.map-foot { font-size:8px; flex-wrap:wrap; }.axis-left { left:5px; }.axis-bottom { font-size:7px; }.control-strip { align-items:flex-start; }.transport { max-width:calc(100% - 80px); }.transport button { min-width:0; padding:6px 7px; font-size:9px; }.clockbox { display:flex; flex-direction:column; align-items:flex-end; gap:0; padding-left:8px; }.clockbox strong { font-size:16px; }.clockbox i { margin:0; }.trace-card { padding:9px 7px; }.trace-card .plate-head { display:block; }.trace-card .plate-head>span { display:block; margin-top:2px; }.trace-card figcaption { gap:5px 10px; font-size:8px; }.controls { grid-template-columns:1fr; gap:8px; }.control-card { padding:11px; }.readout-chip { padding:8px 10px; }.explanation { margin-top:29px; padding:20px 0; }.explanation-head { align-items:flex-start; flex-direction:column; gap:4px; }.explanation-grid { grid-template-columns:1fr; gap:14px; padding:15px 0; }.explanation-grid p { max-width:none; }.footer { align-items:flex-start; flex-direction:column; justify-content:center; gap:3px; padding:8px 0; } }
+@media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *,*::before,*::after { transition:none!important; } }
+.depth-shallow { background:#91ab9e; margin-left:5px; }
+.depth-deep { background:#19434b; margin-left:7px; }
+.depth-land { background:#cfccbb; margin-left:7px; }
+
+</style></head><body>
+<header class="mast sheet">
+  <div class="brand"><span class="brand-icon" aria-hidden="true">∿</span><span>海面与海底 <i>/</i> 科学实验</span></div>
+  <span>FIELD NOTE <b>07</b> · OCEAN DYNAMICS</span>
+</header>
+
+<main class="sheet">
+  <section class="hero" aria-labelledby="title">
+    <div>
+      <div class="eyebrow">长波 · 水深 · 抵达时间</div>
+      <h1 id="title">长浪<span>抵岸</span></h1>
+      <p class="deck">海啸穿过深海时并不高，却把整列海水一同推向前方。这里用一片理想海面隆起代替海床形变，再看水深怎样改变传播与抵达。</p>
+    </div>
+    <aside class="hero-aside" aria-label="深海长波传播示意">
+      <svg viewBox="0 0 400 145" role="img" aria-label="长波从深海经过陆架抵达海岸">
+        <path d="M0 91 C80 88 130 90 193 94 C230 98 253 111 281 119 C320 130 351 130 400 130 L400 145 L0 145Z" fill="#315b57" opacity=".86"/>
+        <path d="M0 91 C80 88 130 90 193 94 C230 98 253 111 281 119 C320 130 351 130 400 130" fill="none" stroke="#738f7f" stroke-width="2"/>
+        <path d="M0 83 C49 78 95 88 145 83 S242 83 291 95" fill="none" stroke="#bd7659" stroke-width="2"/>
+        <path d="M0 75 C48 70 94 80 144 75 S241 75 288 87" fill="none" stroke="#b7cabe" stroke-width="1.4" stroke-dasharray="4 5"/>
+        <path d="M302 115 L302 48 L341 48 L341 32 L400 32" fill="none" stroke="#243b3a" stroke-width="2"/>
+        <path d="M315 47 Q320 29 325 47 Q330 29 335 47" fill="none" stroke="#b96447" stroke-width="1.8"/>
+        <circle cx="72" cy="83" r="8" fill="#f3efe6" stroke="#b96447" stroke-width="2"/>
+        <circle cx="72" cy="83" r="22" fill="none" stroke="#f3efe6" stroke-width="1" opacity=".7"/>
+        <circle cx="72" cy="83" r="36" fill="none" stroke="#f3efe6" stroke-width="1" opacity=".4"/>
+        <text x="9" y="134" fill="#e9e7dc" font-size="9">深海</text>
+        <text x="265" y="143" fill="#e9e7dc" font-size="9">陆架</text>
+        <text x="347" y="24" fill="#52635c" font-size="9">岸线</text>
+      </svg>
+      <p>浅水长波速度约为 <b>c = √(g h)</b>。水深 h 决定行进速度，也让陆架成为传播路径的一部分。</p>
+    </aside>
+  </section>
+
+  <div class="folio"><span>二维浅水波 · 理想化海盆</span><span>拖动波源与测点 <b>↗</b></span></div>
+
+  <section class="laboratory" aria-labelledby="lab-title">
+    <div class="section-head">
+      <div><div class="small-cap">实验台 01</div><h2 id="lab-title">海底写下的波，沿水深铺开</h2></div>
+      <div class="status" id="run-status" role="status" aria-live="polite">波源已放置，尚未推演</div>
+    </div>
+
+    <div class="lab-grid">
+      <div class="visuals">
+        <figure class="map-card">
+          <div class="plate-head"><h3>海盆平面 <span>112 × 64 个水深单元</span></h3><span>单元边长 3 km</span></div>
+          <div class="map-wrap">
+            <canvas id="ocean-map" width="960" height="560" tabindex="0" aria-label="海盆地图。使用箭头键移动当前选中的波源或测点，按空格开始或暂停。"></canvas>
+            <div class="map-label">EAST ↗</div>
+            <div class="map-axis axis-left">北</div>
+            <div class="map-axis axis-bottom">深海 → 陆架 → 海岸</div>
+          </div>
+          <div class="map-foot">
+            <div class="legend" id="map-legend"><span class="legend-swatch depth-shallow"></span>浅海 <span class="legend-swatch depth-deep"></span>深海 <span class="legend-swatch wave-pos"></span>抬升 <span class="legend-swatch wave-neg"></span>下降</div>
+            <div id="hover-readout" class="hover-readout" aria-live="polite">移动光标查看水深与海面高度</div>
+          </div>
+        </figure>
+
+        <div class="control-strip">
+          <div class="transport" aria-label="推演控制">
+            <button id="play-button" class="primary" type="button">▶ 推演</button>
+            <button id="pause-button" type="button" disabled>Ⅱ 暂停</button>
+            <button id="minute-button" type="button">＋ 1 分钟</button>
+            <button id="reset-button" type="button">↺ 重置</button>
+          </div>
+          <div class="clockbox"><span>模型时间</span><strong id="model-clock">00:00</strong><i id="clock-label">分 : 秒</i></div>
+        </div>
+
+        <figure class="trace-card">
+          <div class="plate-head"><h3>两处海面记录 <span>垂直轴：海面异常高度</span></h3><span id="trace-caption">时间轴随推演展开</span></div>
+          <canvas id="trace-chart" width="960" height="212" aria-label="A 和 B 两个测点的海面异常时间记录"></canvas>
+          <figcaption><span class="trace-key key-a">A <i></i></span><span class="trace-key key-b">B <i></i></span><span>水平轴：模型分钟</span><span>零线上方为抬升，下方为下降</span></figcaption>
+        </figure>
+      </div>
+
+      <aside class="controls" aria-label="实验设置">
+        <section class="control-card bathy-card">
+          <div class="card-kicker">01 / 海底剖面</div>
+          <h3>换一片海盆</h3>
+          <p>同一次抬升，遇到不同的水深分布。</p>
+          <div class="preset-stack" role="group" aria-label="海底地形预设">
+            <button class="preset selected" type="button" data-bathy="narrow" aria-pressed="true"><span class="profile-icon narrow-icon" aria-hidden="true"></span><span><b>窄陆架</b><small>海岸前的浅水带较窄</small></span><span class="check">●</span></button>
+            <button class="preset" type="button" data-bathy="wide" aria-pressed="false"><span class="profile-icon wide-icon" aria-hidden="true"></span><span><b>宽陆架</b><small>较长路径处在浅海</small></span><span class="check">○</span></button>
+            <button class="preset" type="button" data-bathy="ridge" aria-pressed="false"><span class="profile-icon ridge-icon" aria-hidden="true"></span><span><b>海底山脊</b><small>深海中有一道浅水隆起</small></span><span class="check">○</span></button>
+          </div>
+        </section>
+
+        <section class="control-card source-card">
+          <div class="card-kicker">02 / 初始扰动</div>
+          <h3>放下一个波源</h3>
+          <p>在图上拖动红点；按箭头键可细调所选位置。</p>
+          <label for="magnitude">初始海面抬升 <output id="magnitude-value" for="magnitude">0.8 m</output></label>
+          <input id="magnitude" type="range" min="0.2" max="1.8" step="0.1" value="0.8">
+          <div class="range-ends"><span>0.2 m</span><span>1.8 m</span></div>
+          <div class="tool-row" role="group" aria-label="当前地图操作对象">
+            <button type="button" class="tool selected" data-mode="source" aria-pressed="true">移动波源</button>
+            <button type="button" class="tool" data-mode="a" aria-pressed="false">放置 A</button>
+            <button type="button" class="tool" data-mode="b" aria-pressed="false">放置 B</button>
+          </div>
+        </section>
+
+        <section class="control-card readings-card">
+          <div class="card-kicker">03 / 潮位计</div>
+          <h3>等波经过</h3>
+          <div class="reading-row"><span class="station-dot dot-a">A</span><div><b id="a-depth">—</b><small>水深 · <span id="a-speed">—</span></small></div><strong id="a-reading">0.00 m</strong></div>
+          <div class="reading-row"><span class="station-dot dot-b">B</span><div><b id="b-depth">—</b><small>水深 · <span id="b-speed">—</span></small></div><strong id="b-reading">0.00 m</strong></div>
+          <div class="arrival-list"><span>首波越过测点</span><b>A <i id="a-arrival">未到</i> · B <i id="b-arrival">未到</i></b></div>
+          <div class="arrival-list"><span>直线路径估时</span><b>A <i id="a-estimate">—</i> · B <i id="b-estimate">—</i></b></div>
+          <p class="micro-note">估时只按各段水深计算 √(g h)，未计入波浪绕行与反射。</p>
+        </section>
+
+        <section class="control-card view-card">
+          <div class="card-kicker">04 / 推演节奏</div>
+          <label for="speed">播放速度 <output id="speed-value" for="speed">1×</output></label>
+          <input id="speed" type="range" min="0.5" max="3" step="0.5" value="1">
+          <div class="range-ends"><span>慢一些</span><span>快一些</span></div>
+          <div class="view-toggle" role="group" aria-label="地图图层">
+            <button type="button" class="layer selected" data-layer="wave" aria-pressed="true">海面异常</button>
+            <button type="button" class="layer" data-layer="depth" aria-pressed="false">水深</button>
+          </div>
+        </section>
+
+        <div class="readout-chip"><span>最大海面异常</span><strong id="peak-height">0.00 m</strong></div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="explanation" aria-labelledby="model-title">
+    <div class="explanation-head"><div class="small-cap">模型说明</div><h2 id="model-title">这是一次可重复的理想实验</h2></div>
+    <div class="explanation-grid">
+      <div><h3>水深决定速度</h3><p>采用二维线性浅水方程推进海面高度与深度平均流速。对长波而言，局部传播速度约为 <b>√(g h)</b>；浅处走得慢，波峰会改变形状，测点记录因此不同。</p></div>
+      <div><h3>初始条件很简单</h3><p>红点代表一片瞬间抬高的海面，随后从静止开始传播。海底地形固定，岸线反射波浪；外海边缘逐渐吸收波能，减少计算区域边界造成的回波。</p></div>
+      <div><h3>不能用来预报</h3><p>这里没有计算地震断层、非线性浅滩、破碎、陆地淹没、真实海岸线、地球自转或真实潮位。网格为 3 km，输出用于看关系，不是危险区或到达时间预报。</p></div>
+    </div>
+    <div class="source-note">科学线索：NOAA《Tsunami Propagation》；USGS《Descriptive Model of the July 17, 1998 Papua New Guinea Tsunami》。此展项不是 NOAA 或 USGS 的预报产品。</div>
+  </section>
+</main>
+
+<footer class="sheet footer"><span>长浪抵岸 <b>·</b> 本地运行，不发送任何数据</span><span>模型时间 00–60 min <b>·</b> 网格分辨率 3 km</span></footer>
+
+<script>
+'use strict';
+
+const LongwaveCore = (() => {
+  const NX = 112;
+  const NY = 64;
+  const DX_M = 3000;
+  const DT_S = 3;
+  const G = 9.81;
+  const MAX_TIME_S = 60 * 60;
+  const SAMPLE_EVERY = 3;
+  const SIZE = NX * NY;
+  const U_SIZE = (NX - 1) * NY;
+  const V_SIZE = NX * (NY - 1);
+  const PRESETS = {
+    narrow: { name: '窄陆架', shelfWidth: .19, ridge: false },
+    wide: { name: '宽陆架', shelfWidth: .43, ridge: false },
+    ridge: { name: '海底山脊', shelfWidth: .19, ridge: true }
+  };
+
+  const index = (x, y) => y * NX + x;
+  const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
+
+  function makeBathymetry(presetKey) {
+    const preset = PRESETS[presetKey] || PRESETS.narrow;
+    const depth = new Float32Array(SIZE);
+    for (let y = 0; y < NY; y++) {
+      const yn = y / (NY - 1);
+      const coast = .965 + .012 * Math.sin(yn * Math.PI * 2 + .5) + .006 * Math.sin(yn * Math.PI * 5);
+      for (let x = 0; x < NX; x++) {
+        const xn = x / (NX - 1);
+        if (xn >= coast) continue;
+        const shelfRatio = clamp((coast - xn) / preset.shelfWidth, 0, 1);
+        let metres = 55 + 3945 * Math.pow(shelfRatio, 1.28);
+        if (preset.ridge) {
+          const ridgeX = .57 + .042 * Math.sin((yn - .5) * Math.PI * 1.8);
+          const across = (xn - ridgeX) / .035;
+          const along = (yn - .51) / .21;
+          metres -= 2050 * Math.exp(-.5 * (across * across + along * along));
+        }
+        depth[index(x, y)] = Math.max(45, Math.min(4200, metres));
+      }
+    }
+    return { preset: Object.prototype.hasOwnProperty.call(PRESETS, presetKey) ? presetKey : 'narrow', depth };
+  }
+
+  function createState(bathymetry, source, magnitude, stations) {
+    const eta = new Float32Array(SIZE);
+    const sigmaX = 4.4;
+    const sigmaY = 7.4;
+    const sx = clamp(Math.round(source.x), 2, NX - 4);
+    const sy = clamp(Math.round(source.y), 2, NY - 3);
+    const amplitude = clamp(Number(magnitude) || .8, .2, 1.8);
+    for (let y = 0; y < NY; y++) {
+      for (let x = 0; x < NX; x++) {
+        const i = index(x, y);
+        if (bathymetry.depth[i] <= 0) continue;
+        const dx = (x - sx) / sigmaX;
+        const dy = (y - sy) / sigmaY;
+        eta[i] = amplitude * Math.exp(-.5 * (dx * dx + dy * dy));
+      }
+    }
+    return {
+      bathymetry,
+      eta,
+      etaNext: new Float32Array(SIZE),
+      u: new Float32Array(U_SIZE),
+      v: new Float32Array(V_SIZE),
+      source: { x: sx, y: sy },
+      magnitude: amplitude,
+      stations: {
+        a: { x: Math.round(stations.a.x), y: Math.round(stations.a.y) },
+        b: { x: Math.round(stations.b.x), y: Math.round(stations.b.y) }
+      },
+      elapsed: 0,
+      steps: 0,
+      sampleCounter: 0,
+      series: [{ t: 0, a: 0, b: 0 }],
+      arrivals: { a: null, b: null },
+      maxAbs: amplitude
+    };
+  }
+
+  function spongeAt(x, y) {
+    const edge = Math.min(x + .5, y + .5, NY - 1.5 - y);
+    const strength = clamp((9 - edge) / 9, 0, 1);
+    return Math.exp(-DT_S * (.0001 + strength * strength * .72));
+  }
+
+  function step(state) {
+    if (state.elapsed >= MAX_TIME_S) return state;
+    const { depth } = state.bathymetry;
+    const { eta, u, v, etaNext } = state;
+    const gradScale = G * DT_S / DX_M;
+
+    for (let y = 0; y < NY; y++) {
+      for (let x = 0; x < NX - 1; x++) {
+        const i = index(x, y);
+        const j = i + 1;
+        const k = y * (NX - 1) + x;
+        if (depth[i] <= 0 || depth[j] <= 0) { u[k] = 0; continue; }
+        u[k] = (u[k] - gradScale * (eta[j] - eta[i])) * spongeAt(x + .5, y);
+      }
+    }
+    for (let y = 0; y < NY - 1; y++) {
+      for (let x = 0; x < NX; x++) {
+        const i = index(x, y);
+        const j = i + NX;
+        const k = y * NX + x;
+        if (depth[i] <= 0 || depth[j] <= 0) { v[k] = 0; continue; }
+        v[k] = (v[k] - gradScale * (eta[j] - eta[i])) * spongeAt(x, y + .5);
+      }
+    }
+
+    etaNext.fill(0);
+    const divergenceScale = DT_S / DX_M;
+    for (let y = 0; y < NY; y++) {
+      for (let x = 0; x < NX; x++) {
+        const i = index(x, y);
+        const h = depth[i];
+        if (h <= 0) continue;
+        const leftH = x > 0 ? Math.min(h, depth[i - 1]) : 0;
+        const rightH = x < NX - 1 ? Math.min(h, depth[i + 1]) : 0;
+        const northH = y > 0 ? Math.min(h, depth[i - NX]) : 0;
+        const southH = y < NY - 1 ? Math.min(h, depth[i + NX]) : 0;
+        const leftFlux = x > 0 ? leftH * u[y * (NX - 1) + x - 1] : 0;
+        const rightFlux = x < NX - 1 ? rightH * u[y * (NX - 1) + x] : 0;
+        const northFlux = y > 0 ? northH * v[(y - 1) * NX + x] : 0;
+        const southFlux = y < NY - 1 ? southH * v[y * NX + x] : 0;
+        const next = eta[i] - divergenceScale * (rightFlux - leftFlux + southFlux - northFlux);
+        etaNext[i] = next * spongeAt(x, y);
+      }
+    }
+
+    state.eta = etaNext;
+    state.etaNext = eta;
+    state.steps++;
+    state.elapsed = Math.min(MAX_TIME_S, state.steps * DT_S);
+    state.sampleCounter++;
+
+    const a = sample(state, state.stations.a);
+    const b = sample(state, state.stations.b);
+    const threshold = Math.max(.018, state.magnitude * .035);
+    if (state.arrivals.a === null && Math.abs(a) >= threshold) state.arrivals.a = state.elapsed;
+    if (state.arrivals.b === null && Math.abs(b) >= threshold) state.arrivals.b = state.elapsed;
+    if (state.sampleCounter >= SAMPLE_EVERY) {
+      state.sampleCounter = 0;
+      state.series.push({ t: state.elapsed, a, b });
+    }
+
+    let peak = state.maxAbs;
+    for (let i = 0; i < SIZE; i++) if (Math.abs(state.eta[i]) > peak) peak = Math.abs(state.eta[i]);
+    state.maxAbs = peak;
+    return state;
+  }
+
+  function stepMany(state, count) {
+    const end = Math.min(state.steps + Math.max(0, count | 0), MAX_TIME_S / DT_S);
+    while (state.steps < end) step(state);
+    return state;
+  }
+
+  function sample(state, point) {
+    const x = clamp(Math.round(point.x), 0, NX - 1);
+    const y = clamp(Math.round(point.y), 0, NY - 1);
+    return state.eta[index(x, y)] || 0;
+  }
+
+  function statsAt(state, point) {
+    const x = clamp(Math.round(point.x), 0, NX - 1);
+    const y = clamp(Math.round(point.y), 0, NY - 1);
+    const depth = state.bathymetry.depth[index(x, y)];
+    const distanceCells = Math.hypot(x - state.source.x, y - state.source.y);
+    const distanceM = distanceCells * DX_M;
+    const samples = Math.max(1, Math.ceil(distanceCells * 2));
+    let estimateS = 0;
+    let previous = { x: state.source.x, y: state.source.y };
+    for (let n = 1; n <= samples; n++) {
+      const t = n / samples;
+      const current = {
+        x: state.source.x + (x - state.source.x) * t,
+        y: state.source.y + (y - state.source.y) * t
+      };
+      const cx = clamp(Math.round(current.x), 0, NX - 1);
+      const cy = clamp(Math.round(current.y), 0, NY - 1);
+      const h = Math.max(45, state.bathymetry.depth[index(cx, cy)]);
+      const segmentM = Math.hypot(current.x - previous.x, current.y - previous.y) * DX_M;
+      estimateS += segmentM / Math.sqrt(G * h);
+      previous = current;
+    }
+    return {
+      depth,
+      speed: depth > 0 ? Math.sqrt(G * depth) : 0,
+      distanceKm: distanceM / 1000,
+      estimateS
+    };
+  }
+
+  function formatElapsed(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const rest = Math.floor(seconds % 60);
+    return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
+  }
+
+  return {
+    NX, NY, DX_M, DT_S, G, MAX_TIME_S, SIZE, PRESETS,
+    index, clamp, makeBathymetry, createState, step, stepMany,
+    sample, statsAt, formatElapsed
+  };
+})();
+
+</script><script>
+'use strict';
+
+(() => {
+  const $ = (selector) => document.querySelector(selector);
+  const mapCanvas = $('#ocean-map');
+  const mapCtx = mapCanvas.getContext('2d');
+  const chart = $('#trace-chart');
+  const chartCtx = chart.getContext('2d');
+  const fieldCanvas = document.createElement('canvas');
+  fieldCanvas.width = LongwaveCore.NX;
+  fieldCanvas.height = LongwaveCore.NY;
+  const fieldCtx = fieldCanvas.getContext('2d', { alpha: false });
+  const fieldImage = fieldCtx.createImageData(LongwaveCore.NX, LongwaveCore.NY);
+  const bathyPalette = [
+    { h: 0, c: [207, 204, 187] },
+    { h: 55, c: [145, 171, 158] },
+    { h: 250, c: [100, 147, 147] },
+    { h: 1000, c: [58, 111, 119] },
+    { h: 4200, c: [25, 67, 75] }
+  ];
+  const wavePositive = [211, 112, 83];
+  const waveNegative = [87, 170, 177];
+  const source = { x: 21, y: 32 };
+  const stations = { a: { x: 82, y: 24 }, b: { x: 101, y: 43 } };
+  let preset = 'narrow';
+  let bathymetry = LongwaveCore.makeBathymetry(preset);
+  let magnitude = .8;
+  let speed = 1;
+  let layer = 'wave';
+  let mode = 'source';
+  let state = LongwaveCore.createState(bathymetry, source, magnitude, stations);
+  let playing = false;
+  let accumulator = 0;
+  let lastFrame = 0;
+  let dragging = false;
+  let previewPoint = null;
+  let hovered = null;
+  let dpr = 1;
+  let cssSize = { mapW: 0, chartW: 0 };
+
+  function depthColor(depth) {
+    let lower = bathyPalette[0];
+    for (let i = 1; i < bathyPalette.length; i++) {
+      const upper = bathyPalette[i];
+      if (depth <= upper.h) {
+        const t = (depth - lower.h) / (upper.h - lower.h);
+        return lower.c.map((value, k) => Math.round(value + (upper.c[k] - value) * t));
+      }
+      lower = upper;
+    }
+    return bathyPalette[bathyPalette.length - 1].c;
+  }
+
+  function resizeCanvas(canvas, ctx, logicalW, logicalH, key) {
+    const box = canvas.getBoundingClientRect();
+    if (!box.width) return;
+    dpr = Math.max(1, Math.min(2.5, window.devicePixelRatio || 1));
+    canvas.width = Math.round(box.width * dpr);
+    canvas.height = Math.round(box.width * logicalH / logicalW * dpr);
+    canvas.style.height = `${box.width * logicalH / logicalW}px`;
+    ctx.setTransform(dpr * box.width / logicalW, 0, 0, dpr * box.width / logicalW, 0, 0);
+    cssSize[key] = box.width;
+  }
+
+  function blend(base, color, amount) {
+    return base.map((value, i) => Math.round(value + (color[i] - value) * amount));
+  }
+
+  function drawField() {
+    const data = fieldImage.data;
+    for (let i = 0; i < LongwaveCore.SIZE; i++) {
+      const depth = bathymetry.depth[i];
+      let color = depthColor(depth);
+      if (layer === 'wave' && depth > 0) {
+        const eta = state.eta[i];
+        const level = Math.min(1, Math.abs(eta) / Math.max(.12, magnitude * .52));
+        if (level > .008) color = blend(color, eta >= 0 ? wavePositive : waveNegative, .82 * Math.pow(level, .68));
+      }
+      const k = i * 4;
+      data[k] = color[0]; data[k + 1] = color[1]; data[k + 2] = color[2]; data[k + 3] = 255;
+    }
+    fieldCtx.putImageData(fieldImage, 0, 0);
+    mapCtx.imageSmoothingEnabled = true;
+    mapCtx.drawImage(fieldCanvas, 0, 0, 960, 560);
+  }
+
+  function contourSegments(level) {
+    const sx = 960 / LongwaveCore.NX;
+    const sy = 560 / LongwaveCore.NY;
+    mapCtx.beginPath();
+    for (let y = 0; y < LongwaveCore.NY - 1; y++) {
+      for (let x = 0; x < LongwaveCore.NX - 1; x++) {
+        const i = LongwaveCore.index(x, y);
+        const d = [bathymetry.depth[i], bathymetry.depth[i + 1], bathymetry.depth[i + LongwaveCore.NX + 1], bathymetry.depth[i + LongwaveCore.NX]];
+        if (Math.min(...d) > level || Math.max(...d) < level) continue;
+        const pts = [];
+        const edgePairs = [[0, 1], [1, 2], [2, 3], [3, 0]];
+        for (const [a, b] of edgePairs) {
+          if ((d[a] < level && d[b] >= level) || (d[b] < level && d[a] >= level)) {
+            const t = (level - d[a]) / (d[b] - d[a]);
+            const ax = a === 1 || a === 2 ? x + 1 : x;
+            const ay = a >= 2 ? y + 1 : y;
+            const bx = b === 1 || b === 2 ? x + 1 : x;
+            const by = b >= 2 ? y + 1 : y;
+            pts.push([(ax + (bx - ax) * t + .5) * sx, (ay + (by - ay) * t + .5) * sy]);
+          }
+        }
+        for (let p = 0; p + 1 < pts.length; p += 2) {
+          mapCtx.moveTo(pts[p][0], pts[p][1]);
+          mapCtx.lineTo(pts[p + 1][0], pts[p + 1][1]);
+        }
+      }
+    }
+    mapCtx.stroke();
+  }
+
+  function drawContours() {
+    mapCtx.save();
+    mapCtx.lineWidth = 1;
+    mapCtx.strokeStyle = 'rgba(231, 233, 213, .40)';
+    contourSegments(250);
+    mapCtx.strokeStyle = 'rgba(231, 233, 213, .32)';
+    contourSegments(1000);
+    mapCtx.strokeStyle = 'rgba(231, 233, 213, .25)';
+    contourSegments(3000);
+    mapCtx.restore();
+  }
+
+  function visiblePoint(point) {
+    return dragging && mode === (point === source ? 'source' : point === stations.a ? 'a' : 'b') && previewPoint
+      ? previewPoint : point;
+  }
+
+  function marker(point, color, label, selected, isSource = false) {
+    const x = (point.x + .5) * 960 / LongwaveCore.NX;
+    const y = (point.y + .5) * 560 / LongwaveCore.NY;
+    mapCtx.save();
+    if (isSource) {
+      mapCtx.beginPath(); mapCtx.arc(x, y, 7, 0, Math.PI * 2);
+      mapCtx.fillStyle = '#f7efe2'; mapCtx.fill(); mapCtx.lineWidth = 2; mapCtx.strokeStyle = color; mapCtx.stroke();
+      mapCtx.beginPath(); mapCtx.arc(x, y, 14, 0, Math.PI * 2);
+      mapCtx.strokeStyle = 'rgba(250, 242, 223, .72)'; mapCtx.lineWidth = 1; mapCtx.stroke();
+      mapCtx.beginPath(); mapCtx.moveTo(x - 3, y); mapCtx.lineTo(x + 3, y); mapCtx.moveTo(x, y - 3); mapCtx.lineTo(x, y + 3);
+      mapCtx.strokeStyle = color; mapCtx.lineWidth = 1; mapCtx.stroke();
+    } else {
+      mapCtx.beginPath(); mapCtx.arc(x, y, 8, 0, Math.PI * 2);
+      mapCtx.fillStyle = color; mapCtx.fill(); mapCtx.lineWidth = 1.5; mapCtx.strokeStyle = '#f7f2e9'; mapCtx.stroke();
+      mapCtx.fillStyle = '#fffaf0'; mapCtx.font = 'bold 9px Microsoft YaHei, sans-serif'; mapCtx.textAlign = 'center'; mapCtx.textBaseline = 'middle'; mapCtx.fillText(label, x, y + .3);
+    }
+    if (selected) {
+      mapCtx.beginPath(); mapCtx.arc(x, y, 13, 0, Math.PI * 2);
+      mapCtx.strokeStyle = '#f8e6b9'; mapCtx.lineWidth = 1.2; mapCtx.setLineDash([2, 2]); mapCtx.stroke(); mapCtx.setLineDash([]);
+    }
+    mapCtx.restore();
+  }
+
+  function drawMap() {
+    if (!cssSize.mapW) return;
+    mapCtx.clearRect(0, 0, 960, 560);
+    drawField();
+    drawContours();
+    marker(visiblePoint(source), '#be6447', 'S', mode === 'source', true);
+    marker(visiblePoint(stations.a), '#294f4c', 'A', mode === 'a');
+    marker(visiblePoint(stations.b), '#e0a05f', 'B', mode === 'b');
+    if (hovered) {
+      const x = (hovered.x + .5) * 960 / LongwaveCore.NX;
+      const y = (hovered.y + .5) * 560 / LongwaveCore.NY;
+      mapCtx.save(); mapCtx.beginPath(); mapCtx.arc(x, y, 8, 0, Math.PI * 2);
+      mapCtx.strokeStyle = 'rgba(255,255,245,.85)'; mapCtx.lineWidth = 1; mapCtx.stroke(); mapCtx.restore();
+    }
+  }
+
+  function niceStep(range) {
+    const rough = range / 5;
+    const power = Math.pow(10, Math.floor(Math.log10(rough || 1)));
+    const scaled = rough / power;
+    return (scaled <= 1 ? 1 : scaled <= 2 ? 2 : scaled <= 5 ? 5 : 10) * power;
+  }
+
+  function drawChart() {
+    if (!cssSize.chartW) return;
+    const w = 960, h = 212;
+    const left = 45, right = 15, top = 14, bottom = 29;
+    const plotW = w - left - right, plotH = h - top - bottom;
+    const visibleSeconds = Math.max(300, Math.min(LongwaveCore.MAX_TIME_S, Math.ceil(Math.max(1, state.elapsed) / 300) * 300));
+    let yMax = Math.max(.08, magnitude * .42);
+    for (const item of state.series) yMax = Math.max(yMax, Math.abs(item.a), Math.abs(item.b));
+    yMax = Math.ceil(yMax * 10) / 10;
+    chartCtx.clearRect(0, 0, w, h);
+    chartCtx.fillStyle = '#faf7ef'; chartCtx.fillRect(0, 0, w, h);
+    chartCtx.font = '9px Microsoft YaHei, sans-serif'; chartCtx.textBaseline = 'middle';
+    chartCtx.strokeStyle = '#e1ded4'; chartCtx.lineWidth = 1;
+    const xStep = niceStep(visibleSeconds / 60);
+    for (let minute = 0; minute <= visibleSeconds / 60 + .01; minute += xStep) {
+      const x = left + minute * 60 / visibleSeconds * plotW;
+      chartCtx.beginPath(); chartCtx.moveTo(x, top); chartCtx.lineTo(x, top + plotH); chartCtx.stroke();
+      chartCtx.fillStyle = '#78837b'; chartCtx.textAlign = 'center'; chartCtx.fillText(String(minute), x, h - 13);
+    }
+    for (let n = -2; n <= 2; n++) {
+      const value = yMax * n / 2;
+      const y = top + (1 - (value + yMax) / (2 * yMax)) * plotH;
+      chartCtx.beginPath(); chartCtx.moveTo(left, y); chartCtx.lineTo(w - right, y); chartCtx.stroke();
+      chartCtx.fillStyle = '#78837b'; chartCtx.textAlign = 'right'; chartCtx.fillText(`${value > 0 ? '+' : ''}${value.toFixed(1)}`, left - 8, y);
+    }
+    chartCtx.strokeStyle = '#9da99e'; chartCtx.lineWidth = 1.2;
+    const zeroY = top + plotH / 2;
+    chartCtx.beginPath(); chartCtx.moveTo(left, zeroY); chartCtx.lineTo(w - right, zeroY); chartCtx.stroke();
+    const line = (key, color) => {
+      chartCtx.beginPath();
+      let started = false;
+      for (const item of state.series) {
+        const x = left + item.t / visibleSeconds * plotW;
+        const y = top + (1 - (item[key] + yMax) / (2 * yMax)) * plotH;
+        if (!started) { chartCtx.moveTo(x, y); started = true; } else chartCtx.lineTo(x, y);
+      }
+      chartCtx.strokeStyle = color; chartCtx.lineWidth = 1.8; chartCtx.stroke();
+    };
+    line('a', '#315b57'); line('b', '#b96447');
+    const cursorX = left + state.elapsed / visibleSeconds * plotW;
+    chartCtx.beginPath(); chartCtx.moveTo(cursorX, top); chartCtx.lineTo(cursorX, top + plotH);
+    chartCtx.strokeStyle = 'rgba(185,100,71,.72)'; chartCtx.lineWidth = 1; chartCtx.setLineDash([3, 3]); chartCtx.stroke(); chartCtx.setLineDash([]);
+    chartCtx.fillStyle = '#758178'; chartCtx.textAlign = 'left'; chartCtx.textBaseline = 'top'; chartCtx.fillText('m', 8, 8);
+    $('#trace-caption').textContent = `0–${Math.round(visibleSeconds / 60)} 分钟 · 每 9 秒记录一次`;
+  }
+
+  function pointOnMap(event) {
+    const rect = mapCanvas.getBoundingClientRect();
+    return {
+      x: LongwaveCore.clamp(Math.floor((event.clientX - rect.left) / rect.width * LongwaveCore.NX), 0, LongwaveCore.NX - 1),
+      y: LongwaveCore.clamp(Math.floor((event.clientY - rect.top) / rect.height * LongwaveCore.NY), 0, LongwaveCore.NY - 1)
+    };
+  }
+
+  function nearestWater(point) {
+    const x = LongwaveCore.clamp(Math.round(point.x), 0, LongwaveCore.NX - 1);
+    const y = LongwaveCore.clamp(Math.round(point.y), 0, LongwaveCore.NY - 1);
+    if (bathymetry.depth[LongwaveCore.index(x, y)] > 0) return { x, y };
+    let best = null, bestDistance = Infinity;
+    for (let radius = 1; radius <= 7 && !best; radius++) {
+      for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= LongwaveCore.NX || ny < 0 || ny >= LongwaveCore.NY) continue;
+        if (bathymetry.depth[LongwaveCore.index(nx, ny)] <= 0) continue;
+        const distance = dx * dx + dy * dy;
+        if (distance < bestDistance) { best = { x: nx, y: ny }; bestDistance = distance; }
+      }
+    }
+    return best || { x: LongwaveCore.NX - 10, y };
+  }
+
+  function targetPoint() {
+    if (mode === 'source') return source;
+    return stations[mode];
+  }
+
+  function formatDepth(value) { return value > 0 ? `${Math.round(value).toLocaleString('zh-CN')} m` : '陆地'; }
+  function formatWave(value) { return `${value >= 0 ? '+' : ''}${value.toFixed(2)} m`; }
+  function formatEstimate(seconds) {
+    const minutes = seconds / 60;
+    return minutes < 10 ? `${minutes.toFixed(1)} 分` : `${Math.round(minutes)} 分`;
+  }
+
+  function updateStatus(note) {
+    const status = $('#run-status');
+    if (note) { status.textContent = note; return; }
+    if (playing) status.textContent = '波浪正沿海底传播';
+    else if (state.elapsed >= LongwaveCore.MAX_TIME_S) status.textContent = '已推演至 60 分钟';
+    else if (state.elapsed > 0) status.textContent = `已暂停 · 模型时间 ${LongwaveCore.formatElapsed(state.elapsed)}`;
+    else status.textContent = '波源已放置，尚未推演';
+  }
+
+  function updateReadouts() {
+    $('#model-clock').textContent = LongwaveCore.formatElapsed(state.elapsed);
+    const statsA = LongwaveCore.statsAt(state, stations.a);
+    const statsB = LongwaveCore.statsAt(state, stations.b);
+    const waveA = LongwaveCore.sample(state, stations.a);
+    const waveB = LongwaveCore.sample(state, stations.b);
+    $('#a-depth').textContent = formatDepth(statsA.depth);
+    $('#b-depth').textContent = formatDepth(statsB.depth);
+    $('#a-speed').textContent = `${Math.round(statsA.speed * 3.6)} km/h`;
+    $('#b-speed').textContent = `${Math.round(statsB.speed * 3.6)} km/h`;
+    $('#a-reading').textContent = formatWave(waveA);
+    $('#b-reading').textContent = formatWave(waveB);
+    $('#a-arrival').textContent = state.arrivals.a === null ? '未到' : formatEstimate(state.arrivals.a);
+    $('#b-arrival').textContent = state.arrivals.b === null ? '未到' : formatEstimate(state.arrivals.b);
+    $('#a-estimate').textContent = formatEstimate(statsA.estimateS);
+    $('#b-estimate').textContent = formatEstimate(statsB.estimateS);
+    $('#peak-height').textContent = `${state.maxAbs.toFixed(2)} m`;
+    $('#clock-label').textContent = '分 : 秒';
+    $('#play-button').disabled = playing || state.elapsed >= LongwaveCore.MAX_TIME_S;
+    $('#pause-button').disabled = !playing;
+  }
+
+  function renderAll() {
+    updateReadouts();
+    drawMap();
+    drawChart();
+    updateStatus();
+  }
+
+  function restart(note = '地形或初始条件已变更；从零开始推演。') {
+    pause();
+    state = LongwaveCore.createState(bathymetry, source, magnitude, stations);
+    accumulator = 0;
+    renderAll();
+    updateStatus(note);
+  }
+
+  function play() {
+    if (state.elapsed >= LongwaveCore.MAX_TIME_S) return;
+    playing = true;
+    $('#play-button').disabled = true;
+    $('#pause-button').disabled = false;
+    updateStatus();
+  }
+
+  function pause() {
+    playing = false;
+    $('#play-button').disabled = state.elapsed >= LongwaveCore.MAX_TIME_S;
+    $('#pause-button').disabled = true;
+    updateStatus();
+  }
+
+  function nudge(dx, dy) {
+    const next = nearestWater({ x: targetPoint().x + dx, y: targetPoint().y + dy });
+    if (mode === 'source') { source.x = next.x; source.y = next.y; }
+    else { stations[mode].x = next.x; stations[mode].y = next.y; }
+    restart(mode === 'source' ? '波源已移动；重新记录这次传播。' : `测点 ${mode.toUpperCase()} 已移动；重新记录两处潮位。`);
+  }
+
+  function updateModeButtons() {
+    document.querySelectorAll('.tool').forEach(button => {
+      const active = button.dataset.mode === mode;
+      button.classList.toggle('selected', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  function setHover(point) {
+    hovered = point;
+    const i = LongwaveCore.index(point.x, point.y);
+    const depth = bathymetry.depth[i];
+    const anomaly = depth > 0 ? state.eta[i] : 0;
+    $('#hover-readout').textContent = depth > 0
+      ? `水深 ${formatDepth(depth)} · 海面 ${formatWave(anomaly)}`
+      : '陆地 · 此处没有计算海面';
+  }
+
+  mapCanvas.addEventListener('pointerdown', event => {
+    event.preventDefault();
+    pause();
+    previewPoint = nearestWater(pointOnMap(event));
+    dragging = true;
+    mapCanvas.setPointerCapture(event.pointerId);
+    drawMap();
+  });
+  mapCanvas.addEventListener('pointermove', event => {
+    const point = nearestWater(pointOnMap(event));
+    setHover(point);
+    if (dragging) { previewPoint = point; drawMap(); }
+    else drawMap();
+  });
+  mapCanvas.addEventListener('pointerup', () => {
+    if (!dragging) return;
+    const point = previewPoint;
+    dragging = false; previewPoint = null;
+    if (mode === 'source') { source.x = point.x; source.y = point.y; }
+    else { stations[mode].x = point.x; stations[mode].y = point.y; }
+    restart(mode === 'source' ? '波源已移动；重新记录这次传播。' : `测点 ${mode.toUpperCase()} 已移动；重新记录两处潮位。`);
+  });
+  mapCanvas.addEventListener('pointercancel', () => { dragging = false; previewPoint = null; drawMap(); });
+  mapCanvas.addEventListener('keydown', event => {
+    const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    if (directions[event.key]) { event.preventDefault(); nudge(...directions[event.key]); }
+    else if (event.code === 'Space') { event.preventDefault(); playing ? pause() : play(); }
+  });
+
+  document.querySelectorAll('.tool').forEach(button => button.addEventListener('click', () => {
+    mode = button.dataset.mode;
+    updateModeButtons();
+    $('#run-status').textContent = mode === 'source' ? '在图上拖动红色波源' : `在图上放置测点 ${mode.toUpperCase()}`;
+    mapCanvas.focus({ preventScroll: true }); drawMap();
+  }));
+
+  document.querySelectorAll('.preset').forEach(button => button.addEventListener('click', () => {
+    preset = button.dataset.bathy;
+    bathymetry = LongwaveCore.makeBathymetry(preset);
+    document.querySelectorAll('.preset').forEach(item => {
+      const active = item === button;
+      item.classList.toggle('selected', active);
+      item.setAttribute('aria-pressed', String(active));
+      item.querySelector('.check').textContent = active ? '●' : '○';
+    });
+    restart('海底地形已改变；观察同一扰动的新路径。');
+  }));
+
+  $('#magnitude').addEventListener('input', event => {
+    magnitude = Number(event.target.value);
+    $('#magnitude-value').textContent = `${magnitude.toFixed(1)} m`;
+    restart('初始扰动已改变；从零开始推演。');
+  });
+  $('#speed').addEventListener('input', event => {
+    speed = Number(event.target.value);
+    $('#speed-value').textContent = `${speed.toFixed(1).replace('.0', '')}×`;
+  });
+  document.querySelectorAll('.layer').forEach(button => button.addEventListener('click', () => {
+    layer = button.dataset.layer;
+    document.querySelectorAll('.layer').forEach(item => {
+      const active = item === button;
+      item.classList.toggle('selected', active);
+      item.setAttribute('aria-pressed', String(active));
+    });
+    $('#map-legend').innerHTML = layer === 'wave'
+      ? '<span class="legend-swatch depth-shallow"></span>浅海 <span class="legend-swatch depth-deep"></span>深海 <span class="legend-swatch wave-pos"></span>抬升 <span class="legend-swatch wave-neg"></span>下降'
+      : '<span class="legend-swatch depth-shallow"></span>浅海 <span class="legend-swatch depth-deep"></span>深海 <span class="legend-swatch depth-land"></span>陆地';
+    drawMap();
+  }));
+
+  $('#play-button').addEventListener('click', play);
+  $('#pause-button').addEventListener('click', pause);
+  $('#reset-button').addEventListener('click', () => restart('实验已重置，可以再放置波源或更换海底。'));
+  $('#minute-button').addEventListener('click', () => {
+    pause();
+    LongwaveCore.stepMany(state, Math.ceil(60 / LongwaveCore.DT_S));
+    renderAll();
+  });
+
+  function frame(timestamp) {
+    const delta = lastFrame ? Math.min(140, timestamp - lastFrame) : 0;
+    lastFrame = timestamp;
+    if (playing && delta > 0) {
+      accumulator += delta * speed;
+      let changed = false;
+      while (accumulator >= 80 && state.elapsed < LongwaveCore.MAX_TIME_S) {
+        LongwaveCore.step(state);
+        accumulator -= 80;
+        changed = true;
+      }
+      if (state.elapsed >= LongwaveCore.MAX_TIME_S) pause();
+      if (changed) renderAll();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function resize() {
+    resizeCanvas(mapCanvas, mapCtx, 960, 560, 'mapW');
+    resizeCanvas(chart, chartCtx, 960, 212, 'chartW');
+    renderAll();
+  }
+
+  window.addEventListener('resize', resize, { passive: true });
+  resize();
+  renderAll();
+  requestAnimationFrame(frame);
+})();
+
+</script>
+</body></html>

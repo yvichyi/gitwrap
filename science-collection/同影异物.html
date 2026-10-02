@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>同影异物 · 一台关于逆问题的扫描器</title>
+<style>
+:root{
+  --bg:#080a0d; --ink:#e8ece9; --muted:#89928f; --dim:#31383a;
+  --beam:#d9b66f; --cyan:#89bfc5; --red:#b56c66; --green:#96b98d;
+  --mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --serif:"Songti SC","Noto Serif CJK SC","Source Han Serif SC",STSong,serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden}
+body{background:
+  radial-gradient(1200px 700px at 55% 45%,rgba(93,119,115,.08),transparent 66%),
+  linear-gradient(#090b0e,#060709 70%)}
+button{font:inherit;color:inherit}
+#app{position:relative;width:100%;height:100%;isolation:isolate}
+#world{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+#grain{position:absolute;inset:0;pointer-events:none;opacity:.12;mix-blend-mode:screen;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E")}
+.topline{position:absolute;left:clamp(18px,3vw,42px);right:clamp(18px,3vw,42px);top:calc(16px + env(safe-area-inset-top));display:flex;align-items:flex-start;justify-content:space-between;pointer-events:none;z-index:4}
+.brand{max-width:720px}.eyebrow{font:10px/1.5 var(--mono);letter-spacing:.22em;color:#72807c;text-transform:uppercase}.brand h1{font:500 clamp(25px,3vw,42px)/1.05 var(--serif);letter-spacing:.12em;margin:6px 0 0}.brand h1 span{color:var(--beam)}
+.stats{text-align:right;font:10px/1.7 var(--mono);letter-spacing:.05em;color:#7e8986;white-space:nowrap}.stats b{color:#c7cfcc;font-weight:500}
+#prompt{position:absolute;left:50%;top:14.5%;transform:translateX(-50%);z-index:5;width:min(760px,82vw);text-align:center;pointer-events:none;transition:opacity .5s}.promptMain{font:400 clamp(18px,2.25vw,31px)/1.45 var(--serif);letter-spacing:.045em;text-wrap:balance}.promptSub{margin-top:9px;font:11px/1.7 var(--mono);color:#7d8784;letter-spacing:.05em}
+#hint{position:absolute;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:6;text-align:center;font:10px/1.55 var(--mono);color:#737e7b;letter-spacing:.04em;pointer-events:none;transition:opacity .4s}
+#hint strong{font-weight:500;color:#c9d0cd}
+#note{position:absolute;left:clamp(16px,4vw,58px);bottom:clamp(64px,10vh,112px);z-index:7;width:min(420px,72vw);pointer-events:none;opacity:0;transform:translateY(8px);transition:opacity .55s,transform .55s}.noteTag{font:9px/1.4 var(--mono);letter-spacing:.2em;color:var(--beam);margin-bottom:7px}.noteText{font:14px/1.7 var(--serif);color:#cdd3d0;text-wrap:balance}.noteText b{color:#fff;font-weight:500}
+#actions{position:absolute;right:clamp(16px,4vw,58px);bottom:clamp(62px,10vh,108px);z-index:8;display:flex;flex-direction:column;align-items:flex-end;gap:7px}.ghostBtn{appearance:none;border:0;background:transparent;padding:5px 0;cursor:pointer;font:10px/1.3 var(--mono);letter-spacing:.06em;color:#77817f;opacity:0;pointer-events:none;transform:translateX(6px);transition:.35s}.ghostBtn.show{opacity:1;pointer-events:auto;transform:none}.ghostBtn:hover,.ghostBtn:focus-visible{color:var(--beam);outline:none}.ghostBtn::before{content:'↳ ';color:#4e5755}
+#filmLabel{position:absolute;left:50%;bottom:15.5%;transform:translateX(-50%);font:8px/1 var(--mono);letter-spacing:.22em;color:#58615f;z-index:4;pointer-events:none;text-transform:uppercase}
+#theory{position:absolute;inset:0;z-index:20;background:radial-gradient(circle at center,#10151a 0,#080a0d 58%,#050607 100%);opacity:0;pointer-events:none;transition:opacity .8s;overflow:hidden}
+#theory.show{opacity:1;pointer-events:auto}.theoryCenter{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;width:min(420px,78vw)}.equation{font:500 clamp(31px,6vw,72px)/1 var(--serif);letter-spacing:.08em}.equation small{display:block;font:10px/1.7 var(--mono);color:#697472;letter-spacing:.14em;margin-top:16px}.orbit{position:absolute;width:min(330px,34vw);font-size:12px;line-height:1.7;color:#a8b0ad}.orbit b{display:block;color:#e4e8e6;font:500 17px/1.35 var(--serif);margin-bottom:5px}.orbit i{display:block;font:9px/1.4 var(--mono);font-style:normal;color:#6e7976;letter-spacing:.07em;margin-bottom:6px}.o1{left:6vw;top:17vh}.o2{right:5vw;top:19vh;text-align:right}.o3{left:7vw;bottom:15vh}.o4{right:6vw;bottom:14vh;text-align:right}.orbit:after{content:'';position:absolute;height:1px;background:#26302e;width:clamp(50px,10vw,170px);top:13px}.o1:after,.o3:after{left:calc(100% + 14px)}.o2:after,.o4:after{right:calc(100% + 14px)}
+#closeTheory{position:absolute;right:24px;top:22px;border:1px solid #2c3433;background:#0a0d10;padding:8px 10px;border-radius:50%;width:38px;height:38px;cursor:pointer;color:#89928f}.boundary{position:absolute;left:50%;bottom:4vh;transform:translateX(-50%);width:min(820px,86vw);text-align:center;font:10px/1.7 var(--mono);color:#606b68}.boundary b{color:#9aa4a1;font-weight:500}
+#reveal{position:absolute;inset:0;z-index:15;background:#090b0d;opacity:0;pointer-events:none;transition:opacity .6s}#reveal.show{opacity:1;pointer-events:auto}.revealGrid{height:100%;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#1f2425}.plate{position:relative;background:#080a0d;display:flex;flex-direction:column;align-items:center;justify-content:center}.plate canvas{width:min(38vw,440px);height:min(38vw,440px);max-width:74vh;max-height:74vh;image-rendering:auto}.plate h3{font:10px/1.4 var(--mono);font-weight:400;letter-spacing:.18em;color:#7c8784;margin:16px 0 0}.plate p{font:12px/1.65 var(--serif);color:#aab2af;max-width:34ch;text-align:center;margin:10px 20px 0}.revealClose{position:absolute;right:22px;top:22px;z-index:2;border:0;background:transparent;color:#7d8784;font:11px/1 var(--mono);cursor:pointer;padding:10px}
+@media(max-width:760px){
+  .stats{display:none}.topline{top:12px}.brand h1{font-size:27px}.eyebrow{font-size:8px}
+  #prompt{top:12.5%;width:86vw}.promptMain{font-size:19px}.promptSub{font-size:9px}
+  #note{left:18px;bottom:86px;width:68vw}.noteText{font-size:12.5px}
+  #actions{right:18px;bottom:84px}.ghostBtn{font-size:9px}
+  #filmLabel{bottom:18%}
+  .orbit{width:38vw;font-size:10.5px}.orbit b{font-size:14px}.orbit:after{display:none}.o1{left:5vw;top:14vh}.o2{right:5vw;top:15vh}.o3{left:5vw;bottom:13vh}.o4{right:5vw;bottom:12vh}.theoryCenter{top:50%}.equation{font-size:42px}.boundary{font-size:8.5px;bottom:2.5vh}
+  .revealGrid{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.plate canvas{width:min(44vw,220px);height:min(44vw,220px)}.plate p{display:none}.plate h3{margin-top:7px}.revealClose{right:10px;top:10px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="world"></canvas>
+  <div id="grain"></div>
+  <div class="topline">
+    <div class="brand"><div class="eyebrow">inverse chamber / medicine × geophysics × astronomy × optimization</div><h1>同影<span>异物</span></h1></div>
+    <div class="stats"><div>已取得投影 <b id="scanCount">0</b> / 24</div><div>数据一致性 <b id="residual">—</b></div><div>当前先验 <b id="priorName">无</b></div></div>
+  </div>
+  <div id="prompt"><div class="promptMain">你不能看见对象本身。<br>只能看见它投下的测量。</div><div class="promptSub">拖动扫描环上的光源，松手取得一条投影。</div></div>
+  <div id="note"><div class="noteTag">FIELD NOTE</div><div class="noteText" id="noteText"></div></div>
+  <div id="actions">
+    <button class="ghostBtn" id="autoBtn">自动补到 24 个角度</button>
+    <button class="ghostBtn" id="priorBtn">换一种先验</button>
+    <button class="ghostBtn" id="revealBtn">把真物掀开</button>
+    <button class="ghostBtn" id="theoryBtn">把仪器翻到背面</button>
+  </div>
+  <div id="filmLabel">measurements accumulate here</div>
+  <div id="hint"><strong>拖动外圈</strong> · 松手扫描 · ↑↓ 微调角度 · Enter 扫描</div>
+
+  <div id="reveal">
+    <button class="revealClose" id="revealClose">返回扫描器 ×</button>
+    <div class="revealGrid">
+      <div class="plate"><canvas id="truthCanvas" width="256" height="256"></canvas><h3>隐藏对象 / GROUND TRUTH</h3><p>它一直都在，但实验规则不允许你直接访问。测量是你与它之间唯一合法的通道。</p></div>
+      <div class="plate"><canvas id="guessCanvas" width="256" height="256"></canvas><h3>由投影反演出的对象</h3><p id="revealCopy">重建并不是“把照片变清楚”，而是在所有可能世界中挑一个能解释数据的世界。</p></div>
+    </div>
+  </div>
+
+  <div id="theory">
+    <button id="closeTheory">×</button>
+    <div class="theoryCenter"><div class="equation">y = A x + ε<small>同一类问题，不同的 A。</small></div></div>
+    <div class="orbit o1"><i>MEDICAL IMAGING</i><b>医学成像</b>在理想化 CT 中，<b>A</b> 把组织的衰减系数变成许多方向上的线积分；重建是在这些投影中追回内部结构。</div>
+    <div class="orbit o2"><i>GEOPHYSICS</i><b>地球物理</b>地震波的走时与路径受地下介质影响。观测到的是波抵达的结果，地下速度结构是要反推的 <b>x</b>。</div>
+    <div class="orbit o3"><i>RADIO ASTRONOMY</i><b>射电天文学</b>干涉阵列只采到天空亮度分布的一部分傅里叶信息。缺失的采样必须由结构假设与正则化补上。</div>
+    <div class="orbit o4"><i>OPTIMIZATION</i><b>优化与统计</b>当 A 不可逆、欠定或噪声很大，算法需要“偏见”：平滑、稀疏、非负、物理约束。先验不是瑕疵，而是可辨识性的代价。</div>
+    <div class="boundary"><b>边界：</b>本页扫描器实现的是二维平行束投影与简化滤波反投影，用来展示逆问题的结构，不是临床 CT、地震反演或射电干涉软件。三者的真实前向模型、噪声、几何与正则化远复杂得多。</div>
+  </div>
+</div>
+<script>
+(() => {
+'use strict';
+const canvas=document.getElementById('world'), ctx=canvas.getContext('2d');
+const dpr=Math.min(2,window.devicePixelRatio||1);
+let W=0,H=0,CX=0,CY=0,R=0,filmY=0;
+const N=48,BINS=72,MAXSCANS=24;
+const SQ2=Math.SQRT2;
+let angle=18*Math.PI/180, dragging=false, scans=[], rec=new Float32Array(N*N), displayRec=new Float32Array(N*N);
+let prior=0, animSweep=null, revealUnlocked=false;
+const scanCount=document.getElementById('scanCount'), residualEl=document.getElementById('residual'), priorName=document.getElementById('priorName');
+const prompt=document.getElementById('prompt'), note=document.getElementById('note'), noteText=document.getElementById('noteText');
+const autoBtn=document.getElementById('autoBtn'), priorBtn=document.getElementById('priorBtn'), revealBtn=document.getElementById('revealBtn'), theoryBtn=document.getElementById('theoryBtn');
+const truthCanvas=document.getElementById('truthCanvas'), guessCanvas=document.getElementById('guessCanvas');
+const reveal=document.getElementById('reveal'), theory=document.getElementById('theory');
+
+function resize(){
+  const r=canvas.getBoundingClientRect(); W=r.width;H=r.height;canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
+  CX=W*0.53; CY=H*(W<760?0.48:0.47); R=Math.min(W,H)*(W<760?0.255:0.29); filmY=H*0.84; draw();
+}
+window.addEventListener('resize',resize);
+
+function phantom(){
+  const a=new Float32Array(N*N);
+  const ellipses=[
+    [0,0,.78,.92,0,.82],[-.14,-.08,.34,.58,.24,.52],[.22,.03,.22,.49,-.22,.42],
+    [-.27,.23,.16,.20,.12,.88],[.23,-.28,.13,.18,-.35,.76],[.02,.38,.10,.13,0,.95],
+    [.02,-.06,.12,.34,.66,-.50],[-.38,-.31,.12,.10,0,-.38],[.40,.27,.10,.14,.2,-.52]
+  ];
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const x=(i+.5)/N*2-1,y=(j+.5)/N*2-1; let v=0;
+    for(const [cx,cy,rx,ry,rot,amp] of ellipses){const c=Math.cos(rot),s=Math.sin(rot),dx=x-cx,dy=y-cy; const u=c*dx+s*dy,w=-s*dx+c*dy; if((u*u)/(rx*rx)+(w*w)/(ry*ry)<=1)v+=amp;}
+    // one thin crescent-like cut to make orientation identifiable
+    const q=((x+.18)/.24)**2+((y-.12)/.07)**2; if(q<1)v-=.38;
+    a[j*N+i]=Math.max(0,Math.min(1,v));
+  }
+  return a;
+}
+const truth=phantom();
+
+function project(img,th){
+  const p=new Float32Array(BINS),c=Math.cos(th),s=Math.sin(th); const scale=(BINS-1)/(2*SQ2);
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const v=img[j*N+i]; if(v<=0)continue;
+    const x=(i+.5)/N*2-1,y=(j+.5)/N*2-1,t=x*c+y*s;
+    const b=(t+SQ2)*scale; const b0=Math.floor(b),f=b-b0;
+    if(b0>=0&&b0<BINS)p[b0]+=v*(1-f); if(b0+1>=0&&b0+1<BINS)p[b0+1]+=v*f;
+  }
+  return p;
+}
+function rampFilter(p){
+  const out=new Float32Array(BINS),K=19;
+  for(let i=0;i<BINS;i++){
+    let v=.25*p[i];
+    for(let k=1;k<=K;k+=2){const h=-1/(Math.PI*Math.PI*k*k); if(i-k>=0)v+=h*p[i-k]; if(i+k<BINS)v+=h*p[i+k];}
+    out[i]=v;
+  }
+  return out;
+}
+function reconstruct(){
+  const out=new Float32Array(N*N); if(!scans.length){rec=out;displayRec=out;residualEl.textContent='—';return;}
+  const scale=(BINS-1)/(2*SQ2);
+  const filtered=scans.map(s=>({th:s.th,p:rampFilter(s.p)}));
+  for(const q of filtered){const c=Math.cos(q.th),s=Math.sin(q.th);for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const x=(i+.5)/N*2-1,y=(j+.5)/N*2-1,b=(x*c+y*s+SQ2)*scale,b0=Math.floor(b),f=b-b0;
+    let v=0;if(b0>=0&&b0<BINS)v+=q.p[b0]*(1-f);if(b0+1>=0&&b0+1<BINS)v+=q.p[b0+1]*f;out[j*N+i]+=v;
+  }}
+  // normalize robustly
+  let mn=Infinity,mx=-Infinity;for(const v of out){if(v<mn)mn=v;if(v>mx)mx=v} const span=mx-mn||1;
+  for(let i=0;i<out.length;i++)out[i]=Math.max(0,Math.min(1,(out[i]-mn)/span));
+  rec=out; applyPrior(); computeResidual();
+}
+function blur(src,passes=1){let a=new Float32Array(src),b=new Float32Array(src.length);for(let pass=0;pass<passes;pass++){for(let y=0;y<N;y++)for(let x=0;x<N;x++){let s=0,w=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy;if(xx>=0&&xx<N&&yy>=0&&yy<N){const ww=(dx===0&&dy===0)?4:(dx===0||dy===0?2:1);s+=a[yy*N+xx]*ww;w+=ww;}}b[y*N+x]=s/w;}a=new Float32Array(b)}return a}
+function applyPrior(){
+  if(prior===0){displayRec=new Float32Array(rec);priorName.textContent='直接反投影'}
+  if(prior===1){displayRec=blur(rec,2);priorName.textContent='偏好平滑'}
+  if(prior===2){displayRec=new Float32Array(rec.length);for(let i=0;i<rec.length;i++){const v=rec[i];displayRec[i]=v<.28?0:Math.min(1,(v-.28)/.72);}priorName.textContent='偏好稀疏'}
+}
+function computeResidual(){
+  if(!scans.length)return; let yy=0,pp=0,yp=0;
+  const preds=scans.map(s=>project(displayRec,s.th));
+  for(let q=0;q<scans.length;q++)for(let i=0;i<BINS;i++){const y=scans[q].p[i],p=preds[q][i];yy+=y*y;pp+=p*p;yp+=y*p;}
+  const alpha=pp>0?yp/pp:0; let e=0;for(let q=0;q<scans.length;q++)for(let i=0;i<BINS;i++){const d=scans[q].p[i]-alpha*preds[q][i];e+=d*d;}
+  const nr=Math.sqrt(e/(yy||1)); residualEl.textContent=(100*nr).toFixed(1)+'%';
+}
+function normAngle(t){t%=Math.PI;if(t<0)t+=Math.PI;return t}
+function angleDist(a,b){let d=Math.abs(a-b)%Math.PI;return Math.min(d,Math.PI-d)}
+function acquire(th=angle, silent=false){
+  th=normAngle(th); if(scans.some(s=>angleDist(s.th,th)<1.8*Math.PI/180))return;
+  scans.push({th,p:project(truth,th)}); scans.sort((a,b)=>a.th-b.th); if(scans.length>MAXSCANS)scans.shift();
+  reconstruct(); scanCount.textContent=scans.length; animSweep={th,start:performance.now(),silent}; updateStory(); draw();
+}
+function updateStory(){
+  const n=scans.length; prompt.style.opacity=n?0:1;
+  autoBtn.classList.toggle('show',n>=1&&n<MAXSCANS);
+  priorBtn.classList.toggle('show',n>=4);
+  revealBtn.classList.toggle('show',n>=10);
+  theoryBtn.classList.toggle('show',n>=6);
+  let t='';
+  if(n===1)t='一条投影只告诉你某个方向上的<b>总和</b>。它不是照片。沿着同一条射线互换内部结构，探测器可能完全无感。';
+  else if(n===2)t='第二个方向砍掉了一部分可能世界，但仍远远不够。<b>更多数据</b>的作用，是把“能解释观测的世界集合”一点点切小。';
+  else if(n===4)t='现在试试右下角的“换一种先验”。数据不变，答案会变。逆问题里，<b>算法如何偏爱某些解</b>本身就是结论的一部分。';
+  else if(n===7)t='轮廓开始出现，但细节仍被角度缺失拖成条纹。你看到的不是对象，而是<b>数据与假设共同产生的对象</b>。';
+  else if(n===10)t='已经足够像了。现在可以掀开真物，对照“真实世界”和“最合理重建”之间还剩多少缝。';
+  else if(n>=18)t='当角度趋于充分，几种先验开始靠拢。信息在增长，但噪声、离散化和模型错误永远不会自动消失。';
+  if(t){noteText.innerHTML=t; note.style.opacity=1;note.style.transform='none';clearTimeout(updateStory._timer);updateStory._timer=setTimeout(()=>{note.style.opacity=.15},6500)}
+}
+function imgToCanvas(img,can){const c=can.getContext('2d'),im=c.createImageData(N,N);for(let i=0;i<img.length;i++){const v=Math.max(0,Math.min(1,img[i])); const g=Math.round(Math.pow(v,.82)*255); im.data[i*4]=g;im.data[i*4+1]=Math.round(g*.98);im.data[i*4+2]=Math.round(g*.92);im.data[i*4+3]=255;}const tmp=document.createElement('canvas');tmp.width=N;tmp.height=N;tmp.getContext('2d').putImageData(im,0,0);c.imageSmoothingEnabled=true;c.clearRect(0,0,can.width,can.height);c.drawImage(tmp,0,0,can.width,can.height)}
+function drawImageCircle(img,cx,cy,r,alpha=1){
+  const off=document.createElement('canvas');off.width=N;off.height=N;const oc=off.getContext('2d'),im=oc.createImageData(N,N);for(let i=0;i<img.length;i++){const v=Math.max(0,Math.min(1,img[i]));const g=Math.round(Math.pow(v,.8)*255);im.data[i*4]=Math.round(g*.83);im.data[i*4+1]=Math.round(g*.95);im.data[i*4+2]=g;im.data[i*4+3]=255;}oc.putImageData(im,0,0);
+  ctx.save();ctx.globalAlpha=alpha;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();ctx.imageSmoothingEnabled=true;ctx.drawImage(off,cx-r,cy-r,2*r,2*r);ctx.restore();
+}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // ambient geometry
+  ctx.save();ctx.strokeStyle='#121719';ctx.lineWidth=1;for(let k=1;k<=3;k++){ctx.beginPath();ctx.arc(CX,CY,R*(.42+.19*k),0,Math.PI*2);ctx.stroke()}ctx.restore();
+  // reconstruction plate
+  ctx.save();ctx.beginPath();ctx.arc(CX,CY,R*.76,0,Math.PI*2);ctx.fillStyle='#050708';ctx.fill();ctx.restore();
+  if(scans.length)drawImageCircle(displayRec,CX,CY,R*.73,Math.min(.94,.28+scans.length*.035));
+  else{ctx.save();ctx.beginPath();ctx.arc(CX,CY,R*.72,0,Math.PI*2);ctx.fillStyle='#080b0d';ctx.fill();ctx.restore()}
+  // subtle crosshair
+  ctx.save();ctx.strokeStyle='rgba(130,150,145,.12)';ctx.setLineDash([2,8]);ctx.beginPath();ctx.moveTo(CX-R*.84,CY);ctx.lineTo(CX+R*.84,CY);ctx.moveTo(CX,CY-R*.84);ctx.lineTo(CX,CY+R*.84);ctx.stroke();ctx.restore();
+  // scanned angle ghosts
+  ctx.save();for(const s of scans){const c=Math.cos(s.th),si=Math.sin(s.th);ctx.strokeStyle='rgba(137,191,197,.13)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(CX-c*R*.88,CY-si*R*.88);ctx.lineTo(CX+c*R*.88,CY+si*R*.88);ctx.stroke()}ctx.restore();
+  // active beam axis and emitter/detector
+  const c=Math.cos(angle),s=Math.sin(angle), ex=CX+c*R,ey=CY+s*R,dx=CX-c*R,dy=CY-s*R;
+  ctx.save();ctx.strokeStyle='rgba(217,182,111,.22)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(dx,dy);ctx.stroke();
+  ctx.beginPath();ctx.arc(ex,ey,7,0,Math.PI*2);ctx.fillStyle='#d9b66f';ctx.shadowColor='#d9b66f';ctx.shadowBlur=18;ctx.fill();ctx.shadowBlur=0;
+  ctx.beginPath();ctx.arc(dx,dy,11,0,Math.PI*2);ctx.strokeStyle='#79817d';ctx.stroke();ctx.beginPath();ctx.moveTo(dx-15*s,dy+15*c);ctx.lineTo(dx+15*s,dy-15*c);ctx.stroke();ctx.restore();
+  // degree label at emitter
+  ctx.save();ctx.font='9px '+getComputedStyle(document.documentElement).getPropertyValue('--mono');ctx.fillStyle='#7d8784';ctx.textAlign='center';ctx.fillText((angle*180/Math.PI).toFixed(1)+'°',ex+c*20,ey+s*20+3);ctx.restore();
+  // film / sinogram: a curved strip of acquired projections
+  const filmW=Math.min(W*.72,880),filmH=Math.max(40,H*.075),fx=CX-filmW/2,fy=filmY-filmH/2;
+  ctx.save();ctx.fillStyle='rgba(7,9,10,.86)';ctx.fillRect(fx,fy,filmW,filmH);ctx.strokeStyle='#1d2424';ctx.strokeRect(fx-.5,fy-.5,filmW+1,filmH+1);
+  for(const q of scans){const x=fx+(q.th/Math.PI)*filmW;let mx=0;for(const v of q.p)if(v>mx)mx=v;for(let b=0;b<BINS;b++){const v=mx?q.p[b]/mx:0;ctx.fillStyle=`rgba(217,182,111,${.06+.7*v})`;ctx.fillRect(x-1,fy+b/BINS*filmH,2,Math.ceil(filmH/BINS)+1)}}
+  // angle ticks
+  ctx.fillStyle='#46504e';ctx.font='8px '+getComputedStyle(document.documentElement).getPropertyValue('--mono');ctx.textAlign='center';for(const d of [0,45,90,135,180]){const x=fx+d/180*filmW;ctx.fillRect(x,fy+filmH+4,1,4);ctx.fillText(d+'°',x,fy+filmH+17)}ctx.restore();
+  // scan count arc
+  ctx.save();ctx.lineWidth=2;ctx.strokeStyle='#202726';ctx.beginPath();ctx.arc(CX,CY,R*1.08,-Math.PI/2,Math.PI*1.5);ctx.stroke();if(scans.length){ctx.strokeStyle='#687c77';ctx.beginPath();ctx.arc(CX,CY,R*1.08,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,scans.length/MAXSCANS));ctx.stroke()}ctx.restore();
+  // active scan flash
+  if(animSweep){const t=(performance.now()-animSweep.start)/650;if(t<1){ctx.save();ctx.globalCompositeOperation='screen';ctx.strokeStyle=`rgba(217,182,111,${.55*(1-t)})`;ctx.lineWidth=1.5+6*(1-t);const off=(t*2-1)*R*.72;ctx.beginPath();ctx.moveTo(CX+c*R*.72-s*off,CY+s*R*.72+c*off);ctx.lineTo(CX-c*R*.72-s*off,CY-s*R*.72+c*off);ctx.stroke();ctx.restore();requestAnimationFrame(draw)}else animSweep=null}
+}
+function pointerAngle(e){const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;return normAngle(Math.atan2(y-CY,x-CX))}
+canvas.addEventListener('pointerdown',e=>{dragging=true;canvas.setPointerCapture(e.pointerId);angle=pointerAngle(e);draw()});
+canvas.addEventListener('pointermove',e=>{if(!dragging)return;angle=pointerAngle(e);draw()});
+canvas.addEventListener('pointerup',e=>{if(!dragging)return;dragging=false;angle=pointerAngle(e);acquire(angle)});
+window.addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='ArrowRight'){angle=normAngle(angle+Math.PI/180);draw()} if(e.key==='ArrowDown'||e.key==='ArrowLeft'){angle=normAngle(angle-Math.PI/180);draw()} if(e.key==='Enter')acquire(angle)});
+
+autoBtn.addEventListener('click',()=>{
+  const targets=[];for(let k=0;k<MAXSCANS;k++)targets.push(k*Math.PI/MAXSCANS+.001); let i=0;
+  const step=()=>{while(i<targets.length&&scans.some(s=>angleDist(s.th,targets[i])<1.8*Math.PI/180))i++;if(i>=targets.length)return;angle=targets[i];acquire(angle,true);i++;setTimeout(step,55)};step();
+});
+priorBtn.addEventListener('click',()=>{prior=(prior+1)%3;applyPrior();computeResidual();draw();noteText.innerHTML=prior===0?'回到直接反投影。它几乎不替你猜测结构，所以欠采样时条纹最诚实。':prior===1?'现在算法偏爱<b>平滑世界</b>。噪声和条纹少了，但尖锐边界也会一起被吞掉。':'现在算法偏爱<b>稀疏世界</b>：大量位置被直接压到零。边缘更硬，却可能把真实的弱结构误删。';note.style.opacity=1;note.style.transform='none'});
+revealBtn.addEventListener('click',()=>{imgToCanvas(truth,truthCanvas);imgToCanvas(displayRec,guessCanvas);document.getElementById('revealCopy').textContent=`${scans.length} 个投影、${priorName.textContent}：数据一致性误差 ${residualEl.textContent}。看起来“像”并不等于可证明唯一。`;reveal.classList.add('show')});
+document.getElementById('revealClose').addEventListener('click',()=>reveal.classList.remove('show'));
+theoryBtn.addEventListener('click',()=>theory.classList.add('show'));document.getElementById('closeTheory').addEventListener('click',()=>theory.classList.remove('show'));
+
+// a few lightweight internal checks; visible only in console, but they stop obvious math regressions
+(function selfCheck(){const p0=project(truth,0),p90=project(truth,Math.PI/2);const s0=p0.reduce((a,b)=>a+b,0),s90=p90.reduce((a,b)=>a+b,0),st=truth.reduce((a,b)=>a+b,0);console.assert(Math.abs(s0-st)/st<.01,'projection mass 0°');console.assert(Math.abs(s90-st)/st<.01,'projection mass 90°')})();
+resize();
+})();
+</script>
+</body>
+</html>

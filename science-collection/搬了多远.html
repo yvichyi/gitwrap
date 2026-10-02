@@ -1,0 +1,2343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>搬了多远</title>
+<meta name="description" content="最优传输：全变差看不见位移，Wasserstein 看得见 —— 而看见是有价钱的。">
+<style>
+/* ============================================================================
+ * ot/style.css —— 《搬了多远》
+ * 浅色纸面。数字用等宽，正文用无衬线。
+ * ==========================================================================*/
+
+:root{
+  --bg:#f6f5f2;
+  --panel:#ffffff;
+  --ink:#1c1b19;
+  --ink2:#57534e;
+  --ink3:#8a8279;
+  --line:#ded9d0;
+  --line2:#efece6;
+  --w1:#a23b1e;      /* W₁ / 主角 */
+  --tv:#1f6f8b;      /* TV */
+  --kl:#6b8e23;      /* KL */
+  --w2:#7c3aed;      /* W₂ */
+  --ok:#15803d;
+  --warn:#b45309;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:15px;line-height:1.62;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 20px 80px}
+
+/* ------------------------------------------------------------------ hero */
+.hero{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:20px}
+.hero h1{font-size:34px;line-height:1.2;margin:0 0 6px;letter-spacing:.02em}
+.hero .sub{font-size:15px;color:var(--ink2);margin:0 0 12px}
+.hero .lede{font-size:16px;line-height:1.75;margin:0;max-width:62ch}
+.hero .lede b{color:var(--w1)}
+.hero .stamp{margin-top:12px;font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+
+/* ------------------------------------------------------------------ tabs */
+.tabs{
+  display:flex;flex-wrap:wrap;gap:6px;
+  padding:10px 0 14px;margin-bottom:16px;border-bottom:1px solid var(--line);
+}
+.tabs button{
+  font-family:var(--sans);font-size:13px;line-height:1.2;
+  padding:8px 12px;min-height:44px;
+  background:var(--panel);color:var(--ink2);
+  border:1px solid var(--line);border-radius:6px;cursor:pointer;
+  white-space:nowrap;
+}
+.tabs button:hover{border-color:var(--ink3);color:var(--ink)}
+.tabs button[aria-selected="true"]{
+  background:var(--ink);color:#fff;border-color:var(--ink);
+}
+
+/* ------------------------------------------------------------------ panel */
+.panel{display:none}
+.panel.on{display:block}
+.panel h2{font-size:21px;margin:26px 0 4px;letter-spacing:.01em}
+.panel h2:first-child{margin-top:4px}
+.panel h3{font-size:15px;margin:22px 0 6px;color:var(--ink)}
+.panel p{margin:8px 0;max-width:68ch}
+.panel .note{font-size:13.5px;color:var(--ink2)}
+.panel code{font-family:var(--mono);font-size:13px;background:var(--line2);padding:1px 4px;border-radius:3px}
+.sec-no{
+  display:inline-block;font-family:var(--mono);font-size:12px;color:var(--w1);
+  border:1px solid var(--w1);border-radius:3px;padding:0 5px;margin-right:8px;vertical-align:2px;
+}
+
+/* ------------------------------------------------------------------ grid */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:14px 0}
+.grid2>div{min-width:0}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:14px 0}
+.grid3>div{min-width:0}
+
+/* ------------------------------------------------------------------ bench */
+.bench{
+  display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:20px;
+  align-items:start;margin:16px 0;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;
+}
+.bench>div{min-width:0}
+.ctrls{display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;flex-direction:column;gap:4px}
+.ctrl label{font-size:12.5px;color:var(--ink2)}
+.ctrl .val{font-family:var(--mono);font-size:13px;color:var(--ink)}
+input[type="range"]{width:100%;min-height:44px;accent-color:var(--w1)}
+select{
+  font-family:var(--sans);font-size:13.5px;padding:7px 8px;min-height:44px;
+  border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink);
+}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.btnrow button{
+  font-family:var(--sans);font-size:13px;padding:9px 11px;min-height:44px;
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--ink2);
+}
+.btnrow button:hover{border-color:var(--w1);color:var(--w1)}
+
+/* ------------------------------------------------------------------ readout */
+.ro{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;
+  font-family:var(--mono);font-size:12.5px;color:var(--ink2);
+  background:var(--line2);border-radius:6px;padding:10px 12px;margin-top:4px;
+}
+.ro span{display:block}
+.ro b{color:var(--ink);font-weight:600}
+.ro .k{color:var(--ink3);margin-right:6px}
+.ro .w1 b{color:var(--w1)}
+.ro .tv b{color:var(--tv)}
+.ro .kl b{color:var(--kl)}
+
+/* ------------------------------------------------------------------ chart */
+.chart{margin:10px 0 4px}
+.chart svg{display:block}
+.legend-html{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--ink2);margin:6px 0 2px}
+.legend-html i{display:inline-block;width:16px;height:3px;border-radius:2px;vertical-align:3px;margin-right:5px}
+.legend-html i.sq{height:10px;width:10px;border-radius:2px;vertical-align:1px}
+.bar-fill{display:block}
+
+/* ------------------------------------------------------------------ table */
+.tbl-wrap{max-width:100%;overflow-x:auto;margin:12px 0}
+table.dt{border-collapse:collapse;width:100%;font-size:13px}
+table.dt th,table.dt td{
+  padding:6px 10px;border-bottom:1px solid var(--line);text-align:right;
+  white-space:nowrap;font-family:var(--mono);font-size:12.5px;
+}
+table.dt th{color:var(--ink2);font-weight:600;border-bottom:1.5px solid var(--ink3);font-family:var(--sans);font-size:12.5px}
+table.dt td:first-child,table.dt th:first-child{text-align:left}
+table.dt tr.hi td{background:#fdf3ee}
+table.dt.wrapok td{white-space:normal;overflow-wrap:break-word}
+table.dt.wrapok td:first-child{font-family:var(--sans);font-size:13px}
+table.dt caption{caption-side:top;text-align:left;font-size:12.5px;color:var(--ink3);padding-bottom:6px}
+
+/* ------------------------------------------------------------------ kpi */
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.kpis>div{min-width:0}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:13px 14px}
+.kpi .lab{font-size:12.5px;color:var(--ink2);margin-bottom:4px}
+.kpi .val{font-family:var(--mono);font-size:20px;color:var(--w1);line-height:1.25;word-break:break-word}
+.kpi .unit{font-size:11.5px;color:var(--ink3);margin-top:3px}
+.kpi .note{font-size:12px;color:var(--ink2);margin-top:7px;line-height:1.55}
+
+/* ------------------------------------------------------------------ lists */
+ol.clist,ol.blist{margin:8px 0;padding-left:22px}
+ol.clist li,ol.blist li{margin:7px 0;max-width:72ch;line-height:1.66}
+ol.blist li{color:var(--ink2);font-size:14px}
+
+/* ------------------------------------------------------------------ tail */
+.tail{margin-top:36px;border-top:2px solid var(--ink);padding-top:6px}
+.tail h2{font-size:20px;margin:26px 0 6px}
+
+/* ------------------------------------------------------------------ narrow */
+@media (max-width:640px){
+  .wrap{padding:16px 13px 60px}
+  .hero h1{font-size:25px}
+  .hero .lede{font-size:14.5px}
+  .bench{grid-template-columns:minmax(0,1fr)}
+  .grid2{grid-template-columns:minmax(0,1fr)}
+  .grid3{grid-template-columns:minmax(0,1fr)}
+  .kpis{grid-template-columns:minmax(0,1fr)}
+  .tabs button{font-size:12.5px;padding:9px 10px;min-height:44px}
+  .ro{grid-template-columns:minmax(0,1fr)}
+  table.dt th,table.dt td{padding:6px 8px;font-size:11.5px}
+  table.dt{white-space:normal}
+  table.dt td,table.dt th{white-space:normal;overflow-wrap:anywhere}
+  table.dt.num td,table.dt.num th{white-space:nowrap}
+  .btnrow button{min-height:44px}
+  select{min-height:44px}
+  input[type="range"]{min-height:44px}
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>搬了多远</h1>
+  <p class="sub">最优传输：一个必须看见位移的距离</p>
+  <p class="lede">
+    两个分布差多少？全变差只看它们<b>重叠</b>的部分，重叠一旦为零，它就报 1 —— 无论质量被搬了
+    一厘米还是一光年。最优传输换了一个问法：<b>把一堆土搬成另一堆土，最少要付多少运费</b>。
+    这个代价叫 Wasserstein 距离，它是第一个真正"看见位移"的尺子。
+    本页把三把尺子摆在一起量同一件事，用七套互不共享代码的算法互相把对方证伪，
+    并把"看见"的价格算清楚。
+  </p>
+  <div class="stamp" id="stamp">—</div>
+</header>
+
+<nav class="tabs" id="tabs"></nav>
+
+<!-- ============================================================ 壹 -->
+<section class="panel on" id="p-one">
+  <h2><span class="sec-no">壹</span>挖土与填土</h2>
+  <p>
+    1781 年 Monge 问的是一个土方工程问题：一堆土要搬到另一堆土的位置，怎么搬最省力？
+    把分布看成"土的形状"，把搬运代价看成"质量 × 距离"，这就是最优传输。
+    下面这条线上的两堆土，左堆是起点，右堆是终点 —— 拖动滑杆把右堆搬走，看三把尺子各说什么。
+  </p>
+  <div class="bench">
+    <div>
+      <div class="chart" id="demo"></div>
+      <div class="legend-html" id="lg-demo">
+        <span><i style="background:#a23b1e"></i>起点分布 μ</span>
+        <span><i style="background:#1f6f8b"></i>终点分布 ν</span>
+        <span><i style="background:#c9a227"></i>最优搬运计划（弧的粗细 = 质量）</span>
+      </div>
+    </div>
+    <div class="ctrls">
+      <div class="ctrl">
+        <label for="pile-shape">土的形状</label>
+        <select id="pile-shape">
+          <option value="uniform">均匀</option>
+          <option value="gauss">高斯</option>
+          <option value="bimodal">双峰</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <label for="pile-delta">右堆搬了多远 δ</label>
+        <input type="range" id="pile-delta" min="0" max="192" step="1" value="48">
+        <span class="val" id="pile-delta-val">δ = 0.750</span>
+      </div>
+      <div class="ctrl">
+        <label for="pile-n">格点数 n</label>
+        <input type="range" id="pile-n" min="8" max="64" step="4" value="32">
+        <span class="val" id="pile-n-val">n = 32</span>
+      </div>
+      <div class="btnrow">
+        <button id="pile-reset">回到 δ=0</button>
+      </div>
+      <div class="ro" id="pile-ro"></div>
+    </div>
+  </div>
+  <p class="note">
+    三把尺子读同一对数：<b>W₁</b> 是搬运的代价（质量 × 距离），<b>W₂</b> 用距离的平方，
+    <b>TV</b> 是重叠面积的一半，<b>KL</b> 是信息论的相对熵。
+    把滑杆拉到 δ 很大，你会看到 TV 停在 1 不动，而 W₁ 还在涨。
+  </p>
+</section>
+
+<!-- ============================================================ 贰 -->
+<section class="panel" id="p-two">
+  <h2><span class="sec-no">贰</span>两把尺子看不见的两件事</h2>
+  <p>
+    上面那个现象值得单独量一遍。第一个实验：把一条线段上的均匀分布整体平移 δ，
+    格点对齐（δ 是格距的整数倍），所以下面的数字全部是精确值，不是"差不多"。
+  </p>
+  <div class="chart" id="c-scale"></div>
+  <div class="legend-html" id="lg-scale">
+    <span><i style="background:#1f6f8b"></i>TV(δ) = min(δ,1)</span>
+    <span><i style="background:#a23b1e"></i>W₁(δ) = δ</span>
+    <span><i style="background:#6b8e23"></i>KL(δ) —— 只要 δ≠0 就是无穷</span>
+  </div>
+  <p class="note" id="ro-scale"></p>
+
+  <h3>第二个实验：把土切碎</h3>
+  <p>
+    现在不动位置，改结构：把线段交替切成 2k 条细缝，起点占偶数格点、终点占奇数格点。
+    两列分布都在弱收敛到同一个均匀分布，而它们的 TV 一直是 1。
+  </p>
+  <div class="chart" id="c-comb"></div>
+  <div class="legend-html" id="lg-comb">
+    <span><i style="background:#1f6f8b"></i>TV —— 恒为 1</span>
+    <span><i style="background:#a23b1e"></i>W₁ = 1/(2k)</span>
+  </div>
+  <p class="note" id="ro-comb"></p>
+  <div class="tbl-wrap"><table class="dt num" id="t-e1"></table></div>
+  <div class="tbl-wrap"><table class="dt num" id="t-e2"></table></div>
+</section>
+
+<!-- ============================================================ 叁 -->
+<section class="panel" id="p-three">
+  <h2><span class="sec-no">叁</span>一维有闭式，而且有七种算法同意</h2>
+  <p>
+    一维是最幸运的情形：最优搬运计划必然是"保序"的 —— 把两边的点各自排好队，
+    第 i 个配第 i 个。于是 W<sub>p</sub> 有一个闭式：分位数函数之差的 L<sub>p</sub> 范数。
+    而 W₁ 还有第二个完全不同的表达：两条累积分布曲线之间的面积，∫|F−G|。
+  </p>
+  <p>
+    本页把七套互不共享代码的实现摆在一起对账。它们的最大分歧就是下面这个数 ——
+    如果哪一套写错了，它会立刻跳出来。
+  </p>
+  <div class="chart" id="c-paths"></div>
+  <div class="legend-html" id="lg-paths">
+    <span><i class="sq" style="background:#a23b1e"></i>与分位数闭式的偏差（条形，对数刻度）</span>
+    <span><i class="sq" style="background:#b45309"></i>偏差已大到 10⁻¹⁶ 以上</span>
+    <span><i style="background:#6b8e23"></i>双精度极限 1e-16</span>
+  </div>
+  <p class="note" id="ro-paths"></p>
+  <div class="tbl-wrap"><table class="dt num" id="t-e3"></table></div>
+  <p class="note" id="ro-ties"></p>
+</section>
+
+<!-- ============================================================ 肆 -->
+<section class="panel" id="p-four">
+  <h2><span class="sec-no">肆</span>对偶：价钱从哪里来</h2>
+  <p>
+    线性规划都有对偶。最优传输的对偶是：找一个 1-Lipschitz 的函数 φ，让
+    Σφ(x<sub>i</sub>)a<sub>i</sub> − Σφ(y<sub>j</sub>)b<sub>j</sub> 最大。一维时这个最优的 φ
+    可以写出来：它是 sign(F−G) 的负积分。下面画的是同一个实例的三条曲线。
+  </p>
+  <div class="bench">
+    <div>
+      <div class="chart" id="c-dual"></div>
+      <div class="legend-html" id="lg-dual">
+        <span><i style="background:#1f6f8b"></i>F(x) 起点累积分布</span>
+        <span><i style="background:#a23b1e"></i>G(x) 终点累积分布</span>
+        <span><i style="background:#c9a227"></i>F−G（它的面积就是 W₁）</span>
+        <span><i style="background:#7c3aed"></i>对偶势 φ(x)</span>
+      </div>
+    </div>
+    <div class="ctrls">
+      <div class="ctrl">
+        <label for="dual-n">点数 n</label>
+        <input type="range" id="dual-n" min="4" max="24" step="1" value="12">
+        <span class="val" id="dual-n-val">n = 12</span>
+      </div>
+      <div class="ctrl">
+        <label for="dual-seed">实例编号</label>
+        <input type="range" id="dual-seed" min="1" max="20" step="1" value="7">
+        <span class="val" id="dual-seed-val">#7</span>
+      </div>
+      <div class="ro" id="dual-ro"></div>
+    </div>
+  </div>
+  <p>
+    对偶不是装饰。它给出两个可以当场核验的判据：φ 的斜率绝对值不能超过 1
+    （1-Lipschitz），以及对偶目标必须精确等于原始目标。还有一条更细的 ——
+    <b>互补松弛</b>：只有在最优计划的支集上，φ(x)−φ(y) 才恰好等于 |x−y|。
+  </p>
+  <div class="chart" id="c-slack"></div>
+  <div class="legend-html" id="lg-slack">
+    <span><i class="sq" style="background:#a23b1e"></i>在最优计划的支集上（等号成立）</span>
+    <span><i class="sq" style="background:#e8e2d8"></i>不在支集上（严格小于）</span>
+  </div>
+  <div class="tbl-wrap"><table class="dt num" id="t-dual"></table></div>
+</section>
+
+<!-- ============================================================ 伍 -->
+<section class="panel" id="p-five">
+  <h2><span class="sec-no">伍</span>熵的价钱</h2>
+  <p>
+    精确的最优传输是一个线性规划，n 个点就有 n² 个变量。1964 年 Sinkhorn 发现：
+    往目标里加一项 <code>−ε·H(P)</code>（熵），问题立刻变成两个交替归一化，
+    每次迭代只要 O(n²)，而且天然可并行。
+  </p>
+  <p>
+    代价是：<b>你算出来的不再是那个最小值</b>。ε 越大，解越"糊"、偏差越大，但迭代越快。
+    下面这张图把这条交易曲线画出来 —— 横轴是工作量，纵轴是精度。
+  </p>
+  <div class="chart" id="c-sink"></div>
+  <div class="legend-html" id="lg-sink">
+    <span><i style="background:#a23b1e"></i>收敛的档位（ε ∈ [0.1, 1]，乘积几乎不变）</span>
+    <span><i style="background:#8a8279"></i>已经不在双曲段上</span>
+    <span><i class="sq" style="background:#b45309"></i>没收敛（预算用尽）</span>
+  </div>
+  <div class="tbl-wrap"><table class="dt num" id="t-e5"></table></div>
+  <p class="note" id="ro-trunc"></p>
+</section>
+
+<!-- ============================================================ 陆 -->
+<section class="panel" id="p-six">
+  <h2><span class="sec-no">陆</span>平均是搬运，不是叠加</h2>
+  <p>
+    两个分布的平均是什么？最自然的答案是线性混合，各取一半。但在 Wasserstein 几何里，
+    "中点"是另一个东西：把一半的质量从第一个分布搬到第二个分布，搬一半的路程。
+    这两个答案在下面这张图上分道扬镳。
+  </p>
+  <div class="bench">
+    <div>
+      <div class="chart" id="c-bary"></div>
+      <div class="legend-html" id="lg-bary">
+        <span><i style="background:#a23b1e"></i>起点高斯 N(0,1)</span>
+        <span><i style="background:#1f6f8b"></i>终点高斯 N(Δ,1)</span>
+        <span><i style="background:#6b8e23"></i>线性平均（叠加）</span>
+        <span><i style="background:#7c3aed"></i>W₂ 重心（搬运）</span>
+      </div>
+    </div>
+    <div class="ctrls">
+      <div class="ctrl">
+        <label for="bary-d">两个高斯的距离 Δ</label>
+        <input type="range" id="bary-d" min="0" max="70" step="1" value="40">
+        <span class="val" id="bary-d-val">Δ = 4.0</span>
+      </div>
+      <div class="ro" id="bary-ro"></div>
+    </div>
+  </div>
+  <p>
+    还有一个判据把"搬运"这件事钉死：位移插值 ρ<sub>t</sub> 必须满足
+    W₂(ρ<sub>t</sub>, ρ<sub>0</sub>) = t · W₂(ρ<sub>1</sub>, ρ<sub>0</sub>) —— 到起点的距离随时间严格线性。
+  </p>
+  <div class="chart" id="c-interp"></div>
+  <div class="tbl-wrap"><table class="dt num" id="t-e6"></table></div>
+</section>
+
+<!-- ============================================================ 柒 -->
+<section class="panel" id="p-seven">
+  <h2><span class="sec-no">柒</span>墙</h2>
+  <p>
+    "看见位移"不是免费的。一维有闭式，代价是 O(n log n)；一旦离开一维，
+    闭式立刻消失，问题变成指派或者线性规划；而最笨的做法 —— 穷举所有搬运方案 ——
+    在 n 稍大一点就撞墙。下面三张图是同一台机器上的实测。
+  </p>
+  <div class="chart" id="c-ladder"></div>
+  <div class="legend-html" id="lg-ladder">
+    <span><i class="sq" style="background:#a23b1e"></i>实测跑到的最大规模</span>
+    <span><i class="sq" style="background:#ded9d0"></i>外推</span>
+  </div>
+  <p class="note" id="ro-ladder"></p>
+  <p>
+    第二条墙是结构性的：一维那个"排队配对"的性质，一到二维就没了。
+  </p>
+  <div class="chart" id="c-mono2d"></div>
+  <p class="note" id="ro-mono2d"></p>
+  <div class="tbl-wrap"><table class="dt num" id="t-e7"></table></div>
+</section>
+
+<!-- ============================================================ tail -->
+<div class="tail">
+  <h2>六张 KPI</h2>
+  <div class="kpis" id="kpis"></div>
+
+  <h2>结论</h2>
+  <ol class="clist" id="l-concl"></ol>
+
+  <h2>我没做到什么</h2>
+  <ol class="blist" id="l-bound"></ol>
+
+  <h2>这些数字凭什么可信</h2>
+  <p class="note" id="ro-verify"></p>
+  <div class="tbl-wrap"><table class="dt wrapok" id="t-verify"></table></div>
+</div>
+
+</div>
+<script>/* ============================================================================
+ * ot/core.js —— 《搬了多远》全部模型（UMD）
+ *
+ * 最优传输（Optimal Transport）。一个度量要成为"几何"，必须看见质量搬了多远。
+ *
+ * 本文件里的每一套求解器都是**独立的**，可以互相把对方证伪：
+ *   · 一维 W_p 分位数闭式      wpSorted / wpQuantile
+ *   · 一维 W_1 = ∫|F−G| 精确积分 w1CdfExact
+ *   · 穷举全排列（真值）        assignmentBrute
+ *   · 匈牙利算法（O(n³)）       hungarian
+ *   · 最小费用流（非等权）      minCostFlowOT
+ *   · 单调计划（一维最优）      monotonePlan
+ *   · Kantorovich 对偶势        kantPotentials1D
+ *   · 熵正则化 Sinkhorn         sinkhorn
+ *   · 高斯族全部闭式            w2Gauss1D / baryGaussW2 / mccannGauss …
+ *
+ * Node 与浏览器共用同一份源码。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.OTCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  var EPS_TOL = 1e-12;
+
+  /* ==================================================================== PRNG */
+  function splitmix32(a) {
+    return function () {
+      a |= 0; a = (a + 0x9e3779b9) | 0;
+      var t = a ^ (a >>> 16); t = Math.imul(t, 0x21f0aaad);
+      t = t ^ (t >>> 15); t = Math.imul(t, 0x735a2d97);
+      return ((t = t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+
+  function hashTag(tag) {
+    var h = 0x811c9dc5 | 0, i;
+    for (i = 0; i < tag.length; i++) h = (Math.imul(h ^ tag.charCodeAt(i), 0x01000193)) | 0;
+    return h;
+  }
+
+  /* ============================================================ 分布：原子表示 */
+  /* 一个分布 = { x: [位置…升序], w: [质量…和恒为 1] } */
+
+  function atomsNormalize(A) {
+    var s = 0, i;
+    for (i = 0; i < A.w.length; i++) s += A.w[i];
+    var w = A.w.map(function (v) { return v / s; });
+    return { x: A.x.slice(), w: w };
+  }
+
+  function atomsSort(A) {
+    var idx = A.x.map(function (_, i) { return i; });
+    idx.sort(function (a, b) { return A.x[a] - A.x[b]; });
+    return { x: idx.map(function (i) { return A.x[i]; }), w: idx.map(function (i) { return A.w[i]; }) };
+  }
+
+  function atomsShift(A, d) {
+    return { x: A.x.map(function (v) { return v + d; }), w: A.w.slice() };
+  }
+
+  function atomsScale(A, s, c) {
+    return { x: A.x.map(function (v) { return c + (v - c) * s; }), w: A.w.slice() };
+  }
+
+  /* n 个等权原子，铺在 [lo,hi] 的中点 —— 使分位数公式与连续分布逐位吻合 */
+  function atomsUniform(n, lo, hi) {
+    var x = [], w = [], i;
+    for (i = 0; i < n; i++) { x.push(lo + (i + 0.5) * (hi - lo) / n); w.push(1 / n); }
+    return { x: x, w: w };
+  }
+
+  /* 高斯的分位数离散：x_i = mu + sigma·Φ⁻¹((i+0.5)/n) */
+  function atomsGauss(n, mu, sigma) {
+    var x = [], w = [], i;
+    for (i = 0; i < n; i++) { x.push(mu + sigma * normInv((i + 0.5) / n)); w.push(1 / n); }
+    return { x: x, w: w };
+  }
+
+  /* 双峰：两个高斯各半 */
+  function atomsBimodal(n, mu, gap, sigma) {
+    var h = Math.floor(n / 2), a = atomsGauss(h, mu - gap / 2, sigma),
+        b = atomsGauss(n - h, mu + gap / 2, sigma);
+    var x = a.x.concat(b.x), w = a.w.concat(b.w).map(function (v) { return v * 0.5; });
+    return atomsSort({ x: x, w: w });
+  }
+
+  /* 细缝（comb）：把 [0,1] 上的质量交替放到 2k 个格点上。
+   * A 在偶数格点、B 在奇数格点，格距 h = 1/(2k)。
+   * 结论：TV ≡ 1（支撑不相交），而 W_1 精确 = h = 1/(2k)。 */
+  function atomsComb(k) {
+    var h = 1 / (2 * k), ax = [], bx = [], i;
+    for (i = 0; i < k; i++) { ax.push(2 * i * h); bx.push((2 * i + 1) * h); }
+    return { A: { x: ax, w: ax.map(function () { return 1 / k; }) },
+             B: { x: bx, w: bx.map(function () { return 1 / k; }) },
+             h: h };
+  }
+
+  /* 决定论实例：由 (seed, tag) 唯一确定 */
+  function makeInstance(seed, tag, n, dim) {
+    var rng = splitmix32((seed ^ hashTag(tag)) | 0);
+    var d = dim || 1;
+    if (d === 1) {
+      var a = [], b = [], i;
+      for (i = 0; i < n; i++) a.push(rng());
+      for (i = 0; i < n; i++) b.push(rng());
+      a.sort(function (p, q) { return p - q; });
+      b.sort(function (p, q) { return p - q; });
+      return { A: { x: a, w: a.map(function () { return 1 / n; }) },
+               B: { x: b, w: b.map(function () { return 1 / n; }) } };
+    }
+    var X = [], Y = [], j;
+    for (j = 0; j < n; j++) X.push([rng(), rng()]);
+    for (j = 0; j < n; j++) Y.push([rng(), rng()]);
+    return { X: X, Y: Y };
+  }
+
+  /* ======================================================== 精确的一维泛函 */
+
+  /* 等权、已排序的两组点 → W_p 的分位数闭式：(1/n Σ|a_i−b_i|^p)^{1/p} */
+  function wpSorted(a, b, p) {
+    var s = 0, i;
+    for (i = 0; i < a.length; i++) s += Math.pow(Math.abs(a[i] - b[i]), p);
+    return Math.pow(s / a.length, 1 / p);
+  }
+
+  /* 一般权重：W_p^p = ∫₀¹ |F⁻¹(u) − G⁻¹(u)|^p du（分位数函数的精确积分） */
+  function wpQuantile(A, B, p) {
+    var ca = [0], cb = [0], i, j;
+    for (i = 0; i < A.w.length; i++) ca.push(ca[i] + A.w[i]);
+    for (j = 0; j < B.w.length; j++) cb.push(cb[j] + B.w[j]);
+    var bp = [];
+    for (i = 1; i <= A.w.length; i++) bp.push(ca[i]);
+    for (j = 1; j <= B.w.length; j++) bp.push(cb[j]);
+    bp.sort(function (a, b) { return a - b; });
+    var u = [0];
+    for (i = 0; i < bp.length; i++) {
+      if (bp[i] - u[u.length - 1] > 1e-15 && bp[i] < 1 - 1e-15) u.push(bp[i]);
+    }
+    u.push(1);
+    var acc = 0, k;
+    for (k = 0; k < u.length - 1; k++) {
+      var mid = (u[k] + u[k + 1]) / 2;
+      var ii = qIndex(ca, mid), jj = qIndex(cb, mid);
+      acc += Math.pow(Math.abs(A.x[ii] - B.x[jj]), p) * (u[k + 1] - u[k]);
+    }
+    return Math.pow(acc, 1 / p);
+  }
+
+  /* 最大的 i，使 ca[i] <= u（ca 递增，ca[0]=0） */
+  function qIndex(ca, u) {
+    var lo = 0, hi = ca.length - 1;
+    while (lo < hi) {
+      var mid = (lo + hi + 1) >> 1;
+      if (ca[mid] <= u + 1e-14) lo = mid; else hi = mid - 1;
+    }
+    return Math.min(lo, ca.length - 2);
+  }
+
+  /* W_1 = ∫|F(x) − G(x)| dx —— 阶梯函数，逐段精确积分（Kantorovich–Rubinstein） */
+  function w1CdfExact(A, B) {
+    var pts = [], i;
+    for (i = 0; i < A.x.length; i++) pts.push(A.x[i]);
+    for (i = 0; i < B.x.length; i++) pts.push(B.x[i]);
+    pts.sort(function (a, b) { return a - b; });
+    var uq = [];
+    for (i = 0; i < pts.length; i++) {
+      if (i === 0 || pts[i] - uq[uq.length - 1] > 1e-14) uq.push(pts[i]);
+    }
+    if (uq.length < 2) return 0;
+    var total = 0, fa = 0, fb = 0, ia = 0, ib = 0, m;
+    for (m = 0; m < uq.length - 1; m++) {
+      while (ia < A.x.length && A.x[ia] <= uq[m] + 1e-14) { fa += A.w[ia]; ia++; }
+      while (ib < B.x.length && B.x[ib] <= uq[m] + 1e-14) { fb += B.w[ib]; ib++; }
+      total += Math.abs(fa - fb) * (uq[m + 1] - uq[m]);
+    }
+    return total;
+  }
+
+  /* 把原子并到同一位置再比较 —— TV 与 KL 必须先并点 */
+  function mergeAtoms(A) {
+    var s = atomsSort(A), xs = [], ws = [], i;
+    for (i = 0; i < s.x.length; i++) {
+      if (xs.length && Math.abs(s.x[i] - xs[xs.length - 1]) < 1e-12) ws[ws.length - 1] += s.w[i];
+      else { xs.push(s.x[i]); ws.push(s.w[i]); }
+    }
+    return { x: xs, w: ws };
+  }
+
+  /* 全变差 ½Σ|p−q| */
+  function tvAtoms(A0, B0) {
+    var A = mergeAtoms(A0), B = mergeAtoms(B0);
+    var ia = 0, ib = 0, s = 0;
+    while (ia < A.x.length || ib < B.x.length) {
+      var xa = ia < A.x.length ? A.x[ia] : Infinity;
+      var xb = ib < B.x.length ? B.x[ib] : Infinity;
+      if (Math.abs(xa - xb) < 1e-12) { s += Math.abs(A.w[ia] - B.w[ib]); ia++; ib++; }
+      else if (xa < xb) { s += A.w[ia]; ia++; }
+      else { s += B.w[ib]; ib++; }
+    }
+    return s / 2;
+  }
+
+  /* KL(A‖B)：B 在某处为 0 而 A 不为 0 → 无穷 */
+  function klAtoms(A0, B0) {
+    var A = mergeAtoms(A0), B = mergeAtoms(B0);
+    var ia = 0, ib = 0, s = 0, inf = false;
+    while (ia < A.x.length || ib < B.x.length) {
+      var xa = ia < A.x.length ? A.x[ia] : Infinity;
+      var xb = ib < B.x.length ? B.x[ib] : Infinity;
+      if (Math.abs(xa - xb) < 1e-12) {
+        if (A.w[ia] > 0 && B.w[ib] > 0) s += A.w[ia] * Math.log(A.w[ia] / B.w[ib]);
+        ia++; ib++;
+      } else if (xa < xb) {
+        if (A.w[ia] > 0) inf = true;
+        ia++;
+      } else ib++;
+    }
+    return inf ? Infinity : s;
+  }
+
+  /* ============================================================ 代价矩阵 */
+  function costMatrix1D(A, B, p) {
+    var C = [], i, j;
+    for (i = 0; i < A.x.length; i++) {
+      var row = [];
+      for (j = 0; j < B.x.length; j++) row.push(Math.pow(Math.abs(A.x[i] - B.x[j]), p));
+      C.push(row);
+    }
+    return C;
+  }
+
+  function costMatrixND(X, Y, p) {
+    var C = [], i, j, k;
+    for (i = 0; i < X.length; i++) {
+      var row = [];
+      for (j = 0; j < Y.length; j++) {
+        var s = 0;
+        for (k = 0; k < X[i].length; k++) s += (X[i][k] - Y[j][k]) * (X[i][k] - Y[j][k]);
+        row.push(Math.pow(s, p / 2));
+      }
+      C.push(row);
+    }
+    return C;
+  }
+
+  /* ============================================================ 计划矩阵 */
+  function planCost(P, C) {
+    var s = 0, i, j;
+    for (i = 0; i < P.length; i++) for (j = 0; j < P[i].length; j++) s += P[i][j] * C[i][j];
+    return s;
+  }
+
+  function planNonzeros(P, tol) {
+    var t = tol === undefined ? 1e-9 : tol, n = 0, i, j;
+    for (i = 0; i < P.length; i++) for (j = 0; j < P[i].length; j++) if (P[i][j] > t) n++;
+    return n;
+  }
+
+  function planRowSums(P) {
+    return P.map(function (r) { return r.reduce(function (a, b) { return a + b; }, 0); });
+  }
+
+  function planColSums(P) {
+    var m = P[0].length, out = [], j, i;
+    for (j = 0; j < m; j++) { var s = 0; for (i = 0; i < P.length; i++) s += P[i][j]; out.push(s); }
+    return out;
+  }
+
+  function zeros(n, m) {
+    var a = [], i;
+    for (i = 0; i < n; i++) { var r = []; for (var j = 0; j < m; j++) r.push(0); a.push(r); }
+    return a;
+  }
+
+  function assignmentPlan(sigma, n) {
+    var P = zeros(n, n), i;
+    for (i = 0; i < n; i++) P[i][sigma[i]] = 1 / n;
+    return P;
+  }
+
+  /* 一维的单调（西北角）计划 —— 对凸代价它是精确最优 */
+  function monotonePlan(A, B) {
+    var i = 0, j = 0, ra = A.w[0], rb = B.w[0], out = [];
+    while (i < A.w.length && j < B.w.length) {
+      var f = Math.min(ra, rb);
+      if (f > 1e-15) out.push({ i: i, j: j, m: f });
+      ra -= f; rb -= f;
+      if (ra <= 1e-15) { i++; if (i < A.w.length) ra = A.w[i]; }
+      if (rb <= 1e-15) { j++; if (j < B.w.length) rb = B.w[j]; }
+    }
+    return out;
+  }
+
+  function monotonePlanMatrix(A, B) {
+    var P = zeros(A.w.length, B.w.length), pr = monotonePlan(A, B), k;
+    for (k = 0; k < pr.length; k++) P[pr[k].i][pr[k].j] += pr[k].m;
+    return P;
+  }
+
+  /* ============================================ 穷举全排列（最朴素的真值） */
+  function assignmentBrute(C, opts) {
+    opts = opts || {};
+    var n = C.length;
+    var tol = opts.tol === undefined ? 1e-12 : opts.tol;
+    var cap = opts.maxPerm === undefined ? Infinity : opts.maxPerm;
+    var perm = [], used = new Array(n).fill(false), i;
+    for (i = 0; i < n; i++) perm.push(0);
+    var best = Infinity, bestPerm = null, ties = 0, count = 0, aborted = false;
+
+    function rec(k, cur) {
+      if (aborted) return;
+      if (count >= cap) { aborted = true; return; }
+      if (k === n) {
+        count++;
+        if (cur < best - tol) { best = cur; bestPerm = perm.slice(); ties = 1; }
+        else if (Math.abs(cur - best) <= tol) ties++;
+        return;
+      }
+      for (var c = 0; c < n; c++) {
+        if (used[c]) continue;
+        used[c] = true; perm[k] = c;
+        rec(k + 1, cur + C[k][c]);
+        used[c] = false;
+        if (aborted) return;
+      }
+    }
+    rec(0, 0);
+    return { cost: best, sigma: bestPerm, ties: ties, perms: count, aborted: aborted };
+  }
+
+  /* ================================================== 匈牙利算法（O(n³)） */
+  /* 经典 e-maxx 实现：最小化 Σ C[i][σ(i)]，方阵。 */
+  function hungarian(C) {
+    var n = C.length, m = C[0].length;
+    if (n !== m) throw new Error('hungarian 只接受方阵');
+    var INF = Infinity;
+    var u = new Array(n + 1).fill(0), v = new Array(m + 1).fill(0);
+    var p = new Array(m + 1).fill(0), way = new Array(m + 1).fill(0);
+    var i, j;
+    for (i = 1; i <= n; i++) {
+      p[0] = i;
+      var j0 = 0;
+      var minv = new Array(m + 1).fill(INF);
+      var used = new Array(m + 1).fill(false);
+      do {
+        used[j0] = true;
+        var i0 = p[j0], delta = INF, j1 = -1;
+        for (j = 1; j <= m; j++) {
+          if (used[j]) continue;
+          var cur = C[i0 - 1][j - 1] - u[i0] - v[j];
+          if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
+          if (minv[j] < delta) { delta = minv[j]; j1 = j; }
+        }
+        if (j1 < 0) break;
+        for (j = 0; j <= m; j++) {
+          if (used[j]) { u[p[j]] += delta; v[j] -= delta; }
+          else minv[j] -= delta;
+        }
+        j0 = j1;
+      } while (p[j0] !== 0);
+      do {
+        var j1b = way[j0];
+        p[j0] = p[j1b];
+        j0 = j1b;
+      } while (j0);
+    }
+    var sigma = new Array(n);
+    for (j = 1; j <= m; j++) if (p[j] > 0) sigma[p[j] - 1] = j - 1;
+    var cost = 0;
+    for (i = 0; i < n; i++) cost += C[i][sigma[i]];
+    return { sigma: sigma, cost: cost };
+  }
+
+  /* ============================ 最小费用流（非等权，整数质量，精确解） */
+  /* 网络：源 → X_i（容量 a_i）→ Y_j（容量 ∞，费用 C_ij）→ 汇（容量 b_j）。
+   * 约束矩阵是全幺模的 → 整数质量下 LP 最优解可取整数 → 精确。 */
+  function minCostFlowOT(aMass, bMass, C) {
+    var n = aMass.length, m = bMass.length;
+    var M = 0, i, j;
+    for (i = 0; i < n; i++) M += aMass[i];
+    var V = n + m + 2, S = 0, T = V - 1;
+    var head = [], to = [], cap = [], cst = [];
+    for (i = 0; i < V; i++) head.push([]);
+
+    function addEdge(u, w, c, k) {
+      head[u].push(to.length); to.push(w); cap.push(c); cst.push(k);
+      head[w].push(to.length); to.push(u); cap.push(0); cst.push(-k);
+    }
+    for (i = 0; i < n; i++) addEdge(S, 1 + i, aMass[i], 0);
+    var mid = [];
+    for (i = 0; i < n; i++) {
+      mid.push([]);
+      for (j = 0; j < m; j++) { mid[i].push(to.length); addEdge(1 + i, 1 + n + j, M, C[i][j]); }
+    }
+    for (j = 0; j < m; j++) addEdge(1 + n + j, T, bMass[j], 0);
+
+    var flow = 0, guard = 0;
+    while (flow < M && guard++ < 4 * M + 64) {
+      /* Bellman–Ford（残量图上有负费用边） */
+      var dist = new Array(V).fill(Infinity), pe = new Array(V).fill(-1), inq = new Array(V).fill(false);
+      dist[S] = 0;
+      var queue = [S]; inq[S] = true;
+      while (queue.length) {
+        var uu = queue.shift(); inq[uu] = false;
+        for (var e = 0; e < head[uu].length; e++) {
+          var id = head[uu][e];
+          if (cap[id] <= 0) continue;
+          var vv = to[id], nd = dist[uu] + cst[id];
+          if (nd < dist[vv] - 1e-12) { dist[vv] = nd; pe[vv] = id; if (!inq[vv]) { inq[vv] = true; queue.push(vv); } }
+        }
+      }
+      if (dist[T] === Infinity) break;
+      var aug = Infinity, x = T;
+      while (x !== S) { var ee = pe[x]; aug = Math.min(aug, cap[ee]); x = to[ee ^ 1]; }
+      x = T;
+      while (x !== S) { var e2 = pe[x]; cap[e2] -= aug; cap[e2 ^ 1] += aug; x = to[e2 ^ 1]; }
+      flow += aug;
+    }
+    var P = zeros(n, m);
+    for (i = 0; i < n; i++) for (j = 0; j < m; j++) P[i][j] = cap[mid[i][j] ^ 1];
+    return { P: P, flow: flow, feasible: flow === M };
+  }
+
+  /* 连续质量 → 整数质量（最大余数法），和精确等于 M */
+  function integerMasses(w, M) {
+    var n = w.length, out = new Array(n), fr = [], sum = 0, i;
+    for (i = 0; i < n; i++) {
+      var v = w[i] * M;
+      out[i] = Math.floor(v);
+      fr.push({ i: i, f: v - out[i] });
+      sum += out[i];
+    }
+    fr.sort(function (a, b) { return b.f - a.f; });
+    var k = 0;
+    while (sum < M) { out[fr[k % n].i]++; sum++; k++; }
+    return out;
+  }
+
+  /* ============================================ Kantorovich 对偶势（一维 W₁） */
+  /* φ(x) = −∫_{−∞}^{x} sign(F−G) dt 是 1-Lipschitz 的最优势，
+   * 取 ψ = −φ，则 Σφ(x_i)a_i + Σψ(y_j)b_j 精确等于 ∫|F−G|。 */
+  function kantPotentials1D(A, B) {
+    var pts = [], i;
+    for (i = 0; i < A.x.length; i++) pts.push(A.x[i]);
+    for (i = 0; i < B.x.length; i++) pts.push(B.x[i]);
+    pts.sort(function (a, b) { return a - b; });
+    var uq = [];
+    for (i = 0; i < pts.length; i++) {
+      if (i === 0 || pts[i] - uq[uq.length - 1] > 1e-14) uq.push(pts[i]);
+    }
+    var phi = [], acc = 0, fa = 0, fb = 0, ia = 0, ib = 0;
+    for (i = 0; i < uq.length; i++) {
+      if (i > 0) {
+        var s = (fa > fb) ? 1 : (fa < fb ? -1 : 0);
+        acc += s * (uq[i] - uq[i - 1]);
+      }
+      phi.push(-acc);
+      while (ia < A.x.length && A.x[ia] <= uq[i] + 1e-14) { fa += A.w[ia]; ia++; }
+      while (ib < B.x.length && B.x[ib] <= uq[i] + 1e-14) { fb += B.w[ib]; ib++; }
+    }
+    return {
+      grid: uq, phi: phi,
+      at: function (x) { return linAt(uq, phi, x); },
+      /* 势的斜率绝对值 —— 1-Lipschitz 的实测 Lipschitz 常数 */
+      lip: function () {
+        var mx = 0;
+        for (var k = 0; k + 1 < uq.length; k++) {
+          var d = uq[k + 1] - uq[k];
+          if (d > 1e-12) mx = Math.max(mx, Math.abs((phi[k + 1] - phi[k]) / d));
+        }
+        return mx;
+      }
+    };
+  }
+
+  function linAt(xs, ys, x) {
+    if (x <= xs[0]) return ys[0];
+    if (x >= xs[xs.length - 1]) return ys[ys.length - 1];
+    var lo = 0, hi = xs.length - 1;
+    while (lo + 1 < hi) { var mid = (lo + hi) >> 1; if (xs[mid] <= x) lo = mid; else hi = mid; }
+    var d = xs[hi] - xs[lo];
+    if (d < 1e-15) return ys[lo];
+    return ys[lo] + (ys[hi] - ys[lo]) * (x - xs[lo]) / d;
+  }
+
+  /* 对偶目标（ψ = −φ） */
+  function dualObjective(A, B, pot) {
+    var s = 0, i;
+    for (i = 0; i < A.x.length; i++) s += pot.at(A.x[i]) * A.w[i];
+    for (i = 0; i < B.x.length; i++) s -= pot.at(B.x[i]) * B.w[i];
+    return s;
+  }
+
+  /* 互补松弛：支集上的对应当有等号 φ(x_i) − φ(y_j) = |x_i − y_j| */
+  function complementarySlack(A, B, P, pot, tol) {
+    var t = tol === undefined ? 1e-9 : tol;
+    var onSupport = 0, slackOk = 0, worst = 0, offSupport = 0, offViol = 0, i, j;
+    for (i = 0; i < A.x.length; i++) {
+      for (j = 0; j < B.x.length; j++) {
+        var d = Math.abs(A.x[i] - B.x[j]);
+        var gap = d - (pot.at(A.x[i]) - pot.at(B.x[j]));
+        if (P[i][j] > t) {
+          onSupport++;
+          if (Math.abs(gap) < 1e-9) slackOk++;
+          worst = Math.max(worst, Math.abs(gap));
+        } else {
+          offSupport++;
+          if (gap < -1e-9) offViol++;
+        }
+      }
+    }
+    return { onSupport: onSupport, slackOk: slackOk, worstGap: worst,
+             offSupport: offSupport, offViolations: offViol };
+  }
+
+  /* ================================================== Sinkhorn（对数域） */
+  /* min ⟨P,C⟩ − εH(P)，s.t. 边际 = a, b。K = exp(−C/ε) 会下溢，故全程在对数域。 */
+  function logSumExp(arr) {
+    var mx = -Infinity, i;
+    for (i = 0; i < arr.length; i++) if (arr[i] > mx) mx = arr[i];
+    if (mx === -Infinity) return -Infinity;
+    var s = 0;
+    for (i = 0; i < arr.length; i++) s += Math.exp(arr[i] - mx);
+    return mx + Math.log(s);
+  }
+
+  function sinkhorn(C, a, b, eps, opts) {
+    opts = opts || {};
+    var maxIter = opts.maxIter || 4000;
+    var tol = opts.tol || 1e-9;
+    var every = opts.checkEvery || 4;
+    var n = a.length, m = b.length, i, j, it;
+    var f = new Array(n).fill(0), g = new Array(m).fill(0);
+    var buf = new Array(Math.max(n, m));
+    var converged = false, iters = 0, viol = Infinity;
+
+    for (it = 0; it < maxIter; it++) {
+      for (i = 0; i < n; i++) {
+        for (j = 0; j < m; j++) buf[j] = (g[j] - C[i][j]) / eps;
+        f[i] = eps * Math.log(a[i]) - eps * logSumExp(buf.slice(0, m));
+      }
+      for (j = 0; j < m; j++) {
+        for (i = 0; i < n; i++) buf[i] = (f[i] - C[i][j]) / eps;
+        g[j] = eps * Math.log(b[j]) - eps * logSumExp(buf.slice(0, n));
+      }
+      iters = it + 1;
+      if (iters % every === 0 || iters === maxIter) {
+        /* 关键：g 更新之后，列约束是**刚被强制满足**的那一条 —— 拿它当收敛判据
+         * 会在第 4 次迭代就"收敛"。必须查另一条（行约束）。 */
+        viol = 0;
+        for (i = 0; i < n; i++) {
+          var s = 0;
+          for (j = 0; j < m; j++) s += Math.exp((f[i] + g[j] - C[i][j]) / eps);
+          viol = Math.max(viol, Math.abs(s - a[i]) / a[i]);
+        }
+        if (viol < tol) { converged = true; break; }
+      }
+    }
+    var P = zeros(n, m), cost = 0;
+    for (i = 0; i < n; i++) for (j = 0; j < m; j++) {
+      P[i][j] = Math.exp((f[i] + g[j] - C[i][j]) / eps);
+      cost += P[i][j] * C[i][j];
+    }
+    return { P: P, cost: cost, iters: iters, converged: converged, viol: viol, eps: eps };
+  }
+
+  /* 熵正则化的支撑度：P 里超过阈值的元素个数（ε→0 时应收缩到 n 个） */
+  function sinkhornSupport(P, tol) {
+    var t = tol === undefined ? 1e-6 : tol, n = 0, i, j;
+    for (i = 0; i < P.length; i++) for (j = 0; j < P[i].length; j++) if (P[i][j] > t) n++;
+    return n;
+  }
+
+  /* ============================================================ 高斯族闭式 */
+  /* 一维：W₂² = (Δm)² + (Δσ)² */
+  function w2Gauss1D(m1, s1, m2, s2) {
+    return Math.sqrt((m1 - m2) * (m1 - m2) + (s1 - s2) * (s1 - s2));
+  }
+
+  /* d 维各向同性：W₂² = ‖Δm‖² + d(Δσ)² */
+  function w2GaussIso(d, m1, s1, m2, s2) {
+    var dm = 0, k;
+    for (k = 0; k < d; k++) dm += (m1[k] - m2[k]) * (m1[k] - m2[k]);
+    return Math.sqrt(dm + d * (s1 - s2) * (s1 - s2));
+  }
+
+  /* W₂ 重心（两个高斯）：均值与标准差都取加权平均 —— 闭式 */
+  function baryGaussW2(m1, s1, m2, s2, lam) {
+    return { m: lam * m1 + (1 - lam) * m2, s: lam * s1 + (1 - lam) * s2 };
+  }
+
+  /* 欧氏（线性）平均：混合密度。方差含 Δ²/4 的项 —— 分离越远越散 */
+  function baryGaussEuclid(m1, s1, m2, s2, lam) {
+    var m = lam * m1 + (1 - lam) * m2;
+    var ex2 = lam * (s1 * s1 + m1 * m1) + (1 - lam) * (s2 * s2 + m2 * m2);
+    return { m: m, s: Math.sqrt(Math.max(0, ex2 - m * m)) };
+  }
+
+  function gaussPdf(x, mu, sig) {
+    var z = (x - mu) / sig;
+    return Math.exp(-0.5 * z * z) / (sig * Math.sqrt(2 * Math.PI));
+  }
+
+  function mixturePdf(x, m1, s1, m2, s2, lam) {
+    return lam * gaussPdf(x, m1, s1) + (1 - lam) * gaussPdf(x, m2, s2);
+  }
+
+  /* 在（W₂ 重心的）中心处，两种"平均"的密度之比 —— 闭式：exp(Δ²/8)（等 σ、λ=½） */
+  function centerDensityRatio(m1, s1, m2, s2, lam) {
+    var b = baryGaussW2(m1, s1, m2, s2, lam);
+    var den = mixturePdf(b.m, m1, s1, m2, s2, lam);
+    return den > 0 ? gaussPdf(b.m, b.m, b.s) / den : Infinity;
+  }
+
+  /* 采样密度 f 在 [lo,hi] 上的严格局部极大值个数（判断"单峰 / 双峰"） */
+  function countLocalMaxima(f, lo, hi, N) {
+    var n = N || 1600, i, cnt = 0, vals = [];
+    for (i = 0; i <= n; i++) vals.push(f(lo + (hi - lo) * i / n));
+    for (i = 1; i < n; i++) {
+      if (vals[i] > vals[i - 1] + 1e-13 && vals[i] > vals[i + 1] + 1e-13) cnt++;
+    }
+    return cnt;
+  }
+
+  /* ============================================================ McCann 插值 */
+  /* 一维：分位数函数线性插值 → 中间分布 */
+  function mccannQuantile(A, B, t) {
+    var a = atomsSort(A), b = atomsSort(B), n = Math.min(a.x.length, b.x.length);
+    var x = [], w = [], i;
+    for (i = 0; i < n; i++) { x.push((1 - t) * a.x[i] + t * b.x[i]); w.push(1 / n); }
+    return { x: x, w: w };
+  }
+
+  /* 高斯：ρ_t = N((1−t)m₀+tm₁, (1−t)σ₀+tσ₁) —— 闭式 */
+  function mccannGauss(t, m1, s1, m2, s2) {
+    return { m: (1 - t) * m1 + t * m2, s: (1 - t) * s1 + t * s2 };
+  }
+
+  /* ============================================================ 统计小工具 */
+  function normInv(p) {
+    if (p <= 0) return -Infinity;
+    if (p >= 1) return Infinity;
+    var a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
+             1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+    var b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
+             6.680131188771972e+01, -1.328068155288572e+01];
+    var c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
+             -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+    var d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
+             3.754408661907416e+00];
+    var plow = 0.02425, phigh = 1 - plow, q, r;
+    if (p < plow) {
+      q = Math.sqrt(-2 * Math.log(p));
+      return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+             ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+    }
+    if (p <= phigh) {
+      q = p - 0.5; r = q * q;
+      return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q /
+             (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+    }
+    q = Math.sqrt(-2 * Math.log(1 - p));
+    return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+            ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+  }
+
+  function meanOf(a) { var s = 0, i; for (i = 0; i < a.length; i++) s += a[i]; return s / a.length; }
+
+  function median(a) {
+    var b = a.slice().sort(function (p, q) { return p - q; });
+    var n = b.length;
+    return n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2;
+  }
+
+  /* 线性回归 y = A + B x（最小二乘） */
+  function linreg(xs, ys) {
+    var n = xs.length, sx = 0, sy = 0, sxx = 0, sxy = 0, i;
+    for (i = 0; i < n; i++) { sx += xs[i]; sy += ys[i]; sxx += xs[i] * xs[i]; sxy += xs[i] * ys[i]; }
+    var den = n * sxx - sx * sx;
+    if (Math.abs(den) < 1e-300) return null;
+    var B = (n * sxy - sx * sy) / den, A = (sy - B * sx) / n;
+    var ss = 0, st = 0, m = sy / n;
+    for (i = 0; i < n; i++) { var e = ys[i] - (A + B * xs[i]); ss += e * e; st += (ys[i] - m) * (ys[i] - m); }
+    return { A: A, B: B, r2: st > 0 ? 1 - ss / st : 1, rmse: Math.sqrt(ss / n) };
+  }
+
+  /* 双对数斜率（幂律指数） */
+  function powerLaw(xs, ys) {
+    var lx = [], ly = [], i;
+    for (i = 0; i < xs.length; i++) {
+      if (xs[i] > 0 && ys[i] > 0) { lx.push(Math.log(xs[i])); ly.push(Math.log(ys[i])); }
+    }
+    if (lx.length < 3) return null;
+    var r = linreg(lx, ly);
+    return r ? { alpha: r.B, r2: r.r2, rmse: r.rmse, n: lx.length } : null;
+  }
+
+  function factorial(n) {
+    var s = 1, i;
+    for (i = 2; i <= n; i++) s *= i;
+    return s;
+  }
+
+  /* ============================================================ 导出 */
+  return {
+    splitmix32: splitmix32,
+    makeInstance: makeInstance,
+    /* 分布 */
+    atomsNormalize: atomsNormalize, atomsSort: atomsSort, atomsShift: atomsShift,
+    atomsScale: atomsScale, atomsUniform: atomsUniform, atomsGauss: atomsGauss,
+    atomsBimodal: atomsBimodal, atomsComb: atomsComb, mergeAtoms: mergeAtoms,
+    /* 精确泛函 */
+    wpSorted: wpSorted, wpQuantile: wpQuantile, w1CdfExact: w1CdfExact,
+    tvAtoms: tvAtoms, klAtoms: klAtoms,
+    /* 代价与计划 */
+    costMatrix1D: costMatrix1D, costMatrixND: costMatrixND,
+    planCost: planCost, planNonzeros: planNonzeros,
+    planRowSums: planRowSums, planColSums: planColSums,
+    assignmentPlan: assignmentPlan, monotonePlan: monotonePlan,
+    monotonePlanMatrix: monotonePlanMatrix,
+    /* 求解器 */
+    assignmentBrute: assignmentBrute, hungarian: hungarian,
+    minCostFlowOT: minCostFlowOT, integerMasses: integerMasses,
+    /* 对偶 */
+    kantPotentials1D: kantPotentials1D, dualObjective: dualObjective,
+    complementarySlack: complementarySlack,
+    /* 熵正则化 */
+    sinkhorn: sinkhorn, sinkhornSupport: sinkhornSupport, logSumExp: logSumExp,
+    /* 高斯族 */
+    w2Gauss1D: w2Gauss1D, w2GaussIso: w2GaussIso,
+    baryGaussW2: baryGaussW2, baryGaussEuclid: baryGaussEuclid,
+    gaussPdf: gaussPdf, mixturePdf: mixturePdf,
+    centerDensityRatio: centerDensityRatio, countLocalMaxima: countLocalMaxima,
+    /* 插值 */
+    mccannQuantile: mccannQuantile, mccannGauss: mccannGauss,
+    /* 工具 */
+    normInv: normInv, meanOf: meanOf, median: median, linreg: linreg,
+    powerLaw: powerLaw, factorial: factorial, EPS_TOL: EPS_TOL
+  };
+});
+</script>
+<script>window.__ANALYSIS__ = {"meta":{"title":"搬了多远","subtitle":"最优传输：一个必须看见位移的距离","seed":20261002,"generated":"2026-10-02 12:00:09","modelChecks":63},"kpi":[{"id":"k1","label":"TV 饱和了，W₁ 没有","value":"1.000 vs 3.000","unit":"δ=1 与 δ=3 上的两个读数","note":"同一个位移序列：TV 在 δ≥1 之后恒为 1.000（斜率 0.000），W₁ 一路涨到 3.000（斜率 1.000）。TV 的上界是 1，所以它记不住\"多远\"。"},{"id":"k2","label":"碎片化：TV 完全无感","value":"4096 倍","unit":"k=1 → 4096，W₁ 的落差","note":"把同一条线段交替切成 2k 条细缝：TV 全程 1.000，而 W₁ 从 0.500000 精确掉到 1/(2k) = 1.221×10^−4。两列分布都在弱收敛到均匀分布，TV 却一步没动。"},{"id":"k3","label":"七条路径的分歧","value":"5.55×10^−17","unit":"21 个实例 × 七套独立算法","note":"分位数积分、CDF 积分、排序公式、单调计划、匈牙利、穷举全排列、最小费用流 —— 七套互不共享代码的实现，逐例最大分歧 5.55×10^−17，即机器精度。W₂ 那一侧的最大分歧 2.78×10^−17。"},{"id":"k4","label":"等权 = 指派，非等权 = 分裂","value":"109/120","unit":"非等权实例出现质量分裂的比例","note":"等权时最优计划恰好 n 个非零（Birkhoff 多面体的顶点是排列矩阵），3/4/5/6/7 全部命中、零分裂；一旦权重不等，120 个实例里 109 个（90.8%）出现了质量分裂，剩下 11 个是质量恰好配得上的巧合。"},{"id":"k5","label":"熵的价钱：偏差 × 迭代数","value":"431–474","unit":"ε ∈ [0.1, 1] 上几乎不变","note":"偏差精确按 ε 线性（实测指数 1.01，R² 0.9989）。把偏差压低 9.32 倍，代价是迭代数涨 10.25 倍 —— 这是一条双曲线，不是免费午餐。"},{"id":"k6","label":"同一台机器上的三堵墙","value":"2.36×10^143 年","unit":"穷举 n=100 需要的年头","note":"一维闭式 1,000,000 个点测完；匈牙利算法到 256；穷举全排列到 9（362,880 个排列，29 毫秒）。n=100 有 9.333×10^157 个排列。"}],"conclusions":["位移 δ 从 0 到 3：W₁ 精确等于 δ（193 个格点对齐的位移，最大偏差 0），TV 则精确等于 min(δ,1)。","TV 在 δ≥1 之后斜率是 0.000000，W₁ 的斜率是 1.000000。同一个序列，一把尺子已经不动了，另一把还在线性记账。","KL 在每一个非零位移上都发散（193 个位移无一例外）—— 支撑一旦不重叠，KL 连一个有限的值都给不出来。","细缝化：k 从 1 到 4096，TV 全程等于 1.000000，而 W₁ 精确等于 1/(2k)，从 0.500000 掉到 1.221×10^−4，落差 4096 倍。","两列细缝分布都在弱收敛到均匀分布（k=4096 时到 U[0,1] 的 W₁ 只剩 1.22×10^−4），但 TV 恒为 1 —— 这就是\"TV 在弱收敛下不连续\"。","七个独立算法（分位数积分 / CDF 积分 / 排序公式 / 单调计划 / 匈牙利 / 穷举 / 最小费用流）在 21 个实例上给出的 W₁ 最大分歧 5.55×10^−17。","一维等权时，穷举出的最优排列 21/21 例都保序（Monge 性质）；达到最优的排列共 464 个，其中 17 个实例存在并列，最多的一例有 288 个排列并列最优。","等权：最优计划的非零个数精确等于 n（3→3、4→4、5→5、6→6、7→7），没有一个源点分裂。","非等权：120 个随机实例里 109 个（90.8%）出现了质量分裂 —— 一个源点的质量被切给多个目标；剩下 11 个没分裂，是质量恰好配得上的巧合。","非零个数的中位数是 6，全部不超过运输多面体基本解的上界 n+m−1（120/120 命中，落差中位 1、最大 4）。","把 OT 当成\"每个点整体搬到某一个目标\"的指派问题，在等权时是对的，在非等权时连可行都做不到 —— 质量必须被切开。","Sinkhorn 的偏差随 ε 线性下降（实测指数 1.01，R² 0.9989），迭代数按 ε^-1.658 上升（R² 0.8787）。","在 ε ∈ [0.1, 1] 这一段，偏差（百分数）× 迭代数 = 431–474，离散度只有 9.4% —— 精度与工作量严格成反比。","再往下走交易就亏了：ε 从 0.05 到 0.03 只降了 1.67 倍，迭代数却从 1650 涨到 27410（5.3 倍）。","把迭代强行截断在 800 步，ε=0.003 给出的\"代价\"比真值低 44.84% —— 看起来比精确最优还好。它的边际违约是 8.33×10^−2：那不是精度，那是它已经不是一个运输方案了。","熵正则化的解在 ε=1 时支撑有 560 个非零（共 576 个格子），ε=0.01 时收缩到 106，而精确最优只需要 24 个。","两个高斯的\"平均\"：W₂ 重心的标准差是加权平均（1.000），线性平均的标准差是 √5 = 2.236068。一个不散，一个散开。","中心密度比精确等于 exp(Δ²/8)：Δ=2 时 1.6487，Δ=4 时 7.3891（= e²），八个 Δ 上最大相对偏差 0.000000%。","线性平均从 Δ=3 起就是双峰的，而 W₂ 重心在任何 Δ 上都只有一个峰 —— 因为\"平均\"在 W₂ 下是**搬运**，不是**叠加**。","McCann 插值满足 W₂(ρ_t, ρ₀) = t·W₂(ρ₁, ρ₀)：21 个 t 上最大偏差 8.88×10^−16，高斯闭式一侧 0。","一维的\"按坐标排序配对\"在二维立刻失效，而且是随规模稳步失效：n=4 时 45/60、n=5 时 56/60、n=6 时 58/60、n=8 时 60/60 的最优指派不保序（单调不减，到 n=8 才饱和）。","三种算法的墙差着数量级：一维闭式在 1,000,000 个点上跑完（387 毫秒）；匈牙利算法到 256 个点；穷举全排列到 9 个点就要 362,880 个排列。","n=100 的穷举要 2.36×10^143 年 —— 而同一个 n 的匈牙利算法是 O(n³)，一维还有 O(n log n) 的闭式。"],"boundaries":["本页的\"分布\"一律是**离散原子**（点 + 质量），不是连续密度。一维闭式与 CDF 积分对离散测度是精确的，但连续分布的性质要靠格点对齐才逐位复现 —— 位移实验里的 δ 一律取格距的整数倍，就是为了让数字精确而不是\"差不多\"。","\"TV = min(δ,1)\"说的是连续均匀分布。离散到等距格点上之后，只有 δ 是格距整数倍时才精确等于这个值；否则原子不重合，TV 会直接跳到 1。这不是 bug，是离散化的真实后果。","熵正则化那一节的 ε 范围是 [0.01, 1]。ε 再小下去，K = exp(−C/ε) 会下溢，必须靠对数域；本实现全程在对数域，但迭代数会涨到几万次，第 8 档（ε=0.01）在 40000 步预算内没有收敛。","Sinkhorn 的\"偏差 × 迭代数 = 常数\"只在 ε ∈ [0.1, 1] 这 5 个点上成立。再往下迭代数按 ε^-1.658 增长（比 1/ε 更快），常数就守不住了 —— 这条定律有适用范围，不是定理。","最小费用流要求质量是整数。非等权那一节把质量放大成整数来跑，所以看到的是\"整数最优解\"；对实数质量，最优值可能略低，但结构（非零个数 ≤ n+m−1）不变。","二维只做了**等权**的指派（匈牙利 + 穷举），没有做二维的连续最优传输。二维的\"保序性失效\"是用随机实例统计出来的比例，不是一条定理。","一维的最优计划是单调的（Monge 性质），这是本页大量结论的前提。二维及以上没有这个性质，本页只在最后一节点了它的失败率。","本页没有碰：多边际（Gromov–Wasserstein）、部分传输、以及 d ≥ 3 时的维数诅咒。这些是另一整套机器。","Birkhoff 多面体的顶点是排列矩阵 —— 这条用的是标准结论，本页只是**验证**了它：等权时最小费用流给出的解恰好 n 个非零。","所有\"本机耗时\"都是这台机器上的单线程数字，不是算法复杂度的证明；外推（n=100 的年数）只是把实测的每排列耗时乘以阶乘，忽略了内存与并行。"],"verify":[{"what":"W₁ 分位数积分 vs CDF 积分","truth":"两套零共享代码的实现","measured":"5.55×10^−17","ok":true},{"what":"W₁ 七个求解器互证","truth":"穷举全排列 / 匈牙利 / 最小费用流","measured":"5.55×10^−17","ok":true},{"what":"W₂ 指派解 vs 分位数闭式","truth":"W₂² 开方后与闭式比","measured":"2.78×10^−17","ok":true},{"what":"平移 δ 上的 W₁","truth":"解析值 δ","measured":"0","ok":true},{"what":"平移 δ 上的 TV","truth":"解析值 min(δ,1)","measured":"1.000000000000 / 1.000000000000","ok":true},{"what":"细缝 W₁","truth":"解析值 1/(2k)","measured":"0","ok":true},{"what":"细缝 TV","truth":"支撑不相交 ⇒ 1","measured":"1.000000000000","ok":true},{"what":"对偶目标 = 原始目标","truth":"∫|F−G|（一维 KR 定理）","measured":"见模型自检 ⑤","ok":true},{"what":"势的 Lipschitz 常数","truth":"1-Lipschitz 上界","measured":"1.000000000000","ok":true},{"what":"互补松弛","truth":"支集上取等号、支集外严格小于","measured":"0 例违例","ok":true},{"what":"Sinkhorn 的偏差符号","truth":"熵解的成本 ≥ 精确最优","measured":"7 个收敛点全部 ≥ 0","ok":true},{"what":"Sinkhorn 的边际约束","truth":"行和 = 列和 = 1/n","measured":"违约 < 1e-8","ok":true},{"what":"高斯 W₂ 闭式","truth":"√(Δm² + Δσ²)","measured":"离散 n=3000 逼近到 2e-3","ok":true},{"what":"W₂ 重心中心密度比","truth":"exp(Δ²/8)","measured":"0.00000000%","ok":true},{"what":"McCann 插值线性","truth":"W₂(ρ_t,ρ₀) = t·W₂(ρ₁,ρ₀)","measured":"8.88×10^−16","ok":true},{"what":"离散 W₂ 重心","truth":"高斯闭式（均值 2、标准差 1）","measured":"2.0000 / 0.9998","ok":true},{"what":"等权最优计划 = 排列","truth":"Birkhoff 多面体顶点","measured":"3/4/5/6/7 = n","ok":true},{"what":"非等权最优计划 ≤ n+m−1","truth":"运输多面体基本解","measured":"8 ≤ 9","ok":true},{"what":"一维最优排列保序","truth":"Monge 性质","measured":"21/21","ok":true},{"what":"二维保序性失效","truth":"无此定理（反例统计）","measured":"n=4 75.0% → n=8 100%","ok":true},{"what":"模型自检","truth":"63 项，期望值全部来自独立实现","measured":"63/63","ok":true}],"derived":{"e1":{"n":64,"rows":[{"m":0,"delta":0,"w1":0,"w1q":0,"w2":0,"tv":0,"klFinite":true},{"m":1,"delta":0.015625,"w1":0.015625,"w1q":0.015625,"w2":0.015625,"tv":0.015625,"klFinite":false},{"m":2,"delta":0.03125,"w1":0.03125,"w1q":0.03125,"w2":0.03125,"tv":0.03125,"klFinite":false},{"m":3,"delta":0.046875,"w1":0.046875,"w1q":0.046875,"w2":0.046875,"tv":0.046875,"klFinite":false},{"m":4,"delta":0.0625,"w1":0.0625,"w1q":0.0625,"w2":0.0625,"tv":0.0625,"klFinite":false},{"m":5,"delta":0.078125,"w1":0.078125,"w1q":0.078125,"w2":0.078125,"tv":0.078125,"klFinite":false},{"m":6,"delta":0.09375,"w1":0.09375,"w1q":0.09375,"w2":0.09375,"tv":0.09375,"klFinite":false},{"m":7,"delta":0.109375,"w1":0.109375,"w1q":0.109375,"w2":0.109375,"tv":0.109375,"klFinite":false},{"m":8,"delta":0.125,"w1":0.125,"w1q":0.125,"w2":0.125,"tv":0.125,"klFinite":false},{"m":9,"delta":0.140625,"w1":0.140625,"w1q":0.140625,"w2":0.140625,"tv":0.140625,"klFinite":false},{"m":10,"delta":0.15625,"w1":0.15625,"w1q":0.15625,"w2":0.15625,"tv":0.15625,"klFinite":false},{"m":11,"delta":0.171875,"w1":0.171875,"w1q":0.171875,"w2":0.171875,"tv":0.171875,"klFinite":false},{"m":12,"delta":0.1875,"w1":0.1875,"w1q":0.1875,"w2":0.1875,"tv":0.1875,"klFinite":false},{"m":13,"delta":0.203125,"w1":0.203125,"w1q":0.203125,"w2":0.203125,"tv":0.203125,"klFinite":false},{"m":14,"delta":0.21875,"w1":0.21875,"w1q":0.21875,"w2":0.21875,"tv":0.21875,"klFinite":false},{"m":15,"delta":0.234375,"w1":0.234375,"w1q":0.234375,"w2":0.234375,"tv":0.234375,"klFinite":false},{"m":16,"delta":0.25,"w1":0.25,"w1q":0.25,"w2":0.25,"tv":0.25,"klFinite":false},{"m":17,"delta":0.265625,"w1":0.265625,"w1q":0.265625,"w2":0.265625,"tv":0.265625,"klFinite":false},{"m":18,"delta":0.28125,"w1":0.28125,"w1q":0.28125,"w2":0.28125,"tv":0.28125,"klFinite":false},{"m":19,"delta":0.296875,"w1":0.296875,"w1q":0.296875,"w2":0.296875,"tv":0.296875,"klFinite":false},{"m":20,"delta":0.3125,"w1":0.3125,"w1q":0.3125,"w2":0.3125,"tv":0.3125,"klFinite":false},{"m":21,"delta":0.328125,"w1":0.328125,"w1q":0.328125,"w2":0.328125,"tv":0.328125,"klFinite":false},{"m":22,"delta":0.34375,"w1":0.34375,"w1q":0.34375,"w2":0.34375,"tv":0.34375,"klFinite":false},{"m":23,"delta":0.359375,"w1":0.359375,"w1q":0.359375,"w2":0.359375,"tv":0.359375,"klFinite":false},{"m":24,"delta":0.375,"w1":0.375,"w1q":0.375,"w2":0.375,"tv":0.375,"klFinite":false},{"m":25,"delta":0.390625,"w1":0.390625,"w1q":0.390625,"w2":0.390625,"tv":0.390625,"klFinite":false},{"m":26,"delta":0.40625,"w1":0.40625,"w1q":0.40625,"w2":0.40625,"tv":0.40625,"klFinite":false},{"m":27,"delta":0.421875,"w1":0.421875,"w1q":0.421875,"w2":0.421875,"tv":0.421875,"klFinite":false},{"m":28,"delta":0.4375,"w1":0.4375,"w1q":0.4375,"w2":0.4375,"tv":0.4375,"klFinite":false},{"m":29,"delta":0.453125,"w1":0.453125,"w1q":0.453125,"w2":0.453125,"tv":0.453125,"klFinite":false},{"m":30,"delta":0.46875,"w1":0.46875,"w1q":0.46875,"w2":0.46875,"tv":0.46875,"klFinite":false},{"m":31,"delta":0.484375,"w1":0.484375,"w1q":0.484375,"w2":0.484375,"tv":0.484375,"klFinite":false},{"m":32,"delta":0.5,"w1":0.5,"w1q":0.5,"w2":0.5,"tv":0.5,"klFinite":false},{"m":33,"delta":0.515625,"w1":0.515625,"w1q":0.515625,"w2":0.515625,"tv":0.515625,"klFinite":false},{"m":34,"delta":0.53125,"w1":0.53125,"w1q":0.53125,"w2":0.53125,"tv":0.53125,"klFinite":false},{"m":35,"delta":0.546875,"w1":0.546875,"w1q":0.546875,"w2":0.546875,"tv":0.546875,"klFinite":false},{"m":36,"delta":0.5625,"w1":0.5625,"w1q":0.5625,"w2":0.5625,"tv":0.5625,"klFinite":false},{"m":37,"delta":0.578125,"w1":0.578125,"w1q":0.578125,"w2":0.578125,"tv":0.578125,"klFinite":false},{"m":38,"delta":0.59375,"w1":0.59375,"w1q":0.59375,"w2":0.59375,"tv":0.59375,"klFinite":false},{"m":39,"delta":0.609375,"w1":0.609375,"w1q":0.609375,"w2":0.609375,"tv":0.609375,"klFinite":false},{"m":40,"delta":0.625,"w1":0.625,"w1q":0.625,"w2":0.625,"tv":0.625,"klFinite":false},{"m":41,"delta":0.640625,"w1":0.640625,"w1q":0.640625,"w2":0.640625,"tv":0.640625,"klFinite":false},{"m":42,"delta":0.65625,"w1":0.65625,"w1q":0.65625,"w2":0.65625,"tv":0.65625,"klFinite":false},{"m":43,"delta":0.671875,"w1":0.671875,"w1q":0.671875,"w2":0.671875,"tv":0.671875,"klFinite":false},{"m":44,"delta":0.6875,"w1":0.6875,"w1q":0.6875,"w2":0.6875,"tv":0.6875,"klFinite":false},{"m":45,"delta":0.703125,"w1":0.703125,"w1q":0.703125,"w2":0.703125,"tv":0.703125,"klFinite":false},{"m":46,"delta":0.71875,"w1":0.71875,"w1q":0.71875,"w2":0.71875,"tv":0.71875,"klFinite":false},{"m":47,"delta":0.734375,"w1":0.734375,"w1q":0.734375,"w2":0.734375,"tv":0.734375,"klFinite":false},{"m":48,"delta":0.75,"w1":0.75,"w1q":0.75,"w2":0.75,"tv":0.75,"klFinite":false},{"m":49,"delta":0.765625,"w1":0.765625,"w1q":0.765625,"w2":0.765625,"tv":0.765625,"klFinite":false},{"m":50,"delta":0.78125,"w1":0.78125,"w1q":0.78125,"w2":0.78125,"tv":0.78125,"klFinite":false},{"m":51,"delta":0.796875,"w1":0.796875,"w1q":0.796875,"w2":0.796875,"tv":0.796875,"klFinite":false},{"m":52,"delta":0.8125,"w1":0.8125,"w1q":0.8125,"w2":0.8125,"tv":0.8125,"klFinite":false},{"m":53,"delta":0.828125,"w1":0.828125,"w1q":0.828125,"w2":0.828125,"tv":0.828125,"klFinite":false},{"m":54,"delta":0.84375,"w1":0.84375,"w1q":0.84375,"w2":0.84375,"tv":0.84375,"klFinite":false},{"m":55,"delta":0.859375,"w1":0.859375,"w1q":0.859375,"w2":0.859375,"tv":0.859375,"klFinite":false},{"m":56,"delta":0.875,"w1":0.875,"w1q":0.875,"w2":0.875,"tv":0.875,"klFinite":false},{"m":57,"delta":0.890625,"w1":0.890625,"w1q":0.890625,"w2":0.890625,"tv":0.890625,"klFinite":false},{"m":58,"delta":0.90625,"w1":0.90625,"w1q":0.90625,"w2":0.90625,"tv":0.90625,"klFinite":false},{"m":59,"delta":0.921875,"w1":0.921875,"w1q":0.921875,"w2":0.921875,"tv":0.921875,"klFinite":false},{"m":60,"delta":0.9375,"w1":0.9375,"w1q":0.9375,"w2":0.9375,"tv":0.9375,"klFinite":false},{"m":61,"delta":0.953125,"w1":0.953125,"w1q":0.953125,"w2":0.953125,"tv":0.953125,"klFinite":false},{"m":62,"delta":0.96875,"w1":0.96875,"w1q":0.96875,"w2":0.96875,"tv":0.96875,"klFinite":false},{"m":63,"delta":0.984375,"w1":0.984375,"w1q":0.984375,"w2":0.984375,"tv":0.984375,"klFinite":false},{"m":64,"delta":1,"w1":1,"w1q":1,"w2":1,"tv":1,"klFinite":false},{"m":65,"delta":1.015625,"w1":1.015625,"w1q":1.015625,"w2":1.015625,"tv":1,"klFinite":false},{"m":66,"delta":1.03125,"w1":1.03125,"w1q":1.03125,"w2":1.03125,"tv":1,"klFinite":false},{"m":67,"delta":1.046875,"w1":1.046875,"w1q":1.046875,"w2":1.046875,"tv":1,"klFinite":false},{"m":68,"delta":1.0625,"w1":1.0625,"w1q":1.0625,"w2":1.0625,"tv":1,"klFinite":false},{"m":69,"delta":1.078125,"w1":1.078125,"w1q":1.078125,"w2":1.078125,"tv":1,"klFinite":false},{"m":70,"delta":1.09375,"w1":1.09375,"w1q":1.09375,"w2":1.09375,"tv":1,"klFinite":false},{"m":71,"delta":1.109375,"w1":1.109375,"w1q":1.109375,"w2":1.109375,"tv":1,"klFinite":false},{"m":72,"delta":1.125,"w1":1.125,"w1q":1.125,"w2":1.125,"tv":1,"klFinite":false},{"m":73,"delta":1.140625,"w1":1.140625,"w1q":1.140625,"w2":1.140625,"tv":1,"klFinite":false},{"m":74,"delta":1.15625,"w1":1.15625,"w1q":1.15625,"w2":1.15625,"tv":1,"klFinite":false},{"m":75,"delta":1.171875,"w1":1.171875,"w1q":1.171875,"w2":1.171875,"tv":1,"klFinite":false},{"m":76,"delta":1.1875,"w1":1.1875,"w1q":1.1875,"w2":1.1875,"tv":1,"klFinite":false},{"m":77,"delta":1.203125,"w1":1.203125,"w1q":1.203125,"w2":1.203125,"tv":1,"klFinite":false},{"m":78,"delta":1.21875,"w1":1.21875,"w1q":1.21875,"w2":1.21875,"tv":1,"klFinite":false},{"m":79,"delta":1.234375,"w1":1.234375,"w1q":1.234375,"w2":1.234375,"tv":1,"klFinite":false},{"m":80,"delta":1.25,"w1":1.25,"w1q":1.25,"w2":1.25,"tv":1,"klFinite":false},{"m":81,"delta":1.265625,"w1":1.265625,"w1q":1.265625,"w2":1.265625,"tv":1,"klFinite":false},{"m":82,"delta":1.28125,"w1":1.28125,"w1q":1.28125,"w2":1.28125,"tv":1,"klFinite":false},{"m":83,"delta":1.296875,"w1":1.296875,"w1q":1.296875,"w2":1.296875,"tv":1,"klFinite":false},{"m":84,"delta":1.3125,"w1":1.3125,"w1q":1.3125,"w2":1.3125,"tv":1,"klFinite":false},{"m":85,"delta":1.328125,"w1":1.328125,"w1q":1.328125,"w2":1.328125,"tv":1,"klFinite":false},{"m":86,"delta":1.34375,"w1":1.34375,"w1q":1.34375,"w2":1.34375,"tv":1,"klFinite":false},{"m":87,"delta":1.359375,"w1":1.359375,"w1q":1.359375,"w2":1.359375,"tv":1,"klFinite":false},{"m":88,"delta":1.375,"w1":1.375,"w1q":1.375,"w2":1.375,"tv":1,"klFinite":false},{"m":89,"delta":1.390625,"w1":1.390625,"w1q":1.390625,"w2":1.390625,"tv":1,"klFinite":false},{"m":90,"delta":1.40625,"w1":1.40625,"w1q":1.40625,"w2":1.40625,"tv":1,"klFinite":false},{"m":91,"delta":1.421875,"w1":1.421875,"w1q":1.421875,"w2":1.421875,"tv":1,"klFinite":false},{"m":92,"delta":1.4375,"w1":1.4375,"w1q":1.4375,"w2":1.4375,"tv":1,"klFinite":false},{"m":93,"delta":1.453125,"w1":1.453125,"w1q":1.453125,"w2":1.453125,"tv":1,"klFinite":false},{"m":94,"delta":1.46875,"w1":1.46875,"w1q":1.46875,"w2":1.46875,"tv":1,"klFinite":false},{"m":95,"delta":1.484375,"w1":1.484375,"w1q":1.484375,"w2":1.484375,"tv":1,"klFinite":false},{"m":96,"delta":1.5,"w1":1.5,"w1q":1.5,"w2":1.5,"tv":1,"klFinite":false},{"m":97,"delta":1.515625,"w1":1.515625,"w1q":1.515625,"w2":1.515625,"tv":1,"klFinite":false},{"m":98,"delta":1.53125,"w1":1.53125,"w1q":1.53125,"w2":1.53125,"tv":1,"klFinite":false},{"m":99,"delta":1.546875,"w1":1.546875,"w1q":1.546875,"w2":1.546875,"tv":1,"klFinite":false},{"m":100,"delta":1.5625,"w1":1.5625,"w1q":1.5625,"w2":1.5625,"tv":1,"klFinite":false},{"m":101,"delta":1.578125,"w1":1.578125,"w1q":1.578125,"w2":1.578125,"tv":1,"klFinite":false},{"m":102,"delta":1.59375,"w1":1.59375,"w1q":1.59375,"w2":1.59375,"tv":1,"klFinite":false},{"m":103,"delta":1.609375,"w1":1.609375,"w1q":1.609375,"w2":1.609375,"tv":1,"klFinite":false},{"m":104,"delta":1.625,"w1":1.625,"w1q":1.625,"w2":1.625,"tv":1,"klFinite":false},{"m":105,"delta":1.640625,"w1":1.640625,"w1q":1.640625,"w2":1.640625,"tv":1,"klFinite":false},{"m":106,"delta":1.65625,"w1":1.65625,"w1q":1.65625,"w2":1.65625,"tv":1,"klFinite":false},{"m":107,"delta":1.671875,"w1":1.671875,"w1q":1.671875,"w2":1.671875,"tv":1,"klFinite":false},{"m":108,"delta":1.6875,"w1":1.6875,"w1q":1.6875,"w2":1.6875,"tv":1,"klFinite":false},{"m":109,"delta":1.703125,"w1":1.703125,"w1q":1.703125,"w2":1.703125,"tv":1,"klFinite":false},{"m":110,"delta":1.71875,"w1":1.71875,"w1q":1.71875,"w2":1.71875,"tv":1,"klFinite":false},{"m":111,"delta":1.734375,"w1":1.734375,"w1q":1.734375,"w2":1.734375,"tv":1,"klFinite":false},{"m":112,"delta":1.75,"w1":1.75,"w1q":1.75,"w2":1.75,"tv":1,"klFinite":false},{"m":113,"delta":1.765625,"w1":1.765625,"w1q":1.765625,"w2":1.765625,"tv":1,"klFinite":false},{"m":114,"delta":1.78125,"w1":1.78125,"w1q":1.78125,"w2":1.78125,"tv":1,"klFinite":false},{"m":115,"delta":1.796875,"w1":1.796875,"w1q":1.796875,"w2":1.796875,"tv":1,"klFinite":false},{"m":116,"delta":1.8125,"w1":1.8125,"w1q":1.8125,"w2":1.8125,"tv":1,"klFinite":false},{"m":117,"delta":1.828125,"w1":1.828125,"w1q":1.828125,"w2":1.828125,"tv":1,"klFinite":false},{"m":118,"delta":1.84375,"w1":1.84375,"w1q":1.84375,"w2":1.84375,"tv":1,"klFinite":false},{"m":119,"delta":1.859375,"w1":1.859375,"w1q":1.859375,"w2":1.859375,"tv":1,"klFinite":false},{"m":120,"delta":1.875,"w1":1.875,"w1q":1.875,"w2":1.875,"tv":1,"klFinite":false},{"m":121,"delta":1.890625,"w1":1.890625,"w1q":1.890625,"w2":1.890625,"tv":1,"klFinite":false},{"m":122,"delta":1.90625,"w1":1.90625,"w1q":1.90625,"w2":1.90625,"tv":1,"klFinite":false},{"m":123,"delta":1.921875,"w1":1.921875,"w1q":1.921875,"w2":1.921875,"tv":1,"klFinite":false},{"m":124,"delta":1.9375,"w1":1.9375,"w1q":1.9375,"w2":1.9375,"tv":1,"klFinite":false},{"m":125,"delta":1.953125,"w1":1.953125,"w1q":1.953125,"w2":1.953125,"tv":1,"klFinite":false},{"m":126,"delta":1.96875,"w1":1.96875,"w1q":1.96875,"w2":1.96875,"tv":1,"klFinite":false},{"m":127,"delta":1.984375,"w1":1.984375,"w1q":1.984375,"w2":1.984375,"tv":1,"klFinite":false},{"m":128,"delta":2,"w1":2,"w1q":2,"w2":2,"tv":1,"klFinite":false},{"m":129,"delta":2.015625,"w1":2.015625,"w1q":2.015625,"w2":2.015625,"tv":1,"klFinite":false},{"m":130,"delta":2.03125,"w1":2.03125,"w1q":2.03125,"w2":2.03125,"tv":1,"klFinite":false},{"m":131,"delta":2.046875,"w1":2.046875,"w1q":2.046875,"w2":2.046875,"tv":1,"klFinite":false},{"m":132,"delta":2.0625,"w1":2.0625,"w1q":2.0625,"w2":2.0625,"tv":1,"klFinite":false},{"m":133,"delta":2.078125,"w1":2.078125,"w1q":2.078125,"w2":2.078125,"tv":1,"klFinite":false},{"m":134,"delta":2.09375,"w1":2.09375,"w1q":2.09375,"w2":2.09375,"tv":1,"klFinite":false},{"m":135,"delta":2.109375,"w1":2.109375,"w1q":2.109375,"w2":2.109375,"tv":1,"klFinite":false},{"m":136,"delta":2.125,"w1":2.125,"w1q":2.125,"w2":2.125,"tv":1,"klFinite":false},{"m":137,"delta":2.140625,"w1":2.140625,"w1q":2.140625,"w2":2.140625,"tv":1,"klFinite":false},{"m":138,"delta":2.15625,"w1":2.15625,"w1q":2.15625,"w2":2.15625,"tv":1,"klFinite":false},{"m":139,"delta":2.171875,"w1":2.171875,"w1q":2.171875,"w2":2.171875,"tv":1,"klFinite":false},{"m":140,"delta":2.1875,"w1":2.1875,"w1q":2.1875,"w2":2.1875,"tv":1,"klFinite":false},{"m":141,"delta":2.203125,"w1":2.203125,"w1q":2.203125,"w2":2.203125,"tv":1,"klFinite":false},{"m":142,"delta":2.21875,"w1":2.21875,"w1q":2.21875,"w2":2.21875,"tv":1,"klFinite":false},{"m":143,"delta":2.234375,"w1":2.234375,"w1q":2.234375,"w2":2.234375,"tv":1,"klFinite":false},{"m":144,"delta":2.25,"w1":2.25,"w1q":2.25,"w2":2.25,"tv":1,"klFinite":false},{"m":145,"delta":2.265625,"w1":2.265625,"w1q":2.265625,"w2":2.265625,"tv":1,"klFinite":false},{"m":146,"delta":2.28125,"w1":2.28125,"w1q":2.28125,"w2":2.28125,"tv":1,"klFinite":false},{"m":147,"delta":2.296875,"w1":2.296875,"w1q":2.296875,"w2":2.296875,"tv":1,"klFinite":false},{"m":148,"delta":2.3125,"w1":2.3125,"w1q":2.3125,"w2":2.3125,"tv":1,"klFinite":false},{"m":149,"delta":2.328125,"w1":2.328125,"w1q":2.328125,"w2":2.328125,"tv":1,"klFinite":false},{"m":150,"delta":2.34375,"w1":2.34375,"w1q":2.34375,"w2":2.34375,"tv":1,"klFinite":false},{"m":151,"delta":2.359375,"w1":2.359375,"w1q":2.359375,"w2":2.359375,"tv":1,"klFinite":false},{"m":152,"delta":2.375,"w1":2.375,"w1q":2.375,"w2":2.375,"tv":1,"klFinite":false},{"m":153,"delta":2.390625,"w1":2.390625,"w1q":2.390625,"w2":2.390625,"tv":1,"klFinite":false},{"m":154,"delta":2.40625,"w1":2.40625,"w1q":2.40625,"w2":2.40625,"tv":1,"klFinite":false},{"m":155,"delta":2.421875,"w1":2.421875,"w1q":2.421875,"w2":2.421875,"tv":1,"klFinite":false},{"m":156,"delta":2.4375,"w1":2.4375,"w1q":2.4375,"w2":2.4375,"tv":1,"klFinite":false},{"m":157,"delta":2.453125,"w1":2.453125,"w1q":2.453125,"w2":2.453125,"tv":1,"klFinite":false},{"m":158,"delta":2.46875,"w1":2.46875,"w1q":2.46875,"w2":2.46875,"tv":1,"klFinite":false},{"m":159,"delta":2.484375,"w1":2.484375,"w1q":2.484375,"w2":2.484375,"tv":1,"klFinite":false},{"m":160,"delta":2.5,"w1":2.5,"w1q":2.5,"w2":2.5,"tv":1,"klFinite":false},{"m":161,"delta":2.515625,"w1":2.515625,"w1q":2.515625,"w2":2.515625,"tv":1,"klFinite":false},{"m":162,"delta":2.53125,"w1":2.53125,"w1q":2.53125,"w2":2.53125,"tv":1,"klFinite":false},{"m":163,"delta":2.546875,"w1":2.546875,"w1q":2.546875,"w2":2.546875,"tv":1,"klFinite":false},{"m":164,"delta":2.5625,"w1":2.5625,"w1q":2.5625,"w2":2.5625,"tv":1,"klFinite":false},{"m":165,"delta":2.578125,"w1":2.578125,"w1q":2.578125,"w2":2.578125,"tv":1,"klFinite":false},{"m":166,"delta":2.59375,"w1":2.59375,"w1q":2.59375,"w2":2.59375,"tv":1,"klFinite":false},{"m":167,"delta":2.609375,"w1":2.609375,"w1q":2.609375,"w2":2.609375,"tv":1,"klFinite":false},{"m":168,"delta":2.625,"w1":2.625,"w1q":2.625,"w2":2.625,"tv":1,"klFinite":false},{"m":169,"delta":2.640625,"w1":2.640625,"w1q":2.640625,"w2":2.640625,"tv":1,"klFinite":false},{"m":170,"delta":2.65625,"w1":2.65625,"w1q":2.65625,"w2":2.65625,"tv":1,"klFinite":false},{"m":171,"delta":2.671875,"w1":2.671875,"w1q":2.671875,"w2":2.671875,"tv":1,"klFinite":false},{"m":172,"delta":2.6875,"w1":2.6875,"w1q":2.6875,"w2":2.6875,"tv":1,"klFinite":false},{"m":173,"delta":2.703125,"w1":2.703125,"w1q":2.703125,"w2":2.703125,"tv":1,"klFinite":false},{"m":174,"delta":2.71875,"w1":2.71875,"w1q":2.71875,"w2":2.71875,"tv":1,"klFinite":false},{"m":175,"delta":2.734375,"w1":2.734375,"w1q":2.734375,"w2":2.734375,"tv":1,"klFinite":false},{"m":176,"delta":2.75,"w1":2.75,"w1q":2.75,"w2":2.75,"tv":1,"klFinite":false},{"m":177,"delta":2.765625,"w1":2.765625,"w1q":2.765625,"w2":2.765625,"tv":1,"klFinite":false},{"m":178,"delta":2.78125,"w1":2.78125,"w1q":2.78125,"w2":2.78125,"tv":1,"klFinite":false},{"m":179,"delta":2.796875,"w1":2.796875,"w1q":2.796875,"w2":2.796875,"tv":1,"klFinite":false},{"m":180,"delta":2.8125,"w1":2.8125,"w1q":2.8125,"w2":2.8125,"tv":1,"klFinite":false},{"m":181,"delta":2.828125,"w1":2.828125,"w1q":2.828125,"w2":2.828125,"tv":1,"klFinite":false},{"m":182,"delta":2.84375,"w1":2.84375,"w1q":2.84375,"w2":2.84375,"tv":1,"klFinite":false},{"m":183,"delta":2.859375,"w1":2.859375,"w1q":2.859375,"w2":2.859375,"tv":1,"klFinite":false},{"m":184,"delta":2.875,"w1":2.875,"w1q":2.875,"w2":2.875,"tv":1,"klFinite":false},{"m":185,"delta":2.890625,"w1":2.890625,"w1q":2.890625,"w2":2.890625,"tv":1,"klFinite":false},{"m":186,"delta":2.90625,"w1":2.90625,"w1q":2.90625,"w2":2.90625,"tv":1,"klFinite":false},{"m":187,"delta":2.921875,"w1":2.921875,"w1q":2.921875,"w2":2.921875,"tv":1,"klFinite":false},{"m":188,"delta":2.9375,"w1":2.9375,"w1q":2.9375,"w2":2.9375,"tv":1,"klFinite":false},{"m":189,"delta":2.953125,"w1":2.953125,"w1q":2.953125,"w2":2.953125,"tv":1,"klFinite":false},{"m":190,"delta":2.96875,"w1":2.96875,"w1q":2.96875,"w2":2.96875,"tv":1,"klFinite":false},{"m":191,"delta":2.984375,"w1":2.984375,"w1q":2.984375,"w2":2.984375,"tv":1,"klFinite":false},{"m":192,"delta":3,"w1":3,"w1q":3,"w2":3,"tv":1,"klFinite":false}],"slopeSmall":{"tv":{"A":0,"B":1,"r2":1,"rmse":0},"w1":{"A":0,"B":1,"r2":1,"rmse":0}},"slopeBig":{"tv":{"A":1,"B":0,"r2":1,"rmse":0},"w1":{"A":0,"B":1,"r2":1,"rmse":0}},"w1At3":3,"tvAt3":1,"tvAt1":1,"klAllInfinite":true,"maxW1Gap":0,"maxW1qGap":0},"e1Rows":[{"m":0,"delta":0,"w1":0,"w2":0,"tv":0,"klFinite":true,"gap":0},{"m":1,"delta":0.015625,"w1":0.015625,"w2":0.015625,"tv":0.015625,"klFinite":false,"gap":0},{"m":2,"delta":0.03125,"w1":0.03125,"w2":0.03125,"tv":0.03125,"klFinite":false,"gap":0},{"m":3,"delta":0.046875,"w1":0.046875,"w2":0.046875,"tv":0.046875,"klFinite":false,"gap":0},{"m":4,"delta":0.0625,"w1":0.0625,"w2":0.0625,"tv":0.0625,"klFinite":false,"gap":0},{"m":5,"delta":0.078125,"w1":0.078125,"w2":0.078125,"tv":0.078125,"klFinite":false,"gap":0},{"m":6,"delta":0.09375,"w1":0.09375,"w2":0.09375,"tv":0.09375,"klFinite":false,"gap":0},{"m":7,"delta":0.109375,"w1":0.109375,"w2":0.109375,"tv":0.109375,"klFinite":false,"gap":0},{"m":8,"delta":0.125,"w1":0.125,"w2":0.125,"tv":0.125,"klFinite":false,"gap":0},{"m":9,"delta":0.140625,"w1":0.140625,"w2":0.140625,"tv":0.140625,"klFinite":false,"gap":0},{"m":10,"delta":0.15625,"w1":0.15625,"w2":0.15625,"tv":0.15625,"klFinite":false,"gap":0},{"m":11,"delta":0.171875,"w1":0.171875,"w2":0.171875,"tv":0.171875,"klFinite":false,"gap":0},{"m":12,"delta":0.1875,"w1":0.1875,"w2":0.1875,"tv":0.1875,"klFinite":false,"gap":0},{"m":13,"delta":0.203125,"w1":0.203125,"w2":0.203125,"tv":0.203125,"klFinite":false,"gap":0},{"m":14,"delta":0.21875,"w1":0.21875,"w2":0.21875,"tv":0.21875,"klFinite":false,"gap":0},{"m":15,"delta":0.234375,"w1":0.234375,"w2":0.234375,"tv":0.234375,"klFinite":false,"gap":0},{"m":16,"delta":0.25,"w1":0.25,"w2":0.25,"tv":0.25,"klFinite":false,"gap":0},{"m":17,"delta":0.265625,"w1":0.265625,"w2":0.265625,"tv":0.265625,"klFinite":false,"gap":0},{"m":18,"delta":0.28125,"w1":0.28125,"w2":0.28125,"tv":0.28125,"klFinite":false,"gap":0},{"m":19,"delta":0.296875,"w1":0.296875,"w2":0.296875,"tv":0.296875,"klFinite":false,"gap":0},{"m":20,"delta":0.3125,"w1":0.3125,"w2":0.3125,"tv":0.3125,"klFinite":false,"gap":0},{"m":21,"delta":0.328125,"w1":0.328125,"w2":0.328125,"tv":0.328125,"klFinite":false,"gap":0},{"m":22,"delta":0.34375,"w1":0.34375,"w2":0.34375,"tv":0.34375,"klFinite":false,"gap":0},{"m":23,"delta":0.359375,"w1":0.359375,"w2":0.359375,"tv":0.359375,"klFinite":false,"gap":0},{"m":24,"delta":0.375,"w1":0.375,"w2":0.375,"tv":0.375,"klFinite":false,"gap":0},{"m":25,"delta":0.390625,"w1":0.390625,"w2":0.390625,"tv":0.390625,"klFinite":false,"gap":0},{"m":26,"delta":0.40625,"w1":0.40625,"w2":0.40625,"tv":0.40625,"klFinite":false,"gap":0},{"m":27,"delta":0.421875,"w1":0.421875,"w2":0.421875,"tv":0.421875,"klFinite":false,"gap":0},{"m":28,"delta":0.4375,"w1":0.4375,"w2":0.4375,"tv":0.4375,"klFinite":false,"gap":0},{"m":29,"delta":0.453125,"w1":0.453125,"w2":0.453125,"tv":0.453125,"klFinite":false,"gap":0},{"m":30,"delta":0.46875,"w1":0.46875,"w2":0.46875,"tv":0.46875,"klFinite":false,"gap":0},{"m":31,"delta":0.484375,"w1":0.484375,"w2":0.484375,"tv":0.484375,"klFinite":false,"gap":0},{"m":32,"delta":0.5,"w1":0.5,"w2":0.5,"tv":0.5,"klFinite":false,"gap":0},{"m":33,"delta":0.515625,"w1":0.515625,"w2":0.515625,"tv":0.515625,"klFinite":false,"gap":0},{"m":34,"delta":0.53125,"w1":0.53125,"w2":0.53125,"tv":0.53125,"klFinite":false,"gap":0},{"m":35,"delta":0.546875,"w1":0.546875,"w2":0.546875,"tv":0.546875,"klFinite":false,"gap":0},{"m":36,"delta":0.5625,"w1":0.5625,"w2":0.5625,"tv":0.5625,"klFinite":false,"gap":0},{"m":37,"delta":0.578125,"w1":0.578125,"w2":0.578125,"tv":0.578125,"klFinite":false,"gap":0},{"m":38,"delta":0.59375,"w1":0.59375,"w2":0.59375,"tv":0.59375,"klFinite":false,"gap":0},{"m":39,"delta":0.609375,"w1":0.609375,"w2":0.609375,"tv":0.609375,"klFinite":false,"gap":0},{"m":40,"delta":0.625,"w1":0.625,"w2":0.625,"tv":0.625,"klFinite":false,"gap":0},{"m":41,"delta":0.640625,"w1":0.640625,"w2":0.640625,"tv":0.640625,"klFinite":false,"gap":0},{"m":42,"delta":0.65625,"w1":0.65625,"w2":0.65625,"tv":0.65625,"klFinite":false,"gap":0},{"m":43,"delta":0.671875,"w1":0.671875,"w2":0.671875,"tv":0.671875,"klFinite":false,"gap":0},{"m":44,"delta":0.6875,"w1":0.6875,"w2":0.6875,"tv":0.6875,"klFinite":false,"gap":0},{"m":45,"delta":0.703125,"w1":0.703125,"w2":0.703125,"tv":0.703125,"klFinite":false,"gap":0},{"m":46,"delta":0.71875,"w1":0.71875,"w2":0.71875,"tv":0.71875,"klFinite":false,"gap":0},{"m":47,"delta":0.734375,"w1":0.734375,"w2":0.734375,"tv":0.734375,"klFinite":false,"gap":0},{"m":48,"delta":0.75,"w1":0.75,"w2":0.75,"tv":0.75,"klFinite":false,"gap":0},{"m":49,"delta":0.765625,"w1":0.765625,"w2":0.765625,"tv":0.765625,"klFinite":false,"gap":0},{"m":50,"delta":0.78125,"w1":0.78125,"w2":0.78125,"tv":0.78125,"klFinite":false,"gap":0},{"m":51,"delta":0.796875,"w1":0.796875,"w2":0.796875,"tv":0.796875,"klFinite":false,"gap":0},{"m":52,"delta":0.8125,"w1":0.8125,"w2":0.8125,"tv":0.8125,"klFinite":false,"gap":0},{"m":53,"delta":0.828125,"w1":0.828125,"w2":0.828125,"tv":0.828125,"klFinite":false,"gap":0},{"m":54,"delta":0.84375,"w1":0.84375,"w2":0.84375,"tv":0.84375,"klFinite":false,"gap":0},{"m":55,"delta":0.859375,"w1":0.859375,"w2":0.859375,"tv":0.859375,"klFinite":false,"gap":0},{"m":56,"delta":0.875,"w1":0.875,"w2":0.875,"tv":0.875,"klFinite":false,"gap":0},{"m":57,"delta":0.890625,"w1":0.890625,"w2":0.890625,"tv":0.890625,"klFinite":false,"gap":0},{"m":58,"delta":0.90625,"w1":0.90625,"w2":0.90625,"tv":0.90625,"klFinite":false,"gap":0},{"m":59,"delta":0.921875,"w1":0.921875,"w2":0.921875,"tv":0.921875,"klFinite":false,"gap":0},{"m":60,"delta":0.9375,"w1":0.9375,"w2":0.9375,"tv":0.9375,"klFinite":false,"gap":0},{"m":61,"delta":0.953125,"w1":0.953125,"w2":0.953125,"tv":0.953125,"klFinite":false,"gap":0},{"m":62,"delta":0.96875,"w1":0.96875,"w2":0.96875,"tv":0.96875,"klFinite":false,"gap":0},{"m":63,"delta":0.984375,"w1":0.984375,"w2":0.984375,"tv":0.984375,"klFinite":false,"gap":0},{"m":64,"delta":1,"w1":1,"w2":1,"tv":1,"klFinite":false,"gap":0},{"m":65,"delta":1.015625,"w1":1.015625,"w2":1.015625,"tv":1,"klFinite":false,"gap":0},{"m":66,"delta":1.03125,"w1":1.03125,"w2":1.03125,"tv":1,"klFinite":false,"gap":0},{"m":67,"delta":1.046875,"w1":1.046875,"w2":1.046875,"tv":1,"klFinite":false,"gap":0},{"m":68,"delta":1.0625,"w1":1.0625,"w2":1.0625,"tv":1,"klFinite":false,"gap":0},{"m":69,"delta":1.078125,"w1":1.078125,"w2":1.078125,"tv":1,"klFinite":false,"gap":0},{"m":70,"delta":1.09375,"w1":1.09375,"w2":1.09375,"tv":1,"klFinite":false,"gap":0},{"m":71,"delta":1.109375,"w1":1.109375,"w2":1.109375,"tv":1,"klFinite":false,"gap":0},{"m":72,"delta":1.125,"w1":1.125,"w2":1.125,"tv":1,"klFinite":false,"gap":0},{"m":73,"delta":1.140625,"w1":1.140625,"w2":1.140625,"tv":1,"klFinite":false,"gap":0},{"m":74,"delta":1.15625,"w1":1.15625,"w2":1.15625,"tv":1,"klFinite":false,"gap":0},{"m":75,"delta":1.171875,"w1":1.171875,"w2":1.171875,"tv":1,"klFinite":false,"gap":0},{"m":76,"delta":1.1875,"w1":1.1875,"w2":1.1875,"tv":1,"klFinite":false,"gap":0},{"m":77,"delta":1.203125,"w1":1.203125,"w2":1.203125,"tv":1,"klFinite":false,"gap":0},{"m":78,"delta":1.21875,"w1":1.21875,"w2":1.21875,"tv":1,"klFinite":false,"gap":0},{"m":79,"delta":1.234375,"w1":1.234375,"w2":1.234375,"tv":1,"klFinite":false,"gap":0},{"m":80,"delta":1.25,"w1":1.25,"w2":1.25,"tv":1,"klFinite":false,"gap":0},{"m":81,"delta":1.265625,"w1":1.265625,"w2":1.265625,"tv":1,"klFinite":false,"gap":0},{"m":82,"delta":1.28125,"w1":1.28125,"w2":1.28125,"tv":1,"klFinite":false,"gap":0},{"m":83,"delta":1.296875,"w1":1.296875,"w2":1.296875,"tv":1,"klFinite":false,"gap":0},{"m":84,"delta":1.3125,"w1":1.3125,"w2":1.3125,"tv":1,"klFinite":false,"gap":0},{"m":85,"delta":1.328125,"w1":1.328125,"w2":1.328125,"tv":1,"klFinite":false,"gap":0},{"m":86,"delta":1.34375,"w1":1.34375,"w2":1.34375,"tv":1,"klFinite":false,"gap":0},{"m":87,"delta":1.359375,"w1":1.359375,"w2":1.359375,"tv":1,"klFinite":false,"gap":0},{"m":88,"delta":1.375,"w1":1.375,"w2":1.375,"tv":1,"klFinite":false,"gap":0},{"m":89,"delta":1.390625,"w1":1.390625,"w2":1.390625,"tv":1,"klFinite":false,"gap":0},{"m":90,"delta":1.40625,"w1":1.40625,"w2":1.40625,"tv":1,"klFinite":false,"gap":0},{"m":91,"delta":1.421875,"w1":1.421875,"w2":1.421875,"tv":1,"klFinite":false,"gap":0},{"m":92,"delta":1.4375,"w1":1.4375,"w2":1.4375,"tv":1,"klFinite":false,"gap":0},{"m":93,"delta":1.453125,"w1":1.453125,"w2":1.453125,"tv":1,"klFinite":false,"gap":0},{"m":94,"delta":1.46875,"w1":1.46875,"w2":1.46875,"tv":1,"klFinite":false,"gap":0},{"m":95,"delta":1.484375,"w1":1.484375,"w2":1.484375,"tv":1,"klFinite":false,"gap":0},{"m":96,"delta":1.5,"w1":1.5,"w2":1.5,"tv":1,"klFinite":false,"gap":0},{"m":97,"delta":1.515625,"w1":1.515625,"w2":1.515625,"tv":1,"klFinite":false,"gap":0},{"m":98,"delta":1.53125,"w1":1.53125,"w2":1.53125,"tv":1,"klFinite":false,"gap":0},{"m":99,"delta":1.546875,"w1":1.546875,"w2":1.546875,"tv":1,"klFinite":false,"gap":0},{"m":100,"delta":1.5625,"w1":1.5625,"w2":1.5625,"tv":1,"klFinite":false,"gap":0},{"m":101,"delta":1.578125,"w1":1.578125,"w2":1.578125,"tv":1,"klFinite":false,"gap":0},{"m":102,"delta":1.59375,"w1":1.59375,"w2":1.59375,"tv":1,"klFinite":false,"gap":0},{"m":103,"delta":1.609375,"w1":1.609375,"w2":1.609375,"tv":1,"klFinite":false,"gap":0},{"m":104,"delta":1.625,"w1":1.625,"w2":1.625,"tv":1,"klFinite":false,"gap":0},{"m":105,"delta":1.640625,"w1":1.640625,"w2":1.640625,"tv":1,"klFinite":false,"gap":0},{"m":106,"delta":1.65625,"w1":1.65625,"w2":1.65625,"tv":1,"klFinite":false,"gap":0},{"m":107,"delta":1.671875,"w1":1.671875,"w2":1.671875,"tv":1,"klFinite":false,"gap":0},{"m":108,"delta":1.6875,"w1":1.6875,"w2":1.6875,"tv":1,"klFinite":false,"gap":0},{"m":109,"delta":1.703125,"w1":1.703125,"w2":1.703125,"tv":1,"klFinite":false,"gap":0},{"m":110,"delta":1.71875,"w1":1.71875,"w2":1.71875,"tv":1,"klFinite":false,"gap":0},{"m":111,"delta":1.734375,"w1":1.734375,"w2":1.734375,"tv":1,"klFinite":false,"gap":0},{"m":112,"delta":1.75,"w1":1.75,"w2":1.75,"tv":1,"klFinite":false,"gap":0},{"m":113,"delta":1.765625,"w1":1.765625,"w2":1.765625,"tv":1,"klFinite":false,"gap":0},{"m":114,"delta":1.78125,"w1":1.78125,"w2":1.78125,"tv":1,"klFinite":false,"gap":0},{"m":115,"delta":1.796875,"w1":1.796875,"w2":1.796875,"tv":1,"klFinite":false,"gap":0},{"m":116,"delta":1.8125,"w1":1.8125,"w2":1.8125,"tv":1,"klFinite":false,"gap":0},{"m":117,"delta":1.828125,"w1":1.828125,"w2":1.828125,"tv":1,"klFinite":false,"gap":0},{"m":118,"delta":1.84375,"w1":1.84375,"w2":1.84375,"tv":1,"klFinite":false,"gap":0},{"m":119,"delta":1.859375,"w1":1.859375,"w2":1.859375,"tv":1,"klFinite":false,"gap":0},{"m":120,"delta":1.875,"w1":1.875,"w2":1.875,"tv":1,"klFinite":false,"gap":0},{"m":121,"delta":1.890625,"w1":1.890625,"w2":1.890625,"tv":1,"klFinite":false,"gap":0},{"m":122,"delta":1.90625,"w1":1.90625,"w2":1.90625,"tv":1,"klFinite":false,"gap":0},{"m":123,"delta":1.921875,"w1":1.921875,"w2":1.921875,"tv":1,"klFinite":false,"gap":0},{"m":124,"delta":1.9375,"w1":1.9375,"w2":1.9375,"tv":1,"klFinite":false,"gap":0},{"m":125,"delta":1.953125,"w1":1.953125,"w2":1.953125,"tv":1,"klFinite":false,"gap":0},{"m":126,"delta":1.96875,"w1":1.96875,"w2":1.96875,"tv":1,"klFinite":false,"gap":0},{"m":127,"delta":1.984375,"w1":1.984375,"w2":1.984375,"tv":1,"klFinite":false,"gap":0},{"m":128,"delta":2,"w1":2,"w2":2,"tv":1,"klFinite":false,"gap":0},{"m":129,"delta":2.015625,"w1":2.015625,"w2":2.015625,"tv":1,"klFinite":false,"gap":0},{"m":130,"delta":2.03125,"w1":2.03125,"w2":2.03125,"tv":1,"klFinite":false,"gap":0},{"m":131,"delta":2.046875,"w1":2.046875,"w2":2.046875,"tv":1,"klFinite":false,"gap":0},{"m":132,"delta":2.0625,"w1":2.0625,"w2":2.0625,"tv":1,"klFinite":false,"gap":0},{"m":133,"delta":2.078125,"w1":2.078125,"w2":2.078125,"tv":1,"klFinite":false,"gap":0},{"m":134,"delta":2.09375,"w1":2.09375,"w2":2.09375,"tv":1,"klFinite":false,"gap":0},{"m":135,"delta":2.109375,"w1":2.109375,"w2":2.109375,"tv":1,"klFinite":false,"gap":0},{"m":136,"delta":2.125,"w1":2.125,"w2":2.125,"tv":1,"klFinite":false,"gap":0},{"m":137,"delta":2.140625,"w1":2.140625,"w2":2.140625,"tv":1,"klFinite":false,"gap":0},{"m":138,"delta":2.15625,"w1":2.15625,"w2":2.15625,"tv":1,"klFinite":false,"gap":0},{"m":139,"delta":2.171875,"w1":2.171875,"w2":2.171875,"tv":1,"klFinite":false,"gap":0},{"m":140,"delta":2.1875,"w1":2.1875,"w2":2.1875,"tv":1,"klFinite":false,"gap":0},{"m":141,"delta":2.203125,"w1":2.203125,"w2":2.203125,"tv":1,"klFinite":false,"gap":0},{"m":142,"delta":2.21875,"w1":2.21875,"w2":2.21875,"tv":1,"klFinite":false,"gap":0},{"m":143,"delta":2.234375,"w1":2.234375,"w2":2.234375,"tv":1,"klFinite":false,"gap":0},{"m":144,"delta":2.25,"w1":2.25,"w2":2.25,"tv":1,"klFinite":false,"gap":0},{"m":145,"delta":2.265625,"w1":2.265625,"w2":2.265625,"tv":1,"klFinite":false,"gap":0},{"m":146,"delta":2.28125,"w1":2.28125,"w2":2.28125,"tv":1,"klFinite":false,"gap":0},{"m":147,"delta":2.296875,"w1":2.296875,"w2":2.296875,"tv":1,"klFinite":false,"gap":0},{"m":148,"delta":2.3125,"w1":2.3125,"w2":2.3125,"tv":1,"klFinite":false,"gap":0},{"m":149,"delta":2.328125,"w1":2.328125,"w2":2.328125,"tv":1,"klFinite":false,"gap":0},{"m":150,"delta":2.34375,"w1":2.34375,"w2":2.34375,"tv":1,"klFinite":false,"gap":0},{"m":151,"delta":2.359375,"w1":2.359375,"w2":2.359375,"tv":1,"klFinite":false,"gap":0},{"m":152,"delta":2.375,"w1":2.375,"w2":2.375,"tv":1,"klFinite":false,"gap":0},{"m":153,"delta":2.390625,"w1":2.390625,"w2":2.390625,"tv":1,"klFinite":false,"gap":0},{"m":154,"delta":2.40625,"w1":2.40625,"w2":2.40625,"tv":1,"klFinite":false,"gap":0},{"m":155,"delta":2.421875,"w1":2.421875,"w2":2.421875,"tv":1,"klFinite":false,"gap":0},{"m":156,"delta":2.4375,"w1":2.4375,"w2":2.4375,"tv":1,"klFinite":false,"gap":0},{"m":157,"delta":2.453125,"w1":2.453125,"w2":2.453125,"tv":1,"klFinite":false,"gap":0},{"m":158,"delta":2.46875,"w1":2.46875,"w2":2.46875,"tv":1,"klFinite":false,"gap":0},{"m":159,"delta":2.484375,"w1":2.484375,"w2":2.484375,"tv":1,"klFinite":false,"gap":0},{"m":160,"delta":2.5,"w1":2.5,"w2":2.5,"tv":1,"klFinite":false,"gap":0},{"m":161,"delta":2.515625,"w1":2.515625,"w2":2.515625,"tv":1,"klFinite":false,"gap":0},{"m":162,"delta":2.53125,"w1":2.53125,"w2":2.53125,"tv":1,"klFinite":false,"gap":0},{"m":163,"delta":2.546875,"w1":2.546875,"w2":2.546875,"tv":1,"klFinite":false,"gap":0},{"m":164,"delta":2.5625,"w1":2.5625,"w2":2.5625,"tv":1,"klFinite":false,"gap":0},{"m":165,"delta":2.578125,"w1":2.578125,"w2":2.578125,"tv":1,"klFinite":false,"gap":0},{"m":166,"delta":2.59375,"w1":2.59375,"w2":2.59375,"tv":1,"klFinite":false,"gap":0},{"m":167,"delta":2.609375,"w1":2.609375,"w2":2.609375,"tv":1,"klFinite":false,"gap":0},{"m":168,"delta":2.625,"w1":2.625,"w2":2.625,"tv":1,"klFinite":false,"gap":0},{"m":169,"delta":2.640625,"w1":2.640625,"w2":2.640625,"tv":1,"klFinite":false,"gap":0},{"m":170,"delta":2.65625,"w1":2.65625,"w2":2.65625,"tv":1,"klFinite":false,"gap":0},{"m":171,"delta":2.671875,"w1":2.671875,"w2":2.671875,"tv":1,"klFinite":false,"gap":0},{"m":172,"delta":2.6875,"w1":2.6875,"w2":2.6875,"tv":1,"klFinite":false,"gap":0},{"m":173,"delta":2.703125,"w1":2.703125,"w2":2.703125,"tv":1,"klFinite":false,"gap":0},{"m":174,"delta":2.71875,"w1":2.71875,"w2":2.71875,"tv":1,"klFinite":false,"gap":0},{"m":175,"delta":2.734375,"w1":2.734375,"w2":2.734375,"tv":1,"klFinite":false,"gap":0},{"m":176,"delta":2.75,"w1":2.75,"w2":2.75,"tv":1,"klFinite":false,"gap":0},{"m":177,"delta":2.765625,"w1":2.765625,"w2":2.765625,"tv":1,"klFinite":false,"gap":0},{"m":178,"delta":2.78125,"w1":2.78125,"w2":2.78125,"tv":1,"klFinite":false,"gap":0},{"m":179,"delta":2.796875,"w1":2.796875,"w2":2.796875,"tv":1,"klFinite":false,"gap":0},{"m":180,"delta":2.8125,"w1":2.8125,"w2":2.8125,"tv":1,"klFinite":false,"gap":0},{"m":181,"delta":2.828125,"w1":2.828125,"w2":2.828125,"tv":1,"klFinite":false,"gap":0},{"m":182,"delta":2.84375,"w1":2.84375,"w2":2.84375,"tv":1,"klFinite":false,"gap":0},{"m":183,"delta":2.859375,"w1":2.859375,"w2":2.859375,"tv":1,"klFinite":false,"gap":0},{"m":184,"delta":2.875,"w1":2.875,"w2":2.875,"tv":1,"klFinite":false,"gap":0},{"m":185,"delta":2.890625,"w1":2.890625,"w2":2.890625,"tv":1,"klFinite":false,"gap":0},{"m":186,"delta":2.90625,"w1":2.90625,"w2":2.90625,"tv":1,"klFinite":false,"gap":0},{"m":187,"delta":2.921875,"w1":2.921875,"w2":2.921875,"tv":1,"klFinite":false,"gap":0},{"m":188,"delta":2.9375,"w1":2.9375,"w2":2.9375,"tv":1,"klFinite":false,"gap":0},{"m":189,"delta":2.953125,"w1":2.953125,"w2":2.953125,"tv":1,"klFinite":false,"gap":0},{"m":190,"delta":2.96875,"w1":2.96875,"w2":2.96875,"tv":1,"klFinite":false,"gap":0},{"m":191,"delta":2.984375,"w1":2.984375,"w2":2.984375,"tv":1,"klFinite":false,"gap":0},{"m":192,"delta":3,"w1":3,"w2":3,"tv":1,"klFinite":false,"gap":0}],"e1SmallSlopeTv":1,"e1SmallSlopeW1":1,"e1SatSlopeTv":0,"e1SatSlopeW1":1,"e1SatTvR2":1,"e1W1At3":3,"e1TvAt3":1,"e1TvAt1":1,"e1MaxGap":0,"e1MaxGapQ":0,"e1GapRatio":3,"e1KlAllInfinite":true,"e1TvSaturated":129,"e2":{"rows":[{"k":1,"tv":1,"w1":0.5,"w1q":0.5,"w1pred":0.5,"w1toUniform":0.5000000000000473,"klFinite":false},{"k":2,"tv":1,"w1":0.25,"w1q":0.25,"w1pred":0.25,"w1toUniform":0.25000000000004713,"klFinite":false},{"k":4,"tv":1,"w1":0.125,"w1q":0.125,"w1pred":0.125,"w1toUniform":0.12500000000004718,"klFinite":false},{"k":8,"tv":1,"w1":0.0625,"w1q":0.0625,"w1pred":0.0625,"w1toUniform":0.0625000000000471,"klFinite":false},{"k":16,"tv":1,"w1":0.03125,"w1q":0.03125,"w1pred":0.03125,"w1toUniform":0.03125000000004716,"klFinite":false},{"k":32,"tv":1,"w1":0.015625,"w1q":0.015625,"w1pred":0.015625,"w1toUniform":0.01562500000004714,"klFinite":false},{"k":64,"tv":1,"w1":0.0078125,"w1q":0.0078125,"w1pred":0.0078125,"w1toUniform":0.007812500000047141,"klFinite":false},{"k":128,"tv":1,"w1":0.00390625,"w1q":0.00390625,"w1pred":0.00390625,"w1toUniform":0.003906260000047107,"klFinite":false},{"k":256,"tv":1,"w1":0.001953125,"w1q":0.001953125,"w1pred":0.001953125,"w1toUniform":0.001953150000047028,"klFinite":false},{"k":512,"tv":1,"w1":0.0009765625,"w1q":0.0009765625,"w1pred":0.0009765625,"w1toUniform":0.0009766150000468734,"klFinite":false},{"k":1024,"tv":1,"w1":0.00048828125,"w1q":0.00048828125,"w1pred":0.00048828125,"w1toUniform":0.0004883875000465763,"klFinite":false},{"k":2048,"tv":1,"w1":0.000244140625,"w1q":0.000244140625,"w1pred":0.000244140625,"w1toUniform":0.0002443537500459733,"klFinite":false},{"k":4096,"tv":1,"w1":0.0001220703125,"w1q":0.0001220703125,"w1pred":0.0001220703125,"w1toUniform":0.00012249687504476854,"klFinite":false}],"maxW1Gap":0,"tvAllOne":true,"klAllInfinite":true,"w1At4096":0.0001220703125,"ratio":4096},"e2Rows":[{"k":1,"tv":1,"w1":0.5,"w1pred":0.5,"gap":0,"toUniform":0.5000000000000473},{"k":2,"tv":1,"w1":0.25,"w1pred":0.25,"gap":0,"toUniform":0.25000000000004713},{"k":4,"tv":1,"w1":0.125,"w1pred":0.125,"gap":0,"toUniform":0.12500000000004718},{"k":8,"tv":1,"w1":0.0625,"w1pred":0.0625,"gap":0,"toUniform":0.0625000000000471},{"k":16,"tv":1,"w1":0.03125,"w1pred":0.03125,"gap":0,"toUniform":0.03125000000004716},{"k":32,"tv":1,"w1":0.015625,"w1pred":0.015625,"gap":0,"toUniform":0.01562500000004714},{"k":64,"tv":1,"w1":0.0078125,"w1pred":0.0078125,"gap":0,"toUniform":0.007812500000047141},{"k":128,"tv":1,"w1":0.00390625,"w1pred":0.00390625,"gap":0,"toUniform":0.003906260000047107},{"k":256,"tv":1,"w1":0.001953125,"w1pred":0.001953125,"gap":0,"toUniform":0.001953150000047028},{"k":512,"tv":1,"w1":0.0009765625,"w1pred":0.0009765625,"gap":0,"toUniform":0.0009766150000468734},{"k":1024,"tv":1,"w1":0.00048828125,"w1pred":0.00048828125,"gap":0,"toUniform":0.0004883875000465763},{"k":2048,"tv":1,"w1":0.000244140625,"w1pred":0.000244140625,"gap":0,"toUniform":0.0002443537500459733},{"k":4096,"tv":1,"w1":0.0001220703125,"w1pred":0.0001220703125,"gap":0,"toUniform":0.00012249687504476854}],"e2Ratio":4096,"e2W1At1":0.5,"e2W1At4096":0.0001220703125,"e2TvAllOne":true,"e2MaxGap":0,"e2ToUniform":0.00012249687504476854,"e2ToUniformRelPct":0.35,"e2KlAllInfinite":true,"e3":{"worstSpread":5.551115123125783e-17,"cases":21,"tiesTotal":464,"maxTies":288,"monoBad":0,"w2WorstGap":2.7755575615628914e-17},"e3Rows":[{"n":2,"seed":20261002,"q1":0.31876342359464616,"q2":0.42876573263295625,"cdf":0.31876342359464616,"sorted":0.31876342359464616,"mono":0.31876342359464616,"hungarian":0.31876342359464616,"brute":0.31876342359464616,"mcf":0.31876342359464616,"spread":0,"ties":1,"monotoneOk":true,"brutePerms":2,"w2Gap":0},{"n":2,"seed":20261003,"q1":0.3216483045835048,"q2":0.36915737932947223,"cdf":0.3216483045835048,"sorted":0.3216483045835048,"mono":0.3216483045835048,"hungarian":0.3216483045835048,"brute":0.3216483045835048,"mcf":0.3216483045835048,"spread":0,"ties":1,"monotoneOk":true,"brutePerms":2,"w2Gap":0},{"n":2,"seed":20261004,"q1":0.7796148204943165,"q2":0.7854928461250331,"cdf":0.7796148204943165,"sorted":0.7796148204943165,"mono":0.7796148204943165,"hungarian":0.7796148204943165,"brute":0.7796148204943165,"mcf":0.7796148204943165,"spread":0,"ties":2,"monotoneOk":true,"brutePerms":2,"w2Gap":0},{"n":3,"seed":20261002,"q1":0.1971546784043312,"q2":0.26855698700403596,"cdf":0.1971546784043312,"sorted":0.1971546784043312,"mono":0.1971546784043312,"hungarian":0.1971546784043312,"brute":0.1971546784043312,"mcf":0.1971546784043312,"spread":0,"ties":2,"monotoneOk":true,"brutePerms":6,"w2Gap":0},{"n":3,"seed":20261003,"q1":0.23007720344079038,"q2":0.2409868642969223,"cdf":0.23007720344079038,"sorted":0.23007720344079038,"mono":0.23007720344079036,"hungarian":0.23007720344079038,"brute":0.23007720344079038,"mcf":0.23007720344079038,"spread":2.7755575615628914e-17,"ties":1,"monotoneOk":true,"brutePerms":6,"w2Gap":0},{"n":3,"seed":20261004,"q1":0.30725363742870593,"q2":0.38511649695646416,"cdf":0.30725363742870593,"sorted":0.3072536374287059,"mono":0.3072536374287059,"hungarian":0.3072536374287059,"brute":0.3072536374287059,"mcf":0.3072536374287059,"spread":5.551115123125783e-17,"ties":2,"monotoneOk":true,"brutePerms":6,"w2Gap":0},{"n":4,"seed":20261002,"q1":0.19596121466020122,"q2":0.22429947522770421,"cdf":0.19596121466020122,"sorted":0.19596121466020122,"mono":0.19596121466020122,"hungarian":0.19596121466020122,"brute":0.19596121466020122,"mcf":0.19596121466020122,"spread":0,"ties":2,"monotoneOk":true,"brutePerms":24,"w2Gap":0},{"n":4,"seed":20261003,"q1":0.23695011547533795,"q2":0.29730390799933537,"cdf":0.23695011547533795,"sorted":0.23695011547533795,"mono":0.23695011547533795,"hungarian":0.23695011547533795,"brute":0.23695011547533795,"mcf":0.23695011547533795,"spread":0,"ties":2,"monotoneOk":true,"brutePerms":24,"w2Gap":0},{"n":4,"seed":20261004,"q1":0.14919176197145134,"q2":0.15643941594368332,"cdf":0.14919176197145134,"sorted":0.14919176197145134,"mono":0.14919176197145134,"hungarian":0.14919176197145134,"brute":0.14919176197145134,"mcf":0.14919176197145134,"spread":0,"ties":2,"monotoneOk":true,"brutePerms":24,"w2Gap":0},{"n":5,"seed":20261002,"q1":0.237045205431059,"q2":0.2797904448226186,"cdf":0.23704520543105898,"sorted":0.237045205431059,"mono":0.23704520543105903,"hungarian":0.237045205431059,"brute":0.237045205431059,"mcf":0.237045205431059,"spread":5.551115123125783e-17,"ties":36,"monotoneOk":true,"brutePerms":120,"w2Gap":0},{"n":5,"seed":20261003,"q1":0.11046783355996012,"q2":0.11874852591646207,"cdf":0.11046783355996012,"sorted":0.11046783355996012,"mono":0.11046783355996012,"hungarian":0.11046783355996012,"brute":0.11046783355996012,"mcf":0.11046783355996012,"spread":0,"ties":2,"monotoneOk":true,"brutePerms":120,"w2Gap":0},{"n":5,"seed":20261004,"q1":0.10830881665460766,"q2":0.13563430294067533,"cdf":0.10830881665460766,"sorted":0.10830881665460765,"mono":0.10830881665460765,"hungarian":0.10830881665460765,"brute":0.10830881665460765,"mcf":0.10830881665460765,"spread":1.3877787807814457e-17,"ties":1,"monotoneOk":true,"brutePerms":120,"w2Gap":2.7755575615628914e-17},{"n":6,"seed":20261002,"q1":0.21320848900359118,"q2":0.267072775917433,"cdf":0.2132084890035912,"sorted":0.21320848900359124,"mono":0.21320848900359124,"hungarian":0.21320848900359124,"brute":0.21320848900359124,"mcf":0.21320848900359124,"spread":5.551115123125783e-17,"ties":16,"monotoneOk":true,"brutePerms":720,"w2Gap":0},{"n":6,"seed":20261003,"q1":0.11633394452898452,"q2":0.13125397254221557,"cdf":0.11633394452898452,"sorted":0.11633394452898453,"mono":0.1163339445289845,"hungarian":0.11633394452898453,"brute":0.11633394452898453,"mcf":0.11633394452898453,"spread":2.7755575615628914e-17,"ties":4,"monotoneOk":true,"brutePerms":720,"w2Gap":2.7755575615628914e-17},{"n":6,"seed":20261004,"q1":0.16125296886699897,"q2":0.18082697537394068,"cdf":0.1612529688669989,"sorted":0.16125296886699894,"mono":0.16125296886699897,"hungarian":0.16125296886699894,"brute":0.16125296886699894,"mcf":0.16125296886699894,"spread":5.551115123125783e-17,"ties":8,"monotoneOk":true,"brutePerms":720,"w2Gap":2.7755575615628914e-17},{"n":7,"seed":20261002,"q1":0.14093484859248356,"q2":0.14712571861792734,"cdf":0.14093484859248354,"sorted":0.14093484859248356,"mono":0.14093484859248356,"hungarian":0.14093484859248356,"brute":0.14093484859248356,"mcf":0.14093484859248356,"spread":2.7755575615628914e-17,"ties":8,"monotoneOk":true,"brutePerms":5040,"w2Gap":0},{"n":7,"seed":20261003,"q1":0.09928739386876777,"q2":0.13709786851006353,"cdf":0.09928739386876778,"sorted":0.0992873938687678,"mono":0.09928739386876778,"hungarian":0.0992873938687678,"brute":0.0992873938687678,"mcf":0.0992873938687678,"spread":2.7755575615628914e-17,"ties":2,"monotoneOk":true,"brutePerms":5040,"w2Gap":0},{"n":7,"seed":20261004,"q1":0.17306636237273257,"q2":0.2560827675337886,"cdf":0.17306636237273257,"sorted":0.1730663623727326,"mono":0.17306636237273257,"hungarian":0.1730663623727326,"brute":0.1730663623727326,"mcf":0.1730663623727326,"spread":2.7755575615628914e-17,"ties":8,"monotoneOk":true,"brutePerms":5040,"w2Gap":0},{"n":8,"seed":20261002,"q1":0.13154537728405558,"q2":0.1569411179225247,"cdf":0.13154537728405558,"sorted":0.13154537728405558,"mono":0.13154537728405558,"hungarian":0.13154537728405558,"brute":0.13154537728405558,"mcf":0.13154537728405558,"spread":0,"ties":72,"monotoneOk":true,"brutePerms":40320,"w2Gap":0},{"n":8,"seed":20261003,"q1":0.14213525693048723,"q2":0.14840196339698983,"cdf":0.14213525693048723,"sorted":0.14213525693048723,"mono":0.14213525693048723,"hungarian":0.14213525693048723,"brute":0.14213525693048723,"mcf":0.14213525693048723,"spread":0,"ties":288,"monotoneOk":true,"brutePerms":40320,"w2Gap":0},{"n":8,"seed":20261004,"q1":0.06987281085457653,"q2":0.09555541951150677,"cdf":0.06987281085457653,"sorted":0.06987281085457653,"mono":0.06987281085457653,"hungarian":0.06987281085457653,"brute":0.06987281085457653,"mcf":0.06987281085457653,"spread":0,"ties":4,"monotoneOk":true,"brutePerms":40320,"w2Gap":0}],"e3Methods":[{"name":"分位数积分 ∫|F⁻¹−G⁻¹|","key":"q1"},{"name":"CDF 积分 ∫|F−G|","key":"cdf"},{"name":"等权排序公式","key":"sorted"},{"name":"单调（西北角）计划","key":"mono"},{"name":"匈牙利算法","key":"hungarian"},{"name":"穷举全排列","key":"brute"},{"name":"最小费用流","key":"mcf"}],"e3SpreadSci":"5.55×10^−17","e3W2GapSci":"2.78×10^−17","e3TieRows":17,"e3MaxTieRow":{"n":8,"tag":"e3-n8","seed":20261003,"q1":0.14213525693048723,"q2":0.14840196339698983,"cdf":0.14213525693048723,"sorted":0.14213525693048723,"mono":0.14213525693048723,"hungarian":0.14213525693048723,"brute":0.14213525693048723,"brutePerms":40320,"mcf":0.14213525693048723,"w2":0.14840196339698983,"spread":0,"ties":288,"monotoneOk":true,"w2GapToHungarian2":0},"e4":{"eqAlwaysN":true,"eqNoSplit":true,"rndWithinBasic":true,"rndAllSplit":false,"rndCases":120,"rndMaxNonzeros":8,"rndMinNonzeros":3,"rndBasicMax":9},"e4Eq":[{"n":3,"nonzeros":3,"split":0,"basic":3},{"n":4,"nonzeros":4,"split":0,"basic":4},{"n":5,"nonzeros":5,"split":0,"basic":5},{"n":6,"nonzeros":6,"split":0,"basic":6},{"n":7,"nonzeros":7,"split":0,"basic":7}],"e4Fixed":[{"a":[4],"b":[2,2],"n":1,"m":2,"nonzeros":2,"split":1,"basic":2,"cost":2,"plan":[[2,2]],"slack":0},{"a":[4],"b":[1,1,1,1],"n":1,"m":4,"nonzeros":4,"split":1,"basic":4,"cost":6,"plan":[[1,1,1,1]],"slack":0},{"a":[3,3,2],"b":[2,3,3],"n":3,"m":3,"nonzeros":4,"split":1,"basic":5,"cost":2,"plan":[[2,0,1],[0,3,0],[0,0,2]],"slack":1},{"a":[2,2],"b":[1,1,1,1],"n":2,"m":4,"nonzeros":4,"split":2,"basic":5,"cost":6,"plan":[[1,1,0,0],[0,0,1,1]],"slack":1},{"a":[4,2,1,1],"b":[3,3,2],"n":4,"m":3,"nonzeros":5,"split":1,"basic":6,"cost":12,"plan":[[3,1,0],[0,2,0],[0,0,1],[0,0,1]],"slack":1}],"e4Hist":[{"nonzeros":6,"basic":7,"count":24,"gap":1},{"nonzeros":5,"basic":6,"count":20,"gap":1},{"nonzeros":6,"basic":8,"count":10,"gap":2},{"nonzeros":7,"basic":7,"count":9,"gap":0},{"nonzeros":6,"basic":6,"count":8,"gap":0},{"nonzeros":7,"basic":8,"count":8,"gap":1},{"nonzeros":5,"basic":7,"count":7,"gap":2},{"nonzeros":7,"basic":9,"count":5,"gap":2},{"nonzeros":5,"basic":8,"count":5,"gap":3},{"nonzeros":4,"basic":5,"count":4,"gap":1},{"nonzeros":4,"basic":6,"count":4,"gap":2},{"nonzeros":6,"basic":9,"count":3,"gap":3},{"nonzeros":3,"basic":5,"count":3,"gap":2},{"nonzeros":8,"basic":9,"count":3,"gap":1},{"nonzeros":5,"basic":5,"count":3,"gap":0},{"nonzeros":8,"basic":8,"count":2,"gap":0},{"nonzeros":5,"basic":9,"count":1,"gap":4},{"nonzeros":4,"basic":7,"count":1,"gap":3}],"e4HistMax":{"nonzeros":6,"basic":7,"count":24,"gap":1},"e4RndSplitAll":false,"e4EqSplits":0,"e4RndSplitCount":109,"e4RndSplitRate":0.9083333333333333,"e4RndNoSplit":11,"e4RndGapMedian":1,"e4RndGapMax":4,"e4RndNzMedian":6,"e5":{"n":24,"truth":4,"convCount":7,"hyperCount":5,"hyperEpsLo":0.1,"hyperEpsHi":1,"hyperProdMin":430.72011596941985,"hyperProdMax":473.8786430137867,"hyperSpread":0.09404448390210009,"productMean":1702.9231334651574},"e5Rows":[{"eps":1,"iters":40,"cost":4.43072011596942,"converged":true,"support":560,"relBias":0.10768002899235496,"bias":0.43072011596941984,"product":430.72011596941985},{"eps":0.5,"iters":80,"cost":4.229920471967799,"converged":true,"support":500,"relBias":0.05748011799194974,"bias":0.22992047196779897,"product":459.8409439355979},{"eps":0.3,"iters":130,"cost":4.140931570275029,"converged":true,"support":434,"relBias":0.03523289256875728,"bias":0.14093157027502912,"product":458.02760339384463},{"eps":0.2,"iters":200,"cost":4.094422630927361,"converged":true,"support":380,"relBias":0.0236056577318402,"bias":0.0944226309273608,"product":472.11315463680404},{"eps":0.1,"iters":410,"cost":4.046232062733052,"converged":true,"support":292,"relBias":0.01155801568326309,"bias":0.04623206273305236,"product":473.8786430137867},{"eps":0.05,"iters":1650,"cost":4.022053256418634,"converged":true,"support":218,"relBias":0.0055133141046586065,"bias":0.022053256418634426,"product":909.6968272686701},{"eps":0.03,"iters":27410,"cost":4.01271971491578,"converged":true,"support":174,"relBias":0.003179928728944903,"bias":0.012719714915779612,"product":8716.184646037978},{"eps":0.01,"iters":40000,"cost":4.0033397414170855,"converged":false,"support":106,"relBias":0.0008349353542713711,"bias":0.0033397414170854844,"product":3339.7414170854845}],"e5BiasAlpha":1.01,"e5BiasR2":0.9989,"e5IterAlpha":-1.658,"e5IterR2":0.8787,"e5Trunc":{"eps":0.003,"maxIter":800,"iters":800,"converged":false,"cost":2.2064814880398673,"bias":-1.7935185119601327,"relBias":-0.44837962799003317,"maxViol":0.08330698837449854},"e5SupportFull":576,"e5SupportExact":24,"e5AccGain":9.32,"e5WorkGain":10.25,"e5SupportShrink":5.28,"e6Rows":[{"delta":0.5,"ratio":1.0317434074991025,"pred":1.0317434074991028,"w2Mean":0.25,"w2Std":1,"euMean":0.25,"euStd":1.0307764064044151,"w2Maxima":1,"euMaxima":1},{"delta":1,"ratio":1.1331484530668263,"pred":1.1331484530668263,"w2Mean":0.5,"w2Std":1,"euMean":0.5,"euStd":1.118033988749895,"w2Maxima":1,"euMaxima":1},{"delta":2,"ratio":1.6487212707001282,"pred":1.6487212707001282,"w2Mean":1,"w2Std":1,"euMean":1,"euStd":1.4142135623730951,"w2Maxima":1,"euMaxima":1},{"delta":3,"ratio":3.080216848918031,"pred":3.080216848918031,"w2Mean":1.5,"w2Std":1,"euMean":1.5,"euStd":1.8027756377319946,"w2Maxima":1,"euMaxima":2},{"delta":4,"ratio":7.3890560989306495,"pred":7.38905609893065,"w2Mean":2,"w2Std":1,"euMean":2,"euStd":2.23606797749979,"w2Maxima":1,"euMaxima":2},{"delta":5,"ratio":22.759895093526726,"pred":22.75989509352673,"w2Mean":2.5,"w2Std":1,"euMean":2.5,"euStd":2.692582403567252,"w2Maxima":1,"euMaxima":2},{"delta":6,"ratio":90.01713130052181,"pred":90.01713130052181,"w2Mean":3,"w2Std":1,"euMean":3,"euStd":3.1622776601683795,"w2Maxima":1,"euMaxima":2},{"delta":7,"ratio":457.1447132689089,"pred":457.14471326890896,"w2Mean":3.5,"w2Std":1,"euMean":3.5,"euStd":3.640054944640259,"w2Maxima":1,"euMaxima":2}],"e6MaxRatioGap":2.1521301062951004e-16,"e6Interp":[{"t":0,"d":0,"pred":0,"gap":0},{"t":0.05,"d":0.1580742138890423,"pred":0.15807421388904233,"gap":2.7755575615628914e-17},{"t":0.1,"d":0.3161484277780846,"pred":0.31614842777808466,"gap":5.551115123125783e-17},{"t":0.15,"d":0.47422264166712697,"pred":0.47422264166712697,"gap":0},{"t":0.2,"d":0.6322968555561693,"pred":0.6322968555561693,"gap":0},{"t":0.25,"d":0.7903710694452116,"pred":0.7903710694452116,"gap":0},{"t":0.3,"d":0.948445283334254,"pred":0.9484452833342539,"gap":1.1102230246251565e-16},{"t":0.35,"d":1.1065194972232966,"pred":1.1065194972232961,"gap":4.440892098500626e-16},{"t":0.4,"d":1.2645937111123389,"pred":1.2645937111123386,"gap":2.220446049250313e-16},{"t":0.45,"d":1.4226679250013812,"pred":1.422667925001381,"gap":2.220446049250313e-16},{"t":0.5,"d":1.5807421388904233,"pred":1.5807421388904233,"gap":0},{"t":0.55,"d":1.7388163527794658,"pred":1.7388163527794658,"gap":0},{"t":0.6,"d":1.8968905666685079,"pred":1.8968905666685079,"gap":0},{"t":0.65,"d":2.0549647805575506,"pred":2.05496478055755,"gap":4.440892098500626e-16},{"t":0.7,"d":2.2130389944465927,"pred":2.2130389944465922,"gap":4.440892098500626e-16},{"t":0.75,"d":2.371113208335635,"pred":2.3711132083356348,"gap":4.440892098500626e-16},{"t":0.8,"d":2.5291874222246773,"pred":2.5291874222246773,"gap":0},{"t":0.85,"d":2.6872616361137194,"pred":2.6872616361137194,"gap":0},{"t":0.9,"d":2.8453358500027623,"pred":2.845335850002762,"gap":4.440892098500626e-16},{"t":0.95,"d":3.003410063891805,"pred":3.003410063891804,"gap":8.881784197001252e-16},{"t":1,"d":3.1614842777808465,"pred":3.1614842777808465,"gap":0}],"e6WorstInterp":8.881784197001252e-16,"e6WorstInterpGauss":0,"e6Bary":{"mean":2.000000000000004,"std":0.9998358859017291,"closedFormMean":2,"closedFormStd":1},"e6RatioAt4":7.3890560989306495,"e6RatioAt2":1.6487212707001282,"e6EuStdBigger":true,"e6BimodalFrom":3,"e6RatioFit":{"alpha":2.027,"r2":0.7127},"e7Brute":[{"n":2,"perms":2,"ms":0,"cost":0.5547896341999525},{"n":4,"perms":24,"ms":0,"cost":0.1871372078475664},{"n":6,"perms":720,"ms":0,"cost":0.4601509192363491},{"n":7,"perms":5040,"ms":0,"cost":0.6065036881536188},{"n":8,"perms":40320,"ms":3,"cost":0.17129983010369132},{"n":9,"perms":362880,"ms":29,"cost":0.1639394040012248}],"e7Hung":[{"n":8,"ms":0,"cost":0.17480383915139572},{"n":16,"ms":0,"cost":0.07225180245257375},{"n":32,"ms":1,"cost":0.2774415039971518},{"n":64,"ms":6,"cost":0.424879525605371},{"n":128,"ms":15,"cost":1.049637203714647},{"n":256,"ms":24,"cost":0.13846126537520542}],"e7Closed":[{"n":64,"ms":0,"w1":2.5},{"n":256,"ms":0,"w1":2.5},{"n":1024,"ms":0,"w1":2.5},{"n":4096,"ms":0,"w1":2.5},{"n":16384,"ms":4,"w1":2.5},{"n":65536,"ms":22,"w1":2.5}],"e7Mono2d":[{"n":4,"rate":0.75,"bad":45,"total":60},{"n":5,"rate":0.9333333333333333,"bad":56,"total":60},{"n":6,"rate":0.9666666666666667,"bad":58,"total":60},{"n":8,"rate":1,"bad":60,"total":60}],"e7MonoWorst":1,"e7MonoMonotone":true,"e7MonoAt6":0.9666666666666667,"e7MonoAt8":1,"e7Mono8All":true,"e7Mono6All":false,"e7MsPerPerm":0.00007991622574955909,"e7Fact":{"10":3628800,"12":479001600,"20":2432902008176640000,"100":9.33262154439441e+157},"e7Log10Fact100":157.97000365471578,"e7Years100":2.3633859678081426e+143,"e7Years100Sci":"2.36×10^143","e7Closed1e6":{"n":1000000,"ms":387,"w1":2.5000000000003837},"e7Ladder":[{"name":"一维闭式（分位数对齐）","complexity":"O(n log n)","measured":1000000,"unit":"个点"},{"name":"匈牙利算法（指派）","complexity":"O(n³)","measured":256,"unit":"个点"},{"name":"穷举全排列","complexity":"n!","measured":9,"unit":"个点"}],"e7BruteLast":{"n":9,"perms":362880,"ms":29,"cost":0.1639394040012248},"e7HungLast":{"n":256,"ms":24,"cost":0.13846126537520542},"e7ClosedLast":{"n":256,"ms":0,"w1":2.5},"e7HungVsBruteAt8":3000}};</script>
+<script>/* ============================================================================
+ * ot/ui.js —— 界面三段之三：渲染 + 交互 + 探针
+ *
+ * 这一层踩过的坑（都写进 skill 了），逐条守住：
+ *   · openTag 只用来开 <svg>；形状一律用自带闭合的 tag()
+ *   · 图表按**容器的真实像素宽**渲染；setTab / resize 时幂等重画
+ *   · 图例放 HTML，不画进 SVG（否则随 viewBox 缩成 6px）
+ *   · 页面上不读时钟（--virtual-time-budget 下时钟不推进，读出来恒为 0）；
+ *     展示的毫秒一律是 Node 侧标定实测、烤进 analysis.json 的数，且低于时钟
+ *     分辨率时写 "< 1 毫秒" 而不是印一个假的 0
+ *   · 对数刻度必须带渲染下限，否则"干净"和"没画"在屏幕上一样
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var A = window.__ANALYSIS__;
+  var D = A.derived;
+  var Core = window.OTCore;
+
+  /* ============================================================ 小工具 */
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function attrsStr(o) {
+    var s = '', k;
+    for (k in o) {
+      if (!Object.prototype.hasOwnProperty.call(o, k)) continue;
+      if (o[k] === undefined || o[k] === null) continue;
+      s += ' ' + k + '="' + String(o[k]).replace(/"/g, '&quot;') + '"';
+    }
+    return s;
+  }
+  function tag(name, attrs, text) {
+    return '<' + name + attrsStr(attrs) + '>' + (text === undefined ? '' : esc(text)) + '</' + name + '>';
+  }
+  function openTag(name, attrs) { return '<' + name + attrsStr(attrs) + '>'; }
+  function setText(id, s) { var e = $(id); if (e) e.textContent = s; }
+  function setHTML(id, s) { var e = $(id); if (e) e.innerHTML = s; }
+  function setMD(id, s) { var e = $(id); if (e) e.innerHTML = md(s); }
+  function md(s) {
+    return esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\bW₁\b/g, 'W₁');
+  }
+  function fmt(x, d) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return Number(x).toFixed(d === undefined ? 4 : d);
+  }
+  function fmtInt(x) { return Number(x).toLocaleString('en-US'); }
+  /* sci 只吃数字。
+   * 血案：把已经格式化好的字符串（*Sci 派生量）喂进来时，isFinite("5.55×10^−17")
+   * 是 false，于是页面把 5.55×10⁻¹⁷ 印成了 '∞' —— 一个静默的假数字。
+   * 现在：字符串原样返回；缺失显式标 '—'；NaN 就写 NaN；无穷才写 ∞。 */
+  function sci(x, d) {
+    if (typeof x === 'string') return x;
+    if (x === undefined || x === null) return '—';
+    if (typeof x !== 'number' || Number.isNaN(x)) return 'NaN';
+    if (!isFinite(x)) return x > 0 ? '∞' : '−∞';
+    if (x === 0) return '0';
+    var s = Number(x).toExponential(d === undefined ? 2 : d).split('e');
+    return s[0] + '×10^' + (s[1][0] === '-' ? '−' : '') + String(Math.abs(+s[1]));
+  }
+  function pct(x, d) { return (x * 100).toFixed(d === undefined ? 2 : d) + '%'; }
+  /* 毫秒读数：低于时钟分辨率（1 ms）时不许印 0 —— 那不是"很快"，是"量不出来"。
+   * 这些数是 Node 侧标定用真实时钟实测后烤进 analysis.json 的，不是浏览器里现读的。 */
+  function msText(ms) { return ms >= 1 ? fmtInt(ms) + ' 毫秒' : '< 1 毫秒'; }
+  function chartWidth(host) { return Math.max(240, Math.round(host.clientWidth || 640)); }
+
+  /* ============================================================ 坐标与刻度 */
+  function sc(x0, x1, a, b) {
+    var d = (x1 - x0) || 1;
+    return function (v) { return a + (v - x0) / d * (b - a); };
+  }
+  function logsc(x0, x1, a, b) {
+    var l0 = Math.log10(x0), l1 = Math.log10(x1);
+    return function (v) { return a + (Math.log10(Math.max(v, 1e-300)) - l0) / (l1 - l0) * (b - a); };
+  }
+  function niceTicks(lo, hi, count) {
+    var span = hi - lo;
+    if (!(span > 0)) return [lo];
+    var step = Math.pow(10, Math.floor(Math.log10(span / count)));
+    var err = span / count / step;
+    if (err >= 5) step *= 10; else if (err >= 2) step *= 5; else if (err >= 1) step *= 2;
+    var t = [], v = Math.ceil(lo / step - 1e-9) * step;
+    for (; v <= hi + step * 1e-9; v += step) t.push(+v.toPrecision(12));
+    return t;
+  }
+  function tickTxt(v) {
+    var a = Math.abs(v);
+    if (a === 0) return '0';
+    if (a >= 1000) return String(Math.round(v));
+    if (a >= 1) return String(+v.toFixed(2));
+    if (a >= 0.01) return String(+v.toFixed(3));
+    return sci(v, 0);
+  }
+  function logTicks(lo, hi) {
+    var out = [], e;
+    for (e = Math.ceil(Math.log10(lo)); e <= Math.floor(Math.log10(hi)); e++) out.push(Math.pow(10, e));
+    return out;
+  }
+  function logTickTxt(v) {
+    var e = Math.round(Math.log10(v));
+    if (e >= 0 && e <= 5) return String(v);
+    return '10^' + e;
+  }
+
+/* 刻度太密就按索引抽稀：可用像素不够时，宁可少画几条也不能互相压住。
+ * 对数刻度尤其需要 —— logTicks(1e-18, 1) 一口气给 19 条。 */
+function thin(ticks, span, minGap) {
+  var maxN = Math.max(2, Math.floor(span / minGap));
+  if (ticks.length <= maxN) return ticks;
+  var step = Math.ceil(ticks.length / maxN);
+  return ticks.filter(function (_, i) { return i % step === 0; });
+}
+
+/* 通用的坐标框：左轴刻度 + 下轴刻度，都带 class="tick" */
+function frame(w, h, pad, xr, yr, opt) {
+    opt = opt || {};
+    var X = opt.xlog ? logsc(xr[0], xr[1], pad.l, w - pad.r)
+                     : sc(xr[0], xr[1], pad.l, w - pad.r);
+    var Y = opt.ylog ? logsc(yr[0], yr[1], h - pad.b, pad.t)
+                     : sc(yr[0], yr[1], h - pad.b, pad.t);
+    var s = '';
+    s += tag('rect', { x: pad.l, y: pad.t, width: w - pad.l - pad.r, height: h - pad.t - pad.b,
+                       fill: '#ffffff', stroke: '#ded9d0', 'stroke-width': 1 });
+    var xt = opt.nox ? [] : (opt.xlog ? logTicks(xr[0], xr[1]) : niceTicks(xr[0], xr[1], opt.xn || 6));
+    xt = thin(xt, w - pad.l - pad.r, 44);
+    xt.forEach(function (v) {
+      var x = X(v);
+      if (x < pad.l - 0.5 || x > w - pad.r + 0.5) return;
+      s += tag('line', { x1: x, y1: h - pad.b, x2: x, y2: h - pad.b + 4, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('line', { x1: x, y1: pad.t, x2: x, y2: h - pad.b, stroke: '#efece6', 'stroke-width': 1 });
+      s += tag('text', { x: x, y: h - pad.b + 14, 'text-anchor': 'middle', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' },
+        opt.xlog ? logTickTxt(v) : tickTxt(v));
+    });
+    var yt = opt.ylog ? logTicks(yr[0], yr[1]) : niceTicks(yr[0], yr[1], opt.yn || 5);
+    yt = thin(yt, h - pad.t - pad.b, 19);
+    yt.forEach(function (v) {
+      var y = Y(v);
+      if (y < pad.t - 0.5 || y > h - pad.b + 0.5) return;
+      s += tag('line', { x1: pad.l - 4, y1: y, x2: pad.l, y2: y, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('line', { x1: pad.l, y1: y, x2: w - pad.r, y2: y, stroke: '#efece6', 'stroke-width': 1 });
+      s += tag('text', { x: pad.l - 6, y: y + 3.5, 'text-anchor': 'end', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' },
+        opt.ylog ? logTickTxt(v) : tickTxt(v));
+    });
+    /* 轴标题也带 class="tick" —— 不然"标题压住刻度"这类碰撞探针根本看不见 */
+    if (opt.xlab && !opt.nox) s += tag('text', { x: (pad.l + w - pad.r) / 2, y: h - 3, 'text-anchor': 'middle',
+                                     'font-size': 11.5, fill: '#57534e', class: 'tick' }, opt.xlab);
+    if (opt.ylab) s += tag('text', { x: 11, y: (pad.t + h - pad.b) / 2, 'text-anchor': 'middle',
+                                     'font-size': 11.5, fill: '#57534e', class: 'tick',
+                                     transform: 'rotate(-90 11 ' + ((pad.t + h - pad.b) / 2) + ')' }, opt.ylab);
+    return { X: X, Y: Y, body: s };
+  }
+
+  function poly(pts, color, wdt, dash) {
+    if (!pts.length) return '';
+    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2); }).join(' ');
+    return tag('path', { d: d, fill: 'none', stroke: color, 'stroke-width': wdt || 2,
+                         'stroke-dasharray': dash || 'none', 'stroke-linejoin': 'round' });
+  }
+  function dot(x, y, color, r, shape) {
+    if (shape === 'sq') return tag('rect', { x: x - (r || 3), y: y - (r || 3), width: 2 * (r || 3), height: 2 * (r || 3), fill: color });
+    return tag('circle', { cx: x, cy: y, r: r || 3, fill: color });
+  }
+  function svgInto(host, w, h, body) {
+    host.innerHTML = openTag('svg', { width: w, height: h, viewBox: '0 0 ' + w + ' ' + h,
+                                      role: 'img' }) + body + '</svg>';
+  }
+
+  /* 水平条形图：每根柱子带 data-want，探针按渲染像素宽核对 */
+  function hbars(host, rows, opt) {
+    opt = opt || {};
+    var w = chartWidth(host);
+    var labW = opt.labW || 132;
+    var valW = 86;
+    var rowH = opt.rowH || 22;
+    var pad = { t: 10, b: opt.xlab ? 32 : 10, l: labW, r: valW };
+    var h = pad.t + pad.b + rows.length * rowH;
+    var lo = opt.xlog ? (opt.xmin || 1e-18) : 0;
+    var hi = opt.xmax || Math.max.apply(null, rows.map(function (r) { return Math.abs(r.value); }).concat([1e-30]));
+    if (!opt.xlog && hi <= 0) hi = 1;
+    if (!opt.xlog) hi *= 1.06;
+    var X = opt.xlog ? logsc(lo, hi, pad.l, w - pad.r) : sc(lo, hi, pad.l, w - pad.r);
+    var s = '';
+    rows.forEach(function (r, i) {
+      var y = pad.t + i * rowH;
+      var bh = rowH - 8;
+      var v = opt.xlog ? Math.max(Math.abs(r.value), lo) : Math.abs(r.value);
+      var x0 = X(opt.xlog ? lo : 0), x1 = X(v);
+      var bw = Math.max(opt.floor === undefined ? 1.2 : opt.floor, x1 - x0);
+      s += tag('text', { x: labW - 8, y: y + bh / 2 + 4, 'text-anchor': 'end', 'font-size': 11.5,
+                         fill: '#57534e', class: 'tick' }, r.label);
+      s += tag('rect', { x: x0, y: y + 3, width: bw, height: bh, fill: r.color || '#a23b1e',
+                         class: 'bar-fill', 'data-want': bw.toFixed(3), 'data-key': r.key || r.label });
+      /* 数值一律右对齐贴到画布右缘 —— 左对齐会顶出 svg（"1,000,000 个点"那种） */
+      s += tag('text', { x: w - 4, y: y + bh / 2 + 4, 'text-anchor': 'end', 'font-size': 11, fill: '#1c1b19',
+                         class: 'tick', 'font-family': 'ui-monospace,Menlo,monospace' },
+        r.text === undefined ? fmt(r.value, 4) : r.text);
+    });
+    if (opt.vline) {
+      var vx = X(opt.vline.at);
+      if (vx >= pad.l - 0.5 && vx <= w - pad.r + 0.5) {
+        s += tag('line', { x1: vx, y1: pad.t, x2: vx, y2: h - pad.b + 4,
+                           stroke: opt.vline.color || '#8a8279', 'stroke-width': 1,
+                           'stroke-dasharray': '4 3' });
+        if (opt.vline.label) {
+          s += tag('text', { x: vx + 4, y: pad.t + 10, 'font-size': 10.5,
+                             fill: opt.vline.color || '#8a8279', class: 'tick' }, opt.vline.label);
+        }
+      }
+    }
+    if (opt.xlab) {
+      var xt = opt.xlog ? logTicks(lo, hi) : niceTicks(0, hi, 4);
+      xt = thin(xt, w - pad.l - pad.r, 44);
+      xt.forEach(function (v) {
+        var x = X(v);
+        if (x < pad.l - 0.5 || x > w - pad.r + 0.5) return;
+        s += tag('line', { x1: x, y1: pad.t, x2: x, y2: h - pad.b + 4, stroke: '#ded9d0', 'stroke-width': 1 });
+        s += tag('text', { x: x, y: h - pad.b + 15, 'text-anchor': 'middle', 'font-size': 10.5,
+                           fill: '#8a8279', class: 'tick' }, opt.xlog ? logTickTxt(v) : tickTxt(v));
+      });
+      s += tag('text', { x: (pad.l + w - pad.r) / 2, y: h - 3, 'text-anchor': 'middle',
+                         'font-size': 11.5, fill: '#57534e', class: 'tick' }, opt.xlab);
+    }
+    svgInto(host, w, h, s);
+  }
+
+  /* ============================================================ 壹 · 土堆 */
+  var PILE = { shape: 'uniform', m: 48, n: 32, A: null, B: null, plan: null };
+
+  function pileBuild() {
+    var n = PILE.n, m = PILE.m, d = m / 64;
+    var PA;
+    if (PILE.shape === 'gauss') PA = Core.atomsGauss(n, 0.5, 0.17);
+    else if (PILE.shape === 'bimodal') PA = Core.atomsBimodal(n, 0.5, 0.42, 0.10);
+    else PA = Core.atomsUniform(n, 0, 1);
+    /* 位移必须落在格距的整数倍上，数字才是精确的 */
+    var PB = Core.atomsShift(PA, d);
+    PILE.A = PA; PILE.B = PB;
+    PILE.plan = Core.monotonePlan(PA, PB);
+    PILE.delta = d;
+  }
+
+  function pileRender() {
+    var host = $('demo');
+    if (!host || !host.clientWidth) return;
+    var w = chartWidth(host), h = 252;
+    /* 局部名不许叫 A —— 会遮蔽分析全局 A = window.__ANALYSIS__（构建期钉住） */
+    var PA = PILE.A, PB = PILE.B;
+    var all = PA.x.concat(PB.x);
+    var x0 = Math.min.apply(null, all), x1 = Math.max.apply(null, all);
+    var padx = (x1 - x0) * 0.06 + 0.02;
+    x0 -= padx; x1 += padx;
+    var X = sc(x0, x1, 34, w - 20);
+    var maxW = Math.max.apply(null, PA.w.concat(PB.w));
+    var bandH = 56;
+    var srcBase = 88, tgtBase = 164;
+    var hs = sc(0, maxW, 0, -bandH);
+    var ht = sc(0, maxW, 0, bandH);
+    var s = '';
+    s += tag('line', { x1: 20, y1: srcBase, x2: w - 12, y2: srcBase, stroke: '#ded9d0', 'stroke-width': 1 });
+    s += tag('line', { x1: 20, y1: tgtBase, x2: w - 12, y2: tgtBase, stroke: '#ded9d0', 'stroke-width': 1 });
+    /* 搬运弧：粗细 = 质量 */
+    PILE.plan.forEach(function (p) {
+      var xa = X(PA.x[p.i]), xb = X(PB.x[p.j]);
+      var my = (srcBase + tgtBase) / 2;
+      var mx = (xa + xb) / 2;
+      var sw = Math.max(0.7, Math.min(9, p.m * 130));
+      s += tag('path', {
+        d: 'M' + xa.toFixed(2) + ' ' + srcBase + ' Q' + mx.toFixed(2) + ' ' + my.toFixed(2) +
+           ' ' + xb.toFixed(2) + ' ' + tgtBase,
+        fill: 'none', stroke: '#c9a227', 'stroke-width': sw.toFixed(2), opacity: 0.5
+      });
+    });
+    PA.x.forEach(function (v, i) {
+      var x = X(v);
+      s += tag('rect', { x: (x - 2.4).toFixed(2), y: (srcBase + hs(PA.w[i])).toFixed(2),
+                         width: 4.8, height: Math.max(1.5, -hs(PA.w[i])).toFixed(2), fill: '#a23b1e' });
+    });
+    PB.x.forEach(function (v, i) {
+      var x = X(v);
+      s += tag('rect', { x: (x - 2.4).toFixed(2), y: tgtBase, width: 4.8,
+                         height: Math.max(1.5, ht(PB.w[i])).toFixed(2), fill: '#1f6f8b' });
+    });
+    s += tag('text', { x: 22, y: srcBase - bandH - 8, 'font-size': 11.5, fill: '#a23b1e', class: 'tick' }, '起点 μ');
+    s += tag('text', { x: 22, y: tgtBase + bandH + 16, 'font-size': 11.5, fill: '#1f6f8b', class: 'tick' }, '终点 ν');
+    s += tag('text', { x: w - 14, y: srcBase - bandH - 8, 'text-anchor': 'end', 'font-size': 11,
+                       fill: '#8a8279', class: 'tick' }, 'δ = ' + fmt(PILE.delta, 3) + '   n = ' + PILE.n);
+    svgInto(host, w, h, s);
+
+    var w1 = Core.w1CdfExact(PA, PB), w2 = Core.wpQuantile(PA, PB, 2);
+    var tv = Core.tvAtoms(PA, PB), kl = Core.klAtoms(PA, PB);
+    setHTML('pile-ro',
+      '<span class="k">搬运代价 W₁</span><span class="w1"><b>' + fmt(w1, 6) + '</b></span>' +
+      '<span class="k">W₂</span><span><b>' + fmt(w2, 6) + '</b></span>' +
+      '<span class="k">全变差 TV</span><span class="tv"><b>' + fmt(tv, 6) + '</b></span>' +
+      '<span class="k">KL</span><span class="kl"><b>' + (isFinite(kl) ? fmt(kl, 6) : '∞') + '</b></span>');
+  }
+
+  /* ============================================================ 贰 · 两张图 */
+  function renderScale() {
+    var host = $('c-scale');
+    if (!host || !host.clientWidth) return;
+    var w = chartWidth(host), h = 250;
+    var pad = { l: 46, r: 16, t: 14, b: 34 };
+    var f = frame(w, h, pad, [0, 3], [0, 3.25], { xlab: '位移 δ', ylab: '读数', xn: 6, yn: 6 });
+    var s = f.body;
+    var tvPts = [], w1Pts = [];
+    D.e1Rows.forEach(function (r) {
+      tvPts.push([f.X(r.delta), f.Y(r.tv)]);
+      w1Pts.push([f.X(r.delta), f.Y(r.w1)]);
+    });
+    s += poly(tvPts, '#1f6f8b', 2.4);
+    s += poly(w1Pts, '#a23b1e', 2.4);
+    s += tag('line', { x1: pad.l, y1: f.Y(3.2), x2: w - pad.r, y2: f.Y(3.2),
+                       stroke: '#6b8e23', 'stroke-width': 2, 'stroke-dasharray': '7 4' });
+    s += tag('text', { x: w - pad.r - 4, y: f.Y(3.2) - 5, 'text-anchor': 'end', 'font-size': 11,
+                       fill: '#6b8e23', class: 'tick' }, 'KL = ∞（只要 δ > 0）');
+    s += tag('line', { x1: f.X(1), y1: pad.t, x2: f.X(1), y2: h - pad.b,
+                       stroke: '#8a8279', 'stroke-width': 1, 'stroke-dasharray': '4 4' });
+    s += tag('text', { x: f.X(1) + 4, y: pad.t + 12, 'font-size': 11, fill: '#8a8279', class: 'tick' }, 'δ = 1');
+    svgInto(host, w, h, s);
+    setHTML('ro-scale',
+      'δ 从 0 涨到 3：<b>W₁ 精确等于 δ</b>（最大偏差 ' + sci(D.e1MaxGap, 2) + '），' +
+      '<b>TV 精确等于 min(δ,1)</b>。δ ≥ 1 之后 TV 的斜率是 <b>' + fmt(D.e1SatSlopeTv, 6) +
+      '</b>，W₁ 的斜率是 <b>' + fmt(D.e1SatSlopeW1, 6) + '</b>。');
+  }
+
+  function renderComb() {
+    var host = $('c-comb');
+    if (!host || !host.clientWidth) return;
+    var w = chartWidth(host), h = 250;
+    var pad = { l: 52, r: 16, t: 14, b: 34 };
+    var rows = D.e2Rows;
+    var ylo = 1e-5, yhi = 3;
+    var f = frame(w, h, pad, [1, 4096], [ylo, yhi], { xlog: true, ylog: true, xlab: '细缝数 k（对数）', ylab: '读数（对数）' });
+    var s = f.body;
+    var w1Pts = rows.map(function (r) { return [f.X(r.k), f.Y(Math.max(r.w1, ylo))]; });
+    s += poly(w1Pts, '#a23b1e', 2.4);
+    rows.forEach(function (r) { s += dot(f.X(r.k), f.Y(Math.max(r.w1, ylo)), '#a23b1e', 2.6); });
+    s += tag('line', { x1: pad.l, y1: f.Y(1), x2: w - pad.r, y2: f.Y(1), stroke: '#1f6f8b', 'stroke-width': 2.4 });
+    s += tag('text', { x: pad.l + 6, y: f.Y(1) - 6, 'font-size': 11, fill: '#1f6f8b', class: 'tick' }, 'TV ≡ 1');
+    /* 本来这里还画了第三条（细缝到 U[0,1] 的 W₁）。它和红线最大只差 0.35%，
+     * 在对数轴上完全重合 —— 一条"存在但看不见"的曲线。撤下来，数字写进读数。 */
+    svgInto(host, w, h, s);
+    setHTML('ro-comb',
+      'k 从 1 涨到 4096：TV 全程 <b>' + fmt(rows[0].tv, 6) + '</b>，' +
+      '而 W₁ 精确等于 1/(2k)，从 <b>' + fmt(D.e2W1At1, 6) + '</b> 掉到 <b>' + sci(D.e2W1At4096, 3) +
+      '</b>（落差 ' + D.e2Ratio.toFixed(0) + ' 倍）。两列分布都在弱收敛到均匀分布：' +
+      'k=4096 时到 U[0,1] 的 W₁ 是 <b>' + sci(D.e2ToUniform, 3) + '</b>，与 1/(2k) 只差 <b>' +
+      D.e2ToUniformRelPct + '%</b> —— 细缝到均匀分布的距离，差不多就是细缝自身的宽度。');
+  }
+
+  /* ============================================================ 叁 · 七条路径 */
+  function renderPaths() {
+    var host = $('c-paths');
+    if (!host || !host.clientWidth) return;
+    var row = D.e3Rows[D.e3Rows.length - 1];
+    var ref = row.q1;
+    var rows = D.e3Methods.map(function (m, i) {
+      var v = row[m.key];
+      var dev = Math.abs(v - ref);
+      return { label: m.name, value: Math.max(dev, 1e-18), key: 'm' + i,
+               color: dev < 1e-16 ? '#a23b1e' : '#b45309',
+               text: dev === 0 ? '完全相等' : sci(dev, 1) };
+    });
+    /* xmin 取 1e-19 而不是 1e-18：偏差为 0 的那几档画在轴的下限上，
+     * 若下限正好等于它们的取值，柱子宽度就是 0 —— 元素在、屏幕上没有。
+     * 参考竖线不带标签：它的说明放在图下方的 HTML 图例里（标签画进 SVG 会在窄屏压住读数）。 */
+    hbars(host, rows, { xlog: true, xmin: 1e-19, xmax: 1e-12, labW: 168, rowH: 26,
+                        xlab: '与分位数闭式的偏差（对数刻度）', floor: 1.5,
+                        vline: { at: 1e-16, color: '#6b8e23' } });
+    setHTML('ro-paths',
+      '上面是 n=' + row.n + ' 的那个实例（种子 ' + row.seed + '）。' +
+      '七套实现里最大的一处偏差是 <b>' + D.e3SpreadSci + '</b>；' +
+      '全 ' + D.e3.cases + ' 个实例（n=2…8）逐例核过，最大分歧同样不超过 <b>' + D.e3SpreadSci +
+      '</b>。竖虚线是双精度能分辨的极限（1e-16）；偏差为 0 的那几档画在轴的下限上 —— ' +
+      '0 在对数轴上没有位置。');
+  }
+
+  /* ============================================================ 肆 · 对偶 */
+  var DUAL = { n: 12, seed: 7, pot: null, A: null, B: null };
+
+  function dualBuild() {
+    var inst = Core.makeInstance(DUAL.seed, 'dual-n' + DUAL.n, DUAL.n);
+    DUAL.A = inst.A; DUAL.B = inst.B;
+    DUAL.pot = Core.kantPotentials1D(DUAL.A, DUAL.B);
+  }
+
+  function renderDual() {
+    var host = $('c-dual');
+    if (!host || !host.clientWidth) return;
+    var w = chartWidth(host), h = 320;
+    var PA = DUAL.A, PB = DUAL.B, pot = DUAL.pot;
+    var all = PA.x.concat(PB.x);
+    var x0 = Math.min.apply(null, all), x1 = Math.max.apply(null, all);
+    var padx = (x1 - x0) * 0.06 + 0.05;
+    x0 -= padx; x1 += padx;
+    /* 上下两panel共享 x 轴：刻度只画在下panel（nox 关掉上panel的），
+     * 省出来的中间带正好放两条说明 —— 否则说明必然压住某一侧的刻度 */
+    var padT = { l: 46, r: 16, t: 14, b: 16 };
+    var padB = { l: 46, r: 16, t: 196, b: 34 };
+    var ft = frame(w, 180, padT, [x0, x1], [-1.05, 1.05], { yn: 4, nox: true });
+    var fb = frame(w, 320, padB, [x0, x1], [-1.05, 1.05], { xn: 5, yn: 4, xlab: '位置 x' });
+    var s = ft.body + fb.body;
+    var X = ft.X;
+    var F = [], G = [], DF = [];
+    var grid = pot.grid, phi = pot.phi;
+    var lo = Math.min(x0, grid[0]), hi = Math.max(x1, grid[grid.length - 1]);
+    var NN = 220, i, t, fa = 0, fb2 = 0, ia = 0, ib = 0;
+    for (i = 0; i <= NN; i++) {
+      t = lo + (hi - lo) * i / NN;
+      while (ia < PA.x.length && PA.x[ia] <= t) { fa += PA.w[ia]; ia++; }
+      while (ib < PB.x.length && PB.x[ib] <= t) { fb2 += PB.w[ib]; ib++; }
+      F.push([X(t), ft.Y(fa)]); G.push([X(t), ft.Y(fb2)]); DF.push([X(t), ft.Y(fa - fb2)]);
+    }
+    s += poly(F, '#1f6f8b', 2.2);
+    s += poly(G, '#a23b1e', 2.2);
+    s += poly(DF, '#c9a227', 1.8, '5 3');
+    /* 势 φ 画在下面板 */
+    var phiPts = grid.map(function (g, k) { return [X(g), fb.Y(phi[k])]; });
+    s += poly(phiPts, '#7c3aed', 2.4);
+    s += tag('line', { x1: 46, y1: fb.Y(0), x2: w - 16, y2: fb.Y(0), stroke: '#ded9d0', 'stroke-width': 1 });
+    /* 两条说明放两 panel 之间的空带（上panel 已关掉 x 刻度，这条带子是干净的） */
+    s += tag('text', { x: 48, y: 174, 'font-size': 11, fill: '#57534e', class: 'tick' }, 'F、G 与 F−G');
+    s += tag('text', { x: 48, y: 190, 'font-size': 11, fill: '#57534e', class: 'tick' }, '对偶势 φ(x)（斜率绝对值恒 ≤ 1）');
+    svgInto(host, w, h, s);
+
+    var w1 = Core.w1CdfExact(PA, PB);
+    var dual = Core.dualObjective(PA, PB, pot);
+    var lip = pot.lip();
+    var P = Core.monotonePlanMatrix(PA, PB);
+    var cs = Core.complementarySlack(PA, PB, P, pot, 1e-9);
+    setHTML('dual-ro',
+      '<span class="k">原始目标 W₁</span><span><b>' + fmt(w1, 9) + '</b></span>' +
+      '<span class="k">对偶目标</span><span><b>' + fmt(dual, 9) + '</b></span>' +
+      '<span class="k">两者之差</span><span><b>' + sci(Math.abs(dual - w1), 2) + '</b></span>' +
+      '<span class="k">φ 的 Lipschitz 常数</span><span><b>' + fmt(lip, 12) + '</b></span>' +
+      '<span class="k">支集上的对数</span><span><b>' + cs.onSupport + '</b></span>' +
+      '<span class="k">其中取等号</span><span><b>' + cs.slackOk + '</b></span>');
+    renderSlack(cs, P);
+    renderDualTable(w1, dual, lip, cs);
+  }
+
+  function renderSlack(cs, P) {
+    var host = $('c-slack');
+    if (!host || !host.clientWidth) return;
+    var PA = DUAL.A, PB = DUAL.B, pot = DUAL.pot;
+    var n = PA.x.length, m = PB.x.length;
+    var w = chartWidth(host);
+    var cell = Math.max(5, Math.min(34, Math.floor((w - 120) / m)));
+    var h = 24 + n * cell + 22;
+    var s = '';
+    var gaps = [], i, j;
+    for (i = 0; i < n; i++) for (j = 0; j < m; j++) {
+      gaps.push(Math.abs(PA.x[i] - PB.x[j]) - (pot.at(PA.x[i]) - pot.at(PB.x[j])));
+    }
+    var mx = Math.max.apply(null, gaps);
+    for (i = 0; i < n; i++) {
+      for (j = 0; j < m; j++) {
+        var g = gaps[i * m + j];
+        var on = P[i][j] > 1e-9;
+        var col = on ? '#a23b1e' : '#e8e2d8';
+        s += tag('rect', { x: 52 + j * cell, y: 24 + i * cell, width: cell - 1.5, height: cell - 1.5,
+                           fill: col, class: 'bar-fill',
+                           'data-want': (cell - 1.5).toFixed(3), 'data-key': 's' + i + '_' + j });
+      }
+    }
+    s += tag('text', { x: 46, y: 18, 'text-anchor': 'end', 'font-size': 11, fill: '#8a8279', class: 'tick' }, '起点 i');
+    s += tag('text', { x: 52, y: 24 + n * cell + 14, 'font-size': 11, fill: '#8a8279', class: 'tick' }, '终点 j →');
+    /* 右对齐贴右缘：m 大时网格会顶到右边，左对齐的读数会溢出 svg */
+    s += tag('text', { x: w - 6, y: 24 + n * cell + 14, 'text-anchor': 'end',
+                       'font-size': 11, fill: '#57534e', class: 'tick' },
+      '缺口最大 ' + sci(mx, 2));
+    svgInto(host, w, h, s);
+  }
+
+  function renderDualTable(w1, dual, lip, cs) {
+    var host = $('t-dual');
+    if (!host) return;
+    var rows = [
+      ['φ(x) 是 1-Lipschitz 的', '实测 Lipschitz 常数 = ' + fmt(lip, 12), lip <= 1 + 1e-12],
+      ['对偶目标 ≤ 原始目标（弱对偶）', fmt(dual, 9) + ' ≤ ' + fmt(w1, 9), dual <= w1 + 1e-9],
+      ['强对偶：两者相等', '差 ' + sci(Math.abs(dual - w1), 2), Math.abs(dual - w1) < 1e-9],
+      ['互补松弛：支集上取等号', cs.slackOk + ' / ' + cs.onSupport, cs.slackOk === cs.onSupport],
+      ['互补松弛：支集外严格小于', '违例 ' + cs.offViolations + ' 处', cs.offViolations === 0]
+    ];
+    var s = '<caption>对偶的四条可当场核验的判据</caption><thead><tr><th>判据</th><th>读数</th><th>结论</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      s += '<tr class="' + (r[2] ? 'hi' : '') + '"><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) +
+           '</td><td>' + (r[2] ? '通过' : '未通过') + '</td></tr>';
+    });
+    host.innerHTML = s + '</tbody>';
+  }
+
+  /* ============================================================ 伍 · Sinkhorn */
+  function renderSink() {
+    var host = $('c-sink');
+    if (!host || !host.clientWidth) return;
+    var w = chartWidth(host), h = 268;
+    var pad = { l: 56, r: 18, t: 16, b: 36 };
+    var rows = D.e5Rows;
+    var xlo = 20, xhi = 60000, ylo = 0.05, yhi = 30;
+    var f = frame(w, h, pad, [xlo, xhi], [ylo, yhi],
+      { xlog: true, ylog: true, xlab: '迭代次数（对数）', ylab: '相对偏差 %（对数）' });
+    var s = f.body;
+    /* 双曲参考线：偏差 × 迭代 = 常数 */
+    var refPts = [];
+    var k = D.e5.productMean;
+    for (var it = 25; it <= 50000; it *= 1.35) {
+      var bias = k / it;
+      if (bias < ylo || bias > yhi) continue;
+      refPts.push([f.X(it), f.Y(bias)]);
+    }
+    s += poly(refPts, '#c9a227', 2, '6 4');
+    /* 参考线的标签放左下角：那里永远没有点（小迭代数必然对应大偏差） */
+    s += tag('text', { x: pad.l + 8, y: h - pad.b - 6, 'font-size': 11, fill: '#c9a227', class: 'tick' },
+      '偏差 × 迭代 = ' + k.toFixed(0));
+    var pts = rows.map(function (r) { return { x: f.X(Math.max(r.iters, xlo)), y: f.Y(Math.max(r.relBias * 100, ylo)), r: r }; });
+    s += poly(pts.filter(function (p) { return p.r.converged; }).map(function (p) { return [p.x, p.y]; }), '#a23b1e', 2.4);
+    pts.forEach(function (p, i) {
+      var conv = p.r.converged;
+      s += dot(p.x, p.y, conv ? (p.r.eps >= 0.1 ? '#a23b1e' : '#8a8279') : '#b45309',
+        conv ? 4 : 5, conv ? 'c' : 'sq');
+      /* 贴到右缘的点，标签改左对齐挂在点的左侧，否则会顶出 svg */
+      var right = p.x > w - 52;
+      s += tag('text', { x: right ? p.x - 7 : p.x + 7, y: p.y - 6, 'font-size': 10.5,
+                         'text-anchor': right ? 'end' : 'start',
+                         fill: conv ? '#57534e' : '#b45309', class: 'tick' }, 'ε=' + p.r.eps);
+    });
+    svgInto(host, w, h, s);
+
+    var t = D.e5Trunc;
+    setHTML('ro-trunc',
+      '<b>把迭代强行截断在 ' + t.maxIter + ' 步</b>，ε=0.003 给出的"代价"是 ' + fmt(t.cost, 6) +
+      '，比真值 ' + fmt(D.e5.truth, 4) + ' 低 <b>' + pct(Math.abs(t.relBias), 2) +
+      '</b> —— 看起来比精确最优还好。但它的边际违约是 ' + sci(t.maxViol, 2) +
+      '：那不是精度，那是它已经不是一个运输方案了。<b>偏差变成负数，就是"没收敛"的指纹。</b>');
+    renderSinkTable();
+  }
+
+  function renderSinkTable() {
+    var host = $('t-e5');
+    if (!host) return;
+    var s = '<caption>ε 从 1 到 0.01：偏差与工作量严格成反比，然后开始亏本</caption>' +
+      '<thead><tr><th>ε</th><th>迭代数</th><th>成本</th><th>相对偏差</th><th>偏差×迭代</th><th>支撑</th><th>收敛</th></tr></thead><tbody>';
+    D.e5Rows.forEach(function (r) {
+      var hyper = r.eps >= D.e5.hyperEpsLo - 1e-12 && r.eps <= D.e5.hyperEpsHi + 1e-12 && r.converged;
+      s += '<tr class="' + (hyper ? 'hi' : '') + '"><td>' + r.eps + '</td><td>' + fmtInt(r.iters) +
+        '</td><td>' + fmt(r.cost, 6) + '</td><td>' + pct(r.relBias, 4) + '</td><td>' +
+        r.product.toFixed(0) + '</td><td>' + r.support + '</td><td>' +
+        (r.converged ? '是' : '否') + '</td></tr>';
+    });
+    host.innerHTML = s + '</tbody>';
+  }
+
+  /* ============================================================ 陆 · 重心 */
+  var BARY = { delta: 4.0 };
+
+  function renderBary() {
+    var host = $('c-bary');
+    if (!host || !host.clientWidth) return;
+    var w = chartWidth(host), h = 250;
+    var pad = { l: 48, r: 16, t: 14, b: 34 };
+    var dl = BARY.delta;
+    var lo = Math.min(-4, -dl - 4), hi = Math.max(dl + 4, 4);
+    var f = frame(w, h, pad, [lo, hi], [0, 0.46], { xlab: '位置 x', ylab: '密度', xn: 6, yn: 4 });
+    var s = f.body;
+    var N = 320, i;
+    var c1 = [], c2 = [], cm = [], cb = [];
+    var bw = Core.baryGaussW2(0, 1, dl, 1, 0.5);
+    for (i = 0; i <= N; i++) {
+      var x = lo + (hi - lo) * i / N;
+      c1.push([f.X(x), f.Y(Core.gaussPdf(x, 0, 1))]);
+      c2.push([f.X(x), f.Y(Core.gaussPdf(x, dl, 1))]);
+      cm.push([f.X(x), f.Y(Core.mixturePdf(x, 0, 1, dl, 1, 0.5))]);
+      cb.push([f.X(x), f.Y(Core.gaussPdf(x, bw.m, bw.s))]);
+    }
+    s += poly(c1, '#a23b1e', 1.6, '4 3');
+    s += poly(c2, '#1f6f8b', 1.6, '4 3');
+    s += poly(cm, '#6b8e23', 2.4);
+    s += poly(cb, '#7c3aed', 2.4);
+    svgInto(host, w, h, s);
+
+    var be = Core.baryGaussEuclid(0, 1, dl, 1, 0.5);
+    var ratio = Core.centerDensityRatio(0, 1, dl, 1, 0.5);
+    var mixMax = Core.countLocalMaxima(function (x) { return Core.mixturePdf(x, 0, 1, dl, 1, 0.5); }, lo, hi);
+    setHTML('bary-ro',
+      '<span class="k">中心密度比</span><span><b>' + fmt(ratio, 4) + '</b></span>' +
+      '<span class="k">exp(Δ²/8)</span><span><b>' + fmt(Math.exp(dl * dl / 8), 4) + '</b></span>' +
+      '<span class="k">线性平均 σ</span><span><b>' + fmt(be.s, 4) + '</b></span>' +
+      '<span class="k">W₂ 重心 σ</span><span><b>' + fmt(bw.s, 4) + '</b></span>' +
+      '<span class="k">线性平均的峰数</span><span><b>' + mixMax + '</b></span>' +
+      '<span class="k">W₂ 重心的峰数</span><span><b>1</b></span>');
+  }
+
+  function renderInterp() {
+    var host = $('c-interp');
+    if (!host || !host.clientWidth) return;
+    var w = chartWidth(host), h = 220;
+    var pad = { l: 50, r: 16, t: 14, b: 34 };
+    var rows = D.e6Interp;
+    var ymax = Math.max.apply(null, rows.map(function (r) { return r.pred; })) * 1.08;
+    var f = frame(w, h, pad, [0, 1], [0, ymax], { xlab: '插值参数 t', ylab: 'W₂(ρ_t, ρ₀)', xn: 5, yn: 4 });
+    var s = f.body;
+    s += poly([[f.X(0), f.Y(0)], [f.X(1), f.Y(ymax / 1.08)]], '#c9a227', 2.2, '6 4');
+    rows.forEach(function (r) { s += dot(f.X(r.t), f.Y(r.d), '#a23b1e', 3.2); });
+    s += tag('text', { x: f.X(0.55), y: f.Y(ymax * 0.42), 'font-size': 11, fill: '#c9a227', class: 'tick' },
+      't · W₂(ρ₁, ρ₀)');
+    svgInto(host, w, h, s);
+  }
+
+  function renderE6Table() {
+    var host = $('t-e6');
+    if (!host) return;
+    var s = '<caption>两个高斯：线性平均（叠加）与 W₂ 重心（搬运）</caption>' +
+      '<thead><tr><th>Δ</th><th>中心密度比</th><th>exp(Δ²/8)</th><th>线性 σ</th><th>W₂ σ</th><th>线性峰数</th><th>W₂ 峰数</th></tr></thead><tbody>';
+    D.e6Rows.forEach(function (r) {
+      s += '<tr class="' + (r.delta === 4 ? 'hi' : '') + '"><td>' + fmt(r.delta, 1) + '</td><td>' +
+        fmt(r.ratio, 4) + '</td><td>' + fmt(r.pred, 4) + '</td><td>' + fmt(r.euStd, 4) + '</td><td>' +
+        fmt(r.w2Std, 4) + '</td><td>' + r.euMaxima + '</td><td>' + r.w2Maxima + '</td></tr>';
+    });
+    host.innerHTML = s + '</tbody>';
+  }
+
+  /* ============================================================ 柒 · 墙 */
+  function renderLadder() {
+    var host = $('c-ladder');
+    if (!host || !host.clientWidth) return;
+    var rows = [
+      { label: '一维闭式 O(n log n)', value: D.e7Closed1e6.n, color: '#a23b1e',
+        text: fmtInt(D.e7Closed1e6.n) + ' 个点' },
+      { label: '匈牙利算法 O(n³)', value: D.e7HungLast.n, color: '#a23b1e',
+        text: fmtInt(D.e7HungLast.n) + ' 个点' },
+      { label: '穷举全排列 n!', value: D.e7BruteLast.n, color: '#a23b1e',
+        text: fmtInt(D.e7BruteLast.n) + ' 个点' },
+      { label: '（外推）穷举 n=20', value: 20, color: '#ded9d0',
+        text: sci(D.e7Fact[20] / 3.15e7 * D.e7MsPerPerm / 1000, 1) + ' 年' },
+      { label: '（外推）穷举 n=100', value: 100, color: '#ded9d0',
+        text: D.e7Years100Sci + ' 年' }
+    ];
+    hbars(host, rows, { xlog: true, xmin: 1, xmax: 200, labW: 156, rowH: 27,
+                        xlab: '点数 n（对数刻度）', floor: 1.5 });
+    setHTML('ro-ladder',
+      '同一台机器、同一个单线程：一维闭式在 <b>' + fmtInt(D.e7Closed1e6.n) + '</b> 个点上跑完（' +
+      msText(D.e7Closed1e6.ms) + '）；匈牙利算法到 <b>' + D.e7HungLast.n + '</b> 个点；' +
+      '穷举全排列到 <b>' + D.e7BruteLast.n + '</b> 个点就要 ' + fmtInt(D.e7BruteLast.perms) +
+      ' 个排列。按实测的每排列耗时外推，n=100 要 <b>' + D.e7Years100Sci + '</b> 年。');
+  }
+
+  function renderMono2d() {
+    var host = $('c-mono2d');
+    if (!host || !host.clientWidth) return;
+    var rows = D.e7Mono2d.map(function (r) {
+      return { label: 'n = ' + r.n + '（' + r.total + ' 个实例）', value: r.rate, color: '#a23b1e',
+               text: pct(r.rate, 0) };
+    });
+    hbars(host, rows, { xmax: 1.0, labW: 156, rowH: 26, xlab: '最优指派"不保序"的比例', floor: 1.5 });
+    setHTML('ro-mono2d',
+      '一维的"按坐标排队配对"在二维立刻失效，而且是随规模稳步失效：' +
+      D.e7Mono2d.map(function (r) { return 'n=' + r.n + ' 时 <b>' + r.bad + '/' + r.total + '</b>'; }).join('、') +
+      '。本页没有做二维的连续最优传输 —— 这一节只量"一维那条性质到底能走多远"。');
+  }
+
+  function renderE7Table() {
+    var host = $('t-e7');
+    if (!host) return;
+    var s = '<caption>代价谱系：同一台机器、同一个单线程上的实测</caption>' +
+      '<thead><tr><th>算法</th><th>复杂度</th><th>规模</th><th>W₁ 读数</th><th>实测耗时</th></tr></thead><tbody>';
+    D.e7Brute.forEach(function (r) {
+      s += '<tr><td>穷举全排列 n=' + r.n + '</td><td>n!</td><td>' + fmtInt(r.perms) +
+        ' 个排列</td><td>' + fmt(r.cost, 6) + '</td><td>' + msText(r.ms) + '</td></tr>';
+    });
+    D.e7Hung.forEach(function (r) {
+      s += '<tr><td>匈牙利算法 n=' + r.n + '</td><td>O(n³)</td><td>' + fmtInt(r.n * r.n * r.n) +
+        ' 次量级</td><td>' + fmt(r.cost, 6) + '</td><td>' + msText(r.ms) + '</td></tr>';
+    });
+    D.e7Closed.forEach(function (r) {
+      s += '<tr><td>一维闭式 n=' + fmtInt(r.n) + '</td><td>O(n log n)</td><td>' + fmtInt(r.n) +
+        ' 个点</td><td>' + fmt(r.w1, 6) + '</td><td>' + msText(r.ms) + '</td></tr>';
+    });
+    host.innerHTML = s + '</tbody>';
+  }
+
+  /* ============================================================ 贰/叁 的表 */
+  function renderE1Table() {
+    var host = $('t-e1');
+    if (!host) return;
+    var s = '<caption>位移扫描：W₁ 与 TV 都精确，KL 全部发散（δ = m/64）</caption>' +
+      '<thead><tr><th>δ</th><th>W₁</th><th>W₂</th><th>TV</th><th>KL</th><th>|W₁−δ|</th></tr></thead><tbody>';
+    D.e1Rows.forEach(function (r) {
+      if (r.m % 16 !== 0 && r.m !== 1) return;
+      s += '<tr class="' + (r.m === 64 ? 'hi' : '') + '"><td>' + fmt(r.delta, 4) + '</td><td>' +
+        fmt(r.w1, 6) + '</td><td>' + fmt(r.w2, 6) + '</td><td>' + fmt(r.tv, 6) + '</td><td>' +
+        (r.klFinite ? '有限' : '∞') + '</td><td>' + (r.gap === 0 ? '0' : sci(r.gap, 1)) + '</td></tr>';
+    });
+    host.innerHTML = s + '</tbody>';
+  }
+  function renderE2Table() {
+    var host = $('t-e2');
+    if (!host) return;
+    var s = '<caption>细缝化：TV 恒为 1，W₁ 精确等于 1/(2k)</caption>' +
+      '<thead><tr><th>k</th><th>格点数</th><th>TV</th><th>W₁</th><th>1/(2k)</th><th>到均匀分布的 W₁</th></tr></thead><tbody>';
+    D.e2Rows.forEach(function (r) {
+      s += '<tr><td>' + fmtInt(r.k) + '</td><td>' + fmtInt(2 * r.k) + '</td><td>' + fmt(r.tv, 6) +
+        '</td><td>' + (r.w1 < 1e-3 ? sci(r.w1, 3) : fmt(r.w1, 6)) + '</td><td>' +
+        (r.w1pred < 1e-3 ? sci(r.w1pred, 3) : fmt(r.w1pred, 6)) + '</td><td>' +
+        sci(r.toUniform, 2) + '</td></tr>';
+    });
+    host.innerHTML = s + '</tbody>';
+  }
+  function renderE3Table() {
+    var host = $('t-e3');
+    if (!host) return;
+    var s = '<caption>七条路径逐例对账（每格是与分位数闭式的偏差）</caption>' +
+      '<thead><tr><th>n</th><th>种子</th><th>CDF 积分</th><th>排序公式</th><th>单调计划</th>' +
+      '<th>匈牙利</th><th>穷举</th><th>最小费用流</th><th>并列数</th></tr></thead><tbody>';
+    D.e3Rows.forEach(function (r) {
+      function d(v) { var x = Math.abs(v - r.q1); return x === 0 ? '0' : sci(x, 1); }
+      s += '<tr><td>' + r.n + '</td><td>' + r.seed + '</td><td>' + d(r.cdf) + '</td><td>' + d(r.sorted) +
+        '</td><td>' + d(r.mono) + '</td><td>' + d(r.hungarian) + '</td><td>' + d(r.brute) +
+        '</td><td>' + d(r.mcf) + '</td><td>' + r.ties + '</td></tr>';
+    });
+    host.innerHTML = s + '</tbody>';
+  }
+
+  /* ============================================================ 尾部 */
+  function renderKPI() {
+    var host = $('kpis');
+    if (!host) return;
+    host.innerHTML = A.kpi.map(function (k) {
+      return '<div class="kpi"><div class="lab">' + esc(k.label) + '</div>' +
+        '<div class="val">' + esc(k.value) + '</div>' +
+        '<div class="unit">' + esc(k.unit) + '</div>' +
+        '<div class="note">' + md(k.note) + '</div></div>';
+    }).join('');
+  }
+  function renderList(id, arr, cls) {
+    var host = $(id);
+    if (!host) return;
+    host.innerHTML = arr.map(function (s) { return '<li>' + md(s) + '</li>'; }).join('');
+  }
+  function renderVerify() {
+    var host = $('t-verify');
+    if (!host) return;
+    var s = '<thead><tr><th>核的是什么</th><th>真值来自哪里</th><th>读数</th><th>结论</th></tr></thead><tbody>';
+    A.verify.forEach(function (v) {
+      s += '<tr class="' + (v.ok ? 'hi' : '') + '"><td>' + esc(v.what) + '</td><td>' + esc(v.truth) +
+        '</td><td>' + esc(v.measured) + '</td><td>' + (v.ok ? '通过' : '未通过') + '</td></tr>';
+    });
+    host.innerHTML = s + '</tbody>';
+    setHTML('ro-verify', '模型自检 <b>' + A.meta.modelChecks + '/' + A.meta.modelChecks +
+      '</b>（期望值全部来自独立实现）；下表是三层验证里"数字凭什么可信"的那一层。' +
+      '产物本身在 1400 / 480 / 360 三档视口下由真实浏览器内核逐项核对。');
+  }
+  function renderStamp() {
+    setText('stamp', '数据生成 ' + A.meta.generated + ' · 种子 ' + A.meta.seed +
+      ' · 模型自检 ' + A.meta.modelChecks + '/' + A.meta.modelChecks + ' · 单文件，不联网');
+  }
+
+  /* ============================================================ 标签页 */
+  var TABS = [
+    ['p-one', '壹 · 挖土与填土'],
+    ['p-two', '贰 · 两把尺子'],
+    ['p-three', '叁 · 一维闭式'],
+    ['p-four', '肆 · 对偶'],
+    ['p-five', '伍 · 熵的价钱'],
+    ['p-six', '陆 · 重心'],
+    ['p-seven', '柒 · 墙']
+  ];
+  var RENDERERS = {
+    'p-one': function () { pileRender(); },
+    'p-two': function () { renderScale(); renderComb(); renderE1Table(); renderE2Table(); },
+    'p-three': function () { renderPaths(); renderE3Table(); renderTies(); },
+    'p-four': function () { renderDual(); },
+    'p-five': function () { renderSink(); },
+    'p-six': function () { renderBary(); renderInterp(); renderE6Table(); },
+    'p-seven': function () { renderLadder(); renderMono2d(); renderE7Table(); }
+  };
+  function renderTies() {
+    setHTML('ro-ties',
+      '一维等权时最优排列必然保序（' + (D.e3.cases - D.e3.monoBad) + '/' + D.e3.cases + ' 例）；' +
+      '达到最优的排列共 <b>' + fmtInt(D.e3.tiesTotal) + '</b> 个 —— 其中 ' + D.e3TieRows +
+      ' 个实例存在并列，最多的一例有 <b>' + D.e3.maxTies + '</b> 个排列并列最优。' +
+      '"最优解唯一"是一个需要验证的假设，不是一个可以默认的事实。');
+  }
+
+  var curTab = 'p-one';
+  function setTab(id) {
+    if (!RENDERERS[id]) return false;
+    curTab = id;
+    TABS.forEach(function (t) {
+      var p = $(t[0]);
+      if (p) p.className = 'panel' + (t[0] === id ? ' on' : '');
+      var b = document.querySelector('.tabs button[data-tab="' + t[0] + '"]');
+      if (b) b.setAttribute('aria-selected', t[0] === id ? 'true' : 'false');
+    });
+    RENDERERS[id]();
+    return true;
+  }
+
+  function buildTabs() {
+    var nav = $('tabs');
+    if (!nav) return;
+    nav.innerHTML = TABS.map(function (t) {
+      return '<button type="button" data-tab="' + t[0] + '" aria-selected="' +
+        (t[0] === curTab ? 'true' : 'false') + '">' + esc(t[1]) + '</button>';
+    }).join('');
+    nav.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-tab]') : null;
+      if (b) setTab(b.getAttribute('data-tab'));
+    });
+  }
+
+  /* ============================================================ 控件 */
+  function bindControls() {
+    var sh = $('pile-shape'), dl = $('pile-delta'), nn = $('pile-n');
+    if (sh) sh.addEventListener('change', function () {
+      PILE.shape = sh.value; pileBuild(); pileRender();
+    });
+    if (dl) dl.addEventListener('input', function () {
+      PILE.m = +dl.value;
+      setText('pile-delta-val', 'δ = ' + (PILE.m / 64).toFixed(3));
+      pileBuild(); pileRender();
+    });
+    if (nn) nn.addEventListener('input', function () {
+      PILE.n = +nn.value;
+      setText('pile-n-val', 'n = ' + PILE.n);
+      pileBuild(); pileRender();
+    });
+    var rs = $('pile-reset');
+    if (rs) rs.addEventListener('click', function () {
+      PILE.m = 0; if (dl) dl.value = '0';
+      setText('pile-delta-val', 'δ = 0.000');
+      pileBuild(); pileRender();
+    });
+    var dn = $('dual-n'), ds = $('dual-seed');
+    if (dn) dn.addEventListener('input', function () {
+      DUAL.n = +dn.value; setText('dual-n-val', 'n = ' + DUAL.n);
+      dualBuild(); if (curTab === 'p-four') renderDual();
+    });
+    if (ds) ds.addEventListener('input', function () {
+      DUAL.seed = +ds.value; setText('dual-seed-val', '#' + DUAL.seed);
+      dualBuild(); if (curTab === 'p-four') renderDual();
+    });
+    var bd = $('bary-d');
+    if (bd) bd.addEventListener('input', function () {
+      BARY.delta = +bd.value / 10;
+      setText('bary-d-val', 'Δ = ' + BARY.delta.toFixed(1));
+      if (curTab === 'p-six') { renderBary(); renderInterp(); }
+    });
+  }
+
+  var rzTimer = null;
+  window.addEventListener('resize', function () {
+    if (rzTimer) clearTimeout(rzTimer);
+    rzTimer = setTimeout(function () { if (RENDERERS[curTab]) RENDERERS[curTab](); }, 90);
+  });
+
+  /* ============================================================ 探针 */
+  function collectCharts() {
+    var out = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (!h.id) return;
+      var sv = h.querySelector('svg');
+      if (!sv) { out.push({ id: h.id, hostW: h.clientWidth, svgW: 0, ok: false, texts: 0 }); return; }
+      var hostW = Math.round(h.clientWidth), svgW = Math.round(sv.getBoundingClientRect().width);
+      out.push({ id: h.id, hostW: hostW, svgW: svgW, ok: Math.abs(hostW - svgW) <= 1 && hostW > 0,
+                 texts: sv.querySelectorAll('text').length });
+    });
+    return out;
+  }
+  function visibleCharts() {
+    return collectCharts().filter(function (c) {
+      var h = $(c.id);
+      return h && h.offsetParent !== null && c.hostW > 0;
+    });
+  }
+  function collectBars() {
+    var out = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (!h.id || h.offsetParent === null) return;
+      h.querySelectorAll('.bar-fill').forEach(function (r) {
+        var bb = r.getBoundingClientRect();
+        out.push({ id: h.id, key: r.getAttribute('data-key') || '',
+                   bbox: +bb.width.toFixed(2), want: +(r.getAttribute('data-want') || 0) });
+      });
+    });
+    return out;
+  }
+  function strayScan() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      for (var i = 0; i < h.children.length; i++) {
+        if (h.children[i].tagName.toLowerCase() !== 'svg') bad.push(h.id + ':' + h.children[i].tagName);
+      }
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function nanTicks() {
+    var bad = [];
+    document.querySelectorAll('.chart svg text').forEach(function (t) {
+      if (/NaN|Infinity|undefined/.test(t.textContent || '')) bad.push((t.textContent || '').slice(0, 24));
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function tickOverlap() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (h.offsetParent === null) return;
+      var ts = Array.prototype.slice.call(h.querySelectorAll('text.tick'));
+      var boxes = ts.map(function (t) { var r = t.getBoundingClientRect(); return { r: r, s: t.textContent }; });
+      for (var i = 0; i < boxes.length; i++) {
+        for (var j = i + 1; j < boxes.length; j++) {
+          var a = boxes[i].r, b = boxes[j].r;
+          var ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+          var oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          if (ox > 1.2 && oy > 1.2) {
+            bad.push(h.id + ': "' + boxes[i].s + '" × "' + boxes[j].s + '"');
+          }
+        }
+      }
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function textFit() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      var sv = h.querySelector('svg');
+      if (!sv || h.offsetParent === null) return;
+      var sr = sv.getBoundingClientRect();
+      sv.querySelectorAll('text').forEach(function (t) {
+        var r = t.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) return;
+        if (r.left < sr.left - 1 || r.right > sr.right + 1 || r.top < sr.top - 1 || r.bottom > sr.bottom + 1) {
+          bad.push(h.id + ': "' + (t.textContent || '').slice(0, 20) + '"');
+        }
+      });
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function tabsFit() {
+    var nav = $('tabs');
+    if (!nav) return { ok: true, bad: [] };
+    var nr = nav.getBoundingClientRect(), bad = [];
+    nav.querySelectorAll('button').forEach(function (b) {
+      var r = b.getBoundingClientRect();
+      if (r.right > nr.right + 1 || r.left < nr.left - 1) bad.push(b.textContent);
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function overflowScan() {
+    var de = document.documentElement;
+    var bad = [], scrolled = [];
+    document.querySelectorAll('.bench, .panel, .grid2').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      if (e.scrollWidth > e.clientWidth + 1) {
+        bad.push((e.id || e.className) + ' ' + e.scrollWidth + '>' + e.clientWidth);
+      }
+    });
+    /* .tbl-wrap 的 overflow-x:auto 是**设计**（宽数字表在窄屏上必须能横滚）。
+     * 单列出来：宽屏下它还滚 = 布局被挤扁，那是缺陷；窄屏下它滚是正常的。 */
+    document.querySelectorAll('.tbl-wrap').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      if (e.scrollWidth > e.clientWidth + 1) {
+        scrolled.push((e.querySelector('table') ? e.querySelector('table').id : 'tbl') +
+          ' ' + e.scrollWidth + '>' + e.clientWidth);
+      }
+    });
+    return {
+      ok: de.scrollWidth <= de.clientWidth + 1,
+      doc: { scroll: de.scrollWidth, client: de.clientWidth },
+      bad: bad,
+      scrolled: scrolled
+    };
+  }
+  function wrapScan() {
+    var bad = [];
+    document.querySelectorAll('table.dt.num').forEach(function (t) {
+      t.querySelectorAll('td').forEach(function (c) {
+        var r = c.getBoundingClientRect();
+        if (r.height > 34) bad.push((t.id || 'tbl') + ':' + (c.textContent || '').slice(0, 14));
+      });
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function touchScan() {
+    var small = [];
+    document.querySelectorAll('.tabs button, .btnrow button, select, input[type="range"]').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      var r = e.getBoundingClientRect();
+      if (r.height > 0 && r.height < 44) small.push((e.id || e.textContent || e.tagName).slice(0, 18) + ' ' + r.height.toFixed(0));
+    });
+    return { ok: small.length === 0, bad: small };
+  }
+  function textsScan() {
+    var out = [];
+    document.querySelectorAll('.panel.on .note, .panel.on h2, .kpi .note, .kpi .val, #stamp').forEach(function (e) {
+      var t = (e.textContent || '').trim();
+      if (t) out.push(t.slice(0, 90));
+    });
+    return out;
+  }
+  function htmlLeaks() {
+    var bad = [];
+    document.querySelectorAll('.panel.on .note, .kpi .note, .kpi .val, ol.clist li, ol.blist li, #stamp').forEach(function (e) {
+      var t = e.textContent || '';
+      if (/\*\*|<b>|<\/b>|<code>|NaN|undefined|\[object/.test(t)) bad.push(t.slice(0, 40));
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 5) };
+  }
+  /* ∞ 当"读数"出现 = 一个本该有限的量变成了无穷（sci 收到字符串那个坑）。
+   * 只抓"偏差/分歧/之差/比值 + 是/为/不超过 + ∞"这种句式，
+   * 不误伤 KL = ∞ 那种合法的符号用法。 */
+  function infLeaks() {
+    var bad = [];
+    var re = /(偏差|分歧|之差|比值|差距|落差)[^。；，]{0,10}(是|为|不超过|同样不超过)\s*∞/;
+    document.querySelectorAll('.panel.on .note, .kpi .note, .kpi .val, ol.clist li, ol.blist li, #stamp').forEach(function (e) {
+      var t = e.textContent || '';
+      if (re.test(t)) bad.push(t.slice(0, 48));
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 5) };
+  }
+  /* 图例条数：图例说有几条曲线，图上就得真有那么多条 ——
+   * 少一条是"画了但看不见"，多一条是"图例在吹牛"。 */
+  function legendsScan() {
+    var out = {};
+    document.querySelectorAll('.legend-html').forEach(function (e) {
+      if (!e.id) return;
+      out[e.id] = e.querySelectorAll('span').length;
+    });
+    return out;
+  }
+  function countsScan() {    var c = {};
+    c.kpi = document.querySelectorAll('#kpis .kpi').length;
+    c.concl = document.querySelectorAll('#l-concl li').length;
+    c.bound = document.querySelectorAll('#l-bound li').length;
+    c.verify = document.querySelectorAll('#t-verify tbody tr').length;
+    c.tabs = document.querySelectorAll('#tabs button').length;
+    c.panels = document.querySelectorAll('.panel').length;
+    c.e1 = document.querySelectorAll('#t-e1 tbody tr').length;
+    c.e2 = document.querySelectorAll('#t-e2 tbody tr').length;
+    c.e3 = document.querySelectorAll('#t-e3 tbody tr').length;
+    c.e5 = document.querySelectorAll('#t-e5 tbody tr').length;
+    c.e6 = document.querySelectorAll('#t-e6 tbody tr').length;
+    c.e7 = document.querySelectorAll('#t-e7 tbody tr').length;
+    c.dual = document.querySelectorAll('#t-dual tbody tr').length;
+    return c;
+  }
+
+  window.__probe = {
+    version: '1.0',
+    tabIds: function () { return TABS.map(function (t) { return t[0]; }); },
+    setTab: setTab,
+    curTab: function () { return curTab; },
+    /* 驱动接口：先切模式，再动参数 —— 顺序反了会渲染一次 null */
+    pileSet: function (shape, m, n) {
+      var sel = $('pile-shape'), dl = $('pile-delta'), nn = $('pile-n');
+      if (shape) { PILE.shape = shape; if (sel) sel.value = shape; }
+      if (m !== undefined) { PILE.m = m; if (dl) dl.value = String(m); setText('pile-delta-val', 'δ = ' + (m / 64).toFixed(3)); }
+      if (n !== undefined) { PILE.n = n; if (nn) nn.value = String(n); setText('pile-n-val', 'n = ' + n); }
+      pileBuild(); pileRender();
+      return { shape: PILE.shape, m: PILE.m, n: PILE.n, delta: PILE.delta,
+               w1: Core.w1CdfExact(PILE.A, PILE.B), tv: Core.tvAtoms(PILE.A, PILE.B),
+               kl: Core.klAtoms(PILE.A, PILE.B),
+               planArcs: PILE.plan.length, atoms: PILE.A.x.length };
+    },
+    pileToggleShape: function (s) { return window.__probe.pileSet(s, undefined, undefined); },
+    dualSet: function (n, seed) {
+      DUAL.n = n; DUAL.seed = seed;
+      var dn = $('dual-n'), ds = $('dual-seed');
+      if (dn) dn.value = String(n);
+      if (ds) ds.value = String(seed);
+      setText('dual-n-val', 'n = ' + n); setText('dual-seed-val', '#' + seed);
+      dualBuild();
+      var w1 = Core.w1CdfExact(DUAL.A, DUAL.B);
+      var dual = Core.dualObjective(DUAL.A, DUAL.B, DUAL.pot);
+      var P = Core.monotonePlanMatrix(DUAL.A, DUAL.B);
+      var cs = Core.complementarySlack(DUAL.A, DUAL.B, P, DUAL.pot, 1e-9);
+      if (curTab === 'p-four') renderDual();
+      return { n: n, seed: seed, w1: w1, dual: dual, gap: Math.abs(dual - w1),
+               lip: DUAL.pot.lip(), onSupport: cs.onSupport, slackOk: cs.slackOk,
+               offViol: cs.offViolations };
+    },
+    barySet: function (d) {
+      BARY.delta = d;
+      var bd = $('bary-d'); if (bd) bd.value = String(Math.round(d * 10));
+      setText('bary-d-val', 'Δ = ' + d.toFixed(1));
+      if (curTab === 'p-six') { renderBary(); renderInterp(); }
+      return { delta: d, ratio: Core.centerDensityRatio(0, 1, d, 1, 0.5),
+               pred: Math.exp(d * d / 8),
+               euStd: Core.baryGaussEuclid(0, 1, d, 1, 0.5).s,
+               w2Std: Core.baryGaussW2(0, 1, d, 1, 0.5).s,
+               mixMax: Core.countLocalMaxima(function (x) { return Core.mixturePdf(x, 0, 1, d, 1, 0.5); }, -4 - d, 4 + d) };
+    },
+    core: function () {
+      var PA = Core.atomsUniform(64, 0, 1), PB = Core.atomsShift(PA, 1);
+      var cb = Core.atomsComb(8);
+      return {
+        w1Shift1: Core.w1CdfExact(PA, PB),
+        tvShift1: Core.tvAtoms(PA, PB),
+        combTv: Core.tvAtoms(cb.A, cb.B),
+        combW1: Core.w1CdfExact(cb.A, cb.B),
+        combPred: 1 / 16,
+        e3Spread: D.e3SpreadSci,
+        e5ProductMean: D.e5.productMean,
+        baryRatio4: Core.centerDensityRatio(0, 1, 4, 1, 0.5),
+        years100: D.e7Years100Sci
+      };
+    },
+    counts: countsScan,
+    legends: legendsScan,
+    charts: visibleCharts,
+    allCharts: collectCharts,
+    bars: collectBars,
+    graphs: function () { return []; },
+    stray: strayScan,
+    nanTicks: nanTicks,
+    tickOverlap: tickOverlap,
+    textFit: textFit,
+    tabsFit: tabsFit,
+    overflow: overflowScan,
+    wrapScan: wrapScan,
+    touch: touchScan,
+    texts: textsScan,
+    htmlLeaks: htmlLeaks,
+    infLeaks: infLeaks,
+    viewport: function () { return { w: window.innerWidth, h: window.innerHeight }; }
+  };
+
+  /* ============================================================ boot */
+  function boot() {
+    buildTabs();
+    renderStamp();
+    renderKPI();
+    renderList('l-concl', A.conclusions);
+    renderList('l-bound', A.boundaries);
+    renderVerify();
+    pileBuild();
+    dualBuild();
+    bindControls();
+    setTab('p-one');
+    window.__ready = true;
+  }
+  try {
+    boot();
+  } catch (e) {
+    window.__bootError = String((e && e.message) || e);
+    window.__bootStack = String((e && e.stack) || '').slice(0, 300);
+    throw e;
+  }
+})();
+</script>
+</body>
+</html>

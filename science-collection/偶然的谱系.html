@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#193d3d">
+<meta name="description" content="运行群体遗传学抽样实验，观察漂变、选择、突变、迁移和瓶颈如何塑造等位基因频率。">
+<title>偶然的谱系 · 群体遗传学实验札记</title>
+<style>
+:root {
+  color-scheme: light;
+  --paper: #f3efe5;
+  --paper-deep: #e8e1d3;
+  --card: #fbf9f2;
+  --ink: #26332f;
+  --ink-soft: #515d56;
+  --muted: #62685f;
+  --line: #d7d0c1;
+  --teal: #527b7c;
+  --teal-deep: #193d3d;
+  --teal-dark: #122d30;
+  --rust: #b64b31;
+  --rust-pale: #f0ded2;
+  --acid: #d8df6c;
+  --amber: #bd8b48;
+  --serif: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", Georgia, serif;
+  --sans: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  --mono: "Cascadia Code", Consolas, "SFMono-Regular", monospace;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 22px; }
+body {
+  min-width: 320px;
+  margin: 0;
+  color: var(--ink);
+  background: radial-gradient(ellipse at 76% 0%, rgba(255, 253, 247, .94), transparent 32rem), linear-gradient(180deg, #f7f3ea 0%, var(--paper) 48%, #eee8dc 100%);
+  font: 14px/1.75 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visible, canvas:focus-visible { outline: 3px solid var(--acid); outline-offset: 3px; }
+::selection { color: var(--teal-dark); background: #e0e782; }
+[hidden] { display: none !important; }
+
+.skip-link { position: fixed; z-index: 20; top: 8px; left: 8px; padding: 8px 12px; color: var(--teal-dark); background: var(--acid); transform: translateY(-150%); }
+.skip-link:focus { transform: translateY(0); }
+.site-header { max-width: 1320px; min-height: 76px; display: flex; align-items: center; gap: 22px; margin: auto; padding: 12px 38px; border-bottom: 1px solid rgba(41, 56, 49, .15); }
+.wordmark { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; }
+.brand-mark { width: 39px; height: 39px; display: grid; place-items: center; border: 1px solid var(--ink); color: var(--rust); font: 21px var(--serif); }
+.wordmark-copy { display: flex; flex-direction: column; line-height: 1.35; }
+.wordmark-copy strong { font: 600 14px var(--serif); letter-spacing: .04em; }
+.wordmark-copy small { margin-top: 3px; color: var(--muted); font-size: 8px; letter-spacing: .08em; }
+.site-nav { display: flex; align-items: center; gap: clamp(16px, 3vw, 37px); margin-left: auto; }
+.site-nav a { padding: 7px 0; color: var(--ink-soft); font-size: 9px; text-decoration: none; }
+.site-nav a:hover { color: var(--rust); }
+.header-index { color: var(--muted); font: 8px var(--mono); letter-spacing: .09em; white-space: nowrap; }
+.page-shell { max-width: 1280px; margin: auto; padding: 0 38px; }
+
+.hero { min-height: 488px; display: grid; grid-template-columns: minmax(0, .92fr) minmax(390px, 1.08fr); gap: clamp(32px, 7vw, 92px); align-items: center; padding: 55px 0 61px; border-bottom: 1px solid var(--line); }
+.hero-copy { min-width: 0; }
+.eyebrow { display: flex; align-items: center; gap: 9px; margin: 0 0 17px; color: var(--rust); font: 8px var(--mono); letter-spacing: .1em; }
+.eyebrow-mark { width: 7px; height: 7px; display: inline-block; border: 1px solid var(--rust); transform: rotate(45deg); }
+.hero h1 { margin: 0; color: var(--ink); font: 500 clamp(70px, 8vw, 105px)/.92 var(--serif); letter-spacing: -.06em; }
+.hero h1 em, .chapter h2 em, .closing-note h2 span { color: var(--rust); font-style: normal; }
+.hero-lede { margin: 23px 0 0; color: var(--ink); font: 500 clamp(19px, 2vw, 24px)/1.62 var(--serif); letter-spacing: .015em; }
+.hero-description { max-width: 470px; margin: 14px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 2; }
+.hero-link { display: inline-flex; align-items: center; gap: 16px; margin-top: 22px; padding: 7px 0; border-bottom: 1px solid var(--ink); color: var(--ink); font-size: 9px; text-decoration: none; }
+.hero-link span { color: var(--rust); font-size: 15px; }
+.hero-link:hover { border-color: var(--rust); color: var(--rust); }
+.hero-figure { min-width: 0; position: relative; margin: 0; padding: 14px 16px 13px; border: 1px solid #d8d0c1; background: rgba(251, 249, 242, .74); }
+.hero-figure-top { display: flex; justify-content: space-between; color: var(--muted); font: 8px var(--mono); letter-spacing: .06em; }
+.lineage-plate { position: relative; height: 245px; margin: 7px 0 2px; overflow: hidden; background: radial-gradient(ellipse at 30% 50%, rgba(82, 123, 124, .1), transparent 51%), #f3f0e7; }
+.lineage-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(60, 76, 65, .055) 1px, transparent 1px), linear-gradient(90deg, rgba(60, 76, 65, .055) 1px, transparent 1px); background-size: 35px 35px; }
+.lineage-plate svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.lineage-path { fill: none; stroke-width: 2.2; vector-effect: non-scaling-stroke; opacity: .78; }
+.path-a { stroke: #bd7659; }.path-b { stroke: #6c8990; }.path-c { stroke: #a49a61; }.path-d { stroke: #6b8171; }.path-e { stroke: #a77a86; }.path-f { stroke: #657d9b; }
+.lineage-origin { position: absolute; z-index: 2; top: 49%; left: 8px; display: flex; align-items: center; gap: 4px; color: #555f56; font: 7px var(--mono); }
+.lineage-origin i { width: 7px; height: 7px; border: 1px solid var(--rust); border-radius: 50%; background: #f6e6d8; }
+.lineage-axis { position: absolute; right: 9px; bottom: 6px; left: 9px; display: flex; align-items: center; gap: 8px; color: var(--muted); font: 7px var(--mono); }
+.lineage-axis i { height: 1px; flex: 1; background: rgba(38, 51, 47, .25); }
+.fixation-label, .loss-label { position: absolute; right: 5px; color: var(--muted); font: 7px var(--mono); }
+.fixation-label { top: 3px; }.loss-label { bottom: 22px; }
+.hero-figure figcaption { display: flex; justify-content: center; align-items: center; gap: 9px; color: var(--muted); font-size: 8px; }
+.hero-figure figcaption i { width: 24px; height: 1px; background: var(--rust); }
+.hero-caption { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 14px; padding: 9px 12px; border-left: 2px solid var(--acid); background: var(--teal-deep); color: #f5f1e6; font: 9px var(--serif); }
+.hero-caption b { color: #eab18d; font: 14px var(--mono); }
+
+.chapter { padding-top: 70px; }
+.chapter-heading { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(270px, .95fr); gap: 32px; align-items: end; margin-bottom: 26px; }
+.section-number { width: 22px; height: 22px; display: inline-grid; place-items: center; border: 1px solid var(--rust); font: 9px var(--mono); letter-spacing: 0; }
+.chapter h2 { margin: 0; color: var(--ink); font: 500 clamp(35px, 4vw, 51px)/1.35 var(--serif); letter-spacing: -.035em; }
+.chapter-intro { max-width: 500px; justify-self: end; margin: 0 0 5px; color: var(--ink-soft); font-size: 10px; line-height: 2; }
+.lab-layout { display: grid; grid-template-columns: minmax(255px, .72fr) minmax(0, 1.75fr); gap: 15px; align-items: start; }
+.controls-panel { min-width: 0; padding: 16px 16px 14px; background: var(--teal-deep); color: #f4f0e5; }
+.panel-heading, .control-section-label { display: flex; justify-content: space-between; align-items: baseline; gap: 9px; }
+.panel-heading { margin-bottom: 13px; padding-bottom: 10px; border-bottom: 1px solid rgba(236, 239, 218, .25); color: #f7f2e8; font: 10px var(--serif); }
+.panel-heading span:last-child, .control-section-label span:last-child { color: #aebeb1; font: 7px var(--mono); letter-spacing: .08em; }
+.preset-section { margin-bottom: 16px; }
+.control-section-label { margin-bottom: 7px; color: #e1e5d9; font-size: 9px; }
+.preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.preset-button { min-width: 0; min-height: 55px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 3px; padding: 7px 8px; border: 1px solid rgba(230, 236, 216, .3); background: rgba(7, 28, 31, .18); color: #e8ece0; text-align: left; transition: border-color .16s, background .16s, color .16s; }
+.preset-button:hover, .preset-button:focus-visible { border-color: var(--acid); background: rgba(216, 223, 108, .1); }
+.preset-button span { color: #f5f0e4; font-size: 8px; font-weight: 600; }
+.preset-button small { color: #afbeb2; font-size: 7px; line-height: 1.45; }
+.range-control { display: block; min-width: 0; margin-top: 14px; }
+.control-title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: #dbe1d6; font-size: 9px; }
+.control-title output { color: var(--acid); font: 10px var(--mono); white-space: nowrap; }
+.range-control input[type="range"] { width: 100%; height: 18px; display: block; margin: 6px 0 2px; accent-color: var(--acid); cursor: pointer; }
+.range-control input[type="range"]:focus-visible { outline-color: var(--acid); }
+.range-hint { display: flex; justify-content: space-between; gap: 8px; color: #a7b5a9; font: 7px var(--mono); }
+.control-help { display: block; margin: 6px 0 0; color: #aebbb0; font-size: 8px; line-height: 1.65; }
+.secondary-controls { margin-top: 18px; border-top: 1px solid rgba(236, 239, 218, .22); border-bottom: 1px solid rgba(236, 239, 218, .22); }
+.secondary-controls summary { position: relative; padding: 10px 18px 10px 0; color: #dbe1d6; font-size: 9px; cursor: pointer; list-style: none; }
+.secondary-controls summary::-webkit-details-marker { display: none; }
+.secondary-controls summary::after { position: absolute; top: 8px; right: 2px; color: var(--acid); content: "+"; font: 14px var(--mono); }
+.secondary-controls[open] summary::after { content: "−"; }
+.secondary-inner { padding: 0 0 12px; }
+.secondary-inner .range-control { margin-top: 12px; }
+.check-control { display: grid; grid-template-columns: 16px 1fr; gap: 8px; align-items: start; margin-top: 14px; padding: 9px 7px; border: 1px solid rgba(230, 236, 216, .22); background: rgba(10, 34, 36, .17); cursor: pointer; }
+.check-control input { width: 15px; height: 15px; margin: 1px 0 0; accent-color: var(--acid); }
+.check-control strong, .check-control small { display: block; }
+.check-control strong { color: #f5f0e4; font-size: 8px; font-weight: 600; }
+.check-control small { margin-top: 3px; color: #afbeb2; font-size: 7px; line-height: 1.55; }
+.generations-control { margin-top: 18px; padding-top: 13px; border-top: 1px solid rgba(236, 239, 218, .22); }
+.control-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 11px; margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(236, 239, 218, .22); }
+.button-secondary { min-height: 34px; padding: 0 11px; border: 1px solid var(--acid); background: rgba(216, 223, 108, .1); color: #f4f0e5; font-size: 8px; }
+.button-secondary:hover { background: rgba(216, 223, 108, .2); }
+.button-secondary span { margin-left: 7px; color: var(--acid); }
+.text-button { padding: 6px 0; border: 0; background: transparent; color: #c4cec1; font-size: 8px; text-decoration: underline; text-decoration-color: rgba(196, 206, 193, .45); text-underline-offset: 3px; }
+.text-button:hover { color: var(--acid); }
+.control-footnote { margin: 8px 0 0; color: #9eafa5; font-size: 7px; line-height: 1.7; }
+
+.observatory-panel { min-width: 0; padding: 16px; border: 1px solid #d8d0c1; background: rgba(251, 249, 242, .82); }
+.observatory-heading, .distribution-heading, .time-console-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.plate-index { display: block; color: var(--rust); font: 7px var(--mono); letter-spacing: .1em; }
+.observatory-heading h3 { margin: 3px 0 0; color: var(--ink); font: 500 18px/1.4 var(--serif); }
+.offline-stamp { display: inline-flex; align-items: center; gap: 6px; padding: 4px 7px; border: 1px solid var(--line); color: var(--muted); font: 7px var(--mono); white-space: nowrap; }
+.offline-stamp i { width: 6px; height: 6px; border-radius: 50%; background: #7b967f; }
+.chart-intro { margin: 7px 0 0; color: var(--muted); font-size: 8px; line-height: 1.7; }
+.main-chart-wrap { min-width: 0; margin-top: 9px; background: #142f33; }
+.frequency-canvas { width: 100%; height: 326px; display: block; outline-color: var(--rust); }
+.chart-caption { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; color: var(--muted); font: 7px var(--mono); }
+.chart-caption b { color: var(--rust); font-weight: 500; }
+.time-console { margin-top: 16px; padding: 11px 12px 10px; border: 1px solid var(--line); background: #f0ede3; }
+.time-console-top > div { display: flex; flex-direction: column; gap: 3px; }
+.time-console-top strong { color: var(--ink); font: 500 12px var(--serif); }
+.time-console-top > output { color: var(--rust); font: 11px var(--mono); }
+.time-console input[type="range"] { width: 100%; height: 20px; display: block; margin: 7px 0 4px; accent-color: var(--rust); cursor: pointer; }
+.time-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.step-button, .play-button { min-height: 30px; padding: 4px 9px; border: 1px solid #cfc8b9; background: #fbf9f2; color: var(--ink-soft); font-size: 8px; }
+.step-button:hover { border-color: var(--teal); color: var(--teal-deep); }
+.play-button { margin-left: auto; border-color: var(--teal-deep); background: var(--teal-deep); color: #f4f0e5; }
+.play-button:hover { background: #254e4b; }
+.readout-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.readout-strip > div { min-width: 0; padding: 8px 9px; border-top: 2px solid var(--teal); background: #f0ede3; }
+.readout-strip > div:nth-child(2) { border-color: var(--rust); }
+.readout-strip > div:nth-child(3) { border-color: var(--amber); }
+.readout-strip span { display: block; color: var(--muted); font-size: 7px; }
+.readout-strip strong { display: block; margin-top: 3px; color: var(--ink); font: 10px var(--mono); line-height: 1.45; }
+.distribution-section { margin-top: 19px; padding-top: 14px; border-top: 1px solid var(--line); }
+.distribution-heading h4 { margin: 3px 0 0; color: var(--ink); font: 500 14px/1.4 var(--serif); }
+.distribution-generation { color: var(--rust); font: 8px var(--mono); }
+.outcome-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.outcome-card { min-width: 0; padding: 8px 9px 7px; background: #f0ede3; }
+.outcome-card > div:first-child { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 7px; align-items: baseline; }
+.outcome-card strong { color: var(--ink); font: 600 8px var(--sans); }
+.outcome-card > div:first-child span { color: var(--muted); font: 7px var(--mono); }
+.outcome-card small { display: block; margin-top: 5px; color: var(--muted); font-size: 7px; }
+.outcome-track { height: 4px; margin-top: 6px; overflow: hidden; background: #d9d4c8; }
+.outcome-track i { height: 100%; display: block; background: var(--teal); }
+.outcome-loss .outcome-track i { background: #799894; }
+.outcome-segregating .outcome-track i { background: #bd8b48; }
+.outcome-fixed .outcome-track i { background: #b64b31; }
+.distribution-chart-wrap { margin-top: 8px; background: var(--teal-deep); }
+.distribution-canvas { width: 100%; height: 174px; display: block; }
+.distribution-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 5px; color: var(--muted); font-size: 7px; }
+.distribution-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.distribution-legend i { width: 9px; height: 6px; display: inline-block; }
+.legend-loss { background: #799894; }.legend-segregating { background: #bd8b48; }.legend-fixed { background: #b64b31; }
+.insight-text { margin: 14px 0 0; padding: 11px 12px; border-left: 2px solid var(--acid); background: var(--teal-deep); color: #e7ebdf; font: 9px/1.8 var(--serif); }
+.keyboard-note { margin: 11px 0 0; color: var(--muted); font-size: 8px; }
+.keyboard-note b { color: var(--rust); font-weight: 600; }
+
+.principle-heading { margin-bottom: 24px; }
+.principle-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.principle-card { min-height: 245px; position: relative; overflow: hidden; padding: 17px 18px; border: 1px solid var(--line); background: rgba(251, 249, 242, .67); }
+.principle-card-wide { grid-column: span 2; }
+.principle-number { color: var(--rust); font: 7px var(--mono); letter-spacing: .1em; }
+.principle-card h3 { margin: 17px 0 9px; color: var(--ink); font: 500 18px/1.5 var(--serif); }
+.principle-card p { max-width: 390px; margin: 0; color: var(--ink-soft); font-size: 9px; line-height: 1.95; }
+.principle-card code, .closing-copy code { padding: 1px 3px; background: rgba(82, 123, 124, .09); color: #335756; font: 8px var(--mono); }
+.mini-sketch { height: 56px; position: absolute; right: 15px; bottom: 14px; left: 17px; display: flex; align-items: center; gap: 8px; opacity: .73; }
+.mini-sketch i, .mini-sketch b, .mini-sketch span { width: 10px; height: 10px; display: block; border: 1px solid var(--teal); border-radius: 50%; background: #dce1c1; }
+.mini-sketch b { width: 32%; height: 1px; border: 0; border-radius: 0; background: var(--rust); }
+.sketch-drift { align-items: end; gap: 0; border-bottom: 1px solid var(--line); }
+.sketch-drift i, .sketch-drift b, .sketch-drift span { width: 18%; border: 0; border-radius: 0; background: repeating-linear-gradient(90deg, transparent 0 10px, #527b7c 10px 12px); }
+.sketch-drift i { height: 20px; }.sketch-drift b { height: 38px; }.sketch-drift span { height: 48px; margin-left: auto; background: repeating-linear-gradient(90deg, transparent 0 10px, #b64b31 10px 12px); }
+.sketch-selection { align-items: end; gap: 7px; border-bottom: 1px solid var(--line); }
+.sketch-selection i, .sketch-selection span { height: 21px; border: 0; border-radius: 0; background: #6d8b7b; }
+.sketch-selection b { width: 40%; height: 30px; background: linear-gradient(90deg, #6d8b7b 0 37%, transparent 37% 43%, #b64b31 43% 100%); }
+.sketch-selection span { height: 48px; background: #b64b31; }
+.sketch-mutation { justify-content: center; gap: 26px; }
+.sketch-mutation i, .sketch-mutation span { width: 23px; height: 23px; background: #ead29e; }
+.sketch-mutation span { background: #d9a18a; }
+.sketch-mutation b { width: auto; height: auto; border: 0; background: transparent; color: var(--rust); font: 21px var(--serif); }
+.sketch-flow { justify-content: center; gap: 26px; }
+.sketch-flow::before { position: absolute; width: 62%; height: 1px; content: ""; background: var(--teal); }
+.sketch-flow i, .sketch-flow span { position: relative; width: 35px; height: 35px; background: #d8e2d0; }
+.sketch-flow span { background: #e8b99d; }
+.sketch-flow b { position: relative; z-index: 1; width: 7px; height: 7px; border: 0; border-radius: 50%; background: var(--rust); }
+.sketch-bottleneck { justify-content: space-around; border-bottom: 1px solid var(--line); }
+.sketch-bottleneck i, .sketch-bottleneck span { width: 26%; height: 29px; border: 0; border-radius: 0; background: repeating-linear-gradient(90deg, #648b83 0 5px, transparent 5px 10px); }
+.sketch-bottleneck b { position: absolute; left: 42%; width: 16%; height: 10px; background: repeating-linear-gradient(90deg, #b64b31 0 5px, transparent 5px 10px); }
+.equation-note { display: grid; grid-template-columns: 45px 1fr; gap: 13px; align-items: center; margin-top: 13px; padding: 15px 18px; border: 1px solid var(--line); background: #ebe7dc; }
+.equation-mark { color: var(--rust); font: 26px var(--serif); }
+.equation-note p { margin: 0; color: var(--ink-soft); font-size: 9px; line-height: 1.9; }
+.equation-note strong { color: var(--ink); font: 600 10px var(--serif); }
+.equation-note code { color: var(--teal-deep); font: 8px var(--mono); }
+
+.reading-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; }
+.reading-card { min-height: 185px; padding: 16px; border-top: 2px solid var(--teal); background: rgba(251, 249, 242, .62); }
+.reading-card:nth-child(2) { border-color: var(--rust); }.reading-card:nth-child(3) { border-color: var(--amber); }
+.reading-card > span { color: var(--muted); font: 7px var(--mono); letter-spacing: .07em; }
+.reading-card h3 { margin: 14px 0 7px; color: var(--ink); font: 500 16px/1.5 var(--serif); }
+.reading-card p { margin: 0; color: var(--ink-soft); font-size: 9px; line-height: 1.9; }
+
+.limits-chapter { padding-bottom: 69px; }
+.closing-note { display: grid; grid-template-columns: minmax(250px, .84fr) minmax(0, 1.16fr); gap: 42px; padding: 23px 26px 25px; border: 1px solid var(--line); background: rgba(251, 249, 242, .67); }
+.closing-note h2 { margin: 0; color: var(--ink); font: 500 clamp(31px, 3.3vw, 44px)/1.4 var(--serif); letter-spacing: -.035em; }
+.closing-copy p { margin: 0 0 11px; color: var(--ink-soft); font-size: 9px; line-height: 2; }
+.closing-copy p:last-child { margin-bottom: 0; }
+.source-note { padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted) !important; }
+.source-note b { color: var(--rust); font-weight: 600; }
+.source-note i { font-family: var(--serif); }
+.site-footer { border-top: 1px solid var(--line); }
+.footer-inner { max-width: 1204px; min-height: 58px; display: flex; justify-content: space-between; align-items: center; gap: 18px; margin: auto; padding: 12px 0; color: var(--muted); font-size: 8px; }
+.footer-inner a { color: var(--ink-soft); text-decoration: none; }
+.footer-inner a:hover { color: var(--rust); }
+
+@media (max-width: 1080px) {
+  .lab-layout { grid-template-columns: minmax(0, .9fr) minmax(0, 1.35fr); }
+  .hero { gap: 35px; }
+  .header-index { display: none; }
+  .site-nav { gap: 22px; }
+}
+
+@media (max-width: 900px) {
+  .page-shell { padding: 0 26px; }
+  .site-header { padding-right: 26px; padding-left: 26px; }
+  .hero { min-height: 0; grid-template-columns: minmax(0, .9fr) minmax(330px, 1.1fr); gap: 25px; padding: 50px 0; }
+  .hero h1 { font-size: clamp(66px, 9vw, 88px); }
+  .chapter { padding-top: 58px; }
+  .lab-layout { grid-template-columns: 1fr; }
+  .controls-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; }
+  .panel-heading, .preset-section, .secondary-controls, .control-actions, .control-footnote { grid-column: 1 / -1; }
+  .control-actions { align-self: end; }
+  .generations-control { margin-bottom: 10px; }
+  .observatory-panel { padding: 15px; }
+  .footer-inner { padding-right: 26px; padding-left: 26px; }
+}
+
+@media (max-width: 660px) {
+  .site-header { min-height: 65px; gap: 9px; padding: 10px 17px; }
+  .brand-mark { width: 33px; height: 33px; }
+  .wordmark-copy strong { font-size: 12px; }
+  .wordmark-copy small { font-size: 7px; }
+  .site-nav { gap: 11px; }
+  .site-nav a { font-size: 8px; }
+  .page-shell { padding: 0 17px; }
+  .hero { grid-template-columns: 1fr; gap: 24px; padding: 39px 0 43px; }
+  .hero h1 { font-size: clamp(66px, 15vw, 92px); }
+  .hero-lede { margin-top: 17px; font-size: 19px; }
+  .hero-figure { max-width: 560px; }
+  .lineage-plate { height: 215px; }
+  .chapter { padding-top: 47px; }
+  .chapter-heading { grid-template-columns: 1fr; gap: 13px; margin-bottom: 19px; }
+  .chapter-intro { justify-self: start; }
+  .chapter h2 { font-size: clamp(34px, 9vw, 45px); }
+  .controls-panel { grid-template-columns: 1fr; padding: 14px; }
+  .panel-heading, .preset-section, .secondary-controls, .control-actions, .control-footnote { grid-column: auto; }
+  .observatory-panel { padding: 12px; }
+  .frequency-canvas { height: 280px; }
+  .readout-strip { grid-template-columns: 1fr; }
+  .readout-strip > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: baseline; }
+  .readout-strip strong { margin-top: 0; text-align: right; }
+  .outcome-summary { grid-template-columns: 1fr; }
+  .outcome-card { padding: 7px 9px; }
+  .principle-grid { grid-template-columns: 1fr; }
+  .principle-card, .principle-card-wide { grid-column: auto; min-height: 205px; }
+  .reading-grid { grid-template-columns: 1fr; }
+  .reading-card { min-height: 0; }
+  .closing-note { grid-template-columns: 1fr; gap: 20px; padding: 18px; }
+  .limits-chapter { padding-bottom: 48px; }
+  .footer-inner { min-height: 0; flex-wrap: wrap; justify-content: flex-start; gap: 7px 15px; padding: 13px 17px; }
+  .footer-inner a { margin-left: auto; }
+}
+
+@media (max-width: 390px) {
+  .site-nav { gap: 8px; }
+  .site-nav a { font-size: 7px; }
+  .wordmark { gap: 7px; }
+  .header-index { display: none; }
+  .page-shell { padding-right: 13px; padding-left: 13px; }
+  .site-header { padding-right: 13px; padding-left: 13px; }
+  .frequency-canvas { height: 255px; }
+  .time-actions { gap: 4px; }
+  .step-button, .play-button { padding-right: 7px; padding-left: 7px; }
+  .equation-note { grid-template-columns: 34px 1fr; gap: 8px; padding: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+</style></head><body>
+<a class="skip-link" href="#experiment">跳到演化实验</a>
+
+<header class="site-header" id="top">
+  <a class="wordmark" href="#top" aria-label="偶然的谱系，返回页首">
+    <span class="brand-mark" aria-hidden="true">支</span>
+    <span class="wordmark-copy"><strong>偶然的谱系</strong><small>群体遗传学实验札记</small></span>
+  </a>
+  <nav class="site-nav" aria-label="页面导航">
+    <a href="#experiment">运行实验</a>
+    <a href="#mechanism">变化从哪里来</a>
+    <a href="#limits">模型边界</a>
+  </nav>
+  <span class="header-index">POPULATION GENETICS / 01</span>
+</header>
+
+<main class="page-shell" id="main">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span>演化生物学 / A STOCHASTIC LINEAGE</p>
+      <h1 id="hero-title">偶然的<br><em>谱系</em></h1>
+      <p class="hero-lede">同一枚起点，<br>会走出多少种结局？</p>
+      <p class="hero-description">让一个基因变体经过一代代繁殖抽样。改变群体大小、选择、突变、迁入与瓶颈，看看它会扩散、消失，还是固定下来。</p>
+      <a class="hero-link" href="#experiment">打开演化实验 <span aria-hidden="true">↓</span></a>
+    </div>
+
+    <figure class="hero-figure" aria-label="相同初始频率的多个模拟谱系随世代走向不同结局">
+      <div class="hero-figure-top"><span>同一起点 / MANY POSSIBLE FUTURES</span><span>FIG. 01</span></div>
+      <div class="lineage-plate" aria-hidden="true">
+        <div class="lineage-grid"></div>
+        <div class="lineage-origin"><i></i><span>起点</span></div>
+        <svg viewBox="0 0 700 300" preserveAspectRatio="none">
+          <path class="lineage-path path-a" d="M0 150 C70 138 88 94 150 116 S235 174 300 132 S390 190 454 162 S560 221 700 300" />
+          <path class="lineage-path path-b" d="M0 150 C65 165 98 203 150 175 S229 116 300 146 S390 90 454 121 S575 69 700 24" />
+          <path class="lineage-path path-c" d="M0 150 C77 145 98 166 150 152 S243 154 300 157 S390 151 454 150 S570 148 700 154" />
+          <path class="lineage-path path-d" d="M0 150 C69 121 106 127 150 107 S240 130 300 80 S392 86 454 62 S574 41 700 2" />
+          <path class="lineage-path path-e" d="M0 150 C68 188 92 165 150 195 S238 201 300 242 S394 220 454 271 S575 280 700 300" />
+          <path class="lineage-path path-f" d="M0 150 C70 152 101 126 150 149 S235 181 300 167 S392 134 454 144 S568 157 700 148" />
+        </svg>
+        <div class="lineage-axis"><span>等位基因频率</span><i></i><span>世代</span></div>
+        <span class="fixation-label">固定</span><span class="loss-label">丢失</span>
+      </div>
+      <figcaption><span>起点频率相同</span><i></i><span>抽样路径不同</span></figcaption>
+      <div class="hero-caption"><span>选择改变平均方向</span><b>×</b><span>漂变展开偶然分岔</span></div>
+    </figure>
+  </section>
+
+  <section id="experiment" class="chapter experiment-chapter" aria-labelledby="experiment-title">
+    <div class="chapter-heading">
+      <div><p class="eyebrow"><span class="section-number">01</span>互动实验 / THE POPULATION BENCH</p><h2 id="experiment-title">给同一个变体，<br><em>多次重新抽样。</em></h2></div>
+      <p class="chapter-intro">每条细线是一组独立的理想化群体。先把环境和起点固定，再改变群体大小或选择优势；若轨迹变窄或偏向一侧，问问是哪一种机制改了它。</p>
+    </div>
+
+    <div class="lab-layout">
+      <aside class="controls-panel" aria-label="群体遗传学实验控制台">
+        <div class="panel-heading"><span>种群与遗传条件</span><span>MODEL INPUT / DIPLOID</span></div>
+
+        <section class="preset-section" aria-labelledby="preset-title">
+          <div class="control-section-label"><span id="preset-title">从一个问题开始</span><span>FIELD NOTES</span></div>
+          <div class="preset-grid" role="group" aria-label="演化实验预设">
+            <button class="preset-button" type="button" data-preset="drift"><span>小群体的漂变</span><small>中性变体 · 小群体</small></button>
+            <button class="preset-button" type="button" data-preset="selection"><span>弱选择与偶然</span><small>轻微优势 · 多条路径</small></button>
+            <button class="preset-button" type="button" data-preset="bottleneck"><span>一次数量骤减</span><small>瓶颈后恢复原大小</small></button>
+            <button class="preset-button" type="button" data-preset="migration"><span>邻群体迁入</span><small>高频变体向此处流入</small></button>
+          </div>
+        </section>
+
+        <label class="range-control" for="population">
+          <span class="control-title">常态群体大小 N <output id="population-value" for="population">120</output></span>
+          <input id="population" type="range" min="20" max="800" step="2" value="120" aria-describedby="population-help">
+          <span class="range-hint"><span>20 位个体</span><span>800 位个体</span></span>
+          <small class="control-help" id="population-help">这里的 N 是理想群体大小；每代从 2N 个等位基因中抽样。</small>
+        </label>
+
+        <label class="range-control" for="initial-frequency">
+          <span class="control-title">初始 A 频率 <output id="initial-frequency-value" for="initial-frequency">50%</output></span>
+          <input id="initial-frequency" type="range" min="5" max="95" step="1" value="50" aria-describedby="initial-frequency-help">
+          <span class="range-hint"><span>A 很少</span><span>A 很常见</span></span>
+          <small class="control-help" id="initial-frequency-help">初始值吸附到最近一个可实现的等位基因拷贝数。</small>
+        </label>
+
+        <label class="range-control" for="selection">
+          <span class="control-title">选择系数 s <output id="selection-value" for="selection">0.000</output></span>
+          <input id="selection" type="range" min="-0.12" max="0.12" step="0.005" value="0" aria-describedby="selection-help">
+          <span class="range-hint"><span>不利于 A</span><span>有利于 A</span></span>
+          <small class="control-help" id="selection-help">正值提高 AA 与 Aa 的相对适合度；零值时 A 中性。</small>
+        </label>
+
+        <label class="range-control" for="dominance">
+          <span class="control-title">杂合体效应 h <output id="dominance-value" for="dominance">0.50</output></span>
+          <input id="dominance" type="range" min="0" max="1" step="0.05" value="0.5" aria-describedby="dominance-help">
+          <span class="range-hint"><span>隐性效应</span><span>显性效应</span></span>
+          <small class="control-help" id="dominance-help">适合度设为 w<sub>AA</sub>=1+s、w<sub>Aa</sub>=1+hs、w<sub>aa</sub>=1。</small>
+        </label>
+
+        <label class="range-control" for="mutation">
+          <span class="control-title">双向突变率 μ <output id="mutation-value" for="mutation">0</output></span>
+          <input id="mutation" type="range" min="0" max="0.01" step="0.0001" value="0" aria-describedby="mutation-help">
+          <span class="range-hint"><span>无突变</span><span>每方向 1%</span></span>
+          <small class="control-help" id="mutation-help">A 与 a 以相同概率互相改变；输入的是每个方向的概率。</small>
+        </label>
+
+        <details class="secondary-controls">
+          <summary>加入迁移或一次瓶颈</summary>
+          <div class="secondary-inner">
+            <label class="range-control" for="migration">
+              <span class="control-title">迁入比例 m <output id="migration-value" for="migration">0%</output></span>
+              <input id="migration" type="range" min="0" max="0.2" step="0.01" value="0" aria-describedby="migration-help">
+              <span class="range-hint"><span>不迁入</span><span>20%</span></span>
+              <small class="control-help" id="migration-help">每代繁殖前，与来源群体的 A 频率按比例混合。</small>
+            </label>
+            <label class="range-control" for="source-frequency">
+              <span class="control-title">来源群体 A 频率 <output id="source-frequency-value" for="source-frequency">90%</output></span>
+              <input id="source-frequency" type="range" min="5" max="95" step="1" value="90" aria-describedby="source-frequency-help">
+              <span class="range-hint"><span>A 很少</span><span>A 很常见</span></span>
+              <small class="control-help" id="source-frequency-help">来源群体固定不变，只提供迁入的等位基因。</small>
+            </label>
+            <label class="check-control" for="bottleneck-enabled">
+              <input id="bottleneck-enabled" type="checkbox">
+              <span><strong>发生一次群体瓶颈</strong><small>指定一代用更小的群体规模完成抽样，随后恢复 N。</small></span>
+            </label>
+            <label class="range-control" for="bottleneck-generation">
+              <span class="control-title">瓶颈发生在第几代 <output id="bottleneck-generation-value" for="bottleneck-generation">45</output></span>
+              <input id="bottleneck-generation" type="range" min="1" max="240" step="1" value="45" aria-describedby="bottleneck-generation-help">
+              <span class="range-hint"><span>较早</span><span>较晚</span></span>
+              <small class="control-help" id="bottleneck-generation-help">只压缩这一代的有效群体大小。</small>
+            </label>
+            <label class="range-control" for="bottleneck-size">
+              <span class="control-title">瓶颈中的个体数 <output id="bottleneck-size-value" for="bottleneck-size">12</output></span>
+              <input id="bottleneck-size" type="range" min="4" max="120" step="2" value="12" aria-describedby="bottleneck-size-help">
+              <span class="range-hint"><span>4 位个体</span><span>120 位个体</span></span>
+              <small class="control-help" id="bottleneck-size-help">实际瓶颈不能大于常态群体 N。</small>
+            </label>
+          </div>
+        </details>
+
+        <label class="range-control generations-control" for="generations">
+          <span class="control-title">模拟世代 <output id="generations-value" for="generations">140</output></span>
+          <input id="generations" type="range" min="40" max="240" step="10" value="140" aria-describedby="generations-help">
+          <span class="range-hint"><span>40 代</span><span>240 代</span></span>
+          <small class="control-help" id="generations-help">固定 32 组独立重复；改参数后使用同一随机种子重算。</small>
+        </label>
+
+        <div class="control-actions">
+          <button id="resample-button" class="button-secondary" type="button">重新抽样 <span aria-hidden="true">↻</span></button>
+          <button id="focus-lineage-button" class="text-button" type="button">换一条追踪谱系</button>
+          <button id="reset-button" class="text-button" type="button">恢复起点</button>
+        </div>
+        <p class="control-footnote">同一组设置会重复使用相同随机数，方便公平比较；“重新抽样”才会换一批繁殖结果。</p>
+      </aside>
+
+      <div class="observatory-panel">
+        <div class="observatory-heading">
+          <div><span class="plate-index">01 / ALLELE FREQUENCY</span><h3>三十二条谱系的频率轨迹</h3></div>
+          <span class="offline-stamp"><i aria-hidden="true"></i>本地计算</span>
+        </div>
+        <p class="chart-intro">亮线是当前追踪的谱系；细线是其余独立重复；浅色区域覆盖中央 80% 的频率范围。</p>
+        <div class="main-chart-wrap">
+          <canvas id="frequency-canvas" class="frequency-canvas" tabindex="0" role="img" aria-label="32 条独立群体模拟中，A 等位基因频率随世代变化的折线图。亮线为当前追踪谱系。">浏览器需要支持 Canvas 才能绘制频率图。</canvas>
+        </div>
+        <div class="chart-caption"><span>等位基因 A 频率 / 0–100%</span><span>当前追踪：<b id="focus-lineage-label">第 1 条谱系</b></span></div>
+
+        <div class="time-console" aria-label="世代浏览控制">
+          <div class="time-console-top">
+            <div><span class="plate-index">02 / GENERATION SCRUBBER</span><strong>沿着时间线查看</strong></div>
+            <output id="view-generation-label" for="view-generation">第 70 代</output>
+          </div>
+          <input id="view-generation" type="range" min="0" max="140" step="1" value="70" aria-label="查看的世代">
+          <div class="time-actions">
+            <button id="step-back-button" class="step-button" type="button" aria-label="后退一代">−1</button>
+            <button id="step-button" class="step-button" type="button">前进一代</button>
+            <button id="step-ten-button" class="step-button" type="button">前进十代</button>
+            <button id="play-button" class="play-button" type="button" aria-pressed="false">连续播放</button>
+          </div>
+        </div>
+
+        <div class="readout-strip" aria-label="当前世代读数">
+          <div><span>追踪谱系 A 频率</span><strong id="focus-frequency">—</strong></div>
+          <div><span>重复群体平均频率</span><strong id="mean-frequency">—</strong></div>
+          <div><span>追踪谱系内杂合度 2p(1−p)</span><strong id="focus-heterozygosity">—</strong></div>
+        </div>
+
+        <section class="distribution-section" aria-labelledby="distribution-title">
+          <div class="distribution-heading">
+            <div><span class="plate-index">03 / OUTCOMES AT THIS GENERATION</span><h4 id="distribution-title">当前这一代，变体走到哪里</h4></div>
+            <span id="distribution-generation" class="distribution-generation">第 70 代</span>
+          </div>
+          <div id="outcome-summary" class="outcome-summary" aria-live="polite">
+            <p>正在生成重复模拟……</p>
+          </div>
+          <div class="distribution-chart-wrap"><canvas id="distribution-canvas" class="distribution-canvas" role="img" aria-label="当前世代 32 个重复群体的等位基因频率分布图。">浏览器需要支持 Canvas 才能绘制分布图。</canvas></div>
+          <div class="distribution-legend"><span><i class="legend-loss" aria-hidden="true"></i>丢失 A / p=0</span><span><i class="legend-segregating" aria-hidden="true"></i>仍在群体中</span><span><i class="legend-fixed" aria-hidden="true"></i>固定 A / p=1</span></div>
+        </section>
+        <p id="insight-text" class="insight-text" aria-live="polite">正在读取谱系……</p>
+      </div>
+    </div>
+    <p class="keyboard-note"><b>操作：</b>调节任一条件会重算同一批随机路径；用世代滑块或步进按钮查看时间，重新抽样会生成新的繁殖路径。</p>
+  </section>
+
+  <section id="mechanism" class="chapter principle-chapter" aria-labelledby="mechanism-title">
+    <div class="chapter-heading principle-heading">
+      <div><p class="eyebrow"><span class="section-number">02</span>变化机制 / FOUR FORCES</p><h2 id="mechanism-title">不是每种变化，<br><em>都朝着同一个方向。</em></h2></div>
+      <p class="chapter-intro">把频率变化拆成过程，才看得清一条曲线为什么弯向那里：有的机制改变抽样前的平均值，有的改变抽样的偶然幅度。</p>
+    </div>
+    <div class="principle-grid">
+      <article class="principle-card">
+        <span class="principle-number">01 / DRIFT</span><h3>繁殖抽样会改频率</h3>
+        <p>下一代从亲代基因库抽取 <code>2N</code> 个等位基因。即使 A 与 a 适合度相同，有限次抽样也会让实际频率上下波动；群体越小，单次抽样的相对影响越大。</p>
+        <div class="mini-sketch sketch-drift" aria-hidden="true"><i></i><b></b><span></span></div>
+      </article>
+      <article class="principle-card">
+        <span class="principle-number">02 / SELECTION</span><h3>选择改变抽样前的权重</h3>
+        <p>每种基因型按适合度贡献下一代：<code>w<sub>AA</sub>=1+s</code>、<code>w<sub>Aa</sub>=1+hs</code>、<code>w<sub>aa</sub>=1</code>。即使 s 很小，它也要与随机漂变共同作用。</p>
+        <div class="mini-sketch sketch-selection" aria-hidden="true"><i></i><b></b><span></span></div>
+      </article>
+      <article class="principle-card">
+        <span class="principle-number">03 / MUTATION</span><h3>突变能补回变体</h3>
+        <p>双向突变把 A 变成 a，也把 a 变成 A。它可能让已经很少见的变体重新出现；在这个模型里两个方向使用相同的突变率。</p>
+        <div class="mini-sketch sketch-mutation" aria-hidden="true"><i></i><b>⇄</b><span></span></div>
+      </article>
+      <article class="principle-card">
+        <span class="principle-number">04 / GENE FLOW</span><h3>迁入把邻近频率带来</h3>
+        <p>繁殖前将本地与固定来源群体按迁入比例混合。高频 A 群体的持续迁入，能把本地频率推离原先的方向。</p>
+        <div class="mini-sketch sketch-flow" aria-hidden="true"><i></i><b></b><span></span></div>
+      </article>
+      <article class="principle-card principle-card-wide">
+        <span class="principle-number">05 / BOTTLENECK</span><h3>一次骤减，会留下抽样痕迹</h3>
+        <p>瓶颈本身不挑选某个等位基因，但小群体抽样会增加频率变化幅度。数量恢复不会自动恢复曾经丢失的变体；保留下来的频率还会继续漂变。</p>
+        <div class="mini-sketch sketch-bottleneck" aria-hidden="true"><i></i><b></b><span></span></div>
+      </article>
+    </div>
+    <div class="equation-note"><span class="equation-mark">p′</span><p><strong>一代的计算顺序</strong><br>基因型选择 → 双向突变 → 与来源群体混合 → 从 <code>2N</code> 个等位基因中二项抽样。一次瓶颈只改变指定那一代的目标群体大小。</p></div>
+  </section>
+
+  <section class="chapter reading-chapter" aria-labelledby="reading-title">
+    <div class="chapter-heading">
+      <div><p class="eyebrow"><span class="section-number">03</span>怎样读一条轨迹 / READING THE RUN</p><h2 id="reading-title">把一次结果，<br><em>放回重复之中。</em></h2></div>
+      <p class="chapter-intro">单条路径展示可能发生什么。多次独立重复则展示在这些假设下，结果大致落在哪些范围；两者回答的不是同一个问题。</p>
+    </div>
+    <div class="reading-grid">
+      <article class="reading-card"><span>问 / ONE LINEAGE</span><h3>这条谱系的结局是什么？</h3><p>一条亮线可能很快固定、偶然丢失，或在观察期内继续分离。换一条追踪谱系，不改变其余模拟。</p></article>
+      <article class="reading-card"><span>问 / THIRTY-TWO REPEATS</span><h3>固定、丢失和分离各有多少？</h3><p>柱状分布统计当前世代的 32 个重复群体。它会随查看世代改变，也会随重新抽样改变。</p></article>
+      <article class="reading-card"><span>问 / SAME RANDOM STREAM</span><h3>改一个条件，差异来自哪里？</h3><p>滑块变动时保留随机数序列，方便比较同一批抽样在另一组权重下如何走。独立重复不是现实群体，也不是预测区间。</p></article>
+    </div>
+  </section>
+
+  <section id="limits" class="chapter limits-chapter" aria-labelledby="limits-title">
+    <div class="closing-note">
+      <div><p class="eyebrow"><span class="section-number">04</span>模型边界 / A MODEL, NOT A POPULATION</p><h2 id="limits-title">这是一台<br><span>理想化的抽样机。</span></h2></div>
+      <div class="closing-copy">
+        <p>模型采用单个位点、两个等位基因、二倍体、常态有效群体大小固定、世代不重叠、随机交配的 Wright–Fisher 结构。每代把适合度、双向突变和单向迁入作用于抽样前的频率，再从 <code>2N</code> 个基因拷贝中进行二项抽样。</p>
+        <p>现实中的群体有年龄结构、空间分布、近亲繁殖、性别差异、连锁、复杂遗传背景和变化的繁殖成功率。真实群体的有效大小也可能显著小于可见个体数。此处的“选择系数”不是任何具体物种的实测值。</p>
+        <p>频率 <code>p</code> 的杂合度读数 <code>2p(1−p)</code> 是在随机交配假设下对一个二等位位点的期望；它不是观察到的实际基因型计数。中性、无突变且群体大小固定时，理论期望频率保持不变，但各条有限群体的轨迹仍会分开。</p>
+        <p class="source-note"><b>延伸阅读：</b>Wright, S. “Evolution in Mendelian Populations.” <i>Genetics</i> 16 (1931): 97–159；OpenStax, <i>Concepts of Biology</i>, 11.2 “Mechanisms of Evolution”；Hartl & Clark, <i>Principles of Population Genetics</i>, 4th ed.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner"><span>偶然的谱系 / 群体遗传学实验札记</span><span>一个位点 · 两个等位基因 · 三十二次重复</span><a href="#top">回到页首 ↑</a></div>
+</footer>
+
+<script>
+'use strict';
+
+const PopulationGeneticsModel = (() => {
+  const DEFAULTS = Object.freeze({
+    population: 120,
+    initialFrequency: 0.5,
+    selection: 0,
+    dominance: 0.5,
+    mutation: 0,
+    migration: 0,
+    sourceFrequency: 0.9,
+    bottleneckEnabled: false,
+    bottleneckGeneration: 45,
+    bottleneckSize: 12,
+    generations: 140
+  });
+
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+  function numeric(value, fallback) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function evenInteger(value, min, max) {
+    const bounded = clamp(Math.round(value / 2) * 2, min, max);
+    return bounded % 2 === 0 ? bounded : bounded - 1;
+  }
+
+  function normalizeParameters(input = {}) {
+    const generations = Math.round(clamp(numeric(input.generations, DEFAULTS.generations), 40, 240) / 10) * 10;
+    const population = evenInteger(numeric(input.population, DEFAULTS.population), 20, 800);
+    return Object.freeze({
+      population,
+      initialFrequency: clamp(numeric(input.initialFrequency, DEFAULTS.initialFrequency), 0.05, 0.95),
+      selection: clamp(numeric(input.selection, DEFAULTS.selection), -0.12, 0.12),
+      dominance: clamp(numeric(input.dominance, DEFAULTS.dominance), 0, 1),
+      mutation: clamp(numeric(input.mutation, DEFAULTS.mutation), 0, 0.01),
+      migration: clamp(numeric(input.migration, DEFAULTS.migration), 0, 0.2),
+      sourceFrequency: clamp(numeric(input.sourceFrequency, DEFAULTS.sourceFrequency), 0.05, 0.95),
+      bottleneckEnabled: Boolean(input.bottleneckEnabled),
+      bottleneckGeneration: Math.round(clamp(numeric(input.bottleneckGeneration, DEFAULTS.bottleneckGeneration), 1, generations)),
+      bottleneckSize: evenInteger(numeric(input.bottleneckSize, DEFAULTS.bottleneckSize), 4, population),
+      generations
+    });
+  }
+
+  function makeRandom(seed) {
+    let state = Number(seed) >>> 0;
+    if (!state) state = 0x6d2b79f5;
+    return () => {
+      state ^= state << 13;
+      state ^= state >>> 17;
+      state ^= state << 5;
+      return (state >>> 0) / 4294967296;
+    };
+  }
+
+  function generationSeed(seed, replicate, generation) {
+    let value = Number(seed) >>> 0;
+    value ^= Math.imul(replicate + 1, 0x9e3779b1);
+    value ^= Math.imul(generation + 1, 0x85ebca6b);
+    value = Math.imul(value ^ (value >>> 16), 0x7feb352d);
+    value = Math.imul(value ^ (value >>> 15), 0x846ca68b);
+    value = (value ^ (value >>> 16)) >>> 0;
+    return value || 0x6d2b79f5;
+  }
+
+  function sampleBinomial(trials, probability, random) {
+    const p = clamp(probability, 0, 1);
+    if (p === 0) return 0;
+    if (p === 1) return trials;
+    let successes = 0;
+    for (let i = 0; i < trials; i++) {
+      if (random() < p) successes++;
+    }
+    return successes;
+  }
+
+  function alleleFrequencyAfterSelection(frequency, selection, dominance) {
+    const p = clamp(frequency, 0, 1);
+    const q = 1 - p;
+    const fitnessAA = 1 + selection;
+    const fitnessAa = 1 + dominance * selection;
+    const meanFitness = p * p * fitnessAA + 2 * p * q * fitnessAa + q * q;
+    if (meanFitness <= 0) return p;
+    return clamp((p * p * fitnessAA + p * q * fitnessAa) / meanFitness, 0, 1);
+  }
+
+  function frequencyBeforeSampling(frequency, parameters) {
+    let p = alleleFrequencyAfterSelection(frequency, parameters.selection, parameters.dominance);
+    p = p * (1 - parameters.mutation) + (1 - p) * parameters.mutation;
+    p = (1 - parameters.migration) * p + parameters.migration * parameters.sourceFrequency;
+    return clamp(p, 0, 1);
+  }
+
+  function simulate(inputParameters = {}, seed = 1, replicateCount = 32) {
+    const parameters = normalizeParameters(inputParameters);
+    const repeats = Math.max(1, Math.min(128, Math.round(numeric(replicateCount, 32))));
+    const initialCopies = Math.round(parameters.initialFrequency * parameters.population * 2);
+    const initialFrequency = initialCopies / (parameters.population * 2);
+    const trajectories = new Array(repeats);
+    const populationByGeneration = new Uint16Array(parameters.generations + 1);
+    populationByGeneration.fill(parameters.population);
+    if (parameters.bottleneckEnabled) {
+      populationByGeneration[parameters.bottleneckGeneration] = Math.min(parameters.bottleneckSize, parameters.population);
+    }
+
+    for (let replicate = 0; replicate < repeats; replicate++) {
+      const trajectory = new Float32Array(parameters.generations + 1);
+      trajectory[0] = initialFrequency;
+      let currentFrequency = initialFrequency;
+      for (let generation = 1; generation <= parameters.generations; generation++) {
+        const expectedFrequency = frequencyBeforeSampling(currentFrequency, parameters);
+        const population = populationByGeneration[generation];
+        const random = makeRandom(generationSeed(seed, replicate, generation));
+        const copies = sampleBinomial(population * 2, expectedFrequency, random);
+        currentFrequency = copies / (population * 2);
+        trajectory[generation] = currentFrequency;
+      }
+      trajectories[replicate] = trajectory;
+    }
+
+    return Object.freeze({
+      parameters,
+      seed: Number(seed) >>> 0,
+      replicateCount: repeats,
+      initialCopies,
+      initialFrequency,
+      trajectories,
+      populationByGeneration
+    });
+  }
+
+  function quantile(sortedValues, quantile) {
+    if (!sortedValues.length) return 0;
+    const position = (sortedValues.length - 1) * clamp(quantile, 0, 1);
+    const lower = Math.floor(position);
+    const upper = Math.ceil(position);
+    const fraction = position - lower;
+    return sortedValues[lower] * (1 - fraction) + sortedValues[upper] * fraction;
+  }
+
+  function summarizeAt(result, generation) {
+    const g = Math.round(clamp(generation, 0, result.parameters.generations));
+    const frequencies = result.trajectories.map(path => path[g]);
+    const sorted = [...frequencies].sort((a, b) => a - b);
+    const fixed = frequencies.filter(value => value >= 1).length;
+    const lost = frequencies.filter(value => value <= 0).length;
+    const mean = frequencies.reduce((sum, value) => sum + value, 0) / frequencies.length;
+    return Object.freeze({
+      generation: g,
+      frequencies,
+      mean,
+      lowerDecile: quantile(sorted, 0.1),
+      upperDecile: quantile(sorted, 0.9),
+      fixed,
+      lost,
+      segregating: frequencies.length - fixed - lost,
+      meanHeterozygosity: frequencies.reduce((sum, value) => sum + 2 * value * (1 - value), 0) / frequencies.length
+    });
+  }
+
+  function frequencyPath(result, replicateIndex) {
+    const index = Math.round(clamp(replicateIndex, 0, result.replicateCount - 1));
+    return result.trajectories[index];
+  }
+
+  const api = Object.freeze({
+    DEFAULTS,
+    normalizeParameters,
+    makeRandom,
+    sampleBinomial,
+    alleleFrequencyAfterSelection,
+    frequencyBeforeSampling,
+    simulate,
+    summarizeAt,
+    frequencyPath
+  });
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else globalThis.PopulationGeneticsModel = api;
+  return api;
+})();
+
+</script>
+<script>
+'use strict';
+
+(() => {
+  const model = globalThis.PopulationGeneticsModel;
+  if (!model) throw new Error('PopulationGeneticsModel must load before ui.js');
+
+  const $ = selector => document.querySelector(selector);
+  const $$ = selector => [...document.querySelectorAll(selector)];
+  const controls = {
+    population: $('#population'),
+    initialFrequency: $('#initial-frequency'),
+    selection: $('#selection'),
+    dominance: $('#dominance'),
+    mutation: $('#mutation'),
+    migration: $('#migration'),
+    sourceFrequency: $('#source-frequency'),
+    bottleneckEnabled: $('#bottleneck-enabled'),
+    bottleneckGeneration: $('#bottleneck-generation'),
+    bottleneckSize: $('#bottleneck-size'),
+    generations: $('#generations')
+  };
+  const canvases = {
+    frequency: $('#frequency-canvas'),
+    distribution: $('#distribution-canvas')
+  };
+  const state = {
+    seed: 20261002,
+    initialSeed: 20261002,
+    focusIndex: 0,
+    viewGeneration: 70,
+    parameters: model.normalizeParameters(),
+    result: null,
+    debounce: 0,
+    playTimer: 0
+  };
+
+  const COLORS = Object.freeze({
+    background: '#142f33',
+    backgroundTwo: '#193d3d',
+    grid: 'rgba(222, 229, 213, .16)',
+    ink: '#e8eadc',
+    muted: '#aebeb1',
+    path: 'rgba(202, 218, 204, .21)',
+    band: 'rgba(126, 169, 160, .18)',
+    mean: '#9ac4b4',
+    focus: '#e98562',
+    marker: '#dfd779',
+    loss: '#799894',
+    segregating: '#d9bb71',
+    fixed: '#d66d50'
+  });
+
+  const percent = value => `${(value * 100).toFixed(1)}%`;
+  const formatSeed = value => `#${(value >>> 0).toString(16).toUpperCase().padStart(8, '0')}`;
+
+  function readParameters() {
+    return model.normalizeParameters({
+      population: Number(controls.population.value),
+      initialFrequency: Number(controls.initialFrequency.value) / 100,
+      selection: Number(controls.selection.value),
+      dominance: Number(controls.dominance.value),
+      mutation: Number(controls.mutation.value),
+      migration: Number(controls.migration.value),
+      sourceFrequency: Number(controls.sourceFrequency.value) / 100,
+      bottleneckEnabled: controls.bottleneckEnabled.checked,
+      bottleneckGeneration: Number(controls.bottleneckGeneration.value),
+      bottleneckSize: Number(controls.bottleneckSize.value),
+      generations: Number(controls.generations.value)
+    });
+  }
+
+  function writeParameters(input) {
+    const parameters = model.normalizeParameters(input);
+    controls.population.value = String(parameters.population);
+    controls.initialFrequency.value = String(Math.round(parameters.initialFrequency * 100));
+    controls.selection.value = String(parameters.selection);
+    controls.dominance.value = String(parameters.dominance);
+    controls.mutation.value = String(parameters.mutation);
+    controls.migration.value = String(parameters.migration);
+    controls.sourceFrequency.value = String(Math.round(parameters.sourceFrequency * 100));
+    controls.bottleneckEnabled.checked = parameters.bottleneckEnabled;
+    controls.bottleneckGeneration.value = String(parameters.bottleneckGeneration);
+    controls.bottleneckSize.value = String(parameters.bottleneckSize);
+    controls.generations.value = String(parameters.generations);
+    state.parameters = parameters;
+    syncLabels();
+  }
+
+  function syncLabels() {
+    const parameters = readParameters();
+    $('#population-value').textContent = String(parameters.population);
+    const initialCopies = Math.round(parameters.initialFrequency * parameters.population * 2);
+    $('#initial-frequency-value').textContent = percent(initialCopies / (parameters.population * 2));
+    $('#selection-value').textContent = `${parameters.selection > 0 ? '+' : ''}${parameters.selection.toFixed(3)}`;
+    $('#dominance-value').textContent = parameters.dominance.toFixed(2);
+    $('#mutation-value').textContent = parameters.mutation === 0 ? '0' : parameters.mutation.toFixed(4);
+    $('#migration-value').textContent = `${Math.round(parameters.migration * 100)}%`;
+    $('#source-frequency-value').textContent = `${Math.round(parameters.sourceFrequency * 100)}%`;
+    $('#bottleneck-generation-value').textContent = String(parameters.bottleneckGeneration);
+    $('#bottleneck-size-value').textContent = String(parameters.bottleneckSize);
+    $('#generations-value').textContent = String(parameters.generations);
+    controls.bottleneckGeneration.max = String(parameters.generations);
+    controls.bottleneckGeneration.value = String(parameters.bottleneckGeneration);
+    controls.bottleneckSize.max = String(parameters.population);
+    controls.bottleneckSize.value = String(Math.min(parameters.bottleneckSize, parameters.population));
+    const details = $('.secondary-controls');
+    details.classList.toggle('has-bottleneck', parameters.bottleneckEnabled);
+  }
+
+  function canvasContext(element, cssHeight) {
+    const bounds = element.getBoundingClientRect();
+    const width = Math.max(1, bounds.width);
+    const height = Math.max(1, cssHeight || bounds.height || 1);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const pixelWidth = Math.round(width * dpr);
+    const pixelHeight = Math.round(height * dpr);
+    if (element.width !== pixelWidth || element.height !== pixelHeight) {
+      element.width = pixelWidth;
+      element.height = pixelHeight;
+    }
+    const ctx = element.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, width, height };
+  }
+
+  function drawFrequencyChart() {
+    const result = state.result;
+    if (!result) return;
+    const { parameters, trajectories, replicateCount } = result;
+    const { ctx, width, height } = canvasContext(canvases.frequency, 326);
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = COLORS.background;
+    ctx.fillRect(0, 0, width, height);
+
+    const left = 52;
+    const right = 19;
+    const top = 22;
+    const bottom = height - 39;
+    const plotWidth = Math.max(1, width - left - right);
+    const plotHeight = Math.max(1, bottom - top);
+    const xFor = generation => left + generation / parameters.generations * plotWidth;
+    const yFor = value => bottom - value * plotHeight;
+
+    ctx.font = '10px Consolas, monospace';
+    ctx.lineWidth = 1;
+    for (let tick = 0; tick <= 1.0001; tick += 0.25) {
+      const y = yFor(tick);
+      ctx.strokeStyle = COLORS.grid;
+      ctx.beginPath();
+      ctx.moveTo(left, y);
+      ctx.lineTo(left + plotWidth, y);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.muted;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${Math.round(tick * 100)}%`, left - 8, y);
+    }
+
+    const tickCount = Math.min(6, Math.max(4, Math.floor(parameters.generations / 30)));
+    for (let tick = 0; tick <= tickCount; tick++) {
+      const generation = Math.round(parameters.generations * tick / tickCount);
+      const x = xFor(generation);
+      ctx.strokeStyle = 'rgba(222, 229, 213, .08)';
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.muted;
+      ctx.textAlign = tick === 0 ? 'left' : tick === tickCount ? 'right' : 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(String(generation), x, bottom + 19);
+    }
+
+    const currentSummary = model.summarizeAt(result, state.viewGeneration);
+    ctx.fillStyle = COLORS.band;
+    ctx.beginPath();
+    for (let generation = 0; generation <= parameters.generations; generation++) {
+      const values = trajectories.map(path => path[generation]).sort((a, b) => a - b);
+      const low = values[Math.floor((values.length - 1) * 0.1)];
+      const high = values[Math.ceil((values.length - 1) * 0.9)];
+      const x = xFor(generation);
+      if (generation === 0) ctx.moveTo(x, yFor(high));
+      else ctx.lineTo(x, yFor(high));
+    }
+    for (let generation = parameters.generations; generation >= 0; generation--) {
+      const values = trajectories.map(path => path[generation]).sort((a, b) => a - b);
+      const low = values[Math.floor((values.length - 1) * 0.1)];
+      ctx.lineTo(xFor(generation), yFor(low));
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = COLORS.path;
+    for (let replicate = 0; replicate < replicateCount; replicate++) {
+      if (replicate === state.focusIndex) continue;
+      const path = trajectories[replicate];
+      ctx.beginPath();
+      for (let generation = 0; generation <= parameters.generations; generation++) {
+        const x = xFor(generation);
+        const y = yFor(path[generation]);
+        if (generation === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.beginPath();
+    for (let generation = 0; generation <= parameters.generations; generation++) {
+      const mean = trajectories.reduce((sum, path) => sum + path[generation], 0) / replicateCount;
+      const x = xFor(generation);
+      const y = yFor(mean);
+      if (generation === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = COLORS.mean;
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([5, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const focusPath = trajectories[state.focusIndex];
+    ctx.beginPath();
+    for (let generation = 0; generation <= parameters.generations; generation++) {
+      const x = xFor(generation);
+      const y = yFor(focusPath[generation]);
+      if (generation === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = COLORS.focus;
+    ctx.lineWidth = 2.8;
+    ctx.stroke();
+
+    if (parameters.bottleneckEnabled) {
+      const x = xFor(parameters.bottleneckGeneration);
+      ctx.strokeStyle = 'rgba(223, 215, 121, .8)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = COLORS.marker;
+      ctx.textAlign = x > left + plotWidth * 0.72 ? 'right' : 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('瓶颈', x + (x > left + plotWidth * 0.72 ? -4 : 4), top + 4);
+    }
+
+    const markerX = xFor(currentSummary.generation);
+    ctx.strokeStyle = COLORS.marker;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 4]);
+    ctx.beginPath();
+    ctx.moveTo(markerX, top);
+    ctx.lineTo(markerX, bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = COLORS.marker;
+    ctx.beginPath();
+    ctx.arc(markerX, yFor(focusPath[currentSummary.generation]), 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = COLORS.muted;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('世代', left + plotWidth, height - 3);
+
+    canvases.frequency.setAttribute('aria-label', `A 等位基因频率随世代变化图。亮色追踪第 ${state.focusIndex + 1} 条谱系。第 ${state.viewGeneration} 代的 ${replicateCount} 组重复，丢失 ${currentSummary.lost} 组，固定 ${currentSummary.fixed} 组，仍分离 ${currentSummary.segregating} 组。`);
+  }
+
+  function drawDistributionChart(summary) {
+    const { ctx, width, height } = canvasContext(canvases.distribution, 174);
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = COLORS.backgroundTwo;
+    ctx.fillRect(0, 0, width, height);
+    const left = 39;
+    const right = 14;
+    const top = 20;
+    const bottom = height - 30;
+    const plotWidth = Math.max(1, width - left - right);
+    const plotHeight = Math.max(1, bottom - top);
+    const bins = new Array(12).fill(0);
+    for (const frequency of summary.frequencies) {
+      if (frequency <= 0) bins[0]++;
+      else if (frequency >= 1) bins[11]++;
+      else bins[1 + Math.min(9, Math.floor(frequency * 10))]++;
+    }
+    const maxCount = Math.max(4, Math.ceil(Math.max(...bins) / 4) * 4);
+    const barGap = 5;
+    const barWidth = Math.max(5, (plotWidth - barGap * (bins.length - 1)) / bins.length);
+    ctx.font = '9px Consolas, monospace';
+    for (let count = 0; count <= maxCount; count += Math.max(1, Math.ceil(maxCount / 4))) {
+      const y = bottom - count / maxCount * plotHeight;
+      ctx.strokeStyle = 'rgba(222, 229, 213, .12)';
+      ctx.beginPath();
+      ctx.moveTo(left, y);
+      ctx.lineTo(left + plotWidth, y);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.muted;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(count), left - 7, y);
+    }
+
+    bins.forEach((count, index) => {
+      const x = left + index * (barWidth + barGap);
+      const barHeight = count / maxCount * plotHeight;
+      const color = index === 0 ? COLORS.loss : index === 11 ? COLORS.fixed : COLORS.segregating;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, bottom - barHeight, barWidth, barHeight);
+      ctx.fillStyle = COLORS.ink;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      if (count) ctx.fillText(String(count), x + barWidth / 2, bottom - barHeight - 3);
+    });
+
+    ctx.fillStyle = COLORS.muted;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('丢失', left, bottom + 8);
+    ctx.textAlign = 'center';
+    ctx.fillText('A 的群体频率区间', left + plotWidth / 2, bottom + 8);
+    ctx.textAlign = 'right';
+    ctx.fillText('固定', left + plotWidth, bottom + 8);
+    canvases.distribution.setAttribute('aria-label', `第 ${summary.generation} 代的 32 组重复频率分布：丢失 A ${summary.lost} 组，固定 A ${summary.fixed} 组，仍有两种变体 ${summary.segregating} 组。`);
+  }
+
+  function updateOutcomeSummary(summary) {
+    const total = state.result.replicateCount;
+    const entries = [
+      { label: '丢失 A', count: summary.lost, className: 'outcome-loss', note: '频率到 0' },
+      { label: '仍分离', count: summary.segregating, className: 'outcome-segregating', note: 'A 与 a 都存在' },
+      { label: '固定 A', count: summary.fixed, className: 'outcome-fixed', note: '频率到 1' }
+    ];
+    $('#outcome-summary').innerHTML = entries.map(entry => {
+      const share = entry.count / total * 100;
+      return `<div class="outcome-card ${entry.className}"><div><strong>${entry.label}</strong><span>${entry.count} / ${total} 组</span></div><div class="outcome-track" aria-hidden="true"><i style="width:${share}%"></i></div><small>${entry.note} · ${share.toFixed(0)}%</small></div>`;
+    }).join('');
+  }
+
+  function insightFor(summary, focusFrequency) {
+    const p = state.parameters;
+    const outcomes = `${summary.lost} 组丢失 A，${summary.fixed} 组固定 A，${summary.segregating} 组仍在分离。`;
+    let mechanism = '';
+    if (p.selection > 0) mechanism += `s = +${p.selection.toFixed(3)} 使 A 的基因型有相对优势；抽样仍会带来波动。`;
+    else if (p.selection < 0) mechanism += `s = ${p.selection.toFixed(3)} 使 A 的基因型相对不利；抽样仍会带来波动。`;
+    else mechanism += '当前没有基因型选择差异；频率改变来自有限群体的繁殖抽样。';
+    if (p.mutation > 0) mechanism += ` 双向突变率为 ${p.mutation.toFixed(4)}，可让变体重新出现。`;
+    if (p.migration > 0) mechanism += ` 每代有 ${Math.round(p.migration * 100)}% 的来源频率混入本地。`;
+    if (p.bottleneckEnabled && summary.generation >= p.bottleneckGeneration) mechanism += ` 第 ${p.bottleneckGeneration} 代曾以 ${Math.min(p.bottleneckSize, p.population)} 位个体完成抽样。`;
+    return `第 ${summary.generation} 代：${outcomes} 追踪的第 ${state.focusIndex + 1} 条谱系 A 频率为 ${percent(focusFrequency)}。${mechanism}这是本批 32 次模拟的结果；重新抽样会得到别的路径。`;
+  }
+
+  function renderReadouts() {
+    if (!state.result) return;
+    const generation = Math.round(Math.max(0, Math.min(state.viewGeneration, state.parameters.generations)));
+    state.viewGeneration = generation;
+    const summary = model.summarizeAt(state.result, generation);
+    const path = model.frequencyPath(state.result, state.focusIndex);
+    const focusFrequency = path[generation];
+    $('#view-generation').value = String(generation);
+    $('#view-generation-label').textContent = `第 ${generation} 代`;
+    $('#distribution-generation').textContent = `第 ${generation} 代`;
+    $('#focus-lineage-label').textContent = `第 ${state.focusIndex + 1} 条谱系`;
+    $('#focus-frequency').textContent = percent(focusFrequency);
+    $('#mean-frequency').textContent = percent(summary.mean);
+    $('#focus-heterozygosity').textContent = (2 * focusFrequency * (1 - focusFrequency)).toFixed(3);
+    $('#insight-text').textContent = insightFor(summary, focusFrequency);
+    updateOutcomeSummary(summary);
+    drawDistributionChart(summary);
+    drawFrequencyChart();
+  }
+
+  function stopPlayback() {
+    if (state.playTimer) window.clearInterval(state.playTimer);
+    state.playTimer = 0;
+    $('#play-button').textContent = '连续播放';
+    $('#play-button').setAttribute('aria-pressed', 'false');
+  }
+
+  function moveGeneration(amount) {
+    state.viewGeneration = Math.max(0, Math.min(state.parameters.generations, state.viewGeneration + amount));
+    if (state.viewGeneration >= state.parameters.generations) stopPlayback();
+    renderReadouts();
+  }
+
+  function togglePlayback() {
+    if (state.playTimer) {
+      stopPlayback();
+      return;
+    }
+    if (state.viewGeneration >= state.parameters.generations) state.viewGeneration = 0;
+    $('#play-button').textContent = '暂停';
+    $('#play-button').setAttribute('aria-pressed', 'true');
+    renderReadouts();
+    state.playTimer = window.setInterval(() => moveGeneration(1), 130);
+  }
+
+  function computeAndRender() {
+    if (state.debounce) window.clearTimeout(state.debounce);
+    state.debounce = 0;
+    stopPlayback();
+    syncLabels();
+    state.parameters = readParameters();
+    state.result = model.simulate(state.parameters, state.seed, 32);
+    state.focusIndex = Math.min(state.focusIndex, state.result.replicateCount - 1);
+    const range = $('#view-generation');
+    range.max = String(state.parameters.generations);
+    state.viewGeneration = Math.min(state.viewGeneration, state.parameters.generations);
+    renderReadouts();
+  }
+
+  function queueRecompute() {
+    syncLabels();
+    if (state.debounce) window.clearTimeout(state.debounce);
+    state.debounce = window.setTimeout(computeAndRender, 70);
+  }
+
+  function applyPreset(name) {
+    const presets = {
+      drift: { population: 42, initialFrequency: 0.5, selection: 0, dominance: 0.5, mutation: 0, migration: 0, sourceFrequency: 0.9, bottleneckEnabled: false, bottleneckGeneration: 45, bottleneckSize: 12, generations: 140 },
+      selection: { population: 120, initialFrequency: 0.25, selection: 0.025, dominance: 0.5, mutation: 0, migration: 0, sourceFrequency: 0.9, bottleneckEnabled: false, bottleneckGeneration: 45, bottleneckSize: 12, generations: 140 },
+      bottleneck: { population: 160, initialFrequency: 0.5, selection: 0, dominance: 0.5, mutation: 0, migration: 0, sourceFrequency: 0.9, bottleneckEnabled: true, bottleneckGeneration: 45, bottleneckSize: 8, generations: 140 },
+      migration: { population: 180, initialFrequency: 0.2, selection: 0, dominance: 0.5, mutation: 0, migration: 0.035, sourceFrequency: 0.9, bottleneckEnabled: false, bottleneckGeneration: 45, bottleneckSize: 12, generations: 140 }
+    };
+    if (!presets[name]) return;
+    writeParameters(presets[name]);
+    $('.secondary-controls').open = name === 'migration' || name === 'bottleneck';
+    state.viewGeneration = Math.min(70, model.normalizeParameters(presets[name]).generations);
+    state.focusIndex = 0;
+    computeAndRender();
+  }
+
+  function resetExperiment() {
+    writeParameters(model.DEFAULTS);
+    $('.secondary-controls').open = false;
+    state.seed = state.initialSeed;
+    state.focusIndex = 0;
+    state.viewGeneration = 70;
+    computeAndRender();
+  }
+
+  for (const input of Object.values(controls)) {
+    input.addEventListener('input', queueRecompute);
+    input.addEventListener('change', queueRecompute);
+  }
+  $$('[data-preset]').forEach(button => button.addEventListener('click', () => applyPreset(button.dataset.preset)));
+  $('#resample-button').addEventListener('click', () => {
+    state.seed = (state.seed + 0x9e3779b9) >>> 0;
+    computeAndRender();
+  });
+  $('#focus-lineage-button').addEventListener('click', () => {
+    state.focusIndex = (state.focusIndex + 1) % state.result.replicateCount;
+    renderReadouts();
+  });
+  $('#reset-button').addEventListener('click', resetExperiment);
+  $('#view-generation').addEventListener('input', event => {
+    stopPlayback();
+    state.viewGeneration = Number(event.currentTarget.value);
+    renderReadouts();
+  });
+  $('#step-back-button').addEventListener('click', () => moveGeneration(-1));
+  $('#step-button').addEventListener('click', () => moveGeneration(1));
+  $('#step-ten-button').addEventListener('click', () => moveGeneration(10));
+  $('#play-button').addEventListener('click', togglePlayback);
+  canvases.frequency.addEventListener('keydown', event => {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      moveGeneration(-1);
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      moveGeneration(1);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      state.viewGeneration = 0;
+      renderReadouts();
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      state.viewGeneration = state.parameters.generations;
+      renderReadouts();
+    }
+  });
+
+  window.addEventListener('resize', () => window.requestAnimationFrame(renderReadouts));
+  if (typeof ResizeObserver === 'function') {
+    const observer = new ResizeObserver(() => window.requestAnimationFrame(renderReadouts));
+    observer.observe(canvases.frequency);
+    observer.observe(canvases.distribution);
+  }
+
+  writeParameters(model.DEFAULTS);
+  computeAndRender();
+})();
+
+</script>
+</body></html>

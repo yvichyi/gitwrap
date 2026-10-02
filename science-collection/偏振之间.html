@@ -1,0 +1,1051 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#172c30">
+<meta name="description" content="旋转三片偏振片，观察电场方向、马吕斯定律与透射光强的变化。">
+<title>偏振之间 · 光学实验札记</title>
+<style>
+:root {
+  color-scheme: light;
+  --paper: #f3efe5;
+  --paper-deep: #e8e1d3;
+  --card: #fbf9f2;
+  --ink: #26332f;
+  --ink-soft: #515d56;
+  --muted: #62685f;
+  --line: #d7d0c1;
+  --teal: #527b7c;
+  --teal-deep: #193d3d;
+  --teal-dark: #122d30;
+  --rust: #b64b31;
+  --rust-pale: #f0ded2;
+  --acid: #d8df6c;
+  --amber: #bd8b48;
+  --serif: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", Georgia, serif;
+  --sans: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  --mono: "Cascadia Code", Consolas, "SFMono-Regular", monospace;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+body {
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 78% 2%, rgba(255, 253, 247, .9) 0, transparent 32rem),
+    linear-gradient(180deg, #f7f3ea 0%, var(--paper) 48%, #eee8dc 100%);
+  font: 14px/1.75 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible, canvas:focus-visible {
+  outline: 3px solid var(--acid);
+  outline-offset: 3px;
+}
+::selection { color: var(--teal-dark); background: #e0e782; }
+
+.skip-link {
+  position: fixed;
+  z-index: 20;
+  top: 8px;
+  left: 8px;
+  padding: 8px 12px;
+  transform: translateY(-150%);
+  background: var(--teal-dark);
+  color: #fffaf0;
+  text-decoration: none;
+}
+.skip-link:focus { transform: translateY(0); }
+
+.site-header {
+  max-width: 1320px;
+  min-height: 76px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 22px;
+  margin: auto;
+  padding: 12px 38px;
+  border-bottom: 1px solid rgba(41, 56, 49, .15);
+}
+.wordmark { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; }
+.brand-mark {
+  width: 39px;
+  height: 39px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ink);
+  color: var(--rust);
+  font: 21px var(--serif);
+}
+.wordmark-copy { display: flex; flex-direction: column; line-height: 1.35; }
+.wordmark-copy strong { font: 600 14px var(--serif); letter-spacing: .04em; }
+.wordmark-copy small { margin-top: 3px; color: var(--muted); font-size: 8px; letter-spacing: .08em; }
+.site-nav { display: flex; align-items: center; gap: clamp(16px, 3vw, 37px); margin-left: auto; }
+.site-nav a { padding: 7px 0; color: var(--ink-soft); font-size: 9px; text-decoration: none; }
+.site-nav a:hover { color: var(--rust); }
+.header-index { color: var(--muted); font: 8px var(--mono); letter-spacing: .09em; white-space: nowrap; }
+
+.page-shell { max-width: 1280px; margin: auto; padding: 0 38px; }
+.hero {
+  min-height: 494px;
+  display: grid;
+  grid-template-columns: minmax(0, .94fr) minmax(390px, 1.06fr);
+  gap: clamp(32px, 7vw, 92px);
+  align-items: center;
+  padding: 58px 0 64px;
+  border-bottom: 1px solid var(--line);
+}
+.hero-copy { min-width: 0; }
+.eyebrow { display: flex; align-items: center; gap: 9px; margin: 0 0 17px; color: var(--rust); font: 8px var(--mono); letter-spacing: .1em; }
+.eyebrow-mark { width: 7px; height: 7px; display: inline-block; border: 1px solid var(--rust); transform: rotate(45deg); }
+.hero h1 { margin: 0; color: var(--ink); font: 500 clamp(67px, 8vw, 103px)/.98 var(--serif); letter-spacing: -.045em; }
+.hero h1 em, .chapter h2 em, .closing-note h2 em { color: var(--rust); font-style: normal; }
+.hero-lede { margin: 22px 0 0; color: var(--ink); font: 500 clamp(19px, 2vw, 24px)/1.62 var(--serif); letter-spacing: .015em; }
+.hero-description { max-width: 480px; margin: 13px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 2; }
+.hero-link { display: inline-flex; align-items: center; gap: 16px; margin-top: 23px; padding: 7px 0; border-bottom: 1px solid var(--ink); color: var(--ink); font-size: 9px; text-decoration: none; }
+.hero-link span { color: var(--rust); font-size: 15px; }
+.hero-link:hover { border-color: var(--rust); color: var(--rust); }
+.hero-figure {
+  min-width: 0;
+  position: relative;
+  margin: 0;
+  padding: 13px 16px 15px;
+  border: 1px solid #d8d0c1;
+  background: rgba(251, 249, 242, .67);
+}
+.hero-figure-top { display: flex; justify-content: space-between; color: var(--muted); font: 8px var(--mono); letter-spacing: .06em; }
+.hero-optical-mark {
+  position: relative;
+  width: min(100%, 394px);
+  aspect-ratio: 1.35;
+  margin: 4px auto 1px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 51% 50%, rgba(82, 123, 124, .11), transparent 45%),
+    repeating-linear-gradient(0deg, transparent 0 32px, rgba(60, 76, 65, .045) 32px 33px),
+    repeating-linear-gradient(90deg, transparent 0 32px, rgba(60, 76, 65, .045) 32px 33px);
+}
+.orbit { position: absolute; top: 50%; left: 50%; display: block; border: 1px solid rgba(56, 102, 101, .34); border-radius: 50%; transform: translate(-50%, -50%); }
+.orbit-outer { width: 71%; height: 85%; }
+.orbit-inner { width: 47%; height: 56%; border-style: dashed; border-color: rgba(182, 75, 49, .42); }
+.orbit-axis { position: absolute; top: 50%; left: 50%; width: 67%; height: 1px; display: block; background: rgba(52, 79, 72, .4); transform-origin: center; }
+.orbit-axis-one { transform: translate(-50%, -50%) rotate(-25deg); }
+.orbit-axis-two { background: rgba(182, 75, 49, .45); transform: translate(-50%, -50%) rotate(40deg); }
+.hero-light { position: absolute; top: 50%; left: 12%; width: 77%; height: 4px; display: block; background: linear-gradient(90deg, transparent, rgba(216, 223, 108, .8) 14%, var(--rust) 70%, transparent); box-shadow: 0 0 13px rgba(190, 133, 70, .38); transform: translateY(-50%); }
+.hero-light::before, .hero-light::after { position: absolute; top: 50%; width: 9px; height: 9px; border: 1px solid var(--rust); border-radius: 50%; background: var(--paper); content: ""; transform: translateY(-50%); }
+.hero-light::before { left: 30%; }
+.hero-light::after { right: 18%; }
+.hero-filter { position: absolute; top: 50%; width: 37px; height: 57px; display: block; border: 1px solid var(--teal-deep); border-radius: 50%; background: rgba(238, 235, 219, .78); box-shadow: 3px 3px 0 rgba(26, 62, 62, .12); transform: translate(-50%, -50%); }
+.hero-filter::after { position: absolute; top: 50%; left: 50%; width: 2px; height: 70%; background: var(--teal-deep); content: ""; transform: translate(-50%, -50%) rotate(22deg); }
+.hero-filter-one { left: 38%; }
+.hero-filter-two { left: 68%; border-color: var(--rust); }
+.hero-filter-two::after { background: var(--rust); transform: translate(-50%, -50%) rotate(-35deg); }
+.hero-figure figcaption { display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--muted); font-size: 8px; }
+.hero-figure figcaption i { width: 24px; height: 1px; background: var(--rust); }
+.hero-default { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; align-items: baseline; margin-top: 14px; padding: 10px 12px; border-left: 2px solid var(--acid); background: var(--teal-deep); color: #f5f1e6; }
+.hero-default > span { grid-column: 1; color: #c6d2c2; font-size: 8px; }
+.hero-default strong { grid-column: 2; grid-row: 1 / span 2; justify-self: end; color: var(--acid); font: 15px var(--mono); white-space: nowrap; }
+.hero-default strong b { color: #eab18d; font-weight: 400; }
+.hero-default small { grid-column: 1; color: #d3d9cb; font-size: 8px; }
+
+.chapter { padding-top: 70px; }
+.chapter-heading { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(270px, .95fr); gap: 32px; align-items: end; margin-bottom: 26px; }
+.section-number { width: 22px; height: 22px; display: inline-grid; place-items: center; border: 1px solid var(--rust); font: 9px var(--mono); letter-spacing: 0; }
+.chapter h2 { margin: 0; color: var(--ink); font: 500 clamp(35px, 4vw, 51px)/1.35 var(--serif); letter-spacing: -.035em; }
+.chapter-intro { max-width: 500px; justify-self: end; margin: 0 0 5px; color: var(--ink-soft); font-size: 10px; line-height: 2; }
+
+.lab-layout { display: grid; grid-template-columns: minmax(245px, .72fr) minmax(0, 1.78fr); gap: 15px; align-items: stretch; }
+.controls-panel {
+  min-width: 0;
+  padding: 16px 16px 14px;
+  background: var(--teal-deep);
+  color: #f4f0e5;
+}
+.panel-heading, .control-section-label { display: flex; justify-content: space-between; align-items: baseline; gap: 9px; }
+.panel-heading { margin-bottom: 13px; padding-bottom: 10px; border-bottom: 1px solid rgba(236, 239, 218, .25); color: #f7f2e8; font: 10px var(--serif); }
+.panel-heading span:last-child, .control-section-label span:last-child { color: #aebeb1; font: 7px var(--mono); letter-spacing: .08em; }
+.source-group { min-width: 0; margin: 0; padding: 0; border: 0; }
+.source-group legend { margin-bottom: 8px; padding: 0; color: #d9dfd3; font-size: 9px; }
+.source-options { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.source-option { min-width: 0; position: relative; display: grid; grid-template-columns: 14px 1fr; gap: 8px; align-items: start; padding: 9px 8px; border: 1px solid rgba(230, 236, 216, .22); background: rgba(10, 34, 36, .24); cursor: pointer; }
+.source-option:has(input:checked) { border-color: var(--acid); background: rgba(216, 223, 108, .09); }
+.source-option input { position: absolute; top: 10px; left: 9px; width: 13px; height: 13px; margin: 0; accent-color: var(--acid); }
+.option-mark { width: 13px; height: 13px; margin-top: 1px; border: 1px solid #b8c4b6; border-radius: 50%; pointer-events: none; }
+.source-option input:checked + .option-mark { border: 4px solid var(--acid); }
+.source-option input:focus-visible { outline-color: var(--acid); outline-offset: 3px; }
+.source-option strong { display: block; color: #f5f0e4; font-size: 9px; font-weight: 500; }
+.source-option small { display: block; margin-top: 2px; color: #afbeb2; font-size: 8px; line-height: 1.45; }
+.range-control { display: block; min-width: 0; margin-top: 14px; }
+.source-angle-control { padding-top: 10px; border-top: 1px solid rgba(236, 239, 218, .15); }
+.control-title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: #dbe1d6; font-size: 9px; }
+.control-title output { color: var(--acid); font: 10px var(--mono); white-space: nowrap; }
+.range-control input[type="range"] { width: 100%; height: 18px; display: block; margin: 6px 0 2px; accent-color: var(--acid); cursor: pointer; }
+.range-control input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
+.range-hint { display: flex; justify-content: space-between; color: #a7b5a9; font: 8px var(--mono); }
+.control-help { margin: 7px 0 0; color: #aebbb0; font-size: 8px; line-height: 1.7; }
+.axis-controls { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(236, 239, 218, .22); }
+.control-section-label { margin-bottom: 4px; color: #e1e5d9; font-size: 9px; }
+.axis-name { display: inline-flex; align-items: center; gap: 7px; }
+.axis-number { width: 17px; height: 17px; display: inline-grid; place-items: center; border: 1px solid rgba(223, 229, 209, .42); color: #c0cbbd; font: normal 7px var(--mono); }
+.middle-control { margin-top: 12px; padding: 9px 9px 1px; border: 1px solid rgba(216, 223, 108, .32); background: rgba(11, 32, 34, .23); }
+.middle-control-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.switch-label { display: inline-flex; align-items: center; gap: 8px; color: #edf0e2; font-size: 8px; cursor: pointer; }
+.switch-label input { position: absolute; width: 1px; height: 1px; opacity: .01; }
+.switch-track { width: 27px; height: 15px; display: inline-flex; align-items: center; padding: 2px; border: 1px solid #93a497; border-radius: 10px; background: #294b49; transition: background .18s, border-color .18s; }
+.switch-track i { width: 9px; height: 9px; display: block; border-radius: 50%; background: #dce2d4; transition: transform .18s, background .18s; }
+.switch-label input:checked + .switch-track { border-color: var(--acid); background: #67735b; }
+.switch-label input:checked + .switch-track i { background: var(--acid); transform: translateX(11px); }
+.switch-label input:focus-visible + .switch-track { outline: 3px solid var(--acid); outline-offset: 3px; }
+.optional-tag { color: #b7c5b5; font: 7px var(--mono); }
+.middle-control .range-control { margin-top: 9px; }
+.middle-control .range-hint { margin-bottom: 5px; }
+.preset-section { margin-top: 15px; padding-top: 12px; border-top: 1px solid rgba(236, 239, 218, .22); }
+.preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.preset-button { min-height: 52px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 2px; padding: 7px 8px; border: 1px solid rgba(230, 236, 216, .3); background: rgba(7, 28, 31, .18); color: #e8ece0; text-align: left; transition: border-color .16s, background .16s, color .16s; }
+.preset-button:hover { border-color: #d5dca1; background: rgba(216, 223, 108, .1); }
+.preset-button span { font-size: 8px; }
+.preset-button small { color: #afbeb2; font-size: 8px; line-height: 1.5; }
+.preset-button.preset-highlight { border-color: rgba(216, 223, 108, .56); }
+.preset-button.preset-highlight span { color: var(--acid); }
+.reset-button { min-height: 33px; margin-top: 8px; padding: 6px 1px; border: 0; background: transparent; color: #cfdbd0; font-size: 8px; }
+.reset-button span { margin-right: 4px; color: var(--acid); font-size: 13px; }
+.reset-button:hover { color: var(--acid); }
+
+.apparatus-column { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.beam-card { min-width: 0; padding: 15px 15px 12px; border: 1px solid #244a48; background: var(--teal-dark); color: #f2efe4; }
+.beam-card-heading, .plot-heading { min-height: 38px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.plot-kicker { margin: 0 0 3px; color: #9aaca1; font: 7px var(--mono); letter-spacing: .09em; }
+.beam-card-heading h3, .plot-heading h3 { margin: 0; color: #f5f1e6; font: 500 16px/1.4 var(--serif); }
+.direction-chip { padding: 4px 7px; border: 1px solid rgba(216, 223, 108, .3); color: #d6debc; font: 7px var(--mono); white-space: nowrap; }
+.direction-chip span { color: var(--acid); }
+.beam-frame {
+  min-width: 0;
+  position: relative;
+  margin-top: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(195, 211, 191, .2);
+  background:
+    radial-gradient(ellipse at 49% 52%, rgba(85, 136, 123, .17), transparent 58%),
+    repeating-linear-gradient(0deg, transparent 0 27px, rgba(215, 226, 206, .055) 27px 28px),
+    repeating-linear-gradient(90deg, transparent 0 27px, rgba(215, 226, 206, .055) 27px 28px),
+    #173437;
+}
+#beam-canvas { width: 100%; height: clamp(254px, 27vw, 336px); display: block; color: #f3efe5; }
+.beam-summary { max-width: 780px; margin: 10px 0 0; color: #d5ded3; font-size: 9px; line-height: 1.75; }
+.beam-legend { display: flex; flex-wrap: wrap; gap: 7px 17px; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(230, 236, 216, .18); color: #b4c3b5; font-size: 8px; }
+.beam-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend-axis { width: 2px; height: 14px; display: inline-block; background: var(--acid); }
+.legend-beam { width: 19px; height: 3px; display: inline-block; background: linear-gradient(90deg, rgba(216, 223, 108, .26), #e2d778, #e28a65); }
+
+.result-layout { min-width: 0; display: grid; grid-template-columns: minmax(0, 1.24fr) minmax(230px, .76fr); gap: 12px; align-items: stretch; }
+.intensity-card { min-width: 0; padding: 13px 14px 10px; border: 1px solid var(--line); background: rgba(251, 249, 242, .88); }
+.intensity-card .plot-kicker { color: var(--muted); }
+.intensity-card .plot-heading h3 { color: var(--ink); font-size: 14px; }
+.chart-units { color: var(--muted); font-size: 8px; text-align: right; }
+.chart-intro { margin: 6px 0 2px; color: var(--ink-soft); font-size: 9px; line-height: 1.7; }
+.chart-frame { width: 100%; min-width: 0; min-height: 205px; overflow: hidden; }
+.chart-frame svg { width: 100%; height: auto; min-height: 190px; display: block; overflow: visible; }
+.chart-frame svg text { fill: #737a70; font: 8px var(--mono); }
+.chart-fallback { min-height: 194px; display: grid; place-items: center; margin: 0; padding: 20px; color: var(--muted); font-size: 9px; line-height: 1.8; text-align: center; }
+.chart-axis-note { display: flex; justify-content: space-between; gap: 10px; padding-top: 6px; border-top: 1px solid #e2ddcf; color: var(--muted); font-size: 7px; }
+.chart-axis-note span:first-child { color: var(--ink-soft); }
+
+.outcome-card { min-width: 0; padding: 13px 13px 12px; background: #e9e4d8; }
+.outcome-topline { display: flex; justify-content: space-between; align-items: center; color: #68766b; font: 7px var(--mono); letter-spacing: .08em; }
+.outcome-stamp { width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid var(--rust); border-radius: 50%; color: var(--rust); font: italic 14px var(--serif); }
+.outcome-card h3 { margin: 5px 0 0; color: var(--ink); font: 500 16px var(--serif); }
+.final-reading { display: flex; flex-direction: column; align-items: flex-start; margin-top: 8px; }
+.final-reading strong { color: var(--rust); font: 500 clamp(32px, 3.4vw, 43px)/1.15 var(--mono); letter-spacing: -.07em; overflow-wrap: anywhere; }
+.final-reading span { margin-top: 3px; color: var(--ink-soft); font-size: 8px; }
+.relative-reading { margin: 7px 0 0; color: var(--ink-soft); font-size: 8px; }
+.relative-reading strong { color: var(--ink); font: 10px var(--mono); }
+.relative-reading span { color: var(--muted); }
+.result-note { min-height: 42px; margin: 8px 0 0; padding: 7px 8px; border-left: 2px solid var(--rust); background: rgba(251, 249, 242, .72); color: var(--ink-soft); font-size: 8px; line-height: 1.7; }
+.stage-divider { display: flex; justify-content: space-between; gap: 8px; margin-top: 11px; padding-bottom: 5px; border-bottom: 1px solid #cbc5b7; color: #6e766c; font: 7px var(--mono); }
+.stage-list { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
+.stage-list li { min-width: 0; display: grid; grid-template-columns: 21px minmax(0, 1fr) auto; gap: 7px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(193, 187, 174, .62); }
+.stage-list li:last-child { border-bottom: 0; }
+.stage-list li.is-removed { opacity: .66; }
+.stage-dot { width: 18px; height: 18px; display: grid; place-items: center; border: 1px solid #aaa996; border-radius: 50%; color: #68746a; font: 6px var(--mono); }
+.stage-name { min-width: 0; color: var(--ink-soft); font-size: 7px; overflow-wrap: anywhere; }
+.stage-name small { display: block; margin: 2px 0 0; color: var(--muted); font: 8px/1.5 var(--mono); }
+.stage-list li > strong { color: var(--ink); font: 9px var(--mono); }
+.keyboard-note { margin: 0; color: var(--muted); font-size: 8px; line-height: 1.75; }
+.keyboard-note b { color: var(--ink-soft); font-weight: 600; }
+
+.principle-chapter { padding-top: 79px; }
+.principle-heading { margin-bottom: 23px; }
+.principle-board { display: grid; grid-template-columns: minmax(230px, .78fr) minmax(0, 1.22fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+.equation-panel { min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 20px 24px 20px 0; border-right: 1px solid var(--line); }
+.equation-label { color: var(--rust); font: 8px var(--mono); letter-spacing: .08em; }
+.equation { margin: 14px 0 9px; color: var(--ink); font: 500 clamp(26px, 3vw, 37px)/1.3 Georgia, var(--serif); white-space: nowrap; }
+.equation sub, .equation sup { font-size: .56em; }
+.equation-panel small { color: var(--muted); font-size: 9px; line-height: 1.75; }
+.principle-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; list-style: none; }
+.principle-steps li { min-width: 0; display: flex; gap: 10px; padding: 19px 15px; border-right: 1px solid var(--line); }
+.principle-steps li:last-child { border-right: 0; }
+.principle-steps li > span { flex: 0 0 auto; color: var(--rust); font: 8px var(--mono); }
+.principle-steps strong { color: var(--ink); font: 500 14px var(--serif); }
+.principle-steps p { margin: 7px 0 0; color: var(--ink-soft); font-size: 9px; line-height: 1.85; }
+.axis-footnote { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; margin: 16px 0 0; padding: 12px 14px; background: #eae5d9; color: var(--ink-soft); font-size: 8px; line-height: 1.8; }
+.axis-footnote > span:first-child { width: 21px; height: 21px; display: grid; place-items: center; border: 1px solid var(--teal); color: var(--teal); font-size: 13px; }
+.axis-footnote strong { margin-right: 7px; color: var(--ink); font-weight: 600; }
+
+.limits-chapter { padding-top: 75px; }
+.limits-heading { margin-bottom: 21px; }
+.limits-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr); gap: 38px; align-items: start; padding: 20px 0 23px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.stamp-small { display: inline-block; padding: 3px 6px; transform: rotate(-2deg); background: var(--teal-deep); color: #f6f1e5; font: 7px var(--mono); letter-spacing: .04em; }
+.limits-main h3 { margin: 12px 0 8px; color: var(--ink); font: 500 20px var(--serif); }
+.limits-main p { max-width: 700px; margin: 0; color: var(--ink-soft); font-size: 9px; line-height: 1.95; }
+.limits-main p + p { margin-top: 8px; color: var(--muted); }
+.limits-facts { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.limits-facts div { min-width: 0; min-height: 62px; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 9px 11px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.limits-facts span { color: var(--muted); font-size: 8px; }
+.limits-facts strong { color: var(--ink); font: 9px var(--serif); overflow-wrap: anywhere; }
+
+.closing-note { position: relative; margin-top: 48px; padding: 47px 0 45px; border-top: 1px solid var(--line); }
+.closing-note .eyebrow { margin-bottom: 12px; }
+.closing-note h2 { max-width: 800px; margin: 0; color: var(--ink); font: 500 clamp(32px, 4.4vw, 52px)/1.4 var(--serif); letter-spacing: -.035em; }
+.closing-note > p:not(.eyebrow) { max-width: 520px; margin: 12px 0 0; color: var(--ink-soft); font-size: 9px; line-height: 1.9; }
+.back-to-lab { position: absolute; right: 0; bottom: 47px; display: inline-flex; align-items: center; gap: 13px; padding: 7px 0; border-bottom: 1px solid var(--ink); color: var(--ink); font-size: 8px; text-decoration: none; }
+.back-to-lab span { color: var(--rust); font-size: 14px; }
+.back-to-lab:hover { color: var(--rust); }
+.site-footer { max-width: 1320px; min-height: 56px; display: flex; justify-content: space-between; align-items: center; gap: 18px; margin: auto; padding: 11px 38px; border-top: 1px solid var(--line); color: var(--muted); font-size: 8px; }
+
+@media (max-width: 1040px) {
+  .hero { grid-template-columns: minmax(0, .92fr) minmax(350px, 1.08fr); gap: 32px; }
+  .lab-layout { grid-template-columns: minmax(245px, .77fr) minmax(0, 1.5fr); }
+  .result-layout { grid-template-columns: 1fr; }
+  .outcome-card { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(0, 1.2fr); column-gap: 14px; align-items: start; }
+  .outcome-topline, .outcome-card h3, .final-reading, .relative-reading, .result-note { grid-column: 1; }
+  .stage-divider, .stage-list { grid-column: 2; }
+  .stage-divider { grid-row: 1; align-self: end; margin-top: 0; }
+  .stage-list { grid-row: 2 / span 5; align-self: stretch; }
+  .outcome-card h3 { grid-row: 2; }
+  .final-reading { grid-row: 3; }
+  .relative-reading { grid-row: 4; }
+  .result-note { grid-row: 5; }
+  .principle-board { grid-template-columns: 1fr; }
+  .equation-panel { min-height: 142px; padding: 17px 0; border-right: 0; border-bottom: 1px solid var(--line); }
+}
+
+@media (max-width: 760px) {
+  html { scroll-padding-top: 14px; }
+  .site-header { min-height: 68px; padding: 10px 20px; }
+  .site-nav { gap: 14px; }
+  .site-nav a { font-size: 8px; }
+  .header-index { display: none; }
+  .page-shell { padding: 0 20px; }
+  .hero { grid-template-columns: 1fr; gap: 27px; min-height: 0; padding: 41px 0 48px; }
+  .hero h1 { font-size: clamp(61px, 14vw, 83px); }
+  .hero-figure { max-width: 580px; }
+  .hero-optical-mark { max-width: 380px; }
+  .chapter { padding-top: 53px; }
+  .chapter-heading { grid-template-columns: 1fr; gap: 12px; margin-bottom: 20px; }
+  .chapter h2 { font-size: clamp(35px, 8vw, 48px); }
+  .chapter-intro { max-width: none; justify-self: start; margin: 0; }
+  .lab-layout { grid-template-columns: 1fr; gap: 13px; }
+  .controls-panel { padding: 15px; }
+  .source-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .apparatus-column { gap: 10px; }
+  .beam-card { padding: 13px 12px 11px; }
+  #beam-canvas { height: clamp(245px, 59vw, 330px); }
+  .result-layout { grid-template-columns: 1fr; }
+  .outcome-card { grid-template-columns: 1fr; }
+  .outcome-topline, .outcome-card h3, .final-reading, .relative-reading, .result-note, .stage-divider, .stage-list { grid-column: 1; grid-row: auto; }
+  .outcome-card h3 { margin-top: 6px; }
+  .stage-divider { margin-top: 11px; }
+  .stage-list { grid-row: auto; }
+  .principle-board { grid-template-columns: 1fr; }
+  .equation-panel { min-height: 0; }
+  .principle-steps { grid-template-columns: 1fr; }
+  .principle-steps li { padding: 13px 2px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .principle-steps li:last-child { border-bottom: 0; }
+  .principle-steps p { max-width: 580px; }
+  .limits-grid { grid-template-columns: 1fr; gap: 18px; }
+  .closing-note { margin-top: 37px; padding: 39px 0 89px; }
+  .closing-note h2 { font-size: clamp(32px, 8vw, 45px); }
+  .back-to-lab { right: auto; bottom: 33px; left: 0; }
+  .site-footer { padding: 11px 20px; }
+}
+
+@media (max-width: 520px) {
+  .site-header { gap: 10px; padding-right: 15px; padding-left: 15px; }
+  .brand-mark { width: 34px; height: 34px; font-size: 18px; }
+  .wordmark { gap: 8px; }
+  .wordmark-copy strong { font-size: 12px; }
+  .wordmark-copy small { font-size: 7px; }
+  .site-nav { gap: 9px; }
+  .site-nav a { font-size: 7px; white-space: nowrap; }
+  .page-shell { padding: 0 15px; }
+  .hero { padding-top: 35px; }
+  .hero-description { font-size: 9px; }
+  .hero-figure { padding: 10px; }
+  .hero-default { grid-template-columns: 1fr; gap: 2px; }
+  .hero-default > span, .hero-default strong, .hero-default small { grid-column: 1; grid-row: auto; justify-self: start; }
+  .hero-default strong { font-size: 13px; }
+  .chapter h2 { font-size: clamp(32px, 9vw, 42px); }
+  .chapter-intro { font-size: 9px; }
+  .controls-panel { padding: 13px 12px 12px; }
+  .source-options { gap: 5px; }
+  .source-option { padding: 8px 5px; gap: 6px; }
+  .source-option input { left: 6px; }
+  .source-option strong { font-size: 8px; }
+  .source-option small { font-size: 7px; }
+  .beam-card { padding-right: 9px; padding-left: 9px; }
+  .beam-card-heading { align-items: flex-start; }
+  .beam-card-heading h3 { font-size: 14px; }
+  .direction-chip { margin-top: 4px; padding: 3px 5px; font-size: 6px; }
+  #beam-canvas { height: clamp(235px, 69vw, 300px); }
+  .beam-legend { gap: 6px 10px; }
+  .result-layout { gap: 9px; }
+  .intensity-card { padding: 11px 9px 9px; }
+  .intensity-card .plot-heading { align-items: flex-start; }
+  .intensity-card .plot-heading h3 { max-width: 230px; font-size: 12px; }
+  .chart-units { max-width: 65px; padding-top: 12px; font-size: 7px; }
+  .chart-frame { min-height: 180px; }
+  .chart-frame svg { min-height: 176px; }
+  .chart-axis-note { font-size: 7px; }
+  .outcome-card { padding: 12px; }
+  .final-reading strong { font-size: clamp(34px, 11vw, 43px); }
+  .principle-chapter, .limits-chapter { padding-top: 57px; }
+  .equation { font-size: clamp(25px, 8vw, 33px); }
+  .limits-facts div { min-height: 57px; padding: 8px; }
+  .limits-facts strong { font-size: 8px; }
+  .site-footer { min-height: 54px; gap: 8px; padding-right: 15px; padding-left: 15px; font-size: 7px; }
+}
+
+@media (max-width: 365px) {
+  .site-nav { gap: 6px; }
+  .site-nav a { font-size: 6px; }
+  .header-index { display: none; }
+  .source-options { grid-template-columns: 1fr; }
+  .source-option { min-height: 38px; grid-template-columns: 14px 1fr; }
+  .source-option strong { font-size: 8px; }
+  .source-option small { display: inline; margin-left: 4px; }
+  .preset-grid { grid-template-columns: 1fr; }
+  .preset-button { min-height: 40px; }
+  .hero-default strong { font-size: 11px; }
+  .direction-chip { font-size: 0; }
+  .direction-chip span { font-size: 10px; }
+  .chart-axis-note { flex-direction: column; gap: 2px; font-size: 7px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
+
+</style></head><body>
+<a class="skip-link" href="#experiment">跳到光路实验</a>
+
+<header class="site-header" id="top">
+  <a class="wordmark" href="#top" aria-label="偏振之间，返回页首">
+    <span class="brand-mark" aria-hidden="true">偏</span>
+    <span class="wordmark-copy"><strong>偏振之间</strong><small>光学桌面实验</small></span>
+  </a>
+  <nav class="site-nav" aria-label="页面导航">
+    <a href="#experiment">光路实验</a>
+    <a href="#principle">马吕斯定律</a>
+    <a href="#limits">模型边界</a>
+  </nav>
+  <span class="header-index">OPTICS / 01</span>
+</header>
+
+<main id="main" class="page-shell">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span>光与方向 / POLARIZATION</p>
+      <h1 id="hero-title">偏振<br><em>之间</em></h1>
+      <p class="hero-lede">光经过一片片偏振片，<br>方向被筛选，亮度也随之改变。</p>
+      <p class="hero-description">两片透振轴交叉时，光为什么暗下来？把第三片放在中间，为什么又有一部分光能通过？转动角度，沿着光路看答案。</p>
+      <a class="hero-link" href="#experiment">进入光路实验 <span aria-hidden="true">↓</span></a>
+    </div>
+
+    <figure class="hero-figure" aria-hidden="true">
+      <div class="hero-figure-top"><span>光路笔记 / FIELD NOTE</span><span>FIG. 01</span></div>
+      <div class="hero-optical-mark">
+        <span class="orbit orbit-outer"></span>
+        <span class="orbit orbit-inner"></span>
+        <span class="orbit-axis orbit-axis-one"></span>
+        <span class="orbit-axis orbit-axis-two"></span>
+        <span class="hero-light"></span>
+        <span class="hero-filter hero-filter-one"></span>
+        <span class="hero-filter hero-filter-two"></span>
+      </div>
+      <figcaption><span>入射光</span><i></i><span>透振轴</span><i></i><span>出射光</span></figcaption>
+      <div class="hero-default"><span>从默认设置开始</span><strong>0° <b>→</b> 45° <b>→</b> 90°</strong><small>非偏振输入 · 最终透射率 12.5%</small></div>
+    </figure>
+  </section>
+
+  <section id="experiment" class="chapter experiment-chapter" aria-labelledby="experiment-title">
+    <div class="chapter-heading">
+      <div>
+        <p class="eyebrow"><span class="section-number">01</span>互动实验 / THE OPTICAL BENCH</p>
+        <h2 id="experiment-title">转动透振轴，<br><em>追踪光强的变化。</em></h2>
+      </div>
+      <p class="chapter-intro">改变入射光或偏振片角度，观察光束示意、逐片强度与末片角度曲线如何一起变化。角度从屏幕向上开始，顺时针增加；透振轴没有箭头方向。</p>
+    </div>
+
+    <div class="lab-layout">
+      <aside class="controls-panel" aria-label="偏振实验控制台">
+        <div class="panel-heading"><span>实验设置</span><span>INPUT / AXIS</span></div>
+
+        <fieldset class="source-group">
+          <legend>入射光</legend>
+          <div class="source-options">
+            <label class="source-option" for="source-unpolarized">
+              <input id="source-unpolarized" name="source-mode" type="radio" value="unpolarized" checked>
+              <span class="option-mark" aria-hidden="true"></span>
+              <span><strong>非偏振光</strong><small>方向均匀混合</small></span>
+            </label>
+            <label class="source-option" for="source-linear">
+              <input id="source-linear" name="source-mode" type="radio" value="linear">
+              <span class="option-mark" aria-hidden="true"></span>
+              <span><strong>线偏振光</strong><small>指定初始方向</small></span>
+            </label>
+          </div>
+          <label class="range-control source-angle-control" for="source-angle">
+            <span class="control-title">入射偏振方向 <output id="source-angle-value" for="source-angle">0°</output></span>
+            <input id="source-angle" type="range" min="0" max="180" step="1" value="0" disabled aria-describedby="source-angle-help">
+            <span class="range-hint"><span>0°</span><span>90°</span><span>180°</span></span>
+          </label>
+          <p id="source-angle-help" class="control-help">选择线偏振光后可调整方向；0° 与 180° 表示同一透振轴。</p>
+        </fieldset>
+
+        <div class="axis-controls" aria-label="偏振片角度">
+          <div class="control-section-label"><span>偏振片</span><span>ANGLE / DEG</span></div>
+          <label class="range-control" for="first-angle">
+            <span class="control-title"><span class="axis-name"><i class="axis-number">01</i>第一片</span><output id="first-angle-value" for="first-angle">0°</output></span>
+            <input id="first-angle" type="range" min="0" max="180" step="1" value="0" aria-describedby="axis-angle-help">
+            <span class="range-hint"><span>0°</span><span>90°</span><span>180°</span></span>
+          </label>
+
+          <div class="middle-control">
+            <div class="middle-control-head">
+              <label class="switch-label" for="middle-enabled">
+                <input id="middle-enabled" type="checkbox" checked>
+                <span class="switch-track" aria-hidden="true"><i></i></span>
+                <span>插入中间片</span>
+              </label>
+              <span class="optional-tag">可移除</span>
+            </div>
+            <label class="range-control" for="middle-angle">
+              <span class="control-title"><span class="axis-name"><i class="axis-number">02</i>中间片</span><output id="middle-angle-value" for="middle-angle">45°</output></span>
+              <input id="middle-angle" type="range" min="0" max="180" step="1" value="45" aria-describedby="axis-angle-help">
+              <span class="range-hint"><span>0°</span><span>90°</span><span>180°</span></span>
+            </label>
+          </div>
+
+          <label class="range-control" for="last-angle">
+            <span class="control-title"><span class="axis-name"><i class="axis-number">03</i>末片</span><output id="last-angle-value" for="last-angle">90°</output></span>
+            <input id="last-angle" type="range" min="0" max="180" step="1" value="90" aria-describedby="axis-angle-help">
+            <span class="range-hint"><span>0°</span><span>90°</span><span>180°</span></span>
+          </label>
+          <p id="axis-angle-help" class="control-help">拖动滑块或聚焦后用方向键微调。角度读数保留 180°；计算时它与 0° 等价。</p>
+        </div>
+
+        <div class="preset-section">
+          <div class="control-section-label"><span>快捷实验</span><span>TRY THESE</span></div>
+          <div class="preset-grid" role="group" aria-label="预设实验">
+            <button id="preset-crossed" class="preset-button" type="button"><span>交叉偏振片</span><small>移除中间片</small></button>
+            <button id="preset-restore" class="preset-button preset-highlight" type="button"><span>插入第三片</span><small>回到 0° / 45° / 90°</small></button>
+            <button id="preset-parallel" class="preset-button" type="button"><span>平行通过</span><small>三片都转到 0°</small></button>
+            <button id="preset-half" class="preset-button" type="button"><span>转到一半</span><small>线偏振 · 三片 45°</small></button>
+          </div>
+          <button id="reset-experiment" class="reset-button" type="button"><span aria-hidden="true">↺</span> 重置为默认实验</button>
+        </div>
+      </aside>
+
+      <div class="apparatus-column">
+        <article class="beam-card" aria-labelledby="beam-heading">
+          <div class="beam-card-heading">
+            <div><p class="plot-kicker">光束示意 / PROPAGATION</p><h3 id="beam-heading">沿光路逐片筛选</h3></div>
+            <span class="direction-chip"><span aria-hidden="true">←</span> 光从左向右 <span aria-hidden="true">→</span></span>
+          </div>
+          <div class="beam-frame">
+            <canvas id="beam-canvas" role="img" tabindex="0" aria-label="偏振片和光束示意：非偏振光依次经过 0 度、45 度、90 度偏振片；光从左向右传播，偏振片圆盘内的线表示透振轴方向。" aria-describedby="beam-summary">
+              光从左向右通过偏振片；每片偏振片只透过沿其透振轴方向的电场分量。
+            </canvas>
+          </div>
+          <p id="beam-summary" class="beam-summary">示意说明：光从左向右传播，圆盘中的线表示偏振片的透振轴；光束的明暗表示相对强度，不以颜色作为唯一信息。</p>
+          <div class="beam-legend"><span><i class="legend-axis" aria-hidden="true"></i>透振轴</span><span><i class="legend-beam" aria-hidden="true"></i>光束强度</span><span>0° 向上 · 顺时针增加</span></div>
+        </article>
+
+        <div class="result-layout">
+          <article class="intensity-card" aria-labelledby="chart-heading">
+            <div class="plot-heading">
+              <div><p class="plot-kicker">角度响应 / MALUS CURVE</p><h3 id="chart-heading">转动末片，会透过多少光？</h3></div>
+              <span class="chart-units">相对入射强度</span>
+            </div>
+            <p class="chart-intro">固定当前入射光与前两片角度，横轴只改变末片角度。曲线标记当前末片位置。</p>
+            <div id="intensity-chart" class="chart-frame">
+              <p class="chart-fallback">末片角度曲线将在本地模型载入后显示。横轴：末片角度 0°–180°；纵轴：相对入射强度 0–1。</p>
+            </div>
+            <div class="chart-axis-note"><span>末片角度</span><span>0° 与 180° 的透振轴等价</span></div>
+          </article>
+
+          <article class="outcome-card" aria-labelledby="outcome-heading">
+            <div class="outcome-topline"><span>逐片结果 / READOUT</span><span class="outcome-stamp" aria-hidden="true">I</span></div>
+            <h3 id="outcome-heading">最后留下的光</h3>
+            <div class="final-reading">
+              <strong id="final-percent">12.5%</strong>
+              <span>最终透射率</span>
+            </div>
+            <p class="relative-reading">归一光强 <strong id="final-intensity">0.125</strong><span> / 入射强度</span></p>
+            <p id="result-note" class="result-note">非偏振光经过第一片后减半，再经过两次 45° 夹角筛选，留下 12.5%。</p>
+            <div class="stage-divider"><span>每一片之后</span><span>相对强度</span></div>
+            <ol id="stage-list" class="stage-list" aria-label="经过各偏振片后的光强">
+              <li><span class="stage-dot" aria-hidden="true">01</span><span class="stage-name">第一片 <small>0°</small></span><strong>0.500</strong></li>
+              <li><span class="stage-dot" aria-hidden="true">02</span><span class="stage-name">中间片 <small>45°</small></span><strong>0.250</strong></li>
+              <li><span class="stage-dot" aria-hidden="true">03</span><span class="stage-name">末片 <small>90°</small></span><strong>0.125</strong></li>
+            </ol>
+          </article>
+        </div>
+        <p class="keyboard-note"><b>键盘操作：</b>聚焦角度滑块后用方向键逐度调整；鼠标与触控也可直接拖动。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="principle" class="chapter principle-chapter" aria-labelledby="principle-title">
+    <div class="chapter-heading principle-heading">
+      <div><p class="eyebrow"><span class="section-number">02</span>物理关系 / MALUS'S LAW</p><h2 id="principle-title">偏振片筛掉分量，<br><em>不是把光拧弯。</em></h2></div>
+      <p class="chapter-intro">理想线偏振片让电场在透振轴方向上的分量通过。光每经过一片，新的偏振方向就沿着那片的透振轴；下一片再按夹角筛选一次。</p>
+    </div>
+    <div class="principle-board">
+      <div class="equation-panel">
+        <span class="equation-label">马吕斯定律 / MALUS'S LAW</span>
+        <p class="equation">I<sub>出</sub> = I<sub>入</sub> cos<sup>2</sup>(Δθ)</p>
+        <small>Δθ 是入射偏振方向与透振轴之间的较小夹角。</small>
+      </div>
+      <ol class="principle-steps">
+        <li><span>01</span><div><strong>先有方向</strong><p>非偏振光通过第一片后，成为沿该透振轴方向的线偏振光，理想情况下强度减半。</p></div></li>
+        <li><span>02</span><div><strong>比较夹角</strong><p>两片轴平行，投影分量保留最多；两片轴交叉 90°，理想模型中没有分量通过。</p></div></li>
+        <li><span>03</span><div><strong>中间片改变方向</strong><p>第三片先筛选电场，再把出射方向设为自己的透振轴，因此交叉的末片也能得到一部分光。</p></div></li>
+      </ol>
+    </div>
+    <p class="axis-footnote"><span aria-hidden="true">↗</span><span><strong>角度约定</strong> 页面以屏幕向上为 0°，顺时针增加。透振轴没有正反方向，因此 0° 和 180° 等价；读数会保留滑块端点，计算使用归一后的角度。</span></p>
+  </section>
+
+  <section id="limits" class="chapter limits-chapter" aria-labelledby="limits-title">
+    <div class="chapter-heading limits-heading">
+      <div><p class="eyebrow"><span class="section-number">03</span>模型说明 / MODEL LIMITS</p><h2 id="limits-title">这是理想模型，<br><em>不是光功率计。</em></h2></div>
+      <p class="chapter-intro">这个小实验只回答一个问题：理想线偏振光经过理想线偏振片后，相对强度怎样随角度变化。屏幕上的光束亮度用于比较，不表示真实功率读数。</p>
+    </div>
+    <div class="limits-grid">
+      <div class="limits-main">
+        <span class="stamp-small">计算边界</span>
+        <h3>用简单规则，看清角度的作用。</h3>
+        <p>页面把入射光强归一化为 1。非偏振输入经过第一片后取 0.5，后续偏振片逐片应用马吕斯定律；每片均视为理想线偏振片。</p>
+        <p>模型不包含波长、圆偏振或椭圆偏振、材料吸收与漏光、表面反射、玻璃双折射及真实光束的空间分布。实际偏振片的透射率与屏幕显示都会受到材料和设备影响。</p>
+      </div>
+      <div class="limits-facts" aria-label="模型简表">
+        <div><span>入射光强</span><strong>归一为 1</strong></div>
+        <div><span>偏振片</span><strong>理想线偏振片</strong></div>
+        <div><span>强度规则</span><strong>逐片应用 cos²</strong></div>
+        <div><span>页面运行</span><strong>本地离线计算</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing-note" aria-label="结语">
+    <p class="eyebrow">回到光路</p>
+    <h2>方向被一层层筛选，<br><em>亮度就留下了答案。</em></h2>
+    <p>再回到实验台，移除中间片、换一个角度，看看理想模型里的光怎样明暗交替。</p>
+    <a href="#experiment" class="back-to-lab">回到实验 <span aria-hidden="true">↑</span></a>
+  </section>
+</main>
+
+<footer class="site-footer"><span>偏振之间 · 光学桌面实验</span><span>单文件 · 离线运行 · 计算留在本机</span></footer>
+
+<script>
+(function (root, factory) {
+  const polarizationModel = factory();
+
+  if (typeof module === "object" && module.exports) {
+    module.exports = polarizationModel;
+  }
+
+  if (root) {
+    root.PolarizationModel = polarizationModel;
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  "use strict";
+
+  // Absorb only floating-point residue from exact crossed axes (for example,
+  // cos(90°)^2), while preserving physically meaningful weak transmission.
+  const ZERO_EPSILON = 1e-30;
+
+  function finiteOrZero(value) {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  function clampIntensity(value) {
+    if (!Number.isFinite(value) || value <= ZERO_EPSILON) {
+      return 0;
+    }
+
+    if (value >= 1) {
+      return 1;
+    }
+
+    return value;
+  }
+
+  function normalizeAxisAngle(angle) {
+    const finiteAngle = finiteOrZero(angle);
+    const normalized = ((finiteAngle % 180) + 180) % 180;
+    return Object.is(normalized, -0) || normalized === 180 ? 0 : normalized;
+  }
+
+  function malusTransmission(deltaDegrees) {
+    const radians = (finiteOrZero(deltaDegrees) * Math.PI) / 180;
+    const cosine = Math.cos(radians);
+    return clampIntensity(cosine * cosine);
+  }
+
+  function axisSeparation(firstAxis, secondAxis) {
+    const difference = Math.abs(firstAxis - secondAxis);
+    return Math.min(difference, 180 - difference);
+  }
+
+  function solve(config) {
+    const settings = config && typeof config === "object" ? config : {};
+    const sourceMode = settings.sourceMode === "linear" ? "linear" : "unpolarized";
+    const sourceAngle = normalizeAxisAngle(settings.sourceAngle);
+    const firstAngle = normalizeAxisAngle(settings.firstAngle);
+    const middleAngle = normalizeAxisAngle(settings.middleAngle);
+    const lastAngle = normalizeAxisAngle(settings.lastAngle);
+    const middleEnabled = settings.middleEnabled === true;
+
+    let intensity = 1;
+    let polarizationAngle = sourceMode === "linear" ? sourceAngle : null;
+    const stages = [];
+
+    function passStage(id, angle, enabled) {
+      const before = intensity;
+      let deltaAngle = null;
+      let transmission = 1;
+      let outputAngle = polarizationAngle;
+
+      if (enabled) {
+        if (id === "first" && sourceMode === "unpolarized") {
+          transmission = 0.5;
+        } else {
+          deltaAngle = axisSeparation(polarizationAngle, angle);
+          transmission = malusTransmission(deltaAngle);
+        }
+
+        intensity = clampIntensity(before * transmission);
+        polarizationAngle = angle;
+        outputAngle = angle;
+      }
+
+      stages.push({
+        id,
+        angle,
+        enabled,
+        before,
+        after: intensity,
+        transmission,
+        deltaAngle,
+        outputAngle,
+      });
+    }
+
+    passStage("first", firstAngle, true);
+    passStage("middle", middleAngle, middleEnabled);
+    passStage("last", lastAngle, true);
+
+    const finalIntensity = clampIntensity(intensity);
+
+    return {
+      inputIntensity: 1,
+      sourceMode,
+      sourceAngle,
+      stages,
+      finalIntensity,
+      finalPercent: finalIntensity * 100,
+    };
+  }
+
+  return {
+    solve,
+    normalizeAxisAngle,
+    malusTransmission,
+  };
+});
+
+</script>
+<script>
+(function () {
+  'use strict';
+
+  var Model = window.PolarizationModel;
+  var $ = function (id) { return document.getElementById(id); };
+  if (!Model) throw new Error('PolarizationModel must load before ui.js');
+
+  var defaults = {
+    sourceMode: 'unpolarized', sourceAngle: 0,
+    firstAngle: 0, middleAngle: 45, lastAngle: 90, middleEnabled: true
+  };
+  var plateNames = { first: '第一片', middle: '中间片', last: '检偏片' };
+  var canvas = $('beam-canvas');
+  var canvasContext = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+
+  function number(id) { return Number($(id).value); }
+  function currentState() {
+    return {
+      sourceMode: $('source-linear').checked ? 'linear' : 'unpolarized',
+      sourceAngle: number('source-angle'),
+      firstAngle: number('first-angle'),
+      middleAngle: number('middle-angle'),
+      lastAngle: number('last-angle'),
+      middleEnabled: $('middle-enabled').checked
+    };
+  }
+  function writeState(state) {
+    $('source-unpolarized').checked = state.sourceMode === 'unpolarized';
+    $('source-linear').checked = state.sourceMode === 'linear';
+    $('source-angle').value = state.sourceAngle;
+    $('first-angle').value = state.firstAngle;
+    $('middle-angle').value = state.middleAngle;
+    $('last-angle').value = state.lastAngle;
+    $('middle-enabled').checked = state.middleEnabled;
+    render();
+  }
+  function fixed(value, digits) { return Number(value).toFixed(digits); }
+  function normalizedPercent(value) {
+    var percent = value * 100;
+    if (value === 0) return '0%';
+    return (percent < 0.1 ? percent.toExponential(2) : fixed(percent, 1)) + '%';
+  }
+  function angleLabel(value) { return fixed(Model.normalizeAxisAngle(value), 0) + '°'; }
+  function intensityLabel(value) {
+    if (value === 0) return '0';
+    return value < 0.001 ? value.toExponential(2) : fixed(value, 3);
+  }
+
+  function syncControls(state) {
+    $('source-angle').disabled = state.sourceMode !== 'linear';
+    $('middle-angle').disabled = !state.middleEnabled;
+    $('source-angle-value').textContent = fixed(state.sourceAngle, 0) + '°';
+    $('first-angle-value').textContent = fixed(state.firstAngle, 0) + '°';
+    $('middle-angle-value').textContent = fixed(state.middleAngle, 0) + '°';
+    $('last-angle-value').textContent = fixed(state.lastAngle, 0) + '°';
+  }
+
+  function stageCopy(stage) {
+    var index = stage.id === 'first' ? '01' : stage.id === 'middle' ? '02' : '03';
+    var transmission = '×' + normalizedPercent(stage.transmission);
+    var detail = stage.enabled
+      ? (stage.deltaAngle === null ? '非偏振入射' : '夹角 ' + fixed(stage.deltaAngle, 0) + '°') + ' · ' + transmission + ' · 出射轴 ' + angleLabel(stage.outputAngle)
+      : '已移除 · 设定 ' + angleLabel(stage.angle) + ' · 光路直通 · 出射轴 ' + angleLabel(stage.outputAngle);
+    return '<li class="stage-row' + (stage.enabled ? '' : ' is-removed') + '">' +
+      '<span class="stage-dot" aria-hidden="true">' + index + '</span>' +
+      '<span class="stage-name">' + plateNames[stage.id] + ' <small>' + detail + '</small></span>' +
+      '<strong>' + intensityLabel(stage.after) + '</strong></li>';
+  }
+
+  function resultText(state, result) {
+    if (result.finalIntensity === 0) {
+      return '光路在某一片被完全截断。末端读数为零；后续片的透射因子仍由轴夹角决定。';
+    }
+    if (state.sourceMode === 'unpolarized') {
+      return '非偏振光的振动方向均匀分布。第一片选出一个方向后，理想模型留下输入光强的一半；后续各片再按轴夹角逐次筛选。';
+    }
+    return '入射光已沿 ' + angleLabel(state.sourceAngle) + ' 方向线偏振。第一片起，每一片都只留下沿自身透振轴的电场分量。';
+  }
+
+  function drawAxis(ctx, x, y, length, angle, color, alpha, width) {
+    var rad = angle * Math.PI / 180;
+    var dx = Math.sin(rad) * length / 2;
+    var dy = -Math.cos(rad) * length / 2;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = width || 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x - dx, y - dy); ctx.lineTo(x + dx, y + dy); ctx.stroke();
+    var endpoint = Math.max(1.7, (width || 2) * 1.25);
+    ctx.beginPath(); ctx.arc(x - dx, y - dy, endpoint, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + dx, y + dy, endpoint, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawCanvas(state, result) {
+    if (!canvasContext || !canvas) return;
+    var dpr = window.devicePixelRatio || 1;
+    var width = Math.max(280, Math.round(canvas.clientWidth || 720));
+    var height = Math.max(250, Math.round(canvas.clientHeight || 286));
+    if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+    }
+    canvasContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var ctx = canvasContext;
+    var colors = { bg: '#193235', grid: 'rgba(210,224,205,.08)', ink: '#eef0db', muted: '#a5b9ae', acid: '#d8e56e', rust: '#d47856', beam: '#f4d789', removed: '#748987' };
+    var xs = [width * 0.31, width * 0.54, width * 0.77];
+    var midY = height * 0.46;
+    var radius = Math.min(30, Math.max(23, width * 0.055));
+    var stages = result.stages;
+    var beamStart = 26;
+    var beamEnd = width - 20;
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = colors.bg; ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = colors.grid; ctx.lineWidth = 1;
+    for (var gx = 18; gx < width; gx += 32) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, height); ctx.stroke(); }
+    for (var gy = 16; gy < height; gy += 32) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(width, gy); ctx.stroke(); }
+
+    var points = [beamStart, xs[0], xs[1], xs[2], beamEnd];
+    var currentIntensity = result.inputIntensity;
+    for (var seg = 0; seg < points.length - 1; seg++) {
+      if (seg > 0) currentIntensity = stages[seg - 1].after;
+      var extinguished = currentIntensity === 0;
+      var alpha = extinguished ? 0.12 : 0.17 + 0.72 * Math.sqrt(currentIntensity);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = extinguished ? colors.removed : colors.beam;
+      ctx.shadowColor = colors.beam;
+      ctx.shadowBlur = extinguished ? 0 : 13 * Math.sqrt(currentIntensity);
+      ctx.lineWidth = extinguished ? 1 : 5 + 5 * Math.sqrt(currentIntensity);
+      ctx.beginPath(); ctx.moveTo(points[seg], midY); ctx.lineTo(points[seg + 1], midY); ctx.stroke();
+      ctx.restore();
+    }
+
+    var sourceX = 42, sourceY = midY;
+    ctx.fillStyle = 'rgba(216,229,110,.12)';
+    ctx.beginPath(); ctx.arc(sourceX, sourceY, radius * 0.72, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(216,229,110,.52)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(sourceX, sourceY, radius * 0.72, 0, Math.PI * 2); ctx.stroke();
+    if (state.sourceMode === 'unpolarized') {
+      for (var spoke = 0; spoke < 8; spoke++) {
+        var a = spoke * 22.5;
+        drawAxis(ctx, sourceX, sourceY, radius * 0.62, a, colors.acid, 0.72, 1.4);
+      }
+    } else {
+      drawAxis(ctx, sourceX, sourceY, radius * 1.12, state.sourceAngle, colors.acid, 1, 3);
+    }
+
+    for (var i = 0; i < stages.length; i++) {
+      var stage = stages[i], x = xs[i], axis = stage.angle;
+      var before = stage.before;
+      ctx.save();
+      ctx.fillStyle = stage.enabled ? 'rgba(245,241,223,.08)' : 'rgba(116,137,135,.035)';
+      ctx.strokeStyle = stage.enabled ? 'rgba(238,240,219,.7)' : 'rgba(164,185,178,.4)';
+      ctx.lineWidth = 1;
+      if (!stage.enabled) ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.arc(x, midY, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.setLineDash([]);
+      if (stage.enabled) {
+        ctx.save(); ctx.beginPath(); ctx.arc(x, midY, radius - 3, 0, Math.PI * 2); ctx.clip();
+        ctx.globalAlpha = 0.18 + 0.56 * Math.sqrt(Math.max(0, before));
+        ctx.fillStyle = colors.beam; ctx.fillRect(x - radius, midY - radius, radius * 2, radius * 2);
+        ctx.restore();
+        drawAxis(ctx, x, midY, radius * 1.45, axis, colors.acid, 1, 3.2);
+      } else {
+        ctx.strokeStyle = colors.removed; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x - radius * 0.55, midY - radius * 0.55); ctx.lineTo(x + radius * 0.55, midY + radius * 0.55); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x + radius * 0.55, midY - radius * 0.55); ctx.lineTo(x - radius * 0.55, midY + radius * 0.55); ctx.stroke();
+      }
+      ctx.restore();
+
+      ctx.textAlign = 'center';
+      ctx.font = '600 10px system-ui, sans-serif';
+      ctx.fillStyle = stage.enabled ? colors.ink : colors.muted;
+      ctx.fillText(plateNames[stage.id], x, midY - radius - 22);
+      ctx.font = '10px system-ui, sans-serif';
+      ctx.fillStyle = stage.enabled ? colors.muted : colors.removed;
+      ctx.fillText(stage.enabled ? angleLabel(stage.angle) : '已移除', x, midY + radius + 19);
+    }
+
+    ctx.textAlign = 'left'; ctx.fillStyle = colors.acid;
+    ctx.font = '600 9px system-ui, sans-serif'; ctx.fillText('光源', 26, 20);
+    ctx.fillStyle = colors.muted; ctx.font = '10px system-ui, sans-serif';
+    ctx.fillText(state.sourceMode === 'unpolarized' ? '非偏振' : '线偏振 ' + angleLabel(state.sourceAngle), 26, height - 13);
+    ctx.textAlign = 'right'; ctx.fillStyle = colors.acid; ctx.font = '600 9px system-ui, sans-serif';
+    ctx.fillText('出射', width - 22, 20);
+    ctx.textAlign = 'right'; ctx.fillStyle = colors.ink; ctx.font = '600 11px system-ui, sans-serif';
+    ctx.fillText(normalizedPercent(result.finalIntensity), width - 22, height - 13);
+    var accessible = '偏振片光路示意。输入为' + (state.sourceMode === 'unpolarized' ? '非偏振光' : '角度 ' + angleLabel(state.sourceAngle) + ' 的线偏振光') + '。第一片 ' + angleLabel(state.firstAngle) + '，中间片 ' + (state.middleEnabled ? angleLabel(state.middleAngle) : '已移除') + '，检偏片 ' + angleLabel(state.lastAngle) + '。最终透射率 ' + normalizedPercent(result.finalIntensity) + '。';
+    canvas.setAttribute('aria-label', accessible);
+    if ($('beam-summary')) $('beam-summary').textContent = accessible;
+  }
+
+  function drawChart(state, result) {
+    var host = $('intensity-chart');
+    if (!host) return;
+    var W = 720, H = 260, left = 60, right = 18, top = 18, bottom = 43;
+    var plotW = W - left - right, plotH = H - top - bottom;
+    function x(angle) { return left + plotW * angle / 180; }
+    function y(value) { return top + plotH * (1 - Math.max(0, Math.min(1, value))); }
+    var points = [];
+    for (var a = 0; a <= 180; a += 3) {
+      var probe = Model.solve({ sourceMode: state.sourceMode, sourceAngle: state.sourceAngle,
+        firstAngle: state.firstAngle, middleAngle: state.middleAngle, lastAngle: a,
+        middleEnabled: state.middleEnabled });
+      points.push([a, probe.finalIntensity]);
+    }
+    var path = points.map(function (p, i) { return (i ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1); }).join(' ');
+    var grid = '';
+    [0, 0.25, 0.5, 0.75, 1].forEach(function (v) {
+      var yy = y(v).toFixed(1);
+      grid += '<line x1="' + left + '" y1="' + yy + '" x2="' + (W - right) + '" y2="' + yy + '" class="chart-grid" stroke="#d9d4c8" stroke-width="1" />';
+      grid += '<text x="' + (left - 10) + '" y="' + (Number(yy) + 4) + '" class="chart-y" text-anchor="end">' + Math.round(v * 100) + '%</text>';
+    });
+    [0, 45, 90, 135, 180].forEach(function (v) {
+      var xx = x(v).toFixed(1);
+      grid += '<line x1="' + xx + '" y1="' + top + '" x2="' + xx + '" y2="' + (H - bottom) + '" class="chart-grid chart-grid-v" stroke="#e4ded2" stroke-width="1" stroke-dasharray="2 5" />';
+      grid += '<text x="' + xx + '" y="' + (H - bottom + 21) + '" class="chart-x" text-anchor="middle">' + v + '°</text>';
+    });
+    var currentX = x(state.lastAngle), currentY = y(result.finalIntensity);
+    var chartLabel = '末片角度与最终光强关系图。横轴角度 0 到 180 度，纵轴相对入射光强百分比。当前末片角度 ' + fixed(state.lastAngle, 0) + ' 度，透射率 ' + normalizedPercent(result.finalIntensity) + '。';
+    host.removeAttribute('role'); host.removeAttribute('aria-label');
+    host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + chartLabel + '">' +
+      grid + '<line x1="' + left + '" y1="' + (H - bottom) + '" x2="' + (W - right) + '" y2="' + (H - bottom) + '" class="chart-axis" stroke="#435554" stroke-width="1.2" />' +
+      '<line x1="' + left + '" y1="' + top + '" x2="' + left + '" y2="' + (H - bottom) + '" class="chart-axis" stroke="#435554" stroke-width="1.2" />' +
+      '<path d="' + path + '" class="chart-line" fill="none" stroke="#b64b31" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />' +
+      '<line x1="' + currentX.toFixed(1) + '" y1="' + top + '" x2="' + currentX.toFixed(1) + '" y2="' + (H - bottom) + '" class="chart-current" stroke="#527b7c" stroke-width="1.4" stroke-dasharray="4 4" />' +
+      '<circle cx="' + currentX.toFixed(1) + '" cy="' + currentY.toFixed(1) + '" r="5" class="chart-dot" fill="#b64b31" stroke="#fbf9f2" stroke-width="2" />' +
+      '<text x="' + (W - right) + '" y="' + (H - 7) + '" class="chart-axis-label" text-anchor="end">检偏片角度</text>' +
+      '<text x="15" y="' + top + '" class="chart-axis-label">I / I₀</text></svg>';
+  }
+
+  function render() {
+    var state = currentState();
+    syncControls(state);
+    var result = Model.solve(state);
+    $('final-intensity').textContent = intensityLabel(result.finalIntensity);
+    $('final-percent').textContent = normalizedPercent(result.finalIntensity);
+    $('result-note').textContent = resultText(state, result);
+    $('stage-list').innerHTML = result.stages.map(stageCopy).join('');
+    drawCanvas(state, result);
+    drawChart(state, result);
+  }
+
+  ['source-unpolarized', 'source-linear', 'source-angle', 'first-angle', 'middle-angle', 'last-angle', 'middle-enabled'].forEach(function (id) {
+    $(id).addEventListener(id.indexOf('angle') >= 0 ? 'input' : 'change', render);
+  });
+  $('preset-crossed').addEventListener('click', function () {
+    writeState({ sourceMode: 'unpolarized', sourceAngle: 0, firstAngle: 0, middleAngle: 45, middleEnabled: false, lastAngle: 90 });
+  });
+  $('preset-restore').addEventListener('click', function () { writeState(defaults); });
+  $('preset-parallel').addEventListener('click', function () {
+    writeState({ sourceMode: 'unpolarized', sourceAngle: 0, firstAngle: 0, middleAngle: 0, middleEnabled: true, lastAngle: 0 });
+  });
+  $('preset-half').addEventListener('click', function () {
+    writeState({ sourceMode: 'linear', sourceAngle: 0, firstAngle: 45, middleAngle: 45, middleEnabled: true, lastAngle: 45 });
+  });
+  $('reset-experiment').addEventListener('click', function () { writeState(defaults); });
+  window.addEventListener('resize', function () { drawCanvas(currentState(), Model.solve(currentState())); });
+  render();
+})();
+
+</script>
+</body></html>

@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><meta name="description" content="编辑物体截面，采集投影，观察滤波反投影如何重建内部形状。离线断层成像实验。"><title>切片之前 · 投影重建实验</title><style>:root { --paper:#f3efe6; --ink:#243b3a; --muted:#6b7973; --line:#d5d4c6; --teal:#315b57; --dark:#163c3b; --rust:#b96447; --mint:#9fc9b4; --serif:"Palatino Linotype","Songti SC","STSong","SimSun",serif; --sans:"Avenir Next","Microsoft YaHei","PingFang SC",sans-serif; }
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--paper); color:var(--ink); font:14px/1.7 var(--sans); }
+button,input,select { font:inherit; }
+button,a,input,select,summary,canvas { -webkit-tap-highlight-color:transparent; }
+button { cursor:pointer; border:1px solid var(--line); color:var(--ink); background:#fbf8f0; padding:7px 11px; min-height:36px; transition:background .15s,border-color .15s; }
+button:hover { background:#e9ede1; border-color:#8ca798; }
+button:disabled { opacity:.45; cursor:default; }
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible,canvas:focus-visible { outline:3px solid var(--rust); outline-offset:3px; }
+button.selected { background:var(--teal); color:#fff; border-color:var(--teal); }
+button[aria-pressed="true"]#error-toggle { border-color:var(--rust); background:#f4dfd4; }
+.sheet { width:min(1420px,calc(100% - 88px)); margin:auto; }
+.mast { display:flex; justify-content:space-between; align-items:center; min-height:68px; border-bottom:1px solid var(--line); font-size:10px; letter-spacing:.12em; }
+.mast b,footer b { color:var(--rust); padding:0 8px; font-weight:400; }
+.brand { color:var(--ink); text-decoration:none; font-size:12px; font-weight:700; display:flex; align-items:center; gap:10px; }
+.brand-icon { color:var(--teal); font-size:25px; }
+.hero { display:grid; grid-template-columns:1.3fr 1fr; gap:8%; padding:44px 0 28px; align-items:center; }
+.eyebrow,.small-cap { font-size:10px; letter-spacing:.12em; color:var(--teal); font-weight:600; }
+.eyebrow::before { content:""; display:inline-block; width:6px; height:6px; background:var(--rust); margin-right:9px; border-radius:50%; }
+h1,h2,h3,p,figure { margin:0; }
+h1 { font:500 clamp(55px,7vw,94px)/1.23 var(--serif); letter-spacing:-.05em; margin:8px 0 12px; white-space:nowrap; }
+h1 span { color:var(--teal); margin-left:8px; }
+h1 i { color:var(--rust); font:300 40px var(--serif); vertical-align:top; padding-left:20px; }
+.deck { font:17px/1.9 var(--serif); color:#52635c; }
+.hero-aside { max-width:370px; justify-self:end; width:100%; border-left:1px solid #a8b8a6; padding-left:30px; }
+.hero-aside svg { display:block; width:100%; height:145px; color:#628176; }
+.hero-aside p { color:var(--muted); font-size:11px; line-height:1.9; }
+.folio { display:flex; justify-content:space-between; border-top:1px solid var(--line); padding:10px 0; font-size:10px; letter-spacing:.08em; color:var(--muted); }
+.laboratory { margin-top:26px; }
+.section-head { display:flex; justify-content:space-between; align-items:end; gap:16px; margin-bottom:17px; }
+h2 { font:500 clamp(22px,2.5vw,30px)/1.5 var(--serif); letter-spacing:-.025em; margin-top:5px; }
+.status { font-size:10px; color:var(--muted); border-left:2px solid var(--rust); padding-left:10px; }
+.lab-grid { display:grid; grid-template-columns:minmax(0,1fr) 278px; gap:18px; align-items:start; }
+.visuals,.image-card,.sinogram-card,.controls,.profile-card { min-width:0; }
+.image-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.image-card { background:var(--dark); color:#e1e9da; border:1px solid var(--dark); }
+figcaption { display:flex; justify-content:space-between; align-items:center; padding:10px 11px; font-size:11px; gap:4px; }
+figcaption b { color:var(--mint); font:11px/1 var(--serif); margin-right:7px; }
+figcaption small { color:#a6bdb1; font-size:9px; }
+.image-wrap { position:relative; margin:0 8px; }
+.image-wrap canvas { display:block; width:100%; height:auto; aspect-ratio:1; background:#102c2d; }
+#object { cursor:crosshair; touch-action:none; }
+#result { cursor:crosshair; touch-action:pan-y; }
+.image-tag { position:absolute; left:8px; bottom:8px; font-size:9px; padding:1px 5px; color:#bdcec1; background:#12312dc9; pointer-events:none; }
+.image-card p { font-size:8.5px; color:#b8c7b7; padding:10px 10px 12px; min-height:36px; }
+.density-bar { display:inline-block; vertical-align:middle; width:39px; height:5px; background:linear-gradient(90deg,#102c2d,#ebead8); margin:0 5px; }
+.result-card { border-color:#779885; }
+.visual-toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 0 15px; font-size:10px; }
+.visual-toolbar > div { display:flex; gap:5px; }
+.visual-toolbar button { font-size:10px; padding:5px 8px; }
+.dot { display:inline-block; width:5px; height:5px; background:var(--rust); border-radius:50%; margin-right:7px; }
+.sinogram-card { padding:15px; background:#eaeadd; border:1px solid var(--line); }
+.chart-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+h3 { font:500 16px/1.5 var(--serif); }
+.chart-head h3 span { font:10px var(--sans); color:var(--muted); }
+.chart-head > span { font-size:10px; color:var(--teal); }
+.sino-layout { display:grid; grid-template-columns:minmax(0,1.8fr) minmax(0,1fr); gap:14px; }
+.sino-wrap canvas { display:block; width:100%; height:170px; background:var(--dark); cursor:crosshair; touch-action:pan-y; }
+.projection-wrap canvas { display:block; width:100%; height:170px; background:var(--dark); }
+.axis { display:flex; justify-content:space-between; margin-top:6px; font-size:9px; color:var(--muted); gap:7px; }
+.caption { font-size:10px; color:var(--muted); margin-top:10px; line-height:1.9; }
+.key { display:inline-block; vertical-align:middle; width:12px; border-top:2px solid; margin:0 5px; }
+.key.rust { color:var(--rust); }.key.mint { color:#609c89; }.key.gray { color:#b6b097; }
+.controls { padding:17px; border:1px solid var(--line); background:#faf7ef; }
+.control-title { display:flex; justify-content:space-between; align-items:center; margin-bottom:13px; }
+.local { font-size:9px; color:var(--muted); }.local i { display:inline-block; height:5px; width:5px; background:#79927a; border-radius:50%; margin-right:4px; }
+.controls label { display:block; font-size:11px; color:#56675e; }
+select { width:100%; min-height:37px; color:var(--ink); background:#f1eee3; border:1px solid var(--line); padding:6px 8px; font-size:11px; margin:5px 0 10px; }
+.brush-row { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-bottom:13px; }
+.brush-row button { font-size:10px; padding:5px; }
+.label-row { display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:8px; }
+output { font:13px var(--serif); color:var(--teal); }
+input[type=range] { width:100%; accent-color:var(--teal); height:25px; margin:1px 0; cursor:pointer; }
+.ends { display:flex; justify-content:space-between; font-size:8px; color:#8d9486; margin-bottom:4px; }
+.control-rule { border-top:1px solid var(--line); margin-top:15px; padding-top:10px; font-size:10px; letter-spacing:.12em; color:var(--teal); }
+.micro { font-size:9px; line-height:1.8; color:#7f877b; margin-top:6px; }
+.primary { width:100%; background:var(--teal); color:#f5f4e7; border-color:var(--teal); min-height:43px; margin-top:17px; }
+.primary:hover { background:#244c47; color:#fff; }.progress { height:2px; margin-top:5px; background:#e2e6d7; }.progress i { display:block; width:100%; height:2px; background:var(--rust); }
+.preset-row { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:13px; }.preset-row button { font-size:9px; padding:6px 2px; }
+.assessment { margin-top:37px; padding-top:26px; border-top:1px solid var(--line); }.actions { display:flex; gap:5px; flex-wrap:wrap; }.actions button { font-size:10px; }
+.metrics { display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin:19px 0; }
+.metrics > div { padding:15px 17px; border-right:1px solid var(--line); min-width:0; }.metrics > div:first-child { padding-left:0; }.metrics > div:last-child { border:0; }.metrics span,.metrics small { display:block; font-size:10px; color:var(--muted); }.metrics strong { display:block; font:27px/1.5 var(--serif); color:var(--teal); }.metrics small { font-size:9px; }.reference strong { font-size:22px; }
+.assessment-grid { display:grid; grid-template-columns:minmax(0,1.8fr) minmax(0,1fr); gap:24px; }.profile-card { border:1px solid var(--line); padding:17px; background:#faf7ef; }.profile-card canvas { display:block; width:100%; height:220px; }.profile-control { display:flex; align-items:center; gap:12px; font-size:10px; }.profile-control input { flex:1; min-width:0; }.profile-control output { min-width:48px; font-size:11px; }.finding { padding:11px 8px; }.finding h3 { font-size:23px; margin:13px 0 12px; }.finding p { font-size:12px; line-height:1.9; color:#657368; }.finding .micro { font-size:10px; margin-top:10px; }.formula { border-top:1px solid var(--line); padding-top:18px; margin-top:22px; font-family:var(--serif); letter-spacing:.04em; }.finding small { font-size:10px; color:var(--muted); }
+.reading { border-top:1px solid var(--line); margin-top:40px; padding:28px 0; }.reading-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:35px; margin:23px 0 29px; }.reading article > span { font:28px var(--serif); color:var(--rust); }.reading article h3 { margin:8px 0; font-size:19px; }.reading article p { font-size:12px; line-height:1.9; color:var(--muted); }details { border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:13px 0; }summary { cursor:pointer; font-size:12px; color:var(--teal); }.details-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px 30px; padding:20px 0; font-size:11px; color:var(--muted); }
+footer { display:flex; justify-content:space-between; gap:15px; font-size:9px; color:var(--muted); padding:12px 0 30px; }
+@media(min-width:1600px) { .lab-grid { grid-template-columns:minmax(0,1fr) 292px; }.controls { padding:22px; } }
+@media(max-width:1100px) { .sheet { width:calc(100% - 44px); }.lab-grid { grid-template-columns:minmax(0,1fr) 250px; gap:12px; }figcaption { flex-wrap:wrap; padding:9px; }figcaption small { display:none; }.image-card p { font-size:8px; }.hero { gap:3%; }.sino-layout { grid-template-columns:1.5fr 1fr; }.status { max-width:210px; }.visual-toolbar { flex-wrap:wrap; } }
+@media(max-width:800px) { .hero-aside { padding-left:18px; }.lab-grid { grid-template-columns:1fr; }.controls { display:grid; grid-template-columns:1fr 1fr; gap:0 22px; }.controls > * { grid-column:span 2; }.controls .preset-row { grid-template-columns:repeat(4,1fr); }.metrics { grid-template-columns:1fr 1fr; }.metrics > div:nth-child(2) { border-right:0; }.metrics > div:nth-child(n+3) { border-top:1px solid var(--line); }.metrics > div:first-child { padding-left:17px; }.assessment-grid { grid-template-columns:1fr; }.section-head { flex-wrap:wrap; }.reading-grid { gap:18px; } }
+@media(max-width:540px) { .sheet { width:calc(100% - 28px); }.mast { min-height:56px; }.mast > span { font-size:8px; letter-spacing:0; }.brand { font-size:10px; gap:6px; }.hero { grid-template-columns:1fr; padding-top:27px; gap:17px; }h1 { font-size:59px; }h1 i { font-size:26px; padding-left:13px; }.hero-aside { display:none; }.deck { font-size:15px; }.folio { font-size:8px; gap:10px; }.folio span:last-child { display:none; }.laboratory { margin-top:18px; }h2 { font-size:22px; }.image-grid { gap:4px; }.image-wrap { margin:0 3px; }figcaption { font-size:9px; padding:7px 4px; }figcaption b { margin-right:3px; font-size:8px; }.image-card p { padding:7px 4px; font-size:7px; min-height:45px; }.image-tag { font-size:7px; left:3px; bottom:4px; }.image-tag#result-tag { max-width:95%; }.density-bar { width:15px; margin:0 2px; }.visual-toolbar { gap:5px; }.visual-toolbar > div { width:100%; }.visual-toolbar button { flex:1; font-size:10px; }.sinogram-card { padding:11px; }.sino-layout { grid-template-columns:1fr; gap:13px; }.sino-wrap canvas { height:160px; }.projection-wrap canvas { height:120px; }.controls { padding:16px; }.controls .preset-row { grid-template-columns:1fr 1fr; }button,select { min-height:44px; }input[type=range] { height:38px; }.controls label { font-size:12px; }.controls .micro { font-size:10px; }.metrics > div { padding:12px !important; }.metrics strong { font-size:25px; }.reference strong { font-size:20px; }.metrics span { font-size:9px; }.metrics small { font-size:8px; }.actions { width:100%; }.actions button { flex:1; font-size:10px; padding:6px; }.profile-card { padding:11px; }.profile-card .chart-head { flex-wrap:wrap; }.profile-card canvas { height:180px; }.reading-grid,.details-grid { grid-template-columns:1fr; }.reading-grid { gap:22px; }.reading article > span { float:left; width:33px; }.reading article h3 { margin:3px 0 8px 38px; }.reading article p { margin-left:38px; }footer { flex-direction:column; gap:3px; } }
+@media(max-width:540px) {
+  .image-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .image-card:first-child { grid-column:1/-1; }
+  .image-card:first-child .image-wrap { width:min(280px,calc(100% - 16px)); margin:0 auto; }
+  figcaption { font-size:11px; padding:10px 8px; }
+  figcaption b { font-size:10px; margin-right:6px; }
+  figcaption small { display:block; }
+  .image-card p { font-size:9px; padding:8px; min-height:37px; }
+  .image-tag { font-size:9px; left:6px; bottom:6px; }
+}
+@media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; }button { transition:none; } }
+
+/* Art direction: an instrument at dusk, arranged like a lab contact sheet. */
+:root { --paper:#eeeadd; --ink:#203735; --muted:#687a72; --line:#d2cfbe; --teal:#285a53; --dark:#112f30; --rust:#c66a45; --mint:#b2d2b5; }
+body { background:radial-gradient(ellipse at 8% 13%,rgba(183,161,114,.1),transparent 35rem),linear-gradient(0deg,rgba(72,91,73,.025) 1px,transparent 1px),var(--paper); background-size:auto,100% 7px,auto; }
+.mast { border-bottom-color:#c7c5b5; }
+.brand-icon { color:var(--rust); text-shadow:0 0 14px rgba(198,106,69,.38); }
+.hero { position:relative; isolation:isolate; overflow:hidden; margin-top:25px; padding:33px 36px 30px; min-height:255px; gap:5%; color:#f0eee1; background:linear-gradient(112deg,#143735 0%,#1d4845 62%,#285c52 100%); border-left:4px solid var(--rust); box-shadow:0 15px 34px rgba(30,50,42,.12); }
+.hero::before { content:""; position:absolute; z-index:-1; inset:-70% 35% -75% 51%; border:1px solid rgba(201,220,187,.09); border-radius:50%; box-shadow:0 0 0 22px rgba(201,220,187,.025),0 0 0 47px rgba(201,220,187,.025),0 0 0 83px rgba(201,220,187,.025),0 0 0 128px rgba(201,220,187,.025),0 0 0 181px rgba(201,220,187,.02); }
+.hero::after { content:"θ"; position:absolute; z-index:-1; top:-99px; right:30%; color:#e0d7b7; opacity:.055; font:340px/1 var(--serif); pointer-events:none; }
+.hero > * { position:relative; z-index:1; }
+.hero .eyebrow,.hero .small-cap { color:#d2d9bd; }
+.hero .eyebrow::before { box-shadow:0 0 0 5px rgba(201,135,94,.17); }
+.hero h1 { color:#f3eedf; font-size:clamp(67px,8vw,106px); letter-spacing:-.065em; }
+.hero h1 span { color:#e6b778; font-style:italic; }
+.hero h1 i { color:#d77f58; }
+.hero .deck { color:#d1dacc; }
+.hero-aside { border-left-color:rgba(198,215,188,.37); }
+.hero-aside::before { content:"180° / 90 views"; display:block; color:#e5bd85; font:11px var(--sans); letter-spacing:.12em; }
+.hero-aside svg { color:#a9c8af; height:122px; filter:drop-shadow(0 0 12px rgba(161,203,176,.14)); }
+.hero-aside svg circle:last-child { filter:drop-shadow(0 0 6px #e5996a); }
+.hero-aside p { color:#c2d0c2; }
+.folio { border-top:0; border-bottom:1px solid #d2cfbe; padding:10px 1px 12px; }
+.laboratory { margin-top:23px; padding:25px 24px 22px; background:#e5e5d8; border:1px solid #d3d3c3; box-shadow:inset 0 1px rgba(255,255,255,.56); }
+.laboratory > .section-head { margin-bottom:16px; }
+.laboratory h2 { font-size:clamp(25px,3vw,35px); }
+.laboratory .small-cap { color:#577368; }
+.status { padding:5px 10px 5px 11px; border:1px solid #d2d8c7; border-left:2px solid var(--rust); background:rgba(251,249,239,.64); color:#4c675f; font-size:10px; }
+.lab-grid { grid-template-columns:minmax(0,1fr) 285px; gap:14px; }
+.image-grid { gap:11px; }
+.image-card { border-color:#244d48; background:linear-gradient(155deg,#194442,#102f30 75%); box-shadow:0 5px 13px rgba(28,47,42,.11); }
+.image-card:first-child { border-color:#48655a; }
+.image-card.result-card { border-color:#d28a58; box-shadow:0 0 0 1px rgba(210,138,88,.13),0 5px 14px rgba(28,47,42,.1); }
+figcaption { min-height:43px; font-size:12px; }
+figcaption b { color:#e5b673; font-size:12px; }
+.result-card figcaption b { color:#eda16e; }
+.image-wrap canvas { outline:1px solid rgba(220,224,201,.12); outline-offset:-1px; }
+.image-card p { min-height:39px; font-size:9px; letter-spacing:.015em; }
+.image-tag { padding:3px 7px; border-left:2px solid #d88c5b; background:rgba(11,39,39,.88); color:#ece7d8; letter-spacing:.02em; }
+.visual-toolbar { font-size:11px; }
+.visual-toolbar button { background:#f6f3e9; }
+.visual-toolbar button:last-child { border-color:#ce9475; color:#994f37; }
+.sinogram-card { background:#122f30; border:1px solid #244744; color:#e5e6d7; box-shadow:0 5px 15px rgba(27,48,41,.1); }
+.sinogram-card .chart-head h3 { color:#ecebdc; font-size:18px; }
+.sinogram-card .chart-head h3 span { color:#a6b8a9; }
+.sinogram-card .chart-head > span { padding:3px 8px; color:#e3b67a; border:1px solid rgba(226,183,122,.3); }
+.sinogram-card .axis,.sinogram-card .caption { color:#bdc9b9; }
+.controls { padding:18px 17px 15px; background:#faf8ee; border:1px solid #d4d1bf; border-top:3px solid #49786b; box-shadow:0 6px 16px rgba(38,55,44,.07); }
+.control-title { padding-bottom:10px; border-bottom:1px solid #dedbca; }
+.control-title .small-cap { font-size:11px; }
+.controls label { color:#344f48; }
+.control-rule { color:#8b573d; border-color:#d7d3c1; font-weight:700; }
+.primary { background:#26564f; border-color:#26564f; box-shadow:0 4px 0 #d2ad7c; letter-spacing:.04em; }
+.primary:hover { background:#173c3b; }
+.progress { height:3px; background:#d7ddcb; }
+.progress i { background:#c8734d; }
+.preset-row button { background:#f1efe3; }
+.assessment { margin-top:32px; }
+.assessment > .section-head h2 { font-size:32px; }
+.metrics { border-top-color:#c6c3b1; border-bottom-color:#c6c3b1; }
+.metrics > div { padding-top:17px; padding-bottom:17px; }
+.metrics span { letter-spacing:.025em; }
+.metrics strong { color:#28574f; font-size:31px; }
+.metrics > div:first-child strong { color:#b65f42; }
+.profile-card { background:#faf8ef; border-color:#d2cebb; box-shadow:0 6px 18px rgba(40,53,43,.055); }
+.finding h3 { color:#28574f; }
+.reading { padding-top:32px; }
+.reading-grid article { position:relative; padding:14px 16px 17px; background:#e7e5d8; border-top:2px solid #4d7669; }
+.reading-grid article:nth-child(2) { border-top-color:#bb7953; }
+.reading-grid article:nth-child(3) { border-top-color:#788a66; }
+.reading article > span { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border:1px solid #c98260; border-radius:50%; font-size:16px; }
+.reading article h3 { margin:11px 0 7px; }
+details { border-color:#cecbb9; }
+footer { border-top:1px solid #d3d0c0; margin-top:5px; }
+@media(max-width:1100px) {
+  .hero { padding-left:27px; padding-right:27px; }
+  .lab-grid { grid-template-columns:minmax(0,1fr) 255px; }
+  figcaption { min-height:41px; font-size:10px; }
+  figcaption small { display:block; }
+}
+@media(max-width:800px) {
+  .hero { min-height:0; padding:28px 25px; }
+  .hero h1 { font-size:clamp(61px,11vw,84px); }
+  .laboratory { padding:19px 16px; }
+  .lab-grid { grid-template-columns:1fr; gap:14px; }
+  .controls { display:grid; grid-template-columns:1fr 1fr; gap:0 22px; }
+  .controls > * { grid-column:span 2; }
+  .metrics strong { font-size:29px; }
+}
+@media(max-width:540px) {
+  .hero { margin-top:15px; padding:24px 19px 23px; border-left-width:3px; }
+  .hero::before { inset:-68% -22% -75% 33%; }
+  .hero::after { right:-12%; opacity:.07; font-size:250px; }
+  .hero h1 { font-size:61px; }
+  .hero .deck { font-size:15px; }
+  .folio { font-size:8px; }
+  .laboratory { margin-top:15px; padding:17px 11px 13px; }
+  .laboratory h2 { font-size:21px; }
+  .status { max-width:145px; font-size:9px; }
+  .image-grid { gap:7px; }
+  .image-card:first-child .image-wrap { width:min(250px,calc(100% - 16px)); }
+  figcaption { font-size:10px; min-height:39px; }
+  figcaption b { font-size:10px; }
+  .image-card p { min-height:40px; font-size:8px; padding:8px 6px; }
+  .image-tag { font-size:8px; }
+  .visual-toolbar { font-size:10px; }
+  .assessment > .section-head h2 { font-size:23px; }
+  .reading-grid article { padding:12px; }
+}
+</style></head><body><div class="sheet" id="top">
+  <header class="mast"><a href="#top" class="brand"><span class="brand-icon" aria-hidden="true">◉</span>逆问题 · 透视实验室</a><span>一件离线科学装置 <b>／</b> PARALLEL BEAM</span></header>
+  <main>
+    <section class="hero">
+      <div><p class="eyebrow">看不见的内部，可以从影子里找回来吗？</p><h1>切片<span>之前</span><i>↗</i></h1><p class="deck">一束光只给出一路的总和。<br>换一个角度，再看一次，让内部的形状慢慢显现。</p></div>
+      <div class="hero-aside"><span class="small-cap">FROM SHADOW TO STRUCTURE</span><svg viewBox="0 0 300 155" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1"><ellipse cx="147" cy="77" rx="44" ry="55"/><ellipse cx="147" cy="77" rx="34" ry="44"/><circle cx="159" cy="61" r="11"/><circle cx="133" cy="88" r="16"/><path d="M25 24L269 124M25 50L269 98M25 77L269 77M25 104L269 54M25 131L269 29" opacity=".4"/><path d="M275 20V134M19 17V137"/></g><g fill="#b96447"><circle cx="25" cy="77" r="4"/><circle cx="269" cy="77" r="4"/></g></svg><p>编辑一块虚拟材料，收集穿过它的投影。<br>再让同一组测量走过两条重建路径。</p></div>
+    </section>
+    <div class="folio"><span>二维截面 / 96 × 96</span><span>平行束 / 线积分</span><span>原始像素与重建共用密度标尺</span></div>
+    <section class="laboratory" aria-labelledby="lab-title">
+      <div class="section-head"><div><p class="small-cap">01 / 一次测量，两条路径</p><h2 id="lab-title">先造一个物体，再把影子叠回来</h2></div><span class="status" id="status" role="status">正在准备实验…</span></div>
+      <div class="lab-grid">
+        <div class="visuals">
+          <div class="image-grid">
+            <figure class="image-card"><figcaption><span><b>01</b> 原始截面</span><small>可画 · 可擦</small></figcaption><div class="image-wrap"><canvas id="object" width="384" height="384" tabindex="0" role="img" aria-label="可编辑材料截面。方向键移动画笔，空格绘制；鼠标或触屏拖动绘制。"></canvas><span class="image-tag">已知真值</span></div><p>相对密度 <span class="density-bar"></span> 0 → 1</p></figure>
+            <figure class="image-card"><figcaption><span><b>02</b> 直接反投影</span><small>未经滤波</small></figcaption><div class="image-wrap"><canvas id="plain" width="384" height="384" role="img" aria-label="未滤波反投影图像"></canvas><span class="image-tag">影子叠加</span></div><p>单独按峰值归一化 · 看模糊的形状</p></figure>
+            <figure class="image-card result-card"><figcaption><span><b>03</b> 滤波后重建</span><small id="filter-tag">Ramp</small></figcaption><div class="image-wrap"><canvas id="result" width="384" height="384" tabindex="0" role="img" aria-label="滤波反投影重建图像。点击或按方向键选择剖面行。"></canvas><span class="image-tag" id="result-tag">重建密度</span></div><p id="result-scale">固定显示 0 → 1 · 越界值截断显示</p></figure>
+          </div>
+          <div class="visual-toolbar"><p><span class="dot"></span><span id="probe">画笔位置：48, 48</span></p><div><button id="undo" disabled>撤销一笔</button><button id="reset-object">恢复样本</button><button id="error-toggle" aria-pressed="false">查看误差</button></div></div>
+          <div class="sinogram-card"><div class="chart-head"><h3>投影的档案 <span>／ 正弦图</span></h3><span id="angle-readout">0.0°</span></div><div class="sino-layout"><div class="sino-wrap"><canvas id="sinogram" width="720" height="256" tabindex="0" role="img" aria-label="正弦图。每列对应一个采集角度，每行对应探测器位置；点击或按左右键选取角度。"></canvas><div class="axis"><span id="angle-first">0°</span><span>采集角度 θ →</span><span id="angle-last">178°</span></div></div><div class="projection-wrap"><canvas id="projection" width="350" height="256" role="img" aria-label="当前角度的原始投影及滤波投影曲线，各自按峰值归一化"></canvas><div class="axis"><span><i class="key rust"></i>测量</span><span><i class="key mint"></i>滤波后</span></div></div></div><p class="caption">横向换角度，纵向换探测器。一个偏离中心的小点，会在这里留下弯曲的轨迹。右侧两条曲线各自按峰值缩放，用于比较形状。</p></div>
+        </div>
+        <aside class="controls" aria-label="实验控制">
+          <div class="control-title"><span class="small-cap">实验条件</span><span class="local"><i></i>离线计算</span></div>
+          <label for="sample">材料样本</label><select id="sample"><option value="ceramic">陶质截面 · 壳、孔与夹杂</option><option value="twins">双圆 · 看角度的歧义</option><option value="resolution">细节靶 · 看分辨率</option><option value="blank">空白 · 自己画</option></select>
+          <div class="brush-row" role="group" aria-label="材料画笔"><button data-brush=".8" class="selected" aria-pressed="true">浓材料</button><button data-brush=".3" aria-pressed="false">淡材料</button><button data-brush="0" aria-pressed="false">擦除</button></div>
+          <div class="label-row"><label for="radius">画笔半径</label><output id="radius-value">4 格</output></div><input id="radius" type="range" min="1" max="10" value="4">
+          <div class="control-rule"><span>采集</span></div>
+          <div class="label-row"><label for="views">投影数量</label><output id="views-value">90 束组</output></div><input id="views" type="range" min="6" max="180" step="6" value="90"><div class="ends"><span>稀疏 6</span><span>密集 180</span></div>
+          <div class="label-row"><label for="span">角度覆盖</label><output id="span-value">180°</output></div><input id="span" type="range" min="30" max="180" step="10" value="180"><div class="ends"><span>缺角 30°</span><span>完整半圈 180°</span></div>
+          <div class="label-row"><label for="noise">投影噪声</label><output id="noise-value">0%</output></div><input id="noise" type="range" min="0" max="8" step=".5" value="0"><p class="micro">高斯噪声标准差 / 干净投影峰值。固定随机种子，便于比较。</p>
+          <div class="control-rule"><span>重建</span></div>
+          <label for="filter">滤波器</label><select id="filter"><option value="ramp">Ramp · 保留锐利边缘</option><option value="hann">Hann 窗 · 抑制高频噪声</option></select>
+          <div class="label-row"><label for="cutoff">频率截止</label><output id="cutoff-value">100%</output></div><input id="cutoff" type="range" min="20" max="100" step="5" value="100"><div class="ends"><span>更平滑</span><span>更多细节</span></div>
+          <button id="scan" class="primary">逐角采集</button><div class="progress" aria-hidden="true"><i id="progress"></i></div><p class="micro" id="scan-note">参数改变即重算；也可播放采集与叠加过程。</p>
+          <div class="preset-row"><button data-preset="sparse">只看 12 个角度</button><button data-preset="limited">缺掉半段角度</button><button data-preset="noise">让测量吵一点</button><button data-preset="ideal">回到完整采集</button></div>
+        </aside>
+      </div>
+    </section>
+    <section class="assessment" aria-labelledby="assessment-title">
+      <div class="section-head"><div><p class="small-cap">02 / 看起来像，不等于已经准确</p><h2 id="assessment-title">把轮廓和数字放在一起</h2></div><div class="actions"><button id="pin">留作对照</button><button id="export-csv">导出投影 CSV</button><button id="export-png">保存实验图</button></div></div>
+      <div class="metrics"><div><span>相对重建误差 NRMSE</span><strong id="metric-error">—</strong><small>全部 96² 像素，不做拟合缩放</small></div><div><span>平均密度偏差</span><strong id="metric-bias">—</strong><small>重建减去真值，包含背景区域</small></div><div><span>实际采集角度</span><strong id="metric-angles">—</strong><small>角度等间隔，末端不重复采样</small></div><div class="reference"><span>留存对照</span><strong id="reference-error">尚未留存</strong><small id="reference-note">固定一张结果，再改条件比较</small></div></div>
+      <div class="assessment-grid"><div class="profile-card"><div class="chart-head"><h3>穿过截面的一行</h3><span><i class="key rust"></i>真值 <i class="key mint"></i>重建 <i class="key gray"></i>留存</span></div><canvas id="profile" width="920" height="270" role="img" aria-label="当前剖面行的真值、重建及留存结果密度曲线，使用相同密度坐标"></canvas><div class="profile-control"><label for="row">剖面行</label><input id="row" type="range" min="0" max="95" value="48"><output id="row-value">48 / 95</output></div></div><div class="finding"><span class="small-cap">这一轮观察</span><h3 id="finding-title">影子如何变成形状</h3><p id="finding-text"></p><p id="reference-status" class="micro"></p><p class="formula">p<sub>θ</sub>(s) = ∫ f(s n<sub>θ</sub> + t n<sub>θ</sub><sup>⊥</sup>) dt</p><small>每个投影值，是沿一条直线累积的密度。滤波后，再沿同一条线把它放回去。</small></div></div>
+    </section>
+    <section class="reading" aria-labelledby="reading-title"><p class="small-cap">03 / 这件装置能解释什么</p><h2 id="reading-title">重建依赖的，是测量里真的有的信息</h2><div class="reading-grid"><article><span>Ⅰ</span><h3>角度少，出现条纹</h3><p>先留存完整采集，再切换到 12 个角度。每次反投影都把读数铺成一条带；方向太少，条带之间的痕迹就难以相互抵消。</p></article><article><span>Ⅱ</span><h3>缺角，会丢掉方向</h3><p>即便在 90° 内采了很多次，也没有补上另外 90° 的方向。试试看：增加投影数量，和扩大角度覆盖，改善的是两种不同的问题。</p></article><article><span>Ⅲ</span><h3>更锐利，也可能更吵</h3><p>Ramp 滤波提升高频的权重，细小边缘和高频噪声都会受影响。Hann 窗与较低截止频率让结果平滑，同时会削弱细节。</p></article></div>
+      <details><summary>模型、标尺与边界</summary><div class="details-grid"><p>这是二维、静止物体的平行束线积分模型。截面由 96 × 96 个像素表示，像素间距与探测器间距均为 1 个模型单位；前向投影把像素密度线性分配给相邻探测器，反投影使用对应的线性插值。</p><p>滤波使用零填充 FFT、|频率| 斜坡响应，可选 Hann 窗；重建权重为 π / 投影数。缺角时仍使用这个权重，因此缺失的信息没有被估计补齐。投影噪声为相互独立的加性高斯噪声，不对应真实射线的光子统计。</p><p>原始与滤波重建图固定显示密度 0 到 1；重建中的负值或大于 1 的值只在显示时截断，误差计算保留全部原值。直接反投影单独按峰值缩放，只用于看形状；误差图为重建减真值，固定范围 −0.5 到 +0.5。</p><p>没有模拟真实 CT 的扇束、锥束、能谱、散射、束硬化、运动、三维结构或仪器响应。材料图案为自行设计的示意截面。数值只解释离散逆问题，不代表材料实测数据、设备性能或诊断结论。</p></div></details>
+    </section>
+  </main>
+  <footer><span>切片之前 <b>／</b> 一束光给出总和，多束光给出结构。</span><span>96² pixels · deterministic noise · no network</span></footer>
+</div>
+<script>/* Parallel-beam tomography, pixel units. No browser or library dependency. */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.TomographyCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  const N = 96;
+  function rng(seed) { let a = seed >>> 0; return () => { a += 0x6D2B79F5; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function phantom(kind = 'ceramic', n = N) {
+    const a = new Float64Array(n * n);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const u = (x + .5 - n / 2) / (n / 2), v = (y + .5 - n / 2) / (n / 2);
+      let z = 0;
+      if (kind === 'ceramic') {
+        const r = Math.hypot(u / .76, v / .84);
+        if (r < 1) z = .3;
+        if (r > .86 && r < 1) z = .82;
+        if (Math.hypot((u + .24) / .2, (v + .15) / .29) < 1) z = .06;
+        if (Math.hypot((u - .25) / .14, (v + .18) / .2) < 1) z = .96;
+        if (Math.hypot(u + .08, v - .37) < .12) z = .65;
+      } else if (kind === 'twins') {
+        if (Math.hypot(u + .31, v + .16) < .25) z = .75;
+        if (Math.hypot(u - .3, v - .2) < .18) z = 1;
+      } else if (kind === 'resolution') {
+        if (Math.hypot(u, v) < .83) z = .12;
+        for (let k = 0; k < 4; k++) if (Math.hypot(u + .5 - .3 * k, v + .3) < .105 - .02 * k) z = .9;
+        if (v > .02 && v < .44 && u > -.55 && u < .55 && Math.floor((u + .55) * 35) % 2 === 0) z = .75;
+      } else if (kind === 'disk' && Math.hypot(u, v) < .6) z = 1;
+      a[y * n + x] = z;
+    }
+    return a;
+  }
+  function geometry(n = N, views = 90, span = 180, start = 0) {
+    if (!Number.isInteger(n) || n < 4 || !Number.isInteger(views) || views < 1 || span <= 0 || span > 180) throw new Error('Invalid geometry');
+    const detectors = Math.ceil(n * Math.SQRT2) + 4;
+    return { n, views, span, start, detectors, center: (detectors - 1) / 2,
+      angles: Array.from({ length: views }, (_, i) => (start + i * span / views) * Math.PI / 180) };
+  }
+  // Linear splatting conserves total mass; backprojection is its exact transpose.
+  function project(image, g) {
+    const { n, detectors: d, center } = g;
+    const out = new Float64Array(g.views * d);
+    for (let a = 0; a < g.views; a++) {
+      const c = Math.cos(g.angles[a]), s = Math.sin(g.angles[a]), off = a * d;
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        const z = image[y * n + x]; if (z === 0) continue;
+        const t = (x + .5 - n / 2) * c + (y + .5 - n / 2) * s + center;
+        const k = Math.floor(t), f = t - k;
+        if (k >= 0 && k < d) out[off + k] += z * (1 - f);
+        if (k + 1 >= 0 && k + 1 < d) out[off + k + 1] += z * f;
+      }
+    }
+    return out;
+  }
+  function backproject(data, g, count = g.views, factor = 1) {
+    const { n, detectors: d, center } = g;
+    const out = new Float64Array(n * n);
+    for (let a = 0; a < count; a++) {
+      const c = Math.cos(g.angles[a]), s = Math.sin(g.angles[a]), off = a * d;
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        const t = (x + .5 - n / 2) * c + (y + .5 - n / 2) * s + center;
+        const k = Math.floor(t), f = t - k;
+        if (k >= 0 && k + 1 < d) out[y * n + x] += ((1 - f) * data[off + k] + f * data[off + k + 1]) * factor;
+      }
+    }
+    return out;
+  }
+  function fft(re, im, inverse) {
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) {
+      let b = n >> 1; for (; j & b; b >>= 1) j ^= b; j ^= b;
+      if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; }
+    }
+    for (let len = 2; len <= n; len *= 2) {
+      const angle = (inverse ? 2 : -2) * Math.PI / len, cr = Math.cos(angle), ci = Math.sin(angle);
+      for (let j = 0; j < n; j += len) {
+        let wr = 1, wi = 0;
+        for (let k = 0; k < len / 2; k++) {
+          const p = j + k, q = p + len / 2;
+          const vr = re[q] * wr - im[q] * wi, vi = re[q] * wi + im[q] * wr;
+          re[q] = re[p] - vr; im[q] = im[p] - vi; re[p] += vr; im[p] += vi;
+          const nr = wr * cr - wi * ci; wi = wr * ci + wi * cr; wr = nr;
+        }
+      }
+    }
+    if (inverse) for (let k = 0; k < n; k++) { re[k] /= n; im[k] /= n; }
+  }
+  function filter(data, g, kind = 'ramp', cutoff = 1) {
+    let size = 1; while (size < 2 * g.detectors) size *= 2;
+    const out = new Float64Array(data.length), d = g.detectors;
+    for (let a = 0; a < g.views; a++) {
+      const re = new Float64Array(size), im = new Float64Array(size);
+      re.set(data.subarray(a * d, (a + 1) * d)); fft(re, im, false);
+      for (let k = 0; k < size; k++) {
+        const f = Math.min(k, size - k) / size, limit = .5 * cutoff;
+        const h = f > limit ? 0 : f * (kind === 'hann' ? .5 * (1 + Math.cos(Math.PI * f / limit)) : 1);
+        re[k] *= h; im[k] *= h;
+      }
+      fft(re, im, true); out.set(re.subarray(0, d), a * d);
+    }
+    return out;
+  }
+  function noisy(data, level, seed = 20260930) {
+    const out = new Float64Array(data), random = rng(seed);
+    let max = 0; for (const x of data) max = Math.max(max, x);
+    const sigma = max * level;
+    for (let i = 0; i < out.length; i++) {
+      const z = Math.sqrt(-2 * Math.log(Math.max(1e-12, random()))) * Math.cos(2 * Math.PI * random());
+      out[i] += sigma * z;
+    }
+    return out;
+  }
+  function metrics(truth, image) {
+    let e = 0, power = 0, bias = 0, min = Infinity, max = -Infinity;
+    for (let i = 0; i < truth.length; i++) { const d = image[i] - truth[i]; e += d * d; power += truth[i] ** 2; bias += d; min = Math.min(min, image[i]); max = Math.max(max, image[i]); }
+    return { nrmse: power ? Math.sqrt(e / power) : null, rmse: Math.sqrt(e / truth.length), bias: bias / truth.length, min, max };
+  }
+  function experiment(image, options = {}) {
+    const g = geometry(Math.round(Math.sqrt(image.length)), options.views || 90, options.span || 180, options.start || 0);
+    const clean = project(image, g), data = noisy(clean, options.noise || 0, options.seed || 20260930);
+    const filtered = filter(data, g, options.filter || 'ramp', options.cutoff || 1);
+    // Limited-angle data gets the same pi/views normalization. Missing angles are not inferred.
+    const reconstruction = backproject(filtered, g, g.views, Math.PI / g.views);
+    const plain = backproject(data, g, g.views, 1 / g.views);
+    return { g, clean, data, filtered, reconstruction, plain, metrics: metrics(image, reconstruction) };
+  }
+  function paint(image, n, x, y, radius, value) {
+    for (let j = Math.max(0, y - radius); j <= Math.min(n - 1, y + radius); j++) for (let i = Math.max(0, x - radius); i <= Math.min(n - 1, x + radius); i++) if ((i - x) ** 2 + (j - y) ** 2 <= radius ** 2) image[j * n + i] = value;
+  }
+  return { N, rng, phantom, geometry, project, backproject, fft, filter, noisy, metrics, experiment, paint };
+});
+</script><script>(() => {
+  'use strict';
+  const C = window.TomographyCore, n = C.N, $ = id => document.getElementById(id);
+  const fields = ['views', 'span', 'noise', 'filter', 'cutoff'];
+  let image = C.phantom(), result, displayed, reference = null, angle = 0, row = 48, errorMode = false;
+  let brush = .8, cursor = { x:48, y:48 }, undo = [], drawing = false, lastPoint = null;
+  let timer = null, scanTimer = null, scanning = false, count = 0, pending = false;
+  const options = () => ({ views:+$('views').value, span:+$('span').value, noise:+$('noise').value / 100, filter:$('filter').value, cutoff:+$('cutoff').value / 100, seed:20260930 });
+  const percent = x => x === null ? '无定义' : (x * 100).toFixed(1) + '%';
+  function syncLabels() {
+    $('radius-value').textContent = $('radius').value + ' 格';
+    $('views-value').textContent = $('views').value + ' 束组'; $('span-value').textContent = $('span').value + '°';
+    $('noise-value').textContent = $('noise').value + '%'; $('cutoff-value').textContent = $('cutoff').value + '%';
+    $('filter-tag').textContent = $('filter').value === 'ramp' ? 'Ramp' : 'Hann';
+    $('row-value').textContent = row + ' / 95';
+  }
+  function stopScan() { clearTimeout(scanTimer); scanning = false; $('scan').textContent = '逐角采集'; }
+  function schedule() {
+    stopScan(); pending = true; clearTimeout(timer); syncLabels();
+    $('status').textContent = '条件已改变 · 正在重算';
+    timer = setTimeout(compute, 100);
+  }
+  function compute() {
+    clearTimeout(timer); pending = false; result = C.experiment(image, options());
+    count = result.g.views; angle = Math.min(angle, count - 1); render();
+  }
+  function color(z, signed = false) {
+    if (signed) {
+      const t = Math.min(1, Math.abs(z) / .5), from = [230,230,212], to = z > 0 ? [182,82,51] : [46,113,124];
+      return from.map((x,i) => Math.round(x + (to[i] - x) * t));
+    }
+    const t = Math.max(0, Math.min(1, z));
+    const from = [16,44,45], to = [237,235,213];
+    return from.map((x,i) => Math.round(x + (to[i] - x) * t));
+  }
+  function raster(canvas, values, width, height, max = 1, signed = false) {
+    const temp = document.createElement('canvas'); temp.width = width; temp.height = height;
+    const ctx = temp.getContext('2d'), pixels = ctx.createImageData(width, height);
+    for (let i = 0; i < values.length; i++) { const rgb = color(values[i] / max, signed); pixels.data.set([...rgb,255], 4 * i); }
+    ctx.putImageData(pixels, 0, 0);
+    const out = canvas.getContext('2d'); out.imageSmoothingEnabled = false; out.clearRect(0,0,canvas.width,canvas.height); out.drawImage(temp,0,0,canvas.width,canvas.height);
+    return out;
+  }
+  function maxAbs(a) { let z = 0; for (const v of a) z = Math.max(z, Math.abs(v)); return z || 1; }
+  function line(ctx,x1,y1,x2,y2,color,width=1) { ctx.strokeStyle=color; ctx.lineWidth=width; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+  function imageViews(active = displayed || result) {
+    const ctx = raster($('object'), image, n, n);
+    const scale = $('object').width / n, theta = result.g.angles[angle];
+    ctx.save(); ctx.strokeStyle='rgba(159,201,180,.3)'; ctx.lineWidth=1;
+    for (let s = -35; s <= 35; s += 14) {
+      const cx = (n / 2 + s * Math.cos(theta)) * scale, cy = (n / 2 + s * Math.sin(theta)) * scale;
+      line(ctx,cx-240*Math.sin(theta),cy+240*Math.cos(theta),cx+240*Math.sin(theta),cy-240*Math.cos(theta),'rgba(159,201,180,.25)');
+    }
+    ctx.strokeStyle='#cf8962'; ctx.lineWidth=1.7; ctx.beginPath(); ctx.arc((cursor.x+.5)*scale,(cursor.y+.5)*scale,+$('radius').value*scale,0,2*Math.PI); ctx.stroke(); ctx.restore();
+    raster($('plain'), active.plain, n, n, maxAbs(active.plain));
+    const shown = errorMode ? Float64Array.from(active.reconstruction,(x,i)=>x-image[i]) : active.reconstruction;
+    const rctx = raster($('result'), shown, n, n, 1, errorMode);
+    line(rctx,0,(row+.5)*scale,$('result').width,(row+.5)*scale,'#ce8861',1.5);
+    $('result-tag').textContent = errorMode ? '蓝：低估 / 锈：高估' : '重建密度';
+    $('result-scale').textContent = errorMode ? '误差固定 −0.5 → +0.5' : '固定显示 0 → 1 · 越界值截断显示';
+    $('probe').textContent = `画笔位置：${cursor.x}, ${cursor.y} · 密度 ${image[cursor.y*n+cursor.x].toFixed(2)}`;
+  }
+  function sinogram() {
+    const g=result.g, values=new Float64Array(g.detectors*g.views), peak=maxAbs(result.data);
+    for (let a=0;a<g.views;a++) for(let k=0;k<g.detectors;k++) values[k*g.views+a] = a<count ? result.data[a*g.detectors+k] : 0;
+    const ctx=raster($('sinogram'),values,g.views,g.detectors,peak);
+    const x=(angle+.5)/g.views*$('sinogram').width;
+    line(ctx,x,0,x,$('sinogram').height,'#d68a60',2);
+    $('angle-readout').textContent=(g.angles[angle]*180/Math.PI).toFixed(1)+'°';
+    $('angle-first').textContent=g.start+'°'; $('angle-last').textContent=(g.angles[g.views-1]*180/Math.PI).toFixed(1)+'°';
+    const pc=$('projection'), p=pc.getContext('2d'); p.fillStyle='#163c3b'; p.fillRect(0,0,pc.width,pc.height);
+    line(p,15,pc.height*.5,pc.width-15,pc.height*.5,'#496860');
+    for(const [a,col] of [[result.data,'#cf8962'],[result.filtered,'#9fc9b4']]) {
+      const slice=a.subarray(angle*g.detectors,(angle+1)*g.detectors), max=maxAbs(slice);
+      p.strokeStyle=col; p.lineWidth=1.7; p.beginPath();
+      slice.forEach((v,k)=>{const x=15+k/(g.detectors-1)*(pc.width-30),y=pc.height*.5-v/max*pc.height*.43;k?p.lineTo(x,y):p.moveTo(x,y);});p.stroke();
+    }
+  }
+  function profile(active = displayed || result) {
+    const c=$('profile'),ctx=c.getContext('2d'),w=c.width,h=c.height,pad=42;
+    ctx.clearRect(0,0,w,h); let lo=-.15,hi=1.15;
+    const arrays=[image.subarray(row*n,(row+1)*n),active.reconstruction.subarray(row*n,(row+1)*n)];
+    if(reference) arrays.push(reference.reconstruction.subarray(row*n,(row+1)*n));
+    for(const a of arrays) for(const v of a){lo=Math.min(lo,v-.03);hi=Math.max(hi,v+.03);}
+    const yy=z=>h-32-(z-lo)/(hi-lo)*(h-55);
+    ctx.font='13px Consolas, monospace';ctx.fillStyle='#81907d';ctx.textAlign='right';
+    for(const v of [0,.5,1]) {const y=yy(v);line(ctx,pad,y,w-15,y,'#dadccf');ctx.fillText(v.toFixed(1),pad-8,y+4);}
+    line(ctx,pad,20,pad,h-32,'#c7cfbe');
+    arrays.forEach((a,i)=>{ctx.strokeStyle=['#b96447','#4f9180','#aca48d'][i];ctx.lineWidth=i===2?1.5:2;ctx.setLineDash(i===2?[7,5]:[]);ctx.beginPath();a.forEach((z,x)=>{const px=pad+x/(n-1)*(w-pad-15),py=yy(z);x?ctx.lineTo(px,py):ctx.moveTo(px,py);});ctx.stroke();});ctx.setLineDash([]);
+    ctx.textAlign='left';ctx.fillText('0',pad,h-9);ctx.textAlign='right';ctx.fillText('95 / 横向像素',w-15,h-9);
+  }
+  function findings() {
+    const o=options(),same=reference && reference.truth.every((v,i)=>v===image[i]);
+    $('metric-error').textContent=percent(result.metrics.nrmse);
+    $('metric-bias').textContent=(result.metrics.bias>=0?'+':'')+result.metrics.bias.toFixed(3);
+    $('metric-angles').textContent=`${o.views} / ${o.span}°`;
+    if(o.span<180){$('finding-title').textContent='缺少的方向，不能靠重复补齐';$('finding-text').textContent=`这轮只覆盖 ${o.span}°。在这些方向里加密采集，仍然没有另外 ${180-o.span}° 的测量。失真往往带有方向性；试着先增加数量，再恢复完整半圈。`;}
+    else if(o.views<=24){$('finding-title').textContent='条纹，是少数方向留下的痕迹';$('finding-text').textContent=`完整半圈只采了 ${o.views} 个角度。滤波后的条带沿少数方向相交，形成明显的条纹。把数量逐步拉高，观察哪些细节先变得稳定。`;}
+    else if(o.noise>0){$('finding-title').textContent=o.filter==='ramp'?'边缘与噪声一起被提升':'平滑换来的，是细节的取舍';$('finding-text').textContent=`这轮投影噪声为 ${(o.noise*100).toFixed(1)}%。留存一张 Ramp 结果，再换 Hann 窗：在同一组噪声数据上，比较误差、边缘和曲线的起伏。噪声相同不代表所有滤波器表现相同。`;}
+    else {$('finding-title').textContent='滤波让模糊的总和长出边缘';$('finding-text').textContent='未经滤波的投影叠加会拖出宽阔的背景。滤波减少低频模糊，恢复边缘；有限像素、探测器插值与采样仍然会留下误差。试试细节靶，或把频率截止降下来。';}
+    if(reference) {
+      $('reference-error').textContent=percent(reference.metrics.nrmse);
+      $('reference-note').textContent=`${reference.options.views} 角度 / ${reference.options.span}° / ${reference.options.filter==='ramp'?'Ramp':'Hann'}`;
+      $('reference-status').textContent=same ? (result.metrics.nrmse===null?'当前截面全为空，NRMSE 无定义。':`同一截面：当前误差比留存${result.metrics.nrmse>reference.metrics.nrmse?'增加':'减少'} ${Math.abs(result.metrics.nrmse-reference.metrics.nrmse)*100<.05?'不足 0.1':(Math.abs(result.metrics.nrmse-reference.metrics.nrmse)*100).toFixed(1)} 个百分点。`) : '材料已改变。留存曲线来自另一截面，误差不能用来单独比较采集条件。';
+    }
+  }
+  function render(active = result) {
+    displayed = active;
+    syncLabels(); imageViews(active);sinogram();profile(active);
+    $('progress').style.width=(count/result.g.views*100)+'%';
+    $('status').textContent=scanning?`采集中 · ${count} / ${result.g.views} 角度`:`重建完成 · ${result.g.views} 个角度`;
+    $('scan-note').textContent=scanning?'逐角显示测量和部分重建；统计在采集完成后显示。':'参数改变即重算；也可播放采集与叠加过程。';
+    if(scanning){$('metric-error').textContent='采集中';$('metric-bias').textContent='—';$('metric-angles').textContent=`${count} / ${result.g.views}`;}
+    else findings();
+    for(const id of ['pin','export-csv','export-png']) $(id).disabled=scanning;
+  }
+  function startScan() {
+    if(scanning){stopScan();count=result.g.views;render();return;}
+    if(pending)compute(); scanning=true;count=0;angle=0;$('scan').textContent='结束播放';
+    function tick(){
+      count=Math.min(result.g.views,count+3);angle=count-1;
+      const active={plain:C.backproject(result.data,result.g,count,1/count),reconstruction:C.backproject(result.filtered,result.g,count,Math.PI/count)};
+      if(count===result.g.views){stopScan();render();}else{render(active);scanTimer=setTimeout(tick,65);}
+    }
+    tick();
+  }
+  function setSample(){stopScan();image=C.phantom($('sample').value);undo=[];$('undo').disabled=true;schedule();}
+  $('sample').addEventListener('change',setSample);$('reset-object').addEventListener('click',setSample);
+  for(const id of fields) $(id).addEventListener(id==='filter'?'change':'input',schedule);
+  $('radius').addEventListener('input',()=>{syncLabels();imageViews();});
+  document.querySelectorAll('[data-brush]').forEach(b=>b.addEventListener('click',()=>{brush=+b.dataset.brush;document.querySelectorAll('[data-brush]').forEach(x=>{x.classList.toggle('selected',x===b);x.setAttribute('aria-pressed',String(x===b));});}));
+  document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{
+    const p={sparse:[12,180,0,'ramp',100],limited:[90,90,0,'ramp',100],noise:[90,180,4,'ramp',100],ideal:[90,180,0,'ramp',100]}[b.dataset.preset];
+    fields.forEach((id,i)=>$(id).value=p[i]);schedule();
+  }));
+  function remember(){undo.push(new Float64Array(image));if(undo.length>20)undo.shift();$('undo').disabled=false;}
+  function paintAt(x,y){C.paint(image,n,x,y,+$('radius').value,brush);cursor={x,y};imageViews();}
+  function point(event,canvas){const r=canvas.getBoundingClientRect();return{x:Math.max(0,Math.min(n-1,Math.floor((event.clientX-r.left)/r.width*n))),y:Math.max(0,Math.min(n-1,Math.floor((event.clientY-r.top)/r.height*n)))};}
+  $('object').addEventListener('pointerdown',e=>{if(e.button!==0)return;stopScan();remember();drawing=true;$('object').setPointerCapture(e.pointerId);lastPoint=point(e,$('object'));paintAt(lastPoint.x,lastPoint.y);});
+  $('object').addEventListener('pointermove',e=>{
+    const p=point(e,$('object'));cursor=p;
+    if(drawing){const steps=Math.max(Math.abs(p.x-lastPoint.x),Math.abs(p.y-lastPoint.y),1);for(let t=1;t<=steps;t++)paintAt(Math.round(lastPoint.x+(p.x-lastPoint.x)*t/steps),Math.round(lastPoint.y+(p.y-lastPoint.y)*t/steps));lastPoint=p;}
+    else imageViews();
+  });
+  function endStroke(){if(drawing){drawing=false;lastPoint=null;schedule();}}
+  $('object').addEventListener('pointerup',endStroke);$('object').addEventListener('pointercancel',endStroke);$('object').addEventListener('lostpointercapture',endStroke);
+  $('object').addEventListener('keydown',e=>{const d={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(d){e.preventDefault();cursor.x=Math.max(0,Math.min(n-1,cursor.x+d[0]));cursor.y=Math.max(0,Math.min(n-1,cursor.y+d[1]));imageViews();}else if(e.key===' '){e.preventDefault();remember();paintAt(cursor.x,cursor.y);schedule();}});
+  $('undo').addEventListener('click',()=>{if(undo.length){image=undo.pop();$('undo').disabled=!undo.length;schedule();}});
+  function selectAngle(a){if(scanning)return;angle=Math.max(0,Math.min(result.g.views-1,a));imageViews();sinogram();}
+  $('sinogram').addEventListener('pointerdown',e=>{const r=$('sinogram').getBoundingClientRect();selectAngle(Math.floor((e.clientX-r.left)/r.width*result.g.views));});
+  $('sinogram').addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();selectAngle(angle+(e.key==='ArrowLeft'?-1:1));}});
+  function selectRow(y){row=Math.max(0,Math.min(n-1,y));$('row').value=row;syncLabels();imageViews();profile();}
+  $('result').addEventListener('pointerdown',e=>{if(!scanning)selectRow(point(e,$('result')).y);});
+  $('result').addEventListener('keydown',e=>{if(!scanning&&['ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();selectRow(row+(e.key==='ArrowUp'?-1:1));}});
+  $('row').addEventListener('input',()=>{if(scanning){$('row').value=row;return;}selectRow(+$('row').value);});
+  $('error-toggle').addEventListener('click',()=>{errorMode=!errorMode;$('error-toggle').setAttribute('aria-pressed',String(errorMode));$('error-toggle').textContent=errorMode?'查看重建':'查看误差';if(scanning){stopScan();count=result.g.views;}render();});
+  $('scan').addEventListener('click',startScan);
+  $('pin').addEventListener('click',()=>{if(pending)compute();reference={truth:new Float64Array(image),reconstruction:new Float64Array(result.reconstruction),metrics:{...result.metrics},options:options()};$('pin').textContent='更新对照';profile();findings();});
+  function download(blob,name){const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);}
+  $('export-csv').addEventListener('click',()=>{
+    if(pending)compute();const o=options(),g=result.g;
+    const rows=['# 切片之前：平行束投影；单位为像素密度积分',`# views=${o.views};span_deg=${o.span};noise_sigma_fraction=${o.noise};seed=${o.seed};filter=${o.filter};cutoff_fraction=${o.cutoff}`, 'angle_deg,detector_index,position_px,clean_projection,measured_projection,filtered_projection'];
+    for(let a=0;a<g.views;a++)for(let k=0;k<g.detectors;k++){const i=a*g.detectors+k;rows.push([(g.angles[a]*180/Math.PI).toFixed(6),k,(k-g.center).toFixed(2),result.clean[i].toPrecision(9),result.data[i].toPrecision(9),result.filtered[i].toPrecision(9)].join(','));}
+    download(new Blob(['\uFEFF'+rows.join('\r\n')],{type:'text/csv;charset=utf-8'}),'切片之前-投影.csv');
+  });
+  $('export-png').addEventListener('click',()=>{
+    if(pending)compute();const o=options(),c=document.createElement('canvas');c.width=1320;c.height=620;
+    const ctx=c.getContext('2d');ctx.fillStyle='#f3efe6';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#243b3a';ctx.font='36px SimSun, serif';ctx.fillText('切片之前 · 投影重建实验',35,57);ctx.font='17px Microsoft YaHei, sans-serif';
+    ctx.fillText(`${o.views} 个角度 / ${o.span}° 覆盖 / 噪声 ${(o.noise*100).toFixed(1)}% / ${o.filter==='ramp'?'Ramp':'Hann'} / 截止 ${Math.round(o.cutoff*100)}%`,35,91);
+    ['object','plain','result'].forEach((id,i)=>{ctx.drawImage($(id),35+i*430,125,390,390);ctx.fillStyle='#243b3a';ctx.font='19px Microsoft YaHei, sans-serif';ctx.fillText(['原始截面 · 固定密度 0 → 1','直接反投影 · 独立峰值归一化',errorMode?'误差 · 固定 −0.5 → +0.5':'滤波重建 · 固定密度 0 → 1'][i],35+i*430,547);});
+    ctx.font='15px Microsoft YaHei, sans-serif';ctx.fillText(`NRMSE ${percent(result.metrics.nrmse)} · 误差计算保留越界值 · 示意模型，非实测 · noise seed ${o.seed}`,35,586);
+    c.toBlob(blob=>{if(blob)download(blob,'切片之前-实验.png');else $('status').textContent='图像导出失败，请重新尝试';},'image/png');
+  });
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&scanning){stopScan();count=result.g.views;render();}});
+  window.TomographyLab={state:()=>({pending,scanning,count,angle,row,errorMode,options:options(),metrics:result?.metrics,truth:Array.from(image),hasReference:!!reference,undo:undo.length})};
+  compute();window.__tomographyReady=true;
+})();
+</script></body></html>

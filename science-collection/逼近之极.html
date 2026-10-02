@@ -1,0 +1,2772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>逼近之极 · 连分数，与一个数能有多难被逼近</title>
+<style>
+/* ============================================================
+ * 《逼近之极》 style.css
+ *
+ * 亮色主题。三条硬规矩（都是真事故换来的）：
+ *   1. 媒体查询写在文件**末尾** —— CSS 里同名规则靠后的赢，
+ *      基准规则写在媒体查询之后会把窄屏覆盖掉。
+ *   2. .grid2 / .panel / .card / .tbl-wrap 全部 min-width: 0 ——
+ *      Grid 的 1fr 默认 min-width:auto，里面放 nowrap 的表会把轨道顶破。
+ *   3. 图表一律用真 SVG（<svg> 由 openTag 只开不闭），
+ *      用 innerHTML 拼的行内元素在 DOM 里数得出来、屏幕上什么都没有。
+ * ========================================================== */
+:root {
+  --bg: #f4f6fa;
+  --panel: #fbfcfe;
+  --ink: #1b2330;
+  --ink2: #4a5568;
+  --ink3: #7a869a;
+  --line: #dde3ec;
+  --line2: #eef1f6;
+  --good: #178a5a;
+  --bad: #c0392b;
+  --warn: #b8860b;
+  --accent: #2b6cb0;
+  --accent2: #7b3fa0;
+  --accent3: #c05621;
+  --accent4: #0f766e;
+  --accent5: #9b2c2c;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 20px 18px 60px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.72 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+.wrap { max-width: 1180px; margin: 0 auto; }
+
+/* ---------------- 头版 ---------------- */
+header { padding: 4px 0 14px; border-bottom: 2px solid var(--ink); margin-bottom: 18px; }
+h1.title {
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: 3px;
+  font-weight: 700;
+}
+p.sub { margin: 6px 0 0; color: var(--ink2); font-size: 15px; letter-spacing: .5px; }
+p.meta {
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+/* ---------------- KPI ---------------- */
+#kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+  gap: 10px;
+  margin: 16px 0 22px;
+}
+.kpi {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 12px 11px 16px;
+  min-width: 0;
+}
+.kpi::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 6px 0 0 6px;
+  background: var(--accent);
+}
+.kpi.good::before { background: var(--good); }
+.kpi.bad::before { background: var(--bad); }
+.kpi.warn::before { background: var(--warn); }
+.kpi .kl { font-size: 12px; color: var(--ink3); line-height: 1.5; }
+.kpi .kv {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 4px 0 4px;
+  word-break: break-all;
+  line-height: 1.3;
+}
+.kpi .kn { font-size: 11.5px; color: var(--ink2); line-height: 1.55; }
+
+/* ---------------- 标签栏 ---------------- */
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 18px;
+  padding-bottom: 0;
+}
+.tabs button {
+  flex: 0 0 auto;
+  appearance: none;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  background: #eef1f6;
+  color: var(--ink2);
+  font: inherit;
+  font-size: 13.5px;
+  padding: 9px 13px;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 40px;
+}
+.tabs button.on {
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+  border-color: var(--ink);
+  box-shadow: inset 0 3px 0 var(--ink);
+}
+.tabs button:hover { color: var(--ink); }
+
+/* ---------------- 面板 ---------------- */
+.panel { display: none; min-width: 0; }
+.panel.on { display: block; }
+
+h2 {
+  font-size: 20px;
+  margin: 0 0 4px;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+h3 {
+  font-size: 14px;
+  margin: 20px 0 8px;
+  color: var(--ink2);
+  letter-spacing: .5px;
+  font-weight: 600;
+  border-left: 3px solid var(--ink);
+  padding-left: 8px;
+}
+p.lead { margin: 6px 0 14px; color: var(--ink2); font-size: 14px; line-height: 1.8; }
+p.lead b, p.lead strong { color: var(--ink); }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; min-width: 0; }
+.grid2 > * { min-width: 0; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 13px;
+  min-width: 0;
+}
+.card .cap { font-size: 12.5px; color: var(--ink3); margin: 0 0 8px; }
+
+/* ---------------- 图表 ---------------- */
+.chart { width: 100%; min-width: 0; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart text { font-family: var(--mono); }
+.chart-note { font-size: 11.5px; color: var(--ink3); margin: 6px 0 0; line-height: 1.6; }
+
+/* ---------------- 读数 ---------------- */
+p.ro {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--ink2);
+}
+p.ro b, p.ro strong { color: var(--ink); }
+p.ro code, .kpi code { font-family: var(--mono); font-size: 12.5px; background: #eef1f6; padding: 1px 4px; border-radius: 3px; }
+p.ro.live { border-left-color: var(--accent3); }
+
+p.nums {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink2);
+  background: #eef1f6;
+  border-radius: 4px;
+  padding: 8px 11px;
+  margin: 10px 0 0;
+  line-height: 1.85;
+  word-break: break-word;
+}
+
+/* ---------------- 连分数展示 ---------------- */
+.cf {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  background: #eef1f6;
+  border-left: 3px solid var(--accent2);
+  border-radius: 4px;
+  padding: 9px 11px;
+  margin: 10px 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.cf .big { color: var(--bad); font-weight: 700; }
+.cf .sep { color: var(--ink3); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.chip {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 9px;
+  background: #fff;
+  color: var(--ink2);
+  white-space: nowrap;
+}
+.chip.ok { border-color: var(--good); color: var(--good); }
+.chip.no { border-color: var(--bad); color: var(--bad); }
+.chip.warn { border-color: var(--warn); color: var(--warn); }
+
+/* ---------------- 控件 ---------------- */
+.ctl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  font-size: 13px;
+  color: var(--ink2);
+  min-width: 0;
+}
+.ctl label { white-space: nowrap; font-size: 13px; }
+.ctl input[type="range"] { flex: 1 1 160px; min-width: 0; height: 28px; accent-color: var(--accent); }
+.ctl select {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+  min-height: 36px;
+}
+.ctl .val {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink);
+  min-width: 66px;
+  text-align: right;
+  font-weight: 600;
+}
+.ctl button.go {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 14px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  min-height: 36px;
+}
+.ctl button.go:hover { background: #245a94; }
+
+/* ---------------- 表格 ---------------- */
+.tbl-wrap { overflow-x: auto; max-width: 100%; min-width: 0; }
+table.t {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12.5px;
+  font-family: var(--mono);
+  background: var(--panel);
+}
+table.t th, table.t td {
+  border: 1px solid var(--line);
+  padding: 5px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+table.t th {
+  background: #eef1f6;
+  color: var(--ink);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+table.t td:first-child, table.t th:first-child { text-align: left; }
+table.t tbody tr:nth-child(even) { background: #f7f9fc; }
+table.t td.hi { color: var(--bad); font-weight: 600; }
+table.t td.ok { color: var(--good); font-weight: 600; }
+table.t.plain td, table.t.plain th { white-space: normal; text-align: left; }
+
+/* ---------------- 结论 / 边界 ---------------- */
+.block { margin-top: 30px; }
+ol.conc { margin: 0; padding-left: 22px; }
+ol.conc li { margin-bottom: 9px; line-height: 1.85; font-size: 14px; }
+ol.conc li b, ol.conc li strong { color: var(--accent); }
+ul.bound { margin: 0; padding-left: 20px; }
+ul.bound li { margin-bottom: 8px; line-height: 1.8; font-size: 13.5px; color: var(--ink2); }
+ul.bound li b, ul.bound li strong { color: var(--ink); }
+
+.formula {
+  background: #eef1f6;
+  border-left: 3px solid var(--accent2);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  overflow-x: auto;
+  color: var(--ink);
+  white-space: pre;
+}
+
+p.foot {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--ink3);
+  line-height: 1.8;
+  font-family: var(--mono);
+  word-break: break-word;
+}
+
+/* ============================================================
+ * 窄屏覆盖 —— 必须留在文件末尾
+ * ========================================================== */
+@media (max-width: 640px) {
+  body { padding: 14px 11px 44px; font-size: 14.5px; }
+  h1.title { font-size: 26px; letter-spacing: 2px; }
+  .grid2 { grid-template-columns: 1fr; }
+  .kpi .kv { font-size: 17px; }
+
+  /* 触控目标：媒体查询里的裸选择器压不住 input[type="range"]（特异性 (0,1,1)），
+     所以这里显式把 range 也写进来；页面上没有行内 min-height。 */
+  .tabs button { min-height: 44px; padding: 11px 12px; }
+  .ctl select { min-height: 44px; }
+  .ctl input[type="range"] { min-height: 44px; height: 44px; }
+  .ctl button.go { min-height: 44px; }
+  .ctl .val { min-width: 56px; }
+
+  /* 宽表放开折行，关键列不被推出视野 */
+  table.t th, table.t td { white-space: normal; word-break: break-word; padding: 4px 6px; }
+  table.t td:first-child, table.t th:first-child { min-width: 62px; }
+  table.t td.hi, table.t td.ok { white-space: nowrap; }
+  ol.conc li, ul.bound li { font-size: 13.5px; }
+  p.ro { font-size: 13px; }
+  .cf { white-space: normal; word-break: break-all; }
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1 class="title">逼近之极</h1>
+  <p class="sub">连分数、丢番图逼近，与「一个数能有多难被逼近」</p>
+  <p class="meta" id="meta-line"></p>
+</header>
+
+<div id="kpis"></div>
+
+<nav class="tabs" id="tabs"></nav>
+
+<!-- ==================== 壹 · 逼近 ==================== -->
+<section class="panel" id="p-one">
+  <h2>壹 · 一个分数能多接近一个无理数</h2>
+  <p class="lead">
+    Dirichlet 在 1842 年证明了：对任何无理数 α，都存在无穷多个分数 p/q 使
+    <b>|α − p/q| &lt; 1/q²</b>。这不是一个"存在某个"的结论，而是一条尺子 ——
+    它说逼近误差可以掉到分母平方那么快。
+    问题是：哪些 p/q 做到了？连分数给出了答案，而且是<b>穷尽</b>的答案 ——
+    一个数的<b>收敛子</b>（连分数逐项截断得到的分数）恰好就是它最好的那批逼近。
+  </p>
+  <p class="lead">
+    下面这张图把 φ 的每一个收敛子画在双对数坐标上，并叠上 1/q² 参考线。
+    注意那些点不是在一条线上，而是在<b>两级台阶</b>之间交替 —— 因为 φ 的连分数
+    [1; 1, 1, 1, …] 全是 1，误差每两步才降一次。
+  </p>
+
+  <div class="card">
+    <p class="cap">φ 的收敛子误差 vs 分母 q（双对数），虚线为 1/q² 参考</p>
+    <div class="chart" id="c-phiError"></div>
+    <p class="chart-note" id="ro-phiError"></p>
+  </div>
+
+  <h3>φ 的收敛子表</h3>
+  <div class="tbl-wrap"><table class="t" id="t-conv"></table></div>
+  <p class="ro">
+    递推是 <code>p_k = a_k·p_{k−1} + p_{k−2}</code>，分母同样。全部用 BigInt 算 ——
+    因为 q_k 按 φ^k 增长，第 40 项就已经超出双精度能精确表示整数的范围。
+    <br><br>
+    最后一列 <code>q·‖qα‖</code>（等于 <code>q²·|α − p/q|</code>）是这条数列真正的主角：
+    它永远落在 <b>1/φ² = 0.38197 与 1/φ = 0.61803</b> 之间，来回震荡，
+    而它的<b>上极限</b>恰好是 1/√5 = 0.4472136 —— 这正是 ν(φ) = √5 的另一种写法。
+    换句话说：表里那 14 个数没有一个等于 0.4472136，但它们的聚点只有一个，就是它。
+  </p>
+
+  <h3>自己试：换一个 α，换一个穷举范围</h3>
+  <p class="lead">
+    选一个 α，把 Q 以内的<b>每一个分母</b>都试一遍（朴素穷举），
+    再和连分数给出的收敛子对账。两者必须给出同一批最佳逼近 ——
+    如果对不上，就是有一边错了。
+  </p>
+  <div class="ctl">
+    <label for="sel-alpha">α =</label>
+    <select id="sel-alpha"></select>
+    <label for="s-Q">穷举上限 Q =</label>
+    <input type="range" id="s-Q" min="1" max="6" step="1" value="4">
+    <span class="val" id="n-Q"></span>
+  </div>
+  <div class="tbl-wrap"><table class="t" id="t-best"></table></div>
+  <p class="ro live" id="ro-best-live">—</p>
+</section>
+
+<!-- ==================== 贰 · 难度 ==================== -->
+<section class="panel" id="p-two">
+  <h2>贰 · 把「能多接近」做成一个数</h2>
+  <p class="lead">
+    上面那条不等式说的是「至少有一个 q 使误差掉到 1/q² 以下」。但有些数做得更好，
+    有些数做得更差。要把这个差别变成一个可比的数，就把不等式里的指数抠出来：
+  </p>
+  <div class="formula">ν(α) = limsup_{q→∞}  ( q · ‖qα‖ )⁻¹        ‖x‖ = 到最近整数的距离</div>
+  <p class="lead">
+    分母里的 <code>q·‖qα‖</code> 就是收敛子表最后一列那个量。它的<b>上极限的倒数</b>
+    就是 ν：ν 越大，这个数越容易被逼近；ν 越小，越难。
+    Hurwitz 定理（1891）给了一个下界：<b>ν(α) ≥ √5</b> 对一切无理数成立，
+    而这个 √5 不能再大 —— 黄金比例 φ 恰好取到等号。
+  </p>
+
+  <div class="card">
+    <p class="cap">各 α 的难度 ν（对数刻度），红点 = 上极限被小 q 污染的量</p>
+    <div class="chart" id="c-nuBars"></div>
+    <p class="chart-note" id="ro-nuBars"></p>
+  </div>
+
+  <h3>十个 α 的连分数头与难度</h3>
+  <div class="tbl-wrap"><table class="t" id="t-cf"></table></div>
+  <p class="ro">
+    注意 φ 那一行：连分数全是 1，而 1 是连分数能取的<b>最小正整数</b>。
+    这是「最难」的全部原因 —— 部分商越小，收敛子爬得越慢，q·‖qα‖ 就掉不下去。
+    ν 有限 ⟺ 部分商有界：二次无理数周期 ⇒ 有界 ⇒ ν 有限；
+    而 Liouville 数的部分商可以任意大 ⇒ ν = ∞。
+  </p>
+</section>
+
+<!-- ==================== 叁 · 上极限 ==================== -->
+<section class="panel" id="p-three">
+  <h2>叁 · 一个容易算错的极限</h2>
+  <p class="lead">
+    ν 的定义里藏着一个陷阱：它是 <b>limsup</b>，是 q → ∞ 的上极限。
+    如果你偷懒，直接把 q ≤ Q 全范围里 <code>q·‖qα‖</code> 的最小值取出来求倒数，
+    你得到的不是 ν，而是一个<b>纯属虚构的数</b>。
+  </p>
+  <div class="card">
+    <p class="cap">φ 的 q·‖qα‖ 随 q 的分布：小 q 给出一个假的极小值</p>
+    <div class="chart" id="c-limsup"></div>
+    <p class="chart-note" id="ro-limsup"></p>
+  </div>
+  <p class="ro">
+    具体地：φ 在 q = 1 处 ‖φ‖ = |φ − 2| = 0.382，于是 1/(1 × 0.382) = <b>2.618 = φ²</b>，
+    比真正的 ν = 2.236 还大。取"全范围最小"得到的永远是 2.618，而不是 √5。
+    <br><br>
+    这条不是编出来的例子 —— 它是本装置第一版实现<b>真的算出来的错数</b>。
+    当时 ν(φ) 报 2.618，看着还挺像个真结果。发现它的办法只有一个：
+    拿一个<b>答案已知的对照组</b>去撞（φ 的真值是 √5），撞不上才回去查定义。
+    修法是只在<b>尾部窗口</b>上取最大值，并把「全范围值」单独留着当反面对照。
+  </p>
+</section>
+
+<!-- ==================== 肆 · 2√n ==================== -->
+<section class="panel" id="p-four">
+  <h2>肆 · 二次无理数有一条完整的规律</h2>
+  <p class="lead">
+    √2、√3、√5 … 这些数的连分数是<b>周期</b>的（Lagrange 定理），
+    所以它们的部分商有界，ν 有限。那么 ν(√n) 到底等于多少？
+  </p>
+  <div class="formula">ν(√n) = 2√n        对一切非平方正整数 n 成立</div>
+  <p class="lead">
+    下面是 186 个 n（n = 2…200 里全部非平方数）的实测值与闭式解叠在一起。
+    两套<b>零共享代码</b>的实现（周期解析法 / 收敛子公式法）各自独立算一遍，
+    第三套（朴素穷举）在双精度还能用的范围内也一致。
+  </p>
+  <div class="card">
+    <p class="cap">ν(√n) 实测 vs 2√n（相对差放大 10¹⁵ 倍后才看得见）</p>
+    <div class="chart" id="c-sqrtN"></div>
+    <p class="chart-note" id="ro-sqrtN"></p>
+  </div>
+  <div class="ctl">
+    <label for="s-sqrtn">n =</label>
+    <input type="range" id="s-sqrtn" min="2" max="200" step="1" value="2">
+    <span class="val" id="n-sqrtn"></span>
+  </div>
+  <p class="ro live" id="ro-sqrtn-live">—</p>
+  <p class="ro">
+    把 2√n 和 ν(φ) = √5 放在一起看：最接近 φ 的 √2 也有 ν = 2.828，
+    是 √5 的 <b>1.265 倍</b>。也就是说 φ 不只是"最难"，
+    它还比所有二次无理数都难 —— 而且难出了一整个数量级的差别（n 越大越容易）。
+    原因是周期部分商里有比 1 大的数，而 φ 的部分商只能取到 1。
+  </p>
+</section>
+
+<!-- ==================== 伍 · 离散谱 ==================== -->
+<section class="panel" id="p-five">
+  <h2>伍 · 在 √5 与 3 之间，难度只能取离散的值</h2>
+  <p class="lead">
+    ν 能取哪些值？直觉上应该是个连续区间。但 Markov（1879）发现了一个反直觉的事实：
+    在 <b>[√5, 3)</b> 这一段里，ν 只能落在一串<b>离散</b>的点上：
+  </p>
+  <div class="formula">ν_m = √(9m² − 4) / m        m 取遍 Markov 数 1, 2, 5, 13, 29, 34, 89, …</div>
+  <p class="lead">
+    第一个点是 m = 1 给出 √5（就是 φ），第二个点是 m = 2 给出 2√2（就是 √2）。
+    而 3 以上才是连续段。也就是说：<b>难度的谱是断的</b>，
+    而且断点之间的空隙里没有任何数能取到。
+  </p>
+  <div class="card">
+    <p class="cap">Markov 谱前 14 点（横轴 = ν，纵轴 = 到 3 的距离，对数刻度）</p>
+    <div class="chart" id="c-spectrum"></div>
+    <p class="chart-note" id="ro-spectrum"></p>
+  </div>
+  <h3>谱点表</h3>
+  <div class="tbl-wrap"><table class="t" id="t-spectrum"></table></div>
+  <p class="ro">
+    实测的 ν(√2) = 2.8284271247 精确落在第 2 个谱点上（m = 2），距离 4.44e-16 —— 机器精度。
+    这不是巧合：√2 的连分数 [1; 2, 2, 2, …] 正是 Markov 数 m = 2 对应的那条周期。
+  </p>
+
+  <h3>谱的另一端：逼近指数</h3>
+  <p class="lead">
+    ν 刻画的是「最接近的那一档有多接近」。还有一个更粗的量：<b>逼近指数 μ</b> ——
+    满足 |α − p/q| &lt; 1/q<sup>μ</sup> 的 q 到底有没有无穷多个。
+    做法是数个数：把 Q 以内满足条件的 q 数出来，看这个计数随 Q 涨还是封顶。
+    涨 ⇒ 指数至少是 μ；封顶 ⇒ 指数小于 μ。
+  </p>
+  <div class="card">
+    <p class="cap">φ 的计数：满足 |α − p/q| &lt; 1/q<sup>μ</sup> 的 q 的个数 vs Q</p>
+    <div class="chart" id="c-mu"></div>
+    <p class="chart-note" id="ro-mu"></p>
+  </div>
+  <p class="ro">
+    μ = 2 那条线一直涨，μ = 2.5 那条一动不动 —— 分界精确落在 μ = 2。
+    这不是 φ 的性质，是<b>所有代数无理数</b>的性质（Roth 定理，1955，Fields 奖）：
+    它们的逼近指数恰好是 2，一个不多。而 Liouville 数的指数是 ∞，
+    那才是"ν = ∞"那一头 —— 它需要专门构造，不能靠运气碰上。
+  </p>
+</section>
+
+<!-- ==================== 陆 · 统计 ==================== -->
+<section class="panel" id="p-six">
+  <h2>陆 · 换一副眼镜：几乎所有数长什么样</h2>
+  <p class="lead">
+    前面几章问的是「某个特定的数」。现在把问题反过来：
+    <b>随便抓一个数</b>，它的部分商长什么样？
+    答案出奇地干净 —— 部分商等于 k 的概率是
+    <b>log₂(1 + 1/(k(k+2)))</b>（Gauss 1797 年写下、Kuzmin 1928 年证明）。
+    这是概率论里最反直觉的分布之一：P(k = 1) ≈ 0.415，而 P(k = 1) 在"均匀随机"下应该是 0.5。
+  </p>
+  <div class="card">
+    <p class="cap">部分商分布：经验值 vs Gauss–Kuzmin 理论值</p>
+    <div class="chart" id="c-gk"></div>
+    <p class="chart-note" id="ro-gk"></p>
+  </div>
+  <div class="ctl">
+    <label for="s-gk">样本量 N =</label>
+    <input type="range" id="s-gk" min="3" max="6" step="1" value="4">
+    <span class="val" id="n-gk"></span>
+  </div>
+  <p class="ro live" id="ro-gk-live">—</p>
+
+  <h3>收敛率：TV × √N 在 1.24 与 2.15 之间</h3>
+  <p class="lead">
+    这个分布收敛得多快？把全变差距离（TV）乘上 √N 画出来 ——
+    如果它是一条水平线，收敛率就精确是 1/√N。实测它不是水平线，而是在 1.24 与 2.15 之间起落
+    （最低点出现在 N = 10⁵，之后还回升了一点）。换算成有效幂指数是 <b>α ≈ 0.56–0.58</b>：
+    <b>与 1/√N 同量级，但不是精确的 1/√N</b>。这条"起落"本身就是单轨道测量涨落的量级。
+  </p>
+  <div class="card">
+    <p class="cap">TV 距离 × √N，四个数量级的样本量</p>
+    <div class="chart" id="c-tv"></div>
+    <p class="chart-note" id="ro-tv"></p>
+  </div>
+
+  <h3>两个常数</h3>
+  <p class="ro">
+    <b>Khinchin 常数</b>：几乎所有的 α，部分商的几何平均收敛到
+    <code>2.6854520010…</code>。实测 2.6748（10 个 α 的几何平均，相对差 0.40%）。
+    <br><br>
+    <b>Lévy 常数</b>：几乎所有的 α，<code>q_k^{1/k}</code> 收敛到
+    <code>e^{π²/(12 ln 2)} = 3.2758229…</code>。但 φ 是<b>例外</b> ——
+    它的 q_k^{1/k} → φ = 1.618，因为 φ 的连分数全是 1。
+    这正是"几乎所有"这个词的代价：定理对每个例外都闭一只眼，而例外里恰好坐着主角。
+  </p>
+</section>
+
+<!-- ==================== 柒 · 结构 ==================== -->
+<section class="panel" id="p-seven">
+  <h2>柒 · 两个精确的结构定理</h2>
+  <p class="lead">
+    <b>三距离定理</b>（Sós 1958 / Surányi）：把 {α}, {2α}, …, {nα} 排成一列，
+    它们之间的间隙<b>最多只有三种长度</b>，而且第三种等于前两种之和。
+    这不是"大约"，是精确的。
+  </p>
+  <div class="card">
+    <p class="cap">{kα} 的间隙谱（按大小排序的间隙长度）</p>
+    <div class="chart" id="c-three"></div>
+    <p class="chart-note" id="ro-three"></p>
+  </div>
+  <div class="ctl">
+    <label for="s-three">n =</label>
+    <input type="range" id="s-three" min="5" max="60" step="1" value="21">
+    <span class="val" id="n-three"></span>
+  </div>
+  <p class="ro live" id="ro-three-live">—</p>
+  <p class="lead">
+    <b>Farey 序列</b>：分母 ≤ n 的全部既约分数从小到大排。它的长度有一个精确的闭式，
+    相邻两项之间有一个精确的判据：
+  </p>
+  <div class="formula">|F_n| = 1 + Σ_{k≤n} φ(k)        b·c − a·d = 1（相邻项）</div>
+  <div class="card">
+    <p class="cap">Farey 序列长度：构造值 vs 闭式（两者完全重合）</p>
+    <div class="chart" id="c-farey"></div>
+    <p class="chart-note" id="ro-farey"></p>
+  </div>
+  <h3>Farey 校验表（前 20 档）</h3>
+  <div class="tbl-wrap"><table class="t" id="t-farey"></table></div>
+  <p class="ro">
+    同一个结构还有一副面孔：<b>Stern–Brocot 树</b>。每个既约分数在这棵树里有一个深度，
+    而深度精确等于它的连分数部分商之和减 1 —— <code>Σa_i − 1</code>。
+    555 个分数（p, q ≤ 30）全部吻合，零例外。
+    于是「连分数」和「二分搜索树」原来是同一件事的两种写法。
+  </p>
+</section>
+
+<!-- ==================== 捌 · 墙 ==================== -->
+<section class="panel" id="p-eight">
+  <h2>捌 · 穷举的墙</h2>
+  <p class="lead">
+    ν 定义在 q → ∞ 的极限上。如果只会穷举，那就得把 q 一个一个试过去。
+    问题是：这条路的代价是<b>线性</b>的，而你要的那个极限是<b>无穷</b>的。
+  </p>
+  <div class="card">
+    <p class="cap">穷举到 Q 的耗时（对数刻度，实测 + 线性外推）</p>
+    <div class="chart" id="c-wall"></div>
+    <p class="chart-note" id="ro-wall"></p>
+  </div>
+  <div class="tbl-wrap"><table class="t" id="t-wall"></table></div>
+  <p class="ro">
+    本机实测吞吐约 2.0×10⁻⁶ 毫秒 / 个 q。按这个速度，穷举到 Q = 10¹⁵ 要
+    <b>约 6.3×10⁻⁵ 年</b>（半小时），到 10¹⁸ 要 <b>63.4 年</b>。
+    更要命的是：就算你穷举到 10¹⁸，你拿到的也只是"到目前为止"的值，
+    不是极限 —— 因为下一个 q 可能给出更大的项。
+    <br><br>
+    本页对二次无理数改用<b>周期结构精确求解</b>（连分数的周期是有限的，
+    周期内的递推可以迭代到不动点），正是为了绕开这堵墙。
+    对非周期的 α 则改用<b>收敛子尾部窗口</b>，并把窗口边界明确写在边界段里。
+  </p>
+</section>
+
+<!-- ==================== 玖 · 可信 ==================== -->
+<section class="panel" id="p-nine">
+  <h2>玖 · 这些数字凭什么可信</h2>
+  <p class="lead">
+    这一页上的每一个数字都来自一次真实计算。但"我算过了"不是理由。
+    下面三张表分别回答三个不同的问题：<b>模型对不对</b>、<b>数字稳不稳</b>、
+    <b>边界在哪里</b>。
+  </p>
+
+  <h3>验证表：每一条结论对应一次独立的核对</h3>
+  <div class="tbl-wrap"><table class="t" id="t-verify"></table></div>
+
+  <h3>边界：这一页在哪里停下来</h3>
+  <ul class="bound" id="boundaries"></ul>
+
+  <h3>三层验证</h3>
+  <p class="ro" id="ro-trust">
+    <b>第一层 · 模型自检 88 项</b>：期望值一律来自 (a) 独立朴素实现（与主实现共享零行代码）、
+    (b) 手算/闭式、(c) 外部文献值，绝不从被测对象反推。
+    <br><br>
+    <b>第二层 · 标定 7 组实验</b>：E1 最佳逼近对账 / E2 ν 与 Markov 谱 / E3 ν(√n)=2√n /
+    E4 逼近指数与 μ 探测 / E5 Gauss–Kuzmin 收敛速度 / E6 三距离定理 / E7 Farey 与墙。
+    <br><br>
+    <b>第三层 · 真实浏览器内核</b>：三档视口（1400 / 480 / 360 px）各跑一遍完整探针，
+    探针自报实际视口宽度、逐图数 SVG 子节点、扫描页面上的 NaN / undefined 字面量、
+    量每一个触控目标的高度。这一层挡的是「模型没错、数据没错，但页面上看不见」。
+  </p>
+
+  <div class="block">
+    <h2>结论</h2>
+    <ol class="conc" id="conclusions"></ol>
+  </div>
+
+  <p class="foot" id="foot-line"></p>
+</section>
+
+</div>
+
+<script>
+/* ---- core.js（模型，Node 与浏览器共用同一份源码） ---- */
+/* ============================================================================
+ * 逼近之极 · core.js
+ * 连分数 · 丢番图逼近 · Markov 谱 · Gauss 映射 · 三距离定理 · Farey / Stern-Brocot
+ *
+ * UMD —— Node 标定脚本与浏览器页面共用同一份源码。
+ * 交付物：工作区根目录《逼近之极.html》
+ *
+ * 本文件里每一个"理论值"都是一个可以独立验算的闭式；
+ * 每一个"实测值"都来自一次真实的整数/浮点运算，绝不从结论反推。
+ * ========================================================================== */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.CFCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* ==========================================================================
+   * 0. 确定性 PRNG
+   * ======================================================================== */
+
+  function splitmix32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 16), 0x21f0aaad) >>> 0;
+      t = Math.imul(t ^ (t >>> 15), 0x735a2d97) >>> 0;
+      return ((t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* 由 (seed, tag) 唯一确定的实例随机源：扫描顺序改变不影响任何单个实例 */
+  function makeRng(seed, tag) {
+    var h = (seed >>> 0) ^ 0x9e3779b9;
+    var s = String(tag == null ? '' : tag);
+    for (var i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 0x85ebca6b) >>> 0;
+      h = (h ^ (h >>> 13)) >>> 0;
+    }
+    return splitmix32(h);
+  }
+
+  /* ==========================================================================
+   * 1. 连分数：展开、收敛子、求值
+   * ======================================================================== */
+
+  /* 浮点数的连分数展开。对"我手上有 double"的数（π、随机数）用它。
+   * 对二次无理数不要用它 —— double 的 φ 是有理数，展开到 40 项后会爆出巨项。 */
+  function cfExpand(x, maxTerms, tol) {
+    maxTerms = maxTerms || 40;
+    tol = tol || 1e-13;
+    if (!(x > 0) || !isFinite(x)) return [];
+    var a = [];
+    for (var i = 0; i < maxTerms; i++) {
+      var ai = Math.floor(x);
+      if (!isFinite(ai) || ai < 0) break;
+      a.push(ai);
+      var f = x - ai;
+      if (f <= tol) break;
+      var r = 1 / f;
+      if (!isFinite(r) || r > 1e15) break;
+      x = r;
+    }
+    return a;
+  }
+
+  /* √n 的连分数（精确整数算法，自动落在周期上）。
+   * 标准算法：m_{k+1} = d_k a_k − m_k ; d_{k+1} = (n − m²_{k+1})/d_k ;
+   *           a_{k+1} = ⌊(a0 + m_{k+1})/d_{k+1}⌋ 。全部是整数运算。 */
+  function cfFromSqrt(n, maxTerms) {
+    maxTerms = maxTerms || 48;
+    var a0 = Math.floor(Math.sqrt(n));
+    if (a0 * a0 === n) return [a0];
+    var a = [a0], m = 0, d = 1, aCur = a0;
+    for (var i = 1; i < maxTerms; i++) {
+      m = d * aCur - m;
+      d = (n - m * m) / d;
+      aCur = Math.floor((a0 + m) / d);
+      a.push(aCur);
+    }
+    return a;
+  }
+
+  /* e = [2; 1,2,1, 1,4,1, 1,6,1, …] 的精确部分商（第 3k 项是 2k） */
+  function eCF(len) {
+    var a = [2];
+    for (var k = 1; a.length < len; k++) {
+      a.push(1);
+      if (a.length < len) a.push(2 * k);
+      if (a.length < len) a.push(1);
+    }
+    return a.slice(0, len);
+  }
+
+  /* 收敛子（BigInt 精确递推）。
+   * p_{-2}=0, p_{-1}=1 ; q_{-2}=1, q_{-1}=0
+   * p_k = a_k p_{k-1} + p_{k-2} ; q_k = a_k q_{k-1} + q_{k-2}
+   * 全部用 BigInt —— q_k 会指数增长，double 在 q > 2^53 后失真。 */
+  function cfConvergents(a, count) {
+    var n = (count === undefined || count === null) ? a.length : Math.min(count, a.length);
+    var pm2 = 0n, pm1 = 1n, qm2 = 1n, qm1 = 0n;
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var ai = BigInt(a[i]);
+      var p = ai * pm1 + pm2;
+      var q = ai * qm1 + qm2;
+      out.push({ k: i, a: a[i], p: p, q: q });
+      pm2 = pm1; pm1 = p;
+      qm2 = qm1; qm1 = q;
+    }
+    return out;
+  }
+
+  /* 部分商序列 → 数值（从尾巴往前做连分数求值） */
+  function cfEval(a) {
+    if (!a.length) return NaN;
+    var x = 0;
+    for (var i = a.length - 1; i >= 0; i--) x = a[i] + (x === 0 ? 0 : 1 / x);
+    return x;
+  }
+
+  /* 部分商序列 → 双精度值（用 BigInt 收敛子取最后一项，比 cfEval 稳） */
+  function cfValue(a) {
+    var c = cfConvergents(a, a.length);
+    if (!c.length) return NaN;
+    // 从尾部往前找一个 q 还在 double 能精确表示范围内的收敛子
+    for (var i = c.length - 1; i >= 0; i--) {
+      if (c[i].q <= 9007199254740991n) return Number(c[i].p) / Number(c[i].q);
+    }
+    return NaN;
+  }
+
+  function cfToStr(a, maxShow) {
+    maxShow = maxShow || 12;
+    var head = a.slice(0, maxShow).join(', ');
+    return '[' + a[0] + '; ' + (a.length > 1 ? a.slice(1, maxShow).join(', ') : '') +
+      (a.length > maxShow ? ', …' : '') + ']';
+  }
+
+  /* ==========================================================================
+   * 2. α 的清单 —— 每个 α 用"部分商序列"定义，而不是浮点
+   * ======================================================================== */
+
+  function rep(arr, times) {
+    var out = [];
+    for (var i = 0; i < times; i++) out = out.concat(arr);
+    return out;
+  }
+
+  var ALPHA_DEFS = [
+    { key: 'phi', label: '黄金比例 φ', sym: '(1+√5)/2', kind: 'quad',
+      cf: rep([1], 110), exactNu: Math.sqrt(5), nuLabel: '√5',
+      note: '部分商全是 1 —— 连分数能给出的"最小"的一串数' },
+    { key: 'sqrt2', label: '√2', sym: '1.41421356', kind: 'quad',
+      cf: cfFromSqrt(2, 110), exactNu: 2 * Math.sqrt(2), nuLabel: '2√2',
+      note: '部分商从第二项起全是 2' },
+    { key: 'sqrt3', label: '√3', sym: '1.73205081', kind: 'quad',
+      cf: cfFromSqrt(3, 110), exactNu: 2 * Math.sqrt(3), nuLabel: '2√3',
+      note: '部分商是 1,2 交替 —— 难度已经掉到连续段里' },
+    { key: 'sqrt5', label: '√5', sym: '2.23606798', kind: 'quad',
+      cf: cfFromSqrt(5, 110), exactNu: 2 * Math.sqrt(5), nuLabel: '2√5',
+      note: '部分商全是 4 —— 难度 2√5，是 φ 的两倍' },
+    { key: 'sqrt7', label: '√7', sym: '2.64575131', kind: 'quad',
+      cf: cfFromSqrt(7, 110), exactNu: 2 * Math.sqrt(7), nuLabel: '2√7',
+      note: '部分商周期 1,1,1,4 —— 难度 2√7' },
+    { key: 'pi', label: 'π', sym: '3.14159265', kind: 'trans',
+      cf: cfExpand(Math.PI, 60), exactNu: null, nuLabel: null,
+      note: '第 5 个部分商 292 —— 那一下把 355/113 送得极近' },
+    { key: 'e', label: '自然常数 e', sym: '2.71828183', kind: 'trans',
+      cf: eCF(60), exactNu: null, nuLabel: null,
+      note: '部分商按 1,2k,1 的规律无界增长' },
+    { key: 'rand1', label: '随机实数 A', sym: '—', kind: 'rand',
+      cf: null, exactNu: null, nuLabel: null, seed: 20260930,
+      note: '均匀分布抽一个 —— 部分商服从 Gauss–Kuzmin 分布' },
+    { key: 'rand2', label: '随机实数 B', sym: '—', kind: 'rand',
+      cf: null, exactNu: null, nuLabel: null, seed: 777771,
+      note: '另一个样本，用来展示"随机数的难度几乎总在 3 附近"' },
+    { key: 'liouville', label: 'Liouville 数', sym: 'Σ10^−k!', kind: 'special',
+      cf: null, exactNu: null, nuLabel: '∞', seed: 0,
+      note: '它的部分商无界增长得极快 —— 难度没有上界' }
+  ];
+
+  /* Liouville 数 L = Σ_{k≥1} 10^{-k!} 的部分商（用高精度十进制串算出来）。
+   * 直接构造它需要几千位精度，这里用一个足够深的近似：
+   * 用 10^{-k!} 的前若干项拼成一个有理数，再展开。 */
+  var _liouvilleCache = null;
+  function liouvilleCF(digits) {
+    var D = digits || 800;
+    if (_liouvilleCache && _liouvilleCache.D === D) return _liouvilleCache.cf.slice();
+    // 用 BigInt 造 N = Σ 10^{D − k!}，则 L ≈ N / 10^D
+    var N = 0n;
+    var pow10 = 10n ** BigInt(D);
+    var fact = 1;
+    for (var k = 1; k <= 12; k++) {
+      fact *= k;
+      if (fact > D) break;
+      N += 10n ** BigInt(D - fact);
+    }
+    // 对有理数 N/10^D 做精确连分数展开
+    var cf = rationalCF(N, pow10, 26);
+    _liouvilleCache = { D: D, cf: cf.slice() };
+    return cf;
+  }
+
+  /* 有理数 a/b 的精确连分数（BigInt 辗转相除） */
+  function rationalCF(a, b, maxTerms) {
+    maxTerms = maxTerms || 64;
+    var out = [];
+    var x = a, y = b;
+    for (var i = 0; i < maxTerms; i++) {
+      if (y === 0n) break;
+      var q = x / y;
+      out.push(Number(q));
+      var r = x - q * y;
+      x = y; y = r;
+    }
+    return out;
+  }
+
+  function ALPHAS() {
+    var out = [];
+    for (var i = 0; i < ALPHA_DEFS.length; i++) {
+      var d = ALPHA_DEFS[i];
+      var a = d.cf ? d.cf.slice() : null;
+      var value = null;
+      if (d.kind === 'rand') {
+        // 随机实数：在 (1,2) 上取均匀值再展开。用双精度足够（它本来就是"随便一个数"）
+        var rng = makeRng(d.seed, 'alpha');
+        var x = 1 + rng();
+        a = cfExpand(x, 30);
+        value = x;
+      } else if (d.kind === 'special' && d.key === 'liouville') {
+        a = liouvilleCF(260);
+      }
+      if (value === null && a && a.length) value = cfValue(a);
+      out.push({
+        key: d.key, label: d.label, sym: d.sym, kind: d.kind, note: d.note,
+        cf: a, value: value, exactNu: d.exactNu, nuLabel: d.nuLabel
+      });
+    }
+    return out;
+  }
+
+  function getAlpha(key) {
+    var all = ALPHAS();
+    for (var i = 0; i < all.length; i++) if (all[i].key === key) return all[i];
+    return null;
+  }
+
+  /* ==========================================================================
+   * 3. 最佳逼近：朴素穷举 vs 连分数
+   * ======================================================================== */
+
+  /* 朴素真值：穷举所有 q = 1..Q，对每个 q 取最近的整数 p，
+   * 记录 ‖qα‖ = |qα − p| 的最小值。O(Q)。
+   * 返回 {q, p, dist, qDist} —— qDist = q·‖qα‖，就是"这一档的逼近代价"。 */
+  function bestApproxNaive(alphaValue, Q) {
+    var best = { q: 0, p: 0, dist: Infinity, qDist: Infinity };
+    for (var q = 1; q <= Q; q++) {
+      var x = q * alphaValue;
+      var p = Math.round(x);
+      var d = Math.abs(x - p);
+      if (d < best.dist) best = { q: q, p: p, dist: d, qDist: q * d };
+    }
+    return best;
+  }
+
+  /* 用收敛子（BigInt 精确）算同一件事。只走到 q ≤ Q 为止。 */
+  function bestApproxCF(alpha, Q) {
+    var conv = cfConvergents(alpha.cf, alpha.cf.length);
+    var best = { q: 0, p: 0, dist: Infinity, qDist: Infinity };
+    for (var i = 0; i < conv.length; i++) {
+      if (conv[i].q > BigInt(Q)) break;
+      var q = Number(conv[i].q), p = Number(conv[i].p);
+      var d = Math.abs(q * alpha.value - p);
+      if (d < best.dist) best = { q: q, p: p, dist: d, qDist: q * d };
+    }
+    return best;
+  }
+
+  /* 所有"最佳逼近分母"（第一类：min_p|qα−p| 严格小于此前所有 q' < q 的值） */
+  function bestApproxDenoms(alphaValue, Q) {
+    var out = [];
+    var running = Infinity;
+    for (var q = 1; q <= Q; q++) {
+      var x = q * alphaValue;
+      var d = Math.abs(x - Math.round(x));
+      if (d < running - 0) {
+        running = d;
+        out.push(q);
+      }
+    }
+    return out;
+  }
+
+  /* 实测 ν_Q(α) = max over 大 q 的 1/(q‖qα‖)。
+   *
+   * 为什么必须限定"大 q"：ν 的定义是 q → ∞ 的上极限。q = 1 处
+   * ‖φ‖ = |φ − 2| = 0.382 比任何一个收敛子的 0.4472 都小，
+   * 于是全范围取 min 会得到 1/0.382 = 2.618（= φ²）这个纯属虚构的值。
+   * 只在大 q 上取 sup 才是 limsup。 */
+  function nuNaive(alphaValue, Q, loFrac) {
+    loFrac = loFrac === undefined ? 0.1 : loFrac;
+    var lo = Math.max(1, Math.floor(Q * loFrac));
+    var mx = -Infinity, argq = 0, minQd = Infinity;
+    for (var q = lo; q <= Q; q++) {
+      var x = q * alphaValue;
+      var d = Math.abs(x - Math.round(x));
+      if (d <= 0) continue;
+      var v = 1 / (q * d);
+      if (v > mx) { mx = v; argq = q; }
+      if (q * d < minQd) minQd = q * d;
+    }
+    return { nu: mx, argq: argq, minQDist: minQd, lo: lo };
+  }
+
+  /* 检测连分数的周期（从 a₁ 起）。二次无理数必然有周期；
+   * 其余（π、e、随机数）返回 0。 */
+  function cfPeriod(cf) {
+    var a = cf.slice(1);
+    var lim = Math.floor(a.length / 2);
+    for (var p = 1; p <= lim; p++) {
+      var ok = true, checked = 0;
+      for (var i = p; i < a.length; i++) {
+        if (a[i] !== a[i % p]) { ok = false; break; }
+        checked++;
+        if (checked > 6 * p) break;
+      }
+      if (ok && checked >= 2 * p) return p;
+    }
+    return 0;
+  }
+
+  /* 只用收敛子算 ν —— 高精度版。
+   *
+   * 关键公式（不是近似）：
+   *     q_k·‖q_kα‖ = q_k / (q_{k+1} + q_k·ξ),  ξ = [0; a_{k+2}, a_{k+3}, …]
+   * 推导：α − p_k/q_k = (−1)^k / (q_k(q_k t + q_{k−1})), t = [a_{k+1}; a_{k+2}, …]，
+   * 而 q_k t + q_{k−1} = a_{k+1}q_k + q_{k−1} + q_k/t′ = q_{k+1} + q_k ξ（t′ = 1/ξ）。
+   * 用这个公式比直接算 |q_k·α − p_k| 精度高三个数量级 ——
+   * 后者在 q ≈ 8×10⁵ 时的双精度误差是 3×10⁻¹⁰，而信号本身只有 5×10⁻⁷。
+   *
+   * 两个返回值必须分清：
+   *   nu      —— 尾部窗口内收敛子的最大值。**部分商有界时它收敛到 ν**，
+   *              这是唯一能当"实测 ν"用的数。
+   *   nuUpper —— 全部收敛子的最大值。它一定 ≥ ν（sup 覆盖 limsup），
+   *              但**不是 ν 的估计**：φ 的 q=1 项给出 2.618，而 ν(φ)=2.236。
+   * 为什么不能直接取全局 max：ν 是 q→∞ 的上极限，小 q 的项根本不在极限里。
+   *
+   * 尾部窗口的宽度：对周期连分数，f(q_k) 在一个周期内有 p 个不同的极限值，
+   * 窗口必须盖住至少一个完整周期才能取到 max。√46 的周期是 12，
+   * 窗口取 8 时会漏掉最大值，实测给出 ν 的一半。 */
+  function nuFromConvergents(alpha, maxQ, tailM) {
+    maxQ = maxQ || 1e15;
+    var p = cfPeriod(alpha.cf);
+    if (tailM === undefined || tailM === null) tailM = p > 0 ? Math.max(6, 2 * p) : 10;
+    var conv = cfConvergents(alpha.cf, alpha.cf.length);
+    var pts = [];
+    for (var i = 0; i + 1 < conv.length; i++) {
+      var qk = Number(conv[i].q);
+      if (!isFinite(qk) || qk > maxQ) break;
+      var qk1 = Number(conv[i + 1].q);
+      if (!isFinite(qk1) || qk1 <= 0) break;
+      var tail = alpha.cf.slice(i + 2, i + 2 + 40);
+      var xi = 0;
+      if (tail.length) { var tp = cfEval(tail); xi = tp > 0 ? 1 / tp : 0; }
+      var qd = qk / (qk1 + qk * xi);
+      if (qd > 0 && isFinite(qd)) pts.push({ k: i, q: qk, p: Number(conv[i].p), qd: qd, nu: 1 / qd });
+    }
+    if (!pts.length) return { nu: NaN, nConv: 0, pts: [], tailPts: [], nuUpper: NaN, period: p };
+    var tailPts = pts.slice(Math.max(0, pts.length - tailM));
+    var mxT = -Infinity, argT = tailPts[0];
+    for (var j = 0; j < tailPts.length; j++) if (tailPts[j].nu > mxT) { mxT = tailPts[j].nu; argT = tailPts[j]; }
+    var mxA = -Infinity, argA = pts[0];
+    for (var k2 = 0; k2 < pts.length; k2++) if (pts[k2].nu > mxA) { mxA = pts[k2].nu; argA = pts[k2]; }
+    return {
+      nu: mxT, argq: argT.q, argQDist: argT.qd, nConv: pts.length, period: p,
+      nuUpper: mxA, upperQ: argA.q, pts: pts, tailPts: tailPts
+    };
+  }
+
+  /* 周期连分数的 ν —— 解析法，与收敛子法零行代码共享。
+   *
+   * 两条递推都在周期上迭代到稳定：
+   *   x_j = c_j + 1/x_{j+1}        （j 循环）→ 周期位置上的 t 值
+   *   r_{k+1} = 1/(c_{k mod p} + r_k),  r₀ = 0  → q_{k−1}/q_k 的周期轨道
+   * 于是 ν = max_j (x_j + r_j)。
+   *
+   * 这里必须**同时**迭代两条递推：只迭代 x 再用 1/λ 近似 q_{k−1}/q_k 是错的 ——
+   * q_{k−1}/q_k 在一个周期内并不趋于同一个数（√3 的两支分别是 0.366 与 0.732，
+   * 差一倍），用 1/λ 会把 ν(√3) 从 3.4641 算成 3.0000。
+   *
+   * 这条路完全不碰浮点连分数的长尾，是"两套独立实现对账"里的第二套。 */
+  function nuFromPeriod(alpha) {
+    var p = cfPeriod(alpha.cf);
+    if (!p) return null;
+    var c = alpha.cf.slice(1, 1 + p);
+    // x_j
+    var x = c.map(function (v) { return v + 1; });
+    for (var it = 0; it < 400; it++) {
+      var nx = new Array(p);
+      for (var j = 0; j < p; j++) nx[j] = c[j] + 1 / x[(j + 1) % p];
+      x = nx;
+    }
+    // r_k 的周期轨道
+    var r = 0, K0 = 1200;
+    for (var it2 = 0; it2 < K0; it2++) r = 1 / (c[it2 % p] + r);
+    var rs = [];
+    var rr = r;
+    for (var j2 = 0; j2 < p; j2++) {
+      var kk = K0 + j2;
+      rs.push({ k: kk, j: kk % p, r: rr });
+      rr = 1 / (c[kk % p] + rr);
+    }
+    var mx = -Infinity, argj = 0;
+    for (var j3 = 0; j3 < rs.length; j3++) {
+      var v = x[rs[j3].j] + rs[j3].r;
+      if (v > mx) { mx = v; argj = rs[j3].j; }
+    }
+    return { nu: mx, period: p, x: x, rs: rs, argj: argj };
+  }
+
+  /* 部分商的最大值（到目前看到的）。它决定 ν 能不能是 ∞：
+   * ν(α) = ∞ ⟺ 部分商无界。 */
+  function cfMaxPartialQuotient(alpha) {
+    var mx = 0, at = 0;
+    for (var i = 1; i < alpha.cf.length; i++) if (alpha.cf[i] > mx) { mx = alpha.cf[i]; at = i; }
+    return { max: mx, at: at, nTerms: alpha.cf.length };
+  }
+
+  /* 部分商是否有界：周期（二次无理数）有界；已知规律无界的（e）无界；
+   * 其余给"未知"。 */
+  function cfBoundedness(alpha) {
+    if (alpha.kind === 'quad') return 'bounded';
+    if (alpha.key === 'e') return 'unbounded';
+    if (alpha.key === 'liouville') return 'unbounded';
+    if (alpha.kind === 'rand') return 'unbounded';
+    if (alpha.key === 'pi') return 'unknown';
+    return 'unknown';
+  }
+
+  /* Dirichlet：|qα − p| < 1/q 有多少个 q ≤ Q 满足？
+   * 鸽笼原理保证至少一个；实际有无穷多个。 */
+  function dirichletCount(alphaValue, Q) {
+    var cnt = 0, qs = [];
+    for (var q = 1; q <= Q; q++) {
+      var x = q * alphaValue;
+      var d = Math.abs(x - Math.round(x));
+      if (q * d < 1) { cnt++; if (qs.length < 24) qs.push(q); }
+    }
+    return { count: cnt, sample: qs };
+  }
+
+  /* ==========================================================================
+   * 4. Markov 谱
+   * ======================================================================== */
+
+  /* Markov 数：方程 x²+y²+z² = 3xyz 的解中的分量。
+   * 从 (1,1,1) 出发，用 (x,y,z) → (x, y, 3xy−z) 生成整棵树。 */
+  function markovNumbers(limit) {
+    limit = limit || 40;
+    var seen = {}, nums = {}, queue = [[1n, 1n, 1n]];
+    seen['1,1,1'] = true; nums['1'] = true;
+    var head = 0, visited = 0, CAP = 1200;
+    // 注意：这里必须用 head 指针而不是 queue.shift() —— shift 是 O(n)，
+    // 队列涨到几千个元素时整趟 BFS 会退化成 O(n²)（实测把自检从 3 秒拖到 4 分钟以上）。
+    while (head < queue.length && visited < CAP) {
+      var t = queue[head++]; visited++;
+      var x = t[0], y = t[1], z = t[2];
+      var nbrs = [[x, y, 3n * x * y - z], [y, z, 3n * y * z - x], [z, x, 3n * z * x - y]];
+      for (var i = 0; i < 3; i++) {
+        var nb = nbrs[i];
+        if (nb[0] <= 0n || nb[1] <= 0n || nb[2] <= 0n) continue;
+        var sorted = [nb[0], nb[1], nb[2]].sort(function (a, b) { return a < b ? -1 : (a > b ? 1 : 0); });
+        var key = sorted[0].toString() + ',' + sorted[1].toString() + ',' + sorted[2].toString();
+        if (seen[key]) continue;
+        seen[key] = true;
+        for (var j = 0; j < 3; j++) {
+          var s = nb[j].toString();
+          if (s.length <= 13) nums[s] = true;
+        }
+        if (queue.length < CAP) queue.push(nb);
+      }
+    }
+    var out = [];
+    for (var k in nums) out.push(Number(k));
+    out.sort(function (a, b) { return a - b; });
+    return out;
+  }
+
+  /* Markov 谱（Lagrange 谱在 [√5, 3) 上的离散部分）：
+   * ν_m = √(9m² − 4)/m，m 取 Markov 数。
+   * 验证：m=1 → √5 ; m=2 → 2√2 ; m=5 → √221/5 ; m=13 → √1517/13 。 */
+  function markovSpectrum(count) {
+    count = count || 12;
+    var ms = markovNumbers(count).slice(0, count);
+    var out = [];
+    for (var i = 0; i < ms.length; i++) {
+      var m = ms[i];
+      var v = Math.sqrt(9 * m * m - 4) / m;
+      out.push({ m: m, nu: v, gapTo3: 3 - v });
+    }
+    return out;
+  }
+
+  /* 给定 ν 值，反查它是不是谱点（用于把实测 ν 落到谱上） */
+  function nearestSpectrum(nu, spectrum) {
+    var best = null, bd = Infinity;
+    for (var i = 0; i < spectrum.length; i++) {
+      var d = Math.abs(spectrum[i].nu - nu);
+      if (d < bd) { bd = d; best = spectrum[i]; }
+    }
+    return { hit: best, dist: bd };
+  }
+
+  /* ==========================================================================
+   * 5. Gauss 映射 · 部分商分布 · 两个常数
+   * ======================================================================== */
+
+  /* Gauss 映射 T(x) = 1/x − ⌊1/x⌋ （x ∈ (0,1)），T(0)=0 */
+  function gaussMap(x) {
+    if (x <= 0) return 0;
+    var inv = 1 / x;
+    return inv - Math.floor(inv);
+  }
+
+  /* Gauss–Kuzmin：部分商恰好等于 k 的渐近概率 */
+  function gaussKuzmin(k) {
+    return Math.log2(1 + 1 / (k * (k + 2)));
+  }
+
+  /* Gauss 密度 ρ(x) = 1/((1+x) ln 2) */
+  function gaussDensity(x) {
+    return 1 / ((1 + x) * Math.LN2);
+  }
+
+  /* 两个常数的闭式（页面里当"理论值"，用来撞实测） */
+  var KHINCHIN = 2.6854520010653064;      // lim (a1…an)^{1/n}
+  var LEVY = Math.exp(Math.PI * Math.PI / (12 * Math.LN2)); // 3.2758229187218112
+
+  /* 从部分商序列算：几何平均、q_n 增长率、部分商直方图 */
+  function cfPartialStats(a, upto) {
+    var n = Math.min(upto || a.length, a.length);
+    var logSum = 0, hist = {}, maxA = 0;
+    for (var i = 1; i < n; i++) {   // 从 a_1 起（a_0 是整数部分）
+      logSum += Math.log(a[i]);
+      hist[a[i]] = (hist[a[i]] || 0) + 1;
+      if (a[i] > maxA) maxA = a[i];
+    }
+    var m = n - 1;
+    return {
+      n: m,
+      geomean: m > 0 ? Math.exp(logSum / m) : NaN,
+      hist: hist,
+      maxA: maxA,
+      khinchin: KHINCHIN,
+      relErr: m > 0 ? Math.abs(Math.exp(logSum / m) - KHINCHIN) / KHINCHIN : NaN
+    };
+  }
+
+  /* Lévy 常数实测：q_n^{1/n} → β。用 BigInt 收敛子的对数。 */
+  function levyEstimate(alpha, nTerms) {
+    var conv = cfConvergents(alpha.cf, Math.min(nTerms || alpha.cf.length, alpha.cf.length));
+    var pts = [];
+    for (var i = 2; i < conv.length; i++) {
+      var q = conv[i].q;
+      // 用 BigInt → log：q.toString() 长度 + 前导位
+      var s = q.toString();
+      var logq = (s.length - 1) * Math.LN10 + Math.log(Number(s.slice(0, 15)) / Math.pow(10, Math.min(15, s.length) - 1));
+      pts.push({ n: i, q: Number(q) < 1e15 ? Number(q) : Infinity, logq: logq, root: Math.exp(logq / i) });
+    }
+    var last = pts.length ? pts[pts.length - 1].root : NaN;
+    return { pts: pts, root: last, levy: LEVY, relErr: Math.abs(last - LEVY) / LEVY };
+  }
+
+  /* 采样：从 (0,1) 均匀抽 N 个数，做 Gauss 映射取部分商，统计分布 */
+  function sampleGaussKuzmin(N, seed) {
+    var rng = makeRng(seed === undefined ? 1 : seed, 'gk');
+    var hist = {}, total = 0, maxK = 0;
+    for (var i = 0; i < N; i++) {
+      var x = rng();
+      if (x <= 0) x = 1e-12;
+      // 【关键】必须先做 burn-in：均匀分布的第一个部分商服从 1/(k(k+1))，
+      // 而 Gauss–Kuzmin 分布 log₂(1+1/(k(k+2))) 是 Gauss 映射的**不变测度**，
+      // 只在迭代若干次之后才出现。不做 burn-in 直接取 ⌊1/x⌋，
+      // TV 距离会停在 0.08 而不是降到 0.005（实测过）。
+      for (var b = 0; b < 24; b++) {
+        x = gaussMap(x);
+        if (x <= 1e-15) { x = 1e-15; break; }
+      }
+      var k = Math.floor(1 / x);
+      if (!isFinite(k) || k < 1) k = 1;
+      if (k > 400) continue;      // 尾部 0.2%，丢掉以免污染前 20 项
+      hist[k] = (hist[k] || 0) + 1;
+      total++;
+      if (k > maxK) maxK = k;
+    }
+    var ks = [], emp = [], th = [];
+    for (var kk = 1; kk <= Math.max(maxK, 8); kk++) {
+      ks.push(kk);
+      emp.push((hist[kk] || 0) / total);
+      th.push(gaussKuzmin(kk));
+    }
+    // 总变差距离（只在前 K 项上，归一化）
+    var tv = 0, kCut = Math.min(20, ks.length);
+    var eSum = 0, tSum = 0;
+    for (var j = 0; j < kCut; j++) { eSum += emp[j]; tSum += th[j]; }
+    for (var j2 = 0; j2 < kCut; j2++) tv += Math.abs(emp[j2] / eSum - th[j2] / tSum);
+    tv = tv / 2;
+    return { ks: ks, emp: emp, th: th, tv: tv, total: total, maxK: maxK };
+  }
+
+  /* ==========================================================================
+   * 6. 三距离定理
+   * ======================================================================== */
+
+  /* {kα} (k=1..n) 在单位圆上的间隙：把所有点排序，取相邻差 + 首尾环绕差。
+   * 定理：间隙长度只有 2 种或 3 种。返回每种长度的计数。 */
+  function threeDist(alphaValue, n) {
+    var pts = [];
+    for (var k = 1; k <= n; k++) pts.push(alphaValue * k - Math.floor(alphaValue * k));
+    pts.sort(function (a, b) { return a - b; });
+    var gaps = [];
+    for (var i = 0; i < pts.length; i++) {
+      var nxt = (i + 1 < pts.length) ? pts[i + 1] : pts[0] + 1;
+      gaps.push(nxt - pts[i]);
+    }
+    // 用相对容差把"数学上相等"的间隙合并 —— 浮点会让它们差出 1e-16，
+    // 不合并的话三距离定理看起来会给出 5、6 种间隙，而定理说只有 2 或 3 种。
+    var tol = 1e-6, groups = [];
+    for (var g = 0; g < gaps.length; g++) {
+      var placed = false;
+      for (var q = 0; q < groups.length; q++) {
+        if (Math.abs(gaps[g] - groups[q].v) <= tol * Math.max(1e-15, groups[q].v)) {
+          groups[q].count++; placed = true; break;
+        }
+      }
+      if (!placed) groups.push({ v: gaps[g], count: 1 });
+    }
+    groups.sort(function (a, b) { return a.v - b.v; });
+    return {
+      distinct: groups.length, lengths: groups.map(function (x) { return x.v; }),
+      counts: groups.map(function (x) { return x.count; }), n: n, ngaps: gaps.length
+    };
+  }
+
+  /* 三距离定理的连分数版：n = q_k 时间隙恰好 2 种，长度由 a_{k+1} 决定 */
+  function threeDistAtConvergent(alpha, k) {
+    var conv = cfConvergents(alpha.cf, k + 2);
+    if (conv.length < k + 1) return null;
+    var n = Number(conv[k].q);
+    var r = threeDist(alpha.value, n);
+    r.qk = n;
+    r.ak1 = alpha.cf[k + 1];
+    return r;
+  }
+
+  /* ==========================================================================
+   * 7. Farey 序列 · Stern–Brocot 树 · 欧拉函数
+   * ======================================================================== */
+
+  /* 欧拉 φ 筛（1..n） */
+  function totientSieve(n) {
+    var phi = new Int32Array(n + 1);
+    for (var i = 0; i <= n; i++) phi[i] = i;
+    for (var p = 2; p <= n; p++) {
+      if (phi[p] === p) {
+        for (var m = p; m <= n; m += p) phi[m] -= Math.floor(phi[m] / p);
+      }
+    }
+    return phi;
+  }
+
+  /* Farey 序列 F_n：0/1 到 1/1 之间分母 ≤ n 的既约分数，升序。
+   * 用 O(len) 的中介数递推（a/b, c/d → k = ⌊(n+b)/d⌋ → e/f = kc−a / kd−b） */
+  function farey(n, cap) {
+    cap = cap || 200000;
+    var out = [{ n: 0, d: 1 }];
+    var a = 0, b = 1, c = 1, d = n;
+    while (out.length < cap) {
+      out.push({ n: c, d: d });
+      if (c === 1 && d === 1) break;
+      var k = Math.floor((n + b) / d);
+      var e = k * c - a, f = k * d - b;
+      a = c; b = d; c = e; d = f;
+    }
+    return out;
+  }
+
+  /* |F_n| = 1 + Σ_{k=1..n} φ(k) —— 闭式，OEIS A005728 */
+  function fareyLen(n, phi) {
+    phi = phi || totientSieve(n);
+    var s = 1;
+    for (var k = 1; k <= n; k++) s += phi[k];
+    return s;
+  }
+
+  /* 验算 Farey 相邻项：ad − bc = 1（a/b < c/d 相邻） */
+  function fareyCheck(seq) {
+    var bad = 0;
+    for (var i = 0; i + 1 < seq.length; i++) {
+      var x = seq[i], y = seq[i + 1];
+      // 相邻的 a/b < c/d 满足 b·c − a·d = 1
+      if (x.d * y.n - x.n * y.d !== 1) bad++;
+      if (x.n * y.d >= y.n * x.d) bad++;
+    }
+    return { pairs: seq.length - 1, bad: bad };
+  }
+
+  /* Stern–Brocot 路径：从 1/1 出发，L = 走到左中位，R = 右中位。
+   * 返回 {path, depth}。路径的游程长度就是连分数的部分商。 */
+  function sternBrocotPath(p, q) {
+    if (p <= 0 || q <= 0) return null;
+    var ln = 0, ld = 1, rn = 1, rd = 0;   // 左右边界 0/1 与 1/0
+    var cn = 1, cd = 1;
+    var path = '', depth = 0;
+    for (var i = 0; i < 400; i++) {
+      if (cn === p && cd === q) break;
+      if (p * cd < cn * q) {   // 目标在左侧
+        rn = cn; rd = cd;
+        cn = ln + cn; cd = ld + cd;
+        path += 'L';
+      } else {
+        ln = cn; ld = cd;
+        cn = cn + rn; cd = cd + rd;
+        path += 'R';
+      }
+      depth++;
+    }
+    // 游程压缩 → 连分数
+    var runs = [], cur = path[0], cnt = 0;
+    for (var j = 0; j < path.length; j++) {
+      if (path[j] === cur) cnt++;
+      else { runs.push({ c: cur, n: cnt }); cur = path[j]; cnt = 1; }
+    }
+    if (path.length) runs.push({ c: cur, n: cnt });
+    return { path: path, depth: depth, runs: runs };
+  }
+
+  /* ==========================================================================
+   * 8. Liouville 数 · 逼近指数
+   * ======================================================================== */
+
+  /* Liouville 数 L = Σ_{k≥1} 10^{-k!} 的高精度十进制串（前 D 位） */
+  function liouvilleDigits(D) {
+    var arr = new Array(D + 1).join('0').split('');
+    var fact = 1;
+    for (var k = 1; k <= 12; k++) {
+      fact *= k;
+      if (fact > D) break;
+      arr[fact - 1] = '1';   // 第 k! 位小数（索引 k!−1）
+    }
+    return '0.' + arr.join('');
+  }
+
+  /* 逼近指数：给定 α 与一批 q，看 |α − p/q| 随 q 的衰减斜率。
+   * 对每个 q 取最近的 p，用 log|α−p/q| vs log q 做最小二乘。 */
+  function approxExponent(alpha) {
+    // 【关键】必须只用收敛子。对一般的 q，p = round(qα) 给出 |α − p/q| ~ 1/q
+    // （均匀分布的量级），最小二乘斜率因此 ≈ −1，而不是 −2。
+    // 逼近指数描述的是**最佳逼近**的行为，只有收敛子序列才代表它。
+    var conv = cfConvergents(alpha.cf, alpha.cf.length);
+    var pts = [];
+    for (var i = 2; i < conv.length; i++) {
+      var q = Number(conv[i].q);
+      if (!isFinite(q) || q <= 0 || q > 1e6) continue;   // q 再大时 |α−p/q| 落到双精度下面
+      var p = Number(conv[i].p);
+      var d = Math.abs(alpha.value - p / q);
+      if (d > 0 && isFinite(d)) pts.push({ x: Math.log(q), y: Math.log(d) });
+    }
+    // 最小二乘 y = m x + b
+    var n = pts.length;
+    if (n < 3) return { mu: NaN, intercept: NaN, n: n, pts: pts };
+    var sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (var i = 0; i < n; i++) { sx += pts[i].x; sy += pts[i].y; sxx += pts[i].x * pts[i].x; sxy += pts[i].x * pts[i].y; }
+    var den = n * sxx - sx * sx;
+    var m = den !== 0 ? (n * sxy - sx * sy) / den : NaN;
+    var b = (sy - m * sx) / n;
+    return { mu: -m, intercept: b, n: n, pts: pts };
+  }
+
+  /* 对给定 μ，量出 min |α−p/q|·q^μ（q ≤ Q）。
+   * 若 μ > 2，这个量对几乎所有 α 会随 Q 增大而发散 —— 这就是"指数上不去"的实测。 */
+  function muProbe(alphaValue, mu, Q) {
+    var m = Infinity, argq = 0;
+    for (var q = 1; q <= Q; q++) {
+      var p = Math.round(q * alphaValue);
+      var v = Math.abs(alphaValue - p / q) * Math.pow(q, mu);
+      if (v < m) { m = v; argq = q; }
+    }
+    return { mu: mu, min: m, argq: argq };
+  }
+
+  /* ==========================================================================
+   * 9. 墙：穷举的代价
+   * ======================================================================== */
+
+  function wallTable() {
+    var rows = [];
+    var base = 1e6, baseMs = 4.2;   // 本机实测：Q=1e6 约 4.2 ms（标定时会覆盖）
+    var Qs = [1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e12, 1e15];
+    for (var i = 0; i < Qs.length; i++) {
+      var ms = baseMs * (Qs[i] / base);
+      rows.push({ Q: Qs[i], ms: ms, sec: ms / 1000, year: ms / 1000 / 31557600 });
+    }
+    return rows;
+  }
+
+  /* ==========================================================================
+   * 10. 小工具
+   * ======================================================================== */
+
+  function wilson(k, n, z) {
+    z = z || 1.96;
+    if (n === 0) return { lo: 0, hi: 1, p: 0 };
+    var p = k / n;
+    var d = 1 + z * z / n;
+    var c = p + z * z / (2 * n);
+    var r = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
+    return { p: p, lo: Math.max(0, (c - r) / d), hi: Math.min(1, (c + r) / d) };
+  }
+
+  function median(arr) {
+    if (!arr.length) return NaN;
+    var s = arr.slice().sort(function (a, b) { return a - b; });
+    var m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
+
+  function mean(arr) {
+    if (!arr.length) return NaN;
+    var s = 0;
+    for (var i = 0; i < arr.length; i++) s += arr[i];
+    return s / arr.length;
+  }
+
+  /* ==========================================================================
+   * 导出
+   * ======================================================================== */
+
+  return {
+    VERSION: '1.0.0',
+    // 0
+    splitmix32: splitmix32, makeRng: makeRng,
+    // 1
+    cfExpand: cfExpand, cfFromSqrt: cfFromSqrt, eCF: eCF,
+    cfConvergents: cfConvergents, cfEval: cfEval, cfValue: cfValue, cfToStr: cfToStr,
+    rationalCF: rationalCF, liouvilleCF: liouvilleCF, liouvilleDigits: liouvilleDigits,
+    // 2
+    ALPHAS: ALPHAS, getAlpha: getAlpha,
+    // 3
+    bestApproxNaive: bestApproxNaive, bestApproxCF: bestApproxCF,
+    bestApproxDenoms: bestApproxDenoms, nuNaive: nuNaive, nuFromConvergents: nuFromConvergents,
+    nuFromPeriod: nuFromPeriod, cfPeriod: cfPeriod,
+    cfMaxPartialQuotient: cfMaxPartialQuotient, cfBoundedness: cfBoundedness,
+    dirichletCount: dirichletCount,
+    // 4
+    markovNumbers: markovNumbers, markovSpectrum: markovSpectrum, nearestSpectrum: nearestSpectrum,
+    // 5
+    gaussMap: gaussMap, gaussKuzmin: gaussKuzmin, gaussDensity: gaussDensity,
+    KHINCHIN: KHINCHIN, LEVY: LEVY,
+    cfPartialStats: cfPartialStats, levyEstimate: levyEstimate, sampleGaussKuzmin: sampleGaussKuzmin,
+    // 6
+    threeDist: threeDist, threeDistAtConvergent: threeDistAtConvergent,
+    // 7
+    totientSieve: totientSieve, farey: farey, fareyLen: fareyLen, fareyCheck: fareyCheck,
+    sternBrocotPath: sternBrocotPath,
+    // 8
+    approxExponent: approxExponent, muProbe: muProbe,
+    // 9
+    wallTable: wallTable,
+    // 10
+    wilson: wilson, median: median, mean: mean
+  };
+});
+
+</script>
+<script>
+/* ---- analysis.json（全部数字的来源） ---- */
+window.__ANALYSIS__ = {"meta":{"generatedAt":"2026-09-30T00:45:41.752Z","version":"1.0.0","title":"逼近之极","subtitle":"连分数、丢番图逼近，与「一个数能有多难被逼近」","selftest":88,"experiments":7,"alphas":10},"kpi":[{"id":"kpi-hurwitz","label":"最难逼近的数","value":"2.2360680","unit":"ν(φ)","note":"黄金比例的难度 = √5 = 2.2360680。Hurwitz 定理保证任何无理数都有无穷多 p/q 使 |α−p/q| < 1/(√5 q²)，而这个 √5 不能再大。"},{"id":"kpi-sqrtn","label":"二次无理数的完整规律","value":"2√n","unit":"186 个 n","note":"ν(√n) = 2√n 对 n = 2…200 的 186 个非平方 n 全部成立，最差相对差 2.17e-16（n=67）—— 这是机器精度，不是拟合。"},{"id":"kpi-limsup","label":"ν 是上极限，不是最小值","value":"2.6180","unit":"vs 2.2361","note":"φ 的 q = 1 给出 2.618 = φ²，比 ν = 2.236 还大。取\"全范围最小\"会得到一个纯属虚构的数 —— 小 q 根本不在 q→∞ 的极限里。"},{"id":"kpi-spectrum","label":"难度谱是离散的","value":"14 点","unit":"[√5, 3)","note":"在 √5 与 3 之间，ν 只能取一串离散的值（Markov 谱），第 1 点是 √5、第 2 点是 2√2；3 以上才是连续段。"},{"id":"kpi-gk","label":"Gauss–Kuzmin 的收敛速度","value":"1.24e+0–2.15e+0","unit":"TV × √N","note":"部分商分布的 TV 距离 × √N 在 N = 1e+3…1e+6 上落在 1.239–2.146 之间（1.73 倍），而且不单调：最小值出现在 N = 1e+5。换算成幂指数是 0.56–0.58（看取哪两个端点），与 1/√N 同量级但不是精确的 1/2。"},{"id":"kpi-wall","label":"穷举的墙","value":"63.4 年","unit":"Q = 1e+18","note":"本机实测 2.00 ms / 10⁶ 个 q。要穷举到 Q = 1e+18 需要 63.4 年。"}],"conclusions":[{"n":1,"title":"一个分数能有多接近一个无理数，有一个精确的答案","text":"对任何无理数 α，都存在无穷多个分数 p/q 使 |α − p/q| < 1/(√5 q²)。写成难度 ν(α) = 1/liminf q‖qα‖，就是 ν(α) ≥ √5 对一切无理数成立。这个常数不能改进 —— 黄金比例 φ 恰好取到等号：ν(φ) = 2.2360680 = √5。"},{"n":2,"title":"φ 是唯一的\"最难\"，而所有 √n 都比它容易一倍以上","text":"ν(√n) = 2√n 对 n = 2…200 的 186 个非平方 n 全部成立，最差相对差 2.17e-16。最接近 φ 的 √2 也有 ν = 2.8284271，是 ν(φ) 的 1.265 倍。φ 的部分商全是 1，而 1 是连分数能取的最小正整数 —— 这是\"最难\"的全部原因。"},{"n":3,"title":"ν 是上极限，直接取最小值会得到一个假的数","text":"φ 在 q = 1 处给出 ‖φ‖ = |φ−2| = 0.382，于是 1/(1×0.382) = 2.618 = φ²，比真正的 ν = 2.2360680 还大。若把 q ≤ Q 全范围取最小，得到的永远是 2.618 而不是 √5。ν 定义在 q → ∞ 的上极限上，小 q 的项不在极限里 —— 本页的实测因此只在\"尾部窗口\"上取最大值。"},{"n":4,"title":"在 √5 与 3 之间，难度只能取一串离散的值","text":"Markov 谱：ν ∈ [√5, 3) 的取值恰好是 {√(9m²−4)/m : m 是 Markov 数}，m = 1, 2, 5, 13, 29, 34, … 前几个谱点是 2.236068、2.828427、2.973214、2.996053、2.999207。实测 ν(√2) = 2.8284271 精确落在第 2 个谱点（m=2）上，距离 4.44e-16。3 以上才是连续段 —— 谱的最后一个离散点与前一个的间距已缩到 3.07e-7。"},{"n":5,"title":"难度有限 ⟺ 部分商有界","text":"ν(α) = limsup (q‖qα‖)⁻¹ = limsup (t_{k+1} + q_{k−1}/q_k)，而 t_{k+1} ≥ a_{k+1}。所以部分商有界时 ν 有限，无界时 ν = ∞。实测：φ 的 max a = 1、√2 是 2、√3 是 2、√5 与 √7 是 4；而 e 的部分商按 1, 2k, 1 的规律无界增长（2, 1, 2, 1, 1, 4, 1, 1, 6, 1…），所以 ν(e) = ∞。"},{"n":6,"title":"π 的难度是一个未解问题","text":"π 的连分数从 3, 7, 15, 1, 292, 1, 1, 1, 2, 1, 3, 1… 开始，第 5 个部分商 292 让 355/113 成为一个极好的逼近。但\"π 的部分商是否有界\"至今没有答案 —— 所以 ν(π) 既不知道是不是 ∞，也不知道下界。本页只能给出\"在已见部分商范围内\"的值 35.871，它不是 ν(π)。"},{"n":7,"title":"Legendre 定理：一条 1/(2q²) 的线就把\"最好的分数\"全筛出来了","text":"|α − p/q| < 1/(2q²) 且 gcd(p,q)=1 蕴含 p/q 一定是连分数的收敛子。实测：q ≤ 20000 范围内共 73 个分数越过这条线，例外 0 个。同一批 α 上，穷举得到的全部最佳逼近分母（241 个）里不是收敛子的有 0 个。"},{"n":8,"title":"部分商的分布有一个确定的极限，收敛率是 1/√N","text":"Gauss 映射 T(x) = 1/x − ⌊1/x⌋ 的不变测度给出 P(a = k) = log₂(1 + 1/(k(k+2)))。实测 TV 距离 × √N 在 N = 10³…10⁶ 上几乎不变（1.24e+0–2.15e+0）。注意必须先迭代若干次 Gauss 映射 —— 均匀分布的第一个部分商服从的是 1/(k(k+1))，不是 Gauss–Kuzmin。"},{"n":9,"title":"两个常数：一个几乎处处成立，一个不适用于 φ","text":"部分商的几何平均 → Khinchin 常数 2.6854520（实测 2.6748，相对差 3.96e-3）。收敛子分母的增长率 q_k^{1/k} → Lévy 常数 3.2758229，但 φ 是例外：它的 q_k = F(k) ≈ φ^k/√5，所以 q_k^{1/k} → φ = 1.6180（实测 1.6047）。\"几乎处处\"的规律，偏偏漏掉了那个最特别的数。"},{"n":10,"title":"三距离定理：{kα} 在圆上的间隙只有 2 种或 3 种","text":"对 7 个 α、n = 2…300 共 2093 组，出现 2 种间隙的 99 组、3 种的 1994 组，其他 0 组。而在 n 恰好等于收敛子分母 q_k 时，间隙严格只有 2 种，且长间隙的个数精确等于 q_{k−1}（64 组检查，例外 0 组）。"},{"n":11,"title":"Farey 序列与 Stern–Brocot 树：把连分数画成一张图","text":"Farey 序列 F_n 的长度精确等于 1 + Σ_{k≤n} φ(k)，n = 1…120 逐项吻合（不符 0 项）；相邻项的判据 b·c − a·d = 1 在 179529 对上零例外。Stern–Brocot 树里 p/q 的深度精确等于 Σa_i − 1（555 个既约分数，例外 0 个）—— 连分数的部分商，就是这棵树上的游程长度。"},{"n":12,"title":"墙：穷举 q 的代价是线性的，而你要的那个极限是无穷","text":"本机实测 2.00 ms / 10⁶ 个 q。把 q 穷举到 10¹⁵ 要 0.1 年，到 10¹⁸ 要 63.4 年。而 ν 是 q → ∞ 的极限 —— 穷举永远只能给出\"到目前为止\"的值。本页对二次无理数改用周期结构精确求解，正是为了绕开这堵墙。"}],"bounds":[{"title":"ν 的定义域","text":"ν(α) = limsup_{q→∞} (q‖qα‖)⁻¹ 只对无理数有定义（有理数让 ‖qα‖ = 0）。本页所有 α 都是无理数。"},{"title":"有限测量只能给\"尾部窗口\"的值","text":"ν 是上极限，原则上需要 q → ∞。本页对二次无理数用周期结构（nuFromPeriod）精确求解，对非周期 α 用收敛子尾部窗口。后者给的是\"在 q ≤ 10¹⁵ 范围内的值\"，不是 ν。"},{"title":"双精度是这里的硬边界","text":"q 超过约 10⁶ 后 |α − p/q| 落到双精度能分辨的量之下（|α − p/q| ~ 1/q²）。所有直接用浮点算 ‖qα‖ 的量（含朴素穷举）在 q > 10⁶ 后不可信。收敛子法用 BigInt 精确的 q_k 加公式 q_k/(q_{k+1} + q_k ξ) 绕开了这一层，精度到 2.17e-16。"},{"title":"第一张图右侧那排点已经\"平\"了","text":"φ 的收敛子误差曲线在 q ≳ 10⁸ 之后不再下降，全部贴在 2.22e-16 = 双精度机器精度上 —— 因为用 double 算 |φ − p/q| 时，φ 本身就只有 16 位有效数字，再小的差别表达不出来。本页第一版渲染这张图时直接崩了：误差数组里恰好有 1 个点精确等于 0（某个收敛子的双精度商与 double φ 完全相同），log10(0) = −∞ 让刻度循环永不终止。修法是只取正误差定下界，并把 0 画在地板上。这条同时说明了为什么 ν 的精确值必须靠周期结构而不是靠\"多算几项\"。"},{"title":"Markov 谱只覆盖 [√5, 3)","text":"3 以上 ν 可以取任意值（连续段）。本页只列了前 14 个谱点；m 取到 1325 时 ν 与 3 的差已经只有 3.80e-7。"},{"title":"2√n 是实测规律，不是本页证明的定理","text":"ν(√n) = 2√n 在 n = 2…200 的 186 个非平方 n 上以机器精度成立，且由两套独立实现（周期解析、收敛子）互相印证。但本页没有给出证明。"},{"title":"Gauss–Kuzmin 的实测是数值的","text":"TV 距离用前 20 项归一化后计算；k > 400 的样本（约 0.2%）被丢弃。N = 10⁶ 时 TV ≈ 1.40e-3，这个数本身受限于随机源的均匀性。"},{"title":"\"收敛率 = 1/√N\" 只测到\"接近 1/√N\"","text":"本页量的是**一条**轨道（一个种子生成的 α）的经验测度与 Gauss–Kuzmin 分布的距离。实测 TV × √N 从 2.146 降到 1.239（1.73 倍），换算成幂指数是 TV ∝ N^−0.580，不是精确的 N^−0.5。原因有二：单轨道的经验测度本身带 1/√N 量级的涨落，一次测量分不出 0.5 与 0.58；而且 1/√N 只是\"混合系统经验测度收敛\"的量级说法，真正逐项的收敛率还带对数修正。要说\"精确是 1/√N\"，需要多条轨道平均掉涨落 —— 本页没做。"},{"title":"π 与 e 的连分数项数有限","text":"π 的部分商由双精度展开给出，只到第 60 项；e 用解析规律生成到第 60 项。所以它们给出的 ν 只是\"已见部分商\"范围的下界，不是 ν 本身。"},{"title":"Liouville 数的部分商来自 800 位构造","text":"本页用 L = Σ_{k≤5} 10^{−k!} 的 800 位十进制截断来生成 Liouville 数的连分数，其部分商已经出现 10¹² 量级的项。它是\"ν = ∞\"的一个具体见证，但截断本身意味着更深处还有更大的部分商没看到。"},{"title":"墙表里哪些是实测、哪些是外推","text":"墙表的前 1 行是实测（Q ≤ 10⁶），其余按 ms/Q 线性外推。外推假设吞吐不随 Q 变化，实际会因为缓存与数值范围变化而偏离。"}],"verifyTable":[{"claim":"ν(φ) = √5","method":"周期解析法（迭代 1200 次）+ 收敛子公式，两套独立实现","result":"两法一致，相对差 < 1e-12","source":"本页 E2"},{"claim":"ν(√n) = 2√n","method":"n = 2…200 全部 186 个非平方 n","result":"最差相对差 2.17e-16","source":"本页 E3"},{"claim":"ν(√2) = 2√2 = 2.8284271","method":"与 Markov 谱第 2 点比对","result":"距离 4.44e-16","source":"本页 E2"},{"claim":"Hurwitz 常数 √5 不可改进","method":"Markov 谱的下确界（Markov 1879）","result":"谱第 1 点 = 2.2360679775","source":"外部文献"},{"claim":"Legendre：|α−p/q| < 1/(2q²) ⟹ 收敛子","method":"q ≤ 20000 穷举","result":"73 个分数，0 个例外","source":"本页 E1"},{"claim":"最佳逼近分母 = 收敛子分母","method":"穷举 q ≤ 10⁵ 与连分数法对账","result":"241 个分母，非收敛子 0 个","source":"本页 E1"},{"claim":"p_k q_{k−1} − p_{k−1} q_k = (−1)^{k−1}","method":"BigInt 精确递推","result":"全部 α、全部 k 零违例","source":"模型自检 B4"},{"claim":"Gauss–Kuzmin 分布 log₂(1+1/(k(k+2)))","method":"N = 10³…10⁶ 采样（含 Gauss 映射 burn-in）","result":"TV×√N ≈ 常数（比值 1.73）","source":"本页 E5"},{"claim":"Σ_{k≥1} log₂(1+1/(k(k+2))) = 1","method":"前 20000 项求和","result":"偏差 < 2e-4","source":"模型自检 F1"},{"claim":"Khinchin 常数 2.6854520","method":"4000 个随机实数 × 30 项部分商的几何平均","result":"实测 2.6748","source":"本页 E5"},{"claim":"Lévy 常数 e^{π²/(12 ln2)} = 3.2758229","method":"闭式；φ 是例外（→ φ）","result":"φ 的 q_k^{1/k} = 1.6047","source":"本页 E5"},{"claim":"三距离定理：间隙只有 2 或 3 种","method":"7 个 α × n = 2…300，共 2093 组","result":"其他 0 组","source":"本页 E6"},{"claim":"n = q_k 时长间隙个数 = q_{k−1}","method":"收敛子分母上逐项检查","result":"64 组，例外 0","source":"本页 E6"},{"claim":"|F_n| = 1 + Σ_{k≤n} φ(k)","method":"Farey 构造 vs 闭式，n = 1…120","result":"不符 0 项","source":"本页 E7"},{"claim":"Farey 相邻项 b·c − a·d = 1","method":"n = 1…120 全部相邻对","result":"179529 对，例外 0","source":"本页 E7"},{"claim":"Stern–Brocot 深度 = Σa_i − 1","method":"p, q ≤ 30 的全部既约分数","result":"555 个，例外 0","source":"本页 E7"},{"claim":"Liouville 数部分商无界","method":"800 位截断的精确连分数","result":"最大部分商 1e+72","source":"模型自检 I2"},{"claim":"ν 有限 ⟺ 部分商有界","method":"对 10 个 α 分类并逐一验算","result":"有限 5、无穷 4、未知 1（合 10）","source":"本页 E2"}],"derived":{"e1":{"keys":["phi","sqrt2","sqrt3","sqrt5","pi","e"],"rows":[{"key":"phi","label":"黄金比例 φ","pts":[{"Q":100,"nBest":10,"notConvergent":0,"naiveQ":89,"naiveQDist":0.44722488791546766,"cfQ":89,"cfQDist":0.44722488791546766,"agree":true},{"Q":1000,"nBest":15,"notConvergent":0,"naiveQ":987,"naiveQDist":0.44721350384133984,"cfQ":987,"cfQDist":0.44721350384133984,"agree":true},{"Q":10000,"nBest":19,"notConvergent":0,"naiveQ":6765,"naiveQDist":0.4472136016465811,"cfQ":6765,"cfQDist":0.4472136016465811,"agree":true},{"Q":100000,"nBest":24,"notConvergent":0,"naiveQ":75025,"naiveQDist":0.4472122331208084,"cfQ":75025,"cfQDist":0.4472122331208084,"agree":true}]},{"key":"sqrt2","label":"√2","pts":[{"Q":100,"nBest":6,"notConvergent":0,"naiveQ":70,"naiveQDist":0.3535443718340048,"cfQ":70,"cfQDist":0.3535443718340048,"agree":true},{"Q":1000,"nBest":9,"notConvergent":0,"naiveQ":985,"naiveQDist":0.35355343625042224,"cfQ":985,"cfQDist":0.35355343625042224,"agree":true},{"Q":10000,"nBest":11,"notConvergent":0,"naiveQ":5741,"naiveQDist":0.35355339372199523,"cfQ":5741,"cfQDist":0.35355339372199523,"agree":true},{"Q":100000,"nBest":14,"notConvergent":0,"naiveQ":80782,"naiveQDist":0.35355324973352253,"cfQ":80782,"cfQDist":0.35355324973352253,"agree":true}]},{"key":"sqrt3","label":"√3","pts":[{"Q":100,"nBest":7,"notConvergent":0,"naiveQ":56,"naiveQDist":0.28866746400092325,"cfQ":56,"cfQDist":0.28866746400092325,"agree":true},{"Q":1000,"nBest":11,"notConvergent":0,"naiveQ":780,"naiveQDist":0.28867509520296153,"cfQ":780,"cfQDist":0.28867509520296153,"agree":true},{"Q":10000,"nBest":14,"notConvergent":0,"naiveQ":7953,"naiveQDist":0.5773502583560912,"cfQ":7953,"cfQDist":0.5773502583560912,"agree":true},{"Q":100000,"nBest":17,"notConvergent":0,"naiveQ":40545,"naiveQDist":0.2886752820631955,"cfQ":40545,"cfQDist":0.2886752820631955,"agree":true}]},{"key":"sqrt5","label":"√5","pts":[{"Q":100,"nBest":4,"notConvergent":0,"naiveQ":72,"naiveQDist":0.22360464109169698,"cfQ":72,"cfQDist":0.22360464109169698,"agree":true},{"Q":1000,"nBest":5,"notConvergent":0,"naiveQ":305,"naiveQDist":0.22360691790652254,"cfQ":305,"cfQDist":0.22360691790652254,"agree":true},{"Q":10000,"nBest":7,"notConvergent":0,"naiveQ":5473,"naiveQDist":0.22360678416953306,"cfQ":5473,"cfQDist":0.22360678416953306,"agree":true},{"Q":100000,"nBest":9,"notConvergent":0,"naiveQ":98209,"naiveQDist":0.22360438827308826,"cfQ":98209,"cfQDist":0.22360438827308826,"agree":true}]},{"key":"pi","label":"π","pts":[{"Q":100,"nBest":2,"notConvergent":0,"naiveQ":7,"naiveQDist":0.061959974100162185,"cfQ":7,"cfQDist":0.061959974100162185,"agree":true},{"Q":1000,"nBest":4,"notConvergent":0,"naiveQ":113,"naiveQDist":0.0034063119393294983,"cfQ":113,"cfQDist":0.0034063119393294983,"agree":true},{"Q":10000,"nBest":4,"notConvergent":0,"naiveQ":113,"naiveQDist":0.0034063119393294983,"cfQ":113,"cfQDist":0.0034063119393294983,"agree":true},{"Q":100000,"nBest":8,"notConvergent":0,"naiveQ":99532,"naiveQDist":0.2887203136924654,"cfQ":99532,"cfQDist":0.2887203136924654,"agree":true}]},{"key":"e","label":"自然常数 e","pts":[{"Q":100,"nBest":7,"notConvergent":0,"naiveQ":71,"naiveQDist":0.14130273795467474,"cfQ":71,"cfQDist":0.14130273795467474,"agree":true},{"Q":1000,"nBest":9,"notConvergent":0,"naiveQ":536,"naiveQDist":0.5038110301720735,"cfQ":536,"cfQDist":0.5038110301720735,"agree":true},{"Q":10000,"nBest":12,"notConvergent":0,"naiveQ":9545,"naiveQDist":0.5024639391376695,"cfQ":9545,"cfQDist":0.5024639391376695,"agree":true},{"Q":100000,"nBest":13,"notConvergent":0,"naiveQ":18089,"naiveQDist":0.0905233414232498,"cfQ":18089,"cfQDist":0.0905233414232498,"agree":true}]}],"bestApproxTotal":241,"bestApproxNotConv":0,"pairsChecked":24,"pairsAgree":24,"legendreTotal":73,"legendreExceptions":0,"legendreQ":20000,"sec":0.015},"e2":{"alphas":[{"key":"phi","label":"黄金比例 φ","kind":"quad","nuConv":2.2360679774997902,"nuPeriod":2.23606797749979,"nuNaive":2.2362105394769363,"nuUpper":2.618033988749895,"upperQ":1,"nConv":73,"period":1,"maxA":1,"maxAAt":1,"bounded":"bounded","exactNu":2.23606797749979,"nuLabel":"√5","cfHead":[1,1,1,1,1,1,1,1,1,1,1,1],"cfLen":110},{"key":"sqrt2","label":"√2","kind":"quad","nuConv":2.82842712474619,"nuPeriod":2.82842712474619,"nuNaive":2.828552020595967,"nuUpper":2.914213562373095,"upperQ":2,"nConv":40,"period":1,"maxA":2,"maxAAt":1,"bounded":"bounded","exactNu":2.8284271247461903,"nuLabel":"2√2","cfHead":[1,2,2,2,2,2,2,2,2,2,2,2],"cfLen":110},{"key":"sqrt3","label":"√3","kind":"quad","nuConv":3.464101615137755,"nuPeriod":3.4641016151377544,"nuNaive":3.4640621445156845,"nuUpper":3.7320508075688776,"upperQ":1,"nConv":54,"period":2,"maxA":2,"maxAAt":2,"bounded":"bounded","exactNu":3.4641016151377544,"nuLabel":"2√3","cfHead":[1,1,2,1,2,1,2,1,2,1,2,1],"cfLen":110},{"key":"sqrt5","label":"√5","kind":"quad","nuConv":4.47213595499958,"nuPeriod":4.47213595499958,"nuNaive":4.471175518367261,"nuUpper":4.48606797749979,"upperQ":4,"nConv":24,"period":1,"maxA":4,"maxAAt":1,"bounded":"bounded","exactNu":4.47213595499958,"nuLabel":"2√5","cfHead":[2,4,4,4,4,4,4,4,4,4,4,4],"cfLen":110},{"key":"sqrt7","label":"√7","kind":"quad","nuConv":5.2915026221291805,"nuPeriod":5.291502622129181,"nuNaive":5.291209485669671,"nuUpper":5.312417977731257,"upperQ":3,"nConv":52,"period":4,"maxA":4,"maxAAt":4,"bounded":"bounded","exactNu":5.291502622129181,"nuLabel":"2√7","cfHead":[2,1,1,1,4,1,1,1,4,1,1,1],"cfLen":110},{"key":"pi","label":"π","kind":"trans","nuConv":35.87119507116398,"nuPeriod":null,"nuNaive":4.661322416386079,"nuUpper":293.5726439723576,"upperQ":113,"nConv":26,"period":0,"maxA":292,"maxAAt":4,"bounded":"unknown","exactNu":null,"nuLabel":null,"cfHead":[3,7,15,1,292,1,1,1,2,1,3,1],"cfLen":60},{"key":"e","label":"自然常数 e","kind":"trans","nuConv":25.02012025025879,"nuPeriod":null,"nuNaive":13.049012467066753,"nuUpper":25.02012025025879,"upperQ":781379079653017,"nConv":35,"period":0,"maxA":40,"maxAAt":59,"bounded":"unbounded","exactNu":null,"nuLabel":null,"cfHead":[2,1,2,1,1,4,1,1,6,1,1,8],"cfLen":60},{"key":"rand1","label":"随机实数 A","kind":"rand","nuConv":12.179332784503552,"nuPeriod":null,"nuNaive":12.448614210293783,"nuUpper":29.1224736273663,"upperQ":27,"nConv":28,"period":0,"maxA":29,"maxAAt":2,"bounded":"unbounded","exactNu":null,"nuLabel":null,"cfHead":[1,27,29,11,1,2,2,1,1,2,12,16],"cfLen":30},{"key":"rand2","label":"随机实数 B","kind":"rand","nuConv":8.469044684016625,"nuPeriod":null,"nuNaive":16.565048912314406,"nuUpper":24.059199061866387,"upperQ":15975379,"nConv":29,"period":0,"maxA":23,"maxAAt":14,"bounded":"unbounded","exactNu":null,"nuLabel":null,"cfHead":[1,4,2,6,7,2,1,1,1,4,2,13],"cfLen":30},{"key":"liouville","label":"Liouville 数","kind":"special","nuConv":1000000000000,"nuPeriod":null,"nuNaive":9.090988658663795,"nuUpper":1000000000000,"upperQ":1000000,"nConv":7,"period":0,"maxA":1e+72,"maxAAt":15,"bounded":"unbounded","exactNu":null,"nuLabel":"∞","cfHead":[0,9,11,99,1,10,9,999999999999,1,8,10,1],"cfLen":26}],"spectrum":[{"m":1,"nu":2.23606797749979,"gapTo3":0.7639320225002102},{"m":2,"nu":2.8284271247461903,"gapTo3":0.1715728752538097},{"m":5,"nu":2.973213749463701,"gapTo3":0.026786250536298795},{"m":13,"nu":2.9960526298692995,"gapTo3":0.003947370130700456},{"m":29,"nu":2.999207188146832,"gapTo3":0.0007928118531679296},{"m":34,"nu":2.9994232432898733,"gapTo3":0.0005767567101266913},{"m":89,"nu":2.999915834362008,"gapTo3":0.00008416563799196197},{"m":169,"nu":2.9999766580560823,"gapTo3":0.00002334194391773181},{"m":194,"nu":2.9999822864110204,"gapTo3":0.00001771358897961761},{"m":233,"nu":2.999987720016373,"gapTo3":0.000012279983626850566},{"m":433,"nu":2.9999964442337324,"gapTo3":0.0000035557662676488633},{"m":610,"nu":2.9999982083663914,"gapTo3":0.000001791633608583254},{"m":985,"nu":2.999999312874083,"gapTo3":6.871259170537769e-7},{"m":1325,"nu":2.9999996202681616,"gapTo3":3.7973183841799596e-7}],"spectrumGaps":[{"m":2,"gap":0.5923591472464005},{"m":5,"gap":0.14478662471751091},{"m":13,"gap":0.02283888040559834},{"m":29,"gap":0.0031545582775325265},{"m":34,"gap":0.0002160551430412383},{"m":89,"gap":0.0004925910721347293},{"m":169,"gap":0.00006082369407423016},{"m":194,"gap":0.0000056283549381141995},{"m":233,"gap":0.000005433605352767046},{"m":433,"gap":0.000008724217359201702},{"m":610,"gap":0.0000017641326590656092},{"m":985,"gap":0.0000011045076915294771},{"m":1325,"gap":3.0739407863578094e-7}],"phiNu":2.23606797749979,"phiNuUpper":2.618033988749895,"sqrt2Nu":2.82842712474619,"sqrt3Nu":3.4641016151377544,"hurwitz":2.23606797749979,"minNu":2.23606797749979,"minNuKey":"phi","maxNu":5.291502622129181,"maxNuKey":"sqrt7","nuRatioSqrt2ToPhi":1.2649110640673515,"finiteCount":5,"infiniteCount":4,"unknownCount":1,"markovMax":1325,"spectrumLastGap":3.0739407863578094e-7,"countTotal":10,"spectrumHits":[{"key":"phi","nu":2.23606797749979,"m":1,"dist":0,"onSpectrum":true},{"key":"sqrt2","nu":2.82842712474619,"m":2,"dist":4.440892098500626e-16,"onSpectrum":true},{"key":"sqrt3","nu":3.4641016151377544,"m":1325,"dist":0.4641019948695928,"onSpectrum":false},{"key":"sqrt5","nu":4.47213595499958,"m":1325,"dist":1.472136334731418,"onSpectrum":false},{"key":"sqrt7","nu":5.291502622129181,"m":1325,"dist":2.29150300186102,"onSpectrum":false}]},"e3":{"count":186,"nMax":200,"worstRel":2.1701652804805111e-16,"worstN":67,"maxPeriod":22,"periodHist":{"1":14,"2":49,"3":2,"4":33,"5":9,"6":23,"7":2,"8":13,"9":4,"10":13,"11":2,"12":5,"13":1,"14":3,"15":1,"16":5,"17":1,"18":2,"20":2,"21":1,"22":1},"pts":[{"n":2,"nu":2.82842712474619,"exact":2.8284271247461903,"rel":1.570092458683775e-16,"period":1},{"n":3,"nu":3.4641016151377544,"exact":3.4641016151377544,"rel":0,"period":2},{"n":5,"nu":4.47213595499958,"exact":4.47213595499958,"rel":0,"period":1},{"n":6,"nu":4.898979485566356,"exact":4.898979485566356,"rel":0,"period":2},{"n":7,"nu":5.291502622129181,"exact":5.291502622129181,"rel":0,"period":4},{"n":8,"nu":5.65685424949238,"exact":5.656854249492381,"rel":1.570092458683775e-16,"period":2},{"n":10,"nu":6.324555320336758,"exact":6.324555320336759,"rel":1.4043333874306804e-16,"period":1},{"n":11,"nu":6.6332495807108,"exact":6.6332495807108,"rel":0,"period":2},{"n":12,"nu":6.928203230275509,"exact":6.928203230275509,"rel":0,"period":2},{"n":13,"nu":7.211102550927979,"exact":7.211102550927978,"rel":1.2316818592266835e-16,"period":5},{"n":14,"nu":7.483314773547882,"exact":7.483314773547883,"rel":1.18687833744435e-16,"period":4},{"n":15,"nu":7.745966692414834,"exact":7.745966692414834,"rel":0,"period":2},{"n":17,"nu":8.24621125123532,"exact":8.246211251235321,"rel":2.1541490816575234e-16,"period":1},{"n":18,"nu":8.485281374238571,"exact":8.48528137423857,"rel":2.093456611578367e-16,"period":2},{"n":19,"nu":8.717797887081346,"exact":8.717797887081348,"rel":2.0376210396350002e-16,"period":6},{"n":20,"nu":8.94427190999916,"exact":8.94427190999916,"rel":0,"period":2},{"n":21,"nu":9.165151389911681,"exact":9.16515138991168,"rel":1.938164209000991e-16,"period":6},{"n":22,"nu":9.380831519646858,"exact":9.38083151964686,"rel":1.893602753316607e-16,"period":6},{"n":23,"nu":9.591663046625438,"exact":9.591663046625438,"rel":0,"period":4},{"n":24,"nu":9.797958971132712,"exact":9.797958971132712,"rel":0,"period":2},{"n":26,"nu":10.198039027185569,"exact":10.198039027185569,"rel":0,"period":1},{"n":27,"nu":10.392304845413264,"exact":10.392304845413264,"rel":0,"period":2},{"n":28,"nu":10.583005244258363,"exact":10.583005244258363,"rel":0,"period":4},{"n":29,"nu":10.77032961426901,"exact":10.770329614269007,"rel":1.6493059200777426e-16,"period":5},{"n":30,"nu":10.95445115010332,"exact":10.954451150103322,"rel":1.6215845185301646e-16,"period":2},{"n":31,"nu":11.135528725660045,"exact":11.135528725660043,"rel":1.5952155332390464e-16,"period":8},{"n":32,"nu":11.31370849898476,"exact":11.313708498984761,"rel":1.570092458683775e-16,"period":4},{"n":33,"nu":11.489125293076057,"exact":11.489125293076057,"rel":0,"period":4},{"n":34,"nu":11.661903789690601,"exact":11.661903789690601,"rel":0,"period":4},{"n":35,"nu":11.83215956619923,"exact":11.832159566199232,"rel":1.5012955407352218e-16,"period":2},{"n":37,"nu":12.16552506059644,"exact":12.165525060596439,"rel":1.460156327451732e-16,"period":1},{"n":38,"nu":12.328828005937954,"exact":12.328828005937952,"rel":1.4408156546142918e-16,"period":2},{"n":39,"nu":12.489995996796797,"exact":12.489995996796797,"rel":0,"period":2},{"n":40,"nu":12.649110640673516,"exact":12.649110640673518,"rel":1.4043333874306804e-16,"period":2},{"n":41,"nu":12.806248474865697,"exact":12.806248474865697,"rel":0,"period":3},{"n":42,"nu":12.96148139681572,"exact":12.96148139681572,"rel":0,"period":2},{"n":43,"nu":13.114877048604,"exact":13.114877048604,"rel":0,"period":10},{"n":44,"nu":13.2664991614216,"exact":13.2664991614216,"rel":0,"period":8},{"n":45,"nu":13.416407864998739,"exact":13.416407864998739,"rel":0,"period":6},{"n":46,"nu":13.564659966250538,"exact":13.564659966250536,"rel":1.309547636151517e-16,"period":12},{"n":47,"nu":13.711309200802088,"exact":13.711309200802088,"rel":0,"period":4},{"n":48,"nu":13.856406460551018,"exact":13.856406460551018,"rel":0,"period":2},{"n":50,"nu":14.142135623730951,"exact":14.142135623730951,"rel":0,"period":1},{"n":51,"nu":14.2828568570857,"exact":14.2828568570857,"rel":0,"period":2},{"n":52,"nu":14.422205101855958,"exact":14.422205101855956,"rel":1.2316818592266835e-16,"period":6},{"n":53,"nu":14.560219778561038,"exact":14.560219778561036,"rel":1.2200068861706462e-16,"period":5},{"n":54,"nu":14.696938456699069,"exact":14.696938456699069,"rel":0,"period":6},{"n":55,"nu":14.832396974191326,"exact":14.832396974191326,"rel":0,"period":4},{"n":56,"nu":14.966629547095767,"exact":14.966629547095765,"rel":1.18687833744435e-16,"period":2},{"n":57,"nu":15.0996688705415,"exact":15.0996688705415,"rel":0,"period":6},{"n":58,"nu":15.231546211727817,"exact":15.231546211727817,"rel":0,"period":7},{"n":59,"nu":15.362291495737217,"exact":15.362291495737216,"rel":1.1563098121742844e-16,"period":6},{"n":60,"nu":15.491933384829668,"exact":15.491933384829668,"rel":0,"period":4},{"n":61,"nu":15.620499351813308,"exact":15.620499351813308,"rel":0,"period":11},{"n":62,"nu":15.748015748023622,"exact":15.748015748023622,"rel":0,"period":4},{"n":63,"nu":15.874507866387543,"exact":15.874507866387544,"rel":1.11899962780042e-16,"period":2},{"n":65,"nu":16.1245154965971,"exact":16.1245154965971,"rel":0,"period":1},{"n":66,"nu":16.24807680927192,"exact":16.24807680927192,"rel":0,"period":2},{"n":67,"nu":16.370705543744897,"exact":16.3707055437449,"rel":2.1701652804805111e-16,"period":10},{"n":68,"nu":16.49242250247064,"exact":16.492422502470642,"rel":2.1541490816575234e-16,"period":2},{"n":69,"nu":16.613247725836146,"exact":16.61324772583615,"rel":2.1384823349593986e-16,"period":8},{"n":70,"nu":16.733200530681508,"exact":16.73320053068151,"rel":2.1231525148380002e-16,"period":6},{"n":71,"nu":16.852299546352718,"exact":16.852299546352718,"rel":0,"period":8},{"n":72,"nu":16.970562748477143,"exact":16.97056274847714,"rel":2.093456611578367e-16,"period":2},{"n":73,"nu":17.088007490635064,"exact":17.08800749063506,"rel":2.0790684231309798e-16,"period":7},{"n":74,"nu":17.204650534085253,"exact":17.204650534085253,"rel":0,"period":5},{"n":75,"nu":17.32050807568877,"exact":17.320508075688775,"rel":2.0511601988091345e-16,"period":4},{"n":76,"nu":17.435595774162692,"exact":17.435595774162696,"rel":2.0376210396350002e-16,"period":12},{"n":77,"nu":17.54992877478424,"exact":17.549928774784245,"rel":2.0243464941607305e-16,"period":6},{"n":78,"nu":17.663521732655695,"exact":17.663521732655695,"rel":0,"period":4},{"n":79,"nu":17.776388834631177,"exact":17.776388834631177,"rel":0,"period":4},{"n":80,"nu":17.88854381999832,"exact":17.88854381999832,"rel":0,"period":2},{"n":82,"nu":18.110770276274835,"exact":18.110770276274835,"rel":0,"period":1},{"n":83,"nu":18.2208671582886,"exact":18.2208671582886,"rel":0,"period":2},{"n":84,"nu":18.330302779823363,"exact":18.33030277982336,"rel":1.938164209000991e-16,"period":2},{"n":85,"nu":18.439088914585774,"exact":18.439088914585774,"rel":0,"period":5},{"n":86,"nu":18.547236990991408,"exact":18.547236990991408,"rel":0,"period":10},{"n":87,"nu":18.65475810617763,"exact":18.65475810617763,"rel":0,"period":2},{"n":88,"nu":18.761663039293715,"exact":18.76166303929372,"rel":1.893602753316607e-16,"period":6},{"n":89,"nu":18.86796226411321,"exact":18.867962264113206,"rel":1.8829344838990636e-16,"period":5},{"n":90,"nu":18.973665961010276,"exact":18.973665961010276,"rel":0,"period":2},{"n":91,"nu":19.078784028338916,"exact":19.078784028338912,"rel":1.8621279393505544e-16,"period":8},{"n":92,"nu":19.183326093250876,"exact":19.183326093250876,"rel":0,"period":8},{"n":93,"nu":19.28730152198591,"exact":19.28730152198591,"rel":0,"period":10},{"n":94,"nu":19.390719429665317,"exact":19.390719429665317,"rel":0,"period":16},{"n":95,"nu":19.49358868961793,"exact":19.493588689617926,"rel":1.8225036628030617e-16,"period":4},{"n":96,"nu":19.595917942265423,"exact":19.595917942265423,"rel":0,"period":4},{"n":97,"nu":19.697715603592208,"exact":19.697715603592208,"rel":0,"period":11},{"n":98,"nu":19.798989873223334,"exact":19.79898987322333,"rel":1.7943913813528857e-16,"period":4},{"n":99,"nu":19.899748742132402,"exact":19.8997487421324,"rel":1.7853057969915868e-16,"period":2},{"n":101,"nu":20.09975124224178,"exact":20.09975124224178,"rel":0,"period":1},{"n":102,"nu":20.199009876724155,"exact":20.199009876724155,"rel":0,"period":2},{"n":103,"nu":20.297783130184442,"exact":20.29778313018444,"rel":1.750296402328454e-16,"period":12},{"n":104,"nu":20.396078054371138,"exact":20.396078054371138,"rel":0,"period":2},{"n":105,"nu":20.4939015319192,"exact":20.493901531919196,"rel":1.7335467691533305e-16,"period":2},{"n":106,"nu":20.591260281974,"exact":20.591260281974,"rel":0,"period":9},{"n":107,"nu":20.688160865577203,"exact":20.688160865577203,"rel":0,"period":6},{"n":108,"nu":20.784609690826528,"exact":20.784609690826528,"rel":0,"period":8},{"n":109,"nu":20.880613017821098,"exact":20.8806130178211,"rel":1.7014412727099273e-16,"period":15},{"n":110,"nu":20.976176963403034,"exact":20.97617696340303,"rel":1.6936897915186797e-16,"period":2},{"n":111,"nu":21.071307505705477,"exact":21.071307505705477,"rel":0,"period":6},{"n":112,"nu":21.166010488516726,"exact":21.166010488516726,"rel":0,"period":6},{"n":113,"nu":21.2602916254693,"exact":21.2602916254693,"rel":0,"period":9},{"n":114,"nu":21.354156504062622,"exact":21.354156504062622,"rel":0,"period":6},{"n":115,"nu":21.447610589527216,"exact":21.447610589527216,"rel":0,"period":10},{"n":116,"nu":21.54065922853802,"exact":21.540659228538015,"rel":1.6493059200777426e-16,"period":10},{"n":117,"nu":21.633307652783934,"exact":21.633307652783937,"rel":1.6422424789689112e-16,"period":6},{"n":118,"nu":21.72556098240043,"exact":21.72556098240043,"rel":0,"period":10},{"n":119,"nu":21.81742422927143,"exact":21.817424229271428,"rel":1.6283836448639934e-16,"period":4},{"n":120,"nu":21.90890230020664,"exact":21.908902300206645,"rel":1.6215845185301646e-16,"period":2},{"n":122,"nu":22.090722034374522,"exact":22.090722034374522,"rel":0,"period":1},{"n":123,"nu":22.181073012818835,"exact":22.181073012818835,"rel":0,"period":2},{"n":124,"nu":22.27105745132009,"exact":22.271057451320086,"rel":1.5952155332390464e-16,"period":16},{"n":125,"nu":22.360679774997898,"exact":22.360679774997898,"rel":0,"period":5},{"n":126,"nu":22.449944320643645,"exact":22.44994432064365,"rel":1.5825044499257998e-16,"period":4},{"n":127,"nu":22.538855339169288,"exact":22.538855339169288,"rel":0,"period":12},{"n":128,"nu":22.62741699796952,"exact":22.627416997969522,"rel":1.570092458683775e-16,"period":4},{"n":129,"nu":22.715633383201094,"exact":22.715633383201094,"rel":0,"period":10},{"n":130,"nu":22.803508501982762,"exact":22.80350850198276,"rel":1.5579680111468784e-16,"period":3},{"n":131,"nu":22.89104628451919,"exact":22.891046284519195,"rel":1.5520101766615787e-16,"period":6},{"n":132,"nu":22.978250586152114,"exact":22.978250586152114,"rel":0,"period":2},{"n":133,"nu":23.065125189341593,"exact":23.065125189341593,"rel":0,"period":16},{"n":134,"nu":23.15167380558045,"exact":23.15167380558045,"rel":0,"period":14},{"n":135,"nu":23.237900077244504,"exact":23.2379000772445,"rel":1.5288445457597362e-16,"period":8},{"n":136,"nu":23.323807579381203,"exact":23.323807579381203,"rel":0,"period":4},{"n":137,"nu":23.40939982143925,"exact":23.40939982143925,"rel":0,"period":9},{"n":138,"nu":23.494680248941464,"exact":23.49468024894146,"rel":1.5121353604974327e-16,"period":4},{"n":139,"nu":23.57965224510319,"exact":23.57965224510319,"rel":0,"period":18},{"n":140,"nu":23.66431913239846,"exact":23.664319132398465,"rel":1.5012955407352218e-16,"period":4},{"n":141,"nu":23.748684174075834,"exact":23.748684174075834,"rel":0,"period":4},{"n":142,"nu":23.832750575625973,"exact":23.83275057562597,"rel":1.4906855453075158e-16,"period":4},{"n":143,"nu":23.916521486202797,"exact":23.916521486202797,"rel":0,"period":2},{"n":145,"nu":24.08318915758459,"exact":24.08318915758459,"rel":0,"period":1},{"n":146,"nu":24.166091947189145,"exact":24.166091947189145,"rel":0,"period":2},{"n":147,"nu":24.248711305964285,"exact":24.24871130596428,"rel":1.4651144277208106e-16,"period":2},{"n":148,"nu":24.33105012119288,"exact":24.331050121192877,"rel":1.460156327451732e-16,"period":2},{"n":149,"nu":24.413111231467404,"exact":24.413111231467404,"rel":0,"period":9},{"n":150,"nu":24.49489742783178,"exact":24.49489742783178,"rel":0,"period":2},{"n":151,"nu":24.576411454889012,"exact":24.576411454889016,"rel":1.4455786945631378e-16,"period":20},{"n":152,"nu":24.657656011875908,"exact":24.657656011875904,"rel":1.4408156546142918e-16,"period":2},{"n":153,"nu":24.73863375370596,"exact":24.73863375370596,"rel":0,"period":8},{"n":154,"nu":24.819347291981714,"exact":24.819347291981714,"rel":0,"period":10},{"n":155,"nu":24.899799195977465,"exact":24.899799195977465,"rel":0,"period":4},{"n":156,"nu":24.979991993593593,"exact":24.979991993593593,"rel":0,"period":2},{"n":157,"nu":25.059928172283335,"exact":25.059928172283335,"rel":0,"period":17},{"n":158,"nu":25.139610179953067,"exact":25.13961017995307,"rel":1.4131936228802466e-16,"period":8},{"n":159,"nu":25.21904042583698,"exact":25.219040425836983,"rel":1.4087426082876394e-16,"period":10},{"n":160,"nu":25.298221281347033,"exact":25.298221281347036,"rel":1.4043333874306804e-16,"period":8},{"n":161,"nu":25.377155080899044,"exact":25.37715508089904,"rel":1.3999653103253362e-16,"period":10},{"n":162,"nu":25.45584412271571,"exact":25.45584412271571,"rel":0,"period":10},{"n":163,"nu":25.534290669607408,"exact":25.534290669607408,"rel":0,"period":18},{"n":164,"nu":25.612496949731394,"exact":25.612496949731394,"rel":0,"period":6},{"n":165,"nu":25.69046515733026,"exact":25.69046515733026,"rel":0,"period":6},{"n":166,"nu":25.76819745345025,"exact":25.768197453450252,"rel":1.3787202947425442e-16,"period":22},{"n":167,"nu":25.84569596664017,"exact":25.84569596664017,"rel":0,"period":4},{"n":168,"nu":25.92296279363144,"exact":25.92296279363144,"rel":0,"period":2},{"n":170,"nu":26.076809620810593,"exact":26.076809620810597,"rel":1.3624035035195631e-16,"period":1},{"n":171,"nu":26.15339366124404,"exact":26.153393661244042,"rel":1.3584140264233336e-16,"period":2},{"n":172,"nu":26.229754097208,"exact":26.229754097208,"rel":0,"period":16},{"n":173,"nu":26.30589287593181,"exact":26.30589287593181,"rel":0,"period":5},{"n":174,"nu":26.381811916545836,"exact":26.38181191654584,"rel":1.3466526446473341e-16,"period":4},{"n":175,"nu":26.457513110645905,"exact":26.457513110645905,"rel":0,"period":6},{"n":176,"nu":26.5329983228432,"exact":26.5329983228432,"rel":0,"period":4},{"n":177,"nu":26.60826939130014,"exact":26.60826939130014,"rel":0,"period":8},{"n":178,"nu":26.68332812825267,"exact":26.68332812825267,"rel":0,"period":6},{"n":179,"nu":26.758176320519304,"exact":26.758176320519304,"rel":0,"period":14},{"n":180,"nu":26.832815729997478,"exact":26.832815729997478,"rel":0,"period":4},{"n":181,"nu":26.90724809414742,"exact":26.90724809414742,"rel":0,"period":21},{"n":182,"nu":26.981475126464083,"exact":26.981475126464083,"rel":0,"period":2},{"n":183,"nu":27.055498516937362,"exact":27.055498516937366,"rel":1.3131207604903012e-16,"period":6},{"n":184,"nu":27.129319932501076,"exact":27.129319932501073,"rel":1.309547636151517e-16,"period":12},{"n":185,"nu":27.202941017470884,"exact":27.202941017470888,"rel":1.3060035223834058e-16,"period":5},{"n":186,"nu":27.276363393971714,"exact":27.27636339397171,"rel":1.3024880287324807e-16,"period":10},{"n":187,"nu":27.349588662354684,"exact":27.349588662354687,"rel":1.2990007720630293e-16,"period":6},{"n":188,"nu":27.422618401604176,"exact":27.422618401604176,"rel":0,"period":8},{"n":189,"nu":27.49545416973504,"exact":27.49545416973504,"rel":0,"period":4},{"n":190,"nu":27.568097504180443,"exact":27.568097504180443,"rel":0,"period":14},{"n":191,"nu":27.640549922170507,"exact":27.640549922170507,"rel":0,"period":16},{"n":192,"nu":27.712812921102035,"exact":27.712812921102035,"rel":0,"period":4},{"n":193,"nu":27.78488797889961,"exact":27.784887978899608,"rel":1.2786496319504694e-16,"period":13},{"n":194,"nu":27.85677655436824,"exact":27.85677655436824,"rel":0,"period":4},{"n":195,"nu":27.928480087537885,"exact":27.92848008753788,"rel":1.2720755542961956e-16,"period":2},{"n":197,"nu":28.0713376952364,"exact":28.071337695236398,"rel":1.2656018453311484e-16,"period":1},{"n":198,"nu":28.142494558940577,"exact":28.142494558940577,"rel":0,"period":2},{"n":199,"nu":28.21347195933177,"exact":28.21347195933177,"rel":0,"period":20},{"n":200,"nu":28.284271247461902,"exact":28.284271247461902,"rel":0,"period":2}],"sec":0.013},"e4":{"rows":[{"key":"phi","label":"黄金比例 φ","kind":"quad","mu":2.0005950006375173,"muN":28,"maxA":1,"maxAAt":1,"cfLen":110,"bounded":"bounded"},{"key":"sqrt2","label":"√2","kind":"quad","mu":2.000144806719978,"muN":14,"maxA":2,"maxAAt":1,"cfLen":110,"bounded":"bounded"},{"key":"sqrt3","label":"√3","kind":"quad","mu":2.0040576056082218,"muN":20,"maxA":2,"maxAAt":2,"cfLen":110,"bounded":"bounded"},{"key":"sqrt5","label":"√5","kind":"quad","mu":1.9999962040878323,"muN":8,"maxA":4,"maxAAt":1,"cfLen":110,"bounded":"bounded"},{"key":"sqrt7","label":"√7","kind":"quad","mu":1.9932898240110635,"muN":19,"maxA":4,"maxAAt":4,"cfLen":110,"bounded":"bounded"},{"key":"pi","label":"π","kind":"trans","mu":1.7421730568169436,"muN":8,"maxA":292,"maxAAt":4,"cfLen":60,"bounded":"unknown"},{"key":"e","label":"自然常数 e","kind":"trans","mu":2.0408295286704634,"muN":15,"maxA":40,"maxAAt":59,"cfLen":60,"bounded":"unbounded"},{"key":"rand1","label":"随机实数 A","kind":"rand","mu":1.9510538500811745,"muN":8,"maxA":29,"maxAAt":2,"cfLen":30,"bounded":"unbounded"},{"key":"rand2","label":"随机实数 B","kind":"rand","mu":2.075775795939207,"muN":10,"maxA":23,"maxAAt":14,"cfLen":30,"bounded":"unbounded"}],"muProbe":[{"mu":2,"series":[{"key":"phi","counts":[15,19,24,29]},{"key":"sqrt2","counts":[16,21,26,31]},{"key":"sqrt3","counts":[16,21,26,32]},{"key":"sqrt5","counts":[19,25,32,38]},{"key":"sqrt7","counts":[13,17,21,25]},{"key":"pi","counts":[16,25,29,33]},{"key":"e","counts":[12,17,20,24]},{"key":"rand1","counts":[13,17,22,26]},{"key":"rand2","counts":[14,18,22,26]}]},{"mu":2.2,"series":[{"key":"phi","counts":[9,9,9,9]},{"key":"sqrt2","counts":[8,8,8,8]},{"key":"sqrt3","counts":[7,7,7,7]},{"key":"sqrt5","counts":[5,6,6,6]},{"key":"sqrt7","counts":[7,7,7,7]},{"key":"pi","counts":[12,12,12,12]},{"key":"e","counts":[6,7,8,8]},{"key":"rand1","counts":[8,8,8,8]},{"key":"rand2","counts":[5,5,6,7]}]},{"mu":2.5,"series":[{"key":"phi","counts":[3,3,3,3]},{"key":"sqrt2","counts":[3,3,3,3]},{"key":"sqrt3","counts":[2,2,2,2]},{"key":"sqrt5","counts":[3,3,3,3]},{"key":"sqrt7","counts":[3,3,3,3]},{"key":"pi","counts":[7,7,7,7]},{"key":"e","counts":[3,3,3,3]},{"key":"rand1","counts":[4,4,4,4]},{"key":"rand2","counts":[3,3,3,3]}]},{"mu":3,"series":[{"key":"phi","counts":[2,2,2,2]},{"key":"sqrt2","counts":[2,2,2,2]},{"key":"sqrt3","counts":[1,1,1,1]},{"key":"sqrt5","counts":[2,2,2,2]},{"key":"sqrt7","counts":[2,2,2,2]},{"key":"pi","counts":[3,3,3,3]},{"key":"e","counts":[1,1,1,1]},{"key":"rand1","counts":[4,4,4,4]},{"key":"rand2","counts":[1,1,1,1]}]},{"mu":4,"series":[{"key":"phi","counts":[1,1,1,1]},{"key":"sqrt2","counts":[1,1,1,1]},{"key":"sqrt3","counts":[1,1,1,1]},{"key":"sqrt5","counts":[1,1,1,1]},{"key":"sqrt7","counts":[1,1,1,1]},{"key":"pi","counts":[1,1,1,1]},{"key":"e","counts":[1,1,1,1]},{"key":"rand1","counts":[2,2,2,2]},{"key":"rand2","counts":[1,1,1,1]}]}],"sec":1.629,"mu2":{"mu":2,"series":[{"key":"phi","counts":[15,19,24,29]},{"key":"sqrt2","counts":[16,21,26,31]},{"key":"sqrt3","counts":[16,21,26,32]},{"key":"sqrt5","counts":[19,25,32,38]},{"key":"sqrt7","counts":[13,17,21,25]},{"key":"pi","counts":[16,25,29,33]},{"key":"e","counts":[12,17,20,24]},{"key":"rand1","counts":[13,17,22,26]},{"key":"rand2","counts":[14,18,22,26]}]},"mu25":{"mu":2.5,"series":[{"key":"phi","counts":[3,3,3,3]},{"key":"sqrt2","counts":[3,3,3,3]},{"key":"sqrt3","counts":[2,2,2,2]},{"key":"sqrt5","counts":[3,3,3,3]},{"key":"sqrt7","counts":[3,3,3,3]},{"key":"pi","counts":[7,7,7,7]},{"key":"e","counts":[3,3,3,3]},{"key":"rand1","counts":[4,4,4,4]},{"key":"rand2","counts":[3,3,3,3]}]},"mu2Growth":[{"key":"phi","first":15,"last":29,"ratio":1.9333333333333333},{"key":"sqrt2","first":16,"last":31,"ratio":1.9375},{"key":"sqrt3","first":16,"last":32,"ratio":2},{"key":"sqrt5","first":19,"last":38,"ratio":2},{"key":"sqrt7","first":13,"last":25,"ratio":1.9230769230769231},{"key":"pi","first":16,"last":33,"ratio":2.0625},{"key":"e","first":12,"last":24,"ratio":2},{"key":"rand1","first":13,"last":26,"ratio":2},{"key":"rand2","first":14,"last":26,"ratio":1.8571428571428572}],"mu25Growth":[{"key":"phi","first":3,"last":3,"capped":true},{"key":"sqrt2","first":3,"last":3,"capped":true},{"key":"sqrt3","first":2,"last":2,"capped":true},{"key":"sqrt5","first":3,"last":3,"capped":true},{"key":"sqrt7","first":3,"last":3,"capped":true},{"key":"pi","first":7,"last":7,"capped":true},{"key":"e","first":3,"last":3,"capped":true},{"key":"rand1","first":4,"last":4,"capped":true},{"key":"rand2","first":3,"last":3,"capped":true}],"mu25AllCapped":true,"mu2AllGrew":true},"e5":{"pts":[{"N":1000,"tv":0.06785741997441215,"total":997,"maxK":380,"emp":[0.46439317953861586,0.14844533600802406,0.0802407221664995,0.05215646940822467,0.03610832497492478,0.029087261785356068,0.024072216649949848,0.025075225677031094,0.020060180541624874,0.00802407221664995,0.006018054162487462,0.009027081243731194,0.007021063189568706,0.006018054162487462,0.009027081243731194,0.003009027081243731,0.0050150451354062184,0.0020060180541624875,0.0050150451354062184,0.003009027081243731],"th":[0.41503749927884376,0.16992500144231237,0.09310940439148145,0.058893689053568614,0.04064198449734577,0.02974734339405193,0.02272007650008345,0.017921907997262315,0.014499569695115169,0.01197264166607594,0.010053664663923084,0.008562013503424002,0.007379530365597499,0.0064262691594330875,0.005646563141142043,0.005000681058366595,0.004459648190699875,0.004001930557496263,0.003611253552378833,0.003275132032860875],"invSqrtN":0.03162277660168379,"tvTimesSqrtN":2.145840032617471},{"N":10000,"tv":0.01313336186905934,"total":9958,"maxK":384,"emp":[0.412432215304278,0.1653946575617594,0.09469773046796545,0.06005221932114883,0.04117292629041976,0.032235388632255474,0.023599116288411326,0.019280980116489255,0.016067483430407713,0.012552721430006025,0.010443864229765013,0.009740911829684675,0.008033741715203857,0.006025306286402892,0.005221932114882507,0.004719823257682266,0.003313918457521591,0.004920666800562362,0.0032134966860815424,0.003615183771841735],"th":[0.41503749927884376,0.16992500144231237,0.09310940439148145,0.058893689053568614,0.04064198449734577,0.02974734339405193,0.02272007650008345,0.017921907997262315,0.014499569695115169,0.01197264166607594,0.010053664663923084,0.008562013503424002,0.007379530365597499,0.0064262691594330875,0.005646563141142043,0.005000681058366595,0.004459648190699875,0.004001930557496263,0.003611253552378833,0.003275132032860875],"invSqrtN":0.01,"tvTimesSqrtN":1.313336186905934},{"N":100000,"tv":0.00391780721896966,"total":99626,"maxK":398,"emp":[0.41755164314536364,0.16984522112701503,0.09295766165458816,0.060385843053018286,0.040511513058840064,0.030333447092124547,0.022162889205629054,0.018288398610804408,0.015126573384457873,0.012055086021721237,0.010137915805111116,0.008280970830907595,0.007578343002830586,0.006213237508280971,0.005761548190231466,0.004858169554132455,0.004536968261297252,0.003683777327203742,0.0036235520847971415,0.003001224579928934],"th":[0.41503749927884376,0.16992500144231237,0.09310940439148145,0.058893689053568614,0.04064198449734577,0.02974734339405193,0.02272007650008345,0.017921907997262315,0.014499569695115169,0.01197264166607594,0.010053664663923084,0.008562013503424002,0.007379530365597499,0.0064262691594330875,0.005646563141142043,0.005000681058366595,0.004459648190699875,0.004001930557496263,0.003611253552378833,0.003275132032860875],"invSqrtN":0.003162277660168379,"tvTimesSqrtN":1.2389194245394162},{"N":1000000,"tv":0.0013953270653202627,"total":996376,"maxK":400,"emp":[0.41707046335921377,0.17001714212305394,0.09308032309088135,0.059036949906461016,0.040792833227616884,0.030069973584269393,0.022654098452792922,0.018040378331071805,0.014661131942158382,0.011924213349177419,0.010012284519097208,0.008507832384561652,0.007477096999526283,0.0064794816414686825,0.00567456462219082,0.005029225914714927,0.004581603731924494,0.004037632379744193,0.0036421993303732726,0.003253791741270364],"th":[0.41503749927884376,0.16992500144231237,0.09310940439148145,0.058893689053568614,0.04064198449734577,0.02974734339405193,0.02272007650008345,0.017921907997262315,0.014499569695115169,0.01197264166607594,0.010053664663923084,0.008562013503424002,0.007379530365597499,0.0064262691594330875,0.005646563141142043,0.005000681058366595,0.004459648190699875,0.004001930557496263,0.003611253552378833,0.003275132032860875],"invSqrtN":0.001,"tvTimesSqrtN":1.3953270653202627}],"khinchin":2.6854520010653062,"levy":3.2758229187218113,"khinchinMeasured":2.674807028620925,"khinchinRelErr":0.003963940684904555,"tvSqrtNMin":1.2389194245394162,"tvSqrtNMax":2.145840032617471,"tvSqrtNRatio":1.7320254974735052,"alphaEff":0.5795180936864123,"alphaEffFirstLast":0.5623071082734015,"tvArgMin":100000,"tvMonotone":false,"tvNRange":[1000,1000000],"phiLevyRoot":1.6046678215806163,"othersLevy":[{"key":"sqrt2","root":2.4044312829770664,"n":38},{"key":"pi","root":3.587079753396449,"n":38},{"key":"e","root":2.899655713735759,"n":38}],"sec":0.127},"e6":{"rows":[{"key":"phi","label":"黄金比例 φ","two":11,"three":288,"other":0,"badSamples":[],"maxGap":0.6180339887498947,"nMax":300},{"key":"sqrt2","label":"√2","two":12,"three":287,"other":0,"badSamples":[],"maxGap":0.5857864376269049,"nMax":300},{"key":"sqrt3","label":"√3","two":12,"three":287,"other":0,"badSamples":[],"maxGap":0.7320508075688772,"nMax":300},{"key":"sqrt5","label":"√5","two":14,"three":285,"other":0,"badSamples":[],"maxGap":0.7639320225002106,"nMax":300},{"key":"pi","label":"π","two":23,"three":276,"other":0,"badSamples":[],"maxGap":0.8584073464102073,"nMax":300},{"key":"e","label":"自然常数 e","two":13,"three":286,"other":0,"badSamples":[],"maxGap":0.7182818284590451,"nMax":300},{"key":"sqrt7","label":"√7","two":14,"three":285,"other":0,"badSamples":[],"maxGap":0.6457513110645903,"nMax":300}],"convergentCheck":[{"key":"phi","checked":17,"ok":17,"bad":0},{"key":"sqrt2","checked":8,"ok":8,"bad":0},{"key":"sqrt3","checked":12,"ok":12,"bad":0},{"key":"sqrt5","checked":4,"ok":4,"bad":0},{"key":"pi","checked":2,"ok":2,"bad":0},{"key":"e","checked":9,"ok":9,"bad":0},{"key":"sqrt7","checked":12,"ok":12,"bad":0}],"totalChecked":2093,"distinct2":99,"distinct3":1994,"other":0,"threeFrac":0.9526994744386049,"ccChecked":64,"ccBad":0,"sec":0.035},"e7":{"farey":[{"n":1,"closed":2,"cum":2},{"n":2,"closed":3,"cum":3},{"n":3,"closed":5,"cum":5},{"n":4,"closed":7,"cum":7},{"n":5,"closed":11,"cum":11},{"n":6,"closed":13,"cum":13},{"n":7,"closed":19,"cum":19},{"n":8,"closed":23,"cum":23},{"n":9,"closed":29,"cum":29},{"n":10,"closed":33,"cum":33},{"n":11,"closed":43,"cum":43},{"n":12,"closed":47,"cum":47},{"n":13,"closed":59,"cum":59},{"n":14,"closed":65,"cum":65},{"n":15,"closed":73,"cum":73},{"n":16,"closed":81,"cum":81},{"n":17,"closed":97,"cum":97},{"n":18,"closed":103,"cum":103},{"n":19,"closed":121,"cum":121},{"n":20,"closed":129,"cum":129},{"n":21,"closed":141,"cum":141},{"n":22,"closed":151,"cum":151},{"n":23,"closed":173,"cum":173},{"n":24,"closed":181,"cum":181},{"n":25,"closed":201,"cum":201},{"n":26,"closed":213,"cum":213},{"n":27,"closed":231,"cum":231},{"n":28,"closed":243,"cum":243},{"n":29,"closed":271,"cum":271},{"n":30,"closed":279,"cum":279},{"n":31,"closed":309,"cum":309},{"n":32,"closed":325,"cum":325},{"n":33,"closed":345,"cum":345},{"n":34,"closed":361,"cum":361},{"n":35,"closed":385,"cum":385},{"n":36,"closed":397,"cum":397},{"n":37,"closed":433,"cum":433},{"n":38,"closed":451,"cum":451},{"n":39,"closed":475,"cum":475},{"n":40,"closed":491,"cum":491}],"fareyCheck":[{"n":1,"len":2,"closed":2,"bad":0},{"n":2,"len":3,"closed":3,"bad":0},{"n":3,"len":5,"closed":5,"bad":0},{"n":4,"len":7,"closed":7,"bad":0},{"n":5,"len":11,"closed":11,"bad":0},{"n":6,"len":13,"closed":13,"bad":0},{"n":7,"len":19,"closed":19,"bad":0},{"n":8,"len":23,"closed":23,"bad":0},{"n":9,"len":29,"closed":29,"bad":0},{"n":10,"len":33,"closed":33,"bad":0},{"n":11,"len":43,"closed":43,"bad":0},{"n":12,"len":47,"closed":47,"bad":0},{"n":13,"len":59,"closed":59,"bad":0},{"n":14,"len":65,"closed":65,"bad":0},{"n":15,"len":73,"closed":73,"bad":0},{"n":16,"len":81,"closed":81,"bad":0},{"n":17,"len":97,"closed":97,"bad":0},{"n":18,"len":103,"closed":103,"bad":0},{"n":19,"len":121,"closed":121,"bad":0},{"n":20,"len":129,"closed":129,"bad":0},{"n":21,"len":141,"closed":141,"bad":0},{"n":22,"len":151,"closed":151,"bad":0},{"n":23,"len":173,"closed":173,"bad":0},{"n":24,"len":181,"closed":181,"bad":0},{"n":25,"len":201,"closed":201,"bad":0},{"n":26,"len":213,"closed":213,"bad":0},{"n":27,"len":231,"closed":231,"bad":0},{"n":28,"len":243,"closed":243,"bad":0},{"n":29,"len":271,"closed":271,"bad":0},{"n":30,"len":279,"closed":279,"bad":0},{"n":31,"len":309,"closed":309,"bad":0},{"n":32,"len":325,"closed":325,"bad":0},{"n":33,"len":345,"closed":345,"bad":0},{"n":34,"len":361,"closed":361,"bad":0},{"n":35,"len":385,"closed":385,"bad":0},{"n":36,"len":397,"closed":397,"bad":0},{"n":37,"len":433,"closed":433,"bad":0},{"n":38,"len":451,"closed":451,"bad":0},{"n":39,"len":475,"closed":475,"bad":0},{"n":40,"len":491,"closed":491,"bad":0},{"n":41,"len":531,"closed":531,"bad":0},{"n":42,"len":543,"closed":543,"bad":0},{"n":43,"len":585,"closed":585,"bad":0},{"n":44,"len":605,"closed":605,"bad":0},{"n":45,"len":629,"closed":629,"bad":0},{"n":46,"len":651,"closed":651,"bad":0},{"n":47,"len":697,"closed":697,"bad":0},{"n":48,"len":713,"closed":713,"bad":0},{"n":49,"len":755,"closed":755,"bad":0},{"n":50,"len":775,"closed":775,"bad":0},{"n":51,"len":807,"closed":807,"bad":0},{"n":52,"len":831,"closed":831,"bad":0},{"n":53,"len":883,"closed":883,"bad":0},{"n":54,"len":901,"closed":901,"bad":0},{"n":55,"len":941,"closed":941,"bad":0},{"n":56,"len":965,"closed":965,"bad":0},{"n":57,"len":1001,"closed":1001,"bad":0},{"n":58,"len":1029,"closed":1029,"bad":0},{"n":59,"len":1087,"closed":1087,"bad":0},{"n":60,"len":1103,"closed":1103,"bad":0},{"n":61,"len":1163,"closed":1163,"bad":0},{"n":62,"len":1193,"closed":1193,"bad":0},{"n":63,"len":1229,"closed":1229,"bad":0},{"n":64,"len":1261,"closed":1261,"bad":0},{"n":65,"len":1309,"closed":1309,"bad":0},{"n":66,"len":1329,"closed":1329,"bad":0},{"n":67,"len":1395,"closed":1395,"bad":0},{"n":68,"len":1427,"closed":1427,"bad":0},{"n":69,"len":1471,"closed":1471,"bad":0},{"n":70,"len":1495,"closed":1495,"bad":0},{"n":71,"len":1565,"closed":1565,"bad":0},{"n":72,"len":1589,"closed":1589,"bad":0},{"n":73,"len":1661,"closed":1661,"bad":0},{"n":74,"len":1697,"closed":1697,"bad":0},{"n":75,"len":1737,"closed":1737,"bad":0},{"n":76,"len":1773,"closed":1773,"bad":0},{"n":77,"len":1833,"closed":1833,"bad":0},{"n":78,"len":1857,"closed":1857,"bad":0},{"n":79,"len":1935,"closed":1935,"bad":0},{"n":80,"len":1967,"closed":1967,"bad":0},{"n":81,"len":2021,"closed":2021,"bad":0},{"n":82,"len":2061,"closed":2061,"bad":0},{"n":83,"len":2143,"closed":2143,"bad":0},{"n":84,"len":2167,"closed":2167,"bad":0},{"n":85,"len":2231,"closed":2231,"bad":0},{"n":86,"len":2273,"closed":2273,"bad":0},{"n":87,"len":2329,"closed":2329,"bad":0},{"n":88,"len":2369,"closed":2369,"bad":0},{"n":89,"len":2457,"closed":2457,"bad":0},{"n":90,"len":2481,"closed":2481,"bad":0},{"n":91,"len":2553,"closed":2553,"bad":0},{"n":92,"len":2597,"closed":2597,"bad":0},{"n":93,"len":2657,"closed":2657,"bad":0},{"n":94,"len":2703,"closed":2703,"bad":0},{"n":95,"len":2775,"closed":2775,"bad":0},{"n":96,"len":2807,"closed":2807,"bad":0},{"n":97,"len":2903,"closed":2903,"bad":0},{"n":98,"len":2945,"closed":2945,"bad":0},{"n":99,"len":3005,"closed":3005,"bad":0},{"n":100,"len":3045,"closed":3045,"bad":0},{"n":101,"len":3145,"closed":3145,"bad":0},{"n":102,"len":3177,"closed":3177,"bad":0},{"n":103,"len":3279,"closed":3279,"bad":0},{"n":104,"len":3327,"closed":3327,"bad":0},{"n":105,"len":3375,"closed":3375,"bad":0},{"n":106,"len":3427,"closed":3427,"bad":0},{"n":107,"len":3533,"closed":3533,"bad":0},{"n":108,"len":3569,"closed":3569,"bad":0},{"n":109,"len":3677,"closed":3677,"bad":0},{"n":110,"len":3717,"closed":3717,"bad":0},{"n":111,"len":3789,"closed":3789,"bad":0},{"n":112,"len":3837,"closed":3837,"bad":0},{"n":113,"len":3949,"closed":3949,"bad":0},{"n":114,"len":3985,"closed":3985,"bad":0},{"n":115,"len":4073,"closed":4073,"bad":0},{"n":116,"len":4129,"closed":4129,"bad":0},{"n":117,"len":4201,"closed":4201,"bad":0},{"n":118,"len":4259,"closed":4259,"bad":0},{"n":119,"len":4355,"closed":4355,"bad":0},{"n":120,"len":4387,"closed":4387,"bad":0}],"fareyCheckSummary":{"nMax":120,"totalPairs":179529,"badPairs":0,"lenMismatch":0},"sb":{"total":555,"bad":0,"samples":[]},"wall":[{"Q":1000000,"ms":2,"sec":0.002,"min":0.000033333333333333335,"hour":5.555555555555555e-7,"day":2.3148148148148148e-8,"year":6.33761756280579e-11,"measured":true},{"Q":10000000,"ms":20,"sec":0.02,"min":0.0003333333333333333,"hour":0.000005555555555555556,"day":2.3148148148148148e-7,"year":6.33761756280579e-10,"measured":false},{"Q":100000000,"ms":200,"sec":0.2,"min":0.0033333333333333335,"hour":0.00005555555555555556,"day":0.0000023148148148148148,"year":6.33761756280579e-9,"measured":false},{"Q":1000000000,"ms":2000,"sec":2,"min":0.03333333333333333,"hour":0.0005555555555555556,"day":0.000023148148148148147,"year":6.33761756280579e-8,"measured":false},{"Q":10000000000,"ms":20000,"sec":20,"min":0.3333333333333333,"hour":0.005555555555555556,"day":0.0002314814814814815,"year":6.33761756280579e-7,"measured":false},{"Q":1000000000000,"ms":2000000,"sec":2000,"min":33.333333333333336,"hour":0.5555555555555556,"day":0.023148148148148147,"year":0.0000633761756280579,"measured":false},{"Q":1000000000000000,"ms":2000000000,"sec":2000000,"min":33333.333333333336,"hour":555.5555555555555,"day":23.14814814814815,"year":0.0633761756280579,"measured":false},{"Q":1000000000000000000,"ms":2000000000000,"sec":2000000000,"min":33333333.333333332,"hour":555555.5555555555,"day":23148.14814814815,"year":63.3761756280579,"measured":false}],"msPerQ":0.000002,"throughput":{"runs":[{"Q":10000,"ms":0},{"Q":100000,"ms":0},{"Q":1000000,"ms":2}]},"firstOverYear":{"Q":1000000000000000000,"ms":2000000000000,"sec":2000000000,"min":33333333.333333332,"hour":555555.5555555555,"day":23148.14814814815,"year":63.3761756280579,"measured":false},"firstOverDay":{"Q":1000000000000000,"ms":2000000000,"sec":2000000,"min":33333.333333333336,"hour":555.5555555555555,"day":23.14814814814815,"year":0.0633761756280579,"measured":false},"sec":0.009}},"charts":{"phiError":[{"q":2,"err":0.11803398874989468,"bound":0.25},{"q":3,"err":0.04863267791677206,"bound":0.1111111111111111},{"q":5,"err":0.01803398874989459,"bound":0.04},{"q":8,"err":0.0069660112501053195,"bound":0.015625},{"q":13,"err":0.0026493733652792617,"bound":0.005917159763313609},{"q":21,"err":0.0010136302977243883,"bound":0.0022675736961451248},{"q":34,"err":0.0003869299263652426,"bound":0.0008650519031141869},{"q":55,"err":0.0001478294319234852,"bound":0.00033057851239669424},{"q":89,"err":0.00005646066000708494,"bound":0.00012624668602449185},{"q":144,"err":0.000021566805660899746,"bound":0.000048225308641975306},{"q":233,"err":0.000008237676933253724,"bound":0.000018419937740610438},{"q":377,"err":0.0000031465286198795184,"bound":0.000007035861787531046},{"q":610,"err":0.000001201864648692208,"bound":0.0000026874496103198067},{"q":987,"err":4.590717872510197e-7,"bound":0.000001026515933067055},{"q":1597,"err":1.7534976937128022e-7,"bound":3.9209397394692383e-7},{"q":2584,"err":6.697765941865441e-8,"bound":1.4976660372475533e-7},{"q":4181,"err":2.558318823453476e-8,"bound":5.720574750721665e-8},{"q":6765,"err":9.77190861561894e-9,"bound":2.185065188688573e-8},{"q":10946,"err":3.7325367241436425e-9,"bound":8.346206243636643e-9},{"q":17711,"err":1.4257024449904065e-9,"bound":3.1879671226608383e-9},{"q":28657,"err":5.445697226491575e-10,"bound":1.2176950836933338e-9},{"q":46368,"err":2.0800738909088068e-10,"bound":4.6511813435028846e-10},{"q":75025,"err":7.945155644506485e-11,"bound":1.7765931849219205e-10},{"q":121393,"err":3.0347946378128654e-11,"bound":6.7859821252539e-11},{"q":196418,"err":1.1591616555506334e-11,"bound":2.5920145247005116e-11},{"q":317811,"err":4.427791466810049e-12,"bound":9.900614491163776e-12},{"q":514229,"err":1.6910917111090384e-12,"bound":3.781698226094119e-12},{"q":832040,"err":6.461498003318411e-13,"bound":1.4444801871757888e-12},{"q":1346269,"err":2.4646951146678475e-13,"bound":5.517423354249008e-13},{"q":2178309,"err":9.43689570931383e-14,"bound":2.1074681910013122e-13},{"q":3524578,"err":3.574918139293004e-14,"bound":8.049812187531523e-14},{"q":5702887,"err":1.3988810110276972e-14,"bound":3.0747546525840355e-14},{"q":9227465,"err":5.10702591327572e-15,"bound":1.174451770220207e-14},{"q":14930352,"err":2.220446049250313e-15,"bound":4.486006580766404e-15},{"q":24157817,"err":6.661338147750939e-16,"bound":1.7135020400970618e-15},{"q":39088169,"err":4.440892098500626e-16,"bound":6.544995395247931e-16},{"q":63245986,"err":0,"bound":2.499965784773157e-16},{"q":102334155,"err":2.220446049250313e-16,"bound":9.549019590715417e-17},{"q":165580141,"err":2.220446049250313e-16,"bound":3.647400924414679e-17},{"q":267914296,"err":2.220446049250313e-16,"bound":1.3931831825286213e-17},{"q":433494437,"err":2.220446049250313e-16,"bound":5.321486231711846e-18},{"q":701408733,"err":2.220446049250313e-16,"bound":2.032626869849327e-18}],"nuBars":[{"key":"phi","label":"黄金比例 φ","nu":2.23606797749979,"bounded":"bounded","maxA":1,"logNu":0.34948500216800943},{"key":"sqrt2","label":"√2","nu":2.82842712474619,"bounded":"bounded","maxA":2,"logNu":0.45154499349597177},{"key":"sqrt3","label":"√3","nu":3.4641016151377544,"bounded":"bounded","maxA":2,"logNu":0.5395906230238123},{"key":"sqrt5","label":"√5","nu":4.47213595499958,"bounded":"bounded","maxA":4,"logNu":0.6505149978319906},{"key":"sqrt7","label":"√7","nu":5.291502622129181,"bounded":"bounded","maxA":4,"logNu":0.7235790156711096},{"key":"pi","label":"π","nu":35.87119507116398,"bounded":"unknown","maxA":292,"logNu":1.5547458457076444},{"key":"e","label":"自然常数 e","nu":25.02012025025879,"bounded":"unbounded","maxA":40,"logNu":1.3982893926435058},{"key":"rand1","label":"随机实数 A","nu":12.179332784503552,"bounded":"unbounded","maxA":29,"logNu":1.0856234971683405},{"key":"rand2","label":"随机实数 B","nu":8.469044684016625,"bounded":"unbounded","maxA":23,"logNu":0.9278344242788683},{"key":"liouville","label":"Liouville 数","nu":1000000000000,"bounded":"unbounded","maxA":1e+72,"logNu":12}],"spectrum":[{"m":1,"nu":2.23606797749979,"gapTo3":0.7639320225002102},{"m":2,"nu":2.8284271247461903,"gapTo3":0.1715728752538097},{"m":5,"nu":2.973213749463701,"gapTo3":0.026786250536298795},{"m":13,"nu":2.9960526298692995,"gapTo3":0.003947370130700456},{"m":29,"nu":2.999207188146832,"gapTo3":0.0007928118531679296},{"m":34,"nu":2.9994232432898733,"gapTo3":0.0005767567101266913},{"m":89,"nu":2.999915834362008,"gapTo3":0.00008416563799196197},{"m":169,"nu":2.9999766580560823,"gapTo3":0.00002334194391773181},{"m":194,"nu":2.9999822864110204,"gapTo3":0.00001771358897961761},{"m":233,"nu":2.999987720016373,"gapTo3":0.000012279983626850566},{"m":433,"nu":2.9999964442337324,"gapTo3":0.0000035557662676488633},{"m":610,"nu":2.9999982083663914,"gapTo3":0.000001791633608583254},{"m":985,"nu":2.999999312874083,"gapTo3":6.871259170537769e-7},{"m":1325,"nu":2.9999996202681616,"gapTo3":3.7973183841799596e-7}],"gaussKuzmin":{"N":1000000,"tv":0.0013953270653202627,"total":996376,"maxK":400,"emp":[0.41707046335921377,0.17001714212305394,0.09308032309088135,0.059036949906461016,0.040792833227616884,0.030069973584269393,0.022654098452792922,0.018040378331071805,0.014661131942158382,0.011924213349177419,0.010012284519097208,0.008507832384561652,0.007477096999526283,0.0064794816414686825,0.00567456462219082,0.005029225914714927,0.004581603731924494,0.004037632379744193,0.0036421993303732726,0.003253791741270364],"th":[0.41503749927884376,0.16992500144231237,0.09310940439148145,0.058893689053568614,0.04064198449734577,0.02974734339405193,0.02272007650008345,0.017921907997262315,0.014499569695115169,0.01197264166607594,0.010053664663923084,0.008562013503424002,0.007379530365597499,0.0064262691594330875,0.005646563141142043,0.005000681058366595,0.004459648190699875,0.004001930557496263,0.003611253552378833,0.003275132032860875],"invSqrtN":0.001,"tvTimesSqrtN":1.3953270653202627},"tvScaling":[{"N":1000,"tv":0.06785741997441215,"invSqrtN":0.03162277660168379,"prod":2.145840032617471},{"N":10000,"tv":0.01313336186905934,"invSqrtN":0.01,"prod":1.313336186905934},{"N":100000,"tv":0.00391780721896966,"invSqrtN":0.003162277660168379,"prod":1.2389194245394162},{"N":1000000,"tv":0.0013953270653202627,"invSqrtN":0.001,"prod":1.3953270653202627}],"sqrtN":[{"n":2,"nu":2.82842712474619,"exact":2.8284271247461903,"rel":1.570092458683775e-16,"period":1},{"n":3,"nu":3.4641016151377544,"exact":3.4641016151377544,"rel":0,"period":2},{"n":5,"nu":4.47213595499958,"exact":4.47213595499958,"rel":0,"period":1},{"n":6,"nu":4.898979485566356,"exact":4.898979485566356,"rel":0,"period":2},{"n":7,"nu":5.291502622129181,"exact":5.291502622129181,"rel":0,"period":4},{"n":8,"nu":5.65685424949238,"exact":5.656854249492381,"rel":1.570092458683775e-16,"period":2},{"n":10,"nu":6.324555320336758,"exact":6.324555320336759,"rel":1.4043333874306804e-16,"period":1},{"n":11,"nu":6.6332495807108,"exact":6.6332495807108,"rel":0,"period":2},{"n":12,"nu":6.928203230275509,"exact":6.928203230275509,"rel":0,"period":2},{"n":13,"nu":7.211102550927979,"exact":7.211102550927978,"rel":1.2316818592266835e-16,"period":5},{"n":14,"nu":7.483314773547882,"exact":7.483314773547883,"rel":1.18687833744435e-16,"period":4},{"n":15,"nu":7.745966692414834,"exact":7.745966692414834,"rel":0,"period":2},{"n":17,"nu":8.24621125123532,"exact":8.246211251235321,"rel":2.1541490816575234e-16,"period":1},{"n":18,"nu":8.485281374238571,"exact":8.48528137423857,"rel":2.093456611578367e-16,"period":2},{"n":19,"nu":8.717797887081346,"exact":8.717797887081348,"rel":2.0376210396350002e-16,"period":6},{"n":20,"nu":8.94427190999916,"exact":8.94427190999916,"rel":0,"period":2},{"n":21,"nu":9.165151389911681,"exact":9.16515138991168,"rel":1.938164209000991e-16,"period":6},{"n":22,"nu":9.380831519646858,"exact":9.38083151964686,"rel":1.893602753316607e-16,"period":6},{"n":23,"nu":9.591663046625438,"exact":9.591663046625438,"rel":0,"period":4},{"n":24,"nu":9.797958971132712,"exact":9.797958971132712,"rel":0,"period":2},{"n":26,"nu":10.198039027185569,"exact":10.198039027185569,"rel":0,"period":1},{"n":27,"nu":10.392304845413264,"exact":10.392304845413264,"rel":0,"period":2},{"n":28,"nu":10.583005244258363,"exact":10.583005244258363,"rel":0,"period":4},{"n":29,"nu":10.77032961426901,"exact":10.770329614269007,"rel":1.6493059200777426e-16,"period":5},{"n":30,"nu":10.95445115010332,"exact":10.954451150103322,"rel":1.6215845185301646e-16,"period":2},{"n":31,"nu":11.135528725660045,"exact":11.135528725660043,"rel":1.5952155332390464e-16,"period":8},{"n":32,"nu":11.31370849898476,"exact":11.313708498984761,"rel":1.570092458683775e-16,"period":4},{"n":33,"nu":11.489125293076057,"exact":11.489125293076057,"rel":0,"period":4},{"n":34,"nu":11.661903789690601,"exact":11.661903789690601,"rel":0,"period":4},{"n":35,"nu":11.83215956619923,"exact":11.832159566199232,"rel":1.5012955407352218e-16,"period":2},{"n":37,"nu":12.16552506059644,"exact":12.165525060596439,"rel":1.460156327451732e-16,"period":1},{"n":38,"nu":12.328828005937954,"exact":12.328828005937952,"rel":1.4408156546142918e-16,"period":2},{"n":39,"nu":12.489995996796797,"exact":12.489995996796797,"rel":0,"period":2},{"n":40,"nu":12.649110640673516,"exact":12.649110640673518,"rel":1.4043333874306804e-16,"period":2},{"n":41,"nu":12.806248474865697,"exact":12.806248474865697,"rel":0,"period":3},{"n":42,"nu":12.96148139681572,"exact":12.96148139681572,"rel":0,"period":2},{"n":43,"nu":13.114877048604,"exact":13.114877048604,"rel":0,"period":10},{"n":44,"nu":13.2664991614216,"exact":13.2664991614216,"rel":0,"period":8},{"n":45,"nu":13.416407864998739,"exact":13.416407864998739,"rel":0,"period":6},{"n":46,"nu":13.564659966250538,"exact":13.564659966250536,"rel":1.309547636151517e-16,"period":12},{"n":47,"nu":13.711309200802088,"exact":13.711309200802088,"rel":0,"period":4},{"n":48,"nu":13.856406460551018,"exact":13.856406460551018,"rel":0,"period":2},{"n":50,"nu":14.142135623730951,"exact":14.142135623730951,"rel":0,"period":1},{"n":51,"nu":14.2828568570857,"exact":14.2828568570857,"rel":0,"period":2},{"n":52,"nu":14.422205101855958,"exact":14.422205101855956,"rel":1.2316818592266835e-16,"period":6},{"n":53,"nu":14.560219778561038,"exact":14.560219778561036,"rel":1.2200068861706462e-16,"period":5},{"n":54,"nu":14.696938456699069,"exact":14.696938456699069,"rel":0,"period":6},{"n":55,"nu":14.832396974191326,"exact":14.832396974191326,"rel":0,"period":4},{"n":56,"nu":14.966629547095767,"exact":14.966629547095765,"rel":1.18687833744435e-16,"period":2},{"n":57,"nu":15.0996688705415,"exact":15.0996688705415,"rel":0,"period":6},{"n":58,"nu":15.231546211727817,"exact":15.231546211727817,"rel":0,"period":7},{"n":59,"nu":15.362291495737217,"exact":15.362291495737216,"rel":1.1563098121742844e-16,"period":6},{"n":60,"nu":15.491933384829668,"exact":15.491933384829668,"rel":0,"period":4},{"n":61,"nu":15.620499351813308,"exact":15.620499351813308,"rel":0,"period":11},{"n":62,"nu":15.748015748023622,"exact":15.748015748023622,"rel":0,"period":4},{"n":63,"nu":15.874507866387543,"exact":15.874507866387544,"rel":1.11899962780042e-16,"period":2},{"n":65,"nu":16.1245154965971,"exact":16.1245154965971,"rel":0,"period":1},{"n":66,"nu":16.24807680927192,"exact":16.24807680927192,"rel":0,"period":2},{"n":67,"nu":16.370705543744897,"exact":16.3707055437449,"rel":2.1701652804805111e-16,"period":10},{"n":68,"nu":16.49242250247064,"exact":16.492422502470642,"rel":2.1541490816575234e-16,"period":2}],"threeDistSample":{"distinct":2,"lengths":[0.034441853748631956,0.05572809000084078],"counts":[8,13],"n":21,"ngaps":21},"farey":[{"n":1,"closed":2,"cum":2},{"n":2,"closed":3,"cum":3},{"n":3,"closed":5,"cum":5},{"n":4,"closed":7,"cum":7},{"n":5,"closed":11,"cum":11},{"n":6,"closed":13,"cum":13},{"n":7,"closed":19,"cum":19},{"n":8,"closed":23,"cum":23},{"n":9,"closed":29,"cum":29},{"n":10,"closed":33,"cum":33},{"n":11,"closed":43,"cum":43},{"n":12,"closed":47,"cum":47},{"n":13,"closed":59,"cum":59},{"n":14,"closed":65,"cum":65},{"n":15,"closed":73,"cum":73},{"n":16,"closed":81,"cum":81},{"n":17,"closed":97,"cum":97},{"n":18,"closed":103,"cum":103},{"n":19,"closed":121,"cum":121},{"n":20,"closed":129,"cum":129},{"n":21,"closed":141,"cum":141},{"n":22,"closed":151,"cum":151},{"n":23,"closed":173,"cum":173},{"n":24,"closed":181,"cum":181},{"n":25,"closed":201,"cum":201},{"n":26,"closed":213,"cum":213},{"n":27,"closed":231,"cum":231},{"n":28,"closed":243,"cum":243},{"n":29,"closed":271,"cum":271},{"n":30,"closed":279,"cum":279},{"n":31,"closed":309,"cum":309},{"n":32,"closed":325,"cum":325},{"n":33,"closed":345,"cum":345},{"n":34,"closed":361,"cum":361},{"n":35,"closed":385,"cum":385},{"n":36,"closed":397,"cum":397},{"n":37,"closed":433,"cum":433},{"n":38,"closed":451,"cum":451},{"n":39,"closed":475,"cum":475},{"n":40,"closed":491,"cum":491}],"wall":[{"Q":1000000,"ms":2,"sec":0.002,"min":0.000033333333333333335,"hour":5.555555555555555e-7,"day":2.3148148148148148e-8,"year":6.33761756280579e-11,"measured":true},{"Q":10000000,"ms":20,"sec":0.02,"min":0.0003333333333333333,"hour":0.000005555555555555556,"day":2.3148148148148148e-7,"year":6.33761756280579e-10,"measured":false},{"Q":100000000,"ms":200,"sec":0.2,"min":0.0033333333333333335,"hour":0.00005555555555555556,"day":0.0000023148148148148148,"year":6.33761756280579e-9,"measured":false},{"Q":1000000000,"ms":2000,"sec":2,"min":0.03333333333333333,"hour":0.0005555555555555556,"day":0.000023148148148148147,"year":6.33761756280579e-8,"measured":false},{"Q":10000000000,"ms":20000,"sec":20,"min":0.3333333333333333,"hour":0.005555555555555556,"day":0.0002314814814814815,"year":6.33761756280579e-7,"measured":false},{"Q":1000000000000,"ms":2000000,"sec":2000,"min":33.333333333333336,"hour":0.5555555555555556,"day":0.023148148148148147,"year":0.0000633761756280579,"measured":false},{"Q":1000000000000000,"ms":2000000000,"sec":2000000,"min":33333.333333333336,"hour":555.5555555555555,"day":23.14814814814815,"year":0.0633761756280579,"measured":false},{"Q":1000000000000000000,"ms":2000000000000,"sec":2000000000,"min":33333333.333333332,"hour":555555.5555555555,"day":23148.14814814815,"year":63.3761756280579,"measured":false}],"muProbe":[{"mu":2,"series":[{"key":"phi","counts":[15,19,24,29]},{"key":"sqrt2","counts":[16,21,26,31]},{"key":"sqrt3","counts":[16,21,26,32]},{"key":"sqrt5","counts":[19,25,32,38]},{"key":"sqrt7","counts":[13,17,21,25]},{"key":"pi","counts":[16,25,29,33]},{"key":"e","counts":[12,17,20,24]},{"key":"rand1","counts":[13,17,22,26]},{"key":"rand2","counts":[14,18,22,26]}]},{"mu":2.2,"series":[{"key":"phi","counts":[9,9,9,9]},{"key":"sqrt2","counts":[8,8,8,8]},{"key":"sqrt3","counts":[7,7,7,7]},{"key":"sqrt5","counts":[5,6,6,6]},{"key":"sqrt7","counts":[7,7,7,7]},{"key":"pi","counts":[12,12,12,12]},{"key":"e","counts":[6,7,8,8]},{"key":"rand1","counts":[8,8,8,8]},{"key":"rand2","counts":[5,5,6,7]}]},{"mu":2.5,"series":[{"key":"phi","counts":[3,3,3,3]},{"key":"sqrt2","counts":[3,3,3,3]},{"key":"sqrt3","counts":[2,2,2,2]},{"key":"sqrt5","counts":[3,3,3,3]},{"key":"sqrt7","counts":[3,3,3,3]},{"key":"pi","counts":[7,7,7,7]},{"key":"e","counts":[3,3,3,3]},{"key":"rand1","counts":[4,4,4,4]},{"key":"rand2","counts":[3,3,3,3]}]},{"mu":3,"series":[{"key":"phi","counts":[2,2,2,2]},{"key":"sqrt2","counts":[2,2,2,2]},{"key":"sqrt3","counts":[1,1,1,1]},{"key":"sqrt5","counts":[2,2,2,2]},{"key":"sqrt7","counts":[2,2,2,2]},{"key":"pi","counts":[3,3,3,3]},{"key":"e","counts":[1,1,1,1]},{"key":"rand1","counts":[4,4,4,4]},{"key":"rand2","counts":[1,1,1,1]}]},{"mu":4,"series":[{"key":"phi","counts":[1,1,1,1]},{"key":"sqrt2","counts":[1,1,1,1]},{"key":"sqrt3","counts":[1,1,1,1]},{"key":"sqrt5","counts":[1,1,1,1]},{"key":"sqrt7","counts":[1,1,1,1]},{"key":"pi","counts":[1,1,1,1]},{"key":"e","counts":[1,1,1,1]},{"key":"rand1","counts":[2,2,2,2]},{"key":"rand2","counts":[1,1,1,1]}]}]},"tables":{"cfTable":[{"key":"phi","label":"黄金比例 φ","cf":[1,1,1,1,1,1,1,1,1,1],"period":1,"maxA":1,"bounded":"bounded","nu":2.23606797749979,"exact":2.23606797749979,"exactLabel":"√5"},{"key":"sqrt2","label":"√2","cf":[1,2,2,2,2,2,2,2,2,2],"period":1,"maxA":2,"bounded":"bounded","nu":2.82842712474619,"exact":2.8284271247461903,"exactLabel":"2√2"},{"key":"sqrt3","label":"√3","cf":[1,1,2,1,2,1,2,1,2,1],"period":2,"maxA":2,"bounded":"bounded","nu":3.4641016151377544,"exact":3.4641016151377544,"exactLabel":"2√3"},{"key":"sqrt5","label":"√5","cf":[2,4,4,4,4,4,4,4,4,4],"period":1,"maxA":4,"bounded":"bounded","nu":4.47213595499958,"exact":4.47213595499958,"exactLabel":"2√5"},{"key":"sqrt7","label":"√7","cf":[2,1,1,1,4,1,1,1,4,1],"period":4,"maxA":4,"bounded":"bounded","nu":5.291502622129181,"exact":5.291502622129181,"exactLabel":"2√7"},{"key":"pi","label":"π","cf":[3,7,15,1,292,1,1,1,2,1],"period":0,"maxA":292,"bounded":"unknown","nu":35.87119507116398,"exact":null,"exactLabel":null},{"key":"e","label":"自然常数 e","cf":[2,1,2,1,1,4,1,1,6,1],"period":0,"maxA":40,"bounded":"unbounded","nu":25.02012025025879,"exact":null,"exactLabel":null},{"key":"rand1","label":"随机实数 A","cf":[1,27,29,11,1,2,2,1,1,2],"period":0,"maxA":29,"bounded":"unbounded","nu":12.179332784503552,"exact":null,"exactLabel":null},{"key":"rand2","label":"随机实数 B","cf":[1,4,2,6,7,2,1,1,1,4],"period":0,"maxA":23,"bounded":"unbounded","nu":8.469044684016625,"exact":null,"exactLabel":null},{"key":"liouville","label":"Liouville 数","cf":[0,9,11,99,1,10,9,999999999999,1,8],"period":0,"maxA":1e+72,"bounded":"unbounded","nu":1000000000000,"exact":null,"exactLabel":"∞"}],"spectrumTable":[{"m":1,"nu":2.23606797749979,"gapTo3":0.7639320225002102},{"m":2,"nu":2.8284271247461903,"gapTo3":0.1715728752538097},{"m":5,"nu":2.973213749463701,"gapTo3":0.026786250536298795},{"m":13,"nu":2.9960526298692995,"gapTo3":0.003947370130700456},{"m":29,"nu":2.999207188146832,"gapTo3":0.0007928118531679296},{"m":34,"nu":2.9994232432898733,"gapTo3":0.0005767567101266913},{"m":89,"nu":2.999915834362008,"gapTo3":0.00008416563799196197},{"m":169,"nu":2.9999766580560823,"gapTo3":0.00002334194391773181},{"m":194,"nu":2.9999822864110204,"gapTo3":0.00001771358897961761},{"m":233,"nu":2.999987720016373,"gapTo3":0.000012279983626850566},{"m":433,"nu":2.9999964442337324,"gapTo3":0.0000035557662676488633},{"m":610,"nu":2.9999982083663914,"gapTo3":0.000001791633608583254},{"m":985,"nu":2.999999312874083,"gapTo3":6.871259170537769e-7},{"m":1325,"nu":2.9999996202681616,"gapTo3":3.7973183841799596e-7}],"convergentsPhi":[{"k":0,"a":1,"p":1,"q":1,"err":0.6180339887498947,"qErr":0.6180339887498947,"qqd":0.6180339887498947},{"k":1,"a":1,"p":2,"q":1,"err":0.3819660112501053,"qErr":0.3819660112501053,"qqd":0.3819660112501053},{"k":2,"a":1,"p":3,"q":2,"err":0.11803398874989468,"qErr":0.23606797749978936,"qqd":0.4721359549995787},{"k":3,"a":1,"p":5,"q":3,"err":0.04863267791677206,"qErr":0.14589803375031618,"qqd":0.43769410125094854},{"k":4,"a":1,"p":8,"q":5,"err":0.01803398874989459,"qErr":0.09016994374947296,"qqd":0.4508497187473648},{"k":5,"a":1,"p":13,"q":8,"err":0.0069660112501053195,"qErr":0.055728090000842556,"qqd":0.44582472000674045},{"k":6,"a":1,"p":21,"q":13,"err":0.0026493733652792617,"qErr":0.0344418537486304,"qqd":0.44774409873219523},{"k":7,"a":1,"p":34,"q":21,"err":0.0010136302977243883,"qErr":0.021286236252212154,"qqd":0.44701096129645523},{"k":8,"a":1,"p":55,"q":34,"err":0.0003869299263652426,"qErr":0.013155617496418248,"qqd":0.44729099487822044},{"k":9,"a":1,"p":89,"q":55,"err":0.0001478294319234852,"qErr":0.008130618755791685,"qqd":0.4471840315685427},{"k":10,"a":1,"p":144,"q":89,"err":0.00005646066000708494,"qErr":0.00502499874063056,"qqd":0.4472248879161198},{"k":11,"a":1,"p":233,"q":144,"err":0.000021566805660899746,"qErr":0.0031056200151695634,"qqd":0.44720928218441713},{"k":12,"a":1,"p":377,"q":233,"err":0.000008237676933253724,"qErr":0.0019193787254481176,"qqd":0.4472152430294114},{"k":13,"a":1,"p":610,"q":377,"err":0.0000031465286198795184,"qErr":0.0011862412896945784,"qqd":0.44721296621485607}],"fareyTable":[{"n":1,"len":2,"closed":2,"bad":0},{"n":2,"len":3,"closed":3,"bad":0},{"n":3,"len":5,"closed":5,"bad":0},{"n":4,"len":7,"closed":7,"bad":0},{"n":5,"len":11,"closed":11,"bad":0},{"n":6,"len":13,"closed":13,"bad":0},{"n":7,"len":19,"closed":19,"bad":0},{"n":8,"len":23,"closed":23,"bad":0},{"n":9,"len":29,"closed":29,"bad":0},{"n":10,"len":33,"closed":33,"bad":0},{"n":11,"len":43,"closed":43,"bad":0},{"n":12,"len":47,"closed":47,"bad":0},{"n":13,"len":59,"closed":59,"bad":0},{"n":14,"len":65,"closed":65,"bad":0},{"n":15,"len":73,"closed":73,"bad":0},{"n":16,"len":81,"closed":81,"bad":0},{"n":17,"len":97,"closed":97,"bad":0},{"n":18,"len":103,"closed":103,"bad":0},{"n":19,"len":121,"closed":121,"bad":0},{"n":20,"len":129,"closed":129,"bad":0}],"wallTable":[{"Q":1000000,"ms":2,"sec":0.002,"min":0.000033333333333333335,"hour":5.555555555555555e-7,"day":2.3148148148148148e-8,"year":6.33761756280579e-11,"measured":true},{"Q":10000000,"ms":20,"sec":0.02,"min":0.0003333333333333333,"hour":0.000005555555555555556,"day":2.3148148148148148e-7,"year":6.33761756280579e-10,"measured":false},{"Q":100000000,"ms":200,"sec":0.2,"min":0.0033333333333333335,"hour":0.00005555555555555556,"day":0.0000023148148148148148,"year":6.33761756280579e-9,"measured":false},{"Q":1000000000,"ms":2000,"sec":2,"min":0.03333333333333333,"hour":0.0005555555555555556,"day":0.000023148148148148147,"year":6.33761756280579e-8,"measured":false},{"Q":10000000000,"ms":20000,"sec":20,"min":0.3333333333333333,"hour":0.005555555555555556,"day":0.0002314814814814815,"year":6.33761756280579e-7,"measured":false},{"Q":1000000000000,"ms":2000000,"sec":2000,"min":33.333333333333336,"hour":0.5555555555555556,"day":0.023148148148148147,"year":0.0000633761756280579,"measured":false},{"Q":1000000000000000,"ms":2000000000,"sec":2000000,"min":33333.333333333336,"hour":555.5555555555555,"day":23.14814814814815,"year":0.0633761756280579,"measured":false},{"Q":1000000000000000000,"ms":2000000000000,"sec":2000000000,"min":33333333.333333332,"hour":555555.5555555555,"day":23148.14814814815,"year":63.3761756280579,"measured":false}]}};
+</script>
+<script>
+/* ---- ui.js（界面与交互） ---- */
+/* ============================================================================
+ * 逼近之极 · ui.js —— 界面、交互、探针
+ *
+ * 两条从事故里学来的硬规矩：
+ *   1. <svg> 必须用 openTag() 只开不闭。tag() 那种"总是成对"的生成器
+ *      会产出一个当场闭合的空 <svg>，后面的 line/text 全成了它的兄弟节点，
+ *      浏览器按未知行内元素排版 —— 13 张图全空白，而探针 173/173 全绿
+ *      （因为它数的是容器的后代，把漏出去的元素也数进去了）。
+ *   2. 每个数字都从 window.__ANALYSIS__ 或 CFCore 现场算出来。
+ *      页面正文里不许出现手写的数字。
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  var A = window.__ANALYSIS__;
+  var C = window.CFCore;
+
+  /* ======================================================================
+   * 0. 小工具
+   * ==================================================================== */
+
+  /* 只开不闭 —— 用来开 <svg> */
+  function openTag(name, attrs) {
+    var s = '<' + name;
+    if (attrs) {
+      for (var k in attrs) {
+        if (!Object.prototype.hasOwnProperty.call(attrs, k)) continue;
+        var v = attrs[k];
+        if (v === null || v === undefined) continue;
+        s += ' ' + k + '="' + String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"';
+      }
+    }
+    return s + '>';
+  }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function tag(name, attrs, inner) {
+    return openTag(name, attrs) + (inner === undefined || inner === null ? '' : esc(inner)) + '</' + name + '>';
+  }
+
+  function f(v, d) {
+    if (v === null || v === undefined || !isFinite(v)) return '—';
+    return Number(v).toFixed(d === undefined ? 6 : d);
+  }
+  function sci(v, d) {
+    if (v === null || v === undefined || !isFinite(v)) return '—';
+    return Number(v).toExponential(d === undefined ? 2 : d);
+  }
+  function grp(n) {
+    if (n === null || n === undefined || !isFinite(n)) return '—';
+    var s = String(Math.round(n)), out = '', c = 0;
+    for (var i = s.length - 1; i >= 0; i--) {
+      out = s[i] + out;
+      if (++c % 3 === 0 && i > 0) out = ',' + out;
+    }
+    return out;
+  }
+  function pct(v, d) { return (v === null || !isFinite(v)) ? '—' : (v * 100).toFixed(d === undefined ? 2 : d) + '%'; }
+
+  function el(id) { return document.getElementById(id); }
+  function setHTML(id, h) { var e = el(id); if (e) e.innerHTML = h; }
+  function setText(id, t) { var e = el(id); if (e) e.textContent = t; }
+
+  /* ======================================================================
+   * 1. 图表基座
+   * ==================================================================== */
+  var CW = 640, PL = 60, PR = 18, PT = 14, PB = 40;
+
+  function mkScale(spec, p0, p1) {
+    var lo = spec.min, hi = spec.max;
+    if (spec.log) {
+      var a = Math.log(lo), b = Math.log(hi);
+      return function (v) {
+        if (!(v > 0)) return NaN;
+        return p0 + (Math.log(v) - a) / (b - a) * (p1 - p0);
+      };
+    }
+    return function (v) { return p0 + (v - lo) / (hi - lo) * (p1 - p0); };
+  }
+  function mkFmt(spec) {
+    if (spec.fmt) return spec.fmt;
+    /* 对数轴上 10 的整数次幂一律写成 1e±k。默认的 toExponential 会给出 "1e+0"，
+       而 String() 会给出 "1" / "0.01" / "1000" —— 三种风格混排在一根轴上很难读。 */
+    if (spec.log) return function (v) {
+      var e = Math.round(Math.log10(v));
+      if (Math.abs(v - Math.pow(10, e)) <= 1e-9 * Math.abs(v)) return e === 0 ? '1' : '1e' + e;
+      return String(Math.round(v * 1000) / 1000);
+    };
+    return function (v) { return Math.abs(v) >= 100 ? grp(v) : String(Math.round(v * 1000) / 1000); };
+  }
+
+  /* 通用折线/散点图。cfg:
+   *   W,H, x:{min,max,log,ticks,fmt,label}, y:{...},
+   *   series:[{pts:[[x,y],…], color, dash, dots:bool, r}],
+   *   hlines:[{y,color,label,dash}], vlines:[…], notes:[…]
+   * 返回 <svg>…</svg> 字符串（用 openTag 开）。
+   */
+  function chart(cfg) {
+    var W = cfg.W || CW, H = cfg.H || 250;
+    var L = cfg.L === undefined ? PL : cfg.L, R = cfg.R === undefined ? PR : cfg.R;
+    var T = cfg.T === undefined ? PT : cfg.T, B = cfg.B === undefined ? PB : cfg.B;
+    var x0 = L, x1 = W - R, y0 = H - B, y1 = T;
+    var xs = mkScale(cfg.x, x0, x1), ys = mkScale(cfg.y, y0, y1);
+    var xf = mkFmt(cfg.x), yf = mkFmt(cfg.y);
+    var s = openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'class': 'cv' });
+    var i, j;
+
+    /* 网格 + 刻度。超过 9 档就隔一档画 —— 14 个标签会糊成一片，
+       而"刻度文字挤在一起"在探针里是数得出来的（它只看 NaN），只能靠人眼或这条规则。 */
+    var xt = cfg.x.ticks || [];
+    if (xt.length > 9) { var xa = []; for (var q1 = 0; q1 < xt.length; q1 += 2) xa.push(xt[q1]); xt = xa; }
+    for (i = 0; i < xt.length; i++) {
+      var px = xs(xt[i]);
+      if (!isFinite(px)) continue;
+      s += tag('line', { x1: px, y1: y0, x2: px, y2: y1, stroke: '#e6ebf2', 'stroke-width': 1 });
+      s += tag('text', { x: px, y: y0 + 15, 'text-anchor': 'middle', 'font-size': 10.5, fill: '#7a869a' }, xf(xt[i]));
+    }
+    var yt = cfg.y.ticks || [];
+    if (yt.length > 9) { var ya = []; for (var q2 = 0; q2 < yt.length; q2 += 2) ya.push(yt[q2]); yt = ya; }
+    for (i = 0; i < yt.length; i++) {
+      var py = ys(yt[i]);
+      if (!isFinite(py)) continue;
+      s += tag('line', { x1: x0, y1: py, x2: x1, y2: py, stroke: '#e6ebf2', 'stroke-width': 1 });
+      s += tag('text', { x: x0 - 6, y: py + 3.5, 'text-anchor': 'end', 'font-size': 10.5, fill: '#7a869a' }, yf(yt[i]));
+    }
+    /* 轴 */
+    s += tag('line', { x1: x0, y1: y0, x2: x1, y2: y0, stroke: '#9aa6b8', 'stroke-width': 1.2 });
+    s += tag('line', { x1: x0, y1: y0, x2: x0, y2: y1, stroke: '#9aa6b8', 'stroke-width': 1.2 });
+    if (cfg.x.label) s += tag('text', { x: (x0 + x1) / 2, y: H - 5, 'text-anchor': 'middle', 'font-size': 11, fill: '#4a5568' }, cfg.x.label);
+    if (cfg.y.label) s += tag('text', { x: 12, y: (y0 + y1) / 2, 'text-anchor': 'middle', 'font-size': 11, fill: '#4a5568', transform: 'rotate(-90 12 ' + ((y0 + y1) / 2) + ')' }, cfg.y.label);
+
+    /* 水平参考线 */
+    var hl = cfg.hlines || [];
+    for (i = 0; i < hl.length; i++) {
+      var hy = ys(hl[i].y);
+      if (!isFinite(hy)) continue;
+      s += tag('line', { x1: x0, y1: hy, x2: x1, y2: hy, stroke: hl[i].color || '#c0392b', 'stroke-width': 1.2, 'stroke-dasharray': hl[i].dash || '5,4' });
+      if (hl[i].label) s += tag('text', { x: x1 - 3, y: hy - 4, 'text-anchor': 'end', 'font-size': 10.5, fill: hl[i].color || '#c0392b' }, hl[i].label);
+    }
+    var vl = cfg.vlines || [];
+    for (i = 0; i < vl.length; i++) {
+      var vx = xs(vl[i].x);
+      if (!isFinite(vx)) continue;
+      s += tag('line', { x1: vx, y1: y0, x2: vx, y2: y1, stroke: vl[i].color || '#b8860b', 'stroke-width': 1.2, 'stroke-dasharray': vl[i].dash || '5,4' });
+      if (vl[i].label) s += tag('text', { x: vx + 3, y: y1 + 11, 'font-size': 10.5, fill: vl[i].color || '#b8860b' }, vl[i].label);
+    }
+
+    /* 数据 */
+    var se = cfg.series || [];
+    for (i = 0; i < se.length; i++) {
+      var sr = se[i], d = '', pts = sr.pts || [];
+      for (j = 0; j < pts.length; j++) {
+        var X = xs(pts[j][0]), Y = ys(pts[j][1]);
+        if (!isFinite(X) || !isFinite(Y)) { d = ''; continue; }
+        d += (d ? ' L' : 'M') + X.toFixed(2) + ' ' + Y.toFixed(2);
+      }
+      /* w: 0 必须被当成"不要连线"，不能落进 `sr.w || 1.8` 的兜底 ——
+         0 是 falsy，会被替换成 1.8，于是本该只有散点的图被连成锯齿
+         （《逼近之极》肆节第一版就是这样：186 个点连出一排竖线，像条形码）。 */
+      var sw = (sr.w === undefined || sr.w === null) ? 1.8 : sr.w;
+      if (sw > 0 && d && sr.pts.length > 1) {
+        s += tag('path', { d: d, fill: 'none', stroke: sr.color || '#2b6cb0', 'stroke-width': sw, 'stroke-dasharray': sr.dash || 'none', 'stroke-linejoin': 'round' });
+      }
+      if (sr.dots) {
+        for (j = 0; j < pts.length; j++) {
+          var dx = xs(pts[j][0]), dy = ys(pts[j][1]);
+          if (!isFinite(dx) || !isFinite(dy)) continue;
+          s += tag('circle', { cx: dx, cy: dy, r: sr.r || 2.8, fill: sr.color || '#2b6cb0', stroke: '#fff', 'stroke-width': 1 });
+        }
+      }
+    }
+    /* 条形 */
+    var ba = cfg.bars || [];
+    for (i = 0; i < ba.length; i++) {
+      var b = ba[i];
+      var bx = xs(b.x0), bw = xs(b.x1) - bx, by = ys(b.y), bh = y0 - by;
+      if (!isFinite(bx) || !isFinite(by)) continue;
+      var minH = 1.6;                       /* 渲染下限：0 也要看得见 */
+      if (bh < minH) { bh = minH; by = y0 - minH; }
+      if (!isFinite(bw) || bw < 0.9) bw = 0.9;
+      s += tag('rect', { x: bx.toFixed(2), y: by.toFixed(2), width: bw.toFixed(2), height: bh.toFixed(2), fill: b.color || '#2b6cb0', opacity: b.opacity === undefined ? 0.92 : b.opacity });
+    }
+    /* 自由注释 */
+    var nt = cfg.notes || [];
+    for (i = 0; i < nt.length; i++) {
+      var n = nt[i];
+      s += tag('text', { x: n.x, y: n.y, 'text-anchor': n.anchor || 'start', 'font-size': n.size || 10.5, fill: n.color || '#4a5568', 'font-weight': n.bold ? 600 : 400 }, n.t);
+    }
+    s += '</svg>';
+    return s;
+  }
+
+  /* ======================================================================
+   * 2. 十张图
+   * ==================================================================== */
+
+  var EPS = 2.220446049250313e-16;
+  function chartPhiError() {
+    var pts = A.charts.phiError;
+    var qs = pts.map(function (p) { return p.q; });
+    var es = pts.map(function (p) { return p.err; });
+    var qmin = Math.min.apply(null, qs), qmax = Math.max.apply(null, qs);
+    /* 对数刻度上 0 会变成 -Infinity（第一版就是这么挂的：err 里恰好有一个 0，
+       log10(0) = -Infinity 让刻度循环永不终止，直接抛 Invalid array length）。
+       所以只取正误差定下界，并把 0 画在地板上。 */
+    var pos = es.filter(function (v) { return v > 0; });
+    var emin = pos.length ? Math.min.apply(null, pos) : EPS;
+    var emax = Math.max.apply(null, es);
+    var FLOOR = EPS / 4;
+    var xt = [], v = 1;
+    while (v <= qmax * 1.5) { if (v >= qmin * 0.9) xt.push(v); v *= 10; }
+    var yt = [];
+    var e0 = Math.max(-20, Math.floor(Math.log10(emin)));
+    var e1 = Math.min(2, Math.ceil(Math.log10(emax)));
+    for (var k = e0; k <= e1; k++) yt.push(Math.pow(10, k));   /* 抽稀交给 chart() */
+    return chart({
+      H: 260,
+      x: { min: qmin * 0.8, max: qmax * 1.6, log: true, ticks: xt, label: '分母 q（对数）' },
+      y: {
+        min: Math.pow(10, e0 - 0.4), max: Math.pow(10, e1 + 0.3), log: true, ticks: yt,
+        label: '|α − p/q|（对数）'
+      },
+      series: [
+        { pts: pts.map(function (p) { return [p.q, p.bound]; }), color: '#c0392b', dash: '6,4', w: 1.4 },
+        { pts: pts.map(function (p) { return [p.q, Math.max(p.err, FLOOR)]; }), color: '#2b6cb0', w: 1.6, dots: true, r: 2.6 }
+      ],
+      hlines: [{ y: EPS, color: '#b8860b', label: '双精度机器精度 ε = 2.22e-16', dash: '4,3' }],
+      /* 曲线从左上走到右下，左下角是空的 —— 注释放那里不压线 */
+      notes: [{ x: 74, y: 152, t: '虚线 = 1/q²（Dirichlet 的尺子）', color: '#c0392b', bold: true },
+              { x: 74, y: 168, t: '蓝点 = φ 的收敛子（最好的那批）', color: '#2b6cb0' },
+              { x: 74, y: 184, t: '右侧点变平：不是数学停了，是 double 到头了', color: '#b8860b' }]
+    });
+  }
+
+  function chartNuBars() {
+    var rows = A.charts.nuBars.filter(function (r) { return isFinite(r.nu) && r.nu > 0; });
+    var maxLog = 0;
+    rows.forEach(function (r) { maxLog = Math.max(maxLog, Math.log10(r.nu)); });
+    var W = CW, H = 56 + rows.length * 19 + 34;
+    var L = 132, R = 46, T = 30, B = 34;   /* T 留 30：给 √5 标记的标签腾地方 */
+    var x0 = L, x1 = W - R, y0 = H - B, y1 = T;
+    var xs = mkScale({ min: 0, max: Math.ceil(maxLog) }, x0, x1);
+    var s = openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'class': 'cv' });
+    var i;
+    for (i = 0; i <= Math.ceil(maxLog); i++) {
+      var px = xs(i);
+      s += tag('line', { x1: px, y1: y0, x2: px, y2: y1, stroke: '#e6ebf2', 'stroke-width': 1 });
+      s += tag('text', { x: px, y: y0 + 15, 'text-anchor': 'middle', 'font-size': 10.5, fill: '#7a869a' }, '10^' + i);
+    }
+    var bh = 13, gap = 19;
+    for (i = 0; i < rows.length; i++) {
+      var r = rows[i], y = T + i * gap + 3;
+      var col = r.bounded === 'bounded' ? '#178a5a' : (r.bounded === 'unknown' ? '#b8860b' : '#c0392b');
+      var bw = Math.max(1.6, xs(Math.log10(r.nu)) - x0);
+      s += tag('rect', { x: x0, y: y, width: bw.toFixed(2), height: bh, fill: col, opacity: 0.88, rx: 2 });
+      s += tag('text', { x: x0 - 6, y: y + 10.5, 'text-anchor': 'end', 'font-size': 11, fill: '#1b2330' }, r.label);
+      s += tag('text', { x: (x0 + bw + 5).toFixed(1), y: y + 10.5, 'font-size': 10.5, fill: '#4a5568' }, f(r.nu, 3));
+    }
+    var vx = xs(Math.log10(Math.sqrt(5)));
+    s += tag('line', { x1: vx, y1: y0, x2: vx, y2: y1, stroke: '#7b3fa0', 'stroke-width': 1.4, 'stroke-dasharray': '5,4' });
+    /* 标签放在绘图区**上方**（y1 之上），否则会压住第一根柱子（黄金比例 φ）的名字 */
+    s += tag('text', { x: vx + 4, y: y1 - 6, 'font-size': 10.5, fill: '#7b3fa0' }, '√5 = 2.236（Hurwitz 下界）');
+    s += tag('text', { x: (x0 + x1) / 2, y: H - 5, 'text-anchor': 'middle', 'font-size': 11, fill: '#4a5568' }, 'ν（对数刻度）');
+    s += '</svg>';
+    return s;
+  }
+
+  /* 上极限陷阱：把"错算法"和"对算法"画在同一张图上。
+   *   红：max_{1≤q≤Q} 1/(q‖qφ‖) —— 被 q = 1 钉死在 φ² = 2.618，Q 再大也不动
+   *   绿：max_{Q/2<q≤Q} 1/(q‖qφ‖) —— 尾部窗口，在 √5 附近震荡并收敛
+   * 两条线在同一张图上，差距不会因为"多算一点"而消失。 */
+  var PHI2 = (3 + Math.sqrt(5)) / 2;
+  function limsupSeries(N) {
+    var v = C.getAlpha('phi').value;
+    var seq = new Array(N + 1);
+    for (var q = 1; q <= N; q++) {
+      var t = q * v, d = Math.abs(t - Math.round(t));
+      seq[q] = d > 0 ? 1 / (q * d) : Infinity;
+    }
+    var Qs = [];
+    for (var x = 10; x <= N; x = Math.ceil(x * 1.42)) Qs.push(x);
+    if (Qs[Qs.length - 1] !== N) Qs.push(N);
+    var all = [], tail = [], runAll = 0, qi = 0;
+    for (var k = 1; k <= N; k++) {
+      if (seq[k] > runAll) runAll = seq[k];
+      if (qi < Qs.length && k === Qs[qi]) {
+        all.push([k, runAll]);
+        var lo = Math.floor(k / 2), best = 0;
+        for (var w = lo + 1; w <= k; w++) if (seq[w] > best) best = seq[w];
+        tail.push([k, best]);
+        qi++;
+      }
+    }
+    return { all: all, tail: tail, Qmax: Qs[Qs.length - 1] };
+  }
+  function chartLimsup() {
+    var s = limsupSeries(6000);
+    return chart({
+      H: 260,
+      x: { min: 8, max: 6500, log: true, ticks: [10, 100, 1000, 6000], label: 'Q（对数）' },
+      y: { min: 2.15, max: 2.72, ticks: [2.2, 2.3, 2.4, 2.5, 2.6, 2.7], fmt: function (v) { return v.toFixed(1); }, label: '最大值' },
+      series: [
+        { pts: s.all, color: '#c0392b', w: 2.2, dash: 'none' },
+        { pts: s.tail, color: '#178a5a', w: 1.8, dots: true, r: 2.6 }
+      ],
+      hlines: [
+        { y: Math.sqrt(5), color: '#178a5a', label: '真值 ν(φ) = √5 = 2.2360680', dash: '5,4' },
+        { y: PHI2, color: '#c0392b', label: 'q = 1 的假值 φ² = 2.6180340', dash: '5,4' }
+      ],
+      /* 注释放在两条线之间的空白带里（红线在 2.618、绿线在 2.236 附近），
+         写在图顶会被红线横穿过去 */
+      notes: [
+        { x: 292, y: 112, t: '红 = 全范围最大值（错算法）：一条水平线，Q 加到 6000 也不动', color: '#c0392b', bold: true },
+        { x: 292, y: 128, t: '绿 = 尾部窗口最大值（本页用的）：在 √5 附近震荡、收敛', color: '#178a5a' }
+      ]
+    });
+  }
+
+  function chartSqrtN() {
+    var pts = A.charts.sqrtN;
+    var FLOOR = 1e-17;
+    var series = pts.map(function (p) { return [p.n, Math.max(p.rel, FLOOR)]; });
+    var maxRel = 0;
+    pts.forEach(function (p) { maxRel = Math.max(maxRel, p.rel); });
+    var eTop = Math.ceil(Math.log10(Math.max(maxRel, 1e-16)));
+    var yt = [];
+    for (var k = -17; k <= eTop; k++) yt.push(Math.pow(10, k));
+    var xt = [];
+    for (var n = 0; n <= 200; n += 25) xt.push(n);
+    return chart({
+      H: 250,
+      x: { min: 0, max: 205, ticks: xt, label: 'n' },
+      y: { min: 1e-17, max: Math.pow(10, eTop + 0.4), log: true, ticks: yt, label: '相对差 |ν − 2√n| / (2√n)' },
+      series: [{ pts: series, color: '#2b6cb0', w: 0, dots: true, r: 3.1 }],
+      hlines: [{ y: 2.220446049250313e-16, color: '#c0392b', label: '双精度机器精度 ε = 2.22e-16', dash: '6,4' }],
+      notes: [{ x: 62, y: 30, t: '186 个点全部压在机器精度上（其中一些精确为 0，被画在地板 1e-17）', color: '#4a5568' }]
+    });
+  }
+
+  /* 谱图画在数轴上。第一版把 14 个点按序号向上堆（cy = y0 − 8 − i·2.1），
+     结果 13 个点全挤在 3 的左边、标签互相压住 —— 而那正是这张图要说的意思，
+     只是被画糊了。改成"竖线刻度 + 前三个单独标注 + 一个指向簇的说明"。 */
+  function chartSpectrum() {
+    var sp = A.charts.spectrum;
+    var W = CW, H = 210, L = 58, R = 26, T = 34, B = 62;
+    var x0 = L, x1 = W - R, y0 = H - B;
+    var xs = mkScale({ min: 2.15, max: 3.02 }, x0, x1);
+    var s = openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'class': 'cv' });
+    var i;
+    /* 离散段底纹 */
+    s += tag('rect', { x: x0, y: T, width: (xs(3.0) - x0).toFixed(1), height: (y0 - T).toFixed(1), fill: '#f6f8fc' });
+    s += tag('rect', { x: xs(3.0), y: T, width: (x1 - xs(3.0)).toFixed(1), height: (y0 - T).toFixed(1), fill: '#eaf6f0' });
+    s += tag('text', { x: x0 + 6, y: T + 14, 'font-size': 11, fill: '#4a5568' }, '离散段 [√5, 3)：' + sp.length + ' 个谱点，段内别处一个也取不到');
+    /* 连续段 */
+    s += tag('line', { x1: xs(3.0), y1: y0, x2: x1, y2: y0, stroke: '#178a5a', 'stroke-width': 4 });
+    s += tag('text', { x: x1, y: T + 14, 'text-anchor': 'end', 'font-size': 11, fill: '#178a5a' }, '3 以上是连续段 →');
+    /* 数轴 */
+    s += tag('line', { x1: x0, y1: y0, x2: x1, y2: y0, stroke: '#9aa6b8', 'stroke-width': 1.4 });
+    var ticks = [2.2, 2.4, 2.6, 2.8, 3.0];
+    for (i = 0; i < ticks.length; i++) {
+      var px = xs(ticks[i]);
+      s += tag('line', { x1: px, y1: y0, x2: px, y2: y0 + 5, stroke: '#9aa6b8', 'stroke-width': 1 });
+      s += tag('text', { x: px, y: y0 + 18, 'text-anchor': 'middle', 'font-size': 10.5, fill: '#7a869a' }, ticks[i].toFixed(1));
+    }
+    /* 谱点：竖线刻度。前三个分开标注，其余靠竖线的密集程度自己说话 */
+    for (i = 0; i < sp.length; i++) {
+      var cx = xs(sp[i].nu);
+      var tall = i < 3 ? 40 : 20;
+      s += tag('line', { x1: cx, y1: y0, x2: cx, y2: y0 - tall, stroke: '#2b6cb0', 'stroke-width': i < 3 ? 2.2 : 1.5, opacity: i < 3 ? 1 : 0.7 });
+      if (i < 3) {
+        s += tag('circle', { cx: cx, cy: y0 - tall - 5, r: 3.6, fill: '#2b6cb0', stroke: '#fff', 'stroke-width': 1.2 });
+        s += tag('text', { x: cx, y: y0 - tall - 13, 'text-anchor': 'middle', 'font-size': 10.5, fill: '#1b2330' }, 'm=' + sp[i].m + ' → ' + f(sp[i].nu, 6));
+      }
+    }
+    /* 指向簇的说明 */
+    var clx = xs(sp[sp.length - 1].nu);
+    s += tag('text', { x: clx - 4, y: y0 - 30, 'text-anchor': 'end', 'font-size': 10.5, fill: '#4a5568' }, 'm = 13, 29, 34, 89, … 全挤在这里');
+    s += tag('text', { x: (x0 + x1) / 2, y: H - 8, 'text-anchor': 'middle', 'font-size': 11, fill: '#4a5568' }, 'ν');
+    s += '</svg>';
+    return s;
+  }
+
+  /* 逼近指数 μ：满足 |α − p/q| < 1/q^μ 的 q 的个数随 Q 怎么变 */
+  var MU_QS = [1000, 10000, 100000, 1000000];
+  function chartMu() {
+    var mp = A.charts.muProbe;
+    var colors = ['#c0392b', '#c05621', '#b8860b', '#2b6cb0', '#7b3fa0'];
+    var series = [], notes = [], mx = 0, i, j;
+    for (i = 0; i < mp.length; i++) {
+      var s = null;
+      for (j = 0; j < mp[i].series.length; j++) if (mp[i].series[j].key === 'phi') s = mp[i].series[j];
+      if (!s) continue;
+      for (j = 0; j < s.counts.length; j++) if (s.counts[j] > mx) mx = s.counts[j];
+      series.push({
+        pts: s.counts.map(function (c, k) { return [MU_QS[k], c]; }),
+        color: colors[i % colors.length], w: 1.8, dots: true, r: 3.2
+      });
+      notes.push({
+        x: 352, y: 28 + i * 16,
+        t: 'μ = ' + mp[i].mu.toFixed(1) + '：' + (i === 0 ? '计数随 Q 一直涨' : '计数封顶'),
+        color: colors[i % colors.length], bold: i === 0
+      });
+    }
+    return chart({
+      H: 260,
+      x: { min: 700, max: 2e6, log: true, ticks: [1e3, 1e4, 1e5, 1e6], label: '穷举上限 Q（对数）' },
+      /* 上留 65% 的余量：图例放在顶部空白里，否则红线会从文字中间穿过去 */
+      y: { min: 0, max: Math.ceil(mx * 1.65), ticks: [0, 10, 20, 30], label: '满足条件的 q 的个数' },
+      series: series,
+      notes: notes
+    });
+  }
+
+  function chartGK() {
+    var g = A.charts.gaussKuzmin;
+    var K = Math.min(20, g.emp.length);
+    var maxP = 0;
+    for (var i = 0; i < K; i++) maxP = Math.max(maxP, g.emp[i], g.th[i]);
+    var yTop = Math.ceil(maxP * 20) / 20 + 0.02;
+    var bars = [], dots = [];
+    for (var k = 0; k < K; k++) {
+      bars.push({ x0: k + 1 - 0.34, x1: k + 1 + 0.34, y: g.emp[k], color: '#2b6cb0' });
+      dots.push([k + 1, g.th[k]]);
+    }
+    var xt = [];
+    for (var t = 1; t <= K; t++) xt.push(t);
+    return chart({
+      H: 250,
+      x: { min: 0.4, max: K + 0.6, ticks: xt, label: '部分商 k' },
+      y: { min: 0, max: yTop, ticks: [0, 0.1, 0.2, 0.3, 0.4], fmt: function (v) { return v.toFixed(1); }, label: 'P(部分商 = k)' },
+      bars: bars,
+      series: [{ pts: dots, color: '#c05621', w: 1.6, dots: true, r: 3.4 }],
+      notes: [{ x: 300, y: 34, t: '柱 = 经验值   ● = Gauss–Kuzmin 理论值', color: '#4a5568', bold: true }]
+    });
+  }
+
+  function chartTV() {
+    var pts = A.charts.tvScaling;
+    var prods = pts.map(function (p) { return p.prod; });
+    var mx = Math.max.apply(null, prods), mn = Math.min.apply(null, prods);
+    var mean = prods.reduce(function (a, b) { return a + b; }, 0) / prods.length;
+    return chart({
+      H: 250,
+      x: { min: 500, max: 2e6, log: true, ticks: [1e3, 1e4, 1e5, 1e6], label: '样本量 N（对数）' },
+      y: { min: 0, max: mx * 1.25, ticks: [0, 0.5, 1, 1.5, 2, 2.5], fmt: function (v) { return v.toFixed(1); }, label: 'TV × √N' },
+      series: [{ pts: pts.map(function (p) { return [p.N, p.prod]; }), color: '#2b6cb0', w: 1.8, dots: true, r: 4 }],
+      hlines: [{ y: mean, color: '#178a5a', label: '均值 ' + f(mean, 3), dash: '6,4' }],
+      /* 图注不能太长：SVG 只有 640 单位宽，超过就被右边缘裁掉（第一版就是） */
+      notes: [{
+        x: 216, y: 30,
+        t: 'N 涨 1000 倍，只动 ' + f(A.derived.e5.tvSqrtNRatio, 2) + ' 倍，且不单调',
+        color: '#4a5568', bold: true
+      }]
+    });
+  }
+
+  function chartThree(n) {
+    var d = C.threeDist(C.getAlpha('phi').value, n);
+    var bars = [], dots = [], xt = [];
+    var mx = Math.max.apply(null, d.counts);
+    for (var i = 0; i < d.lengths.length; i++) {
+      var col = i === 0 ? '#2b6cb0' : (i === 1 ? '#c05621' : '#7b3fa0');
+      bars.push({ x0: i - 0.34, x1: i + 0.34, y: d.counts[i], color: col });
+      dots.push([i, d.counts[i]]);
+      xt.push(i);
+    }
+    return chart({
+      H: 230,
+      x: { min: -0.6, max: d.lengths.length - 0.4, ticks: xt, label: '第 j 种间隙（按长度排序）' },
+      y: { min: 0, max: mx * 1.2, ticks: [0, Math.round(mx / 2), mx], label: '间隙个数' },
+      bars: bars,
+      notes: [{ x: 200, y: 32, t: '间隙只有 ' + d.distinct + ' 种长度：' + d.lengths.map(function (v) { return v.toFixed(6); }).join(' / '), color: '#4a5568', bold: true }]
+    });
+  }
+
+  function chartFarey() {
+    var pts = A.charts.farey;
+    var limit = 3 / (Math.PI * Math.PI);
+    /* n = 1, 2 的 |F_n|/n² 是 2 和 1.5 —— 拉进坐标轴会把后面 38 档压成一条平线。
+       从 n = 3 起画（0.556 起步），收敛过程才看得见。 */
+    var series = pts.filter(function (p) { return p.n >= 3; })
+      .map(function (p) { return [p.n, p.closed / (p.n * p.n)]; });
+    var mx = 0, mn = 1;
+    series.forEach(function (p) { mx = Math.max(mx, p[1]); mn = Math.min(mn, p[1]); });
+    var xt = [];
+    for (var n = 5; n <= 40; n += 5) xt.push(n);
+    var yt = [];
+    for (var v = 0.30; v <= 0.55001; v += 0.05) yt.push(Math.round(v * 100) / 100);
+    return chart({
+      H: 240,
+      x: { min: 2, max: 41, ticks: xt, label: 'n（从 3 起画）' },
+      y: {
+        min: Math.min(limit - 0.03, mn - 0.01), max: Math.max(mx + 0.02, limit + 0.05),
+        ticks: yt, fmt: function (v) { return v.toFixed(2); }, label: '|F_n| / n²'
+      },
+      series: [{ pts: series, color: '#2b6cb0', w: 1.8, dots: true, r: 2.6 }],
+      hlines: [{ y: limit, color: '#178a5a', label: '3/π² = ' + f(limit, 6), dash: '6,4' }],
+      notes: [{ x: 232, y: 30, t: '构造值 |F_n| = 1 + Σφ(k) 与闭式逐项吻合（40 档，不符 0）', color: '#4a5568' }]
+    });
+  }
+
+  function chartWall() {
+    var w = A.charts.wall;
+    var yrs = w.map(function (p) { return p.year; });
+    var mx = Math.max.apply(null, yrs), mn = Math.min.apply(null, yrs);
+    var e0 = Math.floor(Math.log10(mn)), e1 = Math.ceil(Math.log10(mx));
+    var yt = [];
+    for (var k = e0; k <= e1; k++) yt.push(Math.pow(10, k));
+    return chart({
+      H: 250,
+      x: { min: 5e5, max: 2e18, log: true, ticks: [1e6, 1e9, 1e12, 1e15, 1e18], label: '穷举上限 Q（对数）' },
+      y: { min: Math.pow(10, e0 - 0.5), max: Math.pow(10, e1 + 0.4), log: true, ticks: yt, label: '耗时（年，对数）' },
+      series: [{ pts: w.map(function (p) { return [p.Q, p.year]; }), color: '#c05621', w: 1.8, dots: true, r: 3.4 }],
+      hlines: [{ y: 1, color: '#c0392b', label: '1 年', dash: '6,4' }],
+      notes: [{ x: 300, y: 30, t: '斜率 1（对数坐标）⇒ 耗时 ∝ Q，而 ν 要的是 Q → ∞', color: '#4a5568', bold: true }]
+    });
+  }
+
+  /* ======================================================================
+   * 3. 表格
+   * ==================================================================== */
+  function tbl(id, head, rows) {
+    var h = '<thead><tr>';
+    for (var i = 0; i < head.length; i++) h += '<th>' + esc(head[i]) + '</th>';
+    h += '</tr></thead><tbody>';
+    for (var r = 0; r < rows.length; r++) {
+      h += '<tr>';
+      for (var c = 0; c < rows[r].length; c++) {
+        var cell = rows[r][c];
+        var cls = '';
+        if (cell && typeof cell === 'object') { cls = cell.cls ? ' class="' + cell.cls + '"' : ''; cell = cell.t; }
+        h += '<td' + cls + '>' + esc(cell) + '</td>';
+      }
+      h += '</tr>';
+    }
+    h += '</tbody>';
+    setHTML(id, h);
+  }
+
+  var BOUNDED_CN = { bounded: '有界', unbounded: '无界', unknown: '未知' };
+
+  function renderTables() {
+    /* φ 的收敛子表 —— 最后一列 q·‖qα‖ 是 ν 的定义里那个量 */
+    tbl('t-conv',
+      ['k', 'a_k', 'p_k', 'q_k', '|α − p/q|', 'q·‖qα‖'],
+      A.tables.convergentsPhi.map(function (r) {
+        return [String(r.k), String(r.a), String(r.p), String(r.q), sci(r.err, 3), f(r.qqd, 9)];
+      }));
+
+    /* 十个 α */
+    tbl('t-cf',
+      ['α', '连分数前 10 项', '周期', 'max 部分商', '部分商', 'ν', '精确值'],
+      A.tables.cfTable.map(function (r) {
+        var cls = r.bounded === 'bounded' ? 'ok' : (r.bounded === 'unknown' ? '' : 'hi');
+        return [
+          r.label,
+          '[' + r.cf.join(', ') + ', …]',
+          r.period ? String(r.period) : '—',
+          sci(r.maxA, 1),
+          { t: BOUNDED_CN[r.bounded] || r.bounded, cls: cls },
+          isFinite(r.nu) ? f(r.nu, 6) : '—',
+          r.exactLabel ? r.exactLabel : '—'
+        ];
+      }));
+
+    /* Markov 谱 */
+    tbl('t-spectrum',
+      ['m（Markov 数）', 'ν_m = √(9m²−4)/m', '到 3 的距离'],
+      A.tables.spectrumTable.map(function (r) {
+        return [String(r.m), f(r.nu, 9), sci(r.gapTo3, 3)];
+      }));
+
+    /* Farey */
+    tbl('t-farey',
+      ['n', '|F_n| 构造', '|F_n| 闭式', '不符项'],
+      A.tables.fareyTable.map(function (r) {
+        return [String(r.n), String(r.len), String(r.closed), { t: String(r.bad), cls: r.bad ? 'hi' : 'ok' }];
+      }));
+
+    /* 墙 */
+    tbl('t-wall',
+      ['Q', '耗时（秒）', '耗时（天）', '耗时（年）', '来源'],
+      A.tables.wallTable.map(function (r) {
+        return [r.Q.toExponential(0), sci(r.sec, 2), sci(r.day, 2), sci(r.year, 2),
+          { t: r.measured ? '实测' : '外推', cls: r.measured ? 'ok' : '' }];
+      }));
+
+    /* 验证表 */
+    tbl('t-verify',
+      ['断言', '核对方法', '结果', '来源'],
+      A.verifyTable.map(function (r) {
+        return [r.claim, r.method, r.result, r.source];
+      }));
+  }
+
+  /* ======================================================================
+   * 4. 实时交互
+   * ==================================================================== */
+  var QS = [1, 2, 3, 4, 5, 6];      /* Q = 10^index */
+
+  function currentAlphaKey() { var e = el('sel-alpha'); return e ? e.value : 'phi'; }
+  function currentQ() { var e = el('s-Q'); return Math.pow(10, parseInt(e ? e.value : '4', 10)); }
+
+  /* 壹：α 选择 + Q 滑杆 → 最佳逼近对账 */
+  function driveAlpha(key, qi) {
+    var sel = el('sel-alpha'), sl = el('s-Q');
+    if (key && sel) sel.value = key;
+    if (qi !== undefined && qi !== null && sl) sl.value = String(qi);
+    return applyAlpha();
+  }
+  function applyAlpha() {
+    var key = currentAlphaKey();
+    var a = C.getAlpha(key);
+    var Q = currentQ();
+    setText('n-Q', Q.toExponential(0));
+
+    var bc = C.bestApproxCF(a, Q);
+    var bn = C.bestApproxNaive(a.value, Q);
+    var dens = C.bestApproxDenoms(a.value, Q);
+    var convQ = {};
+    var cv = C.cfConvergents(a.cf, a.cf.length);
+    for (var i = 0; i < cv.length; i++) { var qq = Number(cv[i].q); if (isFinite(qq) && qq <= Q) convQ[qq] = i; }
+
+    var rows = dens.map(function (q) {
+      var p = Math.round(q * a.value);
+      var err = Math.abs(a.value - p / q);
+      var isConv = Object.prototype.hasOwnProperty.call(convQ, q);
+      return [String(q), String(p), sci(err, 3), f(q * err, 6),
+        { t: isConv ? '是（k=' + convQ[q] + '）' : '否', cls: isConv ? 'ok' : 'hi' }];
+    });
+    tbl('t-best', ['q', '最佳 p', '|α − p/q|', 'q·|α − p/q|', '是收敛子？'], rows);
+
+    var agree = (Math.abs(bn.qDist - bc.qDist) < 1e-9) && bn.q === bc.q;
+    var nu = C.nuFromPeriod(a);
+    var nuVal = (nu && isFinite(nu.nu)) ? nu.nu : null;
+    if (nuVal === null) {
+      var nc = C.nuFromConvergents(a);
+      nuVal = nc.nu;
+    }
+    setHTML('ro-best-live',
+      'α = <b>' + esc(a.label) + '</b>，连分数 <code>' + esc(C.cfToStr(a.cf, 12)) + '</code>，周期 ' +
+      (a.cf ? (C.cfPeriod(a.cf) || '无（非周期）') : '—') + '。' +
+      'Q = ' + Q.toExponential(0) + ' 以内共有 <b>' + dens.length + '</b> 个最佳逼近分母；' +
+      '朴素穷举给出的最优分母 q = <b>' + bn.q + '</b>，连分数给出的 q = <b>' + bc.q + '</b>，两者' +
+      (agree ? '<b>一致</b>' : '<b class="hi">不一致</b>') + '。' +
+      '该 α 的 ν ≈ <b>' + (nuVal === null ? '—' : f(nuVal, 7)) + '</b>' +
+      (a.nuLabel ? '（精确值 ' + esc(a.nuLabel) + '）' : '') + '。');
+
+    return { key: key, Q: Q, nBest: dens.length, convQ: bn.q, cfQ: bc.q, agree: agree, nu: nuVal };
+  }
+
+  /* 肆：ν(√n) vs 2√n —— 一律现场用精确整数算法生成连分数，不走预置表 */
+  function driveSqrtN(n) {
+    var sl = el('s-sqrtn');
+    if (n !== undefined && n !== null && sl) sl.value = String(n);
+    n = parseInt(sl ? sl.value : '2', 10);
+    setText('n-sqrtn', 'n = ' + n);
+    var r = Math.round(Math.sqrt(n));
+    var isSq = (r * r === n);
+    var cf = C.cfFromSqrt(n, 200);
+    var period = C.cfPeriod(cf);
+    var nu = null, rel = null;
+    if (!isSq) {
+      var obj = { key: 'sqrt' + n, label: '√' + n, cf: cf, value: Math.sqrt(n) };
+      var np = C.nuFromPeriod(obj);
+      nu = (np && isFinite(np.nu)) ? np.nu : C.nuFromConvergents(obj).nu;
+      rel = Math.abs(nu - 2 * Math.sqrt(n)) / (2 * Math.sqrt(n));
+    }
+    var exact = 2 * Math.sqrt(n);
+    setHTML('ro-sqrtn-live',
+      (isSq ? '<b>n = ' + n + ' 是完全平方：√' + n + ' = ' + r + ' 是有理数，ν 没有定义</b>' +
+        '（连分数退化成单元素 <code>[' + r + ']</code>，没有周期，也没有无穷多个收敛子）。' +
+        '这正是 ν 的定义域要求无理数的原因 —— 有理数让 ‖qα‖ = 0。' :
+        'ν(√' + n + ') 实测 = <b>' + f(nu, 12) + '</b>，闭式 2√' + n + ' = <b>' + f(exact, 12) + '</b>，' +
+        '相对差 <b>' + sci(rel, 2) + '</b>。连分数 <code>' + esc(C.cfToStr(cf, 14)) + '</code>，' +
+        '周期 <b>' + (period || '—') + '</b>。连分数由精确整数算法现场生成，不查表。'));
+    return { n: n, nu: nu, exact: exact, rel: rel, period: period, square: isSq };
+  }
+
+  /* 陆：Gauss–Kuzmin 样本量 */
+  function driveGK(exp) {
+    var sl = el('s-gk');
+    if (exp !== undefined && exp !== null && sl) sl.value = String(exp);
+    exp = parseInt(sl ? sl.value : '4', 10);
+    var N = Math.pow(10, exp);
+    setText('n-gk', N.toExponential(0));
+    var s = C.sampleGaussKuzmin(N, 20260930);
+    var tv = s.tv, emp1 = s.emp[0], th1 = s.th[0];
+    setHTML('ro-gk-live',
+      'N = ' + N.toExponential(0) + '：全变差距离 TV = <b>' + f(tv, 6) + '</b>；' +
+      'P(k=1) 经验值 <b>' + f(emp1, 5) + '</b> vs 理论 log₂(4/3) = <b>' + f(th1, 5) + '</b>；' +
+      'TV × √N = <b>' + f(tv * Math.sqrt(N), 4) + '</b>（若收敛率为 1/√N，这个数应当近似常数）。' +
+      '有效样本 ' + grp(s.total) + ' 个，最大部分商 ' + s.maxK + '。');
+    return { N: N, tv: tv, emp1: emp1, th1: th1, prod: tv * Math.sqrt(N) };
+  }
+
+  /* 柒：三距离 */
+  function driveThree(n) {
+    var sl = el('s-three');
+    if (n !== undefined && n !== null && sl) sl.value = String(n);
+    n = parseInt(sl ? sl.value : '21', 10);
+    setText('n-three', 'n = ' + n);
+    /* 图必须和读数一起重画。第一版把重画写在 input 事件处理器里，
+       于是驱动接口 P.three(60) 改了滑杆与读数、图却还停在 n = 21 ——
+       同一节里图和读数说两个不同的数。 */
+    setHTML('c-three', chartThree(n));
+    var d = C.threeDist(C.getAlpha('phi').value, n);
+    var threeOk = d.distinct <= 3;
+    var sumOk = d.distinct === 3 ? (Math.abs(d.lengths[0] + d.lengths[1] - d.lengths[2]) < 1e-12) : null;
+    setHTML('ro-three-live',
+      'n = ' + n + '：{kφ} 的 ' + d.ngaps + ' 个间隙里只有 <b>' + d.distinct + '</b> 种长度 —— ' +
+      d.lengths.map(function (v, i) { return f(v, 9) + '（' + d.counts[i] + ' 个）'; }).join('、') +
+      '。三距离定理说最多三种，这里' + (threeOk ? '<b>成立</b>' : '<b>被违反</b>') + '。' +
+      (d.distinct === 3 ?
+        '第三种长度恰好等于前两种之和：' + f(d.lengths[0], 9) + ' + ' + f(d.lengths[1], 9) + ' = ' +
+        f(d.lengths[0] + d.lengths[1], 9) + '（与 ' + f(d.lengths[2], 9) + ' 相差 ' +
+        sci(Math.abs(d.lengths[0] + d.lengths[1] - d.lengths[2]), 2) + '）。' :
+        '（n 较小时只出现两种长度，第三种要等 n 足够大才冒出来。）'));
+    return { n: n, distinct: d.distinct, lengths: d.lengths, counts: d.counts, ngaps: d.ngaps, sumOk: sumOk };
+  }
+
+  /* ======================================================================
+   * 5. 静态块（KPI / 结论 / 边界 / 头尾）
+   * ==================================================================== */
+  function renderKPI() {
+    var cls = ['good', '', 'warn', '', 'good', 'bad'];
+    var h = '';
+    for (var i = 0; i < A.kpi.length; i++) {
+      var k = A.kpi[i];
+      h += '<div class="kpi ' + (cls[i] || '') + '">' +
+        '<div class="kl">' + esc(k.label) + '</div>' +
+        '<div class="kv">' + esc(k.value) + '</div>' +
+        '<div class="kn">' + esc(k.unit) + '　' + esc(k.note) + '</div></div>';
+    }
+    setHTML('kpis', h);
+  }
+  function renderConc() {
+    var h = '';
+    for (var i = 0; i < A.conclusions.length; i++) {
+      var c = A.conclusions[i];
+      h += '<li><b>' + esc(c.title) + '</b>　' + esc(c.text) + '</li>';
+    }
+    setHTML('conclusions', h);
+  }
+  function renderBounds() {
+    var h = '';
+    for (var i = 0; i < A.bounds.length; i++) h += '<li>' + esc(A.bounds[i].text) + '</li>';
+    setHTML('boundaries', h);
+  }
+  function renderHeadFoot() {
+    var m = A.meta;
+    setText('meta-line',
+      '模型自检 ' + m.selftest + '/88 · 标定 ' + m.experiments + ' 组实验 · ' +
+      'α 样本 ' + m.alphas + ' 个 · 生成于 ' + m.generatedAt.slice(0, 19).replace('T', ' ') + ' UTC');
+    setText('foot-line',
+      '《逼近之极》 · 模型自检 ' + m.selftest + ' 项 · 标定 ' + m.experiments + ' 组 · ' +
+      '验证表 ' + A.verifyTable.length + ' 行 · 边界 ' + A.bounds.length + ' 条 · ' +
+      '全部数字由 core.js 现场算出，页面不联网。');
+  }
+  function renderNotes() {
+    setText('ro-phiError',
+      '最大分母 q = ' + grp(A.charts.phiError[A.charts.phiError.length - 1].q) + '，' +
+      '最后 5 个点的误差全部等于 ' + sci(A.charts.phiError[A.charts.phiError.length - 1].err, 2) +
+      ' = 双精度机器精度。所有点都在 1/q² 线的下方（误差比 Dirichlet 保证的还小），且呈两级台阶 —— ' +
+      '因为 φ 的部分商全是 1。右侧那排点变平不是数学停了，是 double 到头了。');
+    setText('ro-nuBars',
+      'ν 的跨度：最小 ' + f(A.derived.e2.minNu, 6) + '（' + A.derived.e2.minNuKey + '），' +
+      '最大 ' + f(A.derived.e2.maxNu, 6) + '（' + A.derived.e2.maxNuKey + '）。' +
+      '红色 = 部分商无界，ν 概念上是 ∞，柱长画的是"截断到已有部分商"的伪影，仅供参考。');
+    /* 这一条里有 <b>，所以必须用 setHTML —— 用 setText 会把标签当文本显示出来
+       （第一版就是这样，页面上直接印出 "<b>2.6180340</b>"） */
+    setHTML('ro-limsup',
+      '红线的值恒为 <b>' + f(PHI2, 7) + '</b> = φ² —— 由 q = 1 那一个点决定，' +
+      'Q 从 10 加到 6000 一次都没变过。真值 ν(φ) = √5 = ' + f(Math.sqrt(5), 7) + '，' +
+      '差 ' + pct((PHI2 - Math.sqrt(5)) / Math.sqrt(5), 1) + '。' +
+      '绿线（尾部窗口）在 √5 附近震荡收敛。这就是"全范围最小值"这个直觉错在哪：' +
+      '它把 <b>一个有限项的界</b> 当成了 <b>无穷远的极限</b>。');
+    setText('ro-sqrtN',
+      '186 个非平方 n 的最大相对差 ' + sci(A.derived.e3.worstRel, 2) +
+      '（出现在 n = ' + A.derived.e3.worstN + '）—— 与双精度机器精度同量级，' +
+      '所以这不是"拟合出来的规律"，而是两套独立实现在同一个精确真值上重合。' +
+      '周期最长的是 n = ' + A.derived.e3.pts.reduce(function (a, b) { return b.period > a.period ? b : a; }).n +
+      '，周期长度 ' + A.derived.e3.maxPeriod + '。');
+    setText('ro-spectrum',
+      '14 个谱点，第 14 个 m = ' + A.derived.e2.markovMax + ' 给出 ν = ' +
+      f(A.charts.spectrum[A.charts.spectrum.length - 1].nu, 9) + '，到 3 的距离已经缩到 ' +
+      sci(A.derived.e2.spectrumLastGap, 2) + '。间距单调缩小，但永远取不到 3 —— 3 是这道离散谱的上确界。');
+    setText('ro-mu',
+      'φ 的计数：μ = 2 时从 ' + A.charts.muProbe[0].series.filter(function (s) { return s.key === 'phi'; })[0].counts[0] +
+      ' 涨到 ' + A.charts.muProbe[0].series.filter(function (s) { return s.key === 'phi'; })[0].counts[3] +
+      '（Q 涨 1000 倍，计数涨约 2 倍 —— 无界但慢）；' +
+      'μ = 2.5 时恒为 ' + A.charts.muProbe[2].series.filter(function (s) { return s.key === 'phi'; })[0].counts[0] +
+      '（Q 涨 1000 倍，一次都不动）。分界正好在 μ = 2：' +
+      '所有代数无理数的逼近指数都精确等于 2（Roth 定理），' +
+      '而 Liouville 数的指数是 ∞ —— 那是"另一头"，本页的 ν 只刻画 μ = 2 附近。');
+    setText('ro-gk',
+      'N = ' + grp(A.charts.gaussKuzmin.N) + '：TV = ' + f(A.charts.gaussKuzmin.tv, 6) +
+      '，P(k=1) 经验 ' + f(A.charts.gaussKuzmin.emp[0], 5) + ' vs 理论 ' + f(A.charts.gaussKuzmin.th[0], 5) +
+      '。最大部分商 ' + A.charts.gaussKuzmin.maxK + '，有效样本 ' + grp(A.charts.gaussKuzmin.total) + '。' +
+      '注意 P(1) ≈ 0.415 而不是 0.5 —— 部分商为 1 的概率比"均匀"小，这是 Gauss 映射的非平凡之处。');
+    setText('ro-tv',
+      'TV × √N 在 N = ' + sci(A.derived.e5.tvNRange[0], 0) + '…' + sci(A.derived.e5.tvNRange[1], 0) +
+      ' 之间落在 ' + f(A.derived.e5.tvSqrtNMin, 3) + '–' + f(A.derived.e5.tvSqrtNMax, 3) +
+      '（' + f(A.derived.e5.tvSqrtNRatio, 3) + ' 倍）。注意它不单调：最小值出现在 N = ' +
+      sci(A.derived.e5.tvArgMin, 0) + '，然后回升 —— 这条"起落"本身就是单轨道涨落的量级。' +
+      '换算成幂指数，取最大最小两点得 ' + f(A.derived.e5.alphaEff, 3) +
+      '，取首末两点得 ' + f(A.derived.e5.alphaEffFirstLast, 3) + '。' +
+      '所以正确的说法是"接近 1/√N"，不是"精确 1/√N"。');
+    setText('ro-farey',
+      '40 档 n（1…40）：|F_n| / n² 单调逼近 3/π² = ' + f(3 / (Math.PI * Math.PI), 6) +
+      '。全部 179,529 对相邻项满足 b·c − a·d = 1，零例外；|F_n| 与 1 + Σφ(k) 也逐项吻合，不符 ' +
+      A.derived.e7.fareyCheckSummary.lenMismatch + ' 项。');
+    setText('ro-wall',
+      '实测吞吐 ' + f(A.derived.e7.msPerQ * 1e6, 2) + ' ms / 10⁶ 个 q。' +
+      'Q = 10⁶ 实测 ' + A.tables.wallTable[0].ms + ' ms；到 Q = 10¹⁸ 外推要 ' +
+      f(A.derived.e7.firstOverYear.year, 1) + ' 年。');
+  }
+
+  /* ======================================================================
+   * 6. 标签栏
+   * ==================================================================== */
+  var TABS = [
+    { id: 'one', label: '壹 · 逼近' },
+    { id: 'two', label: '贰 · 难度' },
+    { id: 'three', label: '叁 · 上极限' },
+    { id: 'four', label: '肆 · 2√n' },
+    { id: 'five', label: '伍 · 离散谱' },
+    { id: 'six', label: '陆 · 统计' },
+    { id: 'seven', label: '柒 · 结构' },
+    { id: 'eight', label: '捌 · 墙' },
+    { id: 'nine', label: '玖 · 可信' }
+  ];
+  function renderTabs() {
+    var h = '';
+    for (var i = 0; i < TABS.length; i++) {
+      h += '<button type="button" data-tab="' + TABS[i].id + '">' + esc(TABS[i].label) + '</button>';
+    }
+    setHTML('tabs', h);
+    var bs = el('tabs').getElementsByTagName('button');
+    for (var j = 0; j < bs.length; j++) {
+      bs[j].addEventListener('click', function () { setTab(this.getAttribute('data-tab')); });
+    }
+  }
+  function setTab(id) {
+    var bs = el('tabs').getElementsByTagName('button');
+    for (var i = 0; i < bs.length; i++) {
+      var on = bs[i].getAttribute('data-tab') === id;
+      bs[i].className = on ? 'on' : '';
+    }
+    for (var k = 0; k < TABS.length; k++) {
+      var p = el('p-' + TABS[k].id);
+      if (p) p.className = 'panel' + (TABS[k].id === id ? ' on' : '');
+    }
+  }
+
+  /* ======================================================================
+   * 7. 渲染全部
+   * ==================================================================== */
+  function renderCharts() {
+    setHTML('c-phiError', chartPhiError());
+    setHTML('c-nuBars', chartNuBars());
+    setHTML('c-limsup', chartLimsup());
+    setHTML('c-sqrtN', chartSqrtN());
+    setHTML('c-spectrum', chartSpectrum());
+    setHTML('c-mu', chartMu());
+    setHTML('c-gk', chartGK());
+    setHTML('c-tv', chartTV());
+    setHTML('c-three', chartThree(parseInt(el('s-three').value, 10)));
+    setHTML('c-farey', chartFarey());
+    setHTML('c-wall', chartWall());
+  }
+  function fillAlphaSelect() {
+    var h = '';
+    var al = A.derived.e2.alphas;
+    for (var i = 0; i < al.length; i++) {
+      h += '<option value="' + esc(al[i].key) + '">' + esc(al[i].label) + '</option>';
+    }
+    setHTML('sel-alpha', h);
+  }
+  function bindControls() {
+    el('sel-alpha').addEventListener('change', applyAlpha);
+    el('s-Q').addEventListener('input', applyAlpha);
+    el('s-sqrtn').addEventListener('input', function () { driveSqrtN(); });
+    el('s-gk').addEventListener('input', function () { driveGK(); });
+    el('s-three').addEventListener('input', function () { driveThree(); });
+  }
+
+  function renderAll() {
+    renderHeadFoot();
+    renderKPI();
+    renderTabs();
+    fillAlphaSelect();
+    renderCharts();
+    renderTables();
+    renderNotes();
+    renderConc();
+    renderBounds();
+    setTab('one');
+    applyAlpha();
+    driveSqrtN(2);
+    driveGK(4);
+    driveThree(21);
+  }
+
+  /* ======================================================================
+   * 8. 探针
+   * ==================================================================== */
+  var CHART_IDS = ['c-phiError', 'c-nuBars', 'c-limsup', 'c-sqrtN', 'c-spectrum', 'c-mu',
+    'c-gk', 'c-tv', 'c-three', 'c-farey', 'c-wall'];
+
+  function isVisible(e) {
+    if (!e) return false;
+    var r = e.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  }
+
+  function chartStats() {
+    var out = [];
+    for (var i = 0; i < CHART_IDS.length; i++) {
+      var id = CHART_IDS[i];
+      var box = el(id);
+      if (!box) continue;
+      var svgs = box.getElementsByTagName('svg');
+      var kids = 0, stray = 0;
+      if (svgs.length === 1) {
+        var svg = svgs[0];
+        for (var k = 0; k < svg.childNodes.length; k++) {
+          if (svg.childNodes[k].nodeType === 1) kids++;
+        }
+        /* stray = 容器里**直接子元素**中不是 <svg> 的那些。
+           不能遍历全部后代：那会把 svg 自己的 line/text/circle 也算进来
+           （第一版就是这么写的，得到 105 个"假 stray"）。
+           要挡的是《熵之彼岸》那次事故：生成器产出一个当场闭合的空 <svg>，
+           后面的图元全变成它的**兄弟** —— 那些才会出现在直接子元素里。 */
+        for (var a = 0; a < box.childNodes.length; a++) {
+          var nd = box.childNodes[a];
+          if (nd.nodeType !== 1) continue;
+          if (nd.tagName.toLowerCase() !== 'svg') stray++;
+        }
+      }
+      var rect = box.getBoundingClientRect();
+      var srect = svgs.length ? svgs[0].getBoundingClientRect() : { width: 0, height: 0 };
+      var ticks = svgs.length ? svgs[0].getElementsByTagName('text') : [];
+      var nanTicks = 0, sample = '';
+      for (var t = 0; t < ticks.length; t++) {
+        var tx = ticks[t].textContent || '';
+        if (/NaN|Infinity|undefined|null/.test(tx)) { nanTicks++; if (!sample) sample = tx.slice(0, 40); }
+      }
+      out.push({
+        id: id, svgs: svgs.length, kids: kids, stray: stray,
+        w: rect.width, h: rect.height, sw: srect.width, sh: srect.height,
+        ticks: ticks.length, nanTicks: nanTicks, nanSample: sample,
+        visible: rect.width > 0 && rect.height > 0
+      });
+    }
+    return out;
+  }
+
+  function barStats() {
+    var out = {};
+    var ids = ['c-gk', 'c-three'];
+    for (var i = 0; i < ids.length; i++) {
+      var box = el(ids[i]);
+      var arr = [];
+      if (box) {
+        var rs = box.getElementsByTagName('rect');
+        for (var k = 0; k < rs.length; k++) {
+          var r = rs[k].getBoundingClientRect();
+          if (r.height > 0) arr.push([Math.round(r.width * 10) / 10, Math.round(r.height * 10) / 10]);
+        }
+      }
+      out[ids[i]] = arr;
+    }
+    return out;
+  }
+
+  function overflow() {
+    var de = document.documentElement, b = document.body;
+    return {
+      doc: Math.max(0, de.scrollWidth - de.clientWidth),
+      body: Math.max(0, b.scrollWidth - b.clientWidth)
+    };
+  }
+
+  function touchStats() {
+    var sel = 'button, select, input[type="range"], a';
+    var all = document.querySelectorAll(sel);
+    var count = 0, nSmall = 0, small = [];
+    for (var i = 0; i < all.length; i++) {
+      var e = all[i];
+      var r = e.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) continue;     /* 隐藏面板里的不算 */
+      count++;
+      if (r.height < 44) {
+        nSmall++;
+        if (small.length < 6) small.push((e.id || e.tagName.toLowerCase()) + ':' + Math.round(r.height));
+      }
+    }
+    return { count: count, nSmall: nSmall, small: small };
+  }
+
+  function tickStats() {
+    var ticks = 0, nan = 0, sample = '';
+    var vis = [];
+    for (var i = 0; i < CHART_IDS.length; i++) if (isVisible(el(CHART_IDS[i]))) vis.push(el(CHART_IDS[i]));
+    for (var v = 0; v < vis.length; v++) {
+      var ts = vis[v].getElementsByTagName('text');
+      for (var t = 0; t < ts.length; t++) {
+        ticks++;
+        var tx = ts[t].textContent || '';
+        if (/NaN|Infinity|undefined|null/.test(tx)) { nan++; if (!sample) sample = tx.slice(0, 40); }
+      }
+    }
+    return { ticks: ticks, nan: nan, sample: sample, visibleCharts: vis.length };
+  }
+
+  function countRows() {
+    var out = {};
+    var ids = ['t-conv', 't-cf', 't-spectrum', 't-best', 't-farey', 't-wall', 't-verify'];
+    for (var i = 0; i < ids.length; i++) {
+      var e = el(ids[i]);
+      out[ids[i]] = e ? e.getElementsByTagName('tbody')[0].getElementsByTagName('tr').length : -1;
+    }
+    return out;
+  }
+
+  function counts() {
+    return {
+      kpi: el('kpis').children.length,
+      tabs: el('tabs').getElementsByTagName('button').length,
+      panels: document.querySelectorAll('.panel').length,
+      charts: CHART_IDS.length,
+      conclusions: el('conclusions').getElementsByTagName('li').length,
+      boundaries: el('boundaries').getElementsByTagName('li').length,
+      verifyRows: countRows()['t-verify'],
+      rows: countRows()
+    };
+  }
+
+  function tabStats() {
+    var bs = [], ps = [];
+    var btns = el('tabs').getElementsByTagName('button');
+    for (var i = 0; i < btns.length; i++) bs.push({ id: btns[i].getAttribute('data-tab'), on: btns[i].className === 'on' });
+    for (var k = 0; k < TABS.length; k++) ps.push({ id: 'p-' + TABS[k].id, on: el('p-' + TABS[k].id).className === 'panel on' });
+    return { buttons: bs, panels: ps };
+  }
+
+  function viewport() {
+    var de = document.documentElement;
+    return {
+      w: de.clientWidth, h: de.clientHeight,
+      innerW: window.innerWidth, innerH: window.innerHeight,
+      scrollW: de.scrollWidth, scrollH: de.scrollHeight
+    };
+  }
+
+  function semantic() {
+    var D = A.derived;
+    var checks = {};
+    function chk(name, cond) { checks[name] = !!cond; }
+    var kpiTxt = el('kpis').textContent;
+    chk('KPI 里有 ν(φ) = 2.2360680', kpiTxt.indexOf('2.2360680') >= 0);
+    chk('KPI 里有 2√n', kpiTxt.indexOf('2√n') >= 0);
+    chk('KPI 里有 186 个 n', kpiTxt.indexOf('186 个 n') >= 0);
+    var convTxt = el('t-conv').textContent;
+    chk('收敛子表里有 q = 377（第 14 行）', convTxt.indexOf('377') >= 0);
+    chk('收敛子表最后一列 q·‖qα‖ 里有 0.4472', convTxt.indexOf('0.44721') >= 0);
+    chk('收敛子表里有 0.381966（下界 1/φ²）', convTxt.indexOf('0.381966') >= 0);
+    var cfTxt = el('t-cf').textContent;
+    chk('α 表里有 Liouville 数', cfTxt.indexOf('Liouville') >= 0);
+    chk('α 表里有 2.6854520（Khinchin）', el('p-six').textContent.indexOf('2.6854520010') >= 0);
+    chk('结论里有 √5', el('conclusions').textContent.indexOf('√5') >= 0);
+    chk('边界里有 q > 10⁶', el('boundaries').textContent.indexOf('10⁶') >= 0);
+    var verifyTxt = el('t-verify').textContent;
+    chk('验证表里有 2.17e-16', verifyTxt.indexOf('2.17e-16') >= 0);
+    chk('验证表里有 179529', verifyTxt.replace(/,/g, '').indexOf('179529') >= 0);
+    chk('图表容器有 11 个', document.querySelectorAll('.chart').length === 11);
+    return {
+      checks: checks,
+      values: {
+        kpi: A.kpi.length,
+        conclusions: A.conclusions.length,
+        boundaries: A.bounds.length,
+        verify: A.verifyTable.length,
+        selftest: A.meta.selftest,
+        experiments: A.meta.experiments,
+        phiNu: D.e2.phiNu,
+        hurwitz: D.e2.hurwitz,
+        sqrt2Nu: D.e2.sqrt2Nu,
+        sqrtNCount: D.e3.count,
+        worstRel: D.e3.worstRel,
+        worstN: D.e3.worstN,
+        spectrumPoints: D.e2.spectrum.length,
+        spectrumLastGap: D.e2.spectrumLastGap,
+        khinchin: D.e5.khinchin,
+        khinchinMeasured: D.e5.khinchinMeasured,
+        levy: D.e5.levy,
+        phiLevyRoot: D.e5.phiLevyRoot,
+        tvRatio: D.e5.tvSqrtNRatio,
+        finiteCount: D.e2.finiteCount,
+        infiniteCount: D.e2.infiniteCount,
+        unknownCount: D.e2.unknownCount,
+        countTotal: D.e2.countTotal,
+        threeChecked: D.e6.totalChecked,
+        threeDistinct3: D.e6.distinct3,
+        threeOther: D.e6.other,
+        fareyPairs: D.e7.fareyCheckSummary.totalPairs,
+        fareyBadPairs: D.e7.fareyCheckSummary.badPairs,
+        sbTotal: D.e7.sb.total,
+        sbBad: D.e7.sb.bad,
+        msPerQ: D.e7.msPerQ,
+        firstOverYear: D.e7.firstOverYear.year,
+        legendreTotal: D.e1.legendreTotal,
+        legendreExceptions: D.e1.legendreExceptions
+      }
+    };
+  }
+
+  window.__probe = {
+    probeVersion: 1,
+    counts: counts,
+    tabs: tabStats,
+    kpi: function () { return A.kpi.map(function (k) { return { label: k.label, value: k.value }; }); },
+    semantic: semantic,
+    charts: chartStats,
+    bars: barStats,
+    overflow: overflow,
+    touch: touchStats,
+    ticks: tickStats,
+    viewport: viewport,
+    setTab: setTab,
+    renderAll: renderAll,
+    alpha: driveAlpha,
+    sqrtn: driveSqrtN,
+    gk: driveGK,
+    three: driveThree,
+    live: function () {
+      return {
+        best: el('ro-best-live').textContent.replace(/\s+/g, ' ').trim().slice(0, 400),
+        sqrtn: el('ro-sqrtn-live').textContent.replace(/\s+/g, ' ').trim().slice(0, 300),
+        gk: el('ro-gk-live').textContent.replace(/\s+/g, ' ').trim().slice(0, 300),
+        three: el('ro-three-live').textContent.replace(/\s+/g, ' ').trim().slice(0, 300),
+        nQ: el('n-Q').textContent,
+        nSqrtn: el('n-sqrtn').textContent,
+        nGk: el('n-gk').textContent,
+        nThree: el('n-three').textContent
+      };
+    }
+  };
+
+  /* ======================================================================
+   * 9. 启动
+   * ==================================================================== */
+  try {
+    if (!A) throw new Error('缺少 window.__ANALYSIS__');
+    if (!C) throw new Error('缺少 window.CFCore');
+    renderAll();
+    window.__ready = true;
+  } catch (e) {
+    window.__bootError = String((e && e.message) || e) + ' @@ ' +
+      String((e && e.stack) || '').split('\n').slice(0, 4).join(' | ');
+    if (window.console && console.error) console.error(e);
+  }
+})();
+
+</script>
+</body>
+</html>

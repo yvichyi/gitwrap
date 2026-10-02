@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>十二不归 · 数论、声学与一架永远调不纯的键盘</title>
+<style>
+:root{
+  --bg:#f4f1ea;--paper:#fbfaf7;--ink:#1d2025;--ink2:#4b5058;--muted:#7c818a;
+  --line:#ddd8ce;--line2:#ece8df;--violet:#55448e;--violet2:#d9d1ef;
+  --copper:#a65d36;--copper2:#edd2c2;--green:#286a54;--red:#a13b36;--blue:#2d6485;
+  --mono:ui-monospace,"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  --serif:"Songti SC","Noto Serif CJK SC","Source Han Serif SC",STSong,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.72}
+body{overflow-x:hidden;background-image:radial-gradient(900px 500px at 95% -10%,rgba(85,68,142,.06),transparent 70%),radial-gradient(700px 500px at -10% 110%,rgba(166,93,54,.055),transparent 70%)}
+.wrap{max-width:1180px;margin:0 auto;padding:34px 20px 80px}
+header{border-bottom:1px solid var(--line);padding:10px 0 24px;margin-bottom:22px}
+.eyebrow{font:11px/1.5 var(--mono);letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+h1{font-family:var(--serif);font-size:43px;letter-spacing:.08em;line-height:1.05;margin:0 0 12px;font-weight:650}
+h1 em{font-style:normal;color:var(--copper)}
+.lede{font-size:17px;color:var(--ink2);max-width:80ch;margin:0}
+.lede b{color:var(--ink)}
+.meta{font:12px/1.7 var(--mono);color:var(--muted);margin-top:14px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:20px 0 26px}
+.kpi{background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:13px 14px;min-width:0;position:relative;overflow:hidden}
+.kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--violet)}
+.kpi:nth-child(2):before{background:var(--copper)}.kpi:nth-child(3):before{background:var(--blue)}.kpi:nth-child(4):before{background:var(--green)}
+.kl{font-size:11.5px;color:var(--muted)}.kv{font:650 22px/1.2 var(--mono);margin:5px 0 4px;word-break:break-word}.kn{font-size:11.5px;color:var(--muted)}
+.tabs{display:flex;overflow-x:auto;gap:3px;border-bottom:1px solid var(--line);margin-bottom:24px}
+.tabs button{appearance:none;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--muted);font:13px/1.2 var(--sans);padding:11px 13px;min-height:44px;white-space:nowrap;cursor:pointer}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--copper);font-weight:650}
+.panel{display:none}.panel.on{display:block}
+h2{font-family:var(--serif);font-size:28px;line-height:1.25;margin:0 0 7px;font-weight:650;letter-spacing:.03em}
+h2 .num{font:12px/1 var(--mono);color:var(--copper);letter-spacing:.05em;margin-right:9px}
+h3{font-size:15px;margin:25px 0 10px;font-weight:650}
+p{margin:0 0 13px;color:var(--ink2)}p b,strong{color:var(--ink)}
+.sec-lede{max-width:82ch;font-size:15.5px;margin-bottom:19px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);gap:14px;align-items:start}.grid2.equal{grid-template-columns:repeat(2,minmax(0,1fr))}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.box{background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:14px 15px;min-width:0;margin-bottom:14px}
+.box h4{font-size:13.5px;margin:0 0 10px}.cap{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.6}
+.eq{font:13px/1.9 var(--mono);white-space:pre;overflow-x:auto;background:#f0eee8;border-left:3px solid var(--violet2);padding:10px 12px;border-radius:0 7px 7px 0;color:var(--ink);margin:12px 0 16px}
+.ro{border:1px solid var(--line);border-left:3px solid var(--copper);background:var(--paper);padding:10px 12px;border-radius:6px;margin:12px 0;color:var(--ink2);font-size:13.5px}
+.ro.good{border-left-color:var(--green)}.ro.warn{border-left-color:var(--red)}
+.ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:10px 12px;margin:10px 0 14px;color:var(--ink2);font-size:13px}
+.ctl label{white-space:nowrap}.ctl input[type=range]{flex:1 1 180px;min-width:150px;accent-color:var(--copper)}.ctl .val{font:650 13px/1 var(--mono);color:var(--ink);min-width:86px;text-align:right}
+button.action{appearance:none;border:1px solid #cfc8bb;background:#fffdf9;color:var(--ink);border-radius:6px;padding:8px 11px;min-height:40px;font:12.5px/1 var(--sans);cursor:pointer}button.action:hover{border-color:var(--copper)}button.action.primary{background:var(--ink);color:white;border-color:var(--ink)}
+.chart{width:100%;min-width:0;overflow:hidden}.chart svg{width:100%;height:auto;display:block}.chart text{font-family:var(--mono)}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}.tbl th,.tbl td{padding:8px 8px;border-bottom:1px solid var(--line2);text-align:right;vertical-align:top}.tbl th:first-child,.tbl td:first-child{text-align:left}.tbl th{font-weight:600;color:var(--muted);font-size:11px}.tbl td.mono{font-family:var(--mono)}.tbl-wrap{overflow-x:auto}
+.pills{display:flex;gap:7px;flex-wrap:wrap}.pill{font:11.5px/1 var(--mono);padding:5px 7px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink2)}
+.circle-wrap{position:relative;max-width:620px;margin:0 auto}.circle-wrap svg{display:block;width:100%;height:auto}.node-label{font-size:11px;fill:var(--ink)}
+.readout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.readout .r{background:#f1eee7;border:1px solid var(--line2);padding:9px;border-radius:6px}.readout .rk{font-size:10.5px;color:var(--muted)}.readout .rv{font:650 15px/1.25 var(--mono);margin-top:4px;color:var(--ink)}
+.spectrum{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:3px;align-items:end;height:150px;padding-top:6px}.bar{background:linear-gradient(to top,var(--violet),var(--violet2));border-radius:3px 3px 0 0;min-height:2px;position:relative}.bar span{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font:9px/1 var(--mono);color:var(--muted)}
+.keygrid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px}.key{border:1px solid var(--line);background:white;border-radius:5px;padding:7px 3px;text-align:center;min-width:0}.key b{display:block;font:650 11px/1.2 var(--mono)}.key small{font:9.5px/1.25 var(--mono);color:var(--muted);display:block;margin-top:4px}.key.hot{outline:2px solid var(--copper);outline-offset:1px}
+.verify{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.check{border:1px solid var(--line);background:var(--paper);padding:11px 12px;border-radius:7px}.check .status{font:700 12px/1 var(--mono);color:var(--green);margin-bottom:5px}.check.bad .status{color:var(--red)}.check .name{font-size:12.5px}.check .detail{font:11px/1.5 var(--mono);color:var(--muted);margin-top:5px}
+footer{border-top:1px solid var(--line);margin-top:30px;padding-top:16px;font-size:11.5px;color:var(--muted)}
+@media(max-width:850px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2,.grid2.equal,.grid3{grid-template-columns:1fr}.readout{grid-template-columns:1fr}.keygrid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media(max-width:520px){.wrap{padding:20px 13px 60px}h1{font-size:34px}.lede{font-size:15.5px}.kpis{grid-template-columns:1fr}.verify{grid-template-columns:1fr}.tabs button{padding-left:10px;padding-right:10px}.keygrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="eyebrow">单文件科学装置 · 数论 × 音乐理论 × 声学 × 听觉科学</div>
+  <h1>十二<em>不归</em></h1>
+  <p class="lede">十二个纯五度走完一圈，<b>不会</b>回到七个八度的原点。差的只有约二十三个音分，却足够迫使每一架固定音高乐器做选择：保住整数比、保住转调，还是把误差平均摊开。这个页面把那条缝算出来、听出来，再交给耳朵检验。</p>
+  <div class="meta">页面加载后无外部请求 · 所有公式在浏览器内重算 · 音频需点击后启用 Web Audio</div>
+</header>
+
+<div class="kpis">
+  <div class="kpi"><div class="kl">十二个纯五度 − 七个八度</div><div class="kv" id="kComma">—</div><div class="kn">毕达哥拉斯逗号</div></div>
+  <div class="kpi"><div class="kl">十二平均律纯五度误差</div><div class="kv" id="kFifthErr">—</div><div class="kn">每个五度都略窄</div></div>
+  <div class="kpi"><div class="kl">十二平均律大三度误差</div><div class="kv" id="kThirdErr">—</div><div class="kn">相对 5:4 纯大三度</div></div>
+  <div class="kpi"><div class="kl">四个纯五度与 5:4 的差</div><div class="kv" id="kSyntonic">—</div><div class="kn">辛托尼逗号 81:80</div></div>
+</div>
+
+<nav class="tabs" id="tabs">
+  <button class="on" data-tab="p1">壹 · 不闭的圆</button>
+  <button data-tab="p2">贰 · 藏误差</button>
+  <button data-tab="p3">叁 · 拍频</button>
+  <button data-tab="p4">肆 · 耳朵</button>
+  <button data-tab="p5">伍 · 转调</button>
+  <button data-tab="p6">陆 · 验证与边界</button>
+</nav>
+
+<section id="p1" class="panel on">
+<h2><span class="num">01</span>不闭的圆</h2>
+<p class="sec-lede">音乐里最“自然”的两个间隔都极其简单：八度是 <b>2:1</b>，纯五度是 <b>3:2</b>。问题出在把它们同时当作地基。十二个五度与七个八度应该把你带到“同一个音名”，可整数算术拒绝配合。</p>
+<div class="eq">十二个纯五度： (3/2)^12
+七个八度：     2^7
+两者之比：     (3/2)^12 / 2^7 = 531441 / 524288
+换成音分：     1200 · log2(531441/524288) ≈ 23.4600¢</div>
+<div class="grid2">
+  <div class="box">
+    <h4>沿纯五度走，看误差一点点积起来</h4>
+    <div class="ctl"><label>走了多少个五度</label><input id="fifthSteps" type="range" min="0" max="12" step="1" value="12"><span class="val" id="fifthStepsVal">12</span></div>
+    <div class="circle-wrap"><svg id="fifthCircle" viewBox="0 0 620 430" role="img" aria-label="十二纯五度循环示意"></svg></div>
+    <div class="readout">
+      <div class="r"><div class="rk">纯五度链累计</div><div class="rv" id="pureStack">—</div></div>
+      <div class="r"><div class="rk">十二平均律同一路径</div><div class="rv" id="etStack">—</div></div>
+      <div class="r"><div class="rk">累计差</div><div class="rv" id="stackDiff">—</div></div>
+    </div>
+  </div>
+  <div class="box">
+    <h4>把那条缝直接变成声音</h4>
+    <p>取同一个基准音。一边沿 <code>3:2</code> 连走十二次再降七个八度，另一边直接回到原点。数学上它们只差 1.364%，耳朵听到的是两个近邻频率与约 6 Hz 的起伏。</p>
+    <div class="ctl"><label>基准频率</label><input id="commaBase" type="range" min="180" max="660" step="1" value="440"><span class="val" id="commaBaseVal">440 Hz</span></div>
+    <div class="pills"><span class="pill" id="commaHi">—</span><span class="pill" id="commaBeat">—</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="action primary" id="playComma">▶ 同时播放 2 秒</button><button class="action" id="playPure">▶ 只听纯五度链终点</button><button class="action" id="playBase">▶ 只听原点</button></div>
+    <p class="cap">音量固定得很低。耳机使用时尤其不要把系统音量开大。</p>
+    <div class="ro"><b>这里的“问题”不是哪个音错了。</b> 只要坚持 2:1 与 3:2 都必须完全纯，圆就必然留缝。调律不是把错误消灭，而是选择误差的分布方式。</div>
+  </div>
+</div>
+</section>
+
+<section id="p2" class="panel">
+<h2><span class="num">02</span>误差必须藏在哪里</h2>
+<p class="sec-lede">把所有音高都从一个“生成五度” <i>x</i> 构造出来，可以把调律写成一个小型优化问题。纯五度想让 <i>x</i> 接近 701.955¢；纯大三度想让四个五度减两个八度接近 386.314¢；十二音闭环又逼着 12<i>x</i> = 8400¢。三个目标不能同时精确满足。</p>
+<div class="eq">五度误差      e₅(x) = x − 1200·log₂(3/2)
+大三度误差    e₃(x) = (4x − 2400) − 1200·log₂(5/4)
+闭环误差      e○(x) = 12x − 8400
+
+本页实验台：最小化  e₅² + w₃·e₃² + w○·e○²</div>
+<div class="grid2 equal">
+  <div class="box">
+    <h4>你来决定更在乎什么</h4>
+    <div class="ctl"><label>大三度权重 w₃</label><input id="w3" type="range" min="0" max="8" step="0.1" value="1.5"><span class="val" id="w3v">1.5</span></div>
+    <div class="ctl"><label>闭环权重 w○</label><input id="wc" type="range" min="0" max="8" step="0.1" value="4"><span class="val" id="wcv">4.0</span></div>
+    <div class="readout">
+      <div class="r"><div class="rk">算出的生成五度</div><div class="rv" id="optFifth">—</div></div>
+      <div class="r"><div class="rk">对应大三度</div><div class="rv" id="optThird">—</div></div>
+      <div class="r"><div class="rk">十二步闭环残差</div><div class="rv" id="optClosure">—</div></div>
+    </div>
+    <div class="chart" id="tradeChart"></div>
+    <p class="cap">这不是“最好的调律”，只是把三个互相冲突的目标显式摆上桌。改变权重，最优点就会移动。</p>
+  </div>
+  <div class="box">
+    <h4>四种常见答案，各自牺牲不同东西</h4>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>系统</th><th>五度</th><th>大三度</th><th>12 五度闭环</th></tr></thead><tbody id="temperTable"></tbody></table></div>
+    <div class="ro good"><b>十二平均律做了一个很现代的选择：</b>把八度固定为 2:1，把十二个半音做成同一个比例 <code>2^(1/12)</code>。于是所有调都能复用同一套键位，代价是除了八度之外，常用整数比几乎都不再精确。</div>
+    <div class="ro warn"><b>纯律做的是另一种选择：</b>在一个和弦、一个调内把 3:2、5:4 之类的整数比保得极漂亮，但同一组固定键位不能把这些关系原样搬去所有调。</div>
+  </div>
+</div>
+</section>
+
+<section id="p3" class="panel">
+<h2><span class="num">03</span>误差落到空气里，会变成拍频</h2>
+<p class="sec-lede">“差 10 个音分”是数学语言；空气只认识频率。当两个频率靠得很近时，叠加信号的振幅包络以两者频差起伏。调律师听的那种“哇、哇、哇”不是比喻，而是一条可以直接算的包络。</p>
+<div class="eq">cos(2πf₁t) + cos(2πf₂t)
+= 2 cos(π(f₂−f₁)t) · cos(2π((f₁+f₂)/2)t)
+
+拍频 ≈ |f₂ − f₁|</div>
+<div class="grid2">
+  <div class="box">
+    <h4>把音分误差换成每秒几次起伏</h4>
+    <div class="ctl"><label>基准频率 f₁</label><input id="beatBase" type="range" min="110" max="880" step="1" value="440"><span class="val" id="beatBaseV">440 Hz</span></div>
+    <div class="ctl"><label>偏差</label><input id="beatCents" type="range" min="-30" max="30" step="0.1" value="7"><span class="val" id="beatCentsV">+7.0¢</span></div>
+    <div class="readout">
+      <div class="r"><div class="rk">第二个频率</div><div class="rv" id="beatF2">—</div></div>
+      <div class="r"><div class="rk">拍频</div><div class="rv" id="beatHz">—</div></div>
+      <div class="r"><div class="rk">一次起伏大约</div><div class="rv" id="beatPeriod">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="action primary" id="playBeat">▶ 播放 3 秒</button><button class="action" id="setFifthErr">设为平均律五度误差</button><button class="action" id="setThirdErr">设为平均律大三度误差</button></div>
+  </div>
+  <div class="box">
+    <h4>包络，不画载波</h4>
+    <div class="chart" id="beatChart"></div>
+    <p class="cap">横轴是 2 秒；曲线只画慢包络 <code>|cos(πΔf·t)|</code>，否则 440 Hz 的载波会把图涂成一块墨。</p>
+    <div class="ro">同样的 <b>音分误差</b>，在高音区会变成更快的拍频，因为音分描述的是频率比，不是固定的 Hz 差。耳朵因此不会把“7 音分”听成一个全频段都一样的物理现象。</div>
+  </div>
+</div>
+</section>
+
+<section id="p4" class="panel">
+<h2><span class="num">04</span>耳朵不是频率计</h2>
+<p class="sec-lede">拍频解释了很慢的起伏，却解释不了为什么某些更宽的频率间隔反而显得“粗糙”。听觉系统把频谱分进有限带宽的滤波通道，同一带里的两个分量会强烈相互作用；再远一些，它们被分开处理，粗糙感反而下降。</p>
+<div class="grid2 equal">
+  <div class="box">
+    <h4>一个 Plomp–Levelt / Sethares 风格的双纯音粗糙度模型</h4>
+    <div class="eq">R = exp(−3.5·s·Δf) − exp(−5.75·s·Δf)
+s = 0.24 / (0.0207·fmin + 18.96)</div>
+    <div class="ctl"><label>低音频率</label><input id="roughBase" type="range" min="80" max="1000" step="1" value="220"><span class="val" id="roughBaseV">220 Hz</span></div>
+    <div class="chart" id="roughChart"></div>
+    <p class="cap">纵轴只是模型的相对值，不是“悦耳度分数”。它刻画的是两条正弦分量的粗糙度趋势，不等价于文化意义上的协和 / 不协和。</p>
+  </div>
+  <div class="box">
+    <h4>把一个“音”拆成谐波，整数比为什么会重新出现</h4>
+    <p>真实乐音常含 <code>f, 2f, 3f, 4f…</code> 的谐波。两个基频若是简单整数比，许多高次谐波会重合或靠得很近。于是数论里的“分数简单”，会通过频谱结构落到听觉滤波器里。</p>
+    <div class="ctl"><label>第二个音程</label><input id="intervalCents" type="range" min="0" max="1200" step="1" value="702"><span class="val" id="intervalCentsV">702¢</span></div>
+    <div class="spectrum" id="harmonicBars"></div>
+    <div class="pills" style="margin-top:30px"><span class="pill" id="nearestRatio">—</span><span class="pill" id="harmRough">—</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="action" data-int="386">5:4 大三度</button><button class="action" data-int="498">4:3 四度</button><button class="action" data-int="702">3:2 五度</button><button class="action" data-int="1200">2:1 八度</button><button class="action" data-int="600">600¢ 三全音</button></div>
+    <div class="ro"><b>这就是四门学科真正接上电的地方：</b>整数比不是因为“古人喜欢整数”才重要。它决定谐波在哪里相遇；谐波决定耳蜗滤波器收到什么；听觉系统再把这些物理关系变成不同的粗糙感与音高融合感。</div>
+  </div>
+</div>
+</section>
+
+<section id="p5" class="panel">
+<h2><span class="num">05</span>同一架键盘，换一个调就变了</h2>
+<p class="sec-lede">纯律最强的地方也是它最麻烦的地方：音高是“关系”，不是一组绝对坐标。C 大调里很纯的 E，搬到 D 大调之后未必还是那个 E。固定音高键盘只能给每个键一个频率，于是必须在不同调之间共享同一个物理位置。</p>
+<div class="grid2">
+  <div class="box">
+    <h4>十二平均律：移调只是在指数格子上平移</h4>
+    <div class="ctl"><label>根音位置</label><input id="rootKey" type="range" min="0" max="11" step="1" value="0"><span class="val" id="rootKeyV">C</span></div>
+    <div class="keygrid" id="etKeys"></div>
+    <p class="cap">每一步永远是乘 <code>2^(1/12)</code>。所以同一种和弦移到任何根音，内部音分完全不变。</p>
+  </div>
+  <div class="box">
+    <h4>5-limit 纯律：同一个“E”会因根音改变而重新定价</h4>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>场景</th><th>目标关系</th><th>E 相对 C 的频率比</th><th>与 12-TET 差</th></tr></thead><tbody id="jiScenario"></tbody></table></div>
+    <div class="ro warn"><b>这不是纯律“失败”。</b> 它是在回答另一道题：眼前这个和弦怎样让整数关系最纯，而不是“一组固定键位怎样在所有调里复用”。十二平均律则把后一道题放在第一位。</div>
+  </div>
+</div>
+<h3>三种需求，谁和谁能共存</h3>
+<div class="grid3">
+  <div class="box"><b>局部纯</b><p class="cap">3:2、5:4 等简单整数比精确成立。适合可连续调音的演奏者在某个和声瞬间对齐。</p></div>
+  <div class="box"><b>十二键闭环</b><p class="cap">同名音真的回到同一物理键，不需要为 C♯ / D♭ 准备两套琴键。</p></div>
+  <div class="box"><b>任意移调同构</b><p class="cap">把一段音乐整体升高半音，内部所有音程结构完全不变。</p></div>
+</div>
+<div class="ro good">十二平均律同时拿到后两项；纯律拿到第一项。<b>不能三项全拿</b>的根源，不是乐器做得不够精，而是 <code>log₂(3/2)</code> 与 <code>log₂(5/4)</code> 并不会神奇地变成以 1/12 为公分母的有理数。</div>
+</section>
+
+<section id="p6" class="panel">
+<h2><span class="num">06</span>凭什么信，以及哪里不要信</h2>
+<p class="sec-lede">这一页故意把“数学恒等式”“听觉模型”“主观音乐判断”分开。前者能做到机器级对账，第二层只能说是经验模型，第三层则根本不应该被一个公式裁判。</p>
+<div class="verify" id="verifyGrid"></div>
+<h3>三层证据</h3>
+<div class="tbl-wrap"><table class="tbl"><thead><tr><th>层级</th><th>本页做了什么</th><th>可以相信到哪里</th></tr></thead><tbody>
+<tr><td><b>数论 / 调律</b></td><td>所有音分、频率比、优化解都在浏览器里直接计算，并与几个已知常数交叉对账。</td><td>浮点误差范围内可复现；公式本身是精确关系。</td></tr>
+<tr><td><b>声学</b></td><td>Web Audio 直接合成正弦波；拍频读数来自频率差，包络图来自三角恒等式。</td><td>理想双正弦条件下准确；扬声器、房间、耳机都会改变实际波形。</td></tr>
+<tr><td><b>听觉科学</b></td><td>使用经典的双纯音粗糙度参数化，再把多谐波粗糙度按分量对累加。</td><td>只能作为趋势模型。不能把“粗糙度低”直接翻译成“更好听”。</td></tr>
+</tbody></table></div>
+<h3>我没做到什么</h3>
+<div class="ro warn"><b>没有模拟真正的人耳。</b> 没有耳蜗非线性、掩蔽、音高抽取、训练经验、文化习得，也没有把乐器包络、振幅、空间声场一起放进模型。一个钢琴和弦、一个合唱团和两条纯正弦，并不是同一件东西。</div>
+<div class="ro"><b>也没有宣布哪种调律“更正确”。</b> 这里真正被证明的只有约束：一些目标彼此冲突。至于在一首曲子、一件乐器、一种审美里愿意牺牲哪一项，那是音乐问题，不是代数替你做的决定。</div>
+<h3>最短结论</h3>
+<div class="eq">整数比给出局部的纯。
+对数格子给出全局的对称。
+空气把误差变成拍频与频谱重合。
+耳朵再把这些物理差别滤成感知。
+
+十二音调律的历史，就是在这四层之间搬运那 23.46 个音分。</div>
+</section>
+
+<footer>《十二不归》· 单文件交互科学装置。外部已知量用于校准：毕达哥拉斯逗号约 23.46¢；3:2 纯五度约 701.955¢；5:4 纯大三度约 386.314¢；粗糙度曲线采用 Plomp–Levelt / Sethares / Vassilakis 一类常见参数化。页面本身不依赖网络。</footer>
+</div>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const log2 = x => Math.log(x)/Math.LN2;
+const cents = r => 1200*log2(r);
+const ratioFromCents = c => Math.pow(2,c/1200);
+const C5 = cents(3/2);
+const C3 = cents(5/4);
+const PYTH_COMMA_RATIO = Math.pow(3/2,12)/Math.pow(2,7);
+const PYTH_COMMA = cents(PYTH_COMMA_RATIO);
+const SYNTONIC = cents(81/80);
+const ET5 = 700, ET3 = 400;
+const noteNames = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+function fmt(x,n=3){return Number(x).toFixed(n)}
+function signed(x,n=3){return (x>=0?'+':'')+Number(x).toFixed(n)}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+// tabs
+$$('#tabs button').forEach(b=>b.addEventListener('click',()=>{
+  $$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  $$('.panel').forEach(p=>p.classList.toggle('on',p.id===b.dataset.tab));
+  window.scrollTo({top:Math.max(0,$('#tabs').getBoundingClientRect().top+window.scrollY-12),behavior:'smooth'});
+}));
+
+// KPIs
+$('#kComma').textContent=fmt(PYTH_COMMA,4)+'¢';
+$('#kFifthErr').textContent=signed(ET5-C5,4)+'¢';
+$('#kThirdErr').textContent=signed(ET3-C3,4)+'¢';
+$('#kSyntonic').textContent=fmt(SYNTONIC,4)+'¢';
+
+// section 1 circle
+const circleLabels=['C','G','D','A','E','B','F♯','C♯','G♯','D♯','A♯','E♯','B♯'];
+function updateCircle(){
+  const n=+$(`#fifthSteps`).value; $('#fifthStepsVal').textContent=n;
+  const svg=$('#fifthCircle'); const cx=310,cy=213,r=145;
+  let h=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#ddd8ce" stroke-width="2"/>`;
+  for(let i=0;i<=12;i++){
+    const a=(-90+i*360/12)*Math.PI/180;
+    const x=cx+r*Math.cos(a), y=cy+r*Math.sin(a);
+    const active=i<=n;
+    if(i<12){
+      const a2=(-90+(i+1)*360/12)*Math.PI/180;
+      const x2=cx+r*Math.cos(a2),y2=cy+r*Math.sin(a2);
+      h+=`<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="${i<n?'#a65d36':'#ddd8ce'}" stroke-width="${i<n?4:2}"/>`;
+    }
+    h+=`<circle cx="${x}" cy="${y}" r="${i===n?13:9}" fill="${active?'#fbfaf7':'#eeeae1'}" stroke="${active?'#a65d36':'#cfc9bd'}" stroke-width="${i===n?3:1.5}"/>`;
+    const lx=cx+(r+30)*Math.cos(a),ly=cy+(r+30)*Math.sin(a)+4;
+    h+=`<text x="${lx}" y="${ly}" text-anchor="middle" class="node-label" fill="${i===n?'#a65d36':'#1d2025'}">${circleLabels[i]}</text>`;
+  }
+  const diff=n*(C5-ET5);
+  h+=`<text x="310" y="202" text-anchor="middle" font-family="var(--serif)" font-size="34" fill="#1d2025">${n}</text>`;
+  h+=`<text x="310" y="226" text-anchor="middle" font-family="var(--mono)" font-size="12" fill="#7c818a">个纯五度</text>`;
+  h+=`<text x="310" y="250" text-anchor="middle" font-family="var(--mono)" font-size="12" fill="#a65d36">${signed(diff,3)}¢</text>`;
+  svg.innerHTML=h;
+  $('#pureStack').textContent=fmt(n*C5,3)+'¢';
+  $('#etStack').textContent=fmt(n*ET5,3)+'¢';
+  $('#stackDiff').textContent=signed(diff,3)+'¢';
+}
+$('#fifthSteps').addEventListener('input',updateCircle); updateCircle();
+
+// WebAudio helpers
+let audioCtx=null;
+function ctx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); return audioCtx; }
+function playTones(freqs,dur=2){
+  const c=ctx(), now=c.currentTime, master=c.createGain();
+  master.gain.setValueAtTime(0.0001,now); master.gain.exponentialRampToValueAtTime(0.055,now+0.025); master.gain.setValueAtTime(0.055,now+dur-0.08); master.gain.exponentialRampToValueAtTime(0.0001,now+dur); master.connect(c.destination);
+  freqs.forEach((f,i)=>{const o=c.createOscillator();o.type='sine';o.frequency.value=f;const g=c.createGain();g.gain.value=1/Math.max(1,freqs.length);o.connect(g).connect(master);o.start(now);o.stop(now+dur+0.02)});
+}
+function updateCommaAudio(){
+  const base=+$('#commaBase').value, hi=base*PYTH_COMMA_RATIO;
+  $('#commaBaseVal').textContent=base+' Hz'; $('#commaHi').textContent='纯五度链终点 '+fmt(hi,2)+' Hz'; $('#commaBeat').textContent='频差 '+fmt(hi-base,2)+' Hz';
+}
+$('#commaBase').addEventListener('input',updateCommaAudio);updateCommaAudio();
+$('#playComma').onclick=()=>{const b=+$('#commaBase').value;playTones([b,b*PYTH_COMMA_RATIO],2)};
+$('#playPure').onclick=()=>{const b=+$('#commaBase').value;playTones([b*PYTH_COMMA_RATIO],1.5)};
+$('#playBase').onclick=()=>playTones([+$('#commaBase').value],1.5);
+
+// section 2 optimization and table
+function optX(w3,wc){
+  // minimize (x-C5)^2 + w3*(4x-2400-C3)^2 + wc*(12x-8400)^2
+  return (C5 + 4*w3*(2400+C3) + 12*wc*8400)/(1+16*w3+144*wc);
+}
+function updateTemper(){
+  const w3=+$('#w3').value,wc=+$('#wc').value,x=optX(w3,wc),third=4*x-2400,closure=12*x-8400;
+  $('#w3v').textContent=w3.toFixed(1);$('#wcv').textContent=wc.toFixed(1);$('#optFifth').textContent=fmt(x,3)+'¢';$('#optThird').textContent=fmt(third,3)+'¢';$('#optClosure').textContent=signed(closure,3)+'¢';
+  const W=580,H=270,pad=42; let pts=[]; for(let xx=690;xx<=706;xx+=.08){const e5=xx-C5,e3=(4*xx-2400)-C3,ec=12*xx-8400;const E=e5*e5+w3*e3*e3+wc*ec*ec;pts.push([xx,E])}
+  const maxE=Math.max(...pts.map(p=>p[1])),minE=Math.min(...pts.map(p=>p[1]));
+  const sx=v=>pad+(v-690)/(706-690)*(W-2*pad), sy=e=>H-pad-(e-minE)/(maxE-minE||1)*(H-2*pad);
+  const path=pts.map((p,i)=>(i?'L':'M')+sx(p[0]).toFixed(1)+','+sy(p[1]).toFixed(1)).join(' ');
+  let svg=`<svg viewBox="0 0 ${W} ${H}"><line x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}" stroke="#cfc9bd"/><line x1="${pad}" y1="${pad}" x2="${pad}" y2="${H-pad}" stroke="#cfc9bd"/><path d="${path}" fill="none" stroke="#55448e" stroke-width="2.5"/>`;
+  [696.578,700,C5].forEach((v,i)=>{const col=['#a65d36','#286a54','#2d6485'][i];svg+=`<line x1="${sx(v)}" y1="${pad}" x2="${sx(v)}" y2="${H-pad}" stroke="${col}" stroke-dasharray="4 4"/><text x="${sx(v)}" y="${H-12}" text-anchor="middle" font-size="10" fill="${col}">${fmt(v,1)}</text>`});
+  svg+=`<circle cx="${sx(x)}" cy="${sy(minE)}" r="5" fill="#a65d36"/><text x="${sx(x)+8}" y="${sy(minE)-8}" font-size="10" fill="#a65d36">当前解</text><text x="${W/2}" y="${H-2}" text-anchor="middle" font-size="10" fill="#7c818a">生成五度 x（音分）</text></svg>`;
+  $('#tradeChart').innerHTML=svg;
+}
+$('#w3').addEventListener('input',updateTemper);$('#wc').addEventListener('input',updateTemper);updateTemper();
+const quarterFifth=C5-SYNTONIC/4;
+const systems=[
+ ['十二平均律',700,400,0],
+ ['纯五度链（毕达哥拉斯）',C5,4*C5-2400,PYTH_COMMA],
+ ['5-limit 纯律（局部）',C5,C3,NaN],
+ ['1/4 逗号中庸律',quarterFifth,4*quarterFifth-2400,12*quarterFifth-8400]
+];
+$('#temperTable').innerHTML=systems.map(s=>`<tr><td>${s[0]}</td><td class="mono">${fmt(s[1],3)}¢</td><td class="mono">${fmt(s[2],3)}¢</td><td class="mono">${Number.isFinite(s[3])?signed(s[3],3)+'¢':'不定义为单一闭环'}</td></tr>`).join('');
+
+// section 3 beats
+function beatData(){const f1=+$('#beatBase').value,c=+$('#beatCents').value,f2=f1*ratioFromCents(c),d=Math.abs(f2-f1);return {f1,c,f2,d}}
+function updateBeat(){
+  const {f1,c,f2,d}=beatData();$('#beatBaseV').textContent=f1+' Hz';$('#beatCentsV').textContent=signed(c,1)+'¢';$('#beatF2').textContent=fmt(f2,2)+' Hz';$('#beatHz').textContent=fmt(d,2)+' Hz';$('#beatPeriod').textContent=d<.01?'近乎静止':fmt(1/d,2)+' s';
+  const W=560,H=240,pad=34,N=260;let path='';for(let i=0;i<N;i++){const t=2*i/(N-1),a=Math.abs(Math.cos(Math.PI*d*t)),x=pad+t/2*(W-2*pad),y=H-pad-a*(H-2*pad);path+=(i?'L':'M')+x.toFixed(1)+','+y.toFixed(1)}
+  let svg=`<svg viewBox="0 0 ${W} ${H}"><line x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}" stroke="#cfc9bd"/><path d="${path}" fill="none" stroke="#a65d36" stroke-width="2.5"/><text x="${pad}" y="${H-8}" font-size="10" fill="#7c818a">0 s</text><text x="${W-pad}" y="${H-8}" text-anchor="end" font-size="10" fill="#7c818a">2 s</text><text x="${pad+4}" y="${pad+10}" font-size="10" fill="#7c818a">包络</text></svg>`;$('#beatChart').innerHTML=svg;
+}
+$('#beatBase').addEventListener('input',updateBeat);$('#beatCents').addEventListener('input',updateBeat);updateBeat();
+$('#playBeat').onclick=()=>{const d=beatData();playTones([d.f1,d.f2],3)};
+$('#setFifthErr').onclick=()=>{$('#beatCents').value=(ET5-C5).toFixed(1);updateBeat()};
+$('#setThirdErr').onclick=()=>{$('#beatCents').value=(ET3-C3).toFixed(1);updateBeat()};
+
+// section 4 roughness
+function roughPair(f1,f2,a1=1,a2=1){
+  let lo=Math.min(f1,f2),hi=Math.max(f1,f2),d=hi-lo,s=.24/(.0207*lo+18.96);let z=Math.exp(-3.5*s*d)-Math.exp(-5.75*s*d);let X=Math.pow(a1*a2,.1),Y=Math.pow((2*Math.min(a1,a2))/(a1+a2),3.11);return Math.max(0,X*.5*Y*z);
+}
+function updateRough(){
+  const f=+$('#roughBase').value;$('#roughBaseV').textContent=f+' Hz';const W=580,H=255,pad=38,N=300;let pts=[],max=0;for(let i=0;i<N;i++){let c=1200*i/(N-1),r=roughPair(f,f*ratioFromCents(c));pts.push([c,r]);max=Math.max(max,r)}
+  const sx=c=>pad+c/1200*(W-2*pad),sy=r=>H-pad-r/(max||1)*(H-2*pad);const path=pts.map((p,i)=>(i?'L':'M')+sx(p[0]).toFixed(1)+','+sy(p[1]).toFixed(1)).join(' ');
+  let svg=`<svg viewBox="0 0 ${W} ${H}"><line x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}" stroke="#cfc9bd"/><path d="${path}" fill="none" stroke="#2d6485" stroke-width="2.4"/>`;
+  [0,386.314,498.045,600,701.955,1200].forEach((c,i)=>{svg+=`<line x1="${sx(c)}" y1="${H-pad}" x2="${sx(c)}" y2="${H-pad+5}" stroke="#7c818a"/><text x="${sx(c)}" y="${H-9}" text-anchor="middle" font-size="9" fill="#7c818a">${Math.round(c)}</text>`});
+  svg+=`<text x="${W/2}" y="${H-1}" text-anchor="middle" font-size="10" fill="#7c818a">音程（音分）</text></svg>`;$('#roughChart').innerHTML=svg;
+}
+$('#roughBase').addEventListener('input',updateRough);updateRough();
+function harmonicRough(root,centsInt){
+  const f2=root*ratioFromCents(centsInt);let r=0;for(let i=1;i<=6;i++)for(let j=1;j<=6;j++)r+=roughPair(root*i,f2*j,1/i,1/j);return r;
+}
+function simplestRatio(c){
+  const target=ratioFromCents(c);let best={p:1,q:1,err:1e9};for(let q=1;q<=16;q++)for(let p=q;p<=32;p++){let rr=p/q;if(rr<1||rr>2.01)continue;let e=Math.abs(cents(rr)-c);if(e<best.err)best={p,q,err:e,cc:cents(rr)}}return best;
+}
+function updateHarmonics(){
+  const c=+$('#intervalCents').value;$('#intervalCentsV').textContent=Math.round(c)+'¢';const root=220,f2=root*ratioFromCents(c);const vals=[];for(let k=1;k<=12;k++){let a=0;if(k<=6)a+=1/k;const kk=(k*root)/f2;if(Math.abs(kk-Math.round(kk))<.055&&Math.round(kk)>=1&&Math.round(kk)<=6)a+=1/Math.round(kk);vals.push(a)}
+  const m=Math.max(...vals,1e-9);$('#harmonicBars').innerHTML=vals.map((v,i)=>`<div class="bar" style="height:${Math.max(2,130*v/m)}px;opacity:${.25+.75*v/m}"><span>${i+1}f</span></div>`).join('');
+  const r=simplestRatio(c);$('#nearestRatio').textContent=`≤16 分母最近整数比 ${r.p}:${r.q} · 误差 ${fmt(r.err,2)}¢`;$('#harmRough').textContent=`6 谐波粗糙度模型 ${fmt(harmonicRough(root,c),3)}`;
+}
+$('#intervalCents').addEventListener('input',updateHarmonics);$$('[data-int]').forEach(b=>b.onclick=()=>{$('#intervalCents').value=b.dataset.int;updateHarmonics()});updateHarmonics();
+
+// section 5 keys and scenarios
+function updateKeys(){
+  const r=+$('#rootKey').value;$('#rootKeyV').textContent=noteNames[r];$('#etKeys').innerHTML=noteNames.map((n,i)=>{let rel=(i-r+12)%12, hz=261.625565*ratioFromCents(i);return `<div class="key ${[0,4,7].includes(rel)?'hot':''}"><b>${n}</b><small>${rel*100}¢</small><small>${fmt(hz,1)} Hz</small></div>`}).join('');
+}
+$('#rootKey').addEventListener('input',updateKeys);updateKeys();
+const eET=ratioFromCents(400), eJI=5/4, dMajorEOverC=(9/8)*(9/8); // C->D 9/8, D->E 9/8 = 81/64
+const scenarios=[
+ ['C 大调里的 E','C:E = 4:5',eJI,cents(eJI/eET)],
+ ['D 大调里从 D 构造 E','C:D = 9:8；D:E = 9:8',dMajorEOverC,cents(dMajorEOverC/eET)],
+ ['十二平均律里的 E','固定第 4 格',eET,0]
+];
+$('#jiScenario').innerHTML=scenarios.map(s=>`<tr><td>${s[0]}</td><td>${s[1]}</td><td class="mono">${fmt(s[2],6)}</td><td class="mono">${signed(s[3],3)}¢</td></tr>`).join('');
+
+// section 6 verification
+const checks=[
+  ['毕达哥拉斯逗号',PYTH_COMMA,23.4600103846,1e-8,'1200·log₂((3/2)^12 / 2^7)'],
+  ['纯五度',C5,701.9550008654,1e-8,'1200·log₂(3/2)'],
+  ['纯大三度',C3,386.3137138648,1e-8,'1200·log₂(5/4)'],
+  ['辛托尼逗号',SYNTONIC,21.5062895967,1e-8,'1200·log₂(81/80)'],
+  ['平均律十二步闭环',12*700-8400,0,1e-12,'12·700 − 7·1200'],
+  ['1/4 逗号中庸律大三度',4*quarterFifth-2400,C3,1e-8,'4·(纯五度−81:80/4)−2400']
+];
+$('#verifyGrid').innerHTML=checks.map(c=>{let err=Math.abs(c[1]-c[2]),ok=err<=c[3];return `<div class="check ${ok?'':'bad'}"><div class="status">${ok?'PASS':'FAIL'}</div><div class="name">${esc(c[0])}</div><div class="detail">实算 ${fmt(c[1],10)} · 真值 ${fmt(c[2],10)} · |Δ|=${err.toExponential(2)}<br>${esc(c[4])}</div></div>`}).join('');
+</script>
+</body>
+</html>

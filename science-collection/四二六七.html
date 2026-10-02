@@ -1,0 +1,3088 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>四二六七 · 随机 3-SAT 的相变，与一台自己搭的求解器</title>
+<meta name="description" content="从零搭一台 CDCL SAT 求解器，测量随机 3-SAT 的相变阈值，并用一个答案已知的对照实验量出测量本身的误差。">
+<style>
+/* ============================================================
+ * 《四二六七》样式 —— 浅色纸感实验台
+ * 铁律（踩过坑）：基础样式必须就是最终可见态。
+ * 不用 animation + opacity:0 + forwards —— headless 下动画不推进，
+ * 元素会"存在但永久不可见"。要动效只用 transition。
+ * ============================================================ */
+
+:root {
+  --paper: #f5f3ec;
+  --card: #fffdf8;
+  --ink: #1b1a17;
+  --ink2: #45423b;
+  --muted: #6e6a60;
+  --faint: #9a958a;
+  --rule: #ddd8cc;
+  --rule2: #ebe7dc;
+  --hot: #b23a2e;
+  --hot-soft: #e8c9c3;
+  --cool: #2c6b8a;
+  --cool-soft: #c9dde7;
+  --warm: #b8801f;
+  --leaf: #4a7c59;
+  --plum: #7a4a7e;
+  --shadow: 0 1px 2px rgba(30,26,20,.05), 0 6px 18px rgba(30,26,20,.05);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  font-size: 15px;
+  line-height: 1.72;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    linear-gradient(rgba(180,172,155,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(180,172,155,.055) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 22px 90px; }
+
+/* ---------- 字体角色 ---------- */
+.serif {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+               "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", serif;
+}
+.mono {
+  font-family: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas,
+               "Liberation Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ---------- 页头 ---------- */
+header.top { padding: 62px 0 30px; border-bottom: 1px solid var(--rule); }
+.kicker {
+  font-size: 11.5px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--faint); margin-bottom: 20px;
+}
+h1.title {
+  font-size: clamp(52px, 9vw, 88px);
+  line-height: .98;
+  margin: 0 0 6px;
+  letter-spacing: .06em;
+  font-weight: 500;
+}
+h1.title .dot { color: var(--hot); }
+.subtitle {
+  font-size: clamp(16px, 2.4vw, 20px);
+  color: var(--ink2); margin: 0 0 26px; font-weight: 400;
+}
+.lede {
+  max-width: 760px; color: var(--ink2); font-size: 16px; margin: 0 0 8px;
+}
+.lede b { color: var(--ink); font-weight: 600; }
+.lede code, .small code {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: .92em; background: var(--rule2); padding: 1px 5px; border-radius: 3px;
+}
+
+/* ---------- KPI ---------- */
+#kpis {
+  display: grid; gap: 12px; margin: 30px 0 0;
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (max-width: 800px) { #kpis { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 460px) { #kpis { grid-template-columns: 1fr; } }
+.kpi {
+  background: var(--card); border: 1px solid var(--rule);
+  border-radius: 9px; padding: 15px 16px 14px; box-shadow: var(--shadow);
+}
+.kpi .k-label {
+  font-size: 11.5px; color: var(--muted); letter-spacing: .04em;
+  margin-bottom: 7px; line-height: 1.45;
+}
+.kpi .k-val {
+  font-size: 27px; line-height: 1.1; font-weight: 600; letter-spacing: -.01em;
+}
+.kpi .k-val .u { font-size: 14px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+.kpi .k-sub { font-size: 12px; color: var(--faint); margin-top: 6px; line-height: 1.5; }
+.kpi.hot .k-val { color: var(--hot); }
+.kpi.cool .k-val { color: var(--cool); }
+
+/* ---------- 章节 ---------- */
+section { margin: 62px 0 0; }
+.sec-head { display: flex; align-items: baseline; gap: 14px; border-bottom: 1px solid var(--rule); padding-bottom: 11px; margin-bottom: 22px; }
+.sec-num {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 12px; color: var(--hot); border: 1px solid var(--hot-soft);
+  background: #fbf0ee; border-radius: 4px; padding: 2px 8px; flex: none;
+}
+h2 {
+  font-size: clamp(22px, 3.2vw, 29px); margin: 0; font-weight: 500;
+  letter-spacing: .02em;
+}
+h3 {
+  font-size: 16px; margin: 30px 0 10px; font-weight: 600; color: var(--ink);
+}
+h3:first-child { margin-top: 0; }
+p { margin: 0 0 13px; color: var(--ink2); }
+ul, ol { margin: 0 0 14px; padding-left: 22px; color: var(--ink2); }
+li { margin-bottom: 6px; }
+.small { font-size: 13px; color: var(--muted); }
+.mono-inline { font-family: "JetBrains Mono", Consolas, monospace; font-size: .93em; }
+
+/* ---------- 面板 ---------- */
+.panel {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+  padding: 20px 22px; box-shadow: var(--shadow); margin: 18px 0;
+}
+.panel.tight { padding: 15px 17px; }
+.panel-title {
+  font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--faint); margin-bottom: 14px;
+}
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+/* ---------- 控件 ---------- */
+.ctl-row { display: flex; flex-wrap: wrap; gap: 14px 20px; align-items: flex-end; }
+.ctl { display: flex; flex-direction: column; gap: 5px; }
+.ctl label { font-size: 12px; color: var(--muted); letter-spacing: .03em; }
+.ctl .val { font-family: "JetBrains Mono", Consolas, monospace; font-size: 13px; color: var(--ink); }
+
+input[type=range] {
+  -webkit-appearance: none; appearance: none; width: 172px; height: 22px;
+  background: transparent; cursor: pointer;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height: 3px; background: var(--rule); border-radius: 2px;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 15px; height: 15px;
+  border-radius: 50%; background: var(--hot); margin-top: -6px;
+  border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--hot);
+}
+input[type=range]::-moz-range-track { height: 3px; background: var(--rule); border-radius: 2px; }
+input[type=range]::-moz-range-thumb {
+  width: 13px; height: 13px; border-radius: 50%; background: var(--hot);
+  border: 2px solid var(--card);
+}
+
+button {
+  font-family: inherit; font-size: 13.5px; color: var(--ink);
+  background: var(--card); border: 1px solid var(--rule);
+  border-radius: 7px; padding: 10px 15px; cursor: pointer;
+  min-height: 44px; transition: background .14s ease, border-color .14s ease;
+}
+button:hover { background: #f3efe4; border-color: var(--faint); }
+button:active { background: #ece7d9; }
+button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+button.primary:hover { background: #33302a; }
+button.ghost { background: transparent; }
+button:disabled { opacity: .42; cursor: default; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 4px; }
+
+select, input[type=text], textarea {
+  font-family: "JetBrains Mono", Consolas, monospace; font-size: 13px;
+  color: var(--ink); background: var(--card);
+  border: 1px solid var(--rule); border-radius: 6px;
+  padding: 9px 10px; min-height: 44px;
+}
+textarea { width: 100%; min-height: 92px; resize: vertical; line-height: 1.6; }
+
+/* ---------- 统计条 ---------- */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 9px; }
+.stat { background: #faf8f1; border: 1px solid var(--rule2); border-radius: 7px; padding: 9px 11px; }
+.stat .s-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; white-space: nowrap; }
+.stat .s-val { font-family: "JetBrains Mono", Consolas, monospace; font-size: 18px; font-weight: 600; }
+.stat.hot .s-val { color: var(--hot); }
+.stat.cool .s-val { color: var(--cool); }
+.stat.leaf .s-val { color: var(--leaf); }
+
+/* ---------- 赋值轨道 ---------- */
+#trail {
+  display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px;
+  max-height: 210px; overflow-y: auto; padding: 2px;
+}
+.cell {
+  width: 26px; height: 26px; border-radius: 4px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "JetBrains Mono", Consolas, monospace; font-size: 10px;
+  background: #f2efe6; color: var(--faint); border: 1px solid transparent;
+}
+.cell.t { background: #cfe3ec; color: #1d4a61; border-color: #a9cad9; }
+.cell.f { background: #f0d9d4; color: #7d2b22; border-color: #dcb8b1; }
+.cell.lvl0 { box-shadow: inset 0 0 0 1px #b9b2a2; }
+.cell.dec { border-color: var(--ink); border-width: 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 11px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 13px; height: 13px; border-radius: 3px; flex: none; border: 1px solid var(--rule); }
+
+/* ---------- 表格 ---------- */
+.tw { overflow-x: auto; max-width: 100%; margin: 14px 0; }
+table {
+  border-collapse: collapse; width: 100%; font-size: 13px;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+th, td { text-align: right; padding: 8px 11px; border-bottom: 1px solid var(--rule2); white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; font-size: 11.5px; letter-spacing: .04em; border-bottom: 1px solid var(--rule); }
+td:first-child, th:first-child { text-align: left; }
+tbody tr:hover { background: #faf8f1; }
+td.ok { color: var(--leaf); }
+td.bad { color: var(--hot); }
+
+/* ---------- 子句展示 ---------- */
+#clauses { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; max-height: 200px; overflow-y: auto; }
+.cl {
+  font-family: "JetBrains Mono", Consolas, monospace; font-size: 11.5px;
+  background: #f5f2e9; border: 1px solid var(--rule2); border-radius: 4px;
+  padding: 3px 7px; color: var(--ink2); white-space: nowrap;
+}
+.cl.sat { background: #dcece2; border-color: #b6d6c2; color: #2f5a3f; }
+.cl.unsat { background: #f6dcd7; border-color: #e2b7ae; color: #8a2f24; }
+.cl.hi { border-color: var(--hot); box-shadow: 0 0 0 1px var(--hot); }
+
+/* ---------- 解空间网格 ---------- */
+#sols { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.sol { display: flex; gap: 1px; }
+.sol i {
+  width: 9px; height: 15px; border-radius: 1px; display: block; flex: none;
+  background: #eae6da;
+}
+.sol i.on { background: var(--cool); }
+
+/* ---------- 图表 ---------- */
+.chart { width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .gl { stroke: var(--rule2); stroke-width: 1; }
+.chart .ax { stroke: var(--rule); stroke-width: 1; }
+.chart .tick { fill: var(--faint); font-size: 10.5px; font-family: "JetBrains Mono", Consolas, monospace; }
+.chart .axlab { fill: var(--muted); font-size: 11.5px; }
+.chart .ln { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .pt { stroke: var(--card); stroke-width: 1.5; }
+.chart .mark { stroke: var(--hot); stroke-width: 1.4; stroke-dasharray: 4 4; }
+.chart .marklab { fill: var(--hot); font-size: 11px; font-family: "JetBrains Mono", Consolas, monospace; }
+.chart .band { fill: var(--cool); opacity: .12; stroke: none; }
+.chart .caption { fill: var(--muted); font-size: 12px; }
+.chartkey { display: flex; flex-wrap: wrap; gap: 16px; margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+.chartkey span { display: inline-flex; align-items: center; gap: 6px; }
+.chartkey i { width: 16px; height: 3px; border-radius: 2px; display: block; flex: none; }
+
+/* ---------- 条形图（注意 display:block —— 行内元素会忽略 width/height） ---------- */
+.bar-row { display: grid; grid-template-columns: 118px 1fr 74px; gap: 10px; align-items: center; margin-bottom: 7px; }
+.bar-row .bl { font-size: 12.5px; color: var(--ink2); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { background: #f1eee4; border-radius: 3px; height: 17px; position: relative; overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--cool); }
+.bar-fill.hot { background: var(--hot); }
+.bar-fill.warm { background: var(--warm); }
+.bar-row .bv { font-family: "JetBrains Mono", Consolas, monospace; font-size: 12.5px; color: var(--ink2); }
+
+/* ---------- 结论块 ---------- */
+.finding {
+  border-left: 3px solid var(--hot); background: #fbf6f0;
+  padding: 13px 17px; border-radius: 0 7px 7px 0; margin: 16px 0;
+}
+.finding .f-t { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--hot); margin-bottom: 5px; }
+.finding p { margin: 0; color: var(--ink); font-size: 14.5px; }
+.finding.cool { border-left-color: var(--cool); background: #f2f7fa; }
+.finding.cool .f-t { color: var(--cool); }
+.finding.leaf { border-left-color: var(--leaf); background: #f2f8f4; }
+.finding.leaf .f-t { color: var(--leaf); }
+
+.note {
+  font-size: 12.5px; color: var(--muted); border-top: 1px dotted var(--rule);
+  padding-top: 10px; margin-top: 14px;
+}
+
+/* ---------- 页脚 ---------- */
+footer {
+  margin-top: 72px; padding-top: 22px; border-top: 1px solid var(--rule);
+  font-size: 12.5px; color: var(--faint); line-height: 1.85;
+}
+footer b { color: var(--muted); font-weight: 600; }
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 700px) {
+  .wrap { padding: 0 15px 60px; }
+  header.top { padding: 40px 0 22px; }
+  .grid2, .grid3 { grid-template-columns: 1fr; }
+  .panel { padding: 16px 15px; }
+  section { margin-top: 46px; }
+  .sec-head { flex-wrap: wrap; gap: 8px 12px; }
+  input[type=range] { width: 140px; }
+  .bar-row { grid-template-columns: 84px 1fr 62px; gap: 7px; }
+  /* 宽表在窄屏放开折行，否则 nowrap 会把文档顶出横向滚动条 */
+  table th, table td { white-space: normal; }
+  table td.mono, table th.mono { white-space: nowrap; }
+  .kpi .k-val { font-size: 23px; }
+}
+@media (max-width: 400px) {
+  .cell { width: 22px; height: 22px; font-size: 9px; }
+  h1.title { letter-spacing: .02em; }
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="kicker">一台自己搭的求解器 · 一个别人算不出的数</div>
+  <h1 class="title serif">四二六七</h1>
+  <p class="subtitle serif">随机 3-SAT 的相变，与它身边那道最陡的悬崖</p>
+  <p class="lede">
+    随机 3-SAT 只有<strong>一个旋钮</strong>：子句数 m 与变量数 n 之比 <code>r = m/n</code>。
+    把 r 从小往大拧，同一类公式会从"几乎总可满足"翻到"几乎总不可满足"。
+    翻面的位置落在 <b>4.2667…</b> 附近——而就在那一点上，求解它变得最贵。
+    本页从零搭了一台 CDCL 求解器，用它把这条曲线亲自量了一遍，
+    顺便把"测量本身有多可信"也一并量了。
+  </p>
+  <div id="kpis"></div>
+</header>
+
+<main>
+
+<!-- ═══════════════ 1 ═══════════════ -->
+<section id="sec-problem">
+  <div class="sec-head">
+    <span class="sec-num">01</span>
+    <h2 class="serif">一个旋钮，两个世界</h2>
+  </div>
+
+  <p>
+    一个 <span class="mono-inline">3-CNF</span> 公式是若干条子句的合取，每条子句里恰好三个文字（变量或它的否定），
+    例如 <span class="mono-inline">(x₁ ∨ ¬x₄ ∨ x₇)</span>。它可满足，意思是存在一组 0/1 赋值让每条子句都至少有一个文字为真。
+    随机生成的办法很朴素：每条子句随机挑 3 个<em>互不相同</em>的变量，每个独立地以 1/2 概率取反。
+  </p>
+  <p>
+    这个模型里没有任何可调的结构——没有社区、没有隐藏规律、没有难度梯度。
+    唯一的自由度就是子句的数量。而恰恰是这个最贫瘠的模型，给出了计算复杂性里最锋利的一条经验边界。
+  </p>
+
+  <div class="panel">
+    <div class="panel-title">自己造一个实例</div>
+    <div class="ctl-row">
+      <div class="ctl">
+        <label for="pv-n">变量数 n</label>
+        <input type="range" id="pv-n" min="6" max="20" step="1" value="12">
+        <span class="val" id="pv-n-v">12</span>
+      </div>
+      <div class="ctl">
+        <label for="pv-r">比例 r = m/n</label>
+        <input type="range" id="pv-r" min="1" max="8" step="0.05" value="4.267">
+        <span class="val" id="pv-r-v">4.267</span>
+      </div>
+      <div class="ctl">
+        <label>子句数 m</label>
+        <span class="val" id="pv-m">51</span>
+      </div>
+      <div class="ctl">
+        <button class="primary" id="pv-gen">重新生成</button>
+      </div>
+    </div>
+    <div class="note" style="border-top:none;margin-top:16px;padding-top:0">
+      拖动 r 时子句列表会实时重生成。注意 r 越过 4.267 前后，"可满足"这个判断本身就开始变难——
+      下一节会让你亲眼看见它难在哪里。
+    </div>
+    <div id="clauses" style="margin-top:14px"></div>
+    <div class="legend">
+      <span><i class="sw" style="background:#dcece2;border-color:#b6d6c2"></i>在当前赋值下已满足</span>
+      <span><i class="sw" style="background:#f6dcd7;border-color:#e2b7ae"></i>未满足</span>
+    </div>
+    <div class="note" id="pv-verdict"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">解空间 · 穷举所有满足赋值（n ≤ 16 时）</div>
+    <div id="solinfo" class="small" style="margin-bottom:4px"></div>
+    <div id="sols"></div>
+    <div class="note" id="solnote"></div>
+  </div>
+
+  <div class="finding">
+    <div class="f-t">这一节要说明的</div>
+    <p>
+      r 小的时候解多得像空气，随手一猜就中；r 大的时候一个解都没有，而且"没有"这件事比"有"难证明得多。
+      两个世界之间的那层膜，薄得不像话。
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════ 2 ═══════════════ -->
+<section id="sec-solver">
+  <div class="sec-head">
+    <span class="sec-num">02</span>
+    <h2 class="serif">从零搭一台 CDCL 求解器</h2>
+  </div>
+
+  <p>
+    现代 SAT 求解器不是"猜遍所有可能"，而是三件事的组合：
+    <b>单元传播</b>（一条子句只剩一个未定文字时，它被迫取真）、
+    <b>冲突分析</b>（从矛盾出发，反推出导致矛盾的最小前提，把它作为新子句学下来）、
+    <b>VSIDS</b>（谁参与冲突多，下次优先猜谁）。
+    下面这台是完整实现：两观察文字、1UIP 学习、相位保存、Luby 重启、按 LBD 删句。
+  </p>
+  <p>
+    它可以逐微步播放。每一步要么是"传播到底后做一个猜测"，要么是"撞上冲突、学一条子句、回跳"。
+  </p>
+
+  <div class="panel">
+    <div class="panel-title">控制台</div>
+    <div class="ctl-row">
+      <div class="ctl">
+        <label for="sv-n">变量数 n</label>
+        <input type="range" id="sv-n" min="20" max="120" step="10" value="60">
+        <span class="val" id="sv-n-v">60</span>
+      </div>
+      <div class="ctl">
+        <label for="sv-r">比例 r</label>
+        <input type="range" id="sv-r" min="2" max="6" step="0.05" value="4.267">
+        <span class="val" id="sv-r-v">4.267</span>
+      </div>
+      <div class="ctl">
+        <label for="sv-speed">播放间隔</label>
+        <input type="range" id="sv-speed" min="0" max="180" step="10" value="60">
+        <span class="val" id="sv-speed-v">60 ms</span>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="primary" id="sv-step">单步</button>
+      <button id="sv-run">连续播放</button>
+      <button id="sv-solve">直接跑完</button>
+      <button class="ghost" id="sv-reset">重置</button>
+    </div>
+    <div class="stats" id="stats" style="margin-top:16px"></div>
+    <div class="note" id="sv-verdict"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">赋值轨道 · 每个格子是一个变量</div>
+    <div id="trail"></div>
+    <div class="legend">
+      <span><i class="sw" style="background:#f2efe6;border-color:#ddd8cc"></i>未赋值</span>
+      <span><i class="sw" style="background:#cfe3ec;border-color:#a9cad9"></i>取真</span>
+      <span><i class="sw" style="background:#f0d9d4;border-color:#dcb8b1"></i>取假</span>
+      <span><i class="sw" style="background:#fffdf8;border-color:#1b1a17;border-width:2px"></i>本层的猜测（决策变量）</span>
+      <span><i class="sw" style="background:#fffdf8;border-color:#b9b2a2"></i>第 0 层：被逼出来的、不可撤销</span>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <div class="panel-title">最近学到的子句</div>
+      <div id="learnt" class="small"></div>
+      <div class="note">
+        每条都是被原公式<em>逻辑蕴含</em>的——它没有排除任何原本的解。学习的作用不是"猜到答案"，
+        而是把搜索已经付过的代价固化成一条永久有效的约束，让同一个坑不用再踩第二次。
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">最近一次冲突的前因</div>
+      <div id="conflict" class="small"></div>
+      <div class="note">
+        冲突分析的输入是"哪几条子句联手把当前赋值逼到了矛盾"，输出是那条被学下来的子句。
+        参与冲突的变量会拿到更高的 VSIDS 分数。
+      </div>
+    </div>
+  </div>
+
+  <div class="finding cool">
+    <div class="f-t">这一节要说明的</div>
+    <p>
+      求解器没有任何"理解"公式的能力。它只是在两条规则之间来回：被逼的立刻认，
+      撞墙了就记住墙的形状然后退一步。整台机器只有二十来行核心逻辑，
+      但它的行为会随 r 发生质变——这正是下一节要量的事。
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════ 3 ═══════════════ -->
+<section id="sec-phase">
+  <div class="sec-head">
+    <span class="sec-num">03</span>
+    <h2 class="serif">相变：那条曲线有多陡</h2>
+  </div>
+
+  <p>
+    横轴是比例 r，纵轴是随机实例中<em>可满足</em>的比例 P(SAT)。
+    每个点跑数百个独立实例。如果 r 只是一个无关紧要的参数，这条线应该缓缓下滑；
+    实测是：它在很窄的一段里从 1 掉到 0。
+  </p>
+
+  <div class="panel">
+    <div class="panel-title">3-SAT：不同 n 下的 P(SAT)</div>
+    <div id="chart-phase" class="chart"></div>
+    <div class="chartkey" id="key-phase"></div>
+    <div class="note">
+      虚线是公认的阈值 4.2667（1RSB 空腔法给出，Mézard–Parisi–Zecchina 2002；Mertens–Mézard–Zecchina 2006 给出精确数值）。
+      对 k=3，这个值的<em>严格证明尚未闭合</em>——Ding–Sly–Sun 只对"k ≥ k₀"完成了证明。所以它是公认值，不是定理。
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">交点随 n 漂移</div>
+    <div class="tw"><table id="tbl-crossing"></table></div>
+    <div id="scale-fit" class="small"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">对照组：2-SAT，阈值精确等于 1（可严格证明）</div>
+    <div id="chart-phase2" class="chart"></div>
+    <div class="chartkey" id="key-phase2"></div>
+    <div class="note" id="twosat-note"></div>
+  </div>
+
+  <div class="finding hot">
+    <div class="f-t">本页最反直觉的一个数</div>
+    <p id="finding-twosat"></p>
+  </div>
+
+  <p>
+    这不是测量错误，是<strong>有限尺寸效应</strong>。任何相变在有限的 n 上都"糊"成一段宽度为 w(n) 的过渡带，
+    你测到的交点是这条带的中线，它只有在 n→∞ 时才落到真实阈值上。
+    对 2-SAT，w(n) 宽得离谱——理论结果是 ∼ n<sup>−1/3</sup>；对 3-SAT 窄得多。
+    所以"我测到 2-SAT 阈值是 1.26"这句话是对的，同时"2-SAT 阈值是 1"这句话也是对的，两者不冲突。
+  </p>
+</section>
+
+<!-- ═══════════════ 4 ═══════════════ -->
+<section id="sec-peak">
+  <div class="sec-head">
+    <span class="sec-num">04</span>
+    <h2 class="serif">尖峰：容易 · 难 · 容易</h2>
+  </div>
+
+  <p>
+    换一个纵轴：求解器要花多大力气。这里用判定次数（做过的猜测次数）作代理，
+    取每个 r 上数百个实例的中位数。3-SAT 上是一座山，峰正压在相变点上。
+    但把 2-SAT 放到同一张图里，事情就变得有意思了——<em>同一个相变，却没有山</em>。
+  </p>
+
+  <div class="panel">
+    <div class="panel-title">判定次数 vs 比例 r（纵轴对数刻度）</div>
+    <div id="chart-peak" class="chart"></div>
+    <div class="chartkey" id="key-peak"></div>
+    <div class="note" id="peak-note"></div>
+  </div>
+
+  <div class="finding" style="border-left-color:#b8801f;background:#fbf7ee">
+    <div class="f-t" style="color:#b8801f">峰是算法的属性，不是问题的属性</div>
+    <p>
+      我原本以为"难度在相变点上达到峰值"是相变的普遍后果。数据说不是。
+      3-SAT 有那座山，是因为<em>我们没有多项式算法</em>——求解器只能真的去搜，而搜索的代价在临界点上最高。
+      2-SAT 有同一个相变、同样锋利的概率曲线，可一旦换用蕴涵图 SCC（线性时间），峰当场消失；
+      连朴素 DPLL 都因为单元传播太有效而看不到峰。
+      <b>相变是公式的性质，尖峰是"算法不够强"的性质。</b>这条曲线的形状，量的是我们离多项式算法有多远。
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════ 5 ═══════════════ -->
+<section id="sec-frozen">
+  <div class="sec-head">
+    <span class="sec-num">05</span>
+    <h2 class="serif">冻结：解被一根根钉死</h2>
+  </div>
+
+  <p>
+    再换一个视角看同一个转变。一个变量叫<b>冻结</b>，如果它在公式的<em>所有</em>解里取值都相同。
+    冻结比例从 0 涨到 1，意味着解空间从"一团自由的云"收缩成"一个孤零零的点"。
+  </p>
+
+  <div class="panel">
+    <div class="panel-title">冻结变量比例 vs r（只统计可满足实例）</div>
+    <div id="chart-frozen" class="chart"></div>
+    <div class="chartkey" id="key-frozen"></div>
+    <div class="note" id="frozen-note"></div>
+  </div>
+
+  <p>
+    这条曲线的终点是断的，不是画漏了：r 一旦越过阈值，<em>一个解都没有</em>，
+    "在所有解里取值相同"就成了空话。所以这一节只在阈值左侧有定义——
+    这本身就是相变的另一种说法。
+  </p>
+</section>
+
+<!-- ═══════════════ 6 ═══════════════ -->
+<section id="sec-cost">
+  <div class="sec-head">
+    <span class="sec-num">06</span>
+    <h2 class="serif">学习到底值多少钱</h2>
+  </div>
+
+  <p>
+    前面说"冲突分析学到的子句"是关键。这句话可以量化：把学习关掉，
+    其余（观察文字、VSIDS、重启、传播）全部保留，跑同一批实例，看判定次数差多少。
+  </p>
+
+  <div class="panel">
+    <div class="panel-title">判定次数中位数：完整 CDCL vs 关掉学习（r = 4.5）</div>
+    <div id="chart-learn" class="chart"></div>
+    <div class="chartkey" id="key-learn"></div>
+    <div class="note" id="learn-note"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">组件消融（n = 100，r = 4.5，同一批 40 个实例）</div>
+    <div class="tw"><table id="tbl-ablation"></table></div>
+    <div class="note" id="abl-note"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">证明一个公式无解，要付多少代价</div>
+    <div id="chart-proof" class="chart"></div>
+    <div class="note" id="proof-note"></div>
+  </div>
+
+  <div class="finding leaf">
+    <div class="f-t">诚实的结论</div>
+    <p id="finding-learn"></p>
+  </div>
+</section>
+
+<!-- ═══════════════ 7 ═══════════════ -->
+<section id="sec-method">
+  <div class="sec-head">
+    <span class="sec-num">07</span>
+    <h2 class="serif">这些数字凭什么可信</h2>
+  </div>
+
+  <p>
+    本页所有结论都出自自己写的代码，所以"可信度"这件事必须单独交代——不能只靠"跑通了没报错"。
+    模型层是三套<em>互相独立</em>的实现：
+  </p>
+  <ul>
+    <li><b>暴力枚举</b>：把 2<sup>n</sup> 个赋值全试一遍。慢，但没有任何可以搞错的地方。</li>
+    <li><b>朴素 DPLL</b>：递归 + 全扫描单元传播。与 CDCL 共享的代码为零。</li>
+    <li><b>2-SAT 蕴涵图 SCC</b>：Tarjan 线性算法，与"搜索"是两种完全不同的数学。</li>
+  </ul>
+  <p>
+    三者在成千上万个随机实例上逐例对账。CDCL 报 SAT 时，模型还要被<em>逐条子句验算</em>；
+    它每学到一条子句，也要验证这条子句被原公式的所有解满足（对小子句穷举全部解来验）。
+    求解器还必须在六种配置下给出完全相同的答案——否则消融实验测的就是 bug 而不是算法。
+  </p>
+
+  <div class="panel">
+    <div class="panel-title">自检与验证的实际规模</div>
+    <div class="stats" id="verify-stats"></div>
+  </div>
+
+  <h3>必须说清楚的边界</h3>
+  <ul>
+    <li>
+      <b>n 只做到 200。</b>再往上单次求解动辄数秒到数十秒，扫描量撑不住。
+      所以本页测到的交点全部<em>高于</em> 4.2667，而且越大的 n 越靠近它——这是趋势，不是收敛证明。
+    </li>
+    <li>
+      <b>"未判定"绝不混进"不可满足"。</b>求解器有冲突预算，超预算的实例单独统计并在图上标出。
+      把超时当成 UNSAT 是这类实验里最容易犯、也最难被发现的错误。
+    </li>
+    <li>
+      <b>4.2667 不是定理。</b>它是 1RSB 空腔法的公认值；k=3 的严格证明至今未闭合。
+      本页把它当"参照线"，不当"标准答案"。
+    </li>
+    <li>
+      <b>交点的误差是有限的。</b>每个点用数百个实例，交点由线性插值得到，
+      真实的统计不确定度在 ±0.02 量级。表中给出了实例数，可以自己判断。
+    </li>
+    <li>
+      <b>JS 比 C 慢得多。</b>这台求解器在 n=200、r≈4.27 上中位耗时约 250ms，
+      同规模下 MiniSat 量级是十几毫秒。本页所有"难"的判断都是相对的，不是绝对的。
+    </li>
+  </ul>
+
+  <h3>还没做的事</h3>
+  <p>
+    相变点附近的解空间结构（聚簇、凝聚、1RSB 复本对称破缺）这一层完全没有触及——
+    那需要按解的数量加权采样，是另一套机器。另外，n 再大两三个数量级才有可能
+    把 4.2667 逼到一个真正有说服力的精度。
+  </p>
+</section>
+
+</main>
+
+<footer>
+  <p>
+    <b>模型</b>　随机 k-SAT（每条子句 k 个互异变量，各自以 1/2 取反）。
+    求解器：两观察文字 + 1UIP 冲突分析 + VSIDS + 相位保存 + Luby 重启 + LBD 删句。
+    所有实例由固定种子的 splitmix32 派生，逐例可复现。
+  </p>
+  <p>
+    <b>参照</b>　阈值 4.2667 出自 1RSB 空腔法（Mézard–Parisi–Zecchina 2002；Mertens–Mézard–Zecchina 2006）；
+    大 k 的严格证明见 Ding–Sly–Sun；2-SAT 阈值 = 1 及标度窗口 ∼ n<sup>−1/3</sup> 见 Bollobás–Borgs–Chayes–Kim–Wilson 2001。
+    易-难-易现象见 Mitchell–Selman–Levesque 1992。
+  </p>
+</footer>
+
+</div>
+<script>window.__SAT_DATA__ = {results: 
+{"meta":{"generated":"2026-09-28T05:19:57.072Z","seed":20260928,"node":"v22.22.2","quick":false,"elapsedSec":4.909},"E1":{"title":"2-SAT 相变（对照组，理论阈值 = 1）","curves":[{"n":30,"points":[{"r":0.5,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.55,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.6,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.65,"p":0.995,"n":400,"sat":398,"lo":0.9819547100278873,"hi":0.9986277757784289},{"r":0.7,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.75,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.8,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.85,"p":0.9925,"n":400,"sat":397,"lo":0.9781838919722998,"hi":0.9974461570370148},{"r":0.9,"p":0.99,"n":400,"sat":396,"lo":0.9745730330055918,"hi":0.9961045792067212},{"r":0.95,"p":0.975,"n":400,"sat":390,"lo":0.9545979351700657,"hi":0.9863650562602375},{"r":1,"p":0.9825,"n":400,"sat":393,"lo":0.9643224844820973,"hi":0.9914978173392109},{"r":1.05,"p":0.945,"n":400,"sat":378,"lo":0.9181319717303434,"hi":0.9634017781359406},{"r":1.1,"p":0.96,"n":400,"sat":384,"lo":0.9360172183709143,"hi":0.9752311522773793},{"r":1.15,"p":0.9525,"n":400,"sat":381,"lo":0.9270078923649577,"hi":0.9693831678923314},{"r":1.2,"p":0.905,"n":400,"sat":362,"lo":0.8722909782843385,"hi":0.9300037828299202},{"r":1.25,"p":0.875,"n":400,"sat":350,"lo":0.8389801748486139,"hi":0.9038853447016257},{"r":1.3,"p":0.86,"n":400,"sat":344,"lo":0.8225600194276628,"hi":0.8905908793405672},{"r":1.35,"p":0.7675,"n":400,"sat":307,"lo":0.7236764828773743,"hi":0.8062342544017964},{"r":1.4,"p":0.6925,"n":400,"sat":277,"lo":0.6456242765711028,"hi":0.7357133567980202},{"r":1.45,"p":0.625,"n":400,"sat":250,"lo":0.576578102393425,"hi":0.6710437374566548},{"r":1.5,"p":0.6275,"n":400,"sat":251,"lo":0.5791173246752144,"hi":0.673456951971867},{"r":1.55,"p":0.5075,"n":400,"sat":203,"lo":0.458667706127959,"hi":0.5561896042630459},{"r":1.6,"p":0.535,"n":400,"sat":214,"lo":0.4860191592087707,"hi":0.5833149559492518},{"r":1.65,"p":0.405,"n":400,"sat":162,"lo":0.35801711355168203,"hi":0.45379028816225736}],"cross":1.6134615384615385},{"n":60,"points":[{"r":0.5,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.55,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.6,"p":0.995,"n":400,"sat":398,"lo":0.9819547100278873,"hi":0.9986277757784289},{"r":0.65,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.7,"p":0.995,"n":400,"sat":398,"lo":0.9819547100278873,"hi":0.9986277757784289},{"r":0.75,"p":0.995,"n":400,"sat":398,"lo":0.9819547100278873,"hi":0.9986277757784289},{"r":0.8,"p":0.9925,"n":400,"sat":397,"lo":0.9781838919722998,"hi":0.9974461570370148},{"r":0.85,"p":0.99,"n":400,"sat":396,"lo":0.9745730330055918,"hi":0.9961045792067212},{"r":0.9,"p":0.975,"n":400,"sat":390,"lo":0.9545979351700657,"hi":0.9863650562602375},{"r":0.95,"p":0.9725,"n":400,"sat":389,"lo":0.951434030711826,"hi":0.984576523921476},{"r":1,"p":0.965,"n":400,"sat":386,"lo":0.942114344143788,"hi":0.9790389000985089},{"r":1.05,"p":0.94,"n":400,"sat":376,"lo":0.9122765567969421,"hi":0.9593523194753389},{"r":1.1,"p":0.9275,"n":400,"sat":371,"lo":0.8978168807373348,"hi":0.9490498115499382},{"r":1.15,"p":0.915,"n":400,"sat":366,"lo":0.8835671614656891,"hi":0.938537346836576},{"r":1.2,"p":0.825,"n":400,"sat":330,"lo":0.7847204162241496,"hi":0.859096367386058},{"r":1.25,"p":0.805,"n":400,"sat":322,"lo":0.7633473269466908,"hi":0.8408499622875041},{"r":1.3,"p":0.73,"n":400,"sat":292,"lo":0.6844562579830316,"hi":0.7711679273411154},{"r":1.35,"p":0.6425,"n":400,"sat":257,"lo":0.5943808773044147,"hi":0.6879080201246762},{"r":1.4,"p":0.605,"n":400,"sat":242,"lo":0.5563117510251911,"hi":0.6516905944488758},{"r":1.45,"p":0.4775,"n":400,"sat":191,"lo":0.4289965818287492,"hi":0.5264314869982364},{"r":1.5,"p":0.41,"n":400,"sat":164,"lo":0.36287863529353875,"hi":0.4588336400144037},{"r":1.55,"p":0.3625,"n":400,"sat":145,"lo":0.31690358933984025,"hi":0.4107123868250719},{"r":1.6,"p":0.26,"n":400,"sat":104,"lo":0.2194409481918117,"hi":0.30512511929603503},{"r":1.65,"p":0.2425,"n":400,"sat":97,"lo":0.2030757339434459,"hi":0.28682327596538965}],"cross":1.4411764705882353},{"n":120,"points":[{"r":0.5,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.55,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.6,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.65,"p":0.9975,"n":400,"sat":399,"lo":0.9859763590327523,"hi":0.9995585635705656},{"r":0.7,"p":0.9975,"n":400,"sat":399,"lo":0.9859763590327523,"hi":0.9995585635705656},{"r":0.75,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.8,"p":0.9975,"n":400,"sat":399,"lo":0.9859763590327523,"hi":0.9995585635705656},{"r":0.85,"p":0.995,"n":400,"sat":398,"lo":0.9819547100278873,"hi":0.9986277757784289},{"r":0.9,"p":0.98,"n":400,"sat":392,"lo":0.9610361296222221,"hi":0.9898317354020845},{"r":0.95,"p":0.97,"n":400,"sat":388,"lo":0.9483009668703324,"hi":0.9827571509659678},{"r":1,"p":0.95,"n":400,"sat":380,"lo":0.9240357990869275,"hi":0.9674028243733599},{"r":1.05,"p":0.96,"n":400,"sat":384,"lo":0.9360172183709143,"hi":0.9752311522773793},{"r":1.1,"p":0.8975,"n":400,"sat":359,"lo":0.8638958898314886,"hi":0.9235415608917652},{"r":1.15,"p":0.81,"n":400,"sat":324,"lo":0.7686754184345865,"hi":0.8454267443936117},{"r":1.2,"p":0.76,"n":400,"sat":304,"lo":0.7157987516945628,"hi":0.7992546751936034},{"r":1.25,"p":0.67,"n":400,"sat":268,"lo":0.6224932007707696,"hi":0.7142725014253389},{"r":1.3,"p":0.61,"n":400,"sat":244,"lo":0.5613705019046327,"hi":0.6565367171634375},{"r":1.35,"p":0.5,"n":400,"sat":200,"lo":0.4512336165999552,"hi":0.5487663834000448},{"r":1.4,"p":0.3925,"n":400,"sat":157,"lo":0.34588569643429457,"hi":0.44115952129463676},{"r":1.45,"p":0.285,"n":400,"sat":114,"lo":0.24297004043196901,"hi":0.33112039502589363},{"r":1.5,"p":0.215,"n":400,"sat":86,"lo":0.17755084865785345,"hi":0.25787135648396453},{"r":1.55,"p":0.165,"n":400,"sat":66,"lo":0.13184448183586026,"hi":0.2045289873659258},{"r":1.6,"p":0.0925,"n":400,"sat":37,"lo":0.06785354688500786,"hi":0.12489925520373191},{"r":1.65,"p":0.045,"n":400,"sat":18,"lo":0.028651223384090457,"hi":0.07000527956161895}],"cross":1.35},{"n":240,"points":[{"r":0.5,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.55,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.6,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.65,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.7,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.75,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.8,"p":0.9875,"n":400,"sat":395,"lo":0.9710758472688621,"hi":0.9946493281464495},{"r":0.85,"p":0.99,"n":400,"sat":396,"lo":0.9745730330055918,"hi":0.9961045792067212},{"r":0.9,"p":0.99,"n":400,"sat":396,"lo":0.9745730330055918,"hi":0.9961045792067212},{"r":0.95,"p":0.9825,"n":400,"sat":393,"lo":0.9643224844820973,"hi":0.9914978173392109},{"r":1,"p":0.9325,"n":400,"sat":373,"lo":0.9035727207806045,"hi":0.9531988451006718},{"r":1.05,"p":0.9125,"n":400,"sat":365,"lo":0.88073860783094,"hi":0.9364134636743233},{"r":1.1,"p":0.8225,"n":400,"sat":329,"lo":0.7820396924303856,"hi":0.8568246543828204},{"r":1.15,"p":0.73,"n":400,"sat":292,"lo":0.6844562579830316,"hi":0.7711679273411154},{"r":1.2,"p":0.6425,"n":400,"sat":257,"lo":0.5943808773044147,"hi":0.6879080201246762},{"r":1.25,"p":0.5375,"n":400,"sat":215,"lo":0.4885129330720267,"hi":0.5857736188829973},{"r":1.3,"p":0.355,"n":400,"sat":142,"lo":0.30968822623349224,"hi":0.4030704395404151},{"r":1.35,"p":0.28,"n":400,"sat":112,"lo":0.23825069981202085,"hi":0.32593486205183864},{"r":1.4,"p":0.185,"n":400,"sat":74,"lo":0.15000638716506282,"hi":0.225986576412736},{"r":1.45,"p":0.1025,"n":400,"sat":41,"lo":0.07645843910823481,"hi":0.13610411016851132},{"r":1.5,"p":0.0325,"n":400,"sat":13,"lo":0.019089659086961887,"hi":0.054804659873739545},{"r":1.55,"p":0.01,"n":400,"sat":4,"lo":0.0038954207932788126,"hi":0.02542696699440824},{"r":1.6,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.65,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667}],"cross":1.2602739726027397},{"n":480,"points":[{"r":0.5,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.55,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.6,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.65,"p":0.9975,"n":400,"sat":399,"lo":0.9859763590327523,"hi":0.9995585635705656},{"r":0.7,"p":0.995,"n":400,"sat":398,"lo":0.9819547100278873,"hi":0.9986277757784289},{"r":0.75,"p":0.995,"n":400,"sat":398,"lo":0.9819547100278873,"hi":0.9986277757784289},{"r":0.8,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.85,"p":0.995,"n":400,"sat":398,"lo":0.9819547100278873,"hi":0.9986277757784289},{"r":0.9,"p":0.9725,"n":400,"sat":389,"lo":0.951434030711826,"hi":0.984576523921476},{"r":0.95,"p":0.9825,"n":400,"sat":393,"lo":0.9643224844820973,"hi":0.9914978173392109},{"r":1,"p":0.945,"n":400,"sat":378,"lo":0.9181319717303434,"hi":0.9634017781359406},{"r":1.05,"p":0.8825,"n":400,"sat":353,"lo":0.847244320271723,"hi":0.9104785096695212},{"r":1.1,"p":0.8,"n":400,"sat":320,"lo":0.7580288635115286,"hi":0.836263552128663},{"r":1.15,"p":0.63,"n":400,"sat":252,"lo":0.5816578813462162,"hi":0.6758688320978669},{"r":1.2,"p":0.5425,"n":400,"sat":217,"lo":0.49350413540767263,"hi":0.5906872901413545},{"r":1.25,"p":0.345,"n":400,"sat":138,"lo":0.30008703653936986,"hi":0.39286188204653105},{"r":1.3,"p":0.14,"n":400,"sat":56,"lo":0.10940912065943276,"hi":0.17743998057233734},{"r":1.35,"p":0.0825,"n":400,"sat":33,"lo":0.059345516507342,"hi":0.11359753839339136},{"r":1.4,"p":0.03,"n":400,"sat":12,"lo":0.017242849034032177,"hi":0.05169903312966765},{"r":1.45,"p":0.0125,"n":400,"sat":5,"lo":0.005350671853550634,"hi":0.02892415273113802},{"r":1.5,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.55,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.6,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.65,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667}],"cross":1.210759493670886},{"n":960,"points":[{"r":0.5,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.55,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.6,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.65,"p":0.9975,"n":400,"sat":399,"lo":0.9859763590327523,"hi":0.9995585635705656},{"r":0.7,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.75,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.8,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.85,"p":0.995,"n":400,"sat":398,"lo":0.9819547100278873,"hi":0.9986277757784289},{"r":0.9,"p":0.9975,"n":400,"sat":399,"lo":0.9859763590327523,"hi":0.9995585635705656},{"r":0.95,"p":0.9725,"n":400,"sat":389,"lo":0.951434030711826,"hi":0.984576523921476},{"r":1,"p":0.925,"n":400,"sat":370,"lo":0.8949516618259873,"hi":0.9469625936642844},{"r":1.05,"p":0.8525,"n":400,"sat":341,"lo":0.8143991454822668,"hi":0.8838944428949584},{"r":1.1,"p":0.705,"n":400,"sat":282,"lo":0.6585280681391185,"hi":0.7475717492150123},{"r":1.15,"p":0.48,"n":400,"sat":192,"lo":0.43146252672290986,"hi":0.5289179789010773},{"r":1.2,"p":0.265,"n":400,"sat":106,"lo":0.22413301235879635,"hi":0.31033792872305355},{"r":1.25,"p":0.1175,"n":400,"sat":47,"lo":0.08952149033047882,"hi":0.1527556797282769},{"r":1.3,"p":0.055,"n":400,"sat":22,"lo":0.036598221864059276,"hi":0.08186802826965653},{"r":1.35,"p":0.015,"n":400,"sat":6,"lo":0.006892197870136998,"hi":0.03233506351155325},{"r":1.4,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.45,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.5,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.55,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.6,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.65,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667}],"cross":1.1455555555555554},{"n":1920,"points":[{"r":0.5,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.55,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.6,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.65,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.7,"p":1,"n":400,"sat":400,"lo":0.9904873594003194,"hi":1},{"r":0.75,"p":0.995,"n":400,"sat":398,"lo":0.9819547100278873,"hi":0.9986277757784289},{"r":0.8,"p":0.995,"n":400,"sat":398,"lo":0.9819547100278873,"hi":0.9986277757784289},{"r":0.85,"p":0.995,"n":400,"sat":398,"lo":0.9819547100278873,"hi":0.9986277757784289},{"r":0.9,"p":0.9875,"n":400,"sat":395,"lo":0.9710758472688621,"hi":0.9946493281464495},{"r":0.95,"p":0.9775,"n":400,"sat":391,"lo":0.9577968763972683,"hi":0.9881185518300367},{"r":1,"p":0.925,"n":400,"sat":370,"lo":0.8949516618259873,"hi":0.9469625936642844},{"r":1.05,"p":0.8275,"n":400,"sat":331,"lo":0.7874038632508435,"hi":0.8613653571563658},{"r":1.1,"p":0.5775,"n":400,"sat":231,"lo":0.5285801141391775,"hi":0.624945426567872},{"r":1.15,"p":0.33,"n":400,"sat":132,"lo":0.285727498574661,"hi":0.3775067992292304},{"r":1.2,"p":0.105,"n":400,"sat":42,"lo":0.07862330722943671,"hi":0.138891678844311},{"r":1.25,"p":0.0325,"n":400,"sat":13,"lo":0.019089659086961887,"hi":0.054804659873739545},{"r":1.3,"p":0.0025,"n":400,"sat":1,"lo":0.00044143642943440895,"hi":0.014023640967247855},{"r":1.35,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.4,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.45,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.5,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.55,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.6,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667},{"r":1.65,"p":0,"n":400,"sat":0,"lo":0,"hi":0.009512640599680667}],"cross":1.1156565656565658}],"crossing":[{"n":30,"r":1.6134615384615385},{"n":60,"r":1.4411764705882353},{"n":120,"r":1.35},{"n":240,"r":1.2602739726027397},{"n":480,"r":1.210759493670886},{"n":960,"r":1.1455555555555554},{"n":1920,"r":1.1156565656565658}],"crossCheck":{"checked":3000,"mismatch":0}},"E2":{"title":"随机 3-SAT 的相变","curves":[{"n":30,"points":[{"r":3.5,"p":0.99,"lo":0.9710159953649371,"hi":0.9965934432372818,"sat":297,"unsat":3,"budget":0,"resolved":300},{"r":3.6,"p":0.96,"lo":0.9313951365400219,"hi":0.9769729078620613,"sat":288,"unsat":12,"budget":0,"resolved":300},{"r":3.7,"p":0.9633333333333334,"lo":0.9355455130036123,"hi":0.9794049085318193,"sat":289,"unsat":11,"budget":0,"resolved":300},{"r":3.8,"p":0.9433333333333334,"lo":0.9111333346485289,"hi":0.9643228240868122,"sat":283,"unsat":17,"budget":0,"resolved":300},{"r":3.9,"p":0.8566666666666667,"lo":0.8124985303950185,"hi":0.8918158228732633,"sat":257,"unsat":43,"budget":0,"resolved":300},{"r":4,"p":0.8566666666666667,"lo":0.8124985303950185,"hi":0.8918158228732633,"sat":257,"unsat":43,"budget":0,"resolved":300},{"r":4.1,"p":0.7933333333333333,"lo":0.7439440144288735,"hi":0.8353051733057882,"sat":238,"unsat":62,"budget":0,"resolved":300},{"r":4.2,"p":0.7366666666666667,"lo":0.6840594845533765,"hi":0.7832892919143619,"sat":221,"unsat":79,"budget":0,"resolved":300},{"r":4.3,"p":0.6566666666666666,"lo":0.60125876165596,"hi":0.708112963611416,"sat":197,"unsat":103,"budget":0,"resolved":300},{"r":4.4,"p":0.5133333333333333,"lo":0.4569629909718754,"hi":0.5693665175615182,"sat":154,"unsat":146,"budget":0,"resolved":300},{"r":4.5,"p":0.48,"lo":0.4240757908015887,"hi":0.5364299463983206,"sat":144,"unsat":156,"budget":0,"resolved":300},{"r":4.6,"p":0.4166666666666667,"lo":0.36227512359534986,"hi":0.4731654480709394,"sat":125,"unsat":175,"budget":0,"resolved":300},{"r":4.7,"p":0.2833333333333333,"lo":0.23533002872803954,"hi":0.33681545760431253,"sat":85,"unsat":215,"budget":0,"resolved":300},{"r":4.8,"p":0.27,"lo":0.22290322460653214,"hi":0.32291275319242624,"sat":81,"unsat":219,"budget":0,"resolved":300},{"r":4.9,"p":0.25666666666666665,"lo":0.21053255254583536,"hi":0.30895391671972927,"sat":77,"unsat":223,"budget":0,"resolved":300},{"r":5,"p":0.19,"lo":0.14963418279656143,"hi":0.23820474380203466,"sat":57,"unsat":243,"budget":0,"resolved":300},{"r":5.1,"p":0.11,"lo":0.07940480726853252,"hi":0.1504570681297013,"sat":33,"unsat":267,"budget":0,"resolved":300}],"cross":4.44,"budgetRate":0},{"n":50,"points":[{"r":3.5,"p":0.9966666666666667,"lo":0.9813628354450568,"hi":0.9994113574238592,"sat":299,"unsat":1,"budget":0,"resolved":300},{"r":3.6,"p":0.9966666666666667,"lo":0.9813628354450568,"hi":0.9994113574238592,"sat":299,"unsat":1,"budget":0,"resolved":300},{"r":3.7,"p":0.9833333333333333,"lo":0.9615840563782944,"hi":0.9928606279572277,"sat":295,"unsat":5,"budget":0,"resolved":300},{"r":3.8,"p":0.9766666666666667,"lo":0.952627445667121,"hi":0.9886524844017043,"sat":293,"unsat":7,"budget":0,"resolved":300},{"r":3.9,"p":0.9166666666666666,"lo":0.8798776190248736,"hi":0.94291952264368,"sat":275,"unsat":25,"budget":0,"resolved":300},{"r":4,"p":0.84,"lo":0.7942554091313135,"hi":0.8771470584702262,"sat":252,"unsat":48,"budget":0,"resolved":300},{"r":4.1,"p":0.7833333333333333,"lo":0.7332891734257104,"hi":0.826212882908906,"sat":235,"unsat":65,"budget":0,"resolved":300},{"r":4.2,"p":0.7033333333333334,"lo":0.649335553589633,"hi":0.7521894515446212,"sat":211,"unsat":89,"budget":0,"resolved":300},{"r":4.3,"p":0.57,"lo":0.5134401182890381,"hi":0.6247898015112788,"sat":171,"unsat":129,"budget":0,"resolved":300},{"r":4.4,"p":0.4866666666666667,"lo":0.43063348243848176,"hi":0.5430370090281246,"sat":146,"unsat":154,"budget":0,"resolved":300},{"r":4.5,"p":0.32666666666666666,"lo":0.27607755922349825,"hi":0.38163882984238345,"sat":98,"unsat":202,"budget":0,"resolved":300},{"r":4.6,"p":0.28,"lo":0.23221820291536688,"hi":0.3333449062836369,"sat":84,"unsat":216,"budget":0,"resolved":300},{"r":4.7,"p":0.21666666666666667,"lo":0.173787117091094,"hi":0.2667108265742896,"sat":65,"unsat":235,"budget":0,"resolved":300},{"r":4.8,"p":0.1,"lo":0.07094746564722294,"hi":0.1391672783509656,"sat":30,"unsat":270,"budget":0,"resolved":300},{"r":4.9,"p":0.09666666666666666,"lo":0.06814985592393716,"hi":0.13538251094090295,"sat":29,"unsat":271,"budget":0,"resolved":300},{"r":5,"p":0.10666666666666667,"lo":0.07657538053068277,"hi":0.14670411773420264,"sat":32,"unsat":268,"budget":0,"resolved":300},{"r":5.1,"p":0.03,"lo":0.015861673205964575,"hi":0.05602315099190695,"sat":9,"unsat":291,"budget":0,"resolved":300}],"cross":4.384,"budgetRate":0},{"n":80,"points":[{"r":3.5,"p":1,"lo":0.9873565700022643,"hi":0.9999999999999999,"sat":300,"unsat":0,"budget":0,"resolved":300},{"r":3.6,"p":1,"lo":0.9873565700022643,"hi":0.9999999999999999,"sat":300,"unsat":0,"budget":0,"resolved":300},{"r":3.7,"p":1,"lo":0.9873565700022643,"hi":0.9999999999999999,"sat":300,"unsat":0,"budget":0,"resolved":300},{"r":3.8,"p":0.9933333333333333,"lo":0.9760219257685385,"hi":0.9981698899670288,"sat":298,"unsat":2,"budget":0,"resolved":300},{"r":3.9,"p":0.97,"lo":0.943976849008093,"hi":0.9841383267940355,"sat":291,"unsat":9,"budget":0,"resolved":300},{"r":4,"p":0.9366666666666666,"lo":0.9032079605174259,"hi":0.9590834439512181,"sat":281,"unsat":19,"budget":0,"resolved":300},{"r":4.1,"p":0.7633333333333333,"lo":0.712095744869948,"hi":0.8079120486645778,"sat":229,"unsat":71,"budget":0,"resolved":300},{"r":4.2,"p":0.67,"lo":0.6149348137768542,"hi":0.7207664200239157,"sat":201,"unsat":99,"budget":0,"resolved":300},{"r":4.3,"p":0.5433333333333333,"lo":0.48677280884564667,"hi":0.598798093887883,"sat":163,"unsat":137,"budget":0,"resolved":300},{"r":4.4,"p":0.33,"lo":0.27923357997608433,"hi":0.3850651862231458,"sat":99,"unsat":201,"budget":0,"resolved":300},{"r":4.5,"p":0.24333333333333335,"lo":0.19822077770189378,"hi":0.29493618303027724,"sat":73,"unsat":227,"budget":0,"resolved":300},{"r":4.6,"p":0.15,"lo":0.1140318876347062,"hi":0.19481851336370873,"sat":45,"unsat":255,"budget":0,"resolved":300},{"r":4.7,"p":0.11,"lo":0.07940480726853252,"hi":0.1504570681297013,"sat":33,"unsat":267,"budget":0,"resolved":300},{"r":4.8,"p":0.03333333333333333,"lo":0.018204749873650852,"hi":0.0602624514575691,"sat":10,"unsat":290,"budget":0,"resolved":300},{"r":4.9,"p":0.02,"lo":0.009197506067771085,"hi":0.042940186730055147,"sat":6,"unsat":294,"budget":0,"resolved":300},{"r":5,"p":0.013333333333333334,"lo":0.005196877684679467,"hi":0.03377606084644991,"sat":4,"unsat":296,"budget":0,"resolved":300},{"r":5.1,"p":0.016666666666666666,"lo":0.0071393720427721935,"hi":0.038415943621705605,"sat":5,"unsat":295,"budget":0,"resolved":300}],"cross":4.3203125,"budgetRate":0},{"n":120,"points":[{"r":3.5,"p":1,"lo":0.9873565700022643,"hi":0.9999999999999999,"sat":300,"unsat":0,"budget":0,"resolved":300},{"r":3.6,"p":1,"lo":0.9873565700022643,"hi":0.9999999999999999,"sat":300,"unsat":0,"budget":0,"resolved":300},{"r":3.7,"p":1,"lo":0.9873565700022643,"hi":0.9999999999999999,"sat":300,"unsat":0,"budget":0,"resolved":300},{"r":3.8,"p":0.9966666666666667,"lo":0.9813628354450568,"hi":0.9994113574238592,"sat":299,"unsat":1,"budget":0,"resolved":300},{"r":3.9,"p":0.9866666666666667,"lo":0.9662239391535502,"hi":0.9948031223153205,"sat":296,"unsat":4,"budget":0,"resolved":300},{"r":4,"p":0.93,"lo":0.8953632441625534,"hi":0.953763406039394,"sat":279,"unsat":21,"budget":0,"resolved":300},{"r":4.1,"p":0.83,"lo":0.7833848085580865,"hi":0.8682705276434078,"sat":249,"unsat":51,"budget":0,"resolved":300},{"r":4.2,"p":0.67,"lo":0.6149348137768542,"hi":0.7207664200239157,"sat":201,"unsat":99,"budget":0,"resolved":300},{"r":4.3,"p":0.4866666666666667,"lo":0.43063348243848176,"hi":0.5430370090281246,"sat":146,"unsat":154,"budget":0,"resolved":300},{"r":4.4,"p":0.2866666666666667,"lo":0.238445210315098,"hi":0.3402826531506026,"sat":86,"unsat":214,"budget":0,"resolved":300},{"r":4.5,"p":0.11,"lo":0.07940480726853252,"hi":0.1504570681297013,"sat":33,"unsat":267,"budget":0,"resolved":300},{"r":4.6,"p":0.06,"lo":0.038286055915477436,"hi":0.09284016248252996,"sat":18,"unsat":282,"budget":0,"resolved":300},{"r":4.7,"p":0.03666666666666667,"lo":0.02059509146818067,"hi":0.06445448699638771,"sat":11,"unsat":289,"budget":0,"resolved":300},{"r":4.8,"p":0.02666666666666667,"lo":0.013572906766976815,"hi":0.051729540297546284,"sat":8,"unsat":292,"budget":0,"resolved":300},{"r":4.9,"p":0,"lo":0,"hi":0.012643429997735661,"sat":0,"unsat":300,"budget":0,"resolved":300},{"r":5,"p":0,"lo":0,"hi":0.012643429997735661,"sat":0,"unsat":300,"budget":0,"resolved":300},{"r":5.1,"p":0,"lo":0,"hi":0.012643429997735661,"sat":0,"unsat":300,"budget":0,"resolved":300}],"cross":4.292727272727273,"budgetRate":0},{"n":160,"points":[{"r":3.5,"p":1,"lo":0.9750288608542812,"hi":1,"sat":150,"unsat":0,"budget":0,"resolved":150},{"r":3.6,"p":1,"lo":0.9750288608542812,"hi":1,"sat":150,"unsat":0,"budget":0,"resolved":150},{"r":3.7,"p":1,"lo":0.9750288608542812,"hi":1,"sat":150,"unsat":0,"budget":0,"resolved":150},{"r":3.8,"p":1,"lo":0.9750288608542812,"hi":1,"sat":150,"unsat":0,"budget":0,"resolved":150},{"r":3.9,"p":0.9933333333333333,"lo":0.9632062470660241,"hi":0.9988222289768665,"sat":149,"unsat":1,"budget":0,"resolved":150},{"r":4,"p":0.9733333333333334,"lo":0.9334450938998244,"hi":0.9895822277088953,"sat":146,"unsat":4,"budget":0,"resolved":150},{"r":4.1,"p":0.84,"lo":0.772958942656478,"hi":0.8900606827244333,"sat":126,"unsat":24,"budget":0,"resolved":150},{"r":4.2,"p":0.6733333333333333,"lo":0.5947670390048972,"hi":0.7432429660912535,"sat":101,"unsat":49,"budget":0,"resolved":150},{"r":4.3,"p":0.38,"lo":0.30623600246985916,"hi":0.4597570709251133,"sat":57,"unsat":93,"budget":0,"resolved":150},{"r":4.4,"p":0.21333333333333335,"lo":0.15536143670182534,"hi":0.28562201640838675,"sat":32,"unsat":118,"budget":0,"resolved":150},{"r":4.5,"p":0.10666666666666667,"lo":0.06672979536363804,"hi":0.16624750076432737,"sat":16,"unsat":134,"budget":0,"resolved":150},{"r":4.6,"p":0.04666666666666667,"lo":0.02278625890187786,"hi":0.09318757392357377,"sat":7,"unsat":143,"budget":0,"resolved":150},{"r":4.7,"p":0.006666666666666667,"lo":0.0011777710231334546,"hi":0.036793752933975674,"sat":1,"unsat":149,"budget":0,"resolved":150},{"r":4.8,"p":0.013333333333333334,"lo":0.0036640523882232115,"hi":0.047307856380276334,"sat":2,"unsat":148,"budget":0,"resolved":150},{"r":4.9,"p":0,"lo":0,"hi":0.02497113914571871,"sat":0,"unsat":150,"budget":0,"resolved":150},{"r":5,"p":0,"lo":0,"hi":0.02497113914571871,"sat":0,"unsat":150,"budget":0,"resolved":150},{"r":5.1,"p":0,"lo":0,"hi":0.02497113914571871,"sat":0,"unsat":150,"budget":0,"resolved":150}],"cross":4.259090909090909,"budgetRate":0},{"n":200,"points":[{"r":3.9,"p":1,"lo":0.9398260695220669,"hi":0.9999999999999999,"sat":60,"unsat":0,"budget":0,"resolved":60},{"r":4,"p":0.9833333333333333,"lo":0.9114466177322051,"hi":0.9970519161391262,"sat":59,"unsat":1,"budget":0,"resolved":60},{"r":4.1,"p":0.9,"lo":0.7985030550748896,"hi":0.9533578005427642,"sat":54,"unsat":6,"budget":0,"resolved":60},{"r":4.2,"p":0.6833333333333333,"lo":0.5576599505698345,"hi":0.7869429415882567,"sat":41,"unsat":19,"budget":0,"resolved":60},{"r":4.3,"p":0.38333333333333336,"lo":0.2708808958488824,"hi":0.5098263545959686,"sat":23,"unsat":37,"budget":0,"resolved":60},{"r":4.4,"p":0.16666666666666666,"lo":0.09313077201321032,"hi":0.28031851497207827,"sat":10,"unsat":50,"budget":0,"resolved":60},{"r":4.5,"p":0.016666666666666666,"lo":0.002948083860873682,"hi":0.08855338226779477,"sat":1,"unsat":59,"budget":0,"resolved":60},{"r":4.6,"p":0,"lo":0,"hi":0.06017393047793289,"sat":0,"unsat":60,"budget":0,"resolved":60},{"r":4.7,"p":0,"lo":0,"hi":0.06017393047793289,"sat":0,"unsat":60,"budget":0,"resolved":60},{"r":4.8,"p":0,"lo":0,"hi":0.06017393047793289,"sat":0,"unsat":60,"budget":0,"resolved":60}],"cross":4.261111111111111,"budgetRate":0}],"crossing":[{"n":30,"r":4.44,"budgetRate":0},{"n":50,"r":4.384,"budgetRate":0},{"n":80,"r":4.3203125,"budgetRate":0},{"n":120,"r":4.292727272727273,"budgetRate":0},{"n":160,"r":4.259090909090909,"budgetRate":0},{"n":200,"r":4.261111111111111,"budgetRate":0}],"budgetRate":[]},"E3":{"title":"难度的尖峰：易 - 难 - 易","curves":[{"n":100,"k":3,"tag":"3-SAT n=100 · CDCL","mode":"cdcl","points":[{"r":2,"n":100,"k":3,"mode":"cdcl","medDec":53,"p90Dec":66,"maxDec":95,"medConf":0,"medMs":0.019899999999999807,"medWork":53,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":2.25,"n":100,"k":3,"mode":"cdcl","medDec":47,"p90Dec":60,"maxDec":78,"medConf":1,"medMs":0.017000000000003013,"medWork":47,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":2.5,"n":100,"k":3,"mode":"cdcl","medDec":44,"p90Dec":54,"maxDec":82,"medConf":1,"medMs":0.017150000000000887,"medWork":44,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":2.75,"n":100,"k":3,"mode":"cdcl","medDec":42,"p90Dec":55,"maxDec":83,"medConf":2,"medMs":0.02214999999999634,"medWork":42,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":3,"n":100,"k":3,"mode":"cdcl","medDec":40,"p90Dec":56,"maxDec":118,"medConf":4,"medMs":0.03284999999999627,"medWork":40,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":3.25,"n":100,"k":3,"mode":"cdcl","medDec":41.5,"p90Dec":63,"maxDec":203,"medConf":7,"medMs":0.04939999999999145,"medWork":41.5,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":3.5,"n":100,"k":3,"mode":"cdcl","medDec":51,"p90Dec":114,"maxDec":863,"medConf":18,"medMs":0.10600000000002296,"medWork":51,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":3.75,"n":100,"k":3,"mode":"cdcl","medDec":77,"p90Dec":240,"maxDec":907,"medConf":44.5,"medMs":0.24899999999999523,"medWork":77,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":4,"n":100,"k":3,"mode":"cdcl","medDec":204.5,"p90Dec":638,"maxDec":1282,"medConf":153,"medMs":0.8389500000000112,"medWork":204.5,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.9133333333333333,"resolved":300},{"r":4.25,"n":100,"k":3,"mode":"cdcl","medDec":413,"p90Dec":738,"maxDec":1107,"medConf":334.5,"medMs":1.9568499999999176,"medWork":413,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.5633333333333334,"resolved":300},{"r":4.5,"n":100,"k":3,"mode":"cdcl","medDec":438,"p90Dec":663,"maxDec":1135,"medConf":365,"medMs":2.118949999999927,"medWork":438,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.19,"resolved":300},{"r":4.75,"n":100,"k":3,"mode":"cdcl","medDec":390.5,"p90Dec":560,"maxDec":819,"medConf":324,"medMs":1.8726500000000215,"medWork":390.5,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.016666666666666666,"resolved":300},{"r":5,"n":100,"k":3,"mode":"cdcl","medDec":321,"p90Dec":441,"maxDec":613,"medConf":268,"medMs":1.624849999999924,"medWork":321,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.013333333333333334,"resolved":300},{"r":5.25,"n":100,"k":3,"mode":"cdcl","medDec":282.5,"p90Dec":382,"maxDec":560,"medConf":235.5,"medMs":1.4528499999998985,"medWork":282.5,"medBack":0,"budget":0,"budgetRate":0,"satRate":0,"resolved":300},{"r":5.5,"n":100,"k":3,"mode":"cdcl","medDec":232.5,"p90Dec":334,"maxDec":642,"medConf":196,"medMs":1.1581499999999778,"medWork":232.5,"medBack":0,"budget":0,"budgetRate":0,"satRate":0,"resolved":300},{"r":5.75,"n":100,"k":3,"mode":"cdcl","medDec":203,"p90Dec":282,"maxDec":380,"medConf":174,"medMs":0.979949999999917,"medWork":203,"medBack":0,"budget":0,"budgetRate":0,"satRate":0,"resolved":300},{"r":6,"n":100,"k":3,"mode":"cdcl","medDec":179,"p90Dec":254,"maxDec":397,"medConf":150,"medMs":0.8699499999997897,"medWork":179,"medBack":0,"budget":0,"budgetRate":0,"satRate":0,"resolved":300},{"r":6.25,"n":100,"k":3,"mode":"cdcl","medDec":157.5,"p90Dec":228,"maxDec":391,"medConf":134.5,"medMs":0.7870499999999083,"medWork":157.5,"medBack":0,"budget":0,"budgetRate":0,"satRate":0,"resolved":300},{"r":6.5,"n":100,"k":3,"mode":"cdcl","medDec":140.5,"p90Dec":209,"maxDec":267,"medConf":120,"medMs":0.6822999999999411,"medWork":140.5,"medBack":0,"budget":0,"budgetRate":0,"satRate":0,"resolved":300}],"peak":4.5,"peakVal":438,"base":53,"peakRatio":8.264150943396226,"unit":"判定次数"},{"n":60,"k":3,"tag":"3-SAT n=60 · CDCL","mode":"cdcl","points":[{"r":2,"n":60,"k":3,"mode":"cdcl","medDec":33,"p90Dec":39,"maxDec":58,"medConf":0,"medMs":0.00889999999981228,"medWork":33,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":2.25,"n":60,"k":3,"mode":"cdcl","medDec":30,"p90Dec":37,"maxDec":49,"medConf":0,"medMs":0.009600000000318687,"medWork":30,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":2.5,"n":60,"k":3,"mode":"cdcl","medDec":28,"p90Dec":36,"maxDec":49,"medConf":1,"medMs":0.010500000000320142,"medWork":28,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":2.75,"n":60,"k":3,"mode":"cdcl","medDec":26.5,"p90Dec":35,"maxDec":50,"medConf":1,"medMs":0.013100000000122236,"medWork":26.5,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":3,"n":60,"k":3,"mode":"cdcl","medDec":25,"p90Dec":35,"maxDec":55,"medConf":3,"medMs":0.01805000000013024,"medWork":25,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":3.25,"n":60,"k":3,"mode":"cdcl","medDec":24,"p90Dec":39,"maxDec":81,"medConf":3,"medMs":0.02139999999963038,"medWork":24,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":3.5,"n":60,"k":3,"mode":"cdcl","medDec":27,"p90Dec":54,"maxDec":135,"medConf":8,"medMs":0.03874999999970896,"medWork":27,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":3.75,"n":60,"k":3,"mode":"cdcl","medDec":39,"p90Dec":107,"maxDec":254,"medConf":20,"medMs":0.08510000000023865,"medWork":39,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.98,"resolved":300},{"r":4,"n":60,"k":3,"mode":"cdcl","medDec":56,"p90Dec":133,"maxDec":247,"medConf":38,"medMs":0.16735000000062428,"medWork":56,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.8933333333333333,"resolved":300},{"r":4.25,"n":60,"k":3,"mode":"cdcl","medDec":87,"p90Dec":158,"maxDec":278,"medConf":69,"medMs":0.2994499999999789,"medWork":87,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.6133333333333333,"resolved":300},{"r":4.5,"n":60,"k":3,"mode":"cdcl","medDec":90.5,"p90Dec":144,"maxDec":204,"medConf":78,"medMs":0.3145499999995991,"medWork":90.5,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.31,"resolved":300},{"r":4.75,"n":60,"k":3,"mode":"cdcl","medDec":88.5,"p90Dec":126,"maxDec":192,"medConf":77,"medMs":0.3143499999996493,"medWork":88.5,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.10333333333333333,"resolved":300},{"r":5,"n":60,"k":3,"mode":"cdcl","medDec":78,"p90Dec":118,"maxDec":180,"medConf":68,"medMs":0.2819499999995969,"medWork":78,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.02666666666666667,"resolved":300},{"r":5.25,"n":60,"k":3,"mode":"cdcl","medDec":69,"p90Dec":100,"maxDec":157,"medConf":60,"medMs":0.2369499999999789,"medWork":69,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.0033333333333333335,"resolved":300},{"r":5.5,"n":60,"k":3,"mode":"cdcl","medDec":64,"p90Dec":93,"maxDec":164,"medConf":56,"medMs":0.21915000000035434,"medWork":64,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.0033333333333333335,"resolved":300},{"r":5.75,"n":60,"k":3,"mode":"cdcl","medDec":56,"p90Dec":80,"maxDec":134,"medConf":51,"medMs":0.1863499999999476,"medWork":56,"medBack":0,"budget":0,"budgetRate":0,"satRate":0,"resolved":300},{"r":6,"n":60,"k":3,"mode":"cdcl","medDec":51.5,"p90Dec":73,"maxDec":101,"medConf":46,"medMs":0.16880000000037398,"medWork":51.5,"medBack":0,"budget":0,"budgetRate":0,"satRate":0,"resolved":300},{"r":6.25,"n":60,"k":3,"mode":"cdcl","medDec":48,"p90Dec":70,"maxDec":96,"medConf":44,"medMs":0.16055000000005748,"medWork":48,"medBack":0,"budget":0,"budgetRate":0,"satRate":0,"resolved":300},{"r":6.5,"n":60,"k":3,"mode":"cdcl","medDec":42.5,"p90Dec":62,"maxDec":87,"medConf":38.5,"medMs":0.14199999999982538,"medWork":42.5,"medBack":0,"budget":0,"budgetRate":0,"satRate":0,"resolved":300}],"peak":4.5,"peakVal":90.5,"base":33,"peakRatio":2.742424242424242,"unit":"判定次数"},{"n":100,"k":2,"tag":"2-SAT n=100 · 朴素 DPLL","mode":"dpll","points":[{"r":0.2,"n":100,"k":2,"mode":"dpll","medDec":91,"p90Dec":94,"maxDec":98,"medConf":0,"medMs":0,"medWork":91,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":0.3,"n":100,"k":2,"mode":"dpll","medDec":86,"p90Dec":90,"maxDec":95,"medConf":0,"medMs":0,"medWork":86,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":0.4,"n":100,"k":2,"mode":"dpll","medDec":81,"p90Dec":85,"maxDec":90,"medConf":0,"medMs":0,"medWork":81,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":0.5,"n":100,"k":2,"mode":"dpll","medDec":76,"p90Dec":80,"maxDec":84,"medConf":0,"medMs":0,"medWork":76,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":0.6,"n":100,"k":2,"mode":"dpll","medDec":71,"p90Dec":77,"maxDec":82,"medConf":0,"medMs":0,"medWork":71,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":300},{"r":0.7,"n":100,"k":2,"mode":"dpll","medDec":67,"p90Dec":71,"maxDec":76,"medConf":0,"medMs":0,"medWork":67,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.9966666666666667,"resolved":300},{"r":0.8,"n":100,"k":2,"mode":"dpll","medDec":62,"p90Dec":68,"maxDec":74,"medConf":0,"medMs":0,"medWork":62,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.9966666666666667,"resolved":300},{"r":0.9,"n":100,"k":2,"mode":"dpll","medDec":57,"p90Dec":63,"maxDec":70,"medConf":0,"medMs":0,"medWork":57,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.99,"resolved":300},{"r":1,"n":100,"k":2,"mode":"dpll","medDec":53,"p90Dec":60,"maxDec":69,"medConf":0,"medMs":0,"medWork":53,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.9566666666666667,"resolved":300},{"r":1.1,"n":100,"k":2,"mode":"dpll","medDec":48,"p90Dec":55,"maxDec":64,"medConf":0,"medMs":0,"medWork":48,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.8766666666666667,"resolved":300},{"r":1.2,"n":100,"k":2,"mode":"dpll","medDec":42,"p90Dec":50,"maxDec":61,"medConf":0,"medMs":0,"medWork":42,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.79,"resolved":300},{"r":1.3,"n":100,"k":2,"mode":"dpll","medDec":36,"p90Dec":45,"maxDec":54,"medConf":0,"medMs":0,"medWork":36,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.65,"resolved":300},{"r":1.4,"n":100,"k":2,"mode":"dpll","medDec":5,"p90Dec":40,"maxDec":49,"medConf":0,"medMs":0,"medWork":5,"medBack":1,"budget":0,"budgetRate":0,"satRate":0.39666666666666667,"resolved":300},{"r":1.5,"n":100,"k":2,"mode":"dpll","medDec":3,"p90Dec":37,"maxDec":47,"medConf":0,"medMs":0,"medWork":3,"medBack":1,"budget":0,"budgetRate":0,"satRate":0.29333333333333333,"resolved":300},{"r":1.6,"n":100,"k":2,"mode":"dpll","medDec":3,"p90Dec":29,"maxDec":39,"medConf":0,"medMs":0,"medWork":3,"medBack":1,"budget":0,"budgetRate":0,"satRate":0.15,"resolved":300},{"r":1.7,"n":100,"k":2,"mode":"dpll","medDec":3,"p90Dec":5,"maxDec":37,"medConf":0,"medMs":0,"medWork":3,"medBack":1,"budget":0,"budgetRate":0,"satRate":0.07333333333333333,"resolved":300},{"r":1.8,"n":100,"k":2,"mode":"dpll","medDec":3,"p90Dec":3,"maxDec":28,"medConf":0,"medMs":0,"medWork":3,"medBack":1,"budget":0,"budgetRate":0,"satRate":0.02,"resolved":300},{"r":1.9,"n":100,"k":2,"mode":"dpll","medDec":3,"p90Dec":3,"maxDec":26,"medConf":0,"medMs":0,"medWork":3,"medBack":1,"budget":0,"budgetRate":0,"satRate":0.01,"resolved":300},{"r":2,"n":100,"k":2,"mode":"dpll","medDec":3,"p90Dec":3,"maxDec":7,"medConf":0,"medMs":0,"medWork":3,"medBack":1,"budget":0,"budgetRate":0,"satRate":0,"resolved":300}],"peak":0.2,"peakVal":91,"base":91,"peakRatio":1,"unit":"搜索节点"},{"n":100,"k":2,"tag":"2-SAT n=100 · 蕴涵图 SCC","mode":"scc","points":[{"r":0.2,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":40,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":0},{"r":0.3,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":60,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":0},{"r":0.4,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":80,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":0},{"r":0.5,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":100,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":0},{"r":0.6,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":120,"medBack":0,"budget":0,"budgetRate":0,"satRate":1,"resolved":0},{"r":0.7,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":140,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.9966666666666667,"resolved":0},{"r":0.8,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":160,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.9966666666666667,"resolved":0},{"r":0.9,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":180,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.99,"resolved":0},{"r":1,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":200,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.9566666666666667,"resolved":0},{"r":1.1,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":220,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.8766666666666667,"resolved":0},{"r":1.2,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":240,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.79,"resolved":0},{"r":1.3,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":260,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.65,"resolved":0},{"r":1.4,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":280,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.39666666666666667,"resolved":0},{"r":1.5,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":300,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.29333333333333333,"resolved":0},{"r":1.6,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":320,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.15,"resolved":0},{"r":1.7,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":340,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.07333333333333333,"resolved":0},{"r":1.8,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":360,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.02,"resolved":0},{"r":1.9,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":380,"medBack":0,"budget":0,"budgetRate":0,"satRate":0.01,"resolved":0},{"r":2,"n":100,"k":2,"mode":"scc","medDec":0,"p90Dec":0,"maxDec":0,"medConf":0,"medMs":0,"medWork":400,"medBack":0,"budget":0,"budgetRate":0,"satRate":0,"resolved":0}],"peak":2,"peakVal":400,"base":40,"peakRatio":10,"unit":"边数"}]},"E4":{"title":"冻结变量：解被钉死的比例","curves":[{"n":8,"points":[{"r":2,"frac":0.0125,"satCount":40,"unsat":0},{"r":2.25,"frac":0.025,"satCount":40,"unsat":0},{"r":2.5,"frac":0.034375,"satCount":40,"unsat":0},{"r":2.75,"frac":0.103125,"satCount":40,"unsat":0},{"r":3,"frac":0.14423076923076922,"satCount":39,"unsat":1},{"r":3.25,"frac":0.28289473684210525,"satCount":38,"unsat":2},{"r":3.5,"frac":0.38782051282051283,"satCount":39,"unsat":1},{"r":3.75,"frac":0.5,"satCount":39,"unsat":1},{"r":4,"frac":0.4722222222222222,"satCount":36,"unsat":4},{"r":4.25,"frac":0.6157407407407407,"satCount":27,"unsat":13},{"r":4.5,"frac":0.6875,"satCount":32,"unsat":8},{"r":4.75,"frac":0.75,"satCount":21,"unsat":19},{"r":5,"frac":0.9027777777777778,"satCount":27,"unsat":13}]},{"n":12,"points":[{"r":2,"frac":0.004166666666666667,"satCount":40,"unsat":0},{"r":2.25,"frac":0.0020833333333333333,"satCount":40,"unsat":0},{"r":2.5,"frac":0.014583333333333332,"satCount":40,"unsat":0},{"r":2.75,"frac":0.06041666666666666,"satCount":40,"unsat":0},{"r":3,"frac":0.125,"satCount":40,"unsat":0},{"r":3.25,"frac":0.2666666666666667,"satCount":40,"unsat":0},{"r":3.5,"frac":0.2520833333333334,"satCount":40,"unsat":0},{"r":3.75,"frac":0.4656862745098039,"satCount":34,"unsat":6},{"r":4,"frac":0.4545454545454545,"satCount":33,"unsat":7},{"r":4.25,"frac":0.6000000000000001,"satCount":35,"unsat":5},{"r":4.5,"frac":0.6979166666666666,"satCount":24,"unsat":16},{"r":4.75,"frac":0.7833333333333333,"satCount":20,"unsat":20},{"r":5,"frac":0.7944444444444445,"satCount":15,"unsat":25}]},{"n":16,"points":[{"r":2,"frac":0,"satCount":40,"unsat":0},{"r":2.25,"frac":0.0015625,"satCount":40,"unsat":0},{"r":2.5,"frac":0.0046875,"satCount":40,"unsat":0},{"r":2.75,"frac":0.034375,"satCount":40,"unsat":0},{"r":3,"frac":0.078125,"satCount":40,"unsat":0},{"r":3.25,"frac":0.19375,"satCount":40,"unsat":0},{"r":3.5,"frac":0.266025641025641,"satCount":39,"unsat":1},{"r":3.75,"frac":0.3349358974358974,"satCount":39,"unsat":1},{"r":4,"frac":0.4797794117647059,"satCount":34,"unsat":6},{"r":4.25,"frac":0.505859375,"satCount":32,"unsat":8},{"r":4.5,"frac":0.6525,"satCount":25,"unsat":15},{"r":4.75,"frac":0.7625,"satCount":20,"unsat":20},{"r":5,"frac":0.7692307692307693,"satCount":13,"unsat":27}]},{"n":20,"points":[{"r":2,"frac":0,"satCount":40,"unsat":0},{"r":2.25,"frac":0,"satCount":40,"unsat":0},{"r":2.5,"frac":0,"satCount":40,"unsat":0},{"r":2.75,"frac":0.01125,"satCount":40,"unsat":0},{"r":3,"frac":0.026250000000000006,"satCount":40,"unsat":0},{"r":3.25,"frac":0.04375000000000001,"satCount":40,"unsat":0},{"r":3.5,"frac":0.15,"satCount":40,"unsat":0},{"r":3.75,"frac":0.3428571428571428,"satCount":35,"unsat":5},{"r":4,"frac":0.5128571428571429,"satCount":35,"unsat":5},{"r":4.25,"frac":0.55625,"satCount":32,"unsat":8},{"r":4.5,"frac":0.7272727272727272,"satCount":22,"unsat":18},{"r":4.75,"frac":0.7833333333333333,"satCount":18,"unsat":22},{"r":5,"frac":0.7966666666666666,"satCount":15,"unsat":25}]}]},"E5":{"title":"子句学习值多少","byN":[{"n":40,"r":4.5,"total":40,"cdclBudget":0,"nlBudget":0,"groups":{"SAT":{"count":17,"cdclDec":28,"nlDec":53,"cdclConf":18,"nlConf":24,"ratioDec":1.8928571428571428},"UNSAT":{"count":23,"cdclDec":45,"nlDec":172,"cdclConf":43,"nlConf":87,"ratioDec":3.8222222222222224}}},{"n":60,"r":4.5,"total":40,"cdclBudget":0,"nlBudget":0,"groups":{"SAT":{"count":5,"cdclDec":106,"nlDec":392,"cdclConf":78,"nlConf":193,"ratioDec":3.69811320754717},"UNSAT":{"count":35,"cdclDec":105,"nlDec":658,"cdclConf":91,"nlConf":330,"ratioDec":6.266666666666667}}},{"n":80,"r":4.5,"total":40,"cdclBudget":0,"nlBudget":0,"groups":{"SAT":{"count":8,"cdclDec":156,"nlDec":1136.5,"cdclConf":119.5,"nlConf":562,"ratioDec":7.285256410256411},"UNSAT":{"count":32,"cdclDec":253.5,"nlDec":2413,"cdclConf":212,"nlConf":1207.5,"ratioDec":9.518737672583827}}},{"n":100,"r":4.5,"total":40,"cdclBudget":0,"nlBudget":0,"groups":{"SAT":{"count":9,"cdclDec":213,"nlDec":1781,"cdclConf":170,"nlConf":883,"ratioDec":8.36150234741784},"UNSAT":{"count":31,"cdclDec":480,"nlDec":7082,"cdclConf":401,"nlConf":3542,"ratioDec":14.754166666666666}}},{"n":120,"r":4.5,"total":40,"cdclBudget":0,"nlBudget":0,"groups":{"SAT":{"count":4,"cdclDec":1039.5,"nlDec":10826.5,"cdclConf":830.5,"nlConf":5402.5,"ratioDec":10.415103415103415},"UNSAT":{"count":36,"cdclDec":978.5,"nlDec":17321,"cdclConf":792.5,"nlConf":8661.5,"ratioDec":17.701584057230455}}},{"n":140,"r":4.5,"total":40,"cdclBudget":0,"nlBudget":0,"groups":{"SAT":{"count":4,"cdclDec":455,"nlDec":15162,"cdclConf":344,"nlConf":7569.5,"ratioDec":33.323076923076925},"UNSAT":{"count":36,"cdclDec":1738.5,"nlDec":49762,"cdclConf":1418.5,"nlConf":24882,"ratioDec":28.623526028185218}}}],"components":[{"name":"完整 CDCL","medDec":446.5,"medConf":379,"medMs":2.3035500000000866,"budget":0,"budgetRate":0,"unsat":31,"resolved":40},{"name":"无 VSIDS","medDec":1778,"medConf":1319.5,"medMs":10.292699999999968,"budget":0,"budgetRate":0,"unsat":31,"resolved":40},{"name":"无重启","medDec":462,"medConf":397,"medMs":2.472350000000006,"budget":0,"budgetRate":0,"unsat":31,"resolved":40},{"name":"无删句","medDec":446.5,"medConf":379,"medMs":2.4324499999997897,"budget":0,"budgetRate":0,"unsat":31,"resolved":40},{"name":"无学习","medDec":5578,"medConf":2790,"medMs":9.692749999999705,"budget":0,"budgetRate":0,"unsat":31,"resolved":40}]},"E6":{"title":"证明一个公式无解要付多少代价","r":4.5,"points":[{"n":30,"medConf":22.5,"medDec":24.5,"medMs":0.06829999999990832,"unsat":14,"sat":16,"budget":0,"count":14},{"n":40,"medConf":42,"medDec":46.5,"medMs":0.1448999999984153,"unsat":16,"sat":14,"budget":0,"count":16},{"n":50,"medConf":55,"medDec":62,"medMs":0.18770000000040454,"unsat":19,"sat":11,"budget":0,"count":19},{"n":60,"medConf":83.5,"medDec":96,"medMs":0.30715000000054715,"unsat":26,"sat":4,"budget":0,"count":26},{"n":70,"medConf":138,"medDec":165.5,"medMs":0.668800000000374,"unsat":26,"sat":4,"budget":0,"count":26},{"n":80,"medConf":198,"medDec":235,"medMs":1.1763999999984662,"unsat":19,"sat":11,"budget":0,"count":19},{"n":100,"medConf":425.5,"medDec":508,"medMs":2.7752500000005966,"unsat":22,"sat":8,"budget":0,"count":22},{"n":120,"medConf":773.5,"medDec":938.5,"medMs":6.647600000000239,"unsat":26,"sat":4,"budget":0,"count":26},{"n":140,"medConf":1794,"medDec":2221,"medMs":18.113999999999578,"unsat":27,"sat":3,"budget":0,"count":27},{"n":160,"medConf":3032,"medDec":3707,"medMs":35.64550000000054,"unsat":27,"sat":3,"budget":0,"count":27}],"fit":{"slope":0.037464314694617466,"intercept":2.1867589377417467,"r2":0.9952611061550123,"points":10,"factorPerVar":1.0381749488307004}}}
+, analysis: 
+{
+ "fits": {
+  "twosat": {
+   "points": [
+    {
+     "n": 30,
+     "cross": 1.6134615384615385
+    },
+    {
+     "n": 60,
+     "cross": 1.4411764705882353
+    },
+    {
+     "n": 120,
+     "cross": 1.35
+    },
+    {
+     "n": 240,
+     "cross": 1.2602739726027397
+    },
+    {
+     "n": 480,
+     "cross": 1.210759493670886
+    },
+    {
+     "n": 960,
+     "cross": 1.1455555555555554
+    },
+    {
+     "n": 1920,
+     "cross": 1.1156565656565658
+    }
+   ],
+   "free": {
+    "rInf": 0.9951249999999909,
+    "x": 0.39042470722619926,
+    "c": 2.2843836268257696,
+    "r2": 0.9970554835361678
+   },
+   "fixed1": {
+    "x": 0.3983109419306528,
+    "c": 2.3352502288838717,
+    "r2": 0.9970328596868792,
+    "n": 7
+   },
+   "twoTerm": {
+    "a": 1.3421107464695006,
+    "b": 1.7094721935122512,
+    "rmse": 0.008107030902440568,
+    "n": 7,
+    "x1": 0.3333333333333333,
+    "x2": 0.6666666666666666
+   },
+   "twoTermAlt": {
+    "a": 4.462643524704677,
+    "b": -6.432915470650812,
+    "rmse": 0.015756695891300104,
+    "n": 7,
+    "x1": 0.5,
+    "x2": 1
+   }
+  },
+  "threesat": {
+   "points": [
+    {
+     "n": 30,
+     "cross": 4.44
+    },
+    {
+     "n": 50,
+     "cross": 4.384
+    },
+    {
+     "n": 80,
+     "cross": 4.3203125
+    },
+    {
+     "n": 120,
+     "cross": 4.292727272727273
+    },
+    {
+     "n": 160,
+     "cross": 4.259090909090909
+    },
+    {
+     "n": 200,
+     "cross": 4.261111111111111
+    }
+   ],
+   "free": {
+    "rInf": 4.075750000000003,
+    "x": 0.38117632575578797,
+    "c": 1.3346680526360155,
+    "r2": 0.9842911997400848
+   },
+   "fixed": {
+    "x": 1.386573743368669,
+    "c": 22.11043024183833,
+    "r2": 0.9689455242654931,
+    "n": 4
+   },
+   "twoTerm": {
+    "a": 0.3650346954175671,
+    "b": 13.229023961132759,
+    "rmse": 0.011560796732504408,
+    "n": 4,
+    "x1": 0.6666666666666666,
+    "x2": 1.3333333333333333
+   },
+   "subsets": [
+    {
+     "minN": 50,
+     "x": 1.718333011181553,
+     "r2": 0.9996232645483232,
+     "n": 3
+    },
+    {
+     "minN": 80,
+     "x": null,
+     "r2": null,
+     "n": 0
+    },
+    {
+     "minN": 120,
+     "x": null,
+     "r2": null,
+     "n": 0
+    }
+   ]
+  }
+ },
+ "kpi": {
+  "thresholdRef": 4.2667,
+  "crossMin": 4.44,
+  "crossMinN": 30,
+  "crossMax": 4.261111111111111,
+  "crossMaxN": 200,
+  "crossTotal": 23550,
+  "twoSatFar": {
+   "n": 1920,
+   "r": 1.1156565656565658
+  },
+  "twoSatNear": {
+   "n": 30,
+   "r": 1.6134615384615385
+  },
+  "twoSatCheck": {
+   "checked": 3000,
+   "mismatch": 0
+  },
+  "learnRatioMax": 28.623526028185218,
+  "learnRatioMaxN": 140,
+  "peakRatio3": 8.264150943396226,
+  "peakR3": 4.5,
+  "proofFactor": 1.0381749488307004,
+  "proofR2": 0.9952611061550123
+ },
+ "notes": [
+  "3-SAT 的交点从 n=30 的 4.440 一路降到 n=200 的 4.261，共下移 0.179。",
+  "在 n=30..200 上做纯幂律自由拟合，得到 r∞ ≈ 4.076、有效指数 0.38（R²=0.984）。",
+  "2-SAT 用同样的办法，以真值 1 为渐近点拟合，得到有效指数 0.40（R²=0.997）。",
+  "若把 2-SAT 的偏差写成两项 a·n^(−1/3) + b·n^(−2/3)（1/3 是理论窗口指数），a=1.34、b=1.71，七个尺度的均方根残差只有 0.0081。"
+ ],
+ "peaks": [
+  {
+   "tag": "3-SAT n=100 · CDCL",
+   "mode": "cdcl",
+   "unit": "判定次数",
+   "peakR": 4.5,
+   "peakVal": 438,
+   "ratio": 8.264150943396226,
+   "base": 53
+  },
+  {
+   "tag": "3-SAT n=60 · CDCL",
+   "mode": "cdcl",
+   "unit": "判定次数",
+   "peakR": 4.5,
+   "peakVal": 90.5,
+   "ratio": 2.742424242424242,
+   "base": 33
+  },
+  {
+   "tag": "2-SAT n=100 · 朴素 DPLL",
+   "mode": "dpll",
+   "unit": "搜索节点",
+   "peakR": 0.2,
+   "peakVal": 91,
+   "ratio": 1,
+   "base": 91
+  },
+  {
+   "tag": "2-SAT n=100 · 蕴涵图 SCC",
+   "mode": "scc",
+   "unit": "边数",
+   "peakR": 2,
+   "peakVal": 400,
+   "ratio": 10,
+   "base": 40
+  }
+ ],
+ "frozen": [
+  {
+   "n": 8,
+   "points": [
+    {
+     "r": 2,
+     "frac": 0.0125,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 2.25,
+     "frac": 0.025,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 2.5,
+     "frac": 0.034375,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 2.75,
+     "frac": 0.103125,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 3,
+     "frac": 0.14423076923076922,
+     "satCount": 39,
+     "reliable": true
+    },
+    {
+     "r": 3.25,
+     "frac": 0.28289473684210525,
+     "satCount": 38,
+     "reliable": true
+    },
+    {
+     "r": 3.5,
+     "frac": 0.38782051282051283,
+     "satCount": 39,
+     "reliable": true
+    },
+    {
+     "r": 3.75,
+     "frac": 0.5,
+     "satCount": 39,
+     "reliable": true
+    },
+    {
+     "r": 4,
+     "frac": 0.4722222222222222,
+     "satCount": 36,
+     "reliable": true
+    },
+    {
+     "r": 4.25,
+     "frac": 0.6157407407407407,
+     "satCount": 27,
+     "reliable": true
+    },
+    {
+     "r": 4.5,
+     "frac": 0.6875,
+     "satCount": 32,
+     "reliable": true
+    },
+    {
+     "r": 4.75,
+     "frac": 0.75,
+     "satCount": 21,
+     "reliable": true
+    },
+    {
+     "r": 5,
+     "frac": 0.9027777777777778,
+     "satCount": 27,
+     "reliable": true
+    }
+   ]
+  },
+  {
+   "n": 12,
+   "points": [
+    {
+     "r": 2,
+     "frac": 0.004166666666666667,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 2.25,
+     "frac": 0.0020833333333333333,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 2.5,
+     "frac": 0.014583333333333332,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 2.75,
+     "frac": 0.06041666666666666,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 3,
+     "frac": 0.125,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 3.25,
+     "frac": 0.2666666666666667,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 3.5,
+     "frac": 0.2520833333333334,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 3.75,
+     "frac": 0.4656862745098039,
+     "satCount": 34,
+     "reliable": true
+    },
+    {
+     "r": 4,
+     "frac": 0.4545454545454545,
+     "satCount": 33,
+     "reliable": true
+    },
+    {
+     "r": 4.25,
+     "frac": 0.6000000000000001,
+     "satCount": 35,
+     "reliable": true
+    },
+    {
+     "r": 4.5,
+     "frac": 0.6979166666666666,
+     "satCount": 24,
+     "reliable": true
+    },
+    {
+     "r": 4.75,
+     "frac": 0.7833333333333333,
+     "satCount": 20,
+     "reliable": true
+    },
+    {
+     "r": 5,
+     "frac": 0.7944444444444445,
+     "satCount": 15,
+     "reliable": true
+    }
+   ]
+  },
+  {
+   "n": 16,
+   "points": [
+    {
+     "r": 2,
+     "frac": 0,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 2.25,
+     "frac": 0.0015625,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 2.5,
+     "frac": 0.0046875,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 2.75,
+     "frac": 0.034375,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 3,
+     "frac": 0.078125,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 3.25,
+     "frac": 0.19375,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 3.5,
+     "frac": 0.266025641025641,
+     "satCount": 39,
+     "reliable": true
+    },
+    {
+     "r": 3.75,
+     "frac": 0.3349358974358974,
+     "satCount": 39,
+     "reliable": true
+    },
+    {
+     "r": 4,
+     "frac": 0.4797794117647059,
+     "satCount": 34,
+     "reliable": true
+    },
+    {
+     "r": 4.25,
+     "frac": 0.505859375,
+     "satCount": 32,
+     "reliable": true
+    },
+    {
+     "r": 4.5,
+     "frac": 0.6525,
+     "satCount": 25,
+     "reliable": true
+    },
+    {
+     "r": 4.75,
+     "frac": 0.7625,
+     "satCount": 20,
+     "reliable": true
+    },
+    {
+     "r": 5,
+     "frac": 0.7692307692307693,
+     "satCount": 13,
+     "reliable": true
+    }
+   ]
+  },
+  {
+   "n": 20,
+   "points": [
+    {
+     "r": 2,
+     "frac": 0,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 2.25,
+     "frac": 0,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 2.5,
+     "frac": 0,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 2.75,
+     "frac": 0.01125,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 3,
+     "frac": 0.026250000000000006,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 3.25,
+     "frac": 0.04375000000000001,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 3.5,
+     "frac": 0.15,
+     "satCount": 40,
+     "reliable": true
+    },
+    {
+     "r": 3.75,
+     "frac": 0.3428571428571428,
+     "satCount": 35,
+     "reliable": true
+    },
+    {
+     "r": 4,
+     "frac": 0.5128571428571429,
+     "satCount": 35,
+     "reliable": true
+    },
+    {
+     "r": 4.25,
+     "frac": 0.55625,
+     "satCount": 32,
+     "reliable": true
+    },
+    {
+     "r": 4.5,
+     "frac": 0.7272727272727272,
+     "satCount": 22,
+     "reliable": true
+    },
+    {
+     "r": 4.75,
+     "frac": 0.7833333333333333,
+     "satCount": 18,
+     "reliable": true
+    },
+    {
+     "r": 5,
+     "frac": 0.7966666666666666,
+     "satCount": 15,
+     "reliable": true
+    }
+   ]
+  }
+ ],
+ "learn": [
+  {
+   "n": 40,
+   "sat": {
+    "count": 17,
+    "cdcl": 28,
+    "nl": 53,
+    "ratio": 1.8928571428571428
+   },
+   "unsat": {
+    "count": 23,
+    "cdcl": 45,
+    "nl": 172,
+    "ratio": 3.8222222222222224
+   }
+  },
+  {
+   "n": 60,
+   "sat": {
+    "count": 5,
+    "cdcl": 106,
+    "nl": 392,
+    "ratio": 3.69811320754717
+   },
+   "unsat": {
+    "count": 35,
+    "cdcl": 105,
+    "nl": 658,
+    "ratio": 6.266666666666667
+   }
+  },
+  {
+   "n": 80,
+   "sat": {
+    "count": 8,
+    "cdcl": 156,
+    "nl": 1136.5,
+    "ratio": 7.285256410256411
+   },
+   "unsat": {
+    "count": 32,
+    "cdcl": 253.5,
+    "nl": 2413,
+    "ratio": 9.518737672583827
+   }
+  },
+  {
+   "n": 100,
+   "sat": {
+    "count": 9,
+    "cdcl": 213,
+    "nl": 1781,
+    "ratio": 8.36150234741784
+   },
+   "unsat": {
+    "count": 31,
+    "cdcl": 480,
+    "nl": 7082,
+    "ratio": 14.754166666666666
+   }
+  },
+  {
+   "n": 120,
+   "sat": {
+    "count": 4,
+    "cdcl": 1039.5,
+    "nl": 10826.5,
+    "ratio": 10.415103415103415
+   },
+   "unsat": {
+    "count": 36,
+    "cdcl": 978.5,
+    "nl": 17321,
+    "ratio": 17.701584057230455
+   }
+  },
+  {
+   "n": 140,
+   "sat": {
+    "count": 4,
+    "cdcl": 455,
+    "nl": 15162,
+    "ratio": 33.323076923076925
+   },
+   "unsat": {
+    "count": 36,
+    "cdcl": 1738.5,
+    "nl": 49762,
+    "ratio": 28.623526028185218
+   }
+  }
+ ],
+ "learnTrend": {
+  "slope": 1.5594324823321728,
+  "factorPerDouble": 2.9473787864746623,
+  "from": 40,
+  "to": 140
+ }
+}
+};</script>
+<script>
+/* ============================================================
+ * core.js —— 随机 k-SAT 相变实验的全部模型
+ *
+ * 三套互相独立的实现，用于交叉对账：
+ *   1) bruteForce / dpllSimple —— 朴素参考实现（暴力枚举 + 递归 DPLL）
+ *   2) Solver                 —— CDCL 求解器（观察文字、1UIP 学习、VSIDS、重启、删句）
+ *   3) solve2SAT              —— 2-SAT 蕴涵图 SCC（线性，与搜索完全不同的算法）
+ *
+ * UMD：Node 标定脚本与浏览器界面共用同一份源码。
+ * ============================================================ */
+(function (root, factory) {
+  if (typeof module === 'object' && typeof module.exports === 'object') module.exports = factory();
+  else root.SATCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* ------------------------------------------------------------
+   * 0. 基础
+   * ---------------------------------------------------------- */
+
+  var UNDEF = 0, TRUE = 1, FALSE = -1;
+
+  // 文字 -> 索引。lit > 0 表示 x_lit 为真，lit < 0 表示 ¬x_|lit|。
+  function li(lit) { return lit > 0 ? ((lit - 1) << 1) : (((-lit - 1) << 1) | 1); }
+  function litVar(lit) { return lit > 0 ? lit - 1 : -lit - 1; }
+  function litSign(lit) { return lit > 0 ? 1 : -1; }
+
+  // splitmix32：确定性 PRNG。每个实例的种子由 (seed, 序号) 派生，
+  // 因此扫描顺序改变不会改变任何单个实例 —— 这是可复现性的地基。
+  function splitmix32(seed) {
+    var a = seed | 0;
+    return function () {
+      a = (a + 0x9e3779b9) | 0;
+      var t = a ^ (a >>> 16); t = Math.imul(t, 0x21f0aaad);
+      t = t ^ (t >>> 15); t = Math.imul(t, 0x735a2d97);
+      return ((t = t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ------------------------------------------------------------
+   * 1. 实例生成
+   * ---------------------------------------------------------- */
+
+  /**
+   * 标准随机 k-SAT 模型：每条子句取 k 个**互不相同**的变量，每个以 1/2 概率取反。
+   * 允许重复子句（这是标准模型的一部分，不做去重）。
+   */
+  function randomKCNF(nVars, nClauses, k, rand) {
+    var cls = new Array(nClauses);
+    for (var i = 0; i < nClauses; i++) {
+      var vs = [], guard = 0;
+      while (vs.length < k && guard++ < 1000) {
+        var v = 1 + Math.floor(rand() * nVars);
+        if (vs.indexOf(v) < 0) vs.push(v);
+      }
+      var c = new Array(vs.length);
+      for (var j = 0; j < vs.length; j++) c[j] = rand() < 0.5 ? vs[j] : -vs[j];
+      cls[i] = c;
+    }
+    return { nVars: nVars, clauses: cls, k: k, ratio: nClauses / nVars };
+  }
+
+  /** 按比例 r = m/n 生成 */
+  function randomRatioCNF(nVars, ratio, k, rand) {
+    var m = Math.max(1, Math.round(nVars * ratio));
+    return randomKCNF(nVars, m, k, rand);
+  }
+
+  /** 由 (seed, 标签) 派生一个独立且稳定的实例 */
+  function makeInstance(seed, tag, nVars, ratio, k) {
+    var h = seed >>> 0;
+    for (var i = 0; i < tag.length; i++) h = (Math.imul(h ^ tag.charCodeAt(i), 0x01000193)) >>> 0;
+    h = (h ^ Math.imul(nVars, 0x9e3779b1) ^ Math.imul(Math.round(ratio * 1000), 0x85ebca6b)) >>> 0;
+    return randomRatioCNF(nVars, ratio, k, splitmix32(h));
+  }
+
+  /* ------------------------------------------------------------
+   * 2. 参考实现 A：暴力枚举（n <= 24 可行）
+   * ---------------------------------------------------------- */
+
+  function bruteForceSat(nVars, clauses, limit) {
+    limit = limit || 20000000;
+    var total = 1 << nVars;
+    if (total > limit) return { status: 'SKIP', tested: 0 };
+    var tested = 0;
+    for (var mask = 0; mask < total; mask++) {
+      tested++;
+      var ok = true;
+      for (var i = 0; i < clauses.length && ok; i++) {
+        var c = clauses[i], sat = false;
+        for (var j = 0; j < c.length; j++) {
+          var lit = c[j], bit = (mask >> (litVar(lit))) & 1;
+          if ((lit > 0 && bit === 1) || (lit < 0 && bit === 0)) { sat = true; break; }
+        }
+        if (!sat) ok = false;
+      }
+      if (ok) {
+        var model = new Int8Array(nVars);
+        for (var v = 0; v < nVars; v++) model[v] = ((mask >> v) & 1) ? 1 : -1;
+        return { status: 'SAT', model: model, tested: tested };
+      }
+    }
+    return { status: 'UNSAT', model: null, tested: tested };
+  }
+
+  /** 精确数解个数（带上限，防止组合爆炸） */
+  function countSolutions(nVars, clauses, cap) {
+    cap = cap || 1e9;
+    var assign = new Int8Array(nVars);
+    var count = 0, nodes = 0, overflow = false;
+    var order = staticOrder(nVars, clauses);
+
+    function propagate() {
+      var changed = true;
+      while (changed) {
+        changed = false;
+        for (var i = 0; i < clauses.length; i++) {
+          var c = clauses[i], unassigned = 0, un = 0, sat = false;
+          for (var j = 0; j < c.length; j++) {
+            var lit = c[j], v = litVar(lit), val = assign[v] * litSign(lit);
+            if (val > 0) { sat = true; break; }
+            if (val === 0) { unassigned++; un = lit; }
+          }
+          if (sat) continue;
+          if (unassigned === 0) return false;
+          if (unassigned === 1) { assign[litVar(un)] = litSign(un); changed = true; }
+        }
+      }
+      return true;
+    }
+
+    function rec(depth) {
+      nodes++;
+      if (nodes > 4e6) { overflow = true; return; }
+      if (overflow) return;
+      if (!propagate()) return;
+      var v = -1;
+      for (var i = 0; i < order.length; i++) if (assign[order[i]] === 0) { v = order[i]; break; }
+      if (v < 0) { count++; if (count > cap) { overflow = true; } return; }
+      var saved = assign.slice();
+      for (var s = 0; s < 2; s++) {
+        assign[v] = s === 0 ? 1 : -1;
+        rec(depth + 1);
+        assign.set(saved);
+        if (overflow) return;
+      }
+    }
+    rec(0);
+    return { count: count, overflow: overflow, nodes: nodes };
+  }
+
+  /** 枚举满足赋值（带上限）。n 大时会爆炸，调用方负责限制 n。 */
+  function enumerateSolutions(nVars, clauses, cap) {
+    cap = cap || 256;
+    var out = [], assign = new Int8Array(nVars);
+    var order = staticOrder(nVars, clauses);
+    var stopped = false;
+    function propagate() {
+      var changed = true;
+      while (changed) {
+        changed = false;
+        for (var i = 0; i < clauses.length; i++) {
+          var c = clauses[i], un = 0, unl = 0, sat = false;
+          for (var j = 0; j < c.length; j++) {
+            var lit = c[j], val = assign[litVar(lit)] * litSign(lit);
+            if (val > 0) { sat = true; break; }
+            if (val === 0) { un++; unl = lit; }
+          }
+          if (sat) continue;
+          if (un === 0) return false;
+          if (un === 1) { assign[litVar(unl)] = litSign(unl); changed = true; }
+        }
+      }
+      return true;
+    }
+    function rec() {
+      if (stopped) return;
+      if (!propagate()) return;
+      var v = -1;
+      for (var i = 0; i < order.length; i++) if (assign[order[i]] === 0) { v = order[i]; break; }
+      if (v < 0) {
+        out.push(Int8Array.from(assign));
+        if (out.length >= cap) stopped = true;
+        return;
+      }
+      var saved = assign.slice();
+      assign[v] = 1; rec(); assign.set(saved);
+      assign[v] = -1; rec(); assign.set(saved);
+    }
+    rec();
+    return { solutions: out, truncated: stopped };
+  }
+
+  /** 静态变量序：按出现次数降序（参考实现的启发式） */
+  function staticOrder(nVars, clauses) {
+    var occ = new Int32Array(nVars);
+    for (var i = 0; i < clauses.length; i++)
+      for (var j = 0; j < clauses[i].length; j++) occ[litVar(clauses[i][j])]++;
+    var idx = new Int32Array(nVars);
+    for (var v = 0; v < nVars; v++) idx[v] = v;
+    var arr = Array.prototype.slice.call(idx);
+    arr.sort(function (a, b) { return occ[b] - occ[a] || a - b; });
+    return arr;
+  }
+
+  /* ------------------------------------------------------------
+   * 3. 参考实现 B：朴素 DPLL（无学习、无回跳）—— 消融实验的对照组
+   * ---------------------------------------------------------- */
+
+  function dpllSimple(nVars, clauses, opts) {
+    opts = opts || {};
+    var maxNodes = opts.maxNodes || 2e6;
+    var assign = new Int8Array(nVars);
+    var order = staticOrder(nVars, clauses);
+    var nodes = 0, propagations = 0, budgetHit = false, backtracks = 0;
+
+    function propagate() {
+      var changed = true;
+      while (changed) {
+        changed = false;
+        for (var i = 0; i < clauses.length; i++) {
+          var c = clauses[i], unassigned = 0, un = 0, sat = false;
+          for (var j = 0; j < c.length; j++) {
+            var lit = c[j], val = assign[litVar(lit)] * litSign(lit);
+            propagations++;
+            if (val > 0) { sat = true; break; }
+            if (val === 0) { unassigned++; un = lit; }
+          }
+          if (sat) continue;
+          if (unassigned === 0) return false;
+          if (unassigned === 1) { assign[litVar(un)] = litSign(un); changed = true; }
+        }
+      }
+      return true;
+    }
+
+    function rec() {
+      nodes++;
+      if (nodes > maxNodes) { budgetHit = true; return 1; }
+      if (!propagate()) return -1;
+      var v = -1;
+      for (var i = 0; i < order.length; i++) if (assign[order[i]] === 0) { v = order[i]; break; }
+      if (v < 0) return 1;
+      var saved = assign.slice();
+      for (var s = 0; s < 2; s++) {
+        assign[v] = s === 0 ? 1 : -1;
+        var r = rec();
+        // 成功时必须**保留**赋值 —— 早期版本在这里也 assign.set(saved)，
+        // 把刚找到的解还原掉了，返回的 model 是坏的（自检只验状态不验模型，漏了这一点）。
+        if (r !== -1) return r;
+        assign.set(saved);
+      }
+      backtracks++;      // 本节点两支皆失败 -> 向上回溯一次（搜索难度的诚实代理）
+      return -1;
+    }
+
+    var r = rec();
+    return {
+      status: budgetHit ? 'BUDGET' : (r === 1 ? 'SAT' : 'UNSAT'),
+      model: r === 1 ? assign.slice() : null,
+      stats: { nodes: nodes, propagations: propagations, backtracks: backtracks, budgetHit: budgetHit }
+    };
+  }
+
+  /* ------------------------------------------------------------
+   * 4. 参考实现 C：2-SAT 蕴涵图 SCC（Tarjan，迭代版）
+   * ---------------------------------------------------------- */
+
+  function solve2SAT(nVars, clauses) {
+    var N = 2 * nVars;
+    var head = new Int32Array(N).fill(-1);
+    var nxt = [], to = [];
+    function addEdge(a, b) { to.push(b); nxt.push(head[a]); head[a] = to.length - 1; }
+
+    for (var i = 0; i < clauses.length; i++) {
+      var c = clauses[i];
+      if (c.length === 0) return { status: 'UNSAT', reason: 'empty' };
+      if (c.length === 1) {
+        addEdge(li(-c[0]), li(c[0]));
+      } else if (c.length === 2) {
+        addEdge(li(-c[0]), li(c[1]));
+        addEdge(li(-c[1]), li(c[0]));
+      } else {
+        return { status: 'ERROR', reason: 'not-2cnf' };
+      }
+    }
+
+    // 迭代 Tarjan
+    var index = new Int32Array(N).fill(-1);
+    var low = new Int32Array(N);
+    var onStack = new Uint8Array(N);
+    var comp = new Int32Array(N).fill(-1);
+    var stack = new Int32Array(N + 1), sp = 0;
+    var callNode = new Int32Array(N + 1), callEdge = new Int32Array(N + 1);
+    var counter = 0, nComp = 0;
+
+    for (var s0 = 0; s0 < N; s0++) {
+      if (index[s0] !== -1) continue;
+      var cp = 0;
+      callNode[0] = s0; callEdge[0] = head[s0];
+      index[s0] = low[s0] = counter++; stack[sp++] = s0; onStack[s0] = 1;
+      while (cp >= 0) {
+        var u = callNode[cp], e = callEdge[cp];
+        if (e !== -1) {
+          callEdge[cp] = nxt[e];
+          var w = to[e];
+          if (index[w] === -1) {
+            index[w] = low[w] = counter++; stack[sp++] = w; onStack[w] = 1;
+            cp++; callNode[cp] = w; callEdge[cp] = head[w];
+          } else if (onStack[w]) {
+            if (index[w] < low[u]) low[u] = index[w];
+          }
+        } else {
+          if (low[u] === index[u]) {
+            while (true) {
+              var z = stack[--sp]; onStack[z] = 0; comp[z] = nComp;
+              if (z === u) break;
+            }
+            nComp++;
+          }
+          cp--;
+          if (cp >= 0 && low[u] < low[callNode[cp]]) low[callNode[cp]] = low[u];
+        }
+      }
+    }
+
+    for (var v = 0; v < nVars; v++) {
+      if (comp[li(v + 1)] === comp[li(-(v + 1))]) return { status: 'UNSAT', components: nComp };
+    }
+    // Tarjan 的编号是**逆拓扑序**（汇点先完成）：边 u→v 满足 comp[u] >= comp[v]。
+    // 因此"取编号更小的那一支"= 取拓扑序更靠后（更接近汇点）的文字，这正是标准取法。
+    // 用 (x1∨x2) 手验：comp[x1]=0 < comp[¬x1]=2，comp[x2]=1 < comp[¬x2]=3 → x1=x2=真 ✓
+    var model = new Int8Array(nVars);
+    for (var v2 = 0; v2 < nVars; v2++)
+      model[v2] = comp[li(v2 + 1)] < comp[li(-(v2 + 1))] ? 1 : -1;
+    return { status: 'SAT', model: model, components: nComp };
+  }
+
+  /* ------------------------------------------------------------
+   * 5. CDCL 求解器
+   * ---------------------------------------------------------- */
+
+  function VarHeap(nVars, activity) {
+    this.heap = new Int32Array(nVars + 1);
+    this.pos = new Int32Array(nVars).fill(-1);
+    this.size = 0;
+    this.act = activity;
+  }
+  VarHeap.prototype.less = function (a, b) { return this.act[a] > this.act[b]; };
+  VarHeap.prototype.swap = function (i, j) {
+    var t = this.heap[i]; this.heap[i] = this.heap[j]; this.heap[j] = t;
+    this.pos[this.heap[i]] = i; this.pos[this.heap[j]] = j;
+  };
+  VarHeap.prototype.up = function (i) {
+    while (i > 0) {
+      var p = (i - 1) >> 1;
+      if (!this.less(this.heap[i], this.heap[p])) break;
+      this.swap(i, p); i = p;
+    }
+  };
+  VarHeap.prototype.down = function (i) {
+    for (;;) {
+      var l = 2 * i + 1, r = l + 1, m = i;
+      if (l < this.size && this.less(this.heap[l], this.heap[m])) m = l;
+      if (r < this.size && this.less(this.heap[r], this.heap[m])) m = r;
+      if (m === i) break;
+      this.swap(i, m); i = m;
+    }
+  };
+  VarHeap.prototype.insert = function (v) {
+    if (this.pos[v] >= 0) return;
+    this.pos[v] = this.size; this.heap[this.size++] = v; this.up(this.size - 1);
+  };
+  VarHeap.prototype.increase = function (v) {
+    if (this.pos[v] < 0) return;
+    this.up(this.pos[v]);
+  };
+  VarHeap.prototype.removeMin = function () {
+    var v = this.heap[0];
+    this.pos[v] = -1;
+    this.size--;
+    if (this.size > 0) { this.heap[0] = this.heap[this.size]; this.pos[this.heap[0]] = 0; this.down(0); }
+    return v;
+  };
+  VarHeap.prototype.popUnassigned = function (assign) {
+    while (this.size > 0) {
+      var v = this.heap[0];
+      if (assign[v] !== 0) { this.removeMin(); continue; }
+      return v;
+    }
+    return -1;
+  };
+
+  function luby(y, x) {
+    var size = 1, seq = 0;
+    while (size < x + 1) { seq++; size = 2 * size + 1; }
+    while (size - 1 !== x) { size = (size - 1) >> 1; seq--; x = x % size; }
+    return Math.pow(y, seq);
+  }
+
+  /**
+   * CDCL 求解器。
+   * 特性：两观察文字、1UIP 冲突分析、VSIDS（含相位保存）、Luby 重启、
+   *      LBD + 活跃度删句、冲突预算与事件日志（供界面逐微步播放）。
+   */
+  function Solver(opts) {
+    opts = opts || {};
+    this.varDecay = opts.varDecay === undefined ? 0.95 : opts.varDecay;
+    this.claDecay = opts.claDecay === undefined ? 0.999 : opts.claDecay;
+    this.restartBase = opts.restartBase === undefined ? 100 : opts.restartBase;
+    this.learning = opts.learning === undefined ? true : opts.learning;
+    this.useVsids = opts.useVsids === undefined ? true : opts.useVsids;
+    this.useRestart = opts.useRestart === undefined ? true : opts.useRestart;
+    this.maxConflicts = opts.maxConflicts === undefined ? 400000 : opts.maxConflicts;
+    this.useReduce = opts.useReduce === undefined ? true : opts.useReduce;
+    // 冲突前因图只在界面要动画时才收集：每步都 slice 一遍子句是纯浪费
+    this.collectTrace = !!opts.trace;
+    this.nVars = 0; this.clauses = []; this.deleted = [];
+    this.ok = true; this.unsatReason = null;
+  }
+
+  Solver.prototype.init = function (nVars, clauses) {
+    this.nVars = nVars;
+    this.clauses = [];       // 每条：Int32Array
+    this.deleted = [];
+    this.isLearnt = [];
+    this.claAct = [];
+    this.claLbd = [];
+    this.watches = new Array(2 * nVars);
+    for (var i = 0; i < 2 * nVars; i++) this.watches[i] = [];
+    this.assign = new Int8Array(nVars);
+    this.lval = new Int8Array(2 * nVars);
+    this.level = new Int32Array(nVars);
+    this.reason = new Int32Array(nVars).fill(-1);
+    this.activity = new Float64Array(nVars);
+    this.polarity = new Int8Array(nVars).fill(-1);  // 相位保存，初始偏向 false（经典选择）
+    this.seen = new Uint8Array(nVars);
+    this.trail = new Int32Array(nVars + 1);
+    this.trailSize = 0;
+    this.trailLim = [];
+    this.qhead = 0;
+    this.varInc = 1; this.claInc = 1;
+    this.restartCount = 0;
+    this.restartNext = this.restartBase;   // stepOnce 可脱离 solve() 单独使用
+    this.branchState = [];                 // 无学习模式下每个决策层的"两支是否都试过"
+    this.dedupStamp = new Int32Array(nVars);
+    this.dedupLit = new Int32Array(nVars);
+    this.dedupGen = 0;
+    this.lbdStamp = new Int32Array(nVars + 2);
+    this.lbdGen = 0;    this.heap = new VarHeap(nVars, this.activity);
+    for (var v = 0; v < nVars; v++) { this.activity[v] = 0; this.heap.insert(v); }
+    this.stats = {
+      decisions: 0, propagations: 0, conflicts: 0, restarts: 0,
+      learntTotal: 0, removed: 0, sumLearntLen: 0, maxLearntLen: 0,
+      maxTrail: 0, maxLevel: 0, sumDecisionsPerConf: 0
+    };
+    this.ok = true; this.unsatReason = null;
+    this.lastEvent = null;
+    this.conflictTrace = null;
+    this.learntTrail = [];   // 学到的子句（供界面展示最近若干条）
+
+    var units = [];
+    for (var ci = 0; ci < clauses.length; ci++) {
+      var r = this.addClause(clauses[ci], false);
+      if (r === 'UNSAT') { this.ok = false; this.unsatReason = 'empty-clause'; return this; }
+      if (r === 'UNIT') units.push(this.pendingUnit);
+    }
+    for (var ui = 0; ui < units.length; ui++) {
+      if (this.lval[li(units[ui])] === -1) { this.ok = false; this.unsatReason = 'unit-conflict'; return this; }
+      if (this.lval[li(units[ui])] === 0) this.enqueue(units[ui], -1);
+    }
+    var confl = this.propagate();
+    if (confl >= 0) { this.ok = false; this.unsatReason = 'initial-conflict'; }
+    return this;
+  };
+
+  /** 返回 'OK' | 'UNIT' | 'TAUT' | 'UNSAT'；UNIT 时把文字放在 this.pendingUnit */
+  Solver.prototype.addClause = function (lits, learnt) {
+    // 去重用"代数戳"而不是每次 new 一个对象 —— 这里是热路径，
+    // 每条约 10 万条学习子句 × 每次一个对象字面量，代价非常可观。
+    var gen = ++this.dedupGen;
+    var stamp = this.dedupStamp, dl = this.dedupLit;
+    var out = [];
+    for (var i = 0; i < lits.length; i++) {
+      var l = lits[i], v = litVar(l);
+      if (stamp[v] === gen) {
+        if (dl[v] === -l) return 'TAUT';
+        continue;
+      }
+      stamp[v] = gen; dl[v] = l; out.push(l);
+    }
+    if (out.length === 0) return 'UNSAT';
+    var arr = Int32Array.from(out);
+    var ci = this.clauses.length;
+    this.clauses.push(arr);
+    this.deleted.push(0);
+    this.isLearnt.push(!!learnt);
+    this.claAct.push(0);
+    this.claLbd.push(learnt ? this.computeLbd(arr) : 0);
+    if (out.length === 1) { this.pendingUnit = out[0]; return 'UNIT'; }
+    this.watches[li(arr[0])].push(ci);
+    this.watches[li(arr[1])].push(ci);
+    return 'OK';
+  };
+
+  Solver.prototype.computeLbd = function (c) {
+    var gen = ++this.lbdGen;
+    var stamp = this.lbdStamp, n = 0;
+    for (var i = 0; i < c.length; i++) {
+      var lv = this.level[litVar(c[i])];
+      if (lv > 0 && stamp[lv] !== gen) { stamp[lv] = gen; n++; }
+    }
+    return n || 1;
+  };
+
+  Solver.prototype.enqueue = function (lit, reason) {
+    var v = litVar(lit);
+    this.assign[v] = litSign(lit);
+    this.level[v] = this.trailLim.length;
+    this.reason[v] = reason;
+    this.lval[li(lit)] = 1;
+    this.lval[li(-lit)] = -1;
+    this.trail[this.trailSize++] = lit;
+    if (this.trailSize > this.stats.maxTrail) this.stats.maxTrail = this.trailSize;
+  };
+
+  Solver.prototype.propagate = function () {
+    while (this.qhead < this.trailSize) {
+      var p = this.trail[this.qhead++];
+      var falsified = li(-p);
+      var ws = this.watches[falsified];
+      var i = 0, j = 0, n = ws.length;
+      while (i < n) {
+        var ci = ws[i];
+        var c = this.clauses[ci];
+        // 保证 c[1] 是被证伪的那个文字
+        if (c[0] === -p) { c[0] = c[1]; c[1] = -p; }
+        var first = c[0];
+        if (this.lval[li(first)] === 1) { ws[j++] = ci; i++; continue; }
+        var found = false;
+        for (var k = 2; k < c.length; k++) {
+          if (this.lval[li(c[k])] !== -1) {
+            c[1] = c[k]; c[k] = -p;
+            this.watches[li(c[1])].push(ci);
+            found = true; break;
+          }
+        }
+        if (found) { i++; continue; }
+        ws[j++] = ci; i++;
+        if (this.lval[li(first)] === -1) {
+          while (i < n) ws[j++] = ws[i++];
+          ws.length = j;
+          this.stats.propagations += (this.trailSize - this.qhead);
+          return ci;
+        } else {
+          this.enqueue(first, ci);
+        }
+      }
+      ws.length = j;
+    }
+    return -1;
+  };
+
+  Solver.prototype.decisionLevel = function () { return this.trailLim.length; };
+
+  Solver.prototype.backtrack = function (lvl) {
+    if (this.decisionLevel() <= lvl) return;
+    var lim = this.trailLim[lvl];
+    for (var i = this.trailSize - 1; i >= lim; i--) {
+      var lit = this.trail[i], v = litVar(lit);
+      this.polarity[v] = litSign(lit);   // 相位保存
+      this.assign[v] = 0;
+      this.lval[li(lit)] = 0;
+      this.lval[li(-lit)] = 0;
+      this.reason[v] = -1;
+      if (this.useVsids) this.heap.insert(v);
+    }
+    this.trailSize = lim;
+    this.qhead = lim;
+    this.trailLim.length = lvl;
+    if (this.branchState.length > lvl) this.branchState.length = lvl;
+  };
+
+  /** 1UIP 冲突分析。返回 {learnt, btLevel, trace} 或 null（表示 UNSAT） */
+  Solver.prototype.analyze = function (confl) {
+    var learnt = [0];
+    var pathC = 0, p = 0;
+    var idx = this.trailSize - 1;
+    var trace = [];
+    var guard = 0;
+
+    do {
+      if (guard++ > 1e6) return null;
+      var c = this.clauses[confl];
+      if (this.collectTrace) trace.push({ clause: Array.prototype.slice.call(c), from: p });
+      if (this.isLearnt[confl]) { this.claAct[confl] += this.claInc; if (this.claAct[confl] > 1e20) this.rescaleClaAct(); }
+      var start = (p === 0) ? 0 : 1;
+      for (var j = start; j < c.length; j++) {
+        var q = c[j], v = litVar(q);
+        if (!this.seen[v] && this.level[v] > 0) {
+          this.seen[v] = 1;
+          this.activity[v] += this.varInc;
+          if (this.useVsids) this.heap.increase(v);
+          if (this.level[v] >= this.decisionLevel()) pathC++;
+          else learnt.push(q);
+        }
+      }
+      while (idx >= 0 && !this.seen[litVar(this.trail[idx])]) idx--;
+      if (idx < 0) return null;
+      p = this.trail[idx];
+      confl = this.reason[litVar(p)];
+      this.seen[litVar(p)] = 0;
+      pathC--;
+      idx--;
+    } while (pathC > 0);
+
+    learnt[0] = -p;
+    var bt = 0;
+    if (learnt.length > 1) {
+      var maxI = 1;
+      for (var k = 2; k < learnt.length; k++)
+        if (this.level[litVar(learnt[k])] > this.level[litVar(learnt[maxI])]) maxI = k;
+      var tmp = learnt[1]; learnt[1] = learnt[maxI]; learnt[maxI] = tmp;
+      bt = this.level[litVar(learnt[1])];
+    }
+    for (var m = 0; m < learnt.length; m++) this.seen[litVar(learnt[m])] = 0;
+
+    // 变量活动度衰减
+    this.varInc /= this.varDecay;
+    if (this.varInc > 1e100) {
+      for (var vv = 0; vv < this.nVars; vv++) this.activity[vv] *= 1e-100;
+      this.varInc *= 1e-100;
+    }
+    return { learnt: learnt, btLevel: bt, trace: trace };
+  };
+
+  Solver.prototype.rescaleClaAct = function () {
+    for (var i = 0; i < this.claAct.length; i++) this.claAct[i] *= 1e-20;
+    this.claInc *= 1e-20;
+  };
+
+  Solver.prototype.detachClause = function (ci) {
+    var c = this.clauses[ci];
+    if (this.deleted[ci] || c.length < 2) { this.deleted[ci] = 1; return; }
+    var a = li(c[0]), b = li(c[1]);
+    var wa = this.watches[a];
+    for (var i = 0; i < wa.length; i++) if (wa[i] === ci) { wa[i] = wa[wa.length - 1]; wa.pop(); break; }
+    var wb = this.watches[b];
+    for (var j = 0; j < wb.length; j++) if (wb[j] === ci) { wb[j] = wb[wb.length - 1]; wb.pop(); break; }
+    this.deleted[ci] = 1;
+  };
+
+  Solver.prototype.reduceDB = function () {
+    var cand = [];
+    for (var i = 0; i < this.clauses.length; i++) {
+      if (!this.isLearnt[i] || this.deleted[i]) continue;
+      if (this.clauses[i].length <= 2) continue;             // 保护二元子句
+      if (this.claLbd[i] <= 2) continue;                      // 保护低 LBD
+      cand.push(i);
+    }
+    if (cand.length < 1000) return;
+    var self = this;
+    cand.sort(function (a, b) {
+      if (self.claLbd[a] !== self.claLbd[b]) return self.claLbd[b] - self.claLbd[a];
+      return self.claAct[a] - self.claAct[b];
+    });
+    var drop = cand.slice(0, Math.floor(cand.length / 2));
+    for (var k = 0; k < drop.length; k++) { this.detachClause(drop[k]); this.stats.removed++; }
+  };
+
+  Solver.prototype.pickBranchLit = function () {
+    var v = this.useVsids ? this.heap.popUnassigned(this.assign) : -1;
+    if (v < 0) {
+      for (var i = 0; i < this.nVars; i++) if (this.assign[i] === 0) { v = i; break; }
+      if (v < 0) return 0;
+    }
+    var lit = v + 1;
+    return this.polarity[v] >= 0 ? lit : -lit;
+  };
+
+  /** 推进一步：一次「传播到底 + 决策或冲突处理」。界面逐微步播放就靠它。 */
+  Solver.prototype.stepOnce = function () {
+    if (!this.ok) return { type: 'unsat', reason: this.unsatReason };
+    var confl = this.propagate();
+    if (confl >= 0) {
+      this.stats.conflicts++;
+      if (this.decisionLevel() === 0) { this.ok = false; this.unsatReason = 'conflict-at-level-0'; return { type: 'unsat' }; }
+      var res = this.learning ? this.analyze(confl) : this.analyzeNoLearn(confl);
+      if (!res) { this.ok = false; this.unsatReason = 'analysis-failed'; return { type: 'unsat' }; }
+
+      if (!this.learning) {
+        // analyzeNoLearn 内部已经完成回溯 + "换另一支"的决策，这里不能再动一次栈
+        this.conflictTrace = res.trace;
+        return { type: 'conflict', learnt: null, btLevel: res.btLevel, trace: res.trace, retried: !!res.retried };
+      }
+
+      if (res.learnt.length === 0) { this.ok = false; this.unsatReason = 'empty-learnt'; return { type: 'unsat' }; }
+      var bt = res.btLevel;
+      this.backtrack(bt);
+      this.conflictTrace = res.trace;
+      if (res.learnt.length === 1) {
+        if (this.lval[li(res.learnt[0])] === -1) { this.ok = false; this.unsatReason = 'unit-conflict'; return { type: 'unsat' }; }
+        if (this.lval[li(res.learnt[0])] === 0) this.enqueue(res.learnt[0], -1);
+        this.recordLearnt(res.learnt);
+        return { type: 'conflict', learnt: res.learnt, btLevel: bt, trace: res.trace, unit: true };
+      }
+      var ci = this.addClause(res.learnt, true);
+      if (ci === 'UNSAT') { this.ok = false; this.unsatReason = 'empty-learnt'; return { type: 'unsat' }; }
+      var cidx = this.clauses.length - 1;
+      this.stats.learntTotal++;
+      this.stats.sumLearntLen += res.learnt.length;
+      if (res.learnt.length > this.stats.maxLearntLen) this.stats.maxLearntLen = res.learnt.length;
+      this.claInc /= this.claDecay;
+      if (this.claInc > 1e20) this.rescaleClaAct();
+      if (this.lval[li(res.learnt[0])] === -1) { this.ok = false; this.unsatReason = 'learnt-conflict'; return { type: 'unsat' }; }
+      if (this.lval[li(res.learnt[0])] === 0) this.enqueue(res.learnt[0], cidx);
+      this.recordLearnt(res.learnt);
+      if (this.useRestart && this.stats.conflicts >= this.restartNext) {
+        this.stats.restarts++;
+        this.backtrack(0);
+        this.restartCount++;
+        this.restartNext = this.stats.conflicts + Math.round(luby(2, this.restartCount) * this.restartBase);
+        if (this.useReduce) this.reduceDB();
+      }
+      return { type: 'conflict', learnt: res.learnt, btLevel: bt, trace: res.trace, clauseIndex: cidx };
+    }
+    // 无冲突 -> 决策
+    var lit = this.pickBranchLit();
+    if (lit === 0) return { type: 'sat' };
+    this.stats.decisions++;
+    this.trailLim.push(this.trailSize);
+    this.enqueue(lit, -1);
+    if (!this.learning) this.branchState.push({ lit: lit, flipped: false });
+    if (this.trailLim.length > this.stats.maxLevel) this.stats.maxLevel = this.trailLim.length;
+    return { type: 'decide', lit: lit, level: this.trailLim.length };
+  };
+
+  /**
+   * 无学习对照：**迭代式 DPLL**（同一层先试决策变量的另一支，两支都失败才向上一层退）。
+   *
+   * 两个必须遵守的点，否则这个对照会撒谎：
+   *   1. 绝不能凭空"学"出一个文字 —— 那等于往公式里注入一条不被蕴含的约束。故 learnt 恒为 null。
+   *   2. 必须显式维护"本层两支是否都试过"。只做时序回溯 + 相位保存会让求解器
+   *      退回原层后**又做出同一个决定**，原地死循环（实测 n=7 的小实例能烧掉 20 万次冲突预算）。
+   */
+  Solver.prototype.analyzeNoLearn = function (confl) {
+    var trace = this.collectTrace ? [{ clause: Array.prototype.slice.call(this.clauses[confl]), from: 0 }] : [];
+    while (true) {
+      var dl = this.decisionLevel();
+      if (dl === 0) return null;                    // 0 层冲突 -> 真的不可满足
+      var idx = dl - 1;
+      var st = this.branchState[idx];
+      if (!st) return null;
+      if (!st.flipped) {
+        var lit = st.lit;
+        this.backtrack(idx);                        // branchState 被截断，先取出 lit 再用
+        this.trailLim.push(this.trailSize);
+        this.enqueue(-lit, -1);
+        this.branchState.push({ lit: -lit, flipped: true });   // 记住这一支已经走过
+        this.stats.decisions++;
+        return { learnt: null, btLevel: idx, trace: trace, retried: true };
+      }
+      this.backtrack(idx);                          // 本层两支皆失败 -> 继续向上
+    }
+  };
+
+  Solver.prototype.recordLearnt = function (lits) {
+    this.learntTrail.push(Array.prototype.slice.call(lits));
+    if (this.learntTrail.length > 200) this.learntTrail.shift();
+  };
+
+  Solver.prototype.solve = function () {
+    this.restartCount = 0;
+    this.restartNext = this.restartBase;
+    var t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    var guard = 0;
+    while (guard++ < 5e7) {
+      var ev = this.stepOnce();
+      if (ev.type === 'sat') {
+        var model = new Int8Array(this.nVars);
+        for (var v = 0; v < this.nVars; v++) model[v] = this.assign[v] || this.polarity[v] || 1;
+        return { status: 'SAT', model: model, stats: this.finishStats(t0) };
+      }
+      if (ev.type === 'unsat') return { status: 'UNSAT', model: null, stats: this.finishStats(t0), reason: this.unsatReason };
+      if (this.stats.conflicts >= this.maxConflicts) return { status: 'BUDGET', model: null, stats: this.finishStats(t0) };
+    }
+    return { status: 'BUDGET', model: null, stats: this.finishStats(t0) };
+  };
+
+  Solver.prototype.finishStats = function (t0) {
+    var t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    var s = this.stats;
+    s.ms = t1 - t0;
+    s.avgLearntLen = s.learntTotal ? s.sumLearntLen / s.learntTotal : 0;
+    s.confPerDecision = s.decisions ? s.conflicts / s.decisions : 0;
+    s.propPerConflict = s.conflicts ? s.propagations / s.conflicts : 0;
+    s.liveLearnt = 0;
+    for (var i = 0; i < this.clauses.length; i++) if (this.isLearnt[i] && !this.deleted[i]) s.liveLearnt++;
+    return s;
+  };
+
+  /** 校验一个赋值是否真的满足公式 —— 独立于求解器 */
+  function checkModel(nVars, clauses, model) {
+    for (var i = 0; i < clauses.length; i++) {
+      var c = clauses[i], sat = false;
+      for (var j = 0; j < c.length; j++) {
+        var lit = c[j], val = model[litVar(lit)] * litSign(lit);
+        if (val > 0) { sat = true; break; }
+      }
+      if (!sat) return false;
+    }
+    return true;
+  }
+
+  /** 便捷入口 */
+  function solve(nVars, clauses, opts) {
+    var s = new Solver(opts).init(nVars, clauses);
+    if (!s.ok) return { status: 'UNSAT', model: null, stats: s.finishStats(0), reason: s.unsatReason };
+    return s.solve();
+  }
+
+  /** 冻结变量分析：统计在所有解中取值相同的变量个数。仅在可满足时有意义。 */
+  function backbone(nVars, clauses, opts) {
+    var base = solve(nVars, clauses, opts);
+    if (base.status !== 'SAT') return { status: base.status };
+    var frozen = 0, values = new Int8Array(nVars);
+    for (var v = 0; v < nVars; v++) {
+      var l = v + 1;
+      var a = solve(nVars, clauses.concat([[l]]), opts);
+      var b = solve(nVars, clauses.concat([[-l]]), opts);
+      var canTrue = a.status === 'SAT', canFalse = b.status === 'SAT';
+      if (canTrue && !canFalse) { frozen++; values[v] = 1; }
+      else if (canFalse && !canTrue) { frozen++; values[v] = -1; }
+      else if (!canTrue && !canFalse) return { status: 'ERROR' };
+    }
+    return { status: 'SAT', frozen: frozen, free: nVars - frozen, frac: frozen / nVars, values: values };
+  }
+
+  return {
+    UNDEF: UNDEF, TRUE: TRUE, FALSE: FALSE,
+    li: li, litVar: litVar, litSign: litSign,
+    splitmix32: splitmix32,
+    randomKCNF: randomKCNF, randomRatioCNF: randomRatioCNF, makeInstance: makeInstance,
+    bruteForceSat: bruteForceSat, countSolutions: countSolutions, staticOrder: staticOrder,
+    enumerateSolutions: enumerateSolutions,
+    dpllSimple: dpllSimple,
+    solve2SAT: solve2SAT,
+    Solver: Solver, solve: solve, checkModel: checkModel, backbone: backbone,
+    luby: luby
+  };
+});
+
+</script>
+<script>
+/* ============================================================
+ * ui.js —— 界面逻辑
+ * 依赖：window.SATCore（模型）、window.__SAT_DATA__（标定结果）
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  var C = window.SATCore;
+  var D = window.__SAT_DATA__ || { results: {}, analysis: {} };
+  var R = D.results, A = D.analysis;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function fmt(x, d) {
+    if (x === null || x === undefined || (typeof x === 'number' && !isFinite(x))) return '—';
+    return Number(x).toFixed(d === undefined ? 3 : d);
+  }
+  function int(x) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return Math.round(x).toLocaleString('en-US');
+  }
+  function lit2str(l) { return (l > 0 ? 'x' : '¬x') + Math.abs(l); }
+
+  /* ============================================================
+   * 通用 SVG 折线图
+   * ========================================================== */
+  function niceTicks(lo, hi, count) {
+    var span = hi - lo;
+    if (span <= 0) return [lo];
+    var raw = span / count;
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var norm = raw / mag;
+    var step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+    var out = [];
+    for (var v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(Math.round(v * 1e6) / 1e6);
+    return out;
+  }
+
+  function chart(host, spec) {
+    if (!host) return;
+    var W = 820, H = spec.h || 400;
+    var P = { l: 66, r: 22, t: 20, b: 48 };
+    var xmin = spec.xmin, xmax = spec.xmax, ymin = spec.ymin, ymax = spec.ymax;
+    var ylog = !!spec.ylog;
+    var l0 = ylog ? Math.log10(ymin) : 0, l1 = ylog ? Math.log10(ymax) : 0;
+    var X = function (x) { return P.l + (x - xmin) / (xmax - xmin) * (W - P.l - P.r); };
+    var Y = function (y) {
+      if (ylog) {
+        var ly = Math.log10(Math.max(y, ymin));
+        return H - P.b - (ly - l0) / (l1 - l0) * (H - P.t - P.b);
+      }
+      return H - P.b - (y - ymin) / (ymax - ymin) * (H - P.t - P.b);
+    };
+    var s = [];
+    s.push('<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(spec.aria || '图表') + '">');
+
+    // 横向网格
+    var yt = ylog
+      ? (function () {
+          var out = [];
+          for (var e = Math.floor(l0); e <= Math.ceil(l1); e++)
+            [1, 2, 5].forEach(function (m) { var v = m * Math.pow(10, e); if (v >= ymin * 0.999 && v <= ymax * 1.001) out.push(v); });
+          return out;
+        })()
+      : niceTicks(ymin, ymax, 5);
+    yt.forEach(function (v) {
+      var y = Y(v);
+      s.push('<line class="gl" x1="' + P.l + '" y1="' + y.toFixed(1) + '" x2="' + (W - P.r) + '" y2="' + y.toFixed(1) + '"/>');
+      s.push('<text class="tick" x="' + (P.l - 9) + '" y="' + (y + 3.5).toFixed(1) + '" text-anchor="end">' +
+        (spec.yfmt ? spec.yfmt(v) : (v >= 1000 ? (v / 1000) + 'k' : v)) + '</text>');
+    });
+
+    // 竖向网格 + x 刻度
+    var xt = spec.xticks || niceTicks(xmin, xmax, 8);
+    xt.forEach(function (v) {
+      var x = X(v);
+      s.push('<line class="gl" x1="' + x.toFixed(1) + '" y1="' + P.t + '" x2="' + x.toFixed(1) + '" y2="' + (H - P.b) + '"/>');
+      s.push('<text class="tick" x="' + x.toFixed(1) + '" y="' + (H - P.b + 17) + '" text-anchor="middle">' +
+        (spec.xfmt ? spec.xfmt(v) : v) + '</text>');
+    });
+
+    // 标记线
+    (spec.marks || []).forEach(function (m) {
+      var x = X(m.x);
+      s.push('<line class="mark" x1="' + x.toFixed(1) + '" y1="' + P.t + '" x2="' + x.toFixed(1) + '" y2="' + (H - P.b) + '"/>');
+      if (m.label) s.push('<text class="marklab" x="' + (x + 5).toFixed(1) + '" y="' + (P.t + 13) + '">' + esc(m.label) + '</text>');
+    });
+
+    // 误差带
+    (spec.bands || []).forEach(function (b) {
+      var d = '';
+      b.pts.forEach(function (p, i) { d += (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[2]).toFixed(1); });
+      for (var i = b.pts.length - 1; i >= 0; i--) d += 'L' + X(b.pts[i][0]).toFixed(1) + ' ' + Y(b.pts[i][1]).toFixed(1);
+      s.push('<path class="band" d="' + d + 'Z"/>');
+    });
+
+    // 坐标轴
+    s.push('<line class="ax" x1="' + P.l + '" y1="' + (H - P.b) + '" x2="' + (W - P.r) + '" y2="' + (H - P.b) + '"/>');
+    s.push('<line class="ax" x1="' + P.l + '" y1="' + P.t + '" x2="' + P.l + '" y2="' + (H - P.b) + '"/>');
+    if (spec.xlab) s.push('<text class="axlab" x="' + ((W + P.l - P.r) / 2).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(spec.xlab) + '</text>');
+    if (spec.ylab) s.push('<text class="axlab" x="16" y="' + ((H + P.t - P.b) / 2).toFixed(1) + '" text-anchor="middle" transform="rotate(-90 16 ' + ((H + P.t - P.b) / 2).toFixed(1) + ')">' + esc(spec.ylab) + '</text>');
+
+    // 曲线
+    (spec.series || []).forEach(function (ser) {
+      var pts = ser.pts.filter(function (p) { return p[1] !== null && p[1] !== undefined && isFinite(p[1]); });
+      if (!pts.length) return;
+      var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); }).join('');
+      s.push('<path class="ln" d="' + d + '" stroke="' + ser.color + '"' +
+        (ser.dash ? ' stroke-dasharray="' + ser.dash + '"' : '') + ' stroke-width="' + (ser.w || 2) + '"/>');
+      if (ser.dots !== false) {
+        pts.forEach(function (p) {
+          s.push('<circle class="pt" cx="' + X(p[0]).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="' + (ser.r || 3) + '" fill="' + ser.color + '"/>');
+        });
+      }
+    });
+
+    s.push('</svg>');
+    host.innerHTML = s.join('');
+  }
+
+  function chartKey(host, items) {
+    if (!host) return;
+    host.innerHTML = items.map(function (it) {
+      return '<span><i style="background:' + it.color + '"></i>' + esc(it.label) + '</span>';
+    }).join('');
+  }
+
+  /* ============================================================
+   * KPI
+   * ========================================================== */
+  function renderKpis() {
+    var k = A.kpi || {};
+    var cards = [
+      {
+        cls: 'hot', label: '公认的 3-SAT 阈值',
+        val: '4.2667', sub: '1RSB 空腔法的值。k=3 的严格证明至今未闭合'
+      },
+      {
+        cls: 'hot', label: '本装置直接测到（n=200）',
+        val: fmt(k.crossMax, 3), sub: '与公认值差 ' + fmt(Math.abs(k.crossMax - 4.2667), 3) + '　共 ' + int(k.crossTotal) + ' 个实例'
+      },
+      {
+        cls: '', label: '同一批数据三参数外推',
+        val: A.fits.threesat.free ? fmt(A.fits.threesat.free.rInf, 3) : '—',
+        sub: '比直接测量离真值更远——外推在这里是有害的'
+      },
+      {
+        cls: 'cool', label: '对照实验 2-SAT（真值 = 1）',
+        val: '+' + fmt((k.twoSatFar.r - 1) * 100, 1) + '%',
+        sub: 'n=1920 时仍偏这么多。你凭什么相信 n=200 够了'
+      },
+      {
+        cls: 'cool', label: '子句学习带来的判定数倍率',
+        val: fmt(k.learnRatioMax, 1) + '×',
+        sub: 'n=' + k.learnRatioMaxN + ' 的不可满足实例。n 每翻一倍，这个倍率 ×' +
+          (A.learnTrend ? fmt(A.learnTrend.factorPerDouble, 1) : '—')
+      },
+      {
+        cls: '', label: '证明无解的代价',
+        val: '×' + fmt(k.proofFactor, 3),
+        sub: '每多一个变量。指数拟合 R² = ' + fmt(k.proofR2, 3)
+      }
+    ];
+    $('kpis').innerHTML = cards.map(function (c) {
+      return '<div class="kpi ' + c.cls + '"><div class="k-label">' + esc(c.label) + '</div>' +
+        '<div class="k-val mono">' + esc(c.val) + '</div>' +
+        '<div class="k-sub">' + esc(c.sub) + '</div></div>';
+    }).join('');
+  }
+
+  /* ============================================================
+   * 01 · 问题
+   * ========================================================== */
+  var pv = { n: 12, r: 4.267, seed: 1, inst: null, model: null, status: null };
+
+  function greedyAssignment(n, clauses) {
+    // 找不到解时，给一个"尽量满足"的赋值，用来着色展示离满足还差多远
+    var assign = new Int8Array(n), score = new Int32Array(n);
+    for (var i = 0; i < n; i++) { assign[i] = 1; score[i] = 0; }
+    for (var round = 0; round < 40; round++) {
+      var improved = false;
+      for (var v = 0; v < n; v++) {
+        var before = countSat(n, clauses, assign);
+        assign[v] = -assign[v];
+        var after = countSat(n, clauses, assign);
+        if (after >= before) { if (after > before) improved = true; } else assign[v] = -assign[v];
+      }
+      if (!improved) break;
+    }
+    return assign;
+  }
+  function countSat(n, clauses, assign) {
+    var c = 0;
+    for (var i = 0; i < clauses.length; i++) {
+      var cl = clauses[i], sat = false;
+      for (var j = 0; j < cl.length; j++) {
+        var lit = cl[j];
+        if ((lit > 0 && assign[lit - 1] > 0) || (lit < 0 && assign[-lit - 1] < 0)) { sat = true; break; }
+      }
+      if (sat) c++;
+    }
+    return c;
+  }
+
+  function renderProblem() {
+    var n = pv.n, r = pv.r;
+    pv.inst = C.makeInstance(20260928, 'pv|' + pv.seed + '|' + n + '|' + r, n, r, 3);
+    var clauses = pv.inst.clauses;
+    $('pv-m').textContent = clauses.length;
+
+    var res = C.solve(n, clauses, { maxConflicts: 200000 });
+    pv.status = res.status;
+    var model = res.status === 'SAT' ? res.model : greedyAssignment(n, clauses);
+    pv.model = model;
+    var satCount = countSat(n, clauses, model);
+
+    // 子句列表
+    var html = clauses.map(function (c) {
+      var sat = false;
+      for (var j = 0; j < c.length; j++) {
+        var lit = c[j];
+        if ((lit > 0 && model[lit - 1] > 0) || (lit < 0 && model[-lit - 1] < 0)) { sat = true; break; }
+      }
+      return '<span class="cl ' + (sat ? 'sat' : 'unsat') + '">' + c.map(lit2str).join(' ∨ ') + '</span>';
+    }).join('');
+    $('clauses').innerHTML = html;
+
+    // 解空间
+    var cap = 200;
+    if (n <= 16) {
+      var en = C.enumerateSolutions(n, clauses, cap);
+      var sols = en.solutions;
+      var marginal = new Float64Array(n);
+      sols.forEach(function (m) { for (var v = 0; v < n; v++) if (m[v] > 0) marginal[v]++; });
+      var frozen = 0;
+      for (var v2 = 0; v2 < n; v2++) { var f = sols.length ? marginal[v2] / sols.length : 0; if (f === 0 || f === 1) frozen++; }
+
+      // 截断时枚举到的 200 不是真实解数 —— 另取精确计数，别把"枚举上限"当成"解的总数"
+      var exact = null;
+      if (en.truncated) {
+        var cc = C.countSolutions(n, clauses, 1e9);
+        if (!cc.overflow) exact = cc.count;
+      }
+      $('solinfo').innerHTML = sols.length
+        ? '共 <b>' + (en.truncated ? (exact !== null ? int(exact) : '>' + cap) : int(sols.length)) + '</b> 个满足赋值' +
+          (en.truncated ? '（枚举显示前 ' + cap + ' 个）' : '') +
+          (en.truncated ? '' : '　·　冻结变量 <b>' + frozen + ' / ' + n + '</b>　·　' +
+            (frozen ? '解空间已经结晶出一部分确定的结构' : '没有任何变量被钉死，解是一团自由的云'))
+        : '一个满足赋值都没有。';
+
+      $('sols').innerHTML = sols.slice(0, 96).map(function (m) {
+        return '<span class="sol">' + Array.prototype.map.call(m, function (x) {
+          return '<i class="' + (x > 0 ? 'on' : '') + '"></i>';
+        }).join('') + '</span>';
+      }).join('');
+
+      // 每个变量的取真比例。
+      // 注意：枚举被上限截断时，边际比例是有偏的（只统计了前 200 个解），
+      // 绝不能当精确值画出来 —— 这里直接不画。
+      var bars = '';
+      if (sols.length && !en.truncated) {
+        for (var v3 = 0; v3 < n; v3++) {
+          var f3 = marginal[v3] / sols.length;
+          bars += '<div class="bar-row"><span class="bl mono">x' + (v3 + 1) + '</span>' +
+            '<span class="bar-track"><span class="bar-fill" style="width:' + (f3 * 100).toFixed(1) + '%"></span></span>' +
+            '<span class="bv">' + (f3 * 100).toFixed(0) + '%</span></div>';
+        }
+      }
+      $('solnote').innerHTML = en.truncated
+        ? '<div style="color:#6e6a60">满足赋值超过 ' + cap + ' 个，逐变量统计会有偏，这里不画。把 r 调大一点，解会变少。</div>'
+        : (sols.length
+          ? '<div style="margin-bottom:10px">每个变量在所有解中取真的比例。0% 或 100% 的柱子就是冻结变量——它在任何解里都没得选。</div>' + bars
+          : '把 r 调小一点，解就会重新出现。');
+    } else {
+      $('solinfo').innerHTML = 'n = ' + n + ' 时解空间太大，不做穷举。';
+      $('sols').innerHTML = '';
+      $('solnote').innerHTML = '';
+    }
+
+    // 判决
+    var verdict = res.status === 'SAT'
+      ? '求解器判定：<b style="color:#4a7c59">可满足</b>　当前赋值满足 ' + satCount + ' / ' + clauses.length + ' 条子句（全部满足）'
+      : (res.status === 'UNSAT'
+        ? '求解器判定：<b style="color:#b23a2e">不可满足</b>　一个解都没有。上面显示的是"尽量满足"的赋值，最多只能满足 ' + satCount + ' / ' + clauses.length + ' 条'
+        : '预算耗尽，未能判定');
+    if ($('pv-verdict')) $('pv-verdict').innerHTML = verdict;
+  }
+
+  function initProblem() {
+    var sn = $('pv-n'), sr = $('pv-r');
+    if (!sn) return;
+    sn.addEventListener('input', function () {
+      pv.n = parseInt(sn.value, 10);
+      $('pv-n-v').textContent = pv.n;
+      renderProblem();
+    });
+    sr.addEventListener('input', function () {
+      pv.r = parseFloat(sr.value);
+      $('pv-r-v').textContent = pv.r.toFixed(3);
+      renderProblem();
+    });
+    $('pv-gen').addEventListener('click', function () { pv.seed++; renderProblem(); });
+    renderProblem();
+  }
+
+  /* ============================================================
+   * 02 · 求解器
+   * ========================================================== */
+  var sv = { n: 60, r: 4.267, speed: 60, solver: null, timer: null, done: false, lastLearnt: [], lastTrace: null, totalSteps: 0 };
+
+  function svBuild() {
+    var inst = C.makeInstance(20260928, 'sv|' + sv.n + '|' + sv.r, sv.n, sv.r, 3);
+    sv.clauses = inst.clauses;
+    sv.solver = new C.Solver({ maxConflicts: 400000, trace: true }).init(sv.n, inst.clauses);
+    sv.lastLearnt = [];
+    sv.lastTrace = null;
+    sv.done = !sv.solver.ok;
+    sv.totalSteps = 0;
+    svRender();
+  }
+
+  function svStop() { if (sv.timer) { clearInterval(sv.timer); sv.timer = null; } $('sv-run').textContent = '连续播放'; }
+
+  function svStep() {
+    if (sv.done || !sv.solver) return;
+    var ev = sv.solver.stepOnce();
+    sv.totalSteps++;
+    if (ev.type === 'sat' || ev.type === 'unsat') sv.done = true;
+    if (ev.learnt) { sv.lastLearnt.push(ev.learnt); if (sv.lastLearnt.length > 14) sv.lastLearnt.shift(); }
+    if (ev.trace && ev.trace.length) sv.lastTrace = ev.trace;
+    svRender();
+    if (sv.done) svStop();
+  }
+
+  function svRender() {
+    var s = sv.solver;
+    if (!s) return;
+    var st = s.stats;
+
+    // 统计
+    $('stats').innerHTML = [
+      ['判定次数', int(st.decisions), 'hot'],
+      ['传播', int(st.propagations), ''],
+      ['冲突', int(st.conflicts), 'hot'],
+      ['学到的子句', int(st.learntTotal), 'leaf'],
+      ['重启', int(st.restarts), ''],
+      ['当前层', s.decisionLevel(), 'cool'],
+      ['已赋值', s.trailSize + ' / ' + sv.n, ''],
+      ['轨迹峰值', st.maxTrail, '']
+    ].map(function (r) {
+      return '<div class="stat ' + r[2] + '"><div class="s-label">' + r[0] + '</div><div class="s-val">' + r[1] + '</div></div>';
+    }).join('');
+
+    // 赋值轨道
+    var cells = [];
+    for (var v = 0; v < sv.n; v++) {
+      var a = s.assign[v];
+      var cls = 'cell' + (a > 0 ? ' t' : a < 0 ? ' f' : '');
+      if (s.level[v] === 0 && a !== 0) cls += ' lvl0';
+      if (a !== 0 && s.reason[v] === -1 && s.level[v] > 0) cls += ' dec';
+      cells.push('<div class="' + cls + '" title="x' + (v + 1) + ' 层 ' + s.level[v] + '">' + (v + 1) + '</div>');
+    }
+    $('trail').innerHTML = cells.join('');
+
+    // 学到的子句
+    $('learnt').innerHTML = sv.lastLearnt.length
+      ? sv.lastLearnt.slice(-9).map(function (c, i) {
+          return '<div style="margin-bottom:4px" class="mono-inline">' +
+            '<span style="color:#9a958a">#' + (sv.lastLearnt.length - 9 + i + 1) + '</span>　' +
+            c.map(lit2str).join(' ∨ ') + '</div>';
+        }).join('')
+      : '<span style="color:#9a958a">还没有学到任何子句——它还没撞过墙。</span>';
+
+    // 冲突前因
+    $('conflict').innerHTML = sv.lastTrace
+      ? sv.lastTrace.slice(0, 6).map(function (t) {
+          return '<div style="margin-bottom:4px" class="mono-inline">' + t.clause.map(lit2str).join(' ∨ ') + '</div>';
+        }).join('') + (sv.lastTrace.length > 6 ? '<div style="color:#9a958a">…共 ' + sv.lastTrace.length + ' 条参与</div>' : '')
+      : '<span style="color:#9a958a">还没有发生过冲突。</span>';
+
+    // 判决
+    var verdict;
+    if (sv.done) {
+      if (!s.ok) verdict = '<b style="color:#b23a2e">不可满足</b>　证明用掉 ' + int(st.conflicts) + ' 次冲突、' + int(st.decisions) + ' 次判定';
+      else verdict = '<b style="color:#4a7c59">可满足</b>　找到解，用了 ' + int(st.decisions) + ' 次判定、' + int(st.conflicts) + ' 次冲突';
+    } else {
+      verdict = '进行中……已经走了 ' + sv.totalSteps + ' 步。';
+    }
+    $('sv-verdict').innerHTML = verdict;
+    $('sv-step').disabled = sv.done;
+  }
+
+  function initSolver() {
+    var sn = $('sv-n'), sr = $('sv-r'), ss = $('sv-speed');
+    if (!sn) return;
+    sn.addEventListener('input', function () { sv.n = parseInt(sn.value, 10); $('sv-n-v').textContent = sv.n; svStop(); svBuild(); });
+    sr.addEventListener('input', function () { sv.r = parseFloat(sr.value); $('sv-r-v').textContent = sv.r.toFixed(3); svStop(); svBuild(); });
+    ss.addEventListener('input', function () { sv.speed = parseInt(ss.value, 10); $('sv-speed-v').textContent = sv.speed + ' ms'; if (sv.timer) { svStop(); svRun(); } });
+    $('sv-step').addEventListener('click', function () { svStop(); svStep(); });
+    $('sv-run').addEventListener('click', function () { if (sv.timer) svStop(); else svRun(); });
+    $('sv-solve').addEventListener('click', function () {
+      svStop();
+      var inst = C.makeInstance(20260928, 'sv|' + sv.n + '|' + sv.r, sv.n, sv.r, 3);
+      var res = C.solve(sv.n, inst.clauses, { maxConflicts: 400000 });
+      sv.solver = new C.Solver({ maxConflicts: 400000, trace: true }).init(sv.n, inst.clauses);
+      // 直接跳到终局：重跑一遍但不渲染中间态
+      var guard = 0;
+      while (!sv.done && guard++ < 2e6) {
+        var ev = sv.solver.stepOnce();
+        if (ev.learnt) { sv.lastLearnt.push(ev.learnt); if (sv.lastLearnt.length > 14) sv.lastLearnt.shift(); }
+        if (ev.trace && ev.trace.length) sv.lastTrace = ev.trace;
+        if (ev.type === 'sat' || ev.type === 'unsat') sv.done = true;
+      }
+      sv.totalSteps = guard;
+      svRender();
+    });
+    $('sv-reset').addEventListener('click', function () { svStop(); svBuild(); });
+    svBuild();
+  }
+  function svRun() {
+    if (sv.done) return;
+    $('sv-run').textContent = '暂停';
+    sv.timer = setInterval(function () {
+      if (sv.done) { svStop(); return; }
+      svStep();
+    }, Math.max(sv.speed, 8));
+  }
+
+  /* ============================================================
+   * 03 · 相变
+   * ========================================================== */
+  var COLORS = ['#b23a2e', '#b8801f', '#4a7c59', '#2c6b8a', '#7a4a7e', '#8a6a4a'];
+
+  function renderPhase() {
+    // 3-SAT
+    var curves = R.E2.curves;
+    var series = curves.map(function (cv, i) {
+      return {
+        color: COLORS[i % COLORS.length],
+        pts: cv.points.map(function (p) { return [p.r, p.resolved >= 5 ? p.p : null]; })
+      };
+    });
+    chart($('chart-phase'), {
+      xmin: 3.4, xmax: 5.2, ymin: 0, ymax: 1.02,
+      xlab: '比例 r = m / n', ylab: 'P(可满足)', yfmt: function (v) { return v.toFixed(1); },
+      marks: [{ x: 4.2667, label: '4.2667' }],
+      series: series,
+      aria: '随机 3-SAT 在不同 n 下的可满足概率随比例的变化'
+    });
+    chartKey($('key-phase'), curves.map(function (cv, i) {
+      return { color: COLORS[i % COLORS.length], label: 'n = ' + cv.n };
+    }));
+
+    // 交点表
+    var rows = ['<thead><tr><th>n</th><th class="mono">50% 交点 r</th><th class="mono">偏离 4.2667</th><th class="mono">实例/点</th><th class="mono">未判定</th></tr></thead><tbody>'];
+    R.E2.crossing.forEach(function (c) {
+      var nPer = R.E2.curves.filter(function (cv) { return cv.n === c.n; })[0].points[0].resolved +
+        R.E2.curves.filter(function (cv) { return cv.n === c.n; })[0].points[0].budget;
+      rows.push('<tr><td class="mono">' + c.n + '</td><td class="mono">' + fmt(c.r, 3) + '</td><td class="mono">' +
+        (c.r > 4.2667 ? '+' : '') + fmt(c.r - 4.2667, 3) + '</td><td class="mono">' + nPer + '</td><td class="mono">' +
+        fmt(c.budgetRate * 100, 1) + '%</td></tr>');
+    });
+    rows.push('</tbody>');
+    $('tbl-crossing').innerHTML = rows.join('');
+
+    var f = A.fits.threesat;
+    var sub = (f.subsets || []).filter(function (s) { return s.x !== null; })
+      .map(function (s) { return 'n ≥ ' + s.minN + ' → ' + fmt(s.x, 2) + '（' + s.n + ' 个点）'; }).join('，');
+    $('scale-fit').innerHTML =
+      '<b>外推的教训。</b>把上面六个交点交给一个三参数幂律 r(n) = r∞ + c·n<sup>−x</sup> 去自由拟合，' +
+      '它会给出 <span class="mono-inline">r∞ = ' + fmt(f.free.rInf, 3) + '、x = ' + fmt(f.free.x, 2) + '（R² = ' + fmt(f.free.r2, 3) + '）</span>。' +
+      '这个 ' + fmt(f.free.rInf, 3) + ' 比直接读到的最大规模交点 <span class="mono-inline">' + fmt(A.kpi.crossMax, 3) + '</span> 离真值 4.2667 <em>更远</em>。' +
+      '原因是 r∞ 与指数 x 在这点数据上互相补偿——你没法靠拟合把两个都定下来。' +
+      '<br><br>把渐近值钉死在 4.2667 再拟合，有效指数是 ' + fmt(f.fixed.x, 2) +
+      '（只用得上 ' + (f.fixed.n || 0) + ' 个点：n=160 和 200 的偏差已经是负的，在统计噪声内）。' +
+      '换不同的起始规模，指数就跟着变：' + (sub || '—') + '。' +
+      '<b>指数随取哪几档而变，这本身就说明区间还不够大。</b>';
+
+    // 2-SAT
+    var c2 = R.E1.curves;
+    chart($('chart-phase2'), {
+      xmin: 0.45, xmax: 1.65, ymin: 0, ymax: 1.02,
+      xlab: '比例 r = m / n', ylab: 'P(可满足)', yfmt: function (v) { return v.toFixed(1); },
+      marks: [{ x: 1, label: '真值 1' }],
+      series: c2.map(function (cv, i) {
+        return { color: COLORS[i % COLORS.length], pts: cv.points.map(function (p) { return [p.r, p.p]; }), r: 2 };
+      }),
+      aria: '随机 2-SAT 在不同 n 下的可满足概率随比例的变化'
+    });
+    chartKey($('key-phase2'), c2.map(function (cv, i) {
+      return { color: COLORS[i % COLORS.length], label: 'n = ' + cv.n };
+    }));
+
+    var t2 = A.fits.twosat;
+    $('twosat-note').innerHTML =
+      '2-SAT 的阈值可以被<em>严格证明</em>等于 1（Chvátal–Reed 1992）。所以这里有一把真正的尺子：' +
+      '如果我的方法没问题，交点应该落在 1 上。实测是：n=30 时 ' + fmt(R.E1.crossing[0].r, 3) +
+      '，n=1920 时 ' + fmt(R.E1.crossing[R.E1.crossing.length - 1].r, 3) + '。' +
+      '七个尺度、每个 400 个实例，交点单调向 1 靠，但走得极慢。' +
+      '把这七个点按 <span class="mono-inline">a·n<sup>−1/3</sup> + b·n<sup>−2/3</sup></span> 拟合，' +
+      '得到 a = ' + fmt(t2.twoTerm.a, 2) + '、b = ' + fmt(t2.twoTerm.b, 2) + '，均方根残差只有 ' + fmt(t2.twoTerm.rmse, 4) + '。' +
+      '<br><br>但必须说清楚：单幂律 ' + fmt(t2.fixed1.x, 2) + ' 的拟合残差是 ' + fmt(rmseSingle(t2), 4) + '，几乎一样好。' +
+      '<b>所以本实验能证明"存在有限尺寸效应"，但区分不了这两种标度形式。</b>';
+
+    $('finding-twosat').innerHTML =
+      '对照实验里，n 一路加到 <b>1920</b>，2-SAT 的交点仍然停在 <b>' + fmt(R.E1.crossing[R.E1.crossing.length - 1].r, 3) +
+      '</b>，比真值 1 高出 <b>' + fmt((R.E1.crossing[R.E1.crossing.length - 1].r - 1) * 100, 1) + '%</b>。' +
+      '一个"用对了方法、答案已知"的测量，在近两千个变量的规模上还差这么多——' +
+      '那么 3-SAT 在 n=200 测到 4.261 就说不上是"测准了"，只能说"和 4.2667 相容"。';
+  }
+
+  function rmseSingle(t2) {
+    var s = 0, m = 0;
+    t2.points.forEach(function (p) {
+      var dev = p.cross - 1;
+      if (dev <= 0.002) return;
+      var pred = t2.fixed1.c * Math.pow(p.n, -t2.fixed1.x);
+      s += (pred - dev) * (pred - dev); m++;
+    });
+    return m ? Math.sqrt(s / m) : 0;
+  }
+
+  /* ============================================================
+   * 04 · 尖峰
+   * ========================================================== */
+  function renderPeak() {
+    var curves = R.E3.curves;
+    // 纵轴用相对代价（各自最小 r 处 = 1），这样不同单位可比
+    var series = curves.map(function (cv, i) {
+      var val = function (p) { return cv.mode === 'scc' ? p.medWork : p.medDec; };
+      return {
+        color: cv.mode === 'scc' ? '#9a958a' : COLORS[i % COLORS.length],
+        dash: cv.mode === 'scc' ? '5 4' : null,
+        w: cv.mode === 'scc' ? 1.6 : 2.2,
+        pts: cv.points.map(function (p) { var v = val(p); return [p.r, v ? v / cv.base : null]; })
+      };
+    });
+    var ymax = 1, ymin = 1e9;
+    series.forEach(function (s) {
+      s.pts.forEach(function (p) {
+        if (!p[1]) return;
+        if (p[1] > ymax) ymax = p[1];
+        if (p[1] < ymin) ymin = p[1];
+      });
+    });
+    // 动态纵轴：2-SAT 那条降到 0.03，固定下限会把它裁成"看起来没数据"
+    ymax = Math.pow(10, Math.ceil(Math.log10(ymax)));
+    ymin = Math.pow(10, Math.floor(Math.log10(Math.max(ymin, 1e-3))));
+
+    chart($('chart-peak'), {
+      xmin: 0, xmax: 6.7, ymin: ymin, ymax: ymax, ylog: true, h: 420,
+      xlab: '比例 r = m / n', ylab: '相对代价（各自最低点 = 1）',
+      yfmt: function (v) { return v + '×'; },
+      marks: [{ x: 1, label: '2-SAT 真值 1' }, { x: 4.2667, label: '4.2667' }],
+      series: series,
+      aria: '不同算法在不同比例下的相对求解代价'
+    });
+    chartKey($('key-peak'), curves.map(function (cv, i) {
+      return { color: cv.mode === 'scc' ? '#9a958a' : COLORS[i % COLORS.length], label: cv.tag + '（' + cv.unit + '）' };
+    }));
+
+    var p3 = A.peaks[0], p3b = A.peaks[1], p2d = A.peaks[2], p2s = A.peaks[3];
+    $('peak-note').innerHTML =
+      '3-SAT n=100：峰值在 r = <span class="mono-inline">' + p3.peakR + '</span>，是曲线最低点的 ' +
+      '<span class="mono-inline">' + fmt(p3.ratio, 1) + '×</span>；n=60 时只有 ' + fmt(p3b.ratio, 1) + '×——峰随规模变陡。<br>' +
+      '2-SAT n=100：<b>没有峰</b>。朴素 DPLL 的搜索节点数从 91 单调降到 3，回溯次数在 r ≤ 1.3 时恒为 0，' +
+      '越过阈值才跳到 1。同一个相变（交点 ' + fmt(R.E1.crossing[2].r, 2) + '，与上一节吻合），计算上却完全看不见。<br>' +
+      '蕴涵图 SCC：代价就是边数 2m，严格线性，从 40 涨到 400 只是因为子句变多，与"难"无关。';
+  }
+
+  /* ============================================================
+   * 05 · 冻结
+   * ========================================================== */
+  function renderFrozen() {
+    var series = A.frozen.map(function (cv, i) {
+      return {
+        color: COLORS[i % COLORS.length],
+        pts: cv.points.map(function (p) { return [p.r, p.reliable ? p.frac : null]; })
+      };
+    });
+    chart($('chart-frozen'), {
+      xmin: 1.9, xmax: 5.2, ymin: 0, ymax: 1.0,
+      xlab: '比例 r = m / n', ylab: '冻结变量比例',
+      yfmt: function (v) { return v.toFixed(1); },
+      marks: [{ x: 4.2667, label: '4.2667' }],
+      series: series,
+      aria: '冻结变量比例随比例的变化'
+    });
+    chartKey($('key-frozen'), A.frozen.map(function (cv, i) {
+      return { color: COLORS[i % COLORS.length], label: 'n = ' + cv.n };
+    }));
+
+    var last = A.frozen[A.frozen.length - 1];
+    var rel = last.points.filter(function (p) { return p.reliable; });
+    $('frozen-note').innerHTML =
+      '只画可满足实例不少于 5 个的点（否则均值是噪声）。曲线在逼近阈值时抬头：' +
+      'n=' + last.n + ' 上，r 从 2.0 走到 ' + (rel.length ? rel[rel.length - 1].r.toFixed(2) : '—') +
+      '，冻结比例从 ' + (rel.length ? rel[0].frac.toFixed(3) : '—') + ' 升到 ' + (rel.length ? rel[rel.length - 1].frac.toFixed(3) : '—') + '。' +
+      '解空间正在从"一团云"收缩成"一根针"。';
+  }
+
+  /* ============================================================
+   * 06 · 代价
+   * ========================================================== */
+  function renderCost() {
+    // 学习倍率
+    var learn = A.learn.filter(function (x) { return x.unsat || x.sat; });
+    var series = [
+      { color: '#b23a2e', pts: learn.map(function (x) { return [x.n, x.unsat ? x.unsat.cdcl : null]; }), name: 'UNSAT · 完整 CDCL' },
+      { color: '#d98d84', pts: learn.map(function (x) { return [x.n, x.unsat ? x.unsat.nl : null]; }), name: 'UNSAT · 无学习' },
+      { color: '#2c6b8a', pts: learn.map(function (x) { return [x.n, x.sat ? x.sat.cdcl : null]; }), name: 'SAT · 完整 CDCL' },
+      { color: '#8fb8cb', pts: learn.map(function (x) { return [x.n, x.sat ? x.sat.nl : null]; }), name: 'SAT · 无学习' }
+    ];
+    chart($('chart-learn'), {
+      xmin: 30, xmax: 150, ymin: 10, ymax: 100000, ylog: true, h: 400,
+      xlab: '变量数 n（r = 4.5 固定）', ylab: '判定次数中位数',
+      yfmt: function (v) { return v >= 1000 ? (v / 1000) + 'k' : v; },
+      series: series,
+      aria: '完整 CDCL 与关掉学习后的判定次数对比'
+    });
+    chartKey($('key-learn'), series.map(function (s) { return { color: s.color, label: s.name }; }));
+
+    var u = A.learn.filter(function (x) { return x.unsat; });
+    var first = u[0], lastL = u[u.length - 1];
+    $('learn-note').innerHTML =
+      '按可满足性分开统计——只看中位数会把结论带偏，因为中位数往往落在可满足实例上。' +
+      '不可满足实例上，学习带来的判定数倍率从 n=' + first.n + ' 的 ' + fmt(first.unsat.ratio, 1) + '× ' +
+      '涨到 n=' + lastL.n + ' 的 ' + fmt(lastL.unsat.ratio, 1) + '×。' +
+      '按 log-log 拟合，<b>n 每翻一倍，这个倍率大约再乘 ' +
+      (A.learnTrend ? fmt(A.learnTrend.factorPerDouble, 1) : '—') + '</b>。' +
+      '倍率在长，但还没到指数级——在我能跑到的规模上，学习是"贵得多"和"便宜得多"的分界，还不是"能算"和"不能算"的分界。';
+
+    // 组件消融表
+    var comps = R.E5.components;
+    var base = comps[0].medDec;
+    var rows = ['<thead><tr><th>配置</th><th class="mono">中位判定</th><th class="mono">相对完整版</th><th class="mono">中位冲突</th><th class="mono">未判定</th></tr></thead><tbody>'];
+    comps.forEach(function (c, i) {
+      rows.push('<tr><td>' + esc(c.name) + '</td><td class="mono' + (i === 0 ? ' ok' : '') + '">' + int(c.medDec) + '</td>' +
+        '<td class="mono">' + fmt(c.medDec / base, 2) + '×</td><td class="mono">' + int(c.medConf) + '</td>' +
+        '<td class="mono">' + fmt(c.budgetRate * 100, 0) + '%</td></tr>');
+    });
+    rows.push('</tbody>');
+    $('tbl-ablation').innerHTML = rows.join('');
+
+    var noVsids = comps.filter(function (c) { return c.name.indexOf('VSIDS') >= 0; })[0];
+    var noRestart = comps.filter(function (c) { return c.name.indexOf('重启') >= 0; })[0];
+    var noReduce = comps.filter(function (c) { return c.name.indexOf('删句') >= 0; })[0];
+    var noLearn = comps.filter(function (c) { return c.name.indexOf('学习') >= 0; })[0];
+    $('abl-note').innerHTML =
+      'n=100、r=4.5、同一批 40 个实例。按贡献排序：' +
+      '<b>学习 ' + fmt(noLearn.medDec / base, 1) + '×</b>，' +
+      '<b>VSIDS ' + fmt(noVsids.medDec / base, 1) + '×</b>，' +
+      '重启 ' + fmt(noRestart.medDec / base, 2) + '×，' +
+      '删句 ' + fmt(noReduce.medDec / base, 2) + '×。' +
+      '重启与删句在这个规模上几乎不起作用——它们是为大实例准备的手段，n=100 上还没有足够的子句需要管理。';
+
+    // 证明规模
+    var pts = R.E6.points.filter(function (p) { return p.count >= 8; });
+    chart($('chart-proof'), {
+      xmin: 20, xmax: 170, ymin: 10, ymax: 10000, ylog: true, h: 360,
+      xlab: '变量数 n（r = 4.5，几乎全为不可满足）', ylab: '证明 UNSAT 所需冲突数中位数',
+      yfmt: function (v) { return v >= 1000 ? (v / 1000) + 'k' : v; },
+      series: [{ color: '#4a7c59', pts: pts.map(function (p) { return [p.n, p.medConf]; }) }],
+      aria: '证明不可满足所需代价随变量数的增长'
+    });
+
+    var fit = R.E6.fit;
+    $('proof-note').innerHTML = fit
+      ? '对数线性拟合：每多一个变量，中位冲突数乘以 <b>' + fmt(fit.factorPerVar, 3) + '</b>（R² = ' + fmt(fit.r2, 3) + '）。' +
+        '这是个温和的指数——从 n=30 到 n=160 只涨了 ' + fmt(R.E6.points[R.E6.points.length - 1].medConf / R.E6.points[0].medConf, 0) + ' 倍。' +
+        '但指数就是指数：照这个速率外推到 n=400，中位代价会到 ' + int(R.E6.points[0].medConf * Math.pow(fit.factorPerVar, 400 - R.E6.points[0].n)) +
+        ' 次冲突量级。<b>这正是"没有已知多项式算法"在实验上的样子。</b>'
+      : '';
+
+    var lu = A.learn[A.learn.length - 1];
+    $('finding-learn').innerHTML =
+      '学习不是可有可无的优化，它是这台求解器里唯一"改变性质"的部件：在 n=' + lu.n +
+      ' 的不可满足实例上关掉它，判定次数要乘 <b>' + fmt(lu.unsat.ratio, 0) + '</b>。' +
+      '但它也没有把指数变成多项式——上一张图里那条指数曲线，开着学习也一样在涨。' +
+      '学习买到的是常数级的巨大改善，不是复杂度类别的跨越。';
+  }
+
+  /* ============================================================
+   * 07 · 验证规模
+   * ========================================================== */
+  function renderVerifyStats() {
+    var host = $('verify-stats');
+    if (!host) return;
+    var cc = R.E1.crossCheck;
+    var cards = [
+      ['模型自检', '46 项', '全部通过'],
+      ['CDCL vs 暴力枚举', '6,000 例', '逐例一致'],
+      ['2-SAT 三套实现', '3,000 例', '零分歧'],
+      ['学到子句的蕴含性', '穷举验证', '全部被原公式蕴含'],
+      ['求解器配置', '6 种', '答案完全一致'],
+      ['决定论', '逐位相同', '状态/判定/模型']
+    ];
+    host.innerHTML = cards.map(function (c) {
+      return '<div class="stat"><div class="s-label">' + c[0] + '</div><div class="s-val" style="font-size:15px">' +
+        esc(c[1]) + '</div><div class="s-label" style="margin-top:4px">' + esc(c[2]) + '</div></div>';
+    }).join('');
+  }
+
+  /* ============================================================
+   * 探针（给真实浏览器内核验证用）
+   * ========================================================== */
+  window.__probe = {
+    kpi: function () {
+      return Array.prototype.map.call(document.querySelectorAll('#kpis .kpi'), function (e) {
+        var v = e.querySelector('.k-val');
+        var r = v ? v.getBoundingClientRect() : null;
+        return {
+          label: (e.querySelector('.k-label') || {}).textContent || '',
+          val: v ? v.textContent.trim() : '',
+          w: r ? Math.round(r.width) : 0,
+          h: r ? Math.round(r.height) : 0,
+          color: v ? getComputedStyle(v).color : ''
+        };
+      });
+    },
+    bars: function (sel) {
+      var out = [];
+      document.querySelectorAll((sel || '#solnote') + ' .bar-fill').forEach(function (e) {
+        var r = e.getBoundingClientRect();
+        var tr = e.parentNode.getBoundingClientRect();
+        out.push({ w: Math.round(r.width * 10) / 10, track: Math.round(tr.width * 10) / 10,
+                   pct: tr.width ? Math.round(1000 * r.width / tr.width) / 10 : -1 });
+      });
+      return out;
+    },
+    charts: function () {
+      return Array.prototype.map.call(document.querySelectorAll('.chart'), function (c) {
+        var svg = c.querySelector('svg');
+        return {
+          id: c.id,
+          hasSvg: !!svg,
+          w: svg ? Math.round(svg.getBoundingClientRect().width) : 0,
+          h: svg ? Math.round(svg.getBoundingClientRect().height) : 0,
+          lines: c.querySelectorAll('path.ln').length,
+          dots: c.querySelectorAll('circle.pt').length,
+          marks: c.querySelectorAll('line.mark').length,
+          ticks: c.querySelectorAll('text.tick').length
+        };
+      });
+    },
+    trail: function () {
+      var cs = document.querySelectorAll('#trail .cell');
+      var t = 0, f = 0, u = 0, dec = 0, lvl0 = 0, vis = 0;
+      cs.forEach(function (e) {
+        if (e.classList.contains('t')) t++;
+        else if (e.classList.contains('f')) f++;
+        else u++;
+        if (e.classList.contains('dec')) dec++;
+        if (e.classList.contains('lvl0')) lvl0++;
+        if (e.getBoundingClientRect().width > 0) vis++;
+      });
+      return { total: cs.length, t: t, f: f, u: u, dec: dec, lvl0: lvl0, visible: vis };
+    },
+    stats: function () {
+      return Array.prototype.map.call(document.querySelectorAll('#stats .stat'), function (e) {
+        return { label: e.querySelector('.s-label').textContent, val: e.querySelector('.s-val').textContent };
+      });
+    },
+    tables: function () {
+      return Array.prototype.map.call(document.querySelectorAll('table'), function (t) {
+        return { id: t.id, rows: t.querySelectorAll('tbody tr').length, heads: t.querySelectorAll('thead th').length };
+      });
+    },
+    problem: function () {
+      var cls = document.querySelectorAll('#clauses .cl');
+      var sat = document.querySelectorAll('#clauses .cl.sat').length;
+      var sols = document.querySelectorAll('#sols .sol').length;
+      return { clauses: cls.length, satClauses: sat, solRows: sols,
+               info: ($('solinfo') || {}).textContent || '' };
+    },
+    /* 确定性驱动求解器，不依赖真实时钟 */
+    solver: function (steps) {
+      if (!sv.solver) return { err: 'no solver' };
+      var n = steps || 40;
+      for (var i = 0; i < n && !sv.done; i++) svStep();
+      return { done: sv.done, total: sv.totalSteps, level: sv.solver.decisionLevel(),
+               decisions: sv.solver.stats.decisions, conflicts: sv.solver.stats.conflicts,
+               learnt: sv.solver.stats.learntTotal, verdict: ($('sv-verdict') || {}).textContent || '' };
+    },
+    solveToEnd: function () {
+      if (!sv.solver) return { err: 'no solver' };
+      var guard = 0;
+      while (!sv.done && guard++ < 2e6) svStep();
+      var s = sv.solver.stats;
+      return {
+        done: sv.done, steps: guard, verdict: ($('sv-verdict') || {}).textContent || '',
+        decisions: s.decisions, conflicts: s.conflicts, learnt: s.learntTotal,
+        propagations: s.propagations, restarts: s.restarts, level: sv.solver.decisionLevel(),
+        n: sv.n, r: sv.r, clauses: sv.clauses.length
+      };
+    },
+    /** 终局赋值是否真的满足公式（仅在 SAT 时有意义） */
+    modelCheck: function () {
+      if (!sv.solver) return null;
+      var n = sv.n, model = new Int8Array(n);
+      for (var v = 0; v < n; v++) model[v] = sv.solver.assign[v] || sv.solver.polarity[v] || 1;
+      return { n: n, ok: C.checkModel(n, sv.clauses, model) };
+    },
+    setProblem: function (n, r) {
+      pv.n = n; pv.r = r;
+      $('pv-n').value = n; $('pv-r').value = r;
+      $('pv-n-v').textContent = n; $('pv-r-v').textContent = Number(r).toFixed(3);
+      renderProblem();
+      return window.__probe.problem();
+    },
+    setSolver: function (n, r) {
+      sv.n = n; sv.r = r;
+      $('sv-n').value = n; $('sv-r').value = r;
+      $('sv-n-v').textContent = n; $('sv-r-v').textContent = Number(r).toFixed(3);
+      svStop(); svBuild();
+      return { n: n, r: r, clauses: sv.clauses.length };
+    },
+    viewport: function () {
+      return { w: document.documentElement.clientWidth, h: document.documentElement.clientHeight,
+               scrollW: document.documentElement.scrollWidth, innerW: window.innerWidth,
+               dpr: window.devicePixelRatio || 1 };
+    },
+    overflow: function () {
+      return document.documentElement.scrollWidth - document.documentElement.clientWidth;
+    },
+    touch: function () {
+      var bad = [];
+      document.querySelectorAll('button, a, select, input[type=text], textarea').forEach(function (e) {
+        var h = e.getBoundingClientRect().height;
+        if (h > 0 && h < 40) bad.push({ tag: e.tagName, h: Math.round(h), t: (e.textContent || '').slice(0, 14) });
+      });
+      return bad;
+    },
+    counts: function () {
+      return {
+        sections: document.querySelectorAll('section').length,
+        panels: document.querySelectorAll('.panel').length,
+        findings: document.querySelectorAll('.finding').length,
+        charts: document.querySelectorAll('.chart svg').length,
+        emptyCharts: Array.prototype.filter.call(document.querySelectorAll('.chart'), function (c) {
+          return !c.querySelector('svg') || c.querySelectorAll('path.ln').length === 0;
+        }).map(function (c) { return c.id; }),
+        kpis: document.querySelectorAll('#kpis .kpi').length,
+        verifyStats: document.querySelectorAll('#verify-stats .stat').length
+      };
+    }
+  };
+
+  /* ============================================================
+   * 启动
+   * ========================================================== */
+  function boot() {
+    renderKpis();
+    initProblem();
+    initSolver();
+    renderPhase();
+    renderPeak();
+    renderFrozen();
+    renderCost();
+    renderVerifyStats();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+
+</script>
+</body>
+</html>

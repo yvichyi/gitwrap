@@ -1,0 +1,1211 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="调整双星质量比和探测器发射状态，探索限制性三体问题中的五个拉格朗日点、轨道边界与 Jacobi 常数。可离线使用。">
+<title>共转之处 · 三体轨道与五个拉格朗日点</title>
+<style>
+@charset "UTF-8";
+:root {
+  color-scheme: light;
+  --paper: #f3efe6;
+  --paper-light: #fbf8f0;
+  --paper-mid: #ebe7dc;
+  --ink: #243b3a;
+  --muted: #728079;
+  --line: #d4d5c8;
+  --teal: #315b57;
+  --dark: #163b3d;
+  --rust: #b96447;
+  --mint: #9fc9b4;
+  --acid: #d5e46b;
+  --serif: "Palatino Linotype", "Songti SC", "STSong", "SimSun", serif;
+  --sans: "Avenir Next", "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; background: var(--paper); scroll-padding-top: 18px; }
+body { margin: 0; min-width: 320px; color: var(--ink); background: var(--paper); font: 13px/1.7 var(--sans); -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; color: var(--ink); }
+a { color: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, canvas:focus-visible { outline: 3px solid var(--rust); outline-offset: 3px; }
+[hidden] { display: none !important; }
+.skip-link { position: fixed; z-index: 20; left: 12px; top: 12px; padding: 9px 13px; color: var(--ink); background: var(--acid); transform: translateY(-150%); }
+.skip-link:focus { transform: translateY(0); }
+.page { width: min(1320px, calc(100% - 72px)); margin: auto; }
+.mast { min-height: 72px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; font-size: 11px; font-weight: 650; letter-spacing: .055em; }
+.brand b, .footer b { padding: 0 5px; color: var(--rust); }
+.brand-glyph { width: 19px; height: 24px; display: flex; gap: 3px; align-items: center; justify-content: center; transform: rotate(28deg); }
+.brand-glyph i { display: block; width: 3px; background: var(--teal); border-radius: 3px; }
+.brand-glyph i:nth-child(1) { height: 10px; opacity: .65; }.brand-glyph i:nth-child(2) { height: 19px; }.brand-glyph i:nth-child(3) { height: 13px; opacity: .8; }
+.local-mark { color: var(--muted); font-size: 9px; letter-spacing: .1em; }
+.local-mark i, .local-badge i, .local-pill i { display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: #789a79; vertical-align: 1px; }
+.local-mark span { margin: 0 6px; color: var(--rust); }
+.hero { min-height: 452px; display: grid; grid-template-columns: 1fr 1fr; gap: 7.5%; align-items: center; padding: 40px 0 52px; }
+.hero-copy { padding: 2px 0 4px 5px; }
+.eyebrow, .small-cap { display: flex; align-items: center; gap: 9px; margin: 0; color: var(--teal); font-size: 9px; font-weight: 700; letter-spacing: .15em; }
+.eyebrow i { width: 22px; height: 1px; background: var(--rust); }
+.hero h1 { margin: 17px 0 13px; color: var(--ink); font: 500 clamp(70px, 8.8vw, 116px)/1.06 var(--serif); letter-spacing: -.075em; }
+.hero h1 span { color: var(--teal); }
+.deck { color: #53635d; font: 500 clamp(18px, 2vw, 22px)/1.75 var(--serif); }
+.hero-note { max-width: 520px; margin-top: 17px; color: var(--muted); font-size: 11px; line-height: 2; }
+.jump-link { display: inline-flex; align-items: center; gap: 21px; margin-top: 21px; padding: 9px 12px; color: #f6f3e9; background: var(--teal); text-decoration: none; font-size: 10px; font-weight: 650; }
+.jump-link span { color: var(--acid); font-size: 15px; line-height: 1; }
+.jump-link:hover { background: #244a47; }
+.hero-art { min-width: 0; padding: 9px; background: #e6e2d6; border: 1px solid #cbcbbb; box-shadow: 9px 9px 0 #dedbd0; }
+.hero-art svg { display: block; width: 100%; height: auto; }
+.art-caption { display: flex; justify-content: space-between; gap: 10px; padding: 8px 4px 1px; color: var(--muted); font-size: 8px; letter-spacing: .06em; }
+.experiment { border-top: 1px solid var(--line); padding-top: 30px; }
+.section-head { display: flex; justify-content: space-between; align-items: end; gap: 18px; margin-bottom: 18px; }
+h2, h3, p { margin-top: 0; }
+.section-head h2, .reading-head h2, .model-notes h2 { margin: 3px 0 0; color: var(--ink); font: 500 clamp(26px, 3.1vw, 36px)/1.35 var(--serif); letter-spacing: -.025em; }
+.frame-switch { display: flex; align-items: center; gap: 4px; padding-bottom: 2px; }
+.frame-switch>span { margin-right: 8px; color: var(--muted); font-size: 9px; }
+.frame-switch button, .system-choice button { min-height: 31px; padding: 4px 10px; border: 1px solid transparent; background: transparent; font-size: 9px; }
+.frame-switch button.selected, .system-choice button.selected { color: var(--teal); background: #e2e9dc; border-color: #b6c7b8; }
+.system-strip { min-height: 65px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px; padding: 8px 13px; border: 1px solid var(--line); border-bottom: 0; background: #ece9de; }
+.system-choice { display: flex; gap: 3px; }
+.system-fact { display: flex; align-items: baseline; gap: 11px; }
+.system-fact span { color: var(--muted); font-size: 9px; }
+.system-fact b { color: var(--ink); font: 15px var(--serif); }
+.system-fact small { color: var(--muted); font-size: 8px; }
+.local-badge { justify-self: end; color: var(--muted); font-size: 8px; letter-spacing: .055em; }
+.lab-grid { display: grid; grid-template-columns: minmax(0, 1.58fr) minmax(300px, .78fr); gap: 14px; align-items: start; }
+.visual-column, .controls { min-width: 0; }
+.canvas-card { padding: 12px 13px 9px; background: var(--paper-light); border: 1px solid var(--line); }
+.canvas-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 2px 9px; }
+.canvas-head>div { display: flex; align-items: baseline; gap: 9px; }
+.canvas-index { color: var(--rust); font: 9px/1 var(--serif); letter-spacing: .12em; }
+.canvas-head h3, .control-title h3, .chart-head h3 { margin: 0; color: var(--ink); font: 500 17px/1.45 var(--serif); }
+.canvas-status { color: #758176; font-size: 8px; text-align: right; }
+.canvas-wrap { position: relative; overflow: hidden; background: var(--dark); }
+#orbit-canvas { display: block; width: 100%; height: auto; aspect-ratio: 1.63 / 1; touch-action: none; cursor: crosshair; }
+.canvas-hud { position: absolute; left: 9px; bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px 13px; padding: 5px 8px; color: #d4ddd0; background: rgba(15, 38, 40, .82); font-size: 7px; pointer-events: none; }
+.canvas-hud span { white-space: nowrap; }
+.dot { display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; vertical-align: -1px; }
+.dot-large { background: #d9855d; }.dot-small { background: #a9c3a2; }.dot-l { background: var(--acid); }
+.line-key { display: inline-block; width: 13px; margin-right: 4px; border-top: 1px dashed #d0d8bc; vertical-align: 2px; }
+.path-key { display: inline-block; width: 13px; margin-right: 4px; border-top: 2px solid; vertical-align: 2px; }
+.path-main { color: #d9855d; }.path-compare { color: #9bc8ad; border-top-style: dashed; }
+.canvas-corner { position: absolute; top: 8px; right: 9px; padding: 4px 7px; color: #d4ddd0; background: rgba(15, 38, 40, .72); font: 8px/1.5 var(--serif); pointer-events: none; }
+.canvas-foot { display: flex; justify-content: space-between; gap: 8px; padding: 7px 2px 0; color: var(--muted); font-size: 8px; }
+.timeline-card { margin-top: 12px; padding: 13px; border: 1px solid var(--line); background: #e9e9de; }
+.chart-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+.chart-head .small-cap { font-size: 8px; }
+.chart-head h3 { font-size: 15px; }
+.chart-caption { color: var(--muted); font-size: 8px; }
+.invariant-row { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid #d2d5c9; border-bottom: 1px solid #d2d5c9; }
+.invariant-value { min-width: 0; padding: 7px 8px; border-right: 1px solid #d2d5c9; }
+.invariant-value:first-child { padding-left: 0; }
+.invariant-value:last-child { border: 0; }
+.invariant-value span, .invariant-value strong { display: block; }
+.invariant-value span { color: var(--muted); font-size: 8px; }
+.invariant-value strong { overflow: hidden; color: var(--teal); font: 500 clamp(13px, 1.55vw, 18px)/1.5 var(--serif); text-overflow: ellipsis; white-space: nowrap; }
+.drift-track { height: 3px; margin-top: 10px; background: #d2d4c9; }
+.drift-track i { display: block; width: 0; height: 100%; background: var(--rust); transition: width .12s linear; }
+.chart-note { margin: 7px 0 0; color: var(--muted); font-size: 8px; line-height: 1.75; }
+.controls { padding: 15px 16px 12px; background: var(--paper-light); border: 1px solid var(--line); }
+.control-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+.control-title .small-cap { font-size: 8px; }
+.control-title h3 { font-size: 21px; }
+.local-pill { padding: 3px 6px; color: #748175; border: 1px solid #d4ddce; font: 7px/1.3 var(--sans); letter-spacing: .1em; }
+.local-pill i { width: 5px; height: 5px; margin-right: 3px; }
+.control-rule { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e1d8; color: var(--teal); font-size: 9px; font-weight: 650; letter-spacing: .035em; }
+.control-rule small { color: var(--muted); font-size: 7px; font-weight: 400; letter-spacing: 0; text-align: right; }
+.range-label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 6px; color: #56675e; font-size: 8px; }
+.range-label output { color: var(--teal); font: 13px var(--serif); white-space: nowrap; }
+.range-label.compact { margin-top: 4px; }
+input[type="range"] { display: block; width: 100%; height: 18px; margin: 0; accent-color: var(--teal); cursor: pointer; }
+.range-ends { display: flex; justify-content: space-between; color: #929b8f; font-size: 7px; margin-top: -3px; }
+.micro { margin: 3px 0 0; color: #7f897e; font-size: 7.5px; line-height: 1.65; }
+.micro b { color: var(--rust); font-weight: 650; }
+.point-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 7px; }
+.point-grid button { min-width: 0; padding: 5px 2px 4px; border: 1px solid #d4d8cd; background: #f7f4eb; }
+.point-grid button b, .point-grid button small { display: block; }
+.point-grid button b { color: var(--teal); font: 14px/1.25 var(--serif); }
+.point-grid button small { color: var(--muted); font-size: 6px; white-space: nowrap; }
+.point-grid button:hover, .point-grid button.selected { border-color: #8eaa98; background: #e6ecdf; }
+.stability-box { min-height: 39px; display: flex; align-items: center; gap: 7px; margin-top: 6px; padding: 5px 7px; background: #f0eee4; }
+.status-dot { flex: 0 0 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--rust); }
+.status-dot.stable { background: #71916f; }.status-dot.critical { background: #c39b4c; }
+.stability-box div { min-width: 0; }
+.stability-box b, .stability-box small { display: block; }
+.stability-box b { color: var(--ink); font: 12px/1.35 var(--serif); }
+.stability-box small { color: var(--muted); font-size: 7px; }
+.mini-coordinate { margin-left: auto; color: var(--muted); font: 8px var(--serif); white-space: nowrap; }
+.precision-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 6px; }
+.precision-row button { min-height: 27px; padding: 3px; color: #6f7b73; border: 1px solid #d4d8cd; background: #f7f4eb; font-size: 8px; }
+.precision-row button.selected { color: var(--teal); border-color: #8eaa98; background: #e6ecdf; }
+.precision-note { margin-top: 3px; }
+.run-controls { display: grid; grid-template-columns: 1.25fr 1fr .65fr; gap: 5px; margin-top: 13px; }
+.run-controls button { min-height: 35px; padding: 4px 5px; border: 1px solid #cbd2c6; background: #f1efe6; font-size: 8px; }
+.run-controls button:hover { border-color: var(--teal); color: var(--teal); }
+.run-controls .primary { color: #f6f3e8; background: var(--teal); border-color: var(--teal); font-weight: 650; }
+.run-controls .primary:hover { color: white; background: #244a47; }
+.play-icon { margin-right: 5px; color: var(--acid); font-size: 8px; }
+.key-help { margin: 7px 0 0; color: #92988c; font-size: 7px; text-align: center; }
+.reading { border-top: 1px solid var(--line); margin-top: 43px; padding-top: 27px; }
+.reading-head { display: grid; grid-template-columns: 1fr minmax(280px, .85fr); align-items: end; gap: 45px; }
+.reading-head>p { max-width: 520px; margin: 0 0 3px; color: var(--muted); font-size: 10px; line-height: 2; }
+.reading-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin: 21px 0 24px; }
+.reading-grid article { min-width: 0; padding: 15px 16px 12px; background: #ebe9dd; border-top: 2px solid var(--teal); }
+.roman { color: var(--rust); font: 27px/1 var(--serif); }
+.reading-grid h3 { margin: 5px 0 6px; color: var(--ink); font: 500 17px/1.5 var(--serif); }
+.reading-grid p { min-height: 57px; margin: 0; color: var(--muted); font-size: 9px; line-height: 1.85; }
+.read-figure { position: relative; height: 72px; overflow: hidden; margin-top: 12px; background: #dfe3d6; border: 1px solid #d0d7c9; }
+.line-points { display: flex; align-items: center; justify-content: space-evenly; }
+.line-points i { position: absolute; left: 10%; right: 10%; top: 50%; height: 1px; background: #71877c; }
+.line-points b { z-index: 1; display: grid; width: 22px; height: 22px; place-items: center; color: #edf0df; border-radius: 50%; background: var(--teal); font: 7px var(--serif); }
+.line-points b:nth-of-type(2) { width: 29px; height: 29px; background: var(--rust); }.line-points b:nth-of-type(4) { background: #799687; }
+.triangle-points i { position: absolute; left: 28%; top: 16%; width: 42%; height: 67%; border-left: 1px solid #6f8779; border-right: 1px solid #6f8779; border-bottom: 1px solid #6f8779; transform: perspective(100px) rotateX(2deg); }
+.triangle-points b { position: absolute; display: grid; place-items: center; width: 26px; height: 26px; color: #f3f0e6; border-radius: 50%; background: var(--rust); font-size: 7px; }
+.triangle-points b:nth-of-type(1) { left: calc(50% - 13px); bottom: 5px; }.triangle-points b:nth-of-type(2) { right: 17%; bottom: 5px; background: #698c81; }
+.triangle-points em { position: absolute; top: 9px; left: calc(50% - 26px); color: var(--teal); font: 10px var(--serif); }
+.contour-lines i { position: absolute; left: 31%; top: 15%; width: 40%; height: 70%; border: 1px solid #6d897c; border-radius: 50%; transform: rotate(-28deg); }
+.contour-lines i:nth-child(2) { left: 37%; top: 20%; width: 28%; height: 60%; }.contour-lines i:nth-child(3) { left: 43%; top: 27%; width: 16%; height: 46%; }
+.contour-lines b { position: absolute; right: 8px; bottom: 5px; color: #5d7468; font: 8px var(--serif); }
+.threshold-band { display: grid; grid-template-columns: minmax(170px, .7fr) minmax(240px, 1fr) 1.25fr; align-items: center; gap: 24px; padding: 15px 18px; background: #e4e5d8; border-left: 3px solid var(--rust); }
+.threshold-number span, .threshold-number strong { display: block; }
+.threshold-number span { color: var(--muted); font-size: 8px; }
+.threshold-number strong { margin-top: 2px; color: var(--ink); font: 20px var(--serif); }
+.threshold-number sub { font-size: 11px; }
+.threshold-band p { margin: 0; color: var(--muted); font-size: 8px; line-height: 1.8; }
+.equation-panel { margin-top: 13px; padding: 10px 12px; background: rgba(251,248,240,.72); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.equation-panel summary { cursor: pointer; color: var(--teal); font-size: 9px; font-weight: 650; }
+.equation-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; padding: 12px 1px 3px; }
+.equation-label { margin: 0 0 4px; color: var(--muted); font-size: 8px; letter-spacing: .06em; }
+.equation { margin: 0; color: var(--dark); font: 16px/1.8 var(--serif); }
+.equation-note { margin: 3px 0 0; color: var(--muted); font-size: 8px; line-height: 1.8; }
+.threshold-meter { position: relative; display: flex; justify-content: space-between; align-items: end; height: 38px; padding: 0 0 2px; color: var(--muted); font-size: 7px; }
+.threshold-meter::before { position: absolute; left: 0; right: 0; top: 12px; height: 4px; content: ""; background: linear-gradient(90deg, #789178 0 7.5%, #c3994b 7.5% 8%, #b96447 8% 100%); }
+.threshold-meter i { position: absolute; left: 2.4%; top: 7px; z-index: 1; width: 13px; height: 13px; border: 2px solid #f8f4e8; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 1px #517269; }
+.threshold-meter b { position: absolute; left: 7.7%; top: 6px; z-index: 1; width: 2px; height: 15px; background: #8c6637; }
+.model-notes { display: grid; grid-template-columns: .8fr 1.5fr; gap: 35px; margin-top: 38px; padding: 25px 0 28px; border-top: 1px solid var(--line); }
+.model-notes h2 { max-width: 380px; font-size: 27px; }
+.limits-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.limits-grid p { margin: 0; color: var(--muted); font-size: 8px; line-height: 1.9; }
+.limits-grid b { color: var(--teal); font-weight: 700; }
+.footer { display: flex; justify-content: space-between; gap: 14px; padding: 12px 0 20px; color: var(--muted); border-top: 1px solid var(--line); font-size: 8px; letter-spacing: .06em; }
+.footer b { padding: 0 4px; }
+
+@media (max-width: 1020px) {
+  .page { width: min(100% - 48px, 900px); }
+  .hero { gap: 5%; min-height: 400px; }
+  .lab-grid { grid-template-columns: 1fr; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; }
+  .control-title, .run-controls, .key-help { grid-column: 1 / -1; }
+  .control-rule:nth-of-type(1) { margin-top: 4px; }
+  .reading-grid { gap: 12px; }
+  .reading-grid article { padding-inline: 12px; }
+}
+@media (max-width: 700px) {
+  .page { width: calc(100% - 30px); }
+  .mast { min-height: 59px; }
+  .brand { font-size: 9px; gap: 7px; }
+  .local-mark { font-size: 7px; }
+  .hero { grid-template-columns: 1fr; gap: 25px; padding: 31px 0 34px; }
+  .hero-copy { padding-left: 1px; }
+  .hero h1 { margin: 13px 0 7px; font-size: clamp(67px, 16vw, 94px); }
+  .deck { font-size: 17px; }
+  .hero-note { margin-top: 10px; font-size: 10px; }
+  .jump-link { margin-top: 13px; }
+  .hero-art { max-width: 560px; }
+  .section-head { display: block; }
+  .section-head h2, .reading-head h2, .model-notes h2 { font-size: 27px; }
+  .frame-switch { margin-top: 12px; }
+  .system-strip { grid-template-columns: 1fr auto; gap: 5px 10px; padding: 8px; }
+  .system-choice { grid-column: 1 / -1; }
+  .system-fact { flex-wrap: wrap; gap: 2px 8px; }
+  .system-fact small { flex-basis: 100%; }
+  .local-badge { font-size: 7px; }
+  .canvas-card { padding: 8px; }
+  .canvas-head { align-items: start; }
+  .canvas-head>div { display: block; }
+  .canvas-index { display: block; margin-bottom: 3px; }
+  .canvas-head h3 { font-size: 15px; }
+  .canvas-status { max-width: 115px; font-size: 7px; }
+  #orbit-canvas { aspect-ratio: 1 / 1.02; }
+  .canvas-hud { gap: 5px 9px; left: 5px; bottom: 5px; max-width: 80%; font-size: 6px; }
+  .canvas-corner { top: 5px; right: 5px; font-size: 7px; }
+  .canvas-foot { flex-wrap: wrap; justify-content: space-between; font-size: 7px; }
+  .canvas-foot span:last-child { display: none; }
+  .invariant-row { grid-template-columns: repeat(2, 1fr); }
+  .invariant-value:nth-child(2) { border-right: 0; }
+  .invariant-value:nth-child(n+3) { border-top: 1px solid #d2d5c9; }
+  .invariant-value:nth-child(3) { padding-left: 0; }
+  .invariant-value strong { font-size: 16px; }
+  .controls { display: block; padding: 12px; }
+  .control-rule { margin-top: 11px; }
+  .point-grid button small { font-size: 7px; }
+  .reading { margin-top: 32px; padding-top: 22px; }
+  .reading-head { grid-template-columns: 1fr; gap: 7px; }
+  .reading-head>p { font-size: 9px; }
+  .reading-grid { grid-template-columns: 1fr; gap: 9px; margin-top: 15px; }
+  .reading-grid article { padding: 12px; }
+  .reading-grid p { min-height: auto; }
+  .read-figure { height: 62px; }
+  .threshold-band { grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+  .threshold-meter { grid-column: 1 / -1; grid-row: 2; }
+  .threshold-band p { grid-column: 1 / -1; }
+  .equation-grid { grid-template-columns: 1fr; gap: 9px; }
+  .model-notes { grid-template-columns: 1fr; gap: 14px; margin-top: 28px; padding-top: 20px; }
+  .limits-grid { grid-template-columns: 1fr; gap: 9px; }
+  .limits-grid p { font-size: 8px; }
+  .footer { font-size: 7px; }
+}
+@media (max-width: 380px) {
+  .page { width: calc(100% - 22px); }
+  .local-mark { letter-spacing: 0; }
+  .point-grid button small { font-size: 6px; }
+  .run-controls { grid-template-columns: 1.15fr 1fr .62fr; }
+  .run-controls button { font-size: 7px; }
+  .threshold-number strong { font-size: 17px; }
+}
+
+</style>
+</head><body>
+<a class="skip-link" href="#experiment">跳到轨道实验</a>
+<div class="page">
+  <header class="mast">
+    <a class="brand" href="#top" aria-label="共转之处首页">
+      <span class="brand-glyph" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span>可交互的科学装置 <b>/</b> 天体力学</span>
+    </a>
+    <div class="local-mark"><i></i> 单页运行 <span>·</span> 无需联网</div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span>限制性三体问题</span><i></i><span>CR3BP / 01</span></p>
+        <h1>共转<span>之处</span></h1>
+        <p class="deck">两个天体绕着共同质心转动。<br>第三个小小的探测器，能在哪些地方暂时停住？</p>
+        <p class="hero-note">在旋转的坐标系里，引力、离心力与科里奥利力一起塑造了五个特殊位置。选一个平衡点，给探测器一点偏移，看轨道接下来如何回答。</p>
+        <a class="jump-link" href="#experiment">进入轨道实验 <span aria-hidden="true">↓</span></a>
+      </div>
+      <div class="hero-art" aria-label="两颗主天体与五个拉格朗日点的示意图">
+        <svg viewBox="0 0 560 350" role="img" aria-labelledby="orbit-art-title orbit-art-desc">
+          <title id="orbit-art-title">两个主天体与五个拉格朗日点</title>
+          <desc id="orbit-art-desc">一条椭圆轨道连接两颗主天体，五个点标在共转系统中的平衡位置。</desc>
+          <defs>
+            <radialGradient id="starA"><stop stop-color="#e3d6a5"/><stop offset="1" stop-color="#b96447"/></radialGradient>
+            <radialGradient id="starB"><stop stop-color="#d5e3c4"/><stop offset="1" stop-color="#6e9388"/></radialGradient>
+            <pattern id="artGrid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#c6d0be" stroke-opacity=".12"/></pattern>
+          </defs>
+          <rect width="560" height="350" fill="#183a3b"/>
+          <rect width="560" height="350" fill="url(#artGrid)"/>
+          <ellipse cx="280" cy="177" rx="178" ry="108" fill="none" stroke="#b6c9b5" stroke-opacity=".38" stroke-width="1.2"/>
+          <ellipse cx="280" cy="177" rx="224" ry="140" fill="none" stroke="#d0d7bd" stroke-opacity=".15" stroke-dasharray="2 8"/>
+          <path d="M82 177H478M280 36V318" fill="none" stroke="#afc0b2" stroke-opacity=".18"/>
+          <path d="M144 240C204 282 339 286 405 226" fill="none" stroke="#d27756" stroke-width="2" stroke-dasharray="5 7"/>
+          <circle cx="211" cy="177" r="27" fill="url(#starA)"/>
+          <circle cx="340" cy="177" r="13" fill="url(#starB)"/>
+          <circle cx="280" cy="177" r="3.5" fill="#e8e7cb" opacity=".7"/>
+          <g fill="#d5e46b" stroke="#183a3b" stroke-width="4">
+            <circle cx="319" cy="177" r="6"/><circle cx="358" cy="177" r="6"/>
+            <circle cx="177" cy="177" r="6"/><circle cx="309" cy="92" r="6"/><circle cx="309" cy="262" r="6"/>
+          </g>
+          <g fill="#c8d5c4" font-family="serif" font-size="12">
+            <text x="321" y="164">L1</text><text x="360" y="164">L2</text>
+            <text x="157" y="164">L3</text><text x="315" y="88">L4</text><text x="315" y="280">L5</text>
+            <text x="167" y="223" font-size="9" letter-spacing="1">PRIMARY</text>
+            <text x="326" y="209" font-size="9" letter-spacing="1">SECONDARY</text>
+          </g>
+          <text x="28" y="31" fill="#aabbb0" font-family="monospace" font-size="9" letter-spacing="2">ROTATING FRAME / SCHEMATIC</text>
+          <text x="28" y="326" fill="#9bb1a5" font-family="monospace" font-size="9">μ = m₂ / (m₁ + m₂)</text>
+          <circle cx="444" cy="79" r="2" fill="#d5e46b"/><circle cx="467" cy="109" r="1.5" fill="#e5c77e"/>
+          <circle cx="119" cy="80" r="1.5" fill="#c3d1c1"/><circle cx="455" cy="285" r="1.5" fill="#c3d1c1"/>
+        </svg>
+        <div class="art-caption"><span>共转坐标示意</span><span>比例非真实天体尺寸</span></div>
+      </div>
+    </section>
+
+    <section class="experiment" id="experiment" aria-labelledby="experiment-title">
+      <div class="section-head">
+        <div>
+          <p class="small-cap">01 / 轨道实验室</p>
+          <h2 id="experiment-title">让初始条件自己说话</h2>
+        </div>
+        <div class="frame-switch" role="group" aria-label="坐标参考系">
+          <span>参考系</span>
+          <button type="button" class="selected" data-frame="rotating" aria-pressed="true">共转系</button>
+          <button type="button" data-frame="inertial" aria-pressed="false">惯性系</button>
+        </div>
+      </div>
+
+      <div class="system-strip">
+        <div class="system-choice" role="group" aria-label="双星系统预设">
+          <button type="button" class="selected" data-system="earth-moon" aria-pressed="true">地球 — 月球</button>
+          <button type="button" data-system="sun-earth" aria-pressed="false">太阳 — 地球</button>
+        </div>
+        <div class="system-fact"><span id="system-name">地月系统</span><b id="system-mu">μ = 0.0121506</b><small>较小天体的质量分数</small></div>
+        <div class="local-badge"><i></i> 所有计算都在此页本地完成</div>
+      </div>
+
+      <div class="lab-grid">
+        <div class="visual-column">
+          <div class="canvas-card">
+            <div class="canvas-head">
+              <div><span class="canvas-index">FIG. 01</span><h3>旋转坐标中的轨道</h3></div>
+              <span class="canvas-status" id="run-status" aria-live="polite">已就绪 · 可拖动探测器</span>
+            </div>
+            <div class="canvas-wrap">
+              <canvas id="orbit-canvas" width="1120" height="690" tabindex="0" aria-label="双击或拖动探测器以设置发射位置"></canvas>
+              <div class="canvas-hud">
+                <span><i class="dot dot-large"></i> 主天体</span>
+                <span><i class="dot dot-small"></i> 次天体</span>
+                <span><i class="dot dot-l"></i> 拉格朗日点</span>
+                <span><i class="path-key path-main"></i>基准轨道</span>
+                <span><i class="path-key path-compare"></i>微扰轨道</span>
+                <span><i class="line-key"></i> 零速度边界</span>
+              </div>
+              <div class="canvas-corner" id="position-readout">x = —　y = —</div>
+            </div>
+            <div class="canvas-foot">
+              <span id="time-readout">t = 0.00 / 归一化时间</span>
+              <span>拖动橙色探测器可重设位置</span>
+              <span id="zoom-readout">x, y：双星间距单位</span>
+            </div>
+          </div>
+          <div class="timeline-card">
+            <div class="chart-head">
+              <div><p class="small-cap">02 / 守恒量</p><h3>Jacobi 常数与积分误差</h3></div>
+              <span class="chart-caption">理论上沿轨道不变</span>
+            </div>
+            <div class="invariant-row">
+              <div class="invariant-value"><span>初始 C</span><strong id="jacobi-value">—</strong></div>
+              <div class="invariant-value"><span>当前漂移 ΔC</span><strong id="drift-value">—</strong></div>
+              <div class="invariant-value"><span>最大偏差</span><strong id="max-drift-value">—</strong></div>
+              <div class="invariant-value"><span>已接受步数</span><strong id="steps-value">0</strong></div>
+            </div>
+            <div class="drift-track" aria-hidden="true"><i id="drift-bar"></i></div>
+            <p class="chart-note" id="invariant-note">细小的数值漂移来自有限精度积分。提高积分精度，再看它怎样改变。</p>
+          </div>
+        </div>
+
+        <aside class="controls" aria-label="轨道和发射条件">
+          <div class="control-title">
+            <div><p class="small-cap">实验旋钮</p><h3>改变一个条件</h3></div>
+            <span class="local-pill"><i></i> LOCAL</span>
+          </div>
+
+          <div class="control-rule"><span>质量比</span><small>μ = m₂ / (m₁ + m₂)</small></div>
+          <div class="range-label"><label for="mu-range">较小天体的质量分数</label><output id="mu-output">0.0121506</output></div>
+          <input id="mu-range" type="range" min="0" max="1000" step="1" value="675" aria-describedby="mu-help">
+          <div class="range-ends"><span>1 × 10⁻⁶</span><span>0.5</span></div>
+          <p class="micro" id="mu-help">对数刻度。越过 <b>0.03852</b>，L4 与 L5 的线性稳定性会改变。</p>
+
+          <div class="control-rule"><span>附近的平衡点</span><small>选点会重置初始位置</small></div>
+          <div class="point-grid" role="group" aria-label="选择拉格朗日点">
+            <button type="button" data-point="L1" class="selected" aria-pressed="true"><b>L1</b><small>两星之间</small></button>
+            <button type="button" data-point="L2" aria-pressed="false"><b>L2</b><small>次星外侧</small></button>
+            <button type="button" data-point="L3" aria-pressed="false"><b>L3</b><small>主星背侧</small></button>
+            <button type="button" data-point="L4" aria-pressed="false"><b>L4</b><small>前方 60°</small></button>
+            <button type="button" data-point="L5" aria-pressed="false"><b>L5</b><small>后方 60°</small></button>
+          </div>
+          <div class="stability-box">
+            <span class="status-dot" id="stability-dot"></span>
+            <div><b id="stability-title">L1 不稳定</b><small id="stability-copy">微小偏移会被逐渐放大</small></div>
+            <span class="mini-coordinate" id="point-coordinate">x = —</span>
+          </div>
+
+          <div class="control-rule"><span>发射速度</span><small>旋转系归一化单位</small></div>
+          <div class="range-label"><label for="speed-range">速度大小</label><output id="speed-output">0.130</output></div>
+          <input id="speed-range" type="range" min="0" max="0.5" step="0.005" value="0.13">
+          <div class="range-label compact"><label for="angle-range">速度方向</label><output id="angle-output">90°</output></div>
+          <input id="angle-range" type="range" min="-180" max="180" step="1" value="90">
+
+          <div class="control-rule"><span>微扰对照</span><small>相邻两条初始轨道</small></div>
+          <div class="range-label"><label for="perturb-range">位置差 ε</label><output id="perturb-output">0.0020</output></div>
+          <input id="perturb-range" type="range" min="0" max="0.02" step="0.0005" value="0.002">
+
+          <div class="control-rule"><span>积分精度</span><small>Dormand–Prince 5(4)</small></div>
+          <div class="precision-row" role="group" aria-label="选择积分精度">
+            <button type="button" data-precision="1e-6" aria-pressed="false">快</button>
+            <button type="button" data-precision="1e-8" class="selected" aria-pressed="true">标准</button>
+            <button type="button" data-precision="1e-10" aria-pressed="false">精细</button>
+          </div>
+          <p class="micro precision-note">误差容限越小，步长通常越短；这是观察积分误差的刻度。</p>
+
+          <div class="run-controls">
+            <button type="button" class="primary" id="play-button"><span class="play-icon" aria-hidden="true">▶</span><span id="play-label">运行轨道</span></button>
+            <button type="button" id="step-button">单步 +0.18</button>
+            <button type="button" id="reset-button">重置</button>
+          </div>
+          <p class="key-help">键盘：空格运行 / 暂停，方向键微调发射位置，R 重置。</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="reading" aria-labelledby="reading-title">
+      <div class="reading-head">
+        <div><p class="small-cap">03 / 读懂这五处</p><h2 id="reading-title">平衡，不等于安稳。</h2></div>
+        <p>在共转坐标里，探测器相对两颗主天体保持静止。这个平衡由几种作用共同维持；把探测器轻轻推开，才看得出它是否会回来。</p>
+      </div>
+      <div class="reading-grid">
+        <article><span class="roman">Ⅰ</span><h3>三个点，落在一条线上</h3><p>L1 夹在两星之间，L2 在次星外侧，L3 在主星背后。它们靠重力与旋转系中的离心效应抵消，却都对小偏移敏感。</p><div class="read-figure line-points"><i></i><b>L3</b><b>主星</b><b>L1</b><b>次星</b><b>L2</b></div></article>
+        <article><span class="roman">Ⅱ</span><h3>两个点，围出等边三角形</h3><p>L4 与 L5 分别领先、落后次星约 60°。当较小天体质量分数低于临界值时，附近的小扰动可以保持有界；稳定并不意味着轨道不会振荡。</p><div class="read-figure triangle-points"><i></i><b>主星</b><b>次星</b><em>L4 / L5</em></div></article>
+        <article><span class="roman">Ⅲ</span><h3>能量画出禁行边界</h3><p>Jacobi 常数限制了探测器能够到达的区域。零速度边界上，速度刚好为零；边界封闭时，某些区域之间就暂时无法穿过。</p><div class="read-figure contour-lines"><i></i><i></i><i></i><b>等 Jacobi 曲线</b></div></article>
+      </div>
+      <div class="threshold-band">
+        <div class="threshold-number"><span>Routh 临界质量比</span><strong>μ<sub>R</sub> ≈ 0.03852</strong></div>
+        <div class="threshold-meter" aria-label="线性稳定性阈值示意"><i></i><b></b><span>地月</span><span>临界</span><span>等质量</span></div>
+        <p>这里的 μ 是次星质量占两星总质量的比例。L4、L5 在 μ &lt; μ<sub>R</sub> 时线性稳定；越过临界值后，它们也会不稳定。临界点本身是边界情形。</p>
+      </div>
+      <details class="equation-panel">
+        <summary>展开动力学方程与无量纲单位</summary>
+        <div class="equation-grid">
+          <div>
+            <p class="equation-label">旋转坐标中的运动方程</p>
+            <p class="equation">ẍ − 2ẏ = ∂Ω / ∂x<br>ÿ + 2ẋ = ∂Ω / ∂y</p>
+            <p class="equation-note">科里奥利项来自旋转坐标。两颗主天体位于 x₁ = −μ、x₂ = 1 − μ。</p>
+          </div>
+          <div>
+            <p class="equation-label">有效势与守恒量</p>
+            <p class="equation">Ω = ½(x² + y²) + (1 − μ)/r₁ + μ/r₂<br>C = 2Ω − ẋ² − ẏ²</p>
+            <p class="equation-note">r₁ = √((x + μ)² + y²)，r₂ = √((x − 1 + μ)² + y²)。可达区域满足 2Ω ≥ C，等号就是零速度边界。</p>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section class="model-notes" aria-labelledby="limits-title">
+      <div><p class="small-cap">04 / 模型边界</p><h2 id="limits-title">这是一个清楚而有限的宇宙。</h2></div>
+      <div class="limits-grid">
+        <p><b>两星</b>沿圆轨道绕共同质心转动；第三个探测器质量可忽略。所有位置和时间都用双星间距与平均角速度归一化。</p>
+        <p><b>平面模型</b>只描述二维运动，不含天体轨道偏心、其他行星摄动、光压、天体有限半径或轨道维持燃料。近距离奇点会停止积分。</p>
+        <p><b>屏幕轨迹</b>由有限步长的数值积分产生；Jacobi 常数漂移是数值误差的读数。这里的稳定性是模型中的线性稳定判定，不是实际任务保证。</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer"><span>共转之处 <b>/</b> 限制性三体问题</span><span>本地数值实验 · 无需联网</span></footer>
+</div>
+
+<script>
+'use strict';
+
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.OrbitCore = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  const MU_MIN = 1e-6;
+  const MU_MAX = 0.5;
+  const MU_CRITICAL = (1 - Math.sqrt(23 / 27)) / 2;
+  const DEFAULT_STOP_RADIUS = 0.009;
+
+  function finite(value) { return Number.isFinite(value); }
+  function clamp(value, lo, hi) { return Math.max(lo, Math.min(hi, value)); }
+  function validateMu(mu) {
+    if (!finite(mu) || mu < MU_MIN || mu > MU_MAX) {
+      throw new RangeError('μ 必须在 1e-6 到 0.5 之间');
+    }
+    return mu;
+  }
+  function validateState(state) {
+    if (!state || !['x', 'y', 'vx', 'vy'].every(key => finite(state[key]))) {
+      throw new TypeError('状态必须包含有限的 x、y、vx、vy');
+    }
+    return {
+      x: state.x, y: state.y, vx: state.vx, vy: state.vy,
+      t: finite(state.t) ? state.t : 0
+    };
+  }
+  function distances(x, y, mu) {
+    const dx1 = x + mu, dx2 = x - 1 + mu;
+    return { r1: Math.hypot(dx1, y), r2: Math.hypot(dx2, y), dx1, dx2 };
+  }
+  function acceleration(state, mu) {
+    mu = validateMu(mu);
+    const { x, y, vx, vy } = validateState(state);
+    const d = distances(x, y, mu);
+    if (d.r1 < 1e-14 || d.r2 < 1e-14) return { ax: NaN, ay: NaN };
+    const inv1 = 1 / (d.r1 * d.r1 * d.r1);
+    const inv2 = 1 / (d.r2 * d.r2 * d.r2);
+    return {
+      ax: 2 * vy + x - (1 - mu) * d.dx1 * inv1 - mu * d.dx2 * inv2,
+      ay: -2 * vx + y - (1 - mu) * y * inv1 - mu * y * inv2
+    };
+  }
+  function derivative(state, mu) {
+    const a = acceleration(state, mu);
+    return [state.vx, state.vy, a.ax, a.ay];
+  }
+  function effectivePotential(x, y, mu) {
+    mu = validateMu(mu);
+    const d = distances(x, y, mu);
+    if (d.r1 < 1e-14 || d.r2 < 1e-14) return Infinity;
+    return 0.5 * (x * x + y * y) + (1 - mu) / d.r1 + mu / d.r2;
+  }
+  function jacobi(state, mu) {
+    const s = validateState(state);
+    return 2 * effectivePotential(s.x, s.y, mu) - s.vx * s.vx - s.vy * s.vy;
+  }
+  function collinearEquation(x, mu) {
+    const x1 = x + mu, x2 = x - 1 + mu;
+    if (Math.abs(x1) < 1e-15 || Math.abs(x2) < 1e-15) return x < (0.5 - mu) ? -Infinity : Infinity;
+    return x - (1 - mu) * x1 / Math.abs(x1 * x1 * x1) - mu * x2 / Math.abs(x2 * x2 * x2);
+  }
+  function bisect(fn, lo, hi, iterations) {
+    let flo = fn(lo), fhi = fn(hi);
+    if (!finite(flo) || !finite(fhi) || flo * fhi > 0) {
+      throw new Error('无法为共线平衡点找到包围区间');
+    }
+    for (let i = 0; i < (iterations || 160); i++) {
+      const mid = (lo + hi) / 2;
+      const fm = fn(mid);
+      if (!finite(fm)) {
+        lo += (mid - lo) * 0.5;
+        hi -= (hi - mid) * 0.5;
+      } else if (fm === 0) {
+        return mid;
+      } else if ((flo < 0) === (fm < 0)) {
+        lo = mid; flo = fm;
+      } else {
+        hi = mid; fhi = fm;
+      }
+    }
+    return (lo + hi) / 2;
+  }
+  function equilibria(mu) {
+    mu = validateMu(mu);
+    const x1 = -mu, x2 = 1 - mu;
+    const eps = Math.max(1e-12, Math.min(1e-7, mu * 1e-3, (1 - mu) * 1e-3));
+    const f = x => collinearEquation(x, mu);
+    const l1x = bisect(f, x1 + eps, x2 - eps);
+    const l2x = bisect(f, x2 + eps, x2 + Math.max(0.8, 2.5 * Math.cbrt(mu)));
+    const l3x = bisect(f, -2.5, x1 - eps);
+    const triX = 0.5 - mu, triY = Math.sqrt(3) / 2;
+    const triStatus = Math.abs(mu - MU_CRITICAL) < 1e-7 ? '临界' : mu < MU_CRITICAL ? '稳定' : '不稳定';
+    return [
+      { id: 'L1', x: l1x, y: 0, stability: '不稳定', kind: 'collinear' },
+      { id: 'L2', x: l2x, y: 0, stability: '不稳定', kind: 'collinear' },
+      { id: 'L3', x: l3x, y: 0, stability: '不稳定', kind: 'collinear' },
+      { id: 'L4', x: triX, y: triY, stability: triStatus, kind: 'triangular' },
+      { id: 'L5', x: triX, y: -triY, stability: triStatus, kind: 'triangular' }
+    ];
+  }
+  function zeroVelocityGrid(mu, c, bounds, cols, rows) {
+    mu = validateMu(mu);
+    bounds = bounds || { xmin: -1.8, xmax: 1.8, ymin: -1.55, ymax: 1.55 };
+    cols = Math.max(2, Math.floor(cols || 121));
+    rows = Math.max(2, Math.floor(rows || 105));
+    const values = new Float32Array(cols * rows);
+    for (let j = 0; j < rows; j++) {
+      const y = bounds.ymax - (bounds.ymax - bounds.ymin) * j / (rows - 1);
+      for (let i = 0; i < cols; i++) {
+        const x = bounds.xmin + (bounds.xmax - bounds.xmin) * i / (cols - 1);
+        const omega = effectivePotential(x, y, mu);
+        values[j * cols + i] = Number.isFinite(omega) ? 2 * omega - c : NaN;
+      }
+    }
+    return { cols, rows, bounds, values };
+  }
+  function toInertial(state) {
+    const s = validateState(state);
+    const c = Math.cos(s.t), sn = Math.sin(s.t);
+    const vx = s.vx - s.y, vy = s.vy + s.x;
+    return {
+      x: c * s.x - sn * s.y,
+      y: sn * s.x + c * s.y,
+      vx: c * vx - sn * vy,
+      vy: sn * vx + c * vy,
+      t: s.t
+    };
+  }
+  function toRotating(state) {
+    const s = validateState(state);
+    const c = Math.cos(s.t), sn = Math.sin(s.t);
+    const x = c * s.x + sn * s.y, y = -sn * s.x + c * s.y;
+    const vxI = c * s.vx + sn * s.vy, vyI = -sn * s.vx + c * s.vy;
+    return { x, y, vx: vxI + y, vy: vyI - x, t: s.t };
+  }
+  function combine(y, h, terms) {
+    const out = new Array(4);
+    for (let i = 0; i < 4; i++) {
+      let value = y[i];
+      for (const [weight, k] of terms) value += h * weight * k[i];
+      out[i] = value;
+    }
+    return out;
+  }
+  function arrayState(a, t) { return { x: a[0], y: a[1], vx: a[2], vy: a[3], t }; }
+  function arrayOf(s) { return [s.x, s.y, s.vx, s.vy]; }
+  function segmentDistance(ax, ay, bx, by, cx, cy) {
+    const dx = bx - ax, dy = by - ay, den = dx * dx + dy * dy;
+    const t = den ? clamp(((cx - ax) * dx + (cy - ay) * dy) / den, 0, 1) : 0;
+    return Math.hypot(ax + t * dx - cx, ay + t * dy - cy);
+  }
+  function integrate(initial, mu, options) {
+    mu = validateMu(mu);
+    options = options || {};
+    const start = validateState(initial);
+    const duration = Number(options.duration);
+    if (!finite(duration) || duration < 0) throw new RangeError('积分时长必须是非负有限数');
+    const rtol = clamp(Number(options.tolerance) || 1e-9, 1e-12, 1e-3);
+    const atol = Math.max(1e-13, rtol * 1e-3);
+    const maxStep = clamp(Number(options.maxStep) || 0.18, 1e-5, 0.5);
+    const minStep = Math.max(1e-12, Number(options.minStep) || 1e-8);
+    const stopRadius = Math.max(1e-4, Number(options.stopRadius) || DEFAULT_STOP_RADIUS);
+    const maxSteps = Math.floor(clamp(Number(options.maxSteps) || 6000, 10, 100000));
+    const c0 = jacobi(start, mu);
+    const trajectory = [start];
+    const initialDistances = distances(start.x, start.y, mu);
+    if (Math.min(initialDistances.r1, initialDistances.r2) <= stopRadius) {
+      return { trajectory, finalState: start, status: 'close-encounter', steps: 0, rejected: 0, jacobiInitial: c0, jacobiFinal: c0, jacobiDrift: 0, maxJacobiDrift: 0 };
+    }
+    if (duration === 0) {
+      return { trajectory, finalState: start, status: 'complete', steps: 0, rejected: 0, jacobiInitial: c0, jacobiFinal: c0, jacobiDrift: 0, maxJacobiDrift: 0 };
+    }
+    let y = arrayOf(start), t = start.t, h = Math.min(maxStep, duration), accepted = 0, rejected = 0;
+    let status = 'complete', maxDrift = 0, j = 0;
+    function kAt(arr, time) { return derivative(arrayState(arr, time), mu); }
+    while (t < start.t + duration && accepted + rejected < maxSteps) {
+      h = Math.min(h, start.t + duration - t);
+      const k1 = kAt(y, t);
+      const k2 = kAt(combine(y, h, [[1 / 5, k1]]), t + h / 5);
+      const k3 = kAt(combine(y, h, [[3 / 40, k1], [9 / 40, k2]]), t + 3 * h / 10);
+      const k4 = kAt(combine(y, h, [[44 / 45, k1], [-56 / 15, k2], [32 / 9, k3]]), t + 4 * h / 5);
+      const k5 = kAt(combine(y, h, [[19372 / 6561, k1], [-25360 / 2187, k2], [64448 / 6561, k3], [-212 / 729, k4]]), t + 8 * h / 9);
+      const k6 = kAt(combine(y, h, [[9017 / 3168, k1], [-355 / 33, k2], [46732 / 5247, k3], [49 / 176, k4], [-5103 / 18656, k5]]), t + h);
+      const y5 = combine(y, h, [[35 / 384, k1], [500 / 1113, k3], [125 / 192, k4], [-2187 / 6784, k5], [11 / 84, k6]]);
+      const k7 = kAt(y5, t + h);
+      const y4 = combine(y, h, [[5179 / 57600, k1], [7571 / 16695, k3], [393 / 640, k4], [-92097 / 339200, k5], [187 / 2100, k6], [1 / 40, k7]]);
+      let err = 0;
+      for (let i = 0; i < 4; i++) {
+        const scale = atol + rtol * Math.max(Math.abs(y[i]), Math.abs(y5[i]));
+        err = Math.max(err, Math.abs(y5[i] - y4[i]) / scale);
+      }
+      if (!finite(err) || !y5.every(finite)) {
+        h *= 0.2; rejected++;
+        if (h < minStep) { status = 'precision-limit'; break; }
+        continue;
+      }
+      if (err <= 1) {
+        const tNext = t + h, next = arrayState(y5, tNext);
+        const d1 = distances(next.x, next.y, mu);
+        const c1 = { x: -mu, y: 0 }, c2 = { x: 1 - mu, y: 0 };
+        const hit = Math.min(
+          d1.r1, d1.r2,
+          segmentDistance(y[0], y[1], next.x, next.y, c1.x, c1.y),
+          segmentDistance(y[0], y[1], next.x, next.y, c2.x, c2.y)
+        ) <= stopRadius;
+        y = y5; t = tNext; accepted++;
+        trajectory.push(next);
+        j = jacobi(next, mu);
+        maxDrift = Math.max(maxDrift, Math.abs(j - c0));
+        if (hit) { status = 'close-encounter'; break; }
+      } else {
+        rejected++;
+      }
+      const factor = err === 0 ? 5 : clamp(0.9 * Math.pow(err, -0.2), 0.2, 5);
+      h = clamp(h * factor, minStep, maxStep);
+      if (h <= minStep && err > 1) { status = 'precision-limit'; break; }
+    }
+    if (status === 'complete' && t < start.t + duration - 1e-12) status = 'step-limit';
+    const finalState = trajectory[trajectory.length - 1];
+    j = jacobi(finalState, mu);
+    return {
+      trajectory, finalState, status, steps: accepted, rejected,
+      jacobiInitial: c0, jacobiFinal: j,
+      jacobiDrift: j - c0, maxJacobiDrift: maxDrift
+    };
+  }
+  return {
+    MU_MIN, MU_MAX, MU_CRITICAL, DEFAULT_STOP_RADIUS,
+    clamp, acceleration, effectivePotential, jacobi, equilibria,
+    collinearEquation, zeroVelocityGrid, toInertial, toRotating, integrate
+  };
+});
+
+</script>
+<script>
+'use strict';
+
+(function () {
+  const C = window.OrbitCore;
+  const $ = id => document.getElementById(id);
+  const canvas = $('orbit-canvas');
+  const ctx = canvas.getContext('2d');
+  const bounds = { xmin: -1.8, xmax: 1.8, ymin: -1.55, ymax: 1.55 };
+  const systems = {
+    'earth-moon': { name: '地月系统', mu: 0.0121505856 },
+    'sun-earth': { name: '日地系统', mu: 3.0034896e-6 }
+  };
+  const model = {
+    mu: systems['earth-moon'].mu, system: 'earth-moon', point: 'L1',
+    precision: 1e-8, frame: 'rotating', state: null, comparison: null,
+    trail: [], comparisonTrail: [], playing: false, lastFrame: 0, frameId: 0,
+    c0: 0, maxDrift: 0, steps: 0, status: 'ready', comparisonStopped: false, comparisonNote: '',
+    grid: null, contours: [], drag: false, simTime: 0
+  };
+  function fmt(value, digits) {
+    if (!Number.isFinite(value)) return '—';
+    if (Math.abs(value) > 0 && Math.abs(value) < 0.0001) return value.toExponential(2);
+    return value.toFixed(digits === undefined ? 5 : digits);
+  }
+  function fmtDrift(value) {
+    if (!Number.isFinite(value)) return '—';
+    if (value === 0) return '0';
+    if (Math.abs(value) < 0.0001) return value.toExponential(2);
+    return value.toFixed(7);
+  }
+  function pointMap() { return Object.fromEntries(C.equilibria(model.mu).map(p => [p.id, p])); }
+  function currentPoint() { return pointMap()[model.point]; }
+  function pointOffset(pointId) {
+    if (pointId === 'L1') return { x: -0.035, y: 0.018 };
+    if (pointId === 'L2') return { x: 0.042, y: 0.018 };
+    if (pointId === 'L3') return { x: -0.04, y: 0.018 };
+    if (pointId === 'L4') return { x: 0.018, y: 0.024 };
+    return { x: 0.018, y: -0.024 };
+  }
+  function setInitialAtPoint() {
+    const p = currentPoint(), offset = pointOffset(model.point);
+    const angle = Number($('angle-range').value) * Math.PI / 180;
+    const speed = Number($('speed-range').value);
+    model.state = { x: p.x + offset.x, y: p.y + offset.y, vx: speed * Math.cos(angle), vy: speed * Math.sin(angle), t: 0 };
+    resetHistories();
+  }
+  function resetHistories() {
+    model.state.t = 0;
+    model.simTime = 0;
+    model.trail = [Object.assign({}, model.state)];
+    model.comparison = { x: model.state.x + Number($('perturb-range').value), y: model.state.y, vx: model.state.vx, vy: model.state.vy, t: 0 };
+    model.comparisonTrail = [Object.assign({}, model.comparison)];
+    model.c0 = C.jacobi(model.state, model.mu);
+    model.maxDrift = 0;
+    model.steps = 0;
+    model.status = 'ready';
+    model.comparisonStopped = false;
+    model.comparisonNote = '';
+    refreshGrid();
+    renderMetrics();
+    render();
+  }
+  function refreshGrid() {
+    model.grid = C.zeroVelocityGrid(model.mu, model.c0, bounds, 111, 99);
+    model.contours = buildContours(model.grid);
+  }
+  function buildContours(grid) {
+    const segments = [], cols = grid.cols, rows = grid.rows, vals = grid.values, b = grid.bounds;
+    function pointAt(i, j, value) {
+      return {
+        x: b.xmin + (b.xmax - b.xmin) * i / (cols - 1),
+        y: b.ymax - (b.ymax - b.ymin) * j / (rows - 1),
+        v: value
+      };
+    }
+    function crossing(a, d) {
+      const den = a.v - d.v;
+      const f = Math.abs(den) < 1e-30 ? 0.5 : a.v / den;
+      return { x: a.x + (d.x - a.x) * f, y: a.y + (d.y - a.y) * f };
+    }
+    for (let j = 0; j < rows - 1; j++) {
+      for (let i = 0; i < cols - 1; i++) {
+        const p = [
+          pointAt(i, j, vals[j * cols + i]),
+          pointAt(i + 1, j, vals[j * cols + i + 1]),
+          pointAt(i + 1, j + 1, vals[(j + 1) * cols + i + 1]),
+          pointAt(i, j + 1, vals[(j + 1) * cols + i])
+        ];
+        if (p.some(q => !Number.isFinite(q.v))) continue;
+        const hits = [];
+        for (let e = 0; e < 4; e++) {
+          const a = p[e], d = p[(e + 1) % 4];
+          if ((a.v < 0 && d.v >= 0) || (a.v >= 0 && d.v < 0)) hits.push(crossing(a, d));
+        }
+        if (hits.length === 2) segments.push([hits[0], hits[1]]);
+        else if (hits.length === 4) {
+          const center = (p[0].v + p[1].v + p[2].v + p[3].v) / 4;
+          if ((center < 0) === (p[0].v < 0)) {
+            segments.push([hits[0], hits[3]], [hits[1], hits[2]]);
+          } else {
+            segments.push([hits[0], hits[1]], [hits[2], hits[3]]);
+          }
+        }
+      }
+    }
+    return segments;
+  }
+  function updateSystemText() {
+    const custom = model.system === 'custom';
+    $('system-name').textContent = custom ? '自定义双星' : systems[model.system].name;
+    $('system-mu').textContent = 'μ = ' + model.mu.toPrecision(7).replace(/0+$/, '').replace(/\.$/, '');
+    document.querySelectorAll('[data-system]').forEach(button => {
+      const active = !custom && button.dataset.system === model.system;
+      button.classList.toggle('selected', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    const t = Math.log(model.mu / C.MU_MIN) / Math.log(C.MU_MAX / C.MU_MIN);
+    $('mu-range').value = String(Math.round(t * 1000));
+    $('mu-output').textContent = model.mu.toPrecision(6);
+  }
+  function updatePointButtons() {
+    document.querySelectorAll('[data-point]').forEach(button => {
+      const active = button.dataset.point === model.point;
+      button.classList.toggle('selected', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    const point = currentPoint();
+    const stable = point.stability === '稳定', critical = point.stability === '临界';
+    $('stability-dot').className = 'status-dot' + (stable ? ' stable' : critical ? ' critical' : '');
+    $('stability-title').textContent = model.point + ' ' + point.stability;
+    $('stability-copy').textContent = model.point === 'L4' || model.point === 'L5'
+      ? critical ? '处于稳定性临界边界' : stable ? '该质量比下的小扰动有界' : '已越过 Routh 线性稳定边界'
+      : '小扰动通常会随时间被放大';
+    $('point-coordinate').textContent = 'x = ' + fmt(point.x, 3);
+  }
+  function updateRangeText() {
+    $('speed-output').textContent = Number($('speed-range').value).toFixed(3);
+    $('angle-output').textContent = Math.round(Number($('angle-range').value)) + '°';
+    $('perturb-output').textContent = Number($('perturb-range').value).toFixed(4);
+  }
+  function applySpeedInputs() {
+    const speed = Number($('speed-range').value), angle = Number($('angle-range').value) * Math.PI / 180;
+    model.state.vx = speed * Math.cos(angle);
+    model.state.vy = speed * Math.sin(angle);
+    resetHistories();
+  }
+  function stopPlayback() {
+    model.playing = false;
+    if (model.frameId) cancelAnimationFrame(model.frameId);
+    model.frameId = 0;
+    model.lastFrame = 0;
+    $('play-label').textContent = '运行轨道';
+    $('play-button').setAttribute('aria-pressed', 'false');
+  }
+  function setStatus(message) {
+    $('run-status').textContent = message;
+  }
+  function statusMessage(status) {
+    if (status === 'close-encounter') return '近距离掠过 · 已安全停算';
+    if (status === 'precision-limit') return '精度受限 · 已安全暂停';
+    if (status === 'step-limit') return '步数上限 · 已安全暂停';
+    return '积分完成';
+  }
+  function appendResult(target, result) {
+    for (let i = 1; i < result.trajectory.length; i++) target.push(result.trajectory[i]);
+    if (target.length > 9000) target.splice(1, target.length - 9000);
+  }
+  function advance(duration) {
+    const tol = model.precision;
+    const opts = { duration, tolerance: tol, maxStep: 0.08, maxSteps: 1400 };
+    const main = C.integrate(model.state, model.mu, opts);
+    appendResult(model.trail, main);
+    model.state = Object.assign({}, main.finalState);
+    model.steps += main.steps;
+    for (const sample of main.trajectory) {
+      model.maxDrift = Math.max(model.maxDrift, Math.abs(C.jacobi(sample, model.mu) - model.c0));
+    }
+    model.status = main.status;
+    if (Number($('perturb-range').value) > 0 && !model.comparisonStopped && main.status === 'complete') {
+      const compare = C.integrate(model.comparison, model.mu, opts);
+      appendResult(model.comparisonTrail, compare);
+      model.comparison = Object.assign({}, compare.finalState);
+      model.steps += compare.steps;
+      if (compare.status !== 'complete') {
+        model.comparisonStopped = true;
+        model.comparisonNote = '微扰轨道' + statusMessage(compare.status) + '；基准轨道继续独立积分。';
+      }
+    }
+    model.simTime = model.state.t;
+    if (main.status !== 'complete') {
+      stopPlayback();
+      setStatus(statusMessage(main.status));
+    } else if (!model.playing) {
+      setStatus('单步完成 · 可拖动探测器');
+    }
+    renderMetrics();
+    render();
+  }
+  function runFrame(now) {
+    if (!model.playing) return;
+    if (!model.lastFrame) model.lastFrame = now;
+    const elapsed = Math.min(0.06, Math.max(0, (now - model.lastFrame) / 1000));
+    model.lastFrame = now;
+    if (elapsed > 0) advance(elapsed * 0.72);
+    if (model.playing) model.frameId = requestAnimationFrame(runFrame);
+  }
+  function togglePlayback() {
+    if (model.playing) {
+      stopPlayback(); setStatus('已暂停 · 可拖动探测器'); render(); return;
+    }
+    model.playing = true;
+    $('play-label').textContent = '暂停轨道';
+    $('play-button').setAttribute('aria-pressed', 'true');
+    setStatus('轨道演化中 · 观察两条初始条件');
+    model.frameId = requestAnimationFrame(runFrame);
+  }
+  function resetAll() {
+    stopPlayback();
+    setInitialAtPoint();
+    setStatus('已重置 · 可拖动探测器');
+  }
+  function setPoint(pointId) {
+    stopPlayback();
+    model.point = pointId;
+    updatePointButtons();
+    setInitialAtPoint();
+    setStatus('已选 ' + pointId + ' · 调整发射条件后运行');
+  }
+  function setMu(value, system) {
+    stopPlayback();
+    const priorPoint = currentPoint();
+    const offsetX = model.state ? model.state.x - priorPoint.x : 0;
+    const offsetY = model.state ? model.state.y - priorPoint.y : 0;
+    model.mu = C.clamp(value, C.MU_MIN, C.MU_MAX);
+    model.system = system || 'custom';
+    const nextPoint = currentPoint();
+    if (model.state) {
+      model.state.x = nextPoint.x + offsetX;
+      model.state.y = nextPoint.y + offsetY;
+      resetHistories();
+    } else setInitialAtPoint();
+    updateSystemText();
+    updatePointButtons();
+    setStatus('质量比已更新 · 位置相对所选平衡点保留');
+  }
+  function canvasMetrics() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(240, rect.width), h = Math.max(220, rect.height);
+    const pxw = Math.round(w * dpr), pxh = Math.round(h * dpr);
+    if (canvas.width !== pxw || canvas.height !== pxh) { canvas.width = pxw; canvas.height = pxh; }
+    return { w: canvas.width, h: canvas.height, dpr };
+  }
+  function toView(x, y, t) {
+    if (model.frame === 'rotating') return { x, y };
+    const co = Math.cos(t), si = Math.sin(t);
+    return { x: co * x - si * y, y: si * x + co * y };
+  }
+  function drawBackground(w, h, scale, ox, oy) {
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, '#15393c'); grad.addColorStop(1, '#1a4243');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(206,220,198,.065)'; ctx.lineWidth = 1;
+    const step = Math.max(28, scale * 0.25);
+    const startX = ((ox % step) + step) % step, startY = ((oy % step) + step) % step;
+    ctx.beginPath();
+    for (let x = startX; x < w; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+    for (let y = startY; y < h; y += step) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(214,226,206,.15)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, h); ctx.moveTo(0, oy); ctx.lineTo(w, oy); ctx.stroke();
+    ctx.fillStyle = 'rgba(214,226,206,.45)'; ctx.font = '10px monospace';
+    ctx.fillText('y', ox + 7, 14); ctx.fillText('x', w - 12, oy - 7);
+  }
+  function drawContours(t, scale) {
+    if (!model.contours.length) return;
+    ctx.save();
+    ctx.lineWidth = 1.05 / scale;
+    ctx.strokeStyle = 'rgba(218,225,198,.66)';
+    ctx.setLineDash([4 / scale, 5 / scale]);
+    ctx.beginPath();
+    for (const seg of model.contours) {
+      const a = toView(seg[0].x, seg[0].y, t), b = toView(seg[1].x, seg[1].y, t);
+      ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+    }
+    ctx.stroke(); ctx.restore();
+  }
+  function drawPrimaries(t, scale) {
+    const positions = [
+      { x: -model.mu, y: 0, mass: 1 - model.mu, name: 'P₁' },
+      { x: 1 - model.mu, y: 0, mass: model.mu, name: 'P₂' }
+    ];
+    positions.forEach((p, index) => {
+      const q = toView(p.x, p.y, t);
+      const radius = index === 0 ? 0.042 : 0.025;
+      const glow = ctx.createRadialGradient(q.x - radius * .3, q.y - radius * .35, radius * .08, q.x, q.y, radius * 1.8);
+      if (index === 0) { glow.addColorStop(0, '#f0dca6'); glow.addColorStop(.45, '#d2855f'); glow.addColorStop(1, 'rgba(185,100,71,.12)'); }
+      else { glow.addColorStop(0, '#e1e6c8'); glow.addColorStop(.55, '#9bbba3'); glow.addColorStop(1, 'rgba(147,183,157,.12)'); }
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(q.x, q.y, radius * 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = index === 0 ? '#d98761' : '#a9c7a9';
+      ctx.strokeStyle = 'rgba(240,239,218,.76)'; ctx.lineWidth = 1.3 / scale;
+      ctx.beginPath(); ctx.arc(q.x, q.y, radius * .7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      if (index === 0) drawWorldLabel(p.name, q.x - radius * 1.8, q.y + radius * 1.6, scale, 'rgba(223,231,211,.84)', 'sans-serif', 8);
+      else drawWorldLabel(p.name, q.x - radius * .15, q.y - radius * 2.0, scale, 'rgba(223,231,211,.84)', 'sans-serif', 8);
+    });
+  }
+  function drawWorldLabel(text, x, y, scale, color, face, size) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1 / scale, -1 / scale);
+    ctx.fillStyle = color;
+    ctx.font = (size || 9) + 'px ' + (face || 'serif');
+    ctx.textAlign = 'left';
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+  }
+  function drawLagrange(t, scale) {
+    const pts = C.equilibria(model.mu);
+    ctx.save(); ctx.textAlign = 'left'; ctx.font = (9 / scale) + 'px monospace';
+    pts.forEach(p => {
+      const q = toView(p.x, p.y, t);
+      const selected = p.id === model.point;
+      ctx.strokeStyle = selected ? '#f0a071' : 'rgba(213,228,107,.75)';
+      ctx.fillStyle = selected ? '#f0a071' : '#d5e46b';
+      ctx.lineWidth = (selected ? 1.7 : 1.1) / scale;
+      ctx.beginPath(); ctx.arc(q.x, q.y, (selected ? 0.019 : 0.013), 0, Math.PI * 2); ctx.fill();
+      if (selected) { ctx.beginPath(); ctx.arc(q.x, q.y, 0.032, 0, Math.PI * 2); ctx.stroke(); }
+      const offsets = {
+        L1: { x: -0.045, y: 0.035 }, L2: { x: 0.035, y: 0.042 },
+        L3: { x: -0.045, y: 0.035 }, L4: { x: 0.025, y: 0.018 },
+        L5: { x: 0.025, y: -0.035 }
+      };
+      const offset = offsets[p.id];
+      drawWorldLabel(p.id, q.x + offset.x, q.y + offset.y, scale, selected ? '#ffe0b7' : 'rgba(226,231,209,.84)', 'monospace', 8);
+    });
+    ctx.restore();
+  }
+  function drawTrail(points, color, width, tNow, scale) {
+    if (!points || points.length < 2) return;
+    ctx.beginPath();
+    let first = true;
+    for (let i = 0; i < points.length; i++) {
+      const p = toView(points[i].x, points[i].y, model.frame === 'inertial' ? points[i].t : tNow);
+      if (first) { ctx.moveTo(p.x, p.y); first = false; } else ctx.lineTo(p.x, p.y);
+    }
+    ctx.strokeStyle = color; ctx.lineWidth = width / scale; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+  }
+  function drawProbe(state, color, scale, radius) {
+    const p = toView(state.x, state.y, state.t);
+    ctx.save();
+    ctx.fillStyle = color; ctx.strokeStyle = '#fff1cc'; ctx.lineWidth = 1.4 / scale;
+    ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.x, p.y, radius * 2.6, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(230,224,186,.45)'; ctx.lineWidth = 0.7 / scale; ctx.stroke();
+    ctx.restore();
+  }
+  function render() {
+    const m = canvasMetrics(), w = m.w, h = m.h, pad = 28 * m.dpr;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, w, h);
+    const scale = Math.min((w - 2 * pad) / (bounds.xmax - bounds.xmin), (h - 2 * pad) / (bounds.ymax - bounds.ymin));
+    const ox = w / 2, oy = h / 2;
+    drawBackground(w, h, scale, ox, oy);
+    ctx.save(); ctx.translate(ox, oy); ctx.scale(scale, -scale);
+    drawContours(model.state.t, scale);
+    drawTrail(model.comparisonTrail, 'rgba(164,204,183,.85)', 1.2, model.state.t, scale);
+    drawTrail(model.trail, '#d9855d', 2.2, model.state.t, scale);
+    drawLagrange(model.state.t, scale);
+    drawPrimaries(model.state.t, scale);
+    if (Number($('perturb-range').value) > 0) drawProbe(model.comparison, '#9bc8ad', scale, 0.012);
+    drawProbe(model.state, '#ef9868', scale, 0.016);
+    ctx.restore();
+    const shown = model.frame === 'inertial' ? C.toInertial(model.state) : model.state;
+    $('position-readout').textContent = (model.frame === 'inertial' ? 'X' : 'x') + ' = ' + fmt(shown.x, 3) + '　' + (model.frame === 'inertial' ? 'Y' : 'y') + ' = ' + fmt(shown.y, 3);
+    $('time-readout').textContent = 't = ' + fmt(model.state.t, 2) + ' / 归一化时间';
+    $('zoom-readout').textContent = model.frame === 'rotating' ? '共转坐标 · 双星保持静止' : '惯性坐标 · 双星绕质心转动';
+  }
+  function renderMetrics() {
+    const cNow = C.jacobi(model.state, model.mu), drift = cNow - model.c0;
+    $('jacobi-value').textContent = fmt(model.c0, 7);
+    $('drift-value').textContent = fmtDrift(drift);
+    $('max-drift-value').textContent = fmtDrift(model.maxDrift);
+    $('steps-value').textContent = model.steps.toLocaleString('zh-CN');
+    const magnitude = Math.max(0, Math.min(100, (Math.log10(Math.abs(drift) + 1e-16) + 16) * 8));
+    $('drift-bar').style.width = magnitude.toFixed(1) + '%';
+    const note = model.precision <= 1e-10
+      ? '精细容限已启用。比较同一条轨迹的最大 Jacobi 偏差，通常会小于“快”档。'
+      : model.precision >= 1e-6
+        ? '快速积分容限较宽，单步更省时；Jacobi 漂移会更明显。'
+        : '标准积分容限。细小漂移来自有限精度积分；切换“精细”再做对照。';
+    $('invariant-note').textContent = model.comparisonNote ? note + ' ' + model.comparisonNote : note;
+  }
+  function eventToRotating(event) {
+    const rect = canvas.getBoundingClientRect();
+    const m = canvasMetrics(), scale = Math.min((m.w - 56 * m.dpr) / (bounds.xmax - bounds.xmin), (m.h - 56 * m.dpr) / (bounds.ymax - bounds.ymin));
+    const px = (event.clientX - rect.left) * m.dpr, py = (event.clientY - rect.top) * m.dpr;
+    const xView = (px - m.w / 2) / scale, yView = -(py - m.h / 2) / scale;
+    if (model.frame === 'rotating') return { x: C.clamp(xView, bounds.xmin, bounds.xmax), y: C.clamp(yView, bounds.ymin, bounds.ymax) };
+    const co = Math.cos(model.state.t), si = Math.sin(model.state.t);
+    return {
+      x: C.clamp(co * xView + si * yView, bounds.xmin, bounds.xmax),
+      y: C.clamp(-si * xView + co * yView, bounds.ymin, bounds.ymax)
+    };
+  }
+  function setLaunchPosition(point) {
+    stopPlayback();
+    model.state = { x: point.x, y: point.y, vx: model.state.vx, vy: model.state.vy, t: 0 };
+    resetHistories();
+    setStatus('发射位置已更新 · 调整速度或开始积分');
+  }
+  function selectSystem(key) {
+    model.system = key;
+    model.mu = systems[key].mu;
+    model.point = 'L1';
+    updateSystemText(); updatePointButtons(); setInitialAtPoint();
+    setStatus('载入' + systems[key].name + ' · 可改变质量比');
+  }
+  document.querySelectorAll('[data-system]').forEach(button => button.addEventListener('click', () => selectSystem(button.dataset.system)));
+  $('mu-range').addEventListener('input', event => {
+    const fraction = Number(event.target.value) / 1000;
+    const mu = C.MU_MIN * Math.pow(C.MU_MAX / C.MU_MIN, fraction);
+    setMu(mu, 'custom');
+  });
+  document.querySelectorAll('[data-point]').forEach(button => button.addEventListener('click', () => setPoint(button.dataset.point)));
+  $('speed-range').addEventListener('input', () => { updateRangeText(); applySpeedInputs(); });
+  $('angle-range').addEventListener('input', () => { updateRangeText(); applySpeedInputs(); });
+  $('perturb-range').addEventListener('input', () => { updateRangeText(); resetHistories(); });
+  document.querySelectorAll('[data-precision]').forEach(button => button.addEventListener('click', () => {
+    model.precision = Number(button.dataset.precision);
+    document.querySelectorAll('[data-precision]').forEach(b => {
+      const active = b === button;
+      b.classList.toggle('selected', active); b.setAttribute('aria-pressed', String(active));
+    });
+    renderMetrics();
+  }));
+  document.querySelectorAll('[data-frame]').forEach(button => button.addEventListener('click', () => {
+    model.frame = button.dataset.frame;
+    document.querySelectorAll('[data-frame]').forEach(b => {
+      const active = b === button;
+      b.classList.toggle('selected', active); b.setAttribute('aria-pressed', String(active));
+    });
+    render();
+  }));
+  $('play-button').addEventListener('click', togglePlayback);
+  $('step-button').addEventListener('click', () => { stopPlayback(); advance(0.18); });
+  $('reset-button').addEventListener('click', resetAll);
+  canvas.addEventListener('pointerdown', event => {
+    event.preventDefault(); canvas.focus({ preventScroll: true }); canvas.setPointerCapture(event.pointerId);
+    model.drag = true; setLaunchPosition(eventToRotating(event));
+  });
+  canvas.addEventListener('pointermove', event => {
+    if (model.drag && canvas.hasPointerCapture(event.pointerId)) setLaunchPosition(eventToRotating(event));
+  });
+  function finishDrag(event) {
+    model.drag = false;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+  }
+  canvas.addEventListener('pointerup', finishDrag);
+  canvas.addEventListener('pointercancel', finishDrag);
+  canvas.addEventListener('keydown', event => {
+    const delta = 0.012;
+    let dx = 0, dy = 0;
+    if (event.key === 'ArrowRight') dx = delta;
+    else if (event.key === 'ArrowLeft') dx = -delta;
+    else if (event.key === 'ArrowUp') dy = delta;
+    else if (event.key === 'ArrowDown') dy = -delta;
+    else return;
+    event.preventDefault();
+    setLaunchPosition({ x: C.clamp(model.state.x + dx, bounds.xmin, bounds.xmax), y: C.clamp(model.state.y + dy, bounds.ymin, bounds.ymax) });
+  });
+  window.addEventListener('keydown', event => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const target = event.target;
+    if (target && (target.matches('input,button,select,textarea') || target.isContentEditable)) return;
+    if (event.code === 'Space') { event.preventDefault(); togglePlayback(); }
+    else if (event.key.toLowerCase() === 'r') { event.preventDefault(); resetAll(); }
+  });
+  window.addEventListener('resize', render);
+  updateSystemText();
+  updatePointButtons();
+  updateRangeText();
+  setInitialAtPoint();
+  setStatus('已就绪 · 可拖动探测器');
+})();
+
+</script>
+</body></html>

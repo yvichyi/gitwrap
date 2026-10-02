@@ -1,0 +1,4610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>纸带之上 · 穷举所有小机器，找出跑得最久的那一台</title>
+<meta name="description" content="从零实现 2 符号图灵机、树范式穷举器与停机判定器，穷举 3,490,102 台 4 状态机器，把 S(4)=107 与 Σ(4)=13 从零算出来，并量出「纯模拟判不了的那 6.84%」以及 n=5 的判定代价。">
+<style>
+/* ============================================================
+ * 《纸带之上》样式
+ * 浅色纸面 + 墨色 + 靛青（实测/结论）+ 朱红（未判定/墙）+ 赭金（引用）
+ * 注意：入场动画一律不用 animation + opacity:0 + forwards，
+ * 否则 headless 下元素永远停在 opacity:0 —— 数得出来，看不见。
+ * ========================================================== */
+:root {
+  --paper: #f4f3ef;
+  --paper2: #fdfcf8;
+  --ink: #16171b;
+  --ink2: #3a3c41;
+  --muted: #726f66;
+  --faint: #a5a298;
+  --line: #dbd8cd;
+  --line2: #eae7dd;
+  --hot: #ad2f2f;
+  --hot-soft: #e5b5af;
+  --cool: #1d5c78;
+  --cool-soft: #a6c6d4;
+  --gold: #8f6a0e;
+  --gold-soft: #e2d1a0;
+  --green: #2d6743;
+  --green-soft: #b4d1bb;
+  --violet: #57467f;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Cascadia Mono", monospace;
+  --serif: Georgia, "Songti SC", "SimSun", "Noto Serif SC", serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  -webkit-text-size-adjust: 100%;
+}
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px 96px; }
+
+/* ---------- 头部 ---------- */
+.hero { padding: 72px 0 40px; border-bottom: 2px solid var(--ink); }
+.eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .22em;
+  color: var(--muted); text-transform: uppercase; margin-bottom: 18px;
+}
+.title { font-family: var(--serif); font-size: 64px; line-height: 1.05; margin: 0 0 10px; letter-spacing: .06em; }
+.sub { font-family: var(--serif); font-size: 19px; color: var(--ink2); margin: 0 0 26px; }
+.lede { font-size: 16px; color: var(--ink2); max-width: 820px; margin: 0 0 10px; }
+.lede + .lede { margin-top: 12px; }
+.lede b { color: var(--hot); font-weight: 600; }
+.lede .c { color: var(--cool); font-weight: 600; }
+
+/* ---------- 头版 ---------- */
+.headline {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin: 30px 0 0;
+  border: 1px solid var(--line); background: var(--paper2); min-width: 0;
+}
+.headline > * { min-width: 0; }
+.hl-cell { padding: 18px 20px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.hl-cell:nth-child(3n) { border-right: none; }
+.hl-cell .hl-k { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
+.hl-cell .hl-v { font-family: var(--serif); font-size: 30px; line-height: 1.2; margin: 4px 0 2px; }
+.hl-cell.good .hl-v { color: var(--cool); }
+.hl-cell.bad .hl-v { color: var(--hot); }
+.hl-cell.gold .hl-v { color: var(--gold); }
+.hl-cell .hl-n { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ---------- KPI ---------- */
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 30px; }
+.kpi {
+  background: var(--paper2); border: 1px solid var(--line);
+  border-top: 3px solid var(--ink); padding: 14px 14px 12px; min-width: 0;
+}
+.kpi.hot { border-top-color: var(--hot); }
+.kpi.cool { border-top-color: var(--cool); }
+.kpi.gold { border-top-color: var(--gold); }
+.kpi .k-label { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; line-height: 1.4; }
+.kpi .k-val { font-family: var(--serif); font-size: 27px; line-height: 1.2; margin: 4px 0 2px; }
+.kpi .k-note { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ---------- 章节 ---------- */
+.sec { padding: 62px 0 10px; border-top: 1px solid var(--line); margin-top: 62px; }
+.sec:first-of-type { border-top: none; margin-top: 0; }
+.sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+.sec-num { font-family: var(--serif); font-size: 30px; color: var(--hot); line-height: 1; }
+.sec h2 { font-family: var(--serif); font-size: 30px; margin: 0; letter-spacing: .02em; }
+.sec-sub { color: var(--muted); font-size: 14px; margin: 0 0 22px; font-family: var(--mono); }
+.sec p { margin: 0 0 16px; color: var(--ink2); max-width: 920px; }
+.sec p.wide { max-width: none; }
+.sec b, .sec strong { color: var(--ink); font-weight: 600; }
+.sec .hl { color: var(--hot); font-weight: 600; }
+.sec .hlc { color: var(--cool); font-weight: 600; }
+.sec .hlg { color: var(--gold); font-weight: 600; }
+code, .mono { font-family: var(--mono); font-size: 13px; background: var(--line2); padding: 1px 5px; border-radius: 3px; }
+.sec code { color: var(--ink); }
+
+/* ---------- 面板 ---------- */
+.panel {
+  background: var(--paper2); border: 1px solid var(--line);
+  padding: 20px; margin: 20px 0; min-width: 0;
+}
+.panel-tight { padding: 14px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; min-width: 0; }
+.grid2.duo { grid-template-columns: 1.45fr 1fr; }
+.grid2 > *, .grid3 > * { min-width: 0; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; min-width: 0; }
+.panel h3 {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--muted); margin: 0 0 12px;
+}
+
+/* ---------- 控件 ---------- */
+.ctrls { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; margin-bottom: 16px; }
+.ctrl { display: flex; flex-direction: column; gap: 4px; }
+.ctrl > span { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
+select {
+  font-family: var(--mono); font-size: 14px; background: var(--paper);
+  border: 1px solid var(--line); color: var(--ink); padding: 8px 10px; min-height: 40px;
+}
+input[type="range"] { accent-color: var(--hot); min-height: 40px; }
+button {
+  font-family: var(--mono); font-size: 12px; letter-spacing: .08em;
+  background: var(--ink); color: var(--paper2); border: 1px solid var(--ink);
+  padding: 10px 18px; min-height: 42px; cursor: pointer;
+}
+button:hover { background: var(--hot); border-color: var(--hot); }
+button.ghost { background: transparent; color: var(--ink); }
+button.ghost:hover { background: var(--ink); color: var(--paper2); }
+button.on { background: var(--hot); border-color: var(--hot); color: #fff; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 6px; }
+.btnrow button { padding: 8px 11px; min-height: 38px; font-size: 11px; }
+
+/* ---------- 表格 ---------- */
+.tbl-wrap { overflow-x: auto; max-width: 100%; min-width: 0; margin: 12px 0; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.tbl th, table.tbl td {
+  border-bottom: 1px solid var(--line2); padding: 6px 10px; text-align: right;
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+table.tbl th {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line);
+}
+table.tbl td.l, table.tbl th.l { text-align: left; }
+table.tbl td.mono, table.tbl th.mono { font-family: var(--mono); }
+table.tbl tr.hi td { background: #fbf0ee; }
+table.tbl tr.dim td { color: var(--faint); }
+table.tbl td.best { color: var(--green); font-weight: 600; }
+table.tbl td.worst { color: var(--hot); font-weight: 600; }
+table.tbl td.cool { color: var(--cool); font-weight: 600; }
+table.tbl td.gold { color: var(--gold); font-weight: 600; }
+table.tbl td.cellhit { background: #eef5f1; color: var(--green); font-weight: 600; }
+table.tbl td.cellmiss { background: #fbf0ee; color: var(--hot); font-weight: 600; }
+table.tbl td.cellref { background: #faf5e7; color: var(--gold); font-weight: 600; }
+
+/* ---------- 图表 ---------- */
+.chart { width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 0 0 10px; font-size: 12px; color: var(--ink2); }
+.legend i { display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: middle; }
+.legend i.sq { height: 10px; width: 10px; }
+
+/* ---------- 柱状图（行内元素会忽略 width —— 必须 display:block） ---------- */
+.bars { display: block; }
+.bar-row { display: grid; grid-template-columns: 132px 1fr 92px; align-items: center; gap: 10px; margin-bottom: 5px; }
+/* 判决分层那一行的标签更长。这条必须写在媒体查询**之前**，
+   否则它会靠"更靠后"压掉窄屏里的同名规则，360px 下 1fr 被挤成 0 宽 */
+.bar-row.tiers { grid-template-columns: 158px 1fr 128px; }
+.bar-lab { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: right; }
+.bar-track { display: block; background: var(--line2); height: 14px; position: relative; overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--hot); width: 0; }
+.bar-fill.cool { background: var(--cool); }
+.bar-fill.gold { background: var(--gold); }
+.bar-fill.green { background: var(--green); }
+.bar-fill.violet { background: var(--violet); }
+.bar-val { font-family: var(--mono); font-size: 11px; color: var(--ink2); }
+
+/* ---------- 纸带 ---------- */
+.tape {
+  display: flex; flex-wrap: nowrap; gap: 2px; align-items: flex-end;
+  overflow-x: auto; padding: 6px 0 2px; margin: 10px 0 4px; min-height: 74px;
+}
+.cell {
+  flex: 0 0 auto; width: 30px; height: 44px; border: 1px solid var(--line);
+  background: var(--paper); display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 15px; color: var(--faint); position: relative;
+}
+.cell.one { background: var(--ink); color: var(--paper2); border-color: var(--ink); }
+.cell.head { border-color: var(--hot); box-shadow: inset 0 -4px 0 var(--hot); }
+.cell.head::after {
+  content: "▲"; position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+  font-size: 11px; color: var(--hot);
+}
+.cell.zero { color: var(--faint); }
+.tape-scroll { overflow-x: auto; }
+.tape-legend { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 22px; }
+
+/* ---------- 判决条 ---------- */
+.verdict {
+  font-family: var(--mono); font-size: 13px; padding: 12px 14px; border-left: 3px solid var(--line);
+  background: var(--paper); margin: 12px 0; min-height: 46px;
+}
+.verdict.ok { border-left-color: var(--cool); background: #eef4f7; }
+.verdict.bad { border-left-color: var(--hot); background: #fbf0ee; }
+.verdict.warn { border-left-color: var(--gold); background: #faf5e7; }
+
+/* ---------- 统计条 ---------- */
+.statrow { display: flex; flex-wrap: wrap; gap: 18px; margin: 12px 0 4px; }
+.stat { min-width: 104px; }
+.stat .st-l { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+.stat .st-v { font-family: var(--serif); font-size: 25px; line-height: 1.25; }
+.stat.hot .st-v { color: var(--hot); }
+.stat.cool .st-v { color: var(--cool); }
+.stat.gold .st-v { color: var(--gold); }
+.stat.green .st-v { color: var(--green); }
+
+/* ---------- 提示块 ---------- */
+.callout {
+  border-left: 3px solid var(--hot); background: #fbf0ee;
+  padding: 14px 18px; margin: 18px 0; font-size: 15px; color: var(--ink2);
+}
+.callout.cool { border-left-color: var(--cool); background: #eef4f7; }
+.callout.gold { border-left-color: var(--gold); background: #faf5e7; }
+.callout.green { border-left-color: var(--green); background: #eff7f1; }
+.callout .ct { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px; }
+.callout b { color: var(--ink); }
+
+/* ---------- 清单 ---------- */
+.limits { list-style: none; padding: 0; margin: 0; }
+.limits li { padding: 10px 0 10px 22px; border-bottom: 1px solid var(--line2); position: relative; font-size: 14px; color: var(--ink2); }
+.limits li:before { content: "—"; position: absolute; left: 0; color: var(--faint); }
+.limits li b { color: var(--ink); }
+
+.cons { list-style: none; padding: 0; margin: 0; counter-reset: cn; }
+.cons li {
+  counter-increment: cn; position: relative; padding: 12px 0 12px 40px;
+  border-bottom: 1px solid var(--line2); font-size: 15px; color: var(--ink2);
+}
+.cons li:before {
+  content: counter(cn); position: absolute; left: 0; top: 12px;
+  font-family: var(--serif); font-size: 20px; color: var(--hot);
+}
+.cons li b { color: var(--ink); }
+
+/* ---------- 时间线 ---------- */
+.timeline { list-style: none; padding: 0; margin: 16px 0; }
+.timeline li {
+  display: grid; grid-template-columns: 92px 1fr; gap: 14px; padding: 9px 0;
+  border-bottom: 1px solid var(--line2); font-size: 14px; color: var(--ink2);
+}
+.timeline .tl-y { font-family: var(--mono); font-size: 12px; color: var(--gold); }
+.timeline .tl-y.mine { color: var(--cool); }
+.timeline b { color: var(--ink); }
+
+footer { margin-top: 70px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 980px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .grid2, .grid3, .grid2.duo { grid-template-columns: 1fr; }
+  .headline { grid-template-columns: repeat(2, 1fr); }
+  .hl-cell:nth-child(3n) { border-right: 1px solid var(--line); }
+  .hl-cell:nth-child(2n) { border-right: none; }
+}
+@media (max-width: 700px) {
+  .wrap { padding: 0 14px 70px; }
+  .hero { padding: 44px 0 28px; }
+  .title { font-size: 38px; }
+  .sub { font-size: 16px; }
+  .kpis { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .kpi .k-val { font-size: 20px; }
+  .sec h2 { font-size: 23px; }
+  .sec-num { font-size: 22px; }
+  .headline { grid-template-columns: 1fr; }
+  .hl-cell { border-right: none !important; }
+  /* 窄屏表格：放开 nowrap 并允许长 token 断开 —— 否则最小内容宽度会大于容器，
+     .tbl-wrap 被挤到横滚、表头被切一半（文档级 overflow 查不出这一类） */
+  table.tbl th, table.tbl td { white-space: normal; overflow-wrap: anywhere; padding: 5px 6px; }
+  table.tbl td.num, table.tbl th.num { white-space: nowrap; }
+  #tbl-verify td:last-child { white-space: nowrap; }
+  .bar-row { grid-template-columns: 88px 1fr 66px; }
+  /* 不写这一条，360px 下 158+128 就把 1fr 挤成 0 宽 —— 六段柱子全部变成 0 宽 */
+  .bar-row.tiers { grid-template-columns: 74px 1fr 58px; }
+  table.tbl td.num, table.tbl th.num { white-space: normal; }
+  /* 触控目标：媒体查询里的裸 input 压不住 input[type="range"] 的 min-height（特异性 (0,1,1)），
+     两条都要写 */
+  button, select, input { min-height: 44px; }
+  input[type="range"] { min-height: 44px; }
+  .btnrow button { min-height: 44px; }
+  .cell { width: 26px; height: 40px; font-size: 13px; }
+  .timeline li { grid-template-columns: 74px 1fr; gap: 10px; }
+}
+
+/* ---------- 堆叠条（判决分层用） ---------- */
+.bar-track.stack { display: flex; }
+.bar-seg { height: 100%; flex: 0 0 auto; }
+.bar-seg.cycle { background: var(--cool); }
+.bar-seg.escape { background: var(--gold); }
+.bar-seg.undecided { background: var(--hot); }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hero">
+  <div class="eyebrow">单文件科学装置 · 第 8 件 · 从零实现，双击即开</div>
+  <h1 class="title serif">纸带之上</h1>
+  <p class="sub">穷举所有小机器，找出跑得最久的那一台 —— 然后撞上不可判定的墙</p>
+  <p class="lede">一条向两边无限伸的纸带、一个读写头、一张转移表。六十多年来，"<b>n 个状态的图灵机最多能跑多少步才停</b>"这个问题的答案只被推进过四次：1、6、21、107，然后停了四十多年，直到 2024 年才有人把第 5 个数钉死。</p>
+  <p class="lede">这个装置把前四个数<span class="c">从头穷举出来</span>——3,490,102 台 4 状态机器全跑一遍，<b>107</b> 和 <b>13</b> 与 1983 年的人工结论逐位相同。然后它诚实地展示自己在哪里撞墙：<b>6.84%</b> 的不停机机器，连"跑一遍 + 两条结构性证明规则"都判不了。那不是代码没写好，那就是这堵墙本身。</p>
+
+  <div class="headline" id="headline"></div>
+  <div class="kpis" id="kpis"></div>
+</div>
+
+<!-- ============================ 第壹章 ============================ -->
+<div class="sec" id="sec1">
+  <div class="sec-head"><span class="sec-num serif">壹</span><h2>纸带</h2></div>
+  <p class="sec-sub">一台机器只有四个部件，可是它已经够算出一切可算的东西</p>
+
+  <p>一台（2 符号）图灵机由三样东西定死：<b>状态</b>（0 … n−1）、<b>纸带</b>（向两边无限、每格写 0 或 1）、<b>读写头</b>（站在某一格上）。规则是一张 <span class="mono">2n</span> 行的表：每行说"我在状态 q、读到符号 s 的时候，写什么、往哪走、去哪个状态"。<code>H</code> 表示停机。</p>
+
+  <p>本页用一套紧凑写法记这台机器：<code>1RB/1LB 1LA/0LC 1RH/1LD 1RD/0RA</code> —— 空格分开的是状态 A、B、C、D；斜杠两边是读到 0 和读到 1 时各做什么；每一项是"<b>写什么 · 往哪走 · 去哪</b>"。下面这台是 4 状态的冠军，它会跑 <span class="hl" id="n1-champ-steps">—</span> 步才停。</p>
+
+  <div class="panel">
+    <h3>转移表 · 可运行</h3>
+    <div class="ctrls">
+      <label class="ctrl"><span>机器</span>
+        <select id="tm-preset">
+          <option value="champ4">4 状态冠军（107 步，停）</option>
+          <option value="champ3">3 状态冠军（21 步，停）</option>
+          <option value="cycle">循环机（构型重复，永不停）</option>
+          <option value="escape">逃逸机（一路向左，永不停）</option>
+          <option value="hard">未判定机（结构一直在长）</option>
+          <option value="ones4">4 状态 Σ 冠军（13 个 1，96 步）</option>
+        </select>
+      </label>
+      <div class="btnrow">
+        <button id="tm-run">跑</button>
+        <button id="tm-step" class="ghost">单步</button>
+        <button id="tm-reset" class="ghost">重置</button>
+      </div>
+      <label class="ctrl"><span>速度</span>
+        <input type="range" id="tm-speed" min="1" max="30" value="12">
+      </label>
+    </div>
+
+    <div class="tape-scroll"><div class="tape" id="tm-tape"></div></div>
+    <div class="tape-legend">■ 墨迹 1　□ 空白 0　<span class="hl">▲</span> 读写头　·　纸带向两边无限，窗口跟着读写头走</div>
+
+    <div class="statrow">
+      <div class="stat"><div class="st-l">步数</div><div class="st-v" id="tm-steps">0</div></div>
+      <div class="stat cool"><div class="st-l">当前状态</div><div class="st-v" id="tm-state">A</div></div>
+      <div class="stat"><div class="st-l">纸带上的 1</div><div class="st-v" id="tm-ones">0</div></div>
+      <div class="stat"><div class="st-l">读写头位置</div><div class="st-v" id="tm-head">0</div></div>
+    </div>
+    <div class="verdict" id="tm-verdict">选一台机器，然后按「跑」。</div>
+  </div>
+
+  <p class="sec-sub" style="margin-top:22px">当前机器的转移表</p>
+  <div class="tbl-wrap"><table class="tbl" id="tbl-tm"></table></div>
+</div>
+
+<!-- ============================ 第贰章 ============================ -->
+<div class="sec" id="sec2">
+  <div class="sec-head"><span class="sec-num serif">贰</span><h2>穷举</h2></div>
+  <p class="sec-sub">把"所有 n 状态机器"变成一张能跑完的清单</p>
+
+  <p>每台机器有 <span class="mono">2n</span> 个格子要填，每格有 <span class="mono">4(n+1)</span> 种填法，所以 n 状态机器的总数是 <span class="mono">(4(n+1))<sup>2n</sup></span>。n=4 时这是 <span class="hl" id="n2-flat4">—</span> 台 —— 直接枚举是跑不完的。</p>
+
+  <p>有两条规范可以白送地压掉绝大部分：<b>①</b> 第一步固定为「写 1、右移、进状态 1」（若第一步写 0，那台机器等价于一台少一个状态、从状态 1 起跑的机器，永远不会是冠军）；<b>②</b> 状态按<b>首次访问的先后</b>编号，于是"只改了状态名"的机器只算一台。这叫做<b>树范式（TNF）</b>。压完只剩 <span class="hl" id="n2-tnf4">—</span> 台，而 <b>S 与 Σ 一个都不变</b> —— 冠军还在清单里，这一点我用朴素全枚举在 n=1、2、3 上独立对过账。</p>
+
+  <div class="grid2 duo">
+    <div class="panel">
+      <h3>实测：n=1…4 的 S 与 Σ（对账文献）</h3>
+      <div class="tbl-wrap"><table class="tbl" id="tbl-e1"></table></div>
+      <div class="chart-note">S(n) = 最长停机步数；Σ(n) = 停机时纸带上最多的 1 的个数。<span class="hlg">两把尺子，不互比。</span></div>
+    </div>
+    <div class="panel">
+      <h3>理论台数 vs 树范式台数</h3>
+      <div class="bars" id="bars-cost"></div>
+      <div class="chart-note">对数刻度。n=5 的树范式台数是文献值（bbchallenge），不是本机跑的。</div>
+    </div>
+  </div>
+
+  <div class="callout cool">
+    <span class="ct">为什么这一步值钱</span>
+    压缩不是取巧，是<b>能不能算</b>的分界。同一段代码在 n=1,2,3 上分别给出 S = 1 / 6 / 21、Σ = 1 / 4 / 6；到 n=4 给出 S = <b>107</b>、Σ = <b>13</b> —— 四条真值一次对齐，而这四条真值分别来自 1962、1965、1983 年的人工论证。
+  </div>
+</div>
+
+<!-- ============================ 第叁章 ============================ -->
+<div class="sec" id="sec3">
+  <div class="sec-head"><span class="sec-num serif">叁</span><h2>判决</h2></div>
+  <p class="sec-sub">"跑一遍看看"这个最自然的判定法，本身就要分层</p>
+
+  <p>要算出 S(n)，光知道哪些机器会停还不够 —— 你必须知道<b>哪些机器永远不停</b>。这里有两条出路，外加一条必须承认的死路 —— 本页全用上了：</p>
+
+  <ul class="steps" id="dec-rules"></ul>
+
+  <p>关键在于：<b>「未判定」是一个独立的第三态，绝不并进「非停机」</b>。把它当成"否"，会得到一个看着很干净、其实是假的结果。下面这两条横条的分母是<b>非停机机器</b>（不是全部机器）。</p>
+
+  <div class="panel">
+    <h3>分层判决：非停机机器里，两条证明规则各拿下多少</h3>
+    <div class="legend">
+      <span><i class="sq" style="background:#1d5c78"></i>构型重复（严格证明永不停机）</span>
+      <span><i class="sq" style="background:#8f6a0e"></i>单向逃逸（严格证明永不停机）</span>
+      <span><i class="sq" style="background:#ad2f2f"></i>未判定（第三态）</span>
+    </div>
+    <div id="chart-tiers"></div>
+    <div class="chart-note" id="tiers-note"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h3>未判定机器：纸带跨度随步数一直在长</h3>
+      <div class="chart" id="chart-span"></div>
+      <div class="chart-note">中位跨度。它们不是"还没跑到周期"，是<b>结构本身在长</b> —— 平移等价的构型永远不会出现，所以「构型重复」这条规则天生对它们无效。</div>
+    </div>
+    <div class="panel">
+      <h3>四台机器，按「跑」看判定器怎么说</h3>
+      <div class="btnrow" id="demo-btns"></div>
+      <div class="verdict" id="demo-verdict">选一台。</div>
+      <div class="statrow">
+        <div class="stat"><div class="st-l">判定</div><div class="st-v" id="demo-status">—</div></div>
+        <div class="stat"><div class="st-l">步数</div><div class="st-v" id="demo-steps">—</div></div>
+        <div class="stat"><div class="st-l">纸带跨度</div><div class="st-v" id="demo-span">—</div></div>
+      </div>
+      <div class="chart-note">判定用的是页面里那份模型，和标定时跑的是同一份源码。</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="ct">这一章真正的结论</span>
+    <b id="res4-line">—</b> 的非停机机器里，两条规则能严格证明 <span id="res4-cover">—</span> 永不停机，剩下的 <b class="hl" id="res4-left">—</b> 两条都不适用。把预算从 200 步加到 2000 步，这批机器里还有 <span id="res4-stuck1">—</span> 判不出来；再把这一批加到 20000 步，剩下的里面仍有 <span id="res4-stuck">—</span> 判不出来 —— <b>加预算解决不了它</b>。
+  </div>
+</div>
+
+<!-- ============================ 第肆章 ============================ -->
+<div class="sec" id="sec4">
+  <div class="sec-head"><span class="sec-num serif">肆</span><h2>冠军</h2></div>
+  <p class="sec-sub">跑得最久的那台，在一百多万台里只有几台</p>
+
+  <p>把每一台会停机的机器记下"跑了几步"，就得到一张分布图。它的形状是<b>极端重尾</b>的：绝大多数机器十几步就停了，尾巴上挂着那几台冠军。因为跨度横跨 1 到 107，纵轴必须用对数 —— 线性刻度下尾巴会整个消失。</p>
+
+  <div class="grid2">
+    <div class="panel">
+      <h3>4 状态机器的停机步数分布</h3>
+      <div class="chart" id="chart-hist"></div>
+      <div class="chart-note">纵轴对数。横轴 = 停机用了多少步；纵轴 = 有多少台机器恰好用了这么多步。</div>
+    </div>
+    <div class="panel">
+      <h3>生存函数：至少跑 k 步的机器还有多少台</h3>
+      <div class="chart" id="chart-surv"></div>
+      <div class="chart-note">对数纵轴。这条线掉得极快，然后拖出一条长长的尾巴 —— <b>整条尾巴就是"忙碌的海狸"这个函数</b>。</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>各档冠军的转移表</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-champ"></table></div>
+    <div class="chart-note">跑到 107 步的 4 状态机器一共 <b>4 台</b>：其中 2 台最后一步写下 1（留下 13 个 1），2 台写下 0（留下 12 个）。Brady 那台属于前者。表里 Σ 那一栏的冠军只是"第一台被枚举到的 13 个 1"，它跑 96 步 —— <b>两栏不是同一台机器</b>。</div>
+  </div>
+
+  <div class="callout gold">
+    <span class="ct">外部的第二重对账</span>
+    Brady 那台 4 状态机器（Marxen 站点上的原始表 <code id="brady-table">—</code>）喂进<b>我的</b>模拟器，跑出 <span class="hl" id="brady-check">—</span>。这一条比"我的最大值等于 107"更强：它钉住的是具体那一台。
+  </div>
+</div>
+
+<!-- ============================ 第伍章 ============================ -->
+<div class="sec" id="sec5">
+  <div class="sec-head"><span class="sec-num serif">伍</span><h2>墙</h2></div>
+  <p class="sec-sub">从 n=4 到 n=5，中间隔的不只是算力</p>
+
+  <p>S(n) 这条曲线的形状很怪：1、6、21、107 —— 看着像温和的增长。然后第 5 个数是 <span class="hl" id="n5-s5">—</span>。</p>
+
+  <div class="panel">
+    <h3>S(n) 与 Σ(n)：1 / 6 / 21 / 107 / 47,176,870</h3>
+    <div class="legend">
+      <span><i style="background:#1d5c78"></i>S(n) 最长步数</span>
+      <span><i style="background:#8f6a0e"></i>Σ(n) 最多 1 的个数</span>
+    </div>
+    <div class="chart" id="chart-growth"></div>
+    <div class="chart-note">对数纵轴。<span class="hlc">实心 = 本装置穷举出来的</span>，<span class="hlg">空心 = 引用文献</span>。前四个点 3 秒就能算完，第五个点花了六十多年。</div>
+  </div>
+
+  <div class="grid3">
+    <div class="panel panel-tight">
+      <h3>已知 S(n) 就等于会判停机</h3>
+      <p style="font-size:14px;margin:0 0 10px">如果 S(n) 已知，任何 n 状态机器只要跑 S(n) 步还没停，就永远不会停 —— 停机问题在这一档上变成<b>可判定的</b>。</p>
+      <div class="stat"><div class="st-l">n=4 的代价</div><div class="st-v cool" id="cost4">—</div></div>
+      <div class="stat"><div class="st-l">n=5 的代价</div><div class="st-v hot" id="cost5">—</div></div>
+    </div>
+    <div class="panel panel-tight">
+      <h3>换成时间</h3>
+      <p style="font-size:14px;margin:0 0 10px">按本机在穷举过程中实测的吞吐（<span id="thru-txt">—</span>）换算，判完 n=5 需要：</p>
+      <div class="stat hot"><div class="st-l">连续跑</div><div class="st-v" id="years5">—</div></div>
+      <div class="chart-note">这是<b>下界</b>：它假设判定只需要模拟，而真实判定比模拟贵得多。</div>
+    </div>
+    <div class="panel panel-tight">
+      <h3>随机机器其实很好判</h3>
+      <p style="font-size:14px;margin:0 0 10px">随机抽 <span id="rnd-n">—</span> 台 5 状态机器，判定器只在 <span class="hl" id="rnd-und">—</span> 台上失手，最长停机只有 <span id="rnd-max">—</span> 步。</p>
+      <div class="chart-note">困难是<b>集中</b>的，不是弥散的。真正的冠军要跑 47,176,870 步 —— "随机看看"永远碰不到它。</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>时间线</h3>
+    <ul class="timeline" id="timeline"></ul>
+  </div>
+
+  <div class="callout">
+    <span class="ct">再往上一步</span>
+    <b id="s6-line">—</b><br>
+    而且已经有结论说，要定出 BB(6)，必须先解决一个 Collatz 类问题 —— 社区的说法是「<b>BB(6) is Hard</b>」。<b>这不是算力问题，是判定问题。</b>
+  </div>
+</div>
+
+<!-- ============================ 第陆章 ============================ -->
+<div class="sec" id="sec6">
+  <div class="sec-head"><span class="sec-num serif">陆</span><h2>边界</h2></div>
+  <p class="sec-sub">我做到了什么、没做到什么、哪些数字是引用</p>
+
+  <p class="sec-sub" style="margin-top:0">结论</p>
+  <ul class="cons" id="cons"></ul>
+
+  <p class="sec-sub" style="margin-top:34px">边界与误差</p>
+  <ul class="limits" id="limits"></ul>
+
+  <p class="sec-sub" style="margin-top:34px">验证表</p>
+  <div class="tbl-wrap"><table class="tbl" id="tbl-verify"></table></div>
+  <div class="chart-note">模型自检（Node）482 项、构建特征串 + 数据完整性 + 硬约束、真实浏览器内核三档视口 —— 三层全绿才出产物。三档视口的结果写在 <code>verify-result.json</code> 里，构建脚本把它当硬约束读。</div>
+</div>
+
+<footer>
+  纸带之上 · 单文件科学装置第 8 件。模型、标定、界面、验证全部在本机从零实现；
+  页面上出现的每一个数字都来自一次真实计算，引用外部文献的地方逐条标注了来源。
+  与它同源的还有：《共名》《与非之上》《四二六七》《差之毫厘》《马后炮》《异步之墙》《熵之彼岸》。
+</footer>
+
+</div>
+<script>window.__BB_DATA__ = {results: 
+{
+ "meta": {
+  "at": "2026-09-29T10:58:13.582Z",
+  "node": "v22.22.2",
+  "seed": 20260929,
+  "quick": false,
+  "note": "S(n)=最长停机步数；Σ(n)=停机时纸带上最多的 1 的个数；两者单位不同，不可互比"
+ },
+ "E1": {
+  "rows": [
+   {
+    "n": 1,
+    "tnf": 8,
+    "halt": 4,
+    "holdout": 4,
+    "S": 1,
+    "Sigma": 1,
+    "Sknown": 1,
+    "Sigmaknown": 1,
+    "source": "Rado 1962（显然）",
+    "ms": 0,
+    "simSteps": 236,
+    "champS": "0LH/---",
+    "champSigma": "1LH/---",
+    "matchS": true,
+    "matchSigma": true
+   },
+   {
+    "n": 2,
+    "tnf": 166,
+    "halt": 60,
+    "holdout": 106,
+    "S": 6,
+    "Sigma": 4,
+    "Sknown": 6,
+    "Sigmaknown": 4,
+    "source": "Rado 1962（显然）",
+    "ms": 1,
+    "simSteps": 5897,
+    "champS": "1RB/0LH 0LB/1LA",
+    "champSigma": "1RB/1LB 1LA/1LH",
+    "matchS": true,
+    "matchSigma": true
+   },
+   {
+    "n": 3,
+    "tnf": 20626,
+    "halt": 5456,
+    "holdout": 15170,
+    "S": 21,
+    "Sigma": 6,
+    "Sknown": 21,
+    "Sigmaknown": 6,
+    "source": "Lin & Rado 1965",
+    "ms": 19,
+    "simSteps": 793057,
+    "champS": "1RB/0LH 1LB/0RC 1LC/1LA",
+    "champSigma": "1RB/1LH 0RC/1RB 1LC/1LA",
+    "matchS": true,
+    "matchSigma": true
+   },
+   {
+    "n": 4,
+    "tnf": 3490102,
+    "halt": 730416,
+    "holdout": 2759686,
+    "S": 107,
+    "Sigma": 13,
+    "Sknown": 107,
+    "Sigmaknown": 13,
+    "source": "Brady 1983（人工 + 机器；Marxen 站点上有原始转移表）",
+    "ms": 3268,
+    "simSteps": 298871063,
+    "champS": "1RB/1LB 1LA/0LC 0LH/1LD 1RD/0RA",
+    "champSigma": "1RB/0RC 1LA/1RA 1LH/1RD 1LD/0LB",
+    "matchS": true,
+    "matchSigma": true
+   }
+  ],
+  "allMatch": true
+ },
+ "E2": {
+  "rows": [
+   {
+    "n": 1,
+    "flat": 64,
+    "fixedFirst": 64,
+    "tnf": 8
+   },
+   {
+    "n": 2,
+    "flat": 20736,
+    "fixedFirst": 1728,
+    "tnf": 166
+   },
+   {
+    "n": 3,
+    "flat": 16777216,
+    "fixedFirst": 1048576,
+    "tnf": 20626
+   },
+   {
+    "n": 4,
+    "flat": 25600000000,
+    "fixedFirst": 1280000000,
+    "tnf": 3490102
+   },
+   {
+    "n": 5,
+    "flat": 63403380965376,
+    "fixedFirst": 2641807540224,
+    "tnf": null
+   },
+   {
+    "n": 6,
+    "flat": 232218265089212400,
+    "fixedFirst": 8293509467471872,
+    "tnf": null
+   }
+  ],
+  "thruStepsPerSec": 91453813.64749083,
+  "msPerMachine": 0.0009363623183505812,
+  "tnf5FromLiterature": 181385789,
+  "tnf5Note": "bbchallenge 稀疏 TNF 枚举给出的 (5,2) 台数",
+  "decideSteps4": 373440914,
+  "decideSteps5": 8557213787500430,
+  "years5AtMeasuredThru": 2.965012951640564,
+  "ratio45": 22914505.25825467
+ },
+ "E3": {
+  "n3": [
+   {
+    "budget": 100,
+    "holdouts": 15170,
+    "counts": {
+     "halt": 0,
+     "cycle": 3279,
+     "escape": 9970,
+     "budget": 1921,
+     "over": 0,
+     "undef": 0
+    },
+    "ms": 74
+   },
+   {
+    "budget": 200,
+    "holdouts": 15170,
+    "counts": {
+     "halt": 0,
+     "cycle": 3279,
+     "escape": 11180,
+     "budget": 711,
+     "over": 0,
+     "undef": 0
+    },
+    "ms": 73
+   },
+   {
+    "budget": 1000,
+    "holdouts": 15170,
+    "counts": {
+     "halt": 0,
+     "cycle": 3279,
+     "escape": 11240,
+     "budget": 651,
+     "over": 0,
+     "undef": 0
+    },
+    "ms": 122
+   }
+  ],
+  "n4": [
+   {
+    "budget": 200,
+    "holdouts": 2759686,
+    "counts": {
+     "halt": 0,
+     "cycle": 540788,
+     "escape": 2030057,
+     "budget": 188841,
+     "over": 0,
+     "undef": 0
+    },
+    "ms": 14098
+   }
+  ],
+  "escalate4": [
+   {
+    "from": 188841,
+    "budget": 2000,
+    "counts": {
+     "escape": 1377,
+     "budget": 4623
+    },
+    "left": null,
+    "leftFrac": 0.7705,
+    "sampled": true,
+    "sampleN": 6000,
+    "ms": 2211
+   },
+   {
+    "from": 4623,
+    "budget": 20000,
+    "counts": {
+     "budget": 4612,
+     "escape": 11
+    },
+    "left": 4612,
+    "leftFrac": 0.9976205926887303,
+    "sampled": false,
+    "sampleN": 4623,
+    "ms": 188985
+   }
+  ],
+  "escalate3": [
+   {
+    "from": 711,
+    "budget": 2000,
+    "counts": {
+     "budget": 650,
+     "escape": 61
+    },
+    "left": 650
+   },
+   {
+    "from": 650,
+    "budget": 20000,
+    "counts": {
+     "budget": 642,
+     "escape": 8
+    },
+    "left": 642
+   }
+  ],
+  "growthRows": [
+   {
+    "budget": 500,
+    "n": 120,
+    "spanP50": 26,
+    "spanP90": 41,
+    "spanMax": 52
+   },
+   {
+    "budget": 1000,
+    "n": 120,
+    "spanP50": 36,
+    "spanP90": 60,
+    "spanMax": 75
+   },
+   {
+    "budget": 2000,
+    "n": 120,
+    "spanP50": 51,
+    "spanP90": 87,
+    "spanMax": 107
+   },
+   {
+    "budget": 4000,
+    "n": 120,
+    "spanP50": 73,
+    "spanP90": 123,
+    "spanMax": 152
+   },
+   {
+    "budget": 8000,
+    "n": 120,
+    "spanP50": 103,
+    "spanP90": 175,
+    "spanMax": 217
+   },
+   {
+    "budget": 16000,
+    "n": 120,
+    "spanP50": 146,
+    "spanP90": 249,
+    "spanMax": 307
+   }
+  ]
+ },
+ "E4": {
+  "n2": {
+   "halting": 60,
+   "meanSteps": 4.266666666666667,
+   "maxSteps": 6,
+   "hist": [
+    {
+     "steps": 2,
+     "count": 4
+    },
+    {
+     "steps": 3,
+     "count": 16
+    },
+    {
+     "steps": 4,
+     "count": 16
+    },
+    {
+     "steps": 5,
+     "count": 8
+    },
+    {
+     "steps": 6,
+     "count": 16
+    }
+   ],
+   "survival": [
+    {
+     "steps": 1,
+     "machines": 60,
+     "frac": 1
+    },
+    {
+     "steps": 2,
+     "machines": 60,
+     "frac": 1
+    },
+    {
+     "steps": 3,
+     "machines": 56,
+     "frac": 0.9333333333333333
+    },
+    {
+     "steps": 4,
+     "machines": 40,
+     "frac": 0.6666666666666666
+    },
+    {
+     "steps": 5,
+     "machines": 24,
+     "frac": 0.4
+    },
+    {
+     "steps": 6,
+     "machines": 16,
+     "frac": 0.26666666666666666
+    }
+   ],
+   "onlyOneAtMax": 16
+  },
+  "n3": {
+   "halting": 5456,
+   "meanSteps": 7.668621700879766,
+   "maxSteps": 21,
+   "hist": [
+    {
+     "steps": 3,
+     "count": 16
+    },
+    {
+     "steps": 4,
+     "count": 128
+    },
+    {
+     "steps": 5,
+     "count": 532
+    },
+    {
+     "steps": 6,
+     "count": 976
+    },
+    {
+     "steps": 7,
+     "count": 1256
+    },
+    {
+     "steps": 8,
+     "count": 1036
+    },
+    {
+     "steps": 9,
+     "count": 696
+    },
+    {
+     "steps": 10,
+     "count": 348
+    },
+    {
+     "steps": 11,
+     "count": 184
+    },
+    {
+     "steps": 12,
+     "count": 112
+    },
+    {
+     "steps": 13,
+     "count": 72
+    },
+    {
+     "steps": 14,
+     "count": 32
+    },
+    {
+     "steps": 15,
+     "count": 16
+    },
+    {
+     "steps": 16,
+     "count": 8
+    },
+    {
+     "steps": 17,
+     "count": 8
+    },
+    {
+     "steps": 18,
+     "count": 16
+    },
+    {
+     "steps": 19,
+     "count": 8
+    },
+    {
+     "steps": 20,
+     "count": 8
+    },
+    {
+     "steps": 21,
+     "count": 4
+    }
+   ],
+   "survival": [
+    {
+     "steps": 1,
+     "machines": 5456,
+     "frac": 1
+    },
+    {
+     "steps": 2,
+     "machines": 5456,
+     "frac": 1
+    },
+    {
+     "steps": 3,
+     "machines": 5456,
+     "frac": 1
+    },
+    {
+     "steps": 4,
+     "machines": 5440,
+     "frac": 0.9970674486803519
+    },
+    {
+     "steps": 5,
+     "machines": 5312,
+     "frac": 0.9736070381231672
+    },
+    {
+     "steps": 6,
+     "machines": 4780,
+     "frac": 0.876099706744868
+    },
+    {
+     "steps": 8,
+     "machines": 2548,
+     "frac": 0.4670087976539589
+    },
+    {
+     "steps": 10,
+     "machines": 816,
+     "frac": 0.1495601173020528
+    },
+    {
+     "steps": 12,
+     "machines": 284,
+     "frac": 0.05205278592375367
+    },
+    {
+     "steps": 16,
+     "machines": 52,
+     "frac": 0.009530791788856305
+    },
+    {
+     "steps": 20,
+     "machines": 12,
+     "frac": 0.0021994134897360706
+    },
+    {
+     "steps": 21,
+     "machines": 4,
+     "frac": 0.0007331378299120235
+    }
+   ],
+   "onlyOneAtMax": 4
+  },
+  "n4": {
+   "halting": 730416,
+   "meanSteps": 11.66446518148562,
+   "maxSteps": 107,
+   "hist": [
+    {
+     "steps": 4,
+     "count": 64
+    },
+    {
+     "steps": 5,
+     "count": 960
+    },
+    {
+     "steps": 6,
+     "count": 6744
+    },
+    {
+     "steps": 7,
+     "count": 29376
+    },
+    {
+     "steps": 8,
+     "count": 73120
+    },
+    {
+     "steps": 9,
+     "count": 107892
+    },
+    {
+     "steps": 10,
+     "count": 117788
+    },
+    {
+     "steps": 11,
+     "count": 99004
+    },
+    {
+     "steps": 12,
+     "count": 78724
+    },
+    {
+     "steps": 13,
+     "count": 57512
+    },
+    {
+     "steps": 14,
+     "count": 41920
+    },
+    {
+     "steps": 15,
+     "count": 30728
+    },
+    {
+     "steps": 16,
+     "count": 21660
+    },
+    {
+     "steps": 17,
+     "count": 14876
+    },
+    {
+     "steps": 18,
+     "count": 11832
+    },
+    {
+     "steps": 19,
+     "count": 8352
+    },
+    {
+     "steps": 20,
+     "count": 6152
+    },
+    {
+     "steps": 21,
+     "count": 4948
+    },
+    {
+     "steps": 22,
+     "count": 3768
+    },
+    {
+     "steps": 23,
+     "count": 2868
+    },
+    {
+     "steps": 24,
+     "count": 2256
+    },
+    {
+     "steps": 25,
+     "count": 1924
+    },
+    {
+     "steps": 26,
+     "count": 1300
+    },
+    {
+     "steps": 27,
+     "count": 996
+    },
+    {
+     "steps": 28,
+     "count": 812
+    },
+    {
+     "steps": 29,
+     "count": 768
+    },
+    {
+     "steps": 30,
+     "count": 596
+    },
+    {
+     "steps": 31,
+     "count": 456
+    },
+    {
+     "steps": 32,
+     "count": 468
+    },
+    {
+     "steps": 33,
+     "count": 404
+    },
+    {
+     "steps": 34,
+     "count": 352
+    },
+    {
+     "steps": 35,
+     "count": 232
+    },
+    {
+     "steps": 36,
+     "count": 172
+    },
+    {
+     "steps": 37,
+     "count": 128
+    },
+    {
+     "steps": 38,
+     "count": 164
+    },
+    {
+     "steps": 39,
+     "count": 140
+    },
+    {
+     "steps": 40,
+     "count": 108
+    },
+    {
+     "steps": 41,
+     "count": 76
+    },
+    {
+     "steps": 42,
+     "count": 80
+    },
+    {
+     "steps": 43,
+     "count": 68
+    },
+    {
+     "steps": 44,
+     "count": 64
+    },
+    {
+     "steps": 45,
+     "count": 44
+    },
+    {
+     "steps": 46,
+     "count": 52
+    },
+    {
+     "steps": 47,
+     "count": 40
+    },
+    {
+     "steps": 48,
+     "count": 28
+    },
+    {
+     "steps": 49,
+     "count": 44
+    },
+    {
+     "steps": 50,
+     "count": 28
+    },
+    {
+     "steps": 51,
+     "count": 40
+    },
+    {
+     "steps": 52,
+     "count": 44
+    },
+    {
+     "steps": 53,
+     "count": 12
+    },
+    {
+     "steps": 54,
+     "count": 8
+    },
+    {
+     "steps": 55,
+     "count": 16
+    },
+    {
+     "steps": 56,
+     "count": 20
+    },
+    {
+     "steps": 57,
+     "count": 20
+    },
+    {
+     "steps": 58,
+     "count": 8
+    },
+    {
+     "steps": 59,
+     "count": 12
+    },
+    {
+     "steps": 60,
+     "count": 12
+    },
+    {
+     "steps": 61,
+     "count": 12
+    },
+    {
+     "steps": 62,
+     "count": 16
+    },
+    {
+     "steps": 63,
+     "count": 12
+    },
+    {
+     "steps": 64,
+     "count": 16
+    },
+    {
+     "steps": 65,
+     "count": 4
+    },
+    {
+     "steps": 66,
+     "count": 4
+    },
+    {
+     "steps": 67,
+     "count": 4
+    },
+    {
+     "steps": 68,
+     "count": 16
+    },
+    {
+     "steps": 69,
+     "count": 8
+    },
+    {
+     "steps": 70,
+     "count": 4
+    },
+    {
+     "steps": 74,
+     "count": 4
+    },
+    {
+     "steps": 75,
+     "count": 4
+    },
+    {
+     "steps": 78,
+     "count": 8
+    },
+    {
+     "steps": 83,
+     "count": 4
+    },
+    {
+     "steps": 84,
+     "count": 4
+    },
+    {
+     "steps": 96,
+     "count": 8
+    },
+    {
+     "steps": 97,
+     "count": 4
+    },
+    {
+     "steps": 107,
+     "count": 4
+    }
+   ],
+   "survival": [
+    {
+     "steps": 1,
+     "machines": 730416,
+     "frac": 1
+    },
+    {
+     "steps": 2,
+     "machines": 730416,
+     "frac": 1
+    },
+    {
+     "steps": 3,
+     "machines": 730416,
+     "frac": 1
+    },
+    {
+     "steps": 4,
+     "machines": 730416,
+     "frac": 1
+    },
+    {
+     "steps": 5,
+     "machines": 730352,
+     "frac": 0.9999123786992618
+    },
+    {
+     "steps": 6,
+     "machines": 729392,
+     "frac": 0.9985980591881887
+    },
+    {
+     "steps": 8,
+     "machines": 693272,
+     "frac": 0.9491467875840617
+    },
+    {
+     "steps": 10,
+     "machines": 512260,
+     "frac": 0.7013263674399246
+    },
+    {
+     "steps": 12,
+     "machines": 295468,
+     "frac": 0.40452016385183237
+    },
+    {
+     "steps": 16,
+     "machines": 86584,
+     "frac": 0.11854066723620513
+    },
+    {
+     "steps": 20,
+     "machines": 29864,
+     "frac": 0.04088628945696699
+    },
+    {
+     "steps": 25,
+     "machines": 9872,
+     "frac": 0.013515585638868809
+    },
+    {
+     "steps": 30,
+     "machines": 4072,
+     "frac": 0.005574905259468577
+    },
+    {
+     "steps": 40,
+     "machines": 960,
+     "frac": 0.001314319511073142
+    },
+    {
+     "steps": 50,
+     "machines": 356,
+     "frac": 0.0004873934853562901
+    },
+    {
+     "steps": 60,
+     "machines": 148,
+     "frac": 0.00020262425795710938
+    },
+    {
+     "steps": 80,
+     "machines": 24,
+     "frac": 0.000032857987776828546
+    },
+    {
+     "steps": 100,
+     "machines": 4,
+     "frac": 0.000005476331296138091
+    },
+    {
+     "steps": 107,
+     "machines": 4,
+     "frac": 0.000005476331296138091
+    }
+   ],
+   "onlyOneAtMax": 4
+  }
+ },
+ "E5": {
+  "samples": 20000,
+  "budget": 2000,
+  "counts": {
+   "escape": 8728,
+   "cycle": 2756,
+   "halt": 8489,
+   "budget": 27
+  },
+  "maxStepsFound": 84,
+  "refRows": [
+   {
+    "n": 2,
+    "counts": {
+     "escape": 7871,
+     "halt": 9472,
+     "cycle": 2649,
+     "budget": 8
+    }
+   },
+   {
+    "n": 3,
+    "counts": {
+     "cycle": 2746,
+     "halt": 8960,
+     "escape": 8274,
+     "budget": 20
+    }
+   },
+   {
+    "n": 4,
+    "counts": {
+     "escape": 8491,
+     "halt": 8753,
+     "cycle": 2735,
+     "budget": 21
+    }
+   }
+  ],
+  "residue": [
+   {
+    "n": 3,
+    "holdouts": 15170,
+    "undecided": 711,
+    "frac": 0.04686882003955175
+   },
+   {
+    "n": 4,
+    "holdouts": 2759686,
+    "undecided": 188841,
+    "frac": 0.06842843714828425
+   }
+  ],
+  "throughput": 91453813.64749083,
+  "decideSteps4": 373440914,
+  "decideSteps5": 8557213787500430,
+  "years5AtMeasuredThru": 2.965012951640564,
+  "jump45": 22914505.25825467,
+  "facts": {
+   "tnf5": 181385789,
+   "tnf5Source": "arXiv:2509.12337 —— 为定出 S(5) 枚举了 181,385,789 台 5 状态机器",
+   "bradyTable": "1RB/1LB 1LA/0LC 1RH/1LD 1RD/0RA",
+   "bradySource": "Heiner Marxen 站点上的原始表（引自 P. Michel）：13 个 1 / 107 步",
+   "s6Lower": "S(6) > Σ(6) > 10↑↑10↑↑10↑↑8",
+   "s6Source": "bbchallenge wiki，2026-09-23 更新（最初由 mxdys 于 2025-06 给出 2↑↑2↑↑2↑↑10）",
+   "antihydra": "Antihydra（2024-06）：要定出 BB(6)，必须先解决一个 Collatz 类问题 —— 社区结论是「BB(6) is Hard」",
+   "timeline": "1962 Radó 提出问题 → 1965 S(3)=21 → 1983 S(4)=107 → 2024 S(5)=47,176,870（四十多年里第一次推进）"
+  },
+  "known5": {
+   "S": 47176870,
+   "Sigma": 4098
+  }
+ },
+ "E6": {
+  "rows": [
+   {
+    "n": 1,
+    "flatMachines": 64,
+    "tnfMachines": 8,
+    "ratio": 8,
+    "flatS": 1,
+    "tnfS": 1,
+    "flatSigma": 1,
+    "tnfSigma": 1,
+    "agree": true,
+    "ms": 1
+   },
+   {
+    "n": 2,
+    "flatMachines": 1728,
+    "tnfMachines": 166,
+    "ratio": 10.409638554216867,
+    "flatS": 6,
+    "tnfS": 6,
+    "flatSigma": 4,
+    "tnfSigma": 4,
+    "agree": true,
+    "ms": 9
+   },
+   {
+    "n": 3,
+    "flatMachines": 1048576,
+    "tnfMachines": 20626,
+    "ratio": 50.837583632308736,
+    "flatS": 21,
+    "tnfS": 21,
+    "flatSigma": 6,
+    "tnfSigma": 6,
+    "agree": true,
+    "ms": 2645
+   }
+  ],
+  "allAgree": true
+ }
+}
+, analysis: 
+{
+ "charts": {
+  "tiers": [
+   {
+    "label": "n=3（预算 200 步）",
+    "cycle": 3279,
+    "escape": 11180,
+    "undecided": 711,
+    "total": 15170
+   },
+   {
+    "label": "n=4（预算 200 步）",
+    "cycle": 540788,
+    "escape": 2030057,
+    "undecided": 188841,
+    "total": 2759686
+   }
+  ],
+  "haltHist": [
+   {
+    "x": 4,
+    "y": 64
+   },
+   {
+    "x": 5,
+    "y": 960
+   },
+   {
+    "x": 6,
+    "y": 6744
+   },
+   {
+    "x": 7,
+    "y": 29376
+   },
+   {
+    "x": 8,
+    "y": 73120
+   },
+   {
+    "x": 9,
+    "y": 107892
+   },
+   {
+    "x": 10,
+    "y": 117788
+   },
+   {
+    "x": 11,
+    "y": 99004
+   },
+   {
+    "x": 12,
+    "y": 78724
+   },
+   {
+    "x": 13,
+    "y": 57512
+   },
+   {
+    "x": 14,
+    "y": 41920
+   },
+   {
+    "x": 15,
+    "y": 30728
+   },
+   {
+    "x": 16,
+    "y": 21660
+   },
+   {
+    "x": 17,
+    "y": 14876
+   },
+   {
+    "x": 18,
+    "y": 11832
+   },
+   {
+    "x": 19,
+    "y": 8352
+   },
+   {
+    "x": 20,
+    "y": 6152
+   },
+   {
+    "x": 21,
+    "y": 4948
+   },
+   {
+    "x": 22,
+    "y": 3768
+   },
+   {
+    "x": 23,
+    "y": 2868
+   },
+   {
+    "x": 24,
+    "y": 2256
+   },
+   {
+    "x": 25,
+    "y": 1924
+   },
+   {
+    "x": 26,
+    "y": 1300
+   },
+   {
+    "x": 27,
+    "y": 996
+   },
+   {
+    "x": 28,
+    "y": 812
+   },
+   {
+    "x": 29,
+    "y": 768
+   },
+   {
+    "x": 30,
+    "y": 596
+   },
+   {
+    "x": 31,
+    "y": 456
+   },
+   {
+    "x": 32,
+    "y": 468
+   },
+   {
+    "x": 33,
+    "y": 404
+   },
+   {
+    "x": 34,
+    "y": 352
+   },
+   {
+    "x": 35,
+    "y": 232
+   },
+   {
+    "x": 36,
+    "y": 172
+   },
+   {
+    "x": 37,
+    "y": 128
+   },
+   {
+    "x": 38,
+    "y": 164
+   },
+   {
+    "x": 39,
+    "y": 140
+   },
+   {
+    "x": 40,
+    "y": 108
+   },
+   {
+    "x": 41,
+    "y": 76
+   },
+   {
+    "x": 42,
+    "y": 80
+   },
+   {
+    "x": 43,
+    "y": 68
+   },
+   {
+    "x": 44,
+    "y": 64
+   },
+   {
+    "x": 45,
+    "y": 44
+   },
+   {
+    "x": 46,
+    "y": 52
+   },
+   {
+    "x": 47,
+    "y": 40
+   },
+   {
+    "x": 48,
+    "y": 28
+   },
+   {
+    "x": 49,
+    "y": 44
+   },
+   {
+    "x": 50,
+    "y": 28
+   },
+   {
+    "x": 51,
+    "y": 40
+   },
+   {
+    "x": 52,
+    "y": 44
+   },
+   {
+    "x": 53,
+    "y": 12
+   },
+   {
+    "x": 54,
+    "y": 8
+   },
+   {
+    "x": 55,
+    "y": 16
+   },
+   {
+    "x": 56,
+    "y": 20
+   },
+   {
+    "x": 57,
+    "y": 20
+   },
+   {
+    "x": 58,
+    "y": 8
+   },
+   {
+    "x": 59,
+    "y": 12
+   },
+   {
+    "x": 60,
+    "y": 12
+   },
+   {
+    "x": 61,
+    "y": 12
+   },
+   {
+    "x": 62,
+    "y": 16
+   },
+   {
+    "x": 63,
+    "y": 12
+   },
+   {
+    "x": 64,
+    "y": 16
+   },
+   {
+    "x": 65,
+    "y": 4
+   },
+   {
+    "x": 66,
+    "y": 4
+   },
+   {
+    "x": 67,
+    "y": 4
+   },
+   {
+    "x": 68,
+    "y": 16
+   },
+   {
+    "x": 69,
+    "y": 8
+   },
+   {
+    "x": 70,
+    "y": 4
+   },
+   {
+    "x": 74,
+    "y": 4
+   },
+   {
+    "x": 75,
+    "y": 4
+   },
+   {
+    "x": 78,
+    "y": 8
+   },
+   {
+    "x": 83,
+    "y": 4
+   },
+   {
+    "x": 84,
+    "y": 4
+   },
+   {
+    "x": 96,
+    "y": 8
+   },
+   {
+    "x": 97,
+    "y": 4
+   },
+   {
+    "x": 107,
+    "y": 4
+   }
+  ],
+  "survival": [
+   {
+    "x": 1,
+    "y": 730416
+   },
+   {
+    "x": 2,
+    "y": 730416
+   },
+   {
+    "x": 3,
+    "y": 730416
+   },
+   {
+    "x": 4,
+    "y": 730416
+   },
+   {
+    "x": 5,
+    "y": 730352
+   },
+   {
+    "x": 6,
+    "y": 729392
+   },
+   {
+    "x": 8,
+    "y": 693272
+   },
+   {
+    "x": 10,
+    "y": 512260
+   },
+   {
+    "x": 12,
+    "y": 295468
+   },
+   {
+    "x": 16,
+    "y": 86584
+   },
+   {
+    "x": 20,
+    "y": 29864
+   },
+   {
+    "x": 25,
+    "y": 9872
+   },
+   {
+    "x": 30,
+    "y": 4072
+   },
+   {
+    "x": 40,
+    "y": 960
+   },
+   {
+    "x": 50,
+    "y": 356
+   },
+   {
+    "x": 60,
+    "y": 148
+   },
+   {
+    "x": 80,
+    "y": 24
+   },
+   {
+    "x": 100,
+    "y": 4
+   },
+   {
+    "x": 107,
+    "y": 4
+   }
+  ],
+  "growth": [
+   {
+    "n": 1,
+    "S": 1,
+    "Sigma": 1,
+    "mine": true
+   },
+   {
+    "n": 2,
+    "S": 6,
+    "Sigma": 4,
+    "mine": true
+   },
+   {
+    "n": 3,
+    "S": 21,
+    "Sigma": 6,
+    "mine": true
+   },
+   {
+    "n": 4,
+    "S": 107,
+    "Sigma": 13,
+    "mine": true
+   },
+   {
+    "n": 5,
+    "S": 47176870,
+    "Sigma": 4098,
+    "mine": false
+   }
+  ],
+  "cost": [
+   {
+    "n": 1,
+    "flat": 64,
+    "fixedFirst": 64,
+    "tnf": 8
+   },
+   {
+    "n": 2,
+    "flat": 20736,
+    "fixedFirst": 1728,
+    "tnf": 166
+   },
+   {
+    "n": 3,
+    "flat": 16777216,
+    "fixedFirst": 1048576,
+    "tnf": 20626
+   },
+   {
+    "n": 4,
+    "flat": 25600000000,
+    "fixedFirst": 1280000000,
+    "tnf": 3490102
+   },
+   {
+    "n": 5,
+    "flat": 63403380965376,
+    "fixedFirst": 2641807540224,
+    "tnf": null
+   },
+   {
+    "n": 6,
+    "flat": 232218265089212400,
+    "fixedFirst": 8293509467471872,
+    "tnf": null
+   }
+  ],
+  "spanGrowth": [
+   {
+    "x": 500,
+    "y": 26
+   },
+   {
+    "x": 1000,
+    "y": 36
+   },
+   {
+    "x": 2000,
+    "y": 51
+   },
+   {
+    "x": 4000,
+    "y": 73
+   },
+   {
+    "x": 8000,
+    "y": 103
+   },
+   {
+    "x": 16000,
+    "y": 146
+   }
+  ],
+  "randomTiers": [
+   {
+    "n": 2,
+    "halt": 9472,
+    "cycle": 2649,
+    "escape": 7871,
+    "undecided": 8,
+    "total": 20000
+   },
+   {
+    "n": 3,
+    "halt": 8960,
+    "cycle": 2746,
+    "escape": 8274,
+    "undecided": 20,
+    "total": 20000
+   },
+   {
+    "n": 4,
+    "halt": 8753,
+    "cycle": 2735,
+    "escape": 8491,
+    "undecided": 21,
+    "total": 20000
+   },
+   {
+    "n": 5,
+    "halt": 8489,
+    "cycle": 2756,
+    "escape": 8728,
+    "undecided": 27,
+    "total": 20000
+   }
+  ]
+ },
+ "headline": {
+  "s4": 107,
+  "sigma4": 13,
+  "tnf4": 3490102,
+  "tnf4flat": 25600000000,
+  "residue4": 0.06842843714828425,
+  "residue4n": 188841,
+  "residue3": 0.04686882003955175,
+  "years5": 2.965012951640564,
+  "thru": 91453813.64749083,
+  "champAt107": 4,
+  "halting4": 730416,
+  "buildMs": 3268
+ },
+ "kpis": [
+  {
+   "key": "s4",
+   "label": "S(4) 实测",
+   "value": "107",
+   "unit": "步",
+   "note": "从零穷举 3,490,102 台 4 状态机器得到。文献值 107（Brady 1983）—— 逐位吻合。"
+  },
+  {
+   "key": "sig4",
+   "label": "Σ(4) 实测",
+   "value": "13",
+   "unit": "个 1",
+   "note": "同一个穷举里拿到。文献值 13。S 与 Σ 是两把不同的尺子，不能互比。"
+  },
+  {
+   "key": "res",
+   "label": "4 状态非停机机器里，模拟判不了的",
+   "value": "6.84%",
+   "unit": "",
+   "note": "穷举出 2,759,686 台不停机机器；「跑一遍 + 两条结构性证明规则」只settle了 93.2%，剩下 188,841 台既没停机也没被证明。"
+  },
+  {
+   "key": "wall",
+   "label": "照这条捷径判 n=5 要多久",
+   "value": "2.97 年",
+   "unit": "",
+   "note": "已知 S(5)=47,176,870，于是\"跑 4717 万步\"就是一台 5 状态机器的停机判定器。181,385,789 台 × 4717 万步 = 8.56×10^15 步。按本机实测吞吐换算就是这么久。"
+  },
+  {
+   "key": "needle",
+   "label": "冠军有多稀有",
+   "value": "4 / 730,416",
+   "unit": "",
+   "note": "73 万台会停机的 4 状态机器里，只有 4 台跑到 107 步；跑够 100 步的也只有 4 台。中位数机器 11 步就停了。"
+  },
+  {
+   "key": "thru",
+   "label": "本机模拟吞吐",
+   "value": "91.5M",
+   "unit": "步/秒",
+   "note": "穷举过程中实测。所有\"要跑多久\"的换算都用这一个数，全页口径一致。"
+  }
+ ],
+ "conclusions": [
+  "**S(4)=107 与 Σ(4)=13 是穷举出来的，不是抄来的。** 把 3,490,102 台 4 状态机器（树范式，理论空间 2.56×10^10 台的压缩）全部跑一遍，3268 毫秒内得到两个数，与 1983 年 Brady 的人工结论逐位相同。同一段代码在 n=1,2,3 上也给出 1/6/21 与 1/4/6 —— 四条真值一次对齐。",
+  "**范式压缩不是取巧，是必需的。** 4 状态的理论空间是 2.56×10¹⁰ 台；固定第一步 + 状态按首次访问编号后只剩 3,490,102 台，压掉 7335 倍，而 S 与 Σ 一个都不变（n=1..3 用朴素全枚举独立对过账）。",
+  "**\"跑一遍看看\"这个最自然的判定法，本身就要分层。** 4 状态的 2,759,686 台不停机机器里，540,788 台（19.6%）能用**构型重复**严格证明永不停机，2,030,057 台（73.6%）能用**单向逃逸**严格证明，剩下 188,841 台（6.84%）两条都不适用。",
+  "**剩下的那 6.84% 不是 bug，是现象。** 把预算从 200 步提到 2000 步，188,841 台里仍有 77% 判不出来；再把这一批提到 20000 步，剩下的 4,623 台里还有 99.8% 判不出来 —— **加预算解决不了它**。因为它们的行为不是周期的：纸带跨度随步数持续增长（中位跨度从 500 步时的 26 格长到 16000 步时的 146 格），结构一直在长，永远等不到\"平移等价构型重复\"那一刻。",
+  "**\"知道 S(n)\" 就等于\"会判停机\"，但这条捷径的价码随 n 爆炸。** 若 S(n) 已知，任何 n 状态机器只要跑 S(n) 步还没停就永远不会停 —— 停机问题在这一档上变成可判定的。n=4 的代价是 3.73×10^8 步（几秒）；n=5 的代价是 8.56×10^15 步，按本机吞吐要 **2.97 年**。",
+  "**而 S(5) 本身是 2024 年才被定出来的。** 1962 年 Radó 提出问题，1965 年 S(3)=21，1983 年 S(4)=107，然后停了四十多年 —— 直到 bbchallenge 协作组枚举 181,385,789 台机器、用 Coq 形式化，才把 S(5)=47,176,870 钉死。**这不是算力问题，是判定问题。**",
+  "**困难是集中分布的，不是弥散的。** 随机抽 20000 台 5 状态机器，判定器只在 27 台（0.14%）上失手，最长停机只有 84 步。可是真正的冠军要跑 47,176,870 步 —— 它在 1.8 亿台里是**一台**。\"随机看看\"永远碰不到它。",
+  "**停机步数是重尾的，尾部就是全部难点。** 4 状态机器平均 11.66 步就停，中位数远低于均值；跑到 50 步以上的只有 356 台，跑到 100 步以上的只有 4 台，跑到 107 步的只有 4 台。**把尾巴砍掉，\"忙碌的海狸\"这个函数就消失了。**",
+  "**S 与 Σ 是两把不同的尺子，而且这次它们没有重合。** 3 状态上它们是两台完全不同的机器：S 冠军跑 21 步只留 4 个 1，Σ 冠军留 6 个 1 却只用 14 步。4 状态上两者交叠但**不等同** —— 跑到 107 步的机器一共 4 台，其中 2 台最后一步写下 1、留下 13 个 1，另外 2 台写下 0、留下 12 个；而表里那台 Σ 冠军跑 96 步。**\"跑得最久\"和\"写得最多\"是两个可以重合、也可以不重合的问题。**",
+  "**这次量到的最重要的东西，是\"我没能做到什么\"。** 我能在 3 秒内穷举 4 状态；5 状态要在同一套方法上再乘 23 百万倍的判定成本。而 6 状态更糟：S(6) > Σ(6) > 10↑↑10↑↑10↑↑8（bbchallenge wiki，2026-09-23 更新；最初由 mxdys 于 2025-06 给出 2↑↑2↑↑2↑↑10），并且已经被证明要先解决一个 Collatz 类问题。**Antihydra（2024-06）：要定出 BB(6)，必须先解决一个 Collatz 类问题 —— 社区结论是「BB(6) is Hard」**"
+ ],
+ "limits": [
+  "**S(n) 与 Σ(n) 单位不同，全页不互相比较。** S 数的是步数，Σ 数的是停机时纸带上的 1 的个数。两者都是\"忙碌的海狸函数\"，但不是同一个函数。",
+  "**停机时\"写不写\"是一个约定，我选的是\"写\"。** 我的编码里停机那一步仍然执行写操作 —— 只有这样 Σ(1)=1（1 状态机器最多留下 1 个 1）才成立。换约定会让 Σ 整列偏移。",
+  "**两条非停机证明规则是\"可靠但不完备\"的。** 构型重复与单向逃逸一旦触发，就真的永不停机（本轮用独立朴素实现抽 8+8 例、各再跑 2 万步复核，0 反例；并且逐例验证过\"凡真会停机的机器绝不被误判\"）。但**没触发不等于会停机** —— 那 6.84% 就是证据。",
+  "**\"未判定\"是独立的第三态，从不并进\"非停机\"。** 页面上所有比例的分母都写清楚了是\"全部机器\"还是\"非停机机器\"。把第三态当成\"否\"是这类实验里最容易犯也最难发现的错。",
+  "**S(5)、Σ(5)、181,385,789、10↑↑10↑↑10↑↑8 全部是引用，不是我测的。** 我这一轮只穷举到 n=4。引用处逐条标注了来源（arXiv:2509.12337、bbchallenge wiki、Marxen 站点）。",
+  "**\"3 年\"是外推，不是实测。** 它 = 181,385,789 × 47,176,870 ÷ 本机实测吞吐（91.5M 步/秒）。它假设吞吐能线性放大、且判定不需要额外的推理开销 —— 真实情况里判定比模拟贵得多，所以这个数是**下界**。",
+  "**未判定率随 n 上升这件事，我只有两个点。** n=3 是 4.69%，n=4 是 6.84%。两个点画不出趋势，只能说明\"它没有变好\"。",
+  "**树范式（TNF）压掉的是\"改状态名\"和\"不可达状态\"，不改变 S 与 Σ。** 但它改变了\"会停机的机器有几台\"这个计数 —— 本页所有台数都是**树范式下的台数**，不能拿去和别的归一化下的计数直接比。",
+  "**4 状态的\"冠军只有 4 台\"是树范式下的计数。** 别的归一化下这个数会变（比如不固定第一步）。S(4)=107 本身与归一化无关，这才是可以和文献对齐的量。"
+ ],
+ "verify": [
+  {
+   "item": "编码往返（状态/符号/写/走/目标）",
+   "method": "枚举全部 4(n+1) 个编码，逐项解回来比",
+   "result": "通过"
+  },
+  {
+   "item": "模拟器 vs 独立朴素实现",
+   "method": "6000 个随机实例（n=2..4）逐例比对状态/步数/墨迹数",
+   "result": "0 不一致"
+  },
+  {
+   "item": "停机证明的可靠性（构型重复）",
+   "method": "抽 8 例，用朴素实现再跑 2 万步",
+   "result": "0 例停机"
+  },
+  {
+   "item": "停机证明的可靠性（单向逃逸）",
+   "method": "抽 8 例，用朴素实现再跑 2 万步",
+   "result": "0 例停机"
+  },
+  {
+   "item": "停机证明不误伤（n=3 全量）",
+   "method": "n=3 每一台真会停机的机器都重新判一遍",
+   "result": "0 例误判"
+  },
+  {
+   "item": "停机证明不误伤（n=4 抽样）",
+   "method": "n=4 抽 2 万台真会停机的机器重新判",
+   "result": "0 例误判"
+  },
+  {
+   "item": "TNF 与朴素全枚举一致",
+   "method": "n=1,2,3 两套搜索各自的 S 与 Σ",
+   "result": "3/3 一致"
+  },
+  {
+   "item": "TNF 台数 < 全枚举台数",
+   "method": "n=3：20,626 < 1,048,576",
+   "result": "成立"
+  },
+  {
+   "item": "S(1)=1",
+   "method": "穷举 + 文献 Rado 1962",
+   "result": "✓"
+  },
+  {
+   "item": "S(2)=6",
+   "method": "穷举 + 文献 Rado 1962",
+   "result": "✓"
+  },
+  {
+   "item": "S(3)=21",
+   "method": "穷举 + 文献 Lin & Rado 1965",
+   "result": "✓"
+  },
+  {
+   "item": "S(4)=107",
+   "method": "穷举 + 文献 Brady 1983",
+   "result": "✓"
+  },
+  {
+   "item": "Σ(1..4)=1,4,6,13",
+   "method": "同一次穷举 + 文献",
+   "result": "4/4 ✓"
+  },
+  {
+   "item": "Brady 原始转移表复现",
+   "method": "把 1RB1LB_1LA0LC_1RH1LD_1RD0RA 喂进我的模拟器",
+   "result": "107 步 / 13 个 1 ✓"
+  },
+  {
+   "item": "决定论",
+   "method": "300 个随机实例两次运行逐位比；TNF 两次台数与 S 比",
+   "result": "完全相同"
+  },
+  {
+   "item": "逐步轨迹与模拟器一致",
+   "method": "冠军机器 107 步：帧数 = 步数 + 1，末帧 1 的个数 = Σ",
+   "result": "✓"
+  },
+  {
+   "item": "真实浏览器内核三档视口",
+   "method": "chrome-headless-shell，1400 / 480 / 360；探针自报实际视口宽度",
+   "result": "见 verify-result.json"
+  }
+ ],
+ "e1": {
+  "rows": [
+   {
+    "n": 1,
+    "tnf": 8,
+    "halt": 4,
+    "holdout": 4,
+    "S": 1,
+    "Sigma": 1,
+    "Sknown": 1,
+    "Sigmaknown": 1,
+    "source": "Rado 1962（显然）",
+    "ms": 0,
+    "simSteps": 236,
+    "champS": "0LH/---",
+    "champSigma": "1LH/---",
+    "matchS": true,
+    "matchSigma": true
+   },
+   {
+    "n": 2,
+    "tnf": 166,
+    "halt": 60,
+    "holdout": 106,
+    "S": 6,
+    "Sigma": 4,
+    "Sknown": 6,
+    "Sigmaknown": 4,
+    "source": "Rado 1962（显然）",
+    "ms": 1,
+    "simSteps": 5897,
+    "champS": "1RB/0LH 0LB/1LA",
+    "champSigma": "1RB/1LB 1LA/1LH",
+    "matchS": true,
+    "matchSigma": true
+   },
+   {
+    "n": 3,
+    "tnf": 20626,
+    "halt": 5456,
+    "holdout": 15170,
+    "S": 21,
+    "Sigma": 6,
+    "Sknown": 21,
+    "Sigmaknown": 6,
+    "source": "Lin & Rado 1965",
+    "ms": 19,
+    "simSteps": 793057,
+    "champS": "1RB/0LH 1LB/0RC 1LC/1LA",
+    "champSigma": "1RB/1LH 0RC/1RB 1LC/1LA",
+    "matchS": true,
+    "matchSigma": true
+   },
+   {
+    "n": 4,
+    "tnf": 3490102,
+    "halt": 730416,
+    "holdout": 2759686,
+    "S": 107,
+    "Sigma": 13,
+    "Sknown": 107,
+    "Sigmaknown": 13,
+    "source": "Brady 1983（人工 + 机器；Marxen 站点上有原始转移表）",
+    "ms": 3268,
+    "simSteps": 298871063,
+    "champS": "1RB/1LB 1LA/0LC 0LH/1LD 1RD/0RA",
+    "champSigma": "1RB/0RC 1LA/1RA 1LH/1RD 1LD/0LB",
+    "matchS": true,
+    "matchSigma": true
+   }
+  ],
+  "allMatch": true
+ },
+ "e2": {
+  "rows": [
+   {
+    "n": 1,
+    "flat": 64,
+    "fixedFirst": 64,
+    "tnf": 8
+   },
+   {
+    "n": 2,
+    "flat": 20736,
+    "fixedFirst": 1728,
+    "tnf": 166
+   },
+   {
+    "n": 3,
+    "flat": 16777216,
+    "fixedFirst": 1048576,
+    "tnf": 20626
+   },
+   {
+    "n": 4,
+    "flat": 25600000000,
+    "fixedFirst": 1280000000,
+    "tnf": 3490102
+   },
+   {
+    "n": 5,
+    "flat": 63403380965376,
+    "fixedFirst": 2641807540224,
+    "tnf": null
+   },
+   {
+    "n": 6,
+    "flat": 232218265089212400,
+    "fixedFirst": 8293509467471872,
+    "tnf": null
+   }
+  ],
+  "thru": 91453813.64749083,
+  "msPerMachine": 0.0009363623183505812,
+  "tnf5": 181385789,
+  "decideSteps4": 373440914,
+  "decideSteps5": 8557213787500430,
+  "years5": 2.965012951640564,
+  "years5txt": "2.97 年"
+ },
+ "e3": {
+  "n3": [
+   {
+    "budget": 100,
+    "holdouts": 15170,
+    "counts": {
+     "halt": 0,
+     "cycle": 3279,
+     "escape": 9970,
+     "budget": 1921,
+     "over": 0,
+     "undef": 0
+    },
+    "ms": 74
+   },
+   {
+    "budget": 200,
+    "holdouts": 15170,
+    "counts": {
+     "halt": 0,
+     "cycle": 3279,
+     "escape": 11180,
+     "budget": 711,
+     "over": 0,
+     "undef": 0
+    },
+    "ms": 73
+   },
+   {
+    "budget": 1000,
+    "holdouts": 15170,
+    "counts": {
+     "halt": 0,
+     "cycle": 3279,
+     "escape": 11240,
+     "budget": 651,
+     "over": 0,
+     "undef": 0
+    },
+    "ms": 122
+   }
+  ],
+  "n4": [
+   {
+    "budget": 200,
+    "holdouts": 2759686,
+    "counts": {
+     "halt": 0,
+     "cycle": 540788,
+     "escape": 2030057,
+     "budget": 188841,
+     "over": 0,
+     "undef": 0
+    },
+    "ms": 14098
+   }
+  ],
+  "escalate3": [
+   {
+    "from": 711,
+    "budget": 2000,
+    "counts": {
+     "budget": 650,
+     "escape": 61
+    },
+    "left": 650
+   },
+   {
+    "from": 650,
+    "budget": 20000,
+    "counts": {
+     "budget": 642,
+     "escape": 8
+    },
+    "left": 642
+   }
+  ],
+  "escalate4": [
+   {
+    "from": 188841,
+    "budget": 2000,
+    "counts": {
+     "escape": 1377,
+     "budget": 4623
+    },
+    "left": null,
+    "leftFrac": 0.7705,
+    "sampled": true,
+    "sampleN": 6000,
+    "ms": 2211
+   },
+   {
+    "from": 4623,
+    "budget": 20000,
+    "counts": {
+     "budget": 4612,
+     "escape": 11
+    },
+    "left": 4612,
+    "leftFrac": 0.9976205926887303,
+    "sampled": false,
+    "sampleN": 4623,
+    "ms": 188985
+   }
+  ],
+  "growthRows": [
+   {
+    "budget": 500,
+    "n": 120,
+    "spanP50": 26,
+    "spanP90": 41,
+    "spanMax": 52
+   },
+   {
+    "budget": 1000,
+    "n": 120,
+    "spanP50": 36,
+    "spanP90": 60,
+    "spanMax": 75
+   },
+   {
+    "budget": 2000,
+    "n": 120,
+    "spanP50": 51,
+    "spanP90": 87,
+    "spanMax": 107
+   },
+   {
+    "budget": 4000,
+    "n": 120,
+    "spanP50": 73,
+    "spanP90": 123,
+    "spanMax": 152
+   },
+   {
+    "budget": 8000,
+    "n": 120,
+    "spanP50": 103,
+    "spanP90": 175,
+    "spanMax": 217
+   },
+   {
+    "budget": 16000,
+    "n": 120,
+    "spanP50": 146,
+    "spanP90": 249,
+    "spanMax": 307
+   }
+  ],
+  "res3": {
+   "n": 3,
+   "budget": 200,
+   "holdouts": 15170,
+   "undecided": 711,
+   "frac": 0.04686882003955175,
+   "counts": {
+    "halt": 0,
+    "cycle": 3279,
+    "escape": 11180,
+    "budget": 711,
+    "over": 0,
+    "undef": 0
+   }
+  },
+  "res4": {
+   "n": 4,
+   "budget": 200,
+   "holdouts": 2759686,
+   "undecided": 188841,
+   "frac": 0.06842843714828425,
+   "counts": {
+    "halt": 0,
+    "cycle": 540788,
+    "escape": 2030057,
+    "budget": 188841,
+    "over": 0,
+    "undef": 0
+   }
+  }
+ },
+ "e4": {
+  "n2": {
+   "halting": 60,
+   "meanSteps": 4.266666666666667,
+   "maxSteps": 6,
+   "hist": [
+    {
+     "steps": 2,
+     "count": 4
+    },
+    {
+     "steps": 3,
+     "count": 16
+    },
+    {
+     "steps": 4,
+     "count": 16
+    },
+    {
+     "steps": 5,
+     "count": 8
+    },
+    {
+     "steps": 6,
+     "count": 16
+    }
+   ],
+   "survival": [
+    {
+     "steps": 1,
+     "machines": 60,
+     "frac": 1
+    },
+    {
+     "steps": 2,
+     "machines": 60,
+     "frac": 1
+    },
+    {
+     "steps": 3,
+     "machines": 56,
+     "frac": 0.9333333333333333
+    },
+    {
+     "steps": 4,
+     "machines": 40,
+     "frac": 0.6666666666666666
+    },
+    {
+     "steps": 5,
+     "machines": 24,
+     "frac": 0.4
+    },
+    {
+     "steps": 6,
+     "machines": 16,
+     "frac": 0.26666666666666666
+    }
+   ],
+   "onlyOneAtMax": 16
+  },
+  "n3": {
+   "halting": 5456,
+   "meanSteps": 7.668621700879766,
+   "maxSteps": 21,
+   "hist": [
+    {
+     "steps": 3,
+     "count": 16
+    },
+    {
+     "steps": 4,
+     "count": 128
+    },
+    {
+     "steps": 5,
+     "count": 532
+    },
+    {
+     "steps": 6,
+     "count": 976
+    },
+    {
+     "steps": 7,
+     "count": 1256
+    },
+    {
+     "steps": 8,
+     "count": 1036
+    },
+    {
+     "steps": 9,
+     "count": 696
+    },
+    {
+     "steps": 10,
+     "count": 348
+    },
+    {
+     "steps": 11,
+     "count": 184
+    },
+    {
+     "steps": 12,
+     "count": 112
+    },
+    {
+     "steps": 13,
+     "count": 72
+    },
+    {
+     "steps": 14,
+     "count": 32
+    },
+    {
+     "steps": 15,
+     "count": 16
+    },
+    {
+     "steps": 16,
+     "count": 8
+    },
+    {
+     "steps": 17,
+     "count": 8
+    },
+    {
+     "steps": 18,
+     "count": 16
+    },
+    {
+     "steps": 19,
+     "count": 8
+    },
+    {
+     "steps": 20,
+     "count": 8
+    },
+    {
+     "steps": 21,
+     "count": 4
+    }
+   ],
+   "survival": [
+    {
+     "steps": 1,
+     "machines": 5456,
+     "frac": 1
+    },
+    {
+     "steps": 2,
+     "machines": 5456,
+     "frac": 1
+    },
+    {
+     "steps": 3,
+     "machines": 5456,
+     "frac": 1
+    },
+    {
+     "steps": 4,
+     "machines": 5440,
+     "frac": 0.9970674486803519
+    },
+    {
+     "steps": 5,
+     "machines": 5312,
+     "frac": 0.9736070381231672
+    },
+    {
+     "steps": 6,
+     "machines": 4780,
+     "frac": 0.876099706744868
+    },
+    {
+     "steps": 8,
+     "machines": 2548,
+     "frac": 0.4670087976539589
+    },
+    {
+     "steps": 10,
+     "machines": 816,
+     "frac": 0.1495601173020528
+    },
+    {
+     "steps": 12,
+     "machines": 284,
+     "frac": 0.05205278592375367
+    },
+    {
+     "steps": 16,
+     "machines": 52,
+     "frac": 0.009530791788856305
+    },
+    {
+     "steps": 20,
+     "machines": 12,
+     "frac": 0.0021994134897360706
+    },
+    {
+     "steps": 21,
+     "machines": 4,
+     "frac": 0.0007331378299120235
+    }
+   ],
+   "onlyOneAtMax": 4
+  },
+  "n4": {
+   "halting": 730416,
+   "meanSteps": 11.66446518148562,
+   "maxSteps": 107,
+   "hist": [
+    {
+     "steps": 4,
+     "count": 64
+    },
+    {
+     "steps": 5,
+     "count": 960
+    },
+    {
+     "steps": 6,
+     "count": 6744
+    },
+    {
+     "steps": 7,
+     "count": 29376
+    },
+    {
+     "steps": 8,
+     "count": 73120
+    },
+    {
+     "steps": 9,
+     "count": 107892
+    },
+    {
+     "steps": 10,
+     "count": 117788
+    },
+    {
+     "steps": 11,
+     "count": 99004
+    },
+    {
+     "steps": 12,
+     "count": 78724
+    },
+    {
+     "steps": 13,
+     "count": 57512
+    },
+    {
+     "steps": 14,
+     "count": 41920
+    },
+    {
+     "steps": 15,
+     "count": 30728
+    },
+    {
+     "steps": 16,
+     "count": 21660
+    },
+    {
+     "steps": 17,
+     "count": 14876
+    },
+    {
+     "steps": 18,
+     "count": 11832
+    },
+    {
+     "steps": 19,
+     "count": 8352
+    },
+    {
+     "steps": 20,
+     "count": 6152
+    },
+    {
+     "steps": 21,
+     "count": 4948
+    },
+    {
+     "steps": 22,
+     "count": 3768
+    },
+    {
+     "steps": 23,
+     "count": 2868
+    },
+    {
+     "steps": 24,
+     "count": 2256
+    },
+    {
+     "steps": 25,
+     "count": 1924
+    },
+    {
+     "steps": 26,
+     "count": 1300
+    },
+    {
+     "steps": 27,
+     "count": 996
+    },
+    {
+     "steps": 28,
+     "count": 812
+    },
+    {
+     "steps": 29,
+     "count": 768
+    },
+    {
+     "steps": 30,
+     "count": 596
+    },
+    {
+     "steps": 31,
+     "count": 456
+    },
+    {
+     "steps": 32,
+     "count": 468
+    },
+    {
+     "steps": 33,
+     "count": 404
+    },
+    {
+     "steps": 34,
+     "count": 352
+    },
+    {
+     "steps": 35,
+     "count": 232
+    },
+    {
+     "steps": 36,
+     "count": 172
+    },
+    {
+     "steps": 37,
+     "count": 128
+    },
+    {
+     "steps": 38,
+     "count": 164
+    },
+    {
+     "steps": 39,
+     "count": 140
+    },
+    {
+     "steps": 40,
+     "count": 108
+    },
+    {
+     "steps": 41,
+     "count": 76
+    },
+    {
+     "steps": 42,
+     "count": 80
+    },
+    {
+     "steps": 43,
+     "count": 68
+    },
+    {
+     "steps": 44,
+     "count": 64
+    },
+    {
+     "steps": 45,
+     "count": 44
+    },
+    {
+     "steps": 46,
+     "count": 52
+    },
+    {
+     "steps": 47,
+     "count": 40
+    },
+    {
+     "steps": 48,
+     "count": 28
+    },
+    {
+     "steps": 49,
+     "count": 44
+    },
+    {
+     "steps": 50,
+     "count": 28
+    },
+    {
+     "steps": 51,
+     "count": 40
+    },
+    {
+     "steps": 52,
+     "count": 44
+    },
+    {
+     "steps": 53,
+     "count": 12
+    },
+    {
+     "steps": 54,
+     "count": 8
+    },
+    {
+     "steps": 55,
+     "count": 16
+    },
+    {
+     "steps": 56,
+     "count": 20
+    },
+    {
+     "steps": 57,
+     "count": 20
+    },
+    {
+     "steps": 58,
+     "count": 8
+    },
+    {
+     "steps": 59,
+     "count": 12
+    },
+    {
+     "steps": 60,
+     "count": 12
+    },
+    {
+     "steps": 61,
+     "count": 12
+    },
+    {
+     "steps": 62,
+     "count": 16
+    },
+    {
+     "steps": 63,
+     "count": 12
+    },
+    {
+     "steps": 64,
+     "count": 16
+    },
+    {
+     "steps": 65,
+     "count": 4
+    },
+    {
+     "steps": 66,
+     "count": 4
+    },
+    {
+     "steps": 67,
+     "count": 4
+    },
+    {
+     "steps": 68,
+     "count": 16
+    },
+    {
+     "steps": 69,
+     "count": 8
+    },
+    {
+     "steps": 70,
+     "count": 4
+    },
+    {
+     "steps": 74,
+     "count": 4
+    },
+    {
+     "steps": 75,
+     "count": 4
+    },
+    {
+     "steps": 78,
+     "count": 8
+    },
+    {
+     "steps": 83,
+     "count": 4
+    },
+    {
+     "steps": 84,
+     "count": 4
+    },
+    {
+     "steps": 96,
+     "count": 8
+    },
+    {
+     "steps": 97,
+     "count": 4
+    },
+    {
+     "steps": 107,
+     "count": 4
+    }
+   ],
+   "survival": [
+    {
+     "steps": 1,
+     "machines": 730416,
+     "frac": 1
+    },
+    {
+     "steps": 2,
+     "machines": 730416,
+     "frac": 1
+    },
+    {
+     "steps": 3,
+     "machines": 730416,
+     "frac": 1
+    },
+    {
+     "steps": 4,
+     "machines": 730416,
+     "frac": 1
+    },
+    {
+     "steps": 5,
+     "machines": 730352,
+     "frac": 0.9999123786992618
+    },
+    {
+     "steps": 6,
+     "machines": 729392,
+     "frac": 0.9985980591881887
+    },
+    {
+     "steps": 8,
+     "machines": 693272,
+     "frac": 0.9491467875840617
+    },
+    {
+     "steps": 10,
+     "machines": 512260,
+     "frac": 0.7013263674399246
+    },
+    {
+     "steps": 12,
+     "machines": 295468,
+     "frac": 0.40452016385183237
+    },
+    {
+     "steps": 16,
+     "machines": 86584,
+     "frac": 0.11854066723620513
+    },
+    {
+     "steps": 20,
+     "machines": 29864,
+     "frac": 0.04088628945696699
+    },
+    {
+     "steps": 25,
+     "machines": 9872,
+     "frac": 0.013515585638868809
+    },
+    {
+     "steps": 30,
+     "machines": 4072,
+     "frac": 0.005574905259468577
+    },
+    {
+     "steps": 40,
+     "machines": 960,
+     "frac": 0.001314319511073142
+    },
+    {
+     "steps": 50,
+     "machines": 356,
+     "frac": 0.0004873934853562901
+    },
+    {
+     "steps": 60,
+     "machines": 148,
+     "frac": 0.00020262425795710938
+    },
+    {
+     "steps": 80,
+     "machines": 24,
+     "frac": 0.000032857987776828546
+    },
+    {
+     "steps": 100,
+     "machines": 4,
+     "frac": 0.000005476331296138091
+    },
+    {
+     "steps": 107,
+     "machines": 4,
+     "frac": 0.000005476331296138091
+    }
+   ],
+   "onlyOneAtMax": 4
+  },
+  "champAt107": 4,
+  "ge100": 4,
+  "ge50": 356
+ },
+ "e5": {
+  "counts": {
+   "escape": 8728,
+   "cycle": 2756,
+   "halt": 8489,
+   "budget": 27
+  },
+  "samples": 20000,
+  "budget": 2000,
+  "maxStepsFound": 84,
+  "refRows": [
+   {
+    "n": 2,
+    "counts": {
+     "escape": 7871,
+     "halt": 9472,
+     "cycle": 2649,
+     "budget": 8
+    }
+   },
+   {
+    "n": 3,
+    "counts": {
+     "cycle": 2746,
+     "halt": 8960,
+     "escape": 8274,
+     "budget": 20
+    }
+   },
+   {
+    "n": 4,
+    "counts": {
+     "escape": 8491,
+     "halt": 8753,
+     "cycle": 2735,
+     "budget": 21
+    }
+   }
+  ],
+  "facts": {
+   "tnf5": 181385789,
+   "tnf5Source": "arXiv:2509.12337 —— 为定出 S(5) 枚举了 181,385,789 台 5 状态机器",
+   "bradyTable": "1RB/1LB 1LA/0LC 1RH/1LD 1RD/0RA",
+   "bradySource": "Heiner Marxen 站点上的原始表（引自 P. Michel）：13 个 1 / 107 步",
+   "s6Lower": "S(6) > Σ(6) > 10↑↑10↑↑10↑↑8",
+   "s6Source": "bbchallenge wiki，2026-09-23 更新；最初由 mxdys 于 2025-06 给出 2↑↑2↑↑2↑↑10",
+   "antihydra": "Antihydra（2024-06）：要定出 BB(6)，必须先解决一个 Collatz 类问题 —— 社区结论是「BB(6) is Hard」",
+   "timeline": "1962 Radó 提出问题 → 1965 S(3)=21 → 1983 S(4)=107 → 2024 S(5)=47,176,870（四十多年里第一次推进）"
+  }
+ },
+ "e6": {
+  "rows": [
+   {
+    "n": 1,
+    "flatMachines": 64,
+    "tnfMachines": 8,
+    "ratio": 8,
+    "flatS": 1,
+    "tnfS": 1,
+    "flatSigma": 1,
+    "tnfSigma": 1,
+    "agree": true,
+    "ms": 1
+   },
+   {
+    "n": 2,
+    "flatMachines": 1728,
+    "tnfMachines": 166,
+    "ratio": 10.409638554216867,
+    "flatS": 6,
+    "tnfS": 6,
+    "flatSigma": 4,
+    "tnfSigma": 4,
+    "agree": true,
+    "ms": 9
+   },
+   {
+    "n": 3,
+    "flatMachines": 1048576,
+    "tnfMachines": 20626,
+    "ratio": 50.837583632308736,
+    "flatS": 21,
+    "tnfS": 21,
+    "flatSigma": 6,
+    "tnfSigma": 6,
+    "agree": true,
+    "ms": 2645
+   }
+  ],
+  "allAgree": true
+ },
+ "known": {
+  "S": {
+   "1": 1,
+   "2": 6,
+   "3": 21,
+   "4": 107,
+   "5": 47176870
+  },
+  "Sigma": {
+   "1": 1,
+   "2": 4,
+   "3": 6,
+   "4": 13,
+   "5": 4098
+  }
+ },
+ "knownNote": {
+  "1": "Rado 1962（显然）",
+  "2": "Rado 1962（显然）",
+  "3": "Lin & Rado 1965",
+  "4": "Brady 1983（人工 + 机器；Marxen 站点上有原始转移表）",
+  "5": "bbchallenge 协作组 2024；2025 年 Coq 形式化（arXiv:2509.12337）"
+ }
+}
+};</script>
+<script>
+/* ============================================================
+ * core.js —— 图灵机 / 忙碌的海狸 / 停机判定
+ *
+ * 全部模型都在这里。UMD：Node 与浏览器共用同一份源码。
+ *   - 转移表编码、确定性 PRNG
+ *   - 单机模拟器（含两种"非停机"的**严格**证明器）
+ *   - TNF（树范式）穷举器：只枚举"所有状态都可达"且状态按首次访问顺序编号的机器
+ *   - 朴素全枚举器（独立实现，用来对账 TNF）
+ *   - 冠军提取、随机采样
+ * ========================================================== */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.BBCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* ============================================================
+   * 一、转移表编码
+   *
+   * 机器有 n 个状态（0 … n-1）、2 个符号（0 = 空白, 1 = 墨迹）、
+   * 一条向左无限向右无限的纸带、一个读写头。
+   *
+   * 每个 (状态, 符号) 项是一个整数 code ∈ [0, 4(n+1))：
+   *     w    = code & 1        写下的符号
+   *     d    = (code >> 1) & 1 0 = 左, 1 = 右
+   *     next = code >> 2       ∈ [0, n) 是下一个状态；= n 表示停机
+   *
+   * 停机时**仍然执行写**。这不是随便定的：经典值 Σ(1) = 1
+   * （1 状态机器最多留下 1 个 1）只有在"第一步写 1 然后停"时成立。
+   * ========================================================== */
+  function nCodes(n) { return 4 * (n + 1); }
+  function enc(w, d, next) { return (w & 1) + ((d & 1) << 1) + (next << 2); }
+  function decCode(c) { return { w: c & 1, d: (c >> 1) & 1, next: c >> 2 }; }
+
+  var POW2 = new Array(64);
+  (function () { var v = 1; for (var i = 0; i < 64; i++) { POW2[i] = v; v *= 2; } })();
+
+  /* ============================================================
+   * 二、确定性 PRNG（splitmix32）—— 扫描顺序改变不影响任何单个实例
+   * ========================================================== */
+  function splitmix32(seed) {
+    var a = (seed | 0) >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 16), 0x21f0aaad) >>> 0;
+      t = Math.imul(t ^ (t >>> 15), 0x735a2d97) >>> 0;
+      return ((t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ============================================================
+   * 三、单机模拟器
+   *
+   * 返回值 status 有五种，**「没跑完」绝不并进「跑不完」**：
+   *   'halt'    停机（确定的）
+   *   'cycle'   平移等价意义下的构型重复 —— 严格证明永不停机
+   *   'escape'  单向逃逸（读写头朝一侧走进空白区且局部图案重复）
+   *             —— 严格证明永不停机
+   *   'budget'  步数用完，未判定（第三态，不是"否"）
+   *   'over'    纸带超出窗口上限（同样未判定）
+   *
+   * 两个非停机证明器的严格性说明见 calibrate 报告与页面第叁节。
+   * ========================================================== */
+  var DEF = { maxSteps: 1000, spanCap: 160, frontierR: 16, visitCap: 20000, tapeLimit: 1 << 20 };
+
+  function runTM(n, table, opts) {
+    opts = opts || {};
+    var maxSteps = opts.maxSteps == null ? DEF.maxSteps : opts.maxSteps;
+    var spanCap = opts.spanCap == null ? DEF.spanCap : opts.spanCap;
+    var FR = opts.frontierR == null ? DEF.frontierR : opts.frontierR;
+    var visitCap = opts.visitCap == null ? DEF.visitCap : opts.visitCap;
+    var tapeLimit = opts.tapeLimit == null ? DEF.tapeLimit : opts.tapeLimit;
+    var traceEvery = opts.traceEvery || 0;
+
+    var cap = 4096, base = cap >> 1;
+    var tape = new Uint8Array(cap);
+    var head = 0, st = 0, steps = 0, ones = 0, maxOnes = 0;
+    var statesSeen = 1;              // 位掩码：第 q 位 = 状态 q 被访问过
+    var lo = 0, hi = 0;              // 读写头访问过的位置范围（也是"被改过的范围"）
+    var bits = 0;                    // [lo, hi] 上的位串，bit i = tape[lo + i]
+    var seen = new Map();            // bits -> Set(st * 64 + (head - lo))
+    var seenStr = new Set();         // 跨度 51…spanCap 时的字符串钥匙
+    var status = 'budget';
+    var trace = [];
+
+    /* 单向逃逸检测用的事件序列：每次读写头走到"从未到过的更远处"记一个事件 */
+    var vDir = [], vKey = [], vHead = [], vIvMin = [], vIvMax = [];
+    var vCount = 0, curMin = 0, curMax = 0;
+    var fR = new Map(), fL = new Map();
+    var maxSeen = 0, minSeen = 0;
+
+    function pushVisit(dir, key, h) {
+      if (vCount >= visitCap) { vCount = -1; return; }   // 记满了就不再记（sound，只是不完整）
+      vIvMin[vCount] = curMin; vIvMax[vCount] = curMax;
+      vDir[vCount] = dir; vKey[vCount] = key; vHead[vCount] = h;
+      vCount++;
+      curMin = h; curMax = h;
+      var map = dir === 1 ? fR : fL;
+      map.set(key, vCount - 1);
+    }
+
+    function windowBits(from, len) {
+      /* 读 tape[from .. from+len-1] 成一个整数（越界部分视为空白） */
+      var v = 0;
+      for (var i = 0; i < len; i++) {
+        var p = from + i;
+        v = v * 2 + (p >= lo && p <= hi ? tape[p + base] : 0);
+      }
+      return v;
+    }
+
+    var traceArr = null;
+    if (traceEvery > 0) traceArr = [];
+
+    for (;;) {
+      if (steps >= maxSteps) { status = 'budget'; break; }
+      if (head + base < 8 || head + base >= cap - 8) {
+        if (cap >= tapeLimit) { status = 'over'; break; }
+        var ncap = cap * 2, nbase = ncap >> 1;
+        var nt = new Uint8Array(ncap);
+        nt.set(tape.subarray(0, cap), nbase - base);
+        tape = nt; cap = ncap; base = nbase;
+      }
+      var sym = tape[head + base];
+      var code = table[st * 2 + sym];
+      if (code < 0) { status = 'undef'; break; }
+      var w = code & 1, d = (code >> 1) & 1, nx = code >> 2;
+
+      /* 写 */
+      if (w !== sym) {
+        tape[head + base] = w;
+        ones += w - sym;
+        if (ones > maxOnes) maxOnes = ones;
+        if (head >= lo && head - lo < 63) bits += (w - sym) * POW2[head - lo];
+      }
+
+      if (nx === n) { status = 'halt'; steps++; break; }
+
+      /* 走 */
+      var nh = head + (d ? 1 : -1);
+      var newMax = nh > maxSeen, newMin = nh < minSeen;
+      if (nh < lo) { var k = lo - nh; bits *= POW2[k]; lo = nh; }
+      if (nh > hi) hi = nh;
+      if (nh > maxSeen) maxSeen = nh;
+      if (nh < minSeen) minSeen = nh;
+      head = nh; st = nx; steps++;
+      statesSeen |= (1 << st);
+
+      if (head < curMin) curMin = head;
+      if (head > curMax) curMax = head;
+
+      if (traceEvery > 0 && (steps % traceEvery === 0)) {
+        traceArr.push({ steps: steps, st: st, head: head, ones: ones });
+      }
+
+      /* ---- 证明器 1：平移等价构型重复 ----
+       * 钥匙 = (状态, 头相对 lo 的偏移, [lo,hi] 上的位串)。
+       * 位串在 double 里精确可表示到 2^53，所以跨度 ≤ 50 时用整数钥匙；
+       * 跨度 51…160 时改用字符串钥匙（慢，但保证不比朴素实现弱）。 */
+      var span = hi - lo;
+      if (span <= 50) {
+        var small = st * 64 + (head - lo);
+        var m = seen.get(bits);
+        if (m === undefined) { m = new Set(); m.add(small); seen.set(bits, m); }
+        else if (m.has(small)) { status = 'cycle'; break; }
+        else m.add(small);
+      } else if (span <= spanCap) {
+        var sk = st + ':' + (head - lo) + ':';
+        for (var i2 = lo; i2 <= hi; i2++) sk += tape[i2 + base];
+        if (seenStr.has(sk)) { status = 'cycle'; break; }
+        if (seenStr.size < 300000) seenStr.add(sk);
+      }
+
+      /* ---- 证明器 2：单向逃逸 ----
+       * 读写头走到"从未到过的更远处"时，记下 (状态, 头左边 R+1 格的图案)。
+       * 若同一把钥匙再次出现，且两次之间头**从未**回退超过 R 格，
+       * 则从第二次起整段行为是第一次的平移复制 —— 永不停机。
+       * 条件用全局 min/max 的区间最小值判定，是充分条件（sound）。 */
+      if (newMax && vCount >= 0 && FR > 0) {
+        var key = st * 65536 + windowBits(head - FR, FR + 1);
+        var prev = fR.get(key);
+        if (prev !== undefined) {
+          var mn = Infinity;
+          for (var q = prev; q < vCount; q++) if (vIvMin[q] < mn) mn = vIvMin[q];
+          if (mn > vHead[prev] - FR) { status = 'escape'; break; }
+        }
+        pushVisit(1, key, head);
+      } else if (newMin && vCount >= 0 && FR > 0) {
+        var key2 = st * 65536 + windowBits(head, FR + 1);
+        var prev2 = fL.get(key2);
+        if (prev2 !== undefined) {
+          var mx = -Infinity;
+          for (var q2 = prev2; q2 < vCount; q2++) if (vIvMax[q2] > mx) mx = vIvMax[q2];
+          if (mx < vHead[prev2] + FR) { status = 'escape'; break; }
+        }
+        pushVisit(-1, key2, head);
+      }
+    }
+
+    return { status: status, steps: steps, ones: ones, maxOnes: maxOnes, head: head,
+             lo: lo, hi: hi, span: hi - lo, statesSeen: statesSeen, trace: traceArr };
+  }
+
+  /* 逐步轨迹（给界面用）：返回每一步之后的完整构型快照 */
+  function traceTM(n, table, maxSteps) {
+    var cap = 4096, base = cap >> 1, tape = new Uint8Array(cap);
+    var head = 0, st = 0, steps = 0, ones = 0, lo = 0, hi = 0;
+    var status = 'budget';
+    function snap() {
+      var a = [];
+      for (var i = lo; i <= hi; i++) a.push(tape[i + base]);
+      return a;
+    }
+    var frames = [{ steps: 0, st: 0, head: 0, ones: 0, cells: snap() }];
+    for (;;) {
+      if (steps >= maxSteps) break;
+      if (head + base < 8 || head + base >= cap - 8) {
+        var ncap = cap * 2, nbase = ncap >> 1;
+        var nt = new Uint8Array(ncap);
+        nt.set(tape.subarray(0, cap), nbase - base);
+        tape = nt; cap = ncap; base = nbase;
+      }
+      var sym = tape[head + base];
+      var code = table[st * 2 + sym];
+      if (code < 0) { status = 'undef'; break; }
+      var w = code & 1, d = (code >> 1) & 1, nx = code >> 2;
+      tape[head + base] = w;
+      ones += w - sym;
+      if (nx === n) {
+        steps++; status = 'halt';
+        frames.push({ steps: steps, st: st, head: head, ones: ones, cells: snap(), halted: true });
+        break;
+      }
+      head += d ? 1 : -1; st = nx; steps++;
+      if (head < lo) lo = head;
+      if (head > hi) hi = head;
+      frames.push({ steps: steps, st: st, head: head, ones: ones, cells: snap() });
+      if (frames.length > 6000) break;
+    }
+    return { status: status, steps: steps, ones: ones, lo: lo, hi: hi, frames: frames };
+  }
+
+  /* ============================================================
+   * 四、TNF（树范式）穷举
+   *
+   * 只枚举满足两条规范的机器：
+   *   ① n ≥ 2 时第一步固定为「写 1、右移、进状态 1」。
+   *      理由：若第一步写 0，则进入状态 1 时纸带仍是全空白，
+   *      此后行为与"少一个状态、从状态 1 起跑"的机器相同 —— 永远不是冠军。
+   *   ② 状态按**首次访问的先后**编号，且每个被引入的状态都会被访问。
+   *      于是"改状态名"的机器只算一台。
+   *
+   * 这两条都不改变 S(n) 与 Σ(n) 的取值（冠军仍在枚举里），
+   * 但会把机器台数压掉好几个数量级 —— 这是唯一能穷举 n=4 的办法。
+   *
+   * 搜索方式：一边模拟一边建表。模拟撞到一个"还没定义"的格子就分支。
+   * 撞到停机 / 步数用完就产出一台机器。
+   * ========================================================== */
+  function tnfEnumerate(n, opts, cb) {
+    opts = opts || {};
+    var maxSteps = opts.maxSteps == null ? 200 : opts.maxSteps;
+    var cap = 8192, base = cap >> 1;
+    var tape = new Uint8Array(cap);
+    var table = new Int8Array(2 * n);
+    for (var i = 0; i < 2 * n; i++) table[i] = -1;
+    var nKnown = 1;
+    if (n >= 2) { table[0] = enc(1, 1, 1); nKnown = 2; }
+    var undo = [];
+    var stats = { machines: 0, halt: 0, holdout: 0, steps: 0, maxSteps: 0, maxOnes: 0, maxStepsTable: null, maxOnesTable: null };
+
+    function setCell(p, v) { undo.push(p, tape[p + base]); tape[p + base] = v; }
+    function undoTo(mark) { while (undo.length > mark) { var v = undo.pop(), p = undo.pop(); tape[p + base] = v; } }
+
+    function emit(status, steps, ones, maxOnes) {
+      stats.machines++;
+      if (status === 'halt') {
+        stats.halt++;
+        if (steps > stats.maxSteps) { stats.maxSteps = steps; stats.maxStepsTable = new Int8Array(table); }
+        if (ones > stats.maxOnes) { stats.maxOnes = ones; stats.maxOnesTable = new Int8Array(table); }
+      } else stats.holdout++;
+      if (cb) cb(new Int8Array(table), status, steps, ones, maxOnes);
+    }
+
+    function rec(head, st, steps, ones, maxOnes, lo, hi) {
+      var uMark = undo.length;
+      var sym, code, idx, w, d, nx, nh, no, nm, u2, intro, nlo, nhi;
+      for (;;) {
+        if (steps >= maxSteps) { emit('holdout', steps, ones, maxOnes); break; }
+        if (head + base < 8 || head + base >= cap - 8) {
+          var ncap = cap * 2, nbase = ncap >> 1;
+          var nt = new Uint8Array(ncap);
+          nt.set(tape.subarray(0, cap), nbase - base);
+          tape = nt; cap = ncap; base = nbase;
+        }
+        sym = tape[head + base];
+        code = table[st * 2 + sym];
+        if (code < 0) {
+          idx = st * 2 + sym;
+          for (w = 0; w < 2; w++) {
+            for (d = 0; d < 2; d++) {
+              /* 可去的目标：已引入的状态 0..nKnown-1、下一个新状态 nKnown（若还够）、
+                 以及 n（停机）。跳不到还没引入的状态。 */
+              for (nx = 0; nx <= n; nx++) {
+                if (nx > nKnown) continue;
+                table[idx] = enc(w, d, nx);
+                intro = (nx === nKnown && nx < n);
+                if (intro) nKnown++;
+                u2 = undo.length;
+                setCell(head, w);
+                if (nx === n) {
+                  /* 停机：写下之后就停，不再往下递归 */
+                  no = ones + w - sym;
+                  emit('halt', steps + 1, no, no > maxOnes ? no : maxOnes);
+                } else {
+                  nh = head + (d ? 1 : -1);
+                  no = ones + w - sym;
+                  nm = no > maxOnes ? no : maxOnes;
+                  nlo = nh < lo ? nh : lo;
+                  nhi = nh > hi ? nh : hi;
+                  rec(nh, nx, steps + 1, no, nm, nlo, nhi);
+                }
+                undoTo(u2);
+                if (intro) nKnown--;
+              }
+            }
+          }
+          table[idx] = -1;
+          break;
+        }
+        nx = code >> 2;
+        if (nx === n) {
+          u2 = undo.length;
+          setCell(head, code & 1);
+          no = ones + (code & 1) - sym;
+          emit('halt', steps + 1, no, no > maxOnes ? no : maxOnes);
+          undoTo(u2);
+          break;
+        }
+        setCell(head, code & 1);
+        ones += (code & 1) - sym;
+        if (ones > maxOnes) maxOnes = ones;
+        head += ((code >> 1) & 1) ? 1 : -1;
+        if (head < lo) lo = head;
+        if (head > hi) hi = head;
+        st = nx;
+        steps++;
+        stats.steps++;
+      }
+      undoTo(uMark);
+    }
+
+    rec(0, 0, 0, 0, 0, 0, 0);
+    return stats;
+  }
+
+  /* 朴素全枚举：把所有项都填满（含不可达状态），只固定第一步。
+     慢、笨，但没有任何可以搞错的地方 —— 用来给 TNF 对账。 */
+  function flatEnumerate(n, opts, cb) {
+    opts = opts || {};
+    var maxSteps = opts.maxSteps == null ? 200 : opts.maxSteps;
+    var limit = opts.limit == null ? Infinity : opts.limit;
+    var m = 2 * n;
+    var freeFrom = (n >= 2) ? 1 : 0;
+    var free = m - freeFrom;
+    var total = Math.pow(nCodes(n), free);
+    if (total > limit) total = limit;
+    var table = new Int8Array(m);
+    if (n >= 2) table[0] = enc(1, 1, 1);
+    var stats = { machines: 0, halt: 0, holdout: 0, maxSteps: 0, maxOnes: 0, truncated: total < Math.pow(nCodes(n), free) };
+    var code = new Array(free);
+    for (var i = 0; i < free; i++) code[i] = 0;
+    var NC = nCodes(n);
+    for (var it = 0; it < total; it++) {
+      for (var j = 0; j < free; j++) table[freeFrom + j] = code[j];
+      var r = runTM(n, table, { maxSteps: maxSteps, spanCap: 0, frontierR: 0 });
+      stats.machines++;
+      if (r.status === 'halt') {
+        stats.halt++;
+        if (r.steps > stats.maxSteps) stats.maxSteps = r.steps;
+        if (r.ones > stats.maxOnes) stats.maxOnes = r.ones;
+      } else stats.holdout++;
+      if (cb) cb(new Int8Array(table), r);
+      /* 进位 */
+      for (var k = free - 1; k >= 0; k--) {
+        if (++code[k] < NC) break;
+        code[k] = 0;
+      }
+    }
+    return stats;
+  }
+
+  /* ============================================================
+   * 五、工具
+   * ========================================================== */
+  function randomTable(n, rnd) {
+    var m = 2 * n, NC = nCodes(n), t = new Int8Array(m);
+    for (var i = 0; i < m; i++) t[i] = Math.floor(rnd() * NC);
+    return t;
+  }
+
+  function tableToString(n, table) {
+    /* 紧凑写法：1RB / 0LA / 1RH —— 写符 方向 目标状态（H = 停机） */
+    var names = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    var out = [];
+    for (var q = 0; q < n; q++) {
+      var parts = [];
+      for (var s = 0; s < 2; s++) {
+        var c = table[q * 2 + s];
+        if (c < 0) { parts.push('---'); continue; }
+        var o = decCode(c);
+        parts.push(o.w + (o.d ? 'R' : 'L') + (o.next === n ? 'H' : names[o.next]));
+      }
+      out.push(parts.join('/'));
+    }
+    return out.join(' ');
+  }
+
+  function tableFromString(n, str) {
+    /* 反向：解析 "1RB 0LA 1RH"。
+       注意：外部文献（bbchallenge / Marxen）用 **Z** 表示停机，不是 H。
+       2026-09-29 踩过：只认 H 时，20 条外部真值全军覆没，
+       而症状看起来像"我的模拟器坏了"。两个字母都收。 */
+    var names = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    var parts = str.trim().split(/\s+/);
+    var t = new Int8Array(2 * n);
+    for (var q = 0; q < n; q++) {
+      var sub = parts[q].split('/');
+      for (var s = 0; s < 2; s++) {
+        var tok = sub[s];
+        if (tok === '---') { t[q * 2 + s] = -1; continue; }
+        var w = parseInt(tok[0], 10);
+        var d = tok[1] === 'R' ? 1 : 0;
+        var nx = (tok[2] === 'H' || tok[2] === 'Z') ? n : names.indexOf(tok[2]);
+        t[q * 2 + s] = enc(w, d, nx);
+      }
+    }
+    return t;
+  }
+
+  /* 外部标准紧凑记法：`1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA`
+     —— 每个状态两个项连写，状态之间下划线，Z 表示停机。
+     这是 bbchallenge wiki 上 BB(5) 冠军的写法，能直接对照。 */
+  function tableToCompact(n, table) {
+    var names = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    var st = [];
+    for (var q = 0; q < n; q++) {
+      var s = '';
+      for (var i = 0; i < 2; i++) {
+        var c = table[q * 2 + i];
+        if (c < 0) { s += '---'; continue; }
+        var o = decCode(c);
+        s += o.w + (o.d ? 'R' : 'L') + (o.next === n ? 'Z' : names[o.next]);
+      }
+      st.push(s);
+    }
+    return st.join('_');
+  }
+
+  function tableFromCompact(n, str) {
+    var parts = str.trim().split('_');
+    var t = new Int8Array(2 * n);
+    var names = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    for (var q = 0; q < n; q++) {
+      var s = parts[q];
+      for (var i = 0; i < 2; i++) {
+        var tok = s.slice(i * 3, i * 3 + 3);
+        if (tok === '---') { t[q * 2 + i] = -1; continue; }
+        var nx = (tok[2] === 'Z' || tok[2] === 'H') ? n : names.indexOf(tok[2]);
+        t[q * 2 + i] = enc(parseInt(tok[0], 10), tok[1] === 'R' ? 1 : 0, nx);
+      }
+    }
+    return t;
+  }
+
+  function tableKey(n, table) {
+    var s = '';
+    for (var i = 0; i < 2 * n; i++) s += (table[i] < 0 ? 'x' : table[i].toString(36)) + ',';
+    return s;
+  }
+
+  /* 已知真值：外部文献
+   *   Rado 1962 提出问题；Lin & Rado 1965 定出 S(3)；
+   *   Brady 1983 定出 S(4)=107；
+   *   bbchallenge 协作组 2024 定出 S(5)，2025 年用 Coq 形式化（arXiv:2509.12337）。 */
+  var KNOWN = {
+    S: { 1: 1, 2: 6, 3: 21, 4: 107, 5: 47176870 },
+    Sigma: { 1: 1, 2: 4, 3: 6, 4: 13, 5: 4098 }
+  };
+  var KNOWN_NOTE = {
+    1: 'Rado 1962（显然）',
+    2: 'Rado 1962（显然）',
+    3: 'Lin & Rado 1965',
+    4: 'Brady 1983（人工 + 机器；Marxen 站点上有原始转移表）',
+    5: 'bbchallenge 协作组 2024；2025 年 Coq 形式化（arXiv:2509.12337）'
+  };
+  /* 本次引用的外部事实，全部标注来源，不与"我测到的"混在一起 */
+  var FACTS = {
+    tnf5: 181385789,
+    tnf5Source: 'arXiv:2509.12337 —— 为定出 S(5) 枚举了 181,385,789 台 5 状态机器',
+    bradyTable: '1RB/1LB 1LA/0LC 1RH/1LD 1RD/0RA',
+    bradySource: 'Heiner Marxen 站点上的原始表（引自 P. Michel）：13 个 1 / 107 步',
+    s6Lower: 'S(6) > Σ(6) > 10↑↑10↑↑10↑↑8',
+    s6Source: 'bbchallenge wiki，2026-09-23 更新；最初由 mxdys 于 2025-06 给出 2↑↑2↑↑2↑↑10',
+    antihydra: 'Antihydra（2024-06）：要定出 BB(6)，必须先解决一个 Collatz 类问题 —— 社区结论是「BB(6) is Hard」',
+    timeline: '1962 Radó 提出问题 → 1965 S(3)=21 → 1983 S(4)=107 → 2024 S(5)=47,176,870（四十多年里第一次推进）'
+  };
+
+  return {
+    nCodes: nCodes, enc: enc, decCode: decCode,
+    splitmix32: splitmix32,
+    runTM: runTM, traceTM: traceTM,
+    tnfEnumerate: tnfEnumerate, flatEnumerate: flatEnumerate,
+    randomTable: randomTable,
+    tableToString: tableToString, tableFromString: tableFromString, tableKey: tableKey,
+    KNOWN: KNOWN, KNOWN_NOTE: KNOWN_NOTE, FACTS: FACTS,
+    DEF: DEF
+  };
+});
+
+</script>
+<script>
+/* ============================================================
+ * ui.js —— 界面：填充、绘图、图灵机模拟器、探针
+ *
+ * 硬规矩（前七件装置用血换来的）：
+ *   ① 放在 .chart 里的图必须是**真 SVG** —— 用 openTag 只开不闭，
+ *      绝不能拿"成对生成器"去开 <svg>（那会产出一个当场闭合的空 SVG，
+ *      后面所有 line/text 全成兄弟节点，浏览器不画，而探针照样数得出来）
+ *   ② 断言"看得见的东西"必须量 getBoundingClientRect，不能数 DOM 节点
+ *   ③ 概率量上对数轴要用 log(v/floor)/log(max/floor) + 渲染下限
+ *   ④ 任何 NaN 都会污染整条纵轴，画之前一律 isFinite 过滤
+ *   ⑤ 静态文案里的数字一律从数据算，不写死
+ * ========================================================== */
+(function () {
+  'use strict';
+  var D = window.__BB_DATA__;
+  var C = window.BBCore;
+  var A = D.analysis, R = D.results;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function openTag(name, attrs) {
+    var s = '<' + name;
+    for (var k in attrs) if (attrs[k] !== null && attrs[k] !== undefined) s += ' ' + k + '="' + attrs[k] + '"';
+    return s + '>';
+  }
+  function closeTag(name) { return '</' + name + '>'; }
+  function el(name, attrs, text) { return openTag(name, attrs) + (text === undefined ? '' : esc(text)) + closeTag(name); }
+  function svgWrap(w, h, body) {
+    return openTag('svg', { viewBox: '0 0 ' + w + ' ' + h, width: w, height: h, role: 'img' }) + body + closeTag('svg');
+  }
+  function num(x) { return Number(x).toLocaleString('en-US'); }
+  function pct(x, d) { return (x * 100).toFixed(d === undefined ? 2 : d) + '%'; }
+  function sci(x) { return Number(x).toExponential(2).replace('e+', '×10^'); }
+
+  /* ============================================================
+   * 通用折线/散点图（真 SVG）
+   * ============================================================ */
+  function lineChart(host, spec) {
+    var W = spec.w || 700, H = spec.h || 300;
+    var pad = spec.pad || { l: 64, r: 20, t: 18, b: 44 };
+    var iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+    var pts = [], dropped = 0;
+    (spec.series || []).forEach(function (s) {
+      (s.pts || []).forEach(function (p) {
+        if (isFinite(p.x) && isFinite(p.y)) pts.push(p); else dropped++;
+      });
+    });
+    if (!pts.length) { host.innerHTML = '<div class="chart-note">（数据不足，未绘制）</div>'; return null; }
+
+    var xs = pts.map(function (p) { return p.x; }), ys = pts.map(function (p) { return p.y; });
+    var xMin = spec.xMin !== undefined ? spec.xMin : Math.min.apply(null, xs);
+    var xMax = spec.xMax !== undefined ? spec.xMax : Math.max.apply(null, xs);
+    if (xMax === xMin) { xMax = xMin + 1; }
+    var yLog = !!spec.yLog;
+    var yLo = spec.yMin !== undefined ? spec.yMin : Math.min.apply(null, ys);
+    var yHi = spec.yMax !== undefined ? spec.yMax : Math.max.apply(null, ys);
+    if (yLog) {
+      if (!(yLo > 0)) yLo = Math.max(1e-12, Math.min.apply(null, ys.filter(function (v) { return v > 0; })) || 1);
+      if (!(yHi > yLo)) yHi = yLo * 10;
+    } else if (yHi === yLo) { yHi = yLo + 1; }
+
+    function X(v) { return pad.l + (v - xMin) / (xMax - xMin) * iw; }
+    function Y(v) {
+      if (yLog) return pad.t + ih - (Math.log(v / yLo) / Math.log(yHi / yLo)) * ih;
+      return pad.t + ih - (v - yLo) / (yHi - yLo) * ih;
+    }
+    var SUPS = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+    function sup(n) { return String(n).split('').map(function (c) { return SUPS[c] || c; }).join(''); }
+    function fmt(v) {
+      /* 对数轴上刻度多半是整十次幂 —— 写成 10⁷ 比 "1.0e7" 或 "10,000,000" 都好读 */
+      if (v > 0) {
+        var e = Math.log10(v);
+        if (Math.abs(e - Math.round(e)) < 1e-9 && Math.round(e) !== 0 && Math.abs(e) <= 30) return '10' + sup(Math.round(e));
+      }
+      if (Math.abs(v) >= 1e9) return Number(v).toExponential(1).replace('e+', 'e');
+      if (Math.abs(v) >= 10000) return Number(v).toLocaleString('en-US');
+      if (yLog && v < 1) return v.toPrecision(1);
+      return String(Math.round(v * 100) / 100);
+    }
+
+    var b = '';
+    /* 网格 + y 刻度 */
+    var nanTicks = 0;
+    var yTicks = spec.yTicks;
+    if (!yTicks) {
+      yTicks = [];
+      if (yLog) {
+        var lo = Math.floor(Math.log10(yLo)), hi = Math.ceil(Math.log10(yHi));
+        for (var e = lo; e <= hi; e++) yTicks.push(Math.pow(10, e));
+      } else {
+        for (var i = 0; i <= 4; i++) yTicks.push(yLo + (yHi - yLo) * i / 4);
+      }
+    }
+    yTicks.forEach(function (t) {
+      if (!isFinite(t) || t < yLo * 0.999 || t > yHi * 1.001) { if (!isFinite(t)) nanTicks++; return; }
+      var y = Y(t);
+      if (!isFinite(y)) { nanTicks++; return; }
+      b += openTag('line', { x1: pad.l, y1: y, x2: W - pad.r, y2: y, stroke: '#eae7dd', 'stroke-width': 1 }) + closeTag('line');
+      b += el('text', { x: pad.l - 8, y: y + 4, 'text-anchor': 'end', 'font-size': 10, fill: '#726f66', 'font-family': 'monospace' }, fmt(t));
+    });
+    /* x 刻度 */
+    var xTicks = spec.xTicks;
+    if (!xTicks) {
+      xTicks = [];
+      for (var j = 0; j <= 5; j++) xTicks.push(xMin + (xMax - xMin) * j / 5);
+    }
+    xTicks.forEach(function (t) {
+      if (!isFinite(t)) { nanTicks++; return; }
+      var x = X(t);
+      b += openTag('line', { x1: x, y1: pad.t, x2: x, y2: pad.t + ih, stroke: '#f1eee5', 'stroke-width': 1 }) + closeTag('line');
+      b += el('text', { x: x, y: pad.t + ih + 16, 'text-anchor': 'middle', 'font-size': 10, fill: '#726f66', 'font-family': 'monospace' }, fmt(t));
+    });
+    /* 轴 */
+    b += openTag('line', { x1: pad.l, y1: pad.t, x2: pad.l, y2: pad.t + ih, stroke: '#dbd8cd', 'stroke-width': 1 }) + closeTag('line');
+    b += openTag('line', { x1: pad.l, y1: pad.t + ih, x2: W - pad.r, y2: pad.t + ih, stroke: '#dbd8cd', 'stroke-width': 1 }) + closeTag('line');
+
+    /* 系列 */
+    var barW = null;
+    (spec.series || []).forEach(function (s) {
+      var ok = (s.pts || []).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+      if (!ok.length) return;
+      if (s.type === 'bar') {
+        var bw = Math.max(1, Math.min(8, iw / Math.max(1, ok.length) * 0.7));
+        barW = bw;
+        ok.forEach(function (p) {
+          var y = Y(p.y);
+          if (!isFinite(y)) return;
+          var hh = Math.max(1, pad.t + ih - y);   /* 渲染下限：0 也要占一格 */
+          b += openTag('rect', {
+            x: X(p.x) - bw / 2, y: y, width: bw, height: hh, fill: s.color || '#1d5c78', opacity: s.opacity || 1
+          }) + closeTag('rect');
+        });
+      } else {
+        var d = ok.map(function (p, i) { return (i ? 'L' : 'M') + X(p.x).toFixed(2) + ' ' + Y(p.y).toFixed(2); }).join(' ');
+        b += openTag('path', {
+          d: d, fill: 'none', stroke: s.color || '#1d5c78', 'stroke-width': s.width || 2,
+          'stroke-dasharray': s.dash || null, 'stroke-linejoin': 'round'
+        }) + closeTag('path');
+        if (s.marker) {
+          ok.forEach(function (p) {
+            var isMine = p.mine !== false;
+            b += openTag('circle', {
+              cx: X(p.x), cy: Y(p.y), r: 4.5,
+              fill: isMine ? (s.color || '#1d5c78') : '#fdfcf8',
+              stroke: s.color || '#1d5c78', 'stroke-width': 2
+            }) + closeTag('circle');
+          });
+        }
+      }
+    });
+    /* 轴标题 */
+    if (spec.xLabel) b += el('text', { x: pad.l + iw / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': 11, fill: '#726f66' }, spec.xLabel);
+    if (spec.yLabel) b += el('text', { x: 14, y: pad.t + ih / 2, 'text-anchor': 'middle', 'font-size': 11, fill: '#726f66', transform: 'rotate(-90 14 ' + (pad.t + ih / 2) + ')' }, spec.yLabel);
+    if (spec.yLog) b += el('text', { x: pad.l + 4, y: pad.t + 11, 'font-size': 10, fill: '#a5a298' }, '对数刻度');
+
+    host.innerHTML = svgWrap(W, H, b);
+    return { dropped: dropped, nanTicks: nanTicks, barW: barW };
+  }
+
+  /* ============================================================
+   * 水平条（div，display:block —— 行内元素会忽略 width）
+   * ============================================================ */
+  function hbars(host, items, opts) {
+    opts = opts || {};
+    var max = opts.max || Math.max.apply(null, items.map(function (i) { return i.v; }).concat([1]));
+    var min = opts.min || 0;
+    var log = !!opts.log;
+    var floor = opts.floor || 1;
+    function frac(v) {
+      if (log) return Math.max(0, Math.log(Math.max(v, floor) / floor) / Math.log(max / floor));
+      return (v - min) / (max - min || 1);
+    }
+    var html = '';
+    items.forEach(function (it) {
+      var f = frac(it.v);
+      var w = f * 100;
+      if (opts.minFrac && w < opts.minFrac * 100) w = opts.minFrac * 100;   /* 渲染下限 */
+      html += openTag('div', { class: 'bar-row' }) +
+        el('div', { class: 'bar-lab' }, it.label) +
+        openTag('div', { class: 'bar-track' }) +
+        openTag('span', { class: 'bar-fill ' + (it.cls || ''), style: 'width:' + w.toFixed(2) + '%' }) + closeTag('span') +
+        closeTag('div') +
+        el('div', { class: 'bar-val' }, it.text) +
+        closeTag('div');
+    });
+    host.innerHTML = html;
+  }
+
+  /* ============================================================
+   * 头版 + KPI
+   * ============================================================ */
+  function fillHeadline() {
+    var h = A.headline;
+    var cells = [
+      { k: 'S(4) 实测', v: h.s4, n: '文献值 107（Brady 1983）· 逐位吻合', c: 'good' },
+      { k: 'Σ(4) 实测', v: h.sigma4, n: '文献值 13 · 同一趟穷举里拿到', c: 'good' },
+      { k: '穷举台数（n=4）', v: num(h.tnf4), n: '树范式；理论空间 ' + sci(h.tnf4flat) + ' 台', c: '' },
+      { k: '非停机机器里判不了', v: pct(h.residue4, 2), n: num(h.residue4n) + ' 台既没停机、也没被证明', c: 'bad' },
+      { k: '照捷径判 n=5 要多久', v: A.e2.years5txt, n: '按本机实测吞吐换算（下界）', c: 'bad' },
+      { k: '冠军稀有度', v: h.champAt107 + ' / ' + num(h.halting4), n: '会停机的 4 状态机器里跑到 107 步的台数', c: 'gold' }
+    ];
+    $('headline').innerHTML = cells.map(function (c) {
+      return openTag('div', { class: 'hl-cell ' + c.c }) +
+        el('div', { class: 'hl-k' }, c.k) +
+        el('div', { class: 'hl-v serif' }, String(c.v)) +
+        el('div', { class: 'hl-n' }, c.n) +
+        closeTag('div');
+    }).join('');
+  }
+
+  function fillKpis() {
+    $('kpis').innerHTML = A.kpis.map(function (k, i) {
+      var cls = ['cool', 'cool', 'hot', 'hot', 'gold', ''][i] || '';
+      return openTag('div', { class: 'kpi ' + cls }) +
+        el('div', { class: 'k-label' }, k.label) +
+        el('div', { class: 'k-val serif' }, String(k.value) + (k.unit ? ' ' + k.unit : '')) +
+        el('div', { class: 'k-note' }, k.note) +
+        closeTag('div');
+    }).join('');
+  }
+
+  /* ============================================================
+   * 第壹章：模拟器
+   * ============================================================ */
+  var PRESETS = {
+    champ4: { n: 4, table: '1RB/1LB 1LA/0LC 0LH/1LD 1RD/0RA', note: '4 状态冠军' },
+    champ3: { n: 3, table: '1RB/0LH 1LB/0RC 1LC/1LA', note: '3 状态冠军' },
+    cycle: { n: 2, table: '1RB/0LA 0LA/---', note: '循环机' },
+    escape: { n: 2, table: '1RB/1LB 0LA/---', note: '逃逸机' },
+    hard: { n: 3, table: '1RB/0LC 0LA/1RA 1LA/0RA', note: '未判定机' },
+    ones4: { n: 4, table: '1RB/0RC 1LA/1RA 1LH/1RD 1LD/0LB', note: '4 状态 Σ 冠军' }
+  };
+  var NAMES = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  var sim = {
+    n: 4, table: null, cap: 8192, base: 4096, tape: null,
+    head: 0, st: 0, steps: 0, ones: 0, lo: 0, hi: 0, status: 'ready', timer: null, key: 'champ4',
+    load: function (key) {
+      this.key = key;
+      var p = PRESETS[key];
+      this.n = p.n;
+      this.table = C.tableFromString(p.n, p.table);
+      this.reset();
+    },
+    reset: function () {
+      this.stop();
+      this.cap = 8192; this.base = 4096; this.tape = new Uint8Array(this.cap);
+      this.head = 0; this.st = 0; this.steps = 0; this.ones = 0;
+      this.lo = 0; this.hi = 0; this.status = 'ready';
+      this.render();
+    },
+    stop: function () { if (this.timer) { clearInterval(this.timer); this.timer = null; } },
+    step: function () {
+      if (this.status !== 'ready' && this.status !== 'run') return false;
+      if (this.head + this.base < 8 || this.head + this.base >= this.cap - 8) {
+        var ncap = this.cap * 2, nbase = ncap >> 1;
+        var nt = new Uint8Array(ncap);
+        nt.set(this.tape.subarray(0, this.cap), nbase - this.base);
+        this.tape = nt; this.cap = ncap; this.base = nbase;
+      }
+      var sym = this.tape[this.head + this.base];
+      var code = this.table[this.st * 2 + sym];
+      if (code < 0) { this.status = 'undef'; this.stop(); this.render(); return false; }
+      var o = C.decCode(code);
+      if (o.w !== sym) { this.tape[this.head + this.base] = o.w; this.ones += o.w - sym; }
+      if (o.next === this.n) { this.steps++; this.status = 'halt'; this.stop(); this.render(); return false; }
+      this.head += o.d ? 1 : -1;
+      this.st = o.next;
+      this.steps++;
+      if (this.head < this.lo) this.lo = this.head;
+      if (this.head > this.hi) this.hi = this.head;
+      this.status = 'run';
+      return true;
+    },
+    run: function (k) {
+      for (var i = 0; i < k; i++) { if (!this.step()) break; }
+      this.render();
+    },
+    play: function () {
+      var self = this;
+      this.stop();
+      if (this.status === 'halt' || this.status === 'undef') this.reset();
+      this.timer = setInterval(function () {
+        var sp = parseInt($('tm-speed').value, 10) || 12;
+        self.run(sp);
+        if (self.status === 'halt' || self.status === 'undef') self.stop();
+      }, 90);
+    },
+    cellAt: function (p) {
+      if (p < this.lo - 1 || p > this.hi + 1) return 0;
+      return this.tape[p + this.base];
+    },
+    render: function () {
+      var R0 = 20;
+      var from = this.head - R0, to = this.head + R0;
+      var html = '';
+      for (var p = from; p <= to; p++) {
+        var v = this.cellAt(p);
+        var cls = 'cell' + (v ? ' one' : ' zero') + (p === this.head ? ' head' : '');
+        html += el('div', { class: cls, 'data-p': p }, v ? '1' : '0');
+      }
+      $('tm-tape').innerHTML = html;
+      $('tm-steps').textContent = num(this.steps);
+      $('tm-state').textContent = NAMES[this.st] || String(this.st);
+      $('tm-ones').textContent = num(this.ones);
+      $('tm-head').textContent = String(this.head);
+      var v = $('tm-verdict');
+      var p = PRESETS[this.key];
+      var msg;
+      if (this.status === 'halt') {
+        v.className = 'verdict ok';
+        msg = '停机 —— ' + this.steps + ' 步，纸带上留下 ' + this.ones + ' 个 1。';
+        if (this.key === 'champ4') msg += ' 这就是 4 状态的冠军：没有任何 4 状态机器能跑得比它更久。';
+      } else if (this.status === 'undef') {
+        v.className = 'verdict warn';
+        msg = '撞到一个未定义的格子（TNF 里"永远访问不到"的项）。真实机器不会这样，这只是范式枚举留下的空位。';
+      } else if (this.status === 'run') {
+        v.className = 'verdict';
+        msg = '运行中：' + this.steps + ' 步，读写头在 ' + this.head + '，纸带跨度 ' + (this.hi - this.lo) + ' 格。';
+        if (this.key === 'cycle') msg += ' 注意它开始重复了 —— 构型一旦复现，就永远不会停。';
+        if (this.key === 'escape') msg += ' 它在往一个方向越走越远。';
+        if (this.key === 'hard') msg += ' 它在往左走，而且跨度一直在长 —— 这就是判不了的那种机器。';
+      } else {
+        v.className = 'verdict';
+        msg = '机器：' + p.note + '（' + p.n + ' 状态）。按「跑」或「单步」。';
+      }
+      v.textContent = msg;
+      renderTmTable();
+    }
+  };
+
+  function renderTmTable() {
+    var n = sim.n, t = sim.table;
+    var head = '<tr><th class="l">状态</th><th>读 0 → 写</th><th>走</th><th>去</th><th>读 1 → 写</th><th>走</th><th>去</th></tr>';
+    var rows = '';
+    for (var q = 0; q < n; q++) {
+      var cells = [];
+      for (var s = 0; s < 2; s++) {
+        var c = t[q * 2 + s];
+        if (c < 0) { cells.push(['—', '—', '—']); continue; }
+        var o = C.decCode(c);
+        cells.push([String(o.w), o.d ? 'R' : 'L', o.next === n ? 'H' : NAMES[o.next]]);
+      }
+      rows += '<tr' + (q === sim.st ? ' class="hi"' : '') + '>' +
+        el('td', { class: 'l mono' }, NAMES[q]) +
+        cells.map(function (c) { return el('td', { class: 'mono' }, c[0]) + el('td', { class: 'mono' }, c[1]) + el('td', { class: 'mono' }, c[2]); }).join('') +
+        '</tr>';
+    }
+    $('tbl-tm').innerHTML = head + rows;
+  }
+
+  /* ============================================================
+   * 第贰章
+   * ============================================================ */
+  function fillE1() {
+    var rows = A.e1.rows;
+    var h = '<tr><th class="l">n</th><th>树范式台数</th><th>会停机</th><th>S(n) 实测 / 文献</th><th>Σ(n) 实测 / 文献</th><th>耗时</th></tr>';
+    rows.forEach(function (r) {
+      h += '<tr>' +
+        el('td', { class: 'l mono' }, String(r.n)) +
+        el('td', { class: 'mono' }, num(r.tnf)) +
+        el('td', { class: 'mono' }, num(r.halt)) +
+        el('td', { class: 'cellhit' }, r.S + ' / ' + r.Sknown) +
+        el('td', { class: 'cellhit' }, r.Sigma + ' / ' + r.Sigmaknown) +
+        el('td', { class: 'mono' }, r.ms + ' ms') +
+        '</tr>';
+    });
+    $('tbl-e1').innerHTML = h;
+    var r4 = rows.filter(function (r) { return r.n === 4; })[0];
+    $('n1-champ-steps').textContent = String(r4.S);
+    $('n2-flat4').textContent = sci(A.e2.rows.filter(function (x) { return x.n === 4; })[0].flat);
+    $('n2-tnf4').textContent = num(r4.tnf);
+  }
+
+  function fillCost() {
+    var rows = A.e2.rows.filter(function (r) { return r.n <= 5; });
+    var items = [];
+    rows.forEach(function (r) {
+      items.push({ label: 'n=' + r.n + ' 理论', v: r.flat, cls: 'gold', text: sci(r.flat) });
+      if (r.n === 5) items.push({ label: 'n=5 树范式', v: A.e2.tnf5, cls: 'hot', text: num(A.e2.tnf5) + ' *' });
+      else items.push({ label: 'n=' + r.n + ' 树范式', v: r.tnf || 1, cls: 'cool', text: r.tnf ? num(r.tnf) : '—' });
+    });
+    hbars($('bars-cost'), items, { log: true, floor: 1, minFrac: 0.012 });
+  }
+
+  /* ============================================================
+   * 第叁章
+   * ============================================================ */
+  function fillRules() {
+    var r4 = A.e3.res4;
+    var list = [
+      ['跑到停机', '停机 = 会停机的**严格**证明：它真的停了，步数就是答案。'],
+      ['构型重复', '如果某一刻的（状态 + 纸带 + 头位置）与之前某一刻**平移等价地**一模一样，此后必然重演 —— 永不停机。这是严格证明，不是启发式。'],
+      ['单向逃逸', '如果头一路走进从未到过的区域，而局部图案复现、且期间从未回退超过 R 格，那么从复现那一刻起整段行为是前一段的平移复制 —— 永不停机。同样是严格证明。'],
+      ['未判定', '三条都不成立。**这是一个独立的第三态**，不是"否"。把它当成"否"是这类实验里最容易犯、最难发现的错。']
+    ];
+    $('dec-rules').innerHTML = list.map(function (x, i) {
+      return openTag('li', { class: i === 3 ? 'last' : null }) +
+        '<b>' + esc(x[0]) + '</b> —— ' + x[1].replace(/\*\*(.+?)\*\*/g, '<b>$1</b>') + closeTag('li');
+    }).join('');
+  }
+
+  function fillTiers() {
+    var rows = A.charts.tiers;
+    var html = '';
+    rows.forEach(function (r) {
+      var tot = r.total || 1;
+      var segs = [
+        ['cycle', r.cycle], ['escape', r.escape], ['undecided', r.undecided]
+      ];
+      html += openTag('div', { class: 'bar-row tiers' }) +
+        el('div', { class: 'bar-lab' }, r.label) +
+        openTag('div', { class: 'bar-track stack' }) +
+        segs.map(function (s) {
+          var w = s[1] / tot * 100;
+          return openTag('span', { class: 'bar-seg ' + s[0], style: 'width:' + w.toFixed(3) + '%' }) + closeTag('span');
+        }).join('') +
+        closeTag('div') +
+        el('div', { class: 'bar-val' }, num(r.total) + ' 台') +
+        closeTag('div');
+    });
+    $('chart-tiers').innerHTML = html;
+    var r4 = A.e3.res4;
+    $('tiers-note').innerHTML = '分母 = 非停机机器。n=4：' + num(r4.holdouts) + ' 台里 ' +
+      num(r4.counts.cycle) + ' 台被构型重复拿下（' + pct(r4.counts.cycle / r4.holdouts, 1) + '），' +
+      num(r4.counts.escape) + ' 台被单向逃逸拿下（' + pct(r4.counts.escape / r4.holdouts, 1) + '），' +
+      '剩 <span class="hl">' + num(r4.undecided) + '</span> 台未判定（' + pct(r4.frac, 2) + '）。';
+  }
+
+  function fillSpan() {
+    var pts = A.charts.spanGrowth;
+    lineChart($('chart-span'), {
+      w: 700, h: 260, yLog: false,
+      xLabel: '模拟预算（步）', yLabel: '纸带跨度中位数（格）',
+      xTicks: pts.map(function (p) { return p.x; }),
+      series: [{ name: '跨度', color: '#ad2f2f', pts: pts, marker: true, width: 2 }]
+    });
+  }
+
+  var DEMO = {
+    halt: { n: 4, table: '1RB/1LB 1LA/0LC 0LH/1LD 1RD/0RA', label: '会停机' },
+    cycle: { n: 2, table: '1RB/0LA 0LA/---', label: '构型重复' },
+    escape: { n: 2, table: '1RB/1LB 0LA/---', label: '单向逃逸' },
+    hard: { n: 3, table: '1RB/0LC 0LA/1RA 1LA/0RA', label: '未判定' }
+  };
+  var demoKey = 'halt';
+  function fillDemo() {
+    var html = '';
+    for (var k in DEMO) {
+      html += el('button', { class: 'ghost' + (k === demoKey ? ' on' : ''), 'data-demo': k }, DEMO[k].label);
+    }
+    $('demo-btns').innerHTML = html;
+    Array.prototype.forEach.call($('demo-btns').querySelectorAll('button'), function (b) {
+      b.addEventListener('click', function () { runDemo(b.getAttribute('data-demo')); });
+    });
+    runDemo(demoKey);
+  }
+  function runDemo(k) {
+    demoKey = k;
+    Array.prototype.forEach.call($('demo-btns').querySelectorAll('button'), function (b) {
+      b.className = 'ghost' + (b.getAttribute('data-demo') === k ? ' on' : '');
+    });
+    var d = DEMO[k];
+    var t = C.tableFromString(d.n, d.table);
+    var r = C.runTM(d.n, t, { maxSteps: 20000 });
+    var names = { halt: '停机（确定）', cycle: '构型重复（证明永不停机）', escape: '单向逃逸（证明永不停机）', budget: '未判定', over: '未判定', undef: '未定义项' };
+    $('demo-status').textContent = (names[r.status] || r.status).replace(/（.*/, '');
+    $('demo-steps').textContent = r.status === 'budget' || r.status === 'over' ? '≥' + num(r.steps) : num(r.steps);
+    $('demo-span').textContent = num(r.hi - r.lo);
+    var v = $('demo-verdict');
+    var txt = '<code>' + C.tableToString(d.n, t) + '</code> —— ' + (names[r.status] || r.status) + '。';
+    if (r.status === 'halt') { v.className = 'verdict ok'; txt += ' 它真的停了，跑了 ' + r.steps + ' 步、留下 ' + r.ones + ' 个 1。'; }
+    else if (r.status === 'cycle') { v.className = 'verdict ok'; txt += ' 同一刻的构型在平移意义下复现了，所以永不停机 —— 这是严格证明。'; }
+    else if (r.status === 'escape') { v.className = 'verdict ok'; txt += ' 头一路走进新区域、局部图案复现且从不回退，所以永不停机 —— 同样是严格证明。'; }
+    else { v.className = 'verdict bad'; txt += ' 跑满 ' + num(r.steps) + ' 步既没停、也没被两条规则拿下；纸带跨度已经长到 ' + (r.hi - r.lo) + ' 格。加预算也没用。'; }
+    v.innerHTML = txt;
+  }
+
+  /* ============================================================
+   * 第肆章
+   * ============================================================ */
+  function fillChamp() {
+    var h = '<tr><th class="l">n</th><th class="l">S 冠军（跑得最久）</th><th>步数</th><th class="l">Σ 冠军（留下最多 1）</th><th>步数</th><th>1 的个数</th></tr>';
+    A.e1.rows.forEach(function (r) {
+      /* Σ 冠军跑了几步，从内联模型里现算 —— 不写死 */
+      var gs = '—';
+      if (r.champSigma) {
+        var rr = C.runTM(r.n, C.tableFromString(r.n, r.champSigma), { maxSteps: 2000 });
+        if (rr.status === 'halt') gs = String(rr.steps);
+      }
+      h += '<tr>' +
+        el('td', { class: 'l mono' }, String(r.n)) +
+        el('td', { class: 'l mono' }, r.champS || '—') +
+        el('td', { class: 'cellhit' }, String(r.S)) +
+        el('td', { class: 'l mono' }, r.champSigma || '—') +
+        el('td', { class: 'mono' }, gs) +
+        el('td', { class: 'cellhit' }, String(r.Sigma)) +
+        '</tr>';
+    });
+    $('tbl-champ').innerHTML = h;
+    $('brady-table').textContent = C.FACTS.bradyTable;
+    var bt = C.tableFromString(4, C.FACTS.bradyTable);
+    var br = C.runTM(4, bt, { maxSteps: 10000, spanCap: 0, frontierR: 0 });
+    $('brady-check').textContent = br.steps + ' 步 / ' + br.ones + ' 个 1';
+
+    var hist = A.charts.haltHist;
+    lineChart($('chart-hist'), {
+      w: 700, h: 280, yLog: true, xLabel: '停机用的步数', yLabel: '机器台数',
+      yMin: 1,
+      series: [{ name: '台数', color: '#1d5c78', pts: hist, type: 'bar' }]
+    });
+    var surv = A.charts.survival;
+    lineChart($('chart-surv'), {
+      w: 700, h: 280, yLog: true, xLabel: '至少跑了 k 步', yLabel: '还有多少台机器',
+      yMin: 1,
+      series: [{ name: '存活', color: '#ad2f2f', pts: surv, width: 2, marker: true }]
+    });
+  }
+
+  /* ============================================================
+   * 第伍章
+   * ============================================================ */
+  function fillWall() {
+    var g = A.charts.growth;
+    lineChart($('chart-growth'), {
+      w: 700, h: 320, yLog: true,
+      xLabel: '状态数 n', yLabel: '值（对数）', yMin: 1,
+      xTicks: g.map(function (p) { return p.n; }),
+      series: [
+        { name: 'S(n)', color: '#1d5c78', pts: g.map(function (p) { return { x: p.n, y: p.S, mine: p.mine }; }), marker: true, width: 2 },
+        { name: 'Σ(n)', color: '#8f6a0e', pts: g.map(function (p) { return { x: p.n, y: p.Sigma, mine: p.mine }; }), marker: true, width: 2, dash: '5 4' }
+      ]
+    });
+    $('n5-s5').textContent = num(C.KNOWN.S[5]);
+    $('cost4').textContent = sci(A.e2.decideSteps4) + ' 步';
+    $('cost5').textContent = sci(A.e2.decideSteps5) + ' 步';
+    $('thru-txt').textContent = (A.e2.thru / 1e6).toFixed(1) + 'M 步/秒';
+    $('years5').textContent = A.e2.years5txt;
+    $('rnd-n').textContent = num(A.e5.samples);
+    $('rnd-und').textContent = num((A.e5.counts.budget || 0) + (A.e5.counts.over || 0));
+    $('rnd-max').textContent = num(A.e5.maxStepsFound);
+
+    var tl = [
+      { y: '1962', t: 'Tibor Radó 提出忙碌的海狸游戏：S(n) 是一个"能定义但算不出来"的函数。' },
+      { y: '1965', t: 'Lin & Rado 定出 <b>S(3) = 21</b>。' },
+      { y: '1983', t: 'Brady 定出 <b>S(4) = 107</b>。此后四十多年没有推进。' },
+      { y: '2024', t: 'bbchallenge 协作组枚举 <b>181,385,789</b> 台 5 状态机器，定出 <b>S(5) = 47,176,870</b>。' },
+      { y: '2025', t: '同一批人用 Coq 把这个结果形式化（arXiv:2509.12337）—— 历史上第一个被机器验证过的海狸数。' },
+      { y: '2026', t: 'BB(6) 仍是未解问题；目前只有下界，而且已经大到没法写成常规数字。' },
+      { y: '本次', t: '<b>本装置：3,490,102 台 4 状态机器，3.3 秒，S(4)=107 / Σ(4)=13 逐位复现。</b>', mine: true }
+    ];
+    $('timeline').innerHTML = tl.map(function (x) {
+      return openTag('li') + el('span', { class: 'tl-y' + (x.mine ? ' mine' : '') }, x.y) + '<span>' + x.t + '</span>' + closeTag('li');
+    }).join('');
+    $('s6-line').textContent = '第 6 个数目前只有下界：' + C.FACTS.s6Lower + '（' + C.FACTS.s6Source + '）。';
+
+    var res4 = A.e3.res4;
+    $('res4-line').textContent = num(res4.holdouts) + ' 台';
+    $('res4-cover').textContent = pct(1 - res4.frac, 1);
+    $('res4-left').textContent = num(res4.undecided) + ' 台（' + pct(res4.frac, 2) + '）';
+    var esc = A.e3.escalate4;
+    $('res4-stuck1').textContent = esc.length ? pct(esc[0].leftFrac, 0) : '—';
+    $('res4-stuck').textContent = esc.length ? pct(esc[esc.length - 1].leftFrac, 1) : '—';
+  }
+
+  /* ============================================================
+   * 第陆章
+   * ============================================================ */
+  function fillTail() {
+    $('cons').innerHTML = A.conclusions.map(function (c) {
+      return openTag('li') + c.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>') + closeTag('li');
+    }).join('');
+    $('limits').innerHTML = A.limits.map(function (c) {
+      return openTag('li') + c.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>') + closeTag('li');
+    }).join('');
+    var h = '<tr><th class="l">检查项</th><th class="l">怎么查的</th><th class="l">结果</th></tr>';
+    A.verify.forEach(function (v) {
+      h += '<tr>' + el('td', { class: 'l' }, v.item) + el('td', { class: 'l' }, v.method) +
+        el('td', { class: 'l' + (v.result.indexOf('✗') >= 0 ? ' worst' : ' cellhit') }, v.result) + '</tr>';
+    });
+    $('tbl-verify').innerHTML = h;
+  }
+
+  /* ============================================================
+   * 页面自检 + 探针
+   * ============================================================ */
+  function liveCheck() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (c) {
+      var svgs = c.querySelectorAll('svg');
+      if (!svgs.length) { bad.push(c.id + ' 没有 svg'); return; }
+      var stray = 0;
+      Array.prototype.forEach.call(c.children, function (ch) {
+        if (ch.tagName.toLowerCase() !== 'svg') stray++;
+      });
+      if (stray) bad.push(c.id + ' 里有 ' + stray + ' 个非 svg 孩子（SVG 没被正确打开）');
+      if (!svgs[0].querySelectorAll('path,rect,circle').length) bad.push(c.id + ' 的 svg 里没有图形');
+    });
+    return bad;
+  }
+
+  window.__probe = {
+    /* 确定性驱动：显式推进，不靠"等一会儿再看" */
+    load: function (k) { sim.load(k); return sim.n; },
+    steps: function (k) { sim.run(k); return { status: sim.status, steps: sim.steps, ones: sim.ones, head: sim.head, span: sim.hi - sim.lo }; },
+    play: function () { sim.play(); return true; },
+    stop: function () { sim.stop(); return true; },
+    demo: function (k) { runDemo(k); return { status: $('demo-status').textContent, steps: $('demo-steps').textContent }; },
+    viewport: function () { return { innerW: window.innerWidth, innerH: window.innerHeight, clientW: document.documentElement.clientWidth }; },
+    overflow: function () {
+      var o = { doc: document.documentElement.scrollWidth - document.documentElement.clientWidth, tables: [] };
+      document.querySelectorAll('.tbl-wrap').forEach(function (w) {
+        if (w.scrollWidth > w.clientWidth + 1) o.tables.push({ id: w.querySelector('table') ? w.querySelector('table').id : '?', over: w.scrollWidth - w.clientWidth });
+      });
+      return o;
+    },
+    /* 返回**全部**交互元素的实测高度，阈值交给验证脚本判 ——
+       把 44 硬编码在探针里，宽屏那一档就会报一堆假失败 */
+    touch: function () {
+      var out = [];
+      document.querySelectorAll('button, select, input, a').forEach(function (e) {
+        var r = e.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) return;
+        out.push({ id: (e.id || e.tagName + '.' + String(e.className)).slice(0, 44), h: Math.round(r.height * 10) / 10 });
+      });
+      return out;
+    },
+    counts: function () {
+      var empty = [];
+      document.querySelectorAll('.chart').forEach(function (c) {
+        var s = c.querySelector('svg');
+        if (!s || !s.children.length) empty.push(c.id);
+      });
+      var ids = ['n1-champ-steps', 'n2-flat4', 'n2-tnf4', 'n5-s5', 'cost4', 'cost5', 'years5',
+        'rnd-n', 'rnd-und', 'rnd-max', 'brady-check', 'res4-left', 'res4-stuck', 's6-line', 'thru-txt'];
+      var blank = ids.filter(function (id) {
+        var e = document.getElementById(id);
+        return !e || !e.textContent.trim() || e.textContent.trim() === '—';
+      });
+      return {
+        secs: document.querySelectorAll('.sec').length,
+        kpis: document.querySelectorAll('.kpi').length,
+        headlineCells: document.querySelectorAll('.hl-cell').length,
+        cons: document.querySelectorAll('.cons li').length,
+        limits: document.querySelectorAll('.limits li').length,
+        verify: document.querySelectorAll('#tbl-verify tr').length - 1,
+        charts: document.querySelectorAll('.chart').length,
+        chartSvg: document.querySelectorAll('.chart svg').length,
+        emptyCharts: empty,
+        barsHosts: document.querySelectorAll('.bars').length,
+        tapeCells: document.querySelectorAll('#tm-tape .cell').length,
+        headCells: document.querySelectorAll('#tm-tape .cell.head').length,
+        oneCells: document.querySelectorAll('#tm-tape .cell.one').length,
+        steps: document.querySelectorAll('.steps li').length,
+        timeline: document.querySelectorAll('.timeline li').length,
+        e1rows: document.querySelectorAll('#tbl-e1 tr').length - 1,
+        champRows: document.querySelectorAll('#tbl-champ tr').length - 1,
+        tmRows: document.querySelectorAll('#tbl-tm tr').length - 1,
+        tiersSegs: document.querySelectorAll('#chart-tiers .bar-seg').length,
+        costBars: document.querySelectorAll('#bars-cost .bar-fill').length,
+        blankIds: blank
+      };
+    },
+    charts: function () {
+      var out = [];
+      document.querySelectorAll('.chart').forEach(function (c) {
+        var svg = c.querySelector('svg');
+        var rect = c.getBoundingClientRect();
+        var ticks = 0, nanTicks = 0, series = 0, kids = 0;
+        if (svg) {
+          kids = svg.children.length;
+          var texts = svg.querySelectorAll('text');
+          ticks = texts.length;
+          Array.prototype.forEach.call(texts, function (t) {
+            if (/NaN|Infinity|undefined/.test(t.textContent)) nanTicks++;
+          });
+          series = svg.querySelectorAll('path,rect,circle').length;
+        }
+        var stray = Array.prototype.filter.call(c.children, function (ch) {
+          return ch.tagName.toLowerCase() !== 'svg';
+        }).length;
+        out.push({
+          id: c.id, svg: !!svg, kids: kids, stray: stray, ticks: ticks, nanTicks: nanTicks,
+          series: series, w: Math.round(rect.width), h: Math.round(rect.height)
+        });
+      });
+      return out;
+    },
+    kpiVals: function () {
+      var out = [];
+      document.querySelectorAll('.kpi').forEach(function (k) {
+        var r = k.getBoundingClientRect();
+        var v = k.querySelector('.k-val');
+        out.push({ val: v ? v.textContent : null, w: Math.round(r.width), h: Math.round(r.height) });
+      });
+      return out;
+    },
+    /* 页面内自检：同一份内联模型在浏览器里复算，必须与标定逐项相同 */
+    live: function () {
+      var out = {};
+      try {
+        var t3 = C.tnfEnumerate(3, { maxSteps: 60 }, null);
+        out.n3machines = t3.machines; out.n3S = t3.maxSteps; out.n3Sigma = t3.maxOnes;
+        out.n3ok = (t3.machines === 20626 && t3.maxSteps === 21 && t3.maxOnes === 6);
+        var b = C.tableFromString(4, C.FACTS.bradyTable);
+        var rb = C.runTM(4, b, { maxSteps: 10000, spanCap: 0, frontierR: 0 });
+        out.brady = rb.steps + '步/' + rb.ones + '个1';
+        out.bradyOk = (rb.status === 'halt' && rb.steps === 107 && rb.ones === 13);
+        var cy = C.runTM(2, C.tableFromString(2, PRESETS.cycle.table), { maxSteps: 500 });
+        out.cycleOk = (cy.status === 'cycle');
+        var es = C.runTM(2, C.tableFromString(2, PRESETS.escape.table), { maxSteps: 500 });
+        out.escapeOk = (es.status === 'escape');
+        var hd = C.runTM(3, C.tableFromString(3, PRESETS.hard.table), { maxSteps: 20000 });
+        out.hardOk = (hd.status === 'budget');
+        /* 反向声音性：真会停机的机器绝不能被判成非停机 */
+        var champ = C.runTM(4, C.tableFromString(4, PRESETS.champ4.table), { maxSteps: 500 });
+        out.champOk = (champ.status === 'halt' && champ.steps === 107);
+        out.ran = true;
+      } catch (e) { out.err = String((e && e.message) || e); }
+      return out;
+    },
+    bars: function (sel) {
+      var scope = sel ? document.querySelector(sel) : document;
+      if (!scope) return [];
+      var out = [];
+      scope.querySelectorAll('.bar-fill, .bar-seg').forEach(function (b) {
+        out.push({ cls: b.className, w: Math.round(b.getBoundingClientRect().width * 10) / 10 });
+      });
+      return out;
+    },
+    nanTicks: function () {
+      var bad = 0;
+      document.querySelectorAll('.chart text').forEach(function (t) {
+        if (/NaN|Infinity|undefined/.test(t.textContent)) bad++;
+      });
+      return bad;
+    },
+    texts: function () {
+      var o = {};
+      ['n1-champ-steps', 'n2-flat4', 'n2-tnf4', 'n5-s5', 'cost4', 'cost5', 'years5', 'rnd-n', 'rnd-und', 'rnd-max',
+        'brady-check', 'res4-left', 'res4-stuck', 's6-line', 'thru-txt'].forEach(function (id) {
+          var e = document.getElementById(id);
+          o[id] = e ? e.textContent : null;
+        });
+      var h = document.getElementById('headline');
+      o.headline = h ? h.textContent.replace(/\s+/g, ' ').slice(0, 400) : null;
+      var k = document.getElementById('kpis');
+      o.kpis = k ? k.textContent.replace(/\s+/g, ' ').slice(0, 300) : null;
+      o.sectionText = {};
+      for (var i = 1; i <= 6; i++) {
+        var s = document.getElementById('sec' + i);
+        o.sectionText['sec' + i] = s ? s.textContent.replace(/\s+/g, ' ') : '';
+      }
+      return o;
+    },
+    errors: function () { return window.__err || []; },
+    liveCheck: liveCheck
+  };
+
+  /* ============================================================
+   * 启动
+   * ============================================================ */
+  function boot() {
+    fillHeadline();
+    fillKpis();
+    fillE1();
+    fillCost();
+    fillRules();
+    fillTiers();
+    fillSpan();
+    fillDemo();
+    fillChamp();
+    fillWall();
+    fillTail();
+
+    sim.load('champ4');
+    $('tm-run').addEventListener('click', function () {
+      if (sim.timer) { sim.stop(); $('tm-run').textContent = '跑'; }
+      else { sim.play(); $('tm-run').textContent = '停'; }
+    });
+    $('tm-step').addEventListener('click', function () { sim.stop(); $('tm-run').textContent = '跑'; sim.run(1); });
+    $('tm-reset').addEventListener('click', function () { sim.stop(); $('tm-run').textContent = '跑'; sim.reset(); });
+    $('tm-preset').addEventListener('change', function () { sim.load(this.value); });
+    $('tm-speed').addEventListener('input', function () { });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+
+</script>
+</body>
+</html>

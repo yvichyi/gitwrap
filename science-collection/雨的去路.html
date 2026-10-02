@@ -1,0 +1,1180 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="改造一块街区，降下一场虚拟暴雨，观察屋顶、街道、土壤和排口之间的水量变化。">
+<title>雨的去路 · 城市水文交互实验</title>
+<style>
+@charset "UTF-8";
+:root {
+  color-scheme: light;
+  --paper: #f4f0e8;
+  --paper-shade: #ebe5d9;
+  --white: #fffdf8;
+  --ink: #223236;
+  --muted: #697774;
+  --line: #d8d3c8;
+  --teal: #376f6b;
+  --teal-dark: #285350;
+  --blue: #4b8c9a;
+  --blue-pale: #c8dde0;
+  --rust: #b75f45;
+  --moss: #728b72;
+  --serif: "Iowan Old Style", "Palatino Linotype", "Songti SC", "Noto Serif CJK SC", "STSong", serif;
+  --sans: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 18px; }
+body {
+  margin: 0;
+  min-width: 320px;
+  color: var(--ink);
+  background: radial-gradient(ellipse at 75% 3%, rgba(151, 183, 167, .12), transparent 38rem), var(--paper);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visible, canvas:focus-visible { outline: 3px solid #b65e43; outline-offset: 3px; }
+button { color: inherit; }
+.page-shell { width: min(1440px, calc(100% - 76px)); margin: 0 auto; }
+
+.masthead { min-height: 66px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: .1em; }
+.brand-mark { width: 22px; height: 23px; position: relative; display: inline-block; }
+.brand-mark i { position: absolute; left: 2px; width: 18px; height: 7px; border: 1.5px solid var(--teal); border-radius: 50%; transform: rotate(-27deg); }
+.brand-mark i:nth-child(1) { top: 2px; }
+.brand-mark i:nth-child(2) { top: 8px; left: 1px; }
+.brand-mark i:nth-child(3) { top: 14px; }
+.edition { color: var(--muted); font-size: 11px; letter-spacing: .12em; }
+.edition b { padding: 0 6px; color: var(--rust); font-weight: 500; }
+
+.hero { position: relative; min-height: 290px; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(270px, .8fr); align-items: center; column-gap: 8%; padding: 35px 0 28px; }
+.hero::before { content: ""; position: absolute; z-index: -1; width: 390px; height: 240px; right: 10%; top: 21px; opacity: .43; background: repeating-radial-gradient(ellipse at 50% 70%, transparent 0 19px, rgba(69, 117, 109, .13) 20px 21px, transparent 22px 34px); clip-path: inset(2% 0 12% 0); }
+.eyebrow, .section-kicker { margin: 0; color: var(--teal); font-size: 10px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
+.eyebrow { display: flex; align-items: center; gap: 9px; }
+.eyebrow-dot, .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--rust); box-shadow: 0 0 0 4px rgba(183, 95, 69, .1); }
+h1, h2, h3, p { margin-top: 0; }
+h1 { margin: 13px 0 12px; font-family: var(--serif); font-size: clamp(54px, 7.7vw, 92px); font-weight: 500; letter-spacing: -.065em; line-height: .99; }
+h1 span { margin-left: 11px; color: var(--teal); font-style: italic; font-weight: 400; }
+.hero-deck { margin: 0; color: #566664; font-family: var(--serif); font-size: 16px; line-height: 1.75; }
+.hero-note { position: relative; max-width: 350px; align-self: center; margin: 25px 0 6px auto; padding: 20px 31px 23px 24px; border-left: 1px solid #9aafa6; color: #53615e; }
+.hero-note::before { content: ""; position: absolute; top: -6px; left: -4px; width: 7px; height: 7px; border-radius: 50%; background: var(--rust); }
+.note-index { display: block; margin-bottom: 9px; color: var(--rust); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.hero-note p { margin: 0; font-size: 12px; line-height: 1.9; }
+.note-arrow { position: absolute; right: 4px; bottom: 13px; color: var(--teal); font-family: var(--serif); font-size: 26px; }
+.hero-rule { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); color: #78837e; font-size: 9px; letter-spacing: .1em; }
+
+.workspace { padding-top: 40px; }
+.workspace-head, .card-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+.section-kicker { margin-bottom: 9px; color: #82908a; font-size: 9px; letter-spacing: .14em; }
+.section-kicker span { padding: 0 4px; color: var(--rust); }
+h2 { margin: 0; font-family: var(--serif); font-size: clamp(23px, 2.8vw, 31px); font-weight: 500; letter-spacing: -.035em; }
+.legend-inline { display: flex; gap: 17px; padding-bottom: 4px; color: #687773; font-size: 10px; }
+.legend-inline span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend-inline i { display: inline-block; width: 12px; height: 8px; }
+.legend-rain { border-radius: 50%; background: #77bac0; }
+.legend-route { border-top: 1px dashed #587c72; }
+.legend-outlet { border-radius: 50%; background: var(--rust); }
+.work-grid { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(310px, .72fr); gap: 15px; margin-top: 18px; align-items: stretch; }
+.map-card, .control-card, .chart-card, .ledger-card { border: 1px solid var(--line); background: rgba(255, 253, 248, .78); box-shadow: 0 7px 26px rgba(49, 62, 55, .035); }
+.map-card { min-width: 0; overflow: hidden; }
+.map-toolbar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 17px; border-bottom: 1px solid #e4dfd5; }
+.map-caption { display: flex; align-items: center; gap: 9px; color: #61706c; font-size: 10px; }
+.map-caption .live-dot { width: 6px; height: 6px; background: #9ca79d; box-shadow: none; transition: background .2s; }
+.map-caption.is-running .live-dot { background: #55a39a; box-shadow: 0 0 0 4px rgba(85, 163, 154, .12); animation: pulse 1.5s ease infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 7px rgba(85, 163, 154, 0); } }
+.map-time { color: var(--teal-dark); font-family: var(--serif); font-size: 18px; font-variant-numeric: tabular-nums; }
+.map-time small { color: #909992; font-family: var(--sans); font-size: 9px; }
+.map-wrap { position: relative; min-height: 375px; overflow: hidden; background: linear-gradient(155deg, #f5f3eb 0%, #ecece2 100%); }
+#district { display: block; width: 100%; height: auto; aspect-ratio: 920 / 530; touch-action: none; cursor: crosshair; }
+.map-compass { position: absolute; top: 17px; left: 18px; display: grid; justify-items: center; gap: 1px; color: #71827a; font-size: 8px; letter-spacing: .1em; pointer-events: none; }
+.map-compass b { font-size: 17px; font-weight: 400; }
+.map-scale { position: absolute; right: 21px; bottom: 15px; display: flex; align-items: center; gap: 7px; color: #738078; font-size: 9px; pointer-events: none; }
+.map-scale span { width: 48px; height: 5px; border-right: 1px solid; border-left: 1px solid; border-bottom: 1px solid; }
+.map-footer { min-height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 17px; border-top: 1px solid #e4dfd5; }
+.tile-inspector { display: grid; grid-template-columns: auto auto; column-gap: 10px; align-items: baseline; min-width: 0; }
+.inspector-label { grid-row: span 2; color: #8e9790; font-size: 9px; letter-spacing: .08em; }
+.tile-inspector strong { color: var(--teal-dark); font-family: var(--serif); font-size: 13px; font-weight: 500; }
+.tile-inspector > span:last-child { overflow: hidden; color: #8a928b; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.brush-note { color: #8a928b; font-size: 9px; white-space: nowrap; }
+kbd { padding: 2px 4px; border: 1px solid #d9d5ca; border-radius: 3px; color: #64716c; background: #f5f2ea; font: inherit; }
+.brush-note span { padding: 0 4px; color: var(--rust); }
+
+.control-card { display: flex; flex-direction: column; padding: 17px 17px 13px; }
+.control-topline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.control-index { color: #88928c; font-size: 9px; font-weight: 700; letter-spacing: .13em; }
+.local-tag { display: inline-flex; align-items: center; gap: 5px; color: #7f8b83; font-size: 8px; letter-spacing: .08em; }
+.local-tag i { width: 5px; height: 5px; border-radius: 50%; background: var(--moss); }
+.scenario-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.scenario-button { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px 7px; border: 1px solid #e4dfd5; background: #faf8f2; text-align: left; cursor: pointer; transition: background .16s, border-color .16s; }
+.scenario-button:hover { border-color: #a8b9ab; }
+.scenario-button.selected { border-color: #8ca69a; background: #eff2e9; }
+.scenario-mark { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 50%; color: #fff; font-family: var(--serif); font-size: 12px; }
+.mark-old { background: #9b7965; }
+.mark-green { background: var(--moss); }
+.scenario-button b, .scenario-button small { display: block; }
+.scenario-button b { color: #3e4b48; font-size: 10px; font-weight: 600; }
+.scenario-button small { margin-top: 2px; color: #8d9690; font-size: 8px; white-space: nowrap; }
+.scenario-check { display: none; margin-left: auto; color: var(--teal); font-size: 8px; }
+.scenario-button.selected .scenario-check { display: block; }
+.divider-label { display: flex; align-items: center; gap: 7px; margin: 15px 0 9px; color: #52645e; font-size: 10px; font-weight: 700; }
+.divider-label i { height: 1px; flex: 1; background: #e4dfd5; }
+.divider-label small { color: #9ba199; font-size: 8px; font-weight: 400; white-space: nowrap; }
+.slider-label { display: flex; align-items: center; justify-content: space-between; margin: 0 1px 2px; color: #6c7974; font-size: 9px; }
+.slider-label output { color: var(--teal-dark); font-family: var(--serif); font-size: 12px; }
+input[type="range"] { width: 100%; height: 15px; margin: 1px 0 0; accent-color: var(--teal); cursor: pointer; }
+.range-ends { display: flex; justify-content: space-between; margin-top: -1px; color: #a1a69f; font-size: 7px; }
+.brush-divider { margin-top: 12px; }
+.brushes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.brush { min-width: 0; display: grid; justify-items: center; gap: 5px; padding: 7px 2px 6px; border: 1px solid transparent; background: #f6f3eb; color: #697570; font-size: 8px; cursor: pointer; }
+.brush:hover { border-color: #b9c8ba; }
+.brush.active { border-color: #8ea69a; color: var(--teal-dark); background: #edf1e8; }
+.swatch { width: 18px; height: 12px; border: 1px solid rgba(41, 59, 53, .14); transform: skew(-19deg); }
+.sw-road { background: #bcb8a9; }
+.sw-roof { background: #b96e53; }
+.sw-permeable { background: #b89a72; }
+.sw-garden { background: #789276; }
+.control-actions { display: grid; grid-template-columns: 1fr 65px 34px; gap: 6px; margin-top: auto; padding-top: 14px; }
+.button-primary, .button-step, .button-reset { min-height: 37px; border: 1px solid var(--teal); cursor: pointer; transition: background .16s, transform .16s; }
+.button-primary { display: flex; align-items: center; justify-content: center; gap: 8px; color: #fffdf8; background: var(--teal); font-size: 10px; letter-spacing: .03em; }
+.button-primary:hover { background: var(--teal-dark); }
+.button-primary:active, .button-step:active, .button-reset:active { transform: translateY(1px); }
+.play-symbol { font-size: 9px; }
+.button-step { color: var(--teal-dark); background: transparent; font-size: 9px; }
+.button-step:hover, .button-reset:hover { background: #e9eee5; }
+.button-reset { border-color: #d7d9d0; color: #61736b; background: transparent; font-size: 18px; line-height: 1; }
+.compare-button { display: flex; justify-content: space-between; width: 100%; margin-top: 7px; padding: 8px 10px; border: 1px dashed #b3beb3; color: #51645d; background: transparent; font-size: 9px; text-align: left; cursor: pointer; }
+.compare-button span { color: var(--rust); font-size: 12px; }
+.compare-button:hover:not(:disabled) { border-style: solid; background: #f0f2ea; }
+.compare-button:disabled { color: #a2a79f; cursor: not-allowed; }
+.control-footnote { min-height: 26px; margin: 7px 0 0; color: #929a92; font-size: 8px; line-height: 1.6; }
+
+.readout-strip { display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 13px; border: 1px solid var(--line); background: rgba(255, 253, 248, .72); }
+.readout-cell { min-height: 86px; display: flex; flex-direction: column; justify-content: center; padding: 11px 17px; border-right: 1px solid #e3ded3; }
+.readout-cell:last-child { border-right: 0; }
+.readout-cell > span { color: #85918a; font-size: 9px; letter-spacing: .06em; }
+.readout-cell strong { margin: 5px 0 1px; color: var(--teal-dark); font-family: var(--serif); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.readout-cell small { color: #9ca39b; font-size: 8px; }
+.accent-readout { background: #f0eee4; }
+.accent-readout strong { color: var(--rust); }
+.balance-line { min-height: 31px; display: flex; align-items: center; gap: 7px; padding: 7px 4px 0; color: #828d85; font-size: 9px; }
+.balance-mark { display: inline-grid; place-items: center; width: 15px; height: 15px; flex: none; border: 1px solid #bcc8bc; border-radius: 50%; color: var(--teal); font-family: var(--serif); font-size: 10px; }
+.balance-line.is-balanced .balance-mark { color: #fff; border-color: var(--teal); background: var(--teal); }
+
+.analysis-grid { display: grid; grid-template-columns: minmax(0, 1.32fr) minmax(320px, .82fr); gap: 15px; margin-top: 26px; }
+.chart-card, .ledger-card { min-width: 0; padding: 18px 20px 16px; }
+.card-heading { align-items: center; }
+.card-heading h2 { font-size: 22px; }
+.card-heading .section-kicker { margin-bottom: 7px; }
+.chart-legend { display: flex; align-items: center; gap: 12px; color: #77847d; font-size: 8px; }
+.chart-legend span { white-space: nowrap; }
+.chart-legend i { display: inline-block; width: 16px; margin-right: 5px; border-top: 2px solid var(--teal); vertical-align: middle; }
+.legend-reference i { border-top-color: var(--rust); border-top-style: dashed; }
+.chart-wrap { width: 100%; min-height: 210px; margin-top: 13px; }
+.chart-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-grid { stroke: #e9e5db; stroke-width: 1; }
+.chart-axis { stroke: #b8c0b7; stroke-width: 1; }
+.chart-label { fill: #929b93; font-family: var(--sans); font-size: 9px; }
+.chart-unit { fill: #73817a; font-family: var(--sans); font-size: 8px; letter-spacing: .06em; }
+.area-now { fill: rgba(67, 127, 125, .12); }
+.line-now { fill: none; stroke: var(--teal); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
+.area-reference { fill: none; stroke: var(--rust); stroke-width: 1.8; stroke-dasharray: 4 4; stroke-linejoin: round; stroke-linecap: round; }
+.chart-caption { margin: 2px 0 0; color: #909992; font-size: 8px; line-height: 1.7; }
+.ledger-heading { margin-bottom: 18px; }
+.ledger-icon { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #c5d1c5; border-radius: 50%; color: var(--teal); font-family: var(--serif); font-size: 18px; }
+.ledger-total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; color: #849089; font-size: 9px; }
+.ledger-total strong { color: #485a53; font-family: var(--serif); font-size: 17px; font-weight: 500; }
+.ledger-bar { height: 12px; display: flex; overflow: hidden; background: #ece9e0; }
+.ledger-bar i { display: block; height: 100%; transition: width .25s ease; }
+.bar-infiltration { background: #718d72; }
+.bar-outlet { background: #bf7455; }
+.bar-surface { background: #7cabb1; }
+.ledger-key { display: grid; gap: 9px; margin-top: 15px; }
+.ledger-key > div { display: grid; grid-template-columns: 11px 1fr auto; gap: 7px; align-items: center; color: #78837c; font-size: 9px; }
+.ledger-key strong { color: #475951; font-family: var(--serif); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.ledger-key i { width: 8px; height: 8px; border-radius: 2px; }
+.key-infiltration { background: #718d72; }
+.key-outlet { background: #bf7455; }
+.key-surface { background: #7cabb1; }
+.comparison-note { margin-top: 13px; padding: 9px 10px; border-left: 2px solid var(--rust); color: #68756e; background: #f3eee5; font-size: 9px; line-height: 1.65; }
+.ledger-note { margin: 15px 0 0; padding-top: 11px; border-top: 1px solid #e7e2d8; color: #999f96; font-size: 8px; line-height: 1.7; }
+
+.field-notes { display: grid; grid-template-columns: 1.1fr repeat(3, 1fr); gap: 20px; margin: 48px 0 34px; padding: 23px 0 25px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.field-title h2 { font-size: 27px; line-height: 1.23; }
+.field-note { position: relative; padding: 24px 8px 0 13px; border-left: 1px solid #d2d5ca; }
+.note-number { position: absolute; top: 0; left: 13px; color: var(--rust); font-family: var(--serif); font-size: 10px; font-style: italic; }
+.field-note h3 { margin: 0 0 8px; color: #40534b; font-family: var(--serif); font-size: 16px; font-weight: 500; }
+.field-note p { max-width: 250px; margin: 0; color: #7c8880; font-size: 9px; line-height: 1.85; }
+.model-note { margin-bottom: 30px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.model-note summary { display: flex; justify-content: space-between; align-items: center; padding: 13px 3px; color: #64736c; font-size: 10px; cursor: pointer; list-style: none; }
+.model-note summary::-webkit-details-marker { display: none; }
+.summary-plus { color: var(--teal); font-family: var(--serif); font-size: 17px; transition: transform .18s; }
+.model-note[open] .summary-plus { transform: rotate(45deg); }
+.model-content { display: grid; grid-template-columns: 1.3fr .7fr; gap: 48px; padding: 9px 3px 22px; }
+.model-content h3 { margin: 0 0 8px; color: #495a52; font-family: var(--serif); font-size: 14px; font-weight: 500; }
+.model-content p { margin: 0 0 8px; color: #7a8780; font-size: 9px; line-height: 1.9; }
+.model-sources { padding-left: 22px; border-left: 1px solid #d9d9ce; }
+.model-sources a { display: block; margin-top: 7px; color: var(--teal); font-size: 9px; text-decoration-color: #aac1b6; text-underline-offset: 3px; }
+.site-footer { min-height: 50px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); color: #89938b; font-size: 8px; letter-spacing: .08em; }
+.site-footer b { padding: 0 4px; color: var(--rust); }
+.site-footer i { display: inline-block; width: 5px; height: 5px; margin-left: 5px; border-radius: 50%; background: var(--moss); vertical-align: 1px; }
+
+@media (max-width: 1020px) {
+  .page-shell { width: min(100% - 44px, 900px); }
+  .work-grid { grid-template-columns: minmax(0, 1.45fr) minmax(290px, .9fr); }
+  .map-wrap { min-height: 330px; }
+  .brush-note { white-space: normal; text-align: right; }
+  .field-notes { grid-template-columns: repeat(3, 1fr); }
+  .field-title { grid-column: 1 / -1; }
+  .field-title h2 br { display: none; }
+}
+@media (max-width: 760px) {
+  .page-shell { width: calc(100% - 30px); }
+  .masthead { min-height: 56px; }
+  .brand { font-size: 10px; }
+  .hero { min-height: auto; grid-template-columns: 1fr; padding: 35px 0 57px; }
+  .hero::before { width: 230px; height: 150px; right: 0; top: 9px; }
+  h1 { margin-top: 15px; font-size: clamp(57px, 15vw, 82px); }
+  .hero-deck { font-size: 14px; }
+  .hero-note { max-width: 420px; margin: 20px 0 0 4px; padding-top: 13px; padding-bottom: 14px; }
+  .hero-rule { gap: 7px; font-size: 7px; letter-spacing: .04em; }
+  .workspace { padding-top: 30px; }
+  .workspace-head { align-items: flex-start; }
+  .legend-inline { display: grid; gap: 6px; padding-top: 3px; font-size: 8px; }
+  .work-grid { grid-template-columns: 1fr; }
+  .map-wrap { min-height: 0; }
+  .map-footer { align-items: flex-start; }
+  .brush-note { max-width: 142px; font-size: 8px; }
+  .control-card { display: grid; grid-template-columns: 1fr 1fr; column-gap: 13px; }
+  .control-topline, .scenario-picker, .divider-label, .brushes, .control-actions, .compare-button, .control-footnote { grid-column: 1 / -1; }
+  .control-topline { margin-bottom: 7px; }
+  .divider-label { margin-top: 13px; }
+  .slider-label { margin-top: 5px; }
+  .readout-strip { grid-template-columns: repeat(3, 1fr); }
+  .readout-cell { min-height: 74px; padding: 9px 11px; border-bottom: 1px solid #e3ded3; }
+  .readout-cell:nth-child(3) { border-right: 0; }
+  .readout-cell:nth-child(4), .readout-cell:nth-child(5) { border-bottom: 0; }
+  .readout-cell:nth-child(5) { grid-column: span 1; }
+  .readout-cell strong { font-size: 18px; }
+  .analysis-grid { grid-template-columns: 1fr; margin-top: 19px; }
+  .field-notes { grid-template-columns: 1fr; gap: 13px; margin-top: 34px; }
+  .field-title { grid-column: auto; }
+  .field-title h2 br { display: initial; }
+  .field-note { padding-top: 22px; }
+  .field-note p { max-width: 480px; }
+  .model-content { grid-template-columns: 1fr; gap: 14px; }
+  .model-sources { padding: 12px 0 0; border-top: 1px solid #d9d9ce; border-left: 0; }
+}
+@media (max-width: 420px) {
+  .page-shell { width: calc(100% - 22px); }
+  .edition { font-size: 9px; }
+  .hero-rule span { max-width: 33%; line-height: 1.4; }
+  .workspace-head { display: block; }
+  .legend-inline { display: flex; flex-wrap: wrap; margin-top: 11px; }
+  .map-toolbar { padding: 0 10px; }
+  .map-caption { font-size: 9px; }
+  .map-wrap { min-height: 250px; }
+  .map-footer { display: block; padding: 9px 10px; }
+  .brush-note { max-width: none; margin-top: 6px; text-align: left; }
+  .control-card { padding: 13px 11px 10px; }
+  .scenario-button { gap: 6px; padding: 7px 5px; }
+  .scenario-mark { width: 22px; height: 22px; }
+  .scenario-button small { font-size: 7px; }
+  .readout-strip { grid-template-columns: repeat(2, 1fr); }
+  .readout-cell:nth-child(2), .readout-cell:nth-child(4) { border-right: 0; }
+  .readout-cell:nth-child(3) { border-right: 1px solid #e3ded3; }
+  .readout-cell:nth-child(4) { border-bottom: 1px solid #e3ded3; }
+  .readout-cell:nth-child(5) { grid-column: span 2; }
+  .chart-card, .ledger-card { padding: 15px 12px 13px; }
+  .chart-card .card-heading { align-items: flex-end; }
+  .card-heading h2 { font-size: 19px; }
+  .chart-legend { display: grid; gap: 4px; }
+  .site-footer { font-size: 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+</style>
+</head>
+<body>
+<div class="page-shell">
+  <header class="masthead">
+    <a class="brand" href="#top" aria-label="雨的去路，返回页首">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span>城市水文 · 现场实验</span>
+    </a>
+    <span class="edition">交互装置 <b>／</b> 04</span>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-dot"></span>一场虚拟暴雨 · 一块可以重画的街区</p>
+        <h1 id="title">雨的<span>去路</span></h1>
+        <p class="hero-deck">雨落到城里之后，并没有立刻消失。<br>在屋顶、路面、土壤与排口之间，它需要时间，也需要一条路。</p>
+      </div>
+      <div class="hero-note">
+        <span class="note-index">先从一场雨开始</span>
+        <p>调好雨势，按下「降雨推演」。完成后，把改造过的地表和原街区放在同一场雨里比较。</p>
+        <span class="note-arrow" aria-hidden="true">↘</span>
+      </div>
+      <div class="hero-rule"><span>一块 2.85 公顷的抽象街区</span><span>18 × 11 个地表单元</span><span>每格代表 12 × 12 米</span></div>
+    </section>
+
+    <section class="workspace" aria-label="街区降雨推演">
+      <div class="workspace-head">
+        <div>
+          <p class="section-kicker">01 <span>／</span> 让雨落下来</p>
+          <h2>重画地表，再看水怎么走</h2>
+        </div>
+        <div class="legend-inline"><span><i class="legend-rain"></i>地表积水</span><span><i class="legend-route"></i>坡向排水</span><span><i class="legend-outlet"></i>排口</span></div>
+      </div>
+
+      <div class="work-grid">
+        <div class="map-card">
+          <div class="map-toolbar">
+            <div class="map-caption"><span class="live-dot" id="live-dot"></span><span id="map-status">街区已就绪 · 尚未降雨</span></div>
+            <div class="map-time" id="map-time">00 <small>／ 165 分</small></div>
+          </div>
+          <div class="map-wrap">
+            <canvas id="district" tabindex="0" role="img" aria-label="可编辑的等高街区网格。鼠标点击或拖动以更换地表，键盘方向键移动，空格绘制。">
+              交互式街区地图；可用方向键选格，按空格更换地表。
+            </canvas>
+            <div class="map-compass" aria-hidden="true"><span>N</span><b>↑</b></div>
+            <div class="map-scale" aria-hidden="true"><span></span>约 60 m</div>
+          </div>
+          <div class="map-footer">
+            <div class="tile-inspector" id="tile-inspector" aria-live="polite">
+              <span class="inspector-label">地表探针</span>
+              <strong id="tile-name">把指针移到地图上</strong>
+              <span id="tile-detail">选一格查看地表、相对高程与积水深度。</span>
+            </div>
+            <div class="brush-note"><kbd>点按</kbd> 或 <kbd>拖动</kbd> 更换地表 <span>·</span> 地势向右下方排出</div>
+          </div>
+        </div>
+
+        <aside class="control-card" aria-label="降雨和地表控制">
+          <div class="control-topline"><span class="control-index">试验条件</span><span class="local-tag"><i></i>本地模拟</span></div>
+          <div class="scenario-picker">
+            <button id="scenario-old" class="scenario-button selected" type="button" aria-pressed="true">
+              <span class="scenario-mark mark-old">石</span><span><b>旧街区</b><small>硬质铺面较多</small></span><span class="scenario-check">●</span>
+            </button>
+            <button id="scenario-green" class="scenario-button" type="button" aria-pressed="false">
+              <span class="scenario-mark mark-green">叶</span><span><b>海绵改造</b><small>增加绿地与透水面</small></span><span class="scenario-check">●</span>
+            </button>
+          </div>
+
+          <div class="divider-label"><span>一场雨</span><i></i><small>雨停后继续观察 90 分钟</small></div>
+          <label class="slider-label" for="rain-intensity"><span>降雨强度</span><output id="intensity-value" for="rain-intensity">60 mm/h</output></label>
+          <input id="rain-intensity" type="range" min="10" max="120" step="1" value="60">
+          <div class="range-ends"><span>小雨 10</span><span>短时强降雨 120</span></div>
+
+          <label class="slider-label" for="rain-duration"><span>持续时间</span><output id="duration-value" for="rain-duration">45 分钟</output></label>
+          <input id="rain-duration" type="range" min="15" max="120" step="3" value="45">
+          <div class="range-ends"><span>15 分</span><span>120 分</span></div>
+
+          <label class="slider-label" for="soil-wetness"><span>降雨前土壤含水</span><output id="wetness-value" for="soil-wetness">35%</output></label>
+          <input id="soil-wetness" type="range" min="5" max="95" step="1" value="35">
+          <div class="range-ends"><span>偏干</span><span>接近饱和</span></div>
+
+          <div class="divider-label brush-divider"><span>铺一格地表</span><i></i><small>完成推演后也可改</small></div>
+          <div class="brushes" role="group" aria-label="地表画笔">
+            <button class="brush active" type="button" data-kind="road" aria-pressed="true"><i class="swatch sw-road"></i><span>街道</span></button>
+            <button class="brush" type="button" data-kind="roof" aria-pressed="false"><i class="swatch sw-roof"></i><span>屋顶</span></button>
+            <button class="brush" type="button" data-kind="permeable" aria-pressed="false"><i class="swatch sw-permeable"></i><span>透水铺面</span></button>
+            <button class="brush" type="button" data-kind="garden" aria-pressed="false"><i class="swatch sw-garden"></i><span>下凹绿地</span></button>
+          </div>
+
+          <div class="control-actions">
+            <button id="run-button" class="button-primary" type="button"><span class="play-symbol">▶</span>降雨推演</button>
+            <button id="step-button" class="button-step" type="button" aria-label="推进三分钟">+3 分</button>
+            <button id="reset-button" class="button-reset" type="button" aria-label="重置推演">↺</button>
+          </div>
+          <button id="compare-button" class="compare-button" type="button" disabled>推演完成后，与旧街区对照 <span>↗</span></button>
+          <p class="control-footnote" id="control-message" aria-live="polite">地图可直接绘制。改变雨势或地表后，推演会从头开始。</p>
+        </aside>
+      </div>
+
+      <div class="readout-strip" aria-label="当前推演摘要">
+        <div class="readout-cell"><span>本场降雨</span><strong id="read-rain">—</strong><small>进入街区</small></div>
+        <div class="readout-cell"><span>进入土壤</span><strong id="read-infiltration">—</strong><small>累计下渗</small></div>
+        <div class="readout-cell"><span>排口出流</span><strong id="read-outlet">—</strong><small>累计排出</small></div>
+        <div class="readout-cell"><span>地表暂存</span><strong id="read-surface">—</strong><small>此刻留在地面</small></div>
+        <div class="readout-cell accent-readout"><span>排口峰值</span><strong id="read-peak">—</strong><small>单步平均流量</small></div>
+      </div>
+      <div class="balance-line" id="balance-line" aria-live="polite"><span class="balance-mark">≈</span>水量账本会在推演时逐步更新。理想情况下，雨水 = 下渗 + 排出 + 地表暂存。</div>
+    </section>
+
+    <section class="analysis-grid" aria-label="流量过程与水量账本">
+      <article class="chart-card">
+        <div class="card-heading">
+          <div><p class="section-kicker">02 <span>／</span> 排口过程</p><h2>什么时候，水涌到出口？</h2></div>
+          <div class="chart-legend" id="chart-legend"><span class="legend-now"><i></i>当前街区</span><span class="legend-reference" id="reference-legend" hidden><i></i>原街区</span></div>
+        </div>
+        <div class="chart-wrap"><svg id="hydrograph" viewBox="0 0 720 268" role="img" aria-label="排口流量随时间变化的过程线"></svg></div>
+        <p class="chart-caption" id="chart-caption">每个点代表一个 3 分钟时间步的平均出流。按下推演后，曲线会从雨开始落下时画起。</p>
+      </article>
+
+      <article class="ledger-card">
+        <div class="card-heading ledger-heading">
+          <div><p class="section-kicker">03 <span>／</span> 一场雨的去向</p><h2>水量账本</h2></div>
+          <span class="ledger-icon" aria-hidden="true">∑</span>
+        </div>
+        <div class="ledger-total"><span>落到整块街区</span><strong id="ledger-total">等待降雨</strong></div>
+        <div class="ledger-bar" aria-label="下渗、排口和地表暂存的水量比例">
+          <i id="bar-infiltration" class="bar-infiltration" style="width:0"></i><i id="bar-outlet" class="bar-outlet" style="width:0"></i><i id="bar-surface" class="bar-surface" style="width:0"></i>
+        </div>
+        <div class="ledger-key">
+          <div><i class="key-infiltration"></i><span>土壤暂存</span><strong id="ledger-infiltration">—</strong></div>
+          <div><i class="key-outlet"></i><span>排水出口</span><strong id="ledger-outlet">—</strong></div>
+          <div><i class="key-surface"></i><span>地表积水</span><strong id="ledger-surface">—</strong></div>
+        </div>
+        <div id="comparison-note" class="comparison-note" hidden></div>
+        <p class="ledger-note">单位为立方米。色条按当前已进入街区的雨水比例绘制；未显示在土壤和排口的水，仍在地表或路网中移动。</p>
+      </article>
+    </section>
+
+    <section class="field-notes">
+      <div class="field-title"><p class="section-kicker">04 <span>／</span> 怎么读这场雨</p><h2>地表不同，<br>水路也不同。</h2></div>
+      <div class="field-note"><span class="note-number">01</span><h3>硬地把水送走</h3><p>屋顶和普通街道几乎不让水进入土壤。水先在表面短暂停留，再顺着地势流向相邻格子与排口。</p></div>
+      <div class="field-note"><span class="note-number">02</span><h3>孔隙先留住一部分</h3><p>透水铺面有有限的土层储水空间。雨前越湿，能继续接住的水就越少；超过入渗能力的部分仍会漫到地表。</p></div>
+      <div class="field-note"><span class="note-number">03</span><h3>绿地会滞蓄、下渗</h3><p>下凹绿地暂存表面来水，并以较高速率让水进入土壤。它能延后和减少模型中的排口出流，但结果取决于雨势与前期湿度。</p></div>
+    </section>
+
+    <details class="model-note">
+      <summary><span>模型说明与边界</span><span class="summary-plus">＋</span></summary>
+      <div class="model-content">
+        <div><h3>这是一个可读懂的格网水量模型</h3><p>每个 12 × 12 米格子接收相同雨量。每 3 分钟，模型按地表类型计算一个有限入渗量，再把超出小型表面储水空间的水沿最陡的下坡邻格向右下角排口传递。透水铺面和下凹绿地各有有限土壤容量；雨前土壤含水量会占去其中一部分。</p><p>数值用作同一场假设降雨下的方案比较，不是具体地点的积水预报或排水工程设计。实际场地还需测量降雨时程、微地形、土壤与地下水、管网、地表汇流条件和设施构造。这里没有模拟管网、蒸发、地下排水、污染物或水质。</p></div>
+        <div class="model-sources"><h3>概念参考</h3><p>模型把地表暂存、土壤入渗与向下游的表面径流分开记账；这也是完整雨洪模型会追踪的基本水路。真实生物滞留设施、透水铺面还可能包含工程土层、砾石储水层、底部排水管和溢流结构。</p><a href="https://nepis.epa.gov/Exe/ZyPURL.cgi?Dockey=P10145M6.TXT" target="_blank" rel="noreferrer">美国环保署 EPA · SWMM 5.2 用户手册 ↗</a><a href="https://www.epa.gov/green-infrastructure/types-green-infrastructure" target="_blank" rel="noreferrer">美国环保署 EPA · 绿色基础设施类型 ↗</a></div>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><span>雨的去路 <b>·</b> 城市水文交互实验</span><span>离线可用 <i></i> 不上传数据</span></footer>
+</div>
+
+<script id="runoff-core">
+'use strict';
+
+const RunoffCore = (() => {
+  const COLS = 18;
+  const ROWS = 11;
+  const CELL_M = 12;
+  const AREA_M2 = CELL_M * CELL_M;
+  const STEP_MIN = 3;
+  const COUNT = COLS * ROWS;
+  const KINDS = [
+    { label: '普通街道', rate: 0,  soil: 0,   depression: .6,  travel: .72 },
+    { label: '屋顶',     rate: 0,  soil: 0,   depression: .4,  travel: .76 },
+    { label: '透水铺面', rate: 15, soil: 75,  depression: 2.5, travel: .50 },
+    { label: '下凹绿地', rate: 28, soil: 135, depression: 18,  travel: .28 }
+  ];
+  const DIRECTIONS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+
+  function index(x, y) { return y * COLS + x; }
+  function xy(i) { return { x: i % COLS, y: Math.floor(i / COLS) }; }
+
+  const elevation = new Float32Array(COUNT);
+  const downstream = new Int16Array(COUNT);
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const i = index(x, y);
+      elevation[i] = (COLS - 1 - x) * 1.05 + (ROWS - 1 - y) * 1.05 +
+        Math.sin(x * 1.7 + y * .6) * .045 + Math.cos(y * 1.2 - x * .3) * .035;
+      let best = -1;
+      let bestHeight = elevation[i];
+      for (const [dx, dy] of DIRECTIONS) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+        const ni = index(nx, ny);
+        if (elevation[ni] < bestHeight) { best = ni; bestHeight = elevation[ni]; }
+      }
+      downstream[i] = best;
+    }
+  }
+  downstream[COUNT - 1] = -1;
+
+  function baseOldTown() {
+    const map = new Uint8Array(COUNT).fill(0);
+    const place = (x0, y0, w, h, kind) => {
+      for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) map[index(x, y)] = kind;
+    };
+    // Compact roofs sit between narrow, mostly impervious street bands.
+    place(1, 1, 4, 3, 1); place(7, 1, 4, 3, 1); place(13, 1, 4, 3, 1);
+    place(2, 7, 4, 3, 1); place(8, 7, 4, 3, 1); place(14, 7, 3, 3, 1);
+    place(0, 5, 2, 1, 2); place(8, 5, 2, 1, 2); place(15, 5, 2, 1, 2);
+    place(5, 5, 2, 1, 3); place(11, 5, 2, 1, 3);
+    place(6, 9, 1, 1, 2); place(12, 9, 2, 1, 2);
+    return map;
+  }
+
+  function spongeTown() {
+    const map = baseOldTown();
+    // Turn connected curbside strips and selected open hardscape into receiving surfaces.
+    for (let x = 0; x < COLS; x++) {
+      if (x % 3 !== 1 && x % 3 !== 2) map[index(x, 4)] = 2;
+      if (x % 4 === 1 || x % 4 === 2) map[index(x, 6)] = 3;
+    }
+    for (let y = 0; y < ROWS; y++) {
+      for (const x of [0, 6, 12, 17]) {
+        if (map[index(x, y)] === 0 && y > 0 && y < ROWS - 1) map[index(x, y)] = (y % 3 === 0) ? 3 : 2;
+      }
+    }
+    // Keep roof footprints intact while adding small rain-garden pockets to paved courts.
+    for (const [x, y] of [[5, 5], [6, 5], [11, 5], [12, 5], [0, 8], [6, 8], [12, 8], [17, 8]]) map[index(x, y)] = 3;
+    return map;
+  }
+
+  function createState(types, settings) {
+    const typeMap = new Uint8Array(types);
+    const p = {
+      intensity: Math.max(1, Number(settings.intensity) || 60),
+      duration: Math.max(STEP_MIN, Number(settings.duration) || 45),
+      wetness: Math.max(0, Math.min(1, Number(settings.wetness) || 0))
+    };
+    const surface = new Float64Array(COUNT);
+    const soil = new Float64Array(COUNT);
+    for (let i = 0; i < COUNT; i++) soil[i] = KINDS[typeMap[i]].soil * p.wetness;
+    const totalMinutes = p.duration + 90;
+    return {
+      types: typeMap, settings: p, surface, soil,
+      elapsed: 0, totalMinutes, done: false,
+      rainM3: 0, infiltrationM3: 0, outletM3: 0, peakM3Min: 0,
+      stepOutletM3: 0, series: [{ minute: 0, flow: 0 }]
+    };
+  }
+
+  function step(state) {
+    if (state.done) return state;
+    if (state.elapsed >= state.totalMinutes) { state.done = true; return state; }
+    const rainDepth = state.elapsed < state.settings.duration
+      ? state.settings.intensity * STEP_MIN / 60
+      : 0;
+    const nextSurface = new Float64Array(COUNT);
+    let stepOutlet = 0;
+
+    for (let i = 0; i < COUNT; i++) {
+      const kind = KINDS[state.types[i]];
+      let depth = state.surface[i] + rainDepth;
+      state.rainM3 += rainDepth * AREA_M2 / 1000;
+
+      const soilRoom = Math.max(0, kind.soil - state.soil[i]);
+      const enteringSoil = Math.min(depth, kind.rate * STEP_MIN / 60, soilRoom);
+      depth -= enteringSoil;
+      state.soil[i] += enteringSoil;
+      state.infiltrationM3 += enteringSoil * AREA_M2 / 1000;
+
+      const mobile = Math.max(0, depth - kind.depression);
+      const leaving = mobile * kind.travel;
+      nextSurface[i] += depth - leaving;
+      const target = downstream[i];
+      if (target < 0) {
+        stepOutlet += leaving * AREA_M2 / 1000;
+      } else {
+        nextSurface[target] += leaving;
+      }
+    }
+
+    state.surface = nextSurface;
+    state.elapsed = Math.min(state.totalMinutes, state.elapsed + STEP_MIN);
+    state.stepOutletM3 = stepOutlet;
+    state.outletM3 += stepOutlet;
+    const flow = stepOutlet / STEP_MIN;
+    state.peakM3Min = Math.max(state.peakM3Min, flow);
+    state.series.push({ minute: state.elapsed, flow });
+    if (state.elapsed >= state.totalMinutes) state.done = true;
+    return state;
+  }
+
+  function summary(state) {
+    let surfaceMm = 0;
+    for (let i = 0; i < COUNT; i++) surfaceMm += state.surface[i];
+    const surfaceM3 = surfaceMm * AREA_M2 / 1000;
+    const residualM3 = state.rainM3 - state.infiltrationM3 - state.outletM3 - surfaceM3;
+    return {
+      rainM3: state.rainM3,
+      infiltrationM3: state.infiltrationM3,
+      outletM3: state.outletM3,
+      surfaceM3,
+      peakM3Min: state.peakM3Min,
+      runoffRatio: state.rainM3 > 0 ? state.outletM3 / state.rainM3 : 0,
+      residualM3,
+      surfaceDepth: state.surface,
+      soilDepth: state.soil,
+      elapsed: state.elapsed,
+      totalMinutes: state.totalMinutes,
+      series: state.series
+    };
+  }
+
+  function finish(state) {
+    let guard = 0;
+    while (!state.done && guard++ < 1000) step(state);
+    return { state, result: summary(state) };
+  }
+
+  function kindName(id) { return KINDS[id]?.label || '未知地表'; }
+  function kindData(id) { return KINDS[id] || KINDS.road; }
+
+  return {
+    COLS, ROWS, COUNT, CELL_M, AREA_M2, STEP_MIN, KINDS,
+    index, xy, elevation, downstream,
+    baseOldTown, spongeTown, createState, step, summary, finish,
+    kindName, kindData
+  };
+})();
+
+</script>
+<script id="runoff-ui">
+'use strict';
+
+(() => {
+  const $ = (selector) => document.querySelector(selector);
+  const canvas = $('#district');
+  const ctx = canvas.getContext('2d');
+  const typeNames = ['road', 'roof', 'permeable', 'garden'];
+  const palette = {
+    road: { color: '#c1bdaf', edge: '#9b9d91', seam: '#ebe7da' },
+    roof: { color: '#b96f54', edge: '#965540', seam: '#d99573' },
+    permeable: { color: '#b99b75', edge: '#987d5d', seam: '#d8c3a0' },
+    garden: { color: '#7b9677', edge: '#5e795f', seam: '#a5b398' }
+  };
+  const origin = { x: 460, y: 86 };
+  const cellW = 46;
+  const cellH = 24;
+  const settings = { intensity: 60, duration: 45, wetness: .35 };
+  let types = RunoffCore.baseOldTown();
+  let brush = 'road';
+  let state = RunoffCore.createState(types, settings);
+  let comparison = null;
+  let timer = null;
+  let hovered = -1;
+  let activeCell = RunoffCore.index(8, 5);
+  let pointerPainting = false;
+  let rainFrame = 0;
+  let sourceTag = 'old';
+  let cssWidth = 0;
+  let cssHeight = 0;
+
+  function formatVolume(value) {
+    if (!Number.isFinite(value)) return '—';
+    const digits = Math.abs(value) < 10 ? 1 : 0;
+    return `${Math.max(0, value).toLocaleString('zh-CN', { maximumFractionDigits: digits })} m³`;
+  }
+  function formatFlow(value) {
+    if (!Number.isFinite(value)) return '—';
+    return `${value.toLocaleString('zh-CN', { maximumFractionDigits: value < 10 ? 1 : 0 })} m³/min`;
+  }
+  function currentResult() { return RunoffCore.summary(state); }
+
+  function resetState(message = '地图可直接绘制。改变雨势或地表后，推演会从头开始。') {
+    pause();
+    state = RunoffCore.createState(types, settings);
+    comparison = null;
+    $('#control-message').textContent = message;
+    $('#compare-button').disabled = true;
+    $('#reference-legend').hidden = true;
+    $('#comparison-note').hidden = true;
+    $('#comparison-note').textContent = '';
+    $('#chart-caption').textContent = '每个点代表一个 3 分钟时间步的平均出流。按下推演后，曲线会从雨开始落下时画起。';
+    render();
+  }
+
+  function updateBrushButtons() {
+    document.querySelectorAll('.brush').forEach((button) => {
+      const active = button.dataset.kind === brush;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  function resizeCanvas() {
+    const box = canvas.getBoundingClientRect();
+    if (!box.width) return;
+    cssWidth = box.width;
+    cssHeight = cssWidth * 530 / 920;
+    const dpr = Math.max(1, Math.min(2.5, window.devicePixelRatio || 1));
+    canvas.width = Math.round(cssWidth * dpr);
+    canvas.height = Math.round(cssHeight * dpr);
+    canvas.style.height = `${cssHeight}px`;
+    ctx.setTransform(dpr * cssWidth / 920, 0, 0, dpr * cssHeight / 530, 0, 0);
+    drawMap();
+  }
+
+  function centerOf(col, row) {
+    return {
+      x: origin.x + (col - row) * cellW / 2,
+      y: origin.y + (col + row) * cellH / 2
+    };
+  }
+
+  function cellPoint(id) {
+    const p = RunoffCore.xy(id);
+    return centerOf(p.x, p.y);
+  }
+
+  function polygon(x, y, width, height, inset = 0) {
+    const halfW = width / 2 - inset;
+    const halfH = height / 2 - inset * .52;
+    ctx.beginPath();
+    ctx.moveTo(x, y - halfH);
+    ctx.lineTo(x + halfW, y);
+    ctx.lineTo(x, y + halfH);
+    ctx.lineTo(x - halfW, y);
+    ctx.closePath();
+  }
+
+  function drawGround() {
+    const top = centerOf(0, 0), right = centerOf(RunoffCore.COLS - 1, 0);
+    const bottom = centerOf(RunoffCore.COLS - 1, RunoffCore.ROWS - 1);
+    const left = centerOf(0, RunoffCore.ROWS - 1);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(top.x, top.y - cellH / 2);
+    ctx.lineTo(right.x + cellW / 2, right.y);
+    ctx.lineTo(bottom.x, bottom.y + cellH / 2);
+    ctx.lineTo(left.x - cellW / 2, left.y);
+    ctx.closePath();
+    ctx.fillStyle = '#e5e7da';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(105, 133, 119, .18)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Quiet contour ribbons keep the map legible as a small topographic model.
+    for (let n = 0; n < 5; n++) {
+      const offset = n * 18;
+      ctx.beginPath();
+      ctx.moveTo(154 + offset, 128 + n * 2);
+      ctx.bezierCurveTo(242 + offset, 95 + n * 10, 420 + offset, 202 + n * 3, 575 + offset, 166 + n * 16);
+      ctx.strokeStyle = 'rgba(106, 133, 116, .12)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawSurface(id, typeId) {
+    const p = cellPoint(id);
+    const kind = typeNames[typeId];
+    const swatch = palette[kind];
+    const depth = state.surface[id];
+    const isHot = hovered === id || activeCell === id;
+
+    ctx.save();
+    polygon(p.x, p.y, cellW, cellH);
+    ctx.fillStyle = swatch.color;
+    ctx.fill();
+    ctx.strokeStyle = '#edeadf';
+    ctx.lineWidth = 1.05;
+    ctx.stroke();
+
+    if (kind === 'roof') {
+      polygon(p.x, p.y - 1, cellW * .68, cellH * .62);
+      ctx.fillStyle = '#c68163';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(105, 61, 46, .35)';
+      ctx.lineWidth = .7;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(p.x - 5, p.y - 1); ctx.lineTo(p.x + 4, p.y - 5);
+      ctx.strokeStyle = 'rgba(251, 229, 199, .65)'; ctx.lineWidth = 1.4; ctx.stroke();
+      ctx.fillStyle = 'rgba(242, 214, 181, .72)';
+      polygon(p.x + 4, p.y + 1, 5, 3); ctx.fill();
+    } else if (kind === 'road') {
+      ctx.beginPath();
+      ctx.moveTo(p.x - 9, p.y + 4.7); ctx.lineTo(p.x + 9, p.y - 4.7);
+      ctx.strokeStyle = 'rgba(250, 248, 237, .56)'; ctx.lineWidth = 1.1; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+    } else if (kind === 'permeable') {
+      ctx.beginPath();
+      ctx.moveTo(p.x - 12, p.y + 6); ctx.lineTo(p.x + 12, p.y - 6);
+      ctx.moveTo(p.x - 16, p.y + 2); ctx.lineTo(p.x + 8, p.y - 10);
+      ctx.moveTo(p.x - 8, p.y + 10); ctx.lineTo(p.x + 16, p.y - 2);
+      ctx.strokeStyle = 'rgba(95, 76, 54, .26)'; ctx.lineWidth = .8; ctx.stroke();
+    } else {
+      for (let j = 0; j < 4; j++) {
+        const dx = ((id * 7 + j * 11) % 19) - 9;
+        const dy = ((id * 13 + j * 7) % 9) - 4;
+        ctx.beginPath(); ctx.ellipse(p.x + dx, p.y + dy, 2.3, 1.25, -.35, 0, Math.PI * 2);
+        ctx.fillStyle = j % 2 ? 'rgba(202, 211, 168, .74)' : 'rgba(60, 105, 77, .49)'; ctx.fill();
+      }
+      if (typeId === 3) {
+        ctx.beginPath(); ctx.moveTo(p.x - 8, p.y + 2); ctx.lineTo(p.x + 8, p.y - 2);
+        ctx.strokeStyle = 'rgba(50, 92, 73, .48)'; ctx.lineWidth = 1.4; ctx.stroke();
+      }
+    }
+
+    if (depth > .13) {
+      const alpha = Math.min(.77, .18 + depth / 26);
+      polygon(p.x, p.y, cellW - 1, cellH - 1);
+      ctx.fillStyle = `rgba(98, 176, 186, ${alpha})`;
+      ctx.fill();
+      if (depth > .8) {
+        ctx.beginPath(); ctx.ellipse(p.x + 1, p.y, Math.min(8, 2 + depth * .25), 2.2, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(238, 255, 248, .74)'; ctx.lineWidth = .8; ctx.stroke();
+      }
+    }
+
+    if (depth > .5 && RunoffCore.downstream[id] >= 0) {
+      const target = cellPoint(RunoffCore.downstream[id]);
+      const phase = (rainFrame % 14) / 14;
+      if (phase < .72) {
+        const t = phase / .72;
+        const x = p.x + (target.x - p.x) * t * .42;
+        const y = p.y + (target.y - p.y) * t * .42;
+        ctx.beginPath(); ctx.arc(x, y, 1.4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(244, 255, 248, .92)'; ctx.fill();
+      }
+    }
+
+    if (!state.done && state.elapsed < state.settings.duration && rainFrame % 3 === id % 3 && id % 2 === 0) {
+      const offsetX = ((id * 17 + rainFrame * 9) % 23) - 11;
+      const offsetY = ((id * 11 + rainFrame * 5) % 11) - 5;
+      ctx.beginPath(); ctx.moveTo(p.x + offsetX, p.y - 9 + offsetY); ctx.lineTo(p.x + offsetX - 1, p.y - 5 + offsetY);
+      ctx.strokeStyle = 'rgba(75, 129, 153, .55)'; ctx.lineWidth = .8; ctx.stroke();
+    }
+
+    if (isHot) {
+      polygon(p.x, p.y, cellW - .7, cellH - .7);
+      ctx.strokeStyle = hovered === id ? '#fffdf2' : '#b55e43';
+      ctx.lineWidth = hovered === id ? 1.55 : 1.15;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawRoutes() {
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2.2, 4]);
+    for (let id = 0; id < RunoffCore.COUNT; id++) {
+      if (id % 4 !== 0 && id !== RunoffCore.COUNT - 1) continue;
+      const target = RunoffCore.downstream[id];
+      if (target < 0) continue;
+      const a = cellPoint(id), b = cellPoint(target);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo((a.x + b.x) / 2, (a.y + b.y) / 2);
+      ctx.strokeStyle = 'rgba(59, 105, 91, .36)'; ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function drawOutlet() {
+    const p = cellPoint(RunoffCore.COUNT - 1);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(p.x + 14, p.y + 6, 6.1, 0, Math.PI * 2);
+    ctx.fillStyle = '#b85f45'; ctx.fill();
+    ctx.strokeStyle = '#fff6e7'; ctx.lineWidth = 1.4; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p.x + 10, p.y + 6); ctx.lineTo(p.x + 18, p.y + 6);
+    ctx.strokeStyle = '#fff6e7'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.fillStyle = '#60766c'; ctx.font = '9px Microsoft YaHei, sans-serif';
+    ctx.fillText('排口', p.x + 23, p.y + 10);
+    ctx.restore();
+  }
+
+  function drawMap() {
+    if (!cssWidth) return;
+    ctx.clearRect(0, 0, 920, 530);
+    ctx.fillStyle = '#f0f0e7'; ctx.fillRect(0, 0, 920, 530);
+    drawGround();
+    for (let sum = 0; sum < RunoffCore.COLS + RunoffCore.ROWS - 1; sum++) {
+      for (let x = 0; x < RunoffCore.COLS; x++) {
+        const y = sum - x;
+        if (y < 0 || y >= RunoffCore.ROWS) continue;
+        const id = RunoffCore.index(x, y);
+        drawSurface(id, types[id]);
+      }
+    }
+    drawRoutes();
+    drawOutlet();
+  }
+
+  function eventPoint(event) {
+    const box = canvas.getBoundingClientRect();
+    return { x: (event.clientX - box.left) * 920 / box.width, y: (event.clientY - box.top) * 530 / box.height };
+  }
+
+  function cellAt(point) {
+    const u = (point.x - origin.x) / (cellW / 2);
+    const v = (point.y - origin.y) / (cellH / 2);
+    const x = Math.round((u + v) / 2);
+    const y = Math.round((v - u) / 2);
+    if (x < 0 || x >= RunoffCore.COLS || y < 0 || y >= RunoffCore.ROWS) return -1;
+    const p = centerOf(x, y);
+    const diamondDistance = Math.abs((point.x - p.x) / (cellW / 2)) + Math.abs((point.y - p.y) / (cellH / 2));
+    return diamondDistance <= 1.12 ? RunoffCore.index(x, y) : -1;
+  }
+
+  function editCell(id) {
+    if (id < 0 || timer) return;
+    activeCell = id;
+    const kindId = typeNames.indexOf(brush);
+    if (types[id] !== kindId) {
+      types[id] = kindId;
+      sourceTag = 'custom';
+      $('#scenario-old').classList.remove('selected'); $('#scenario-old').setAttribute('aria-pressed', 'false');
+      $('#scenario-green').classList.remove('selected'); $('#scenario-green').setAttribute('aria-pressed', 'false');
+      resetState('地表已调整。推演会用当前雨势和当前地图重新开始。');
+    } else {
+      drawMap(); updateInspector(id);
+    }
+  }
+
+  function updateInspector(id) {
+    if (id < 0) {
+      $('#tile-name').textContent = '把指针移到地图上';
+      $('#tile-detail').textContent = '选一格查看地表、相对高程与积水深度。';
+      return;
+    }
+    const pos = RunoffCore.xy(id);
+    const result = currentResult();
+    const depth = state.surface[id];
+    const kind = RunoffCore.kindData(types[id]);
+    const soilMax = kind.soil;
+    const soilNow = state.soil[id];
+    const elevationHere = RunoffCore.elevation[id];
+    const low = Math.min(...RunoffCore.elevation);
+    $('#tile-name').textContent = `${kind.label} · 第 ${pos.x + 1} 列 / ${pos.y + 1} 行`;
+    const soilText = soilMax > 0 ? `土层 ${soilNow.toFixed(0)} / ${soilMax} mm` : '不入渗';
+    $('#tile-detail').textContent = `相对排口高 ${Math.max(0, elevationHere - low).toFixed(1)} m · 表面积水 ${depth.toFixed(1)} mm · ${soilText}`;
+  }
+
+  function chartSvg() {
+    const W = 720, H = 268, left = 58, right = 704, top = 28, bottom = 221;
+    const plotW = right - left, plotH = bottom - top;
+    const present = state.series;
+    const reference = comparison?.series || null;
+    const values = [...present.map((v) => v.flow), ...(reference ? reference.map((v) => v.flow) : [])];
+    const maxY = Math.max(1, ...values) * 1.14;
+    const maxT = state.totalMinutes;
+    const x = (minute) => left + plotW * minute / maxT;
+    const y = (flow) => bottom - plotH * flow / maxY;
+    let html = `<text x="${left}" y="14" class="chart-unit">排口流量 · m³/min</text>`;
+    for (let i = 0; i <= 4; i++) {
+      const v = maxY * i / 4, py = y(v);
+      html += `<line x1="${left}" y1="${py}" x2="${right}" y2="${py}" class="chart-grid"/>`;
+      html += `<text x="${left - 9}" y="${py + 3}" text-anchor="end" class="chart-label">${v.toLocaleString('zh-CN', { maximumFractionDigits: v < 10 ? 1 : 0 })}</text>`;
+    }
+    const xTicks = 5;
+    for (let i = 0; i <= xTicks; i++) {
+      const minute = Math.round(maxT * i / xTicks / 3) * 3, px = x(minute);
+      html += `<line x1="${px}" y1="${top}" x2="${px}" y2="${bottom}" class="chart-grid"/>`;
+      html += `<text x="${px}" y="${bottom + 17}" text-anchor="middle" class="chart-label">${minute}</text>`;
+    }
+    html += `<line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="chart-axis"/>`;
+    html += `<text x="${(left + right) / 2}" y="${H - 8}" text-anchor="middle" class="chart-unit">开始降雨后的分钟数</text>`;
+    const linePath = (points) => points.map((point, i) => `${i ? 'L' : 'M'} ${x(point.minute).toFixed(2)} ${y(point.flow).toFixed(2)}`).join(' ');
+    if (present.length > 1) {
+      const d = linePath(present);
+      const firstX = x(present[0].minute), lastX = x(present[present.length - 1].minute);
+      html += `<path d="${d} L ${lastX} ${bottom} L ${firstX} ${bottom} Z" class="area-now"/>`;
+      html += `<path d="${d}" class="line-now"/>`;
+    }
+    if (reference && reference.length > 1) html += `<path d="${linePath(reference)}" class="area-reference"/>`;
+    const cursorX = x(state.elapsed);
+    html += `<line x1="${cursorX}" y1="${top}" x2="${cursorX}" y2="${bottom}" stroke="#b65e43" stroke-width="1" stroke-dasharray="2 4" opacity=".55"/>`;
+    return html;
+  }
+
+  function updateChart() { $('#hydrograph').innerHTML = chartSvg(); }
+
+  function updateNumbers() {
+    const r = currentResult();
+    $('#read-rain').textContent = formatVolume(r.rainM3);
+    $('#read-infiltration').textContent = formatVolume(r.infiltrationM3);
+    $('#read-outlet').textContent = formatVolume(r.outletM3);
+    $('#read-surface').textContent = formatVolume(r.surfaceM3);
+    $('#read-peak').textContent = formatFlow(r.peakM3Min);
+    $('#ledger-total').textContent = r.rainM3 > 0 ? formatVolume(r.rainM3) : '等待降雨';
+    $('#ledger-infiltration').textContent = formatVolume(r.infiltrationM3);
+    $('#ledger-outlet').textContent = formatVolume(r.outletM3);
+    $('#ledger-surface').textContent = formatVolume(r.surfaceM3);
+    const denom = Math.max(.001, r.rainM3);
+    $('#bar-infiltration').style.width = `${Math.max(0, Math.min(100, r.infiltrationM3 / denom * 100))}%`;
+    $('#bar-outlet').style.width = `${Math.max(0, Math.min(100, r.outletM3 / denom * 100))}%`;
+    $('#bar-surface').style.width = `${Math.max(0, Math.min(100, r.surfaceM3 / denom * 100))}%`;
+    const residual = Math.abs(r.residualM3);
+    const balance = $('#balance-line');
+    if (r.rainM3 > .01) {
+      balance.classList.toggle('is-balanced', residual < Math.max(.1, r.rainM3 * .001));
+      balance.innerHTML = `<span class="balance-mark">${residual < Math.max(.1, r.rainM3 * .001) ? '✓' : '≈'}</span>水量守恒差 ${formatVolume(residual)}；雨水 = 下渗 + 排出 + 地表暂存。`;
+    } else {
+      balance.classList.remove('is-balanced');
+      balance.innerHTML = '<span class="balance-mark">≈</span>水量账本会在推演时逐步更新。理想情况下，雨水 = 下渗 + 排出 + 地表暂存。';
+    }
+    updateInspector(hovered >= 0 ? hovered : activeCell);
+    if (comparison) renderComparison(r);
+    updateChart();
+  }
+
+  function renderComparison(current) {
+    const diffOutlet = comparison.outletM3 - current.outletM3;
+    const diffPeak = comparison.peakM3Min - current.peakM3Min;
+    const outletPct = comparison.outletM3 > .01 ? diffOutlet / comparison.outletM3 * 100 : 0;
+    const peakPct = comparison.peakM3Min > .01 ? diffPeak / comparison.peakM3Min * 100 : 0;
+    const describe = (value) => `${value >= 0 ? '减少' : '增加'} ${Math.abs(value).toFixed(0)}%`;
+    const note = $('#comparison-note');
+    note.hidden = false;
+    note.innerHTML = `同一场雨下，当前地图的累计排出量 <b>${describe(outletPct)}</b>（${formatVolume(comparison.outletM3)} → ${formatVolume(current.outletM3)}）；峰值流量 ${describe(peakPct)}。这是本简化网格模型中的差值。`;
+    $('#reference-legend').hidden = false;
+    $('#chart-caption').textContent = '实线为当前街区，棕色虚线为同一场雨、同一土壤湿度下的原街区。';
+  }
+
+  function updateStatus() {
+    const status = $('#map-status');
+    const progress = Math.min(state.elapsed, state.settings.duration);
+    const live = $('#live-dot');
+    live.classList.toggle('is-running', !!timer);
+    $('#map-time').innerHTML = `${String(state.elapsed).padStart(2, '0')} <small>／ ${state.totalMinutes} 分</small>`;
+    if (state.elapsed === 0) status.textContent = sourceTag === 'old' ? '旧街区已就绪 · 尚未降雨' : sourceTag === 'green' ? '海绵改造街区已就绪 · 尚未降雨' : '自绘街区已就绪 · 尚未降雨';
+    else if (timer && progress < state.settings.duration) status.textContent = '降雨中 · 地表开始汇流';
+    else if (timer) status.textContent = '雨停了 · 径流仍在路上';
+    else if (state.done) status.textContent = '推演完成 · 水量账本已结算';
+    else status.textContent = `推演暂停 · 已过 ${state.elapsed} 分钟`;
+    if (state.done) {
+      $('#run-button').innerHTML = '<span class="play-symbol">↻</span>重新推演';
+      $('#compare-button').disabled = false;
+    } else if (timer) {
+      $('#run-button').innerHTML = '<span class="play-symbol">Ⅱ</span>暂停推演';
+      $('#compare-button').disabled = true;
+    } else if (state.elapsed > 0) {
+      $('#run-button').innerHTML = '<span class="play-symbol">▶</span>继续推演';
+      $('#compare-button').disabled = true;
+    } else {
+      $('#run-button').innerHTML = '<span class="play-symbol">▶</span>降雨推演';
+      $('#compare-button').disabled = true;
+    }
+  }
+
+  function render() {
+    drawMap();
+    updateStatus();
+    updateNumbers();
+  }
+
+  function pause() {
+    if (timer) window.clearInterval(timer);
+    timer = null;
+  }
+
+  function oneStep() {
+    if (state.done) return;
+    RunoffCore.step(state);
+    render();
+    if (state.done) $('#control-message').textContent = '推演完成。现在可以和同一场雨下的原街区对照。';
+  }
+
+  function start() {
+    if (timer) { pause(); render(); $('#control-message').textContent = '推演已暂停。可以继续，或单步推进三分钟。'; return; }
+    if (state.done) { resetState('新一轮推演已准备好。'); }
+    $('#control-message').textContent = '水沿着等高网格逐格传递。推演在浏览器本机运行。';
+    timer = window.setInterval(() => {
+      rainFrame++;
+      oneStep();
+      if (state.done) {
+        pause();
+        $('#control-message').textContent = '推演完成。现在可以和同一场雨下的原街区对照。';
+        render();
+      }
+    }, 95);
+    render();
+  }
+
+  function setScenario(which) {
+    pause();
+    sourceTag = which;
+    types = which === 'green' ? RunoffCore.spongeTown() : RunoffCore.baseOldTown();
+    const oldSelected = which === 'old';
+    $('#scenario-old').classList.toggle('selected', oldSelected);
+    $('#scenario-old').setAttribute('aria-pressed', String(oldSelected));
+    $('#scenario-green').classList.toggle('selected', !oldSelected);
+    $('#scenario-green').setAttribute('aria-pressed', String(!oldSelected));
+    resetState(which === 'green' ? '已载入海绵改造方案。可以直接推演，也可以继续画格子。' : '已载入原街区。可以开始降雨，或先画一个改造方案。');
+  }
+
+  function compareWithOld() {
+    if (!state.done) return;
+    $('#control-message').textContent = '正在用相同雨势、持续时间和土壤湿度推演原街区……';
+    const old = RunoffCore.finish(RunoffCore.createState(RunoffCore.baseOldTown(), settings)).result;
+    comparison = old;
+    renderComparison(currentResult());
+    $('#control-message').textContent = '对照完成。曲线和水量账本使用相同的降雨条件。';
+    updateChart();
+  }
+
+  $('#rain-intensity').addEventListener('input', (event) => {
+    settings.intensity = Number(event.target.value);
+    $('#intensity-value').textContent = `${settings.intensity} mm/h`;
+    resetState('雨势已改变。地图与土壤湿度保留，推演从头开始。');
+  });
+  $('#rain-duration').addEventListener('input', (event) => {
+    settings.duration = Number(event.target.value);
+    $('#duration-value').textContent = `${settings.duration} 分钟`;
+    resetState('降雨时间已改变。地图与土壤湿度保留，推演从头开始。');
+  });
+  $('#soil-wetness').addEventListener('input', (event) => {
+    settings.wetness = Number(event.target.value) / 100;
+    $('#wetness-value').textContent = `${event.target.value}%`;
+    resetState('雨前土壤含水量已改变。推演从头开始。');
+  });
+  document.querySelectorAll('.brush').forEach((button) => button.addEventListener('click', () => { brush = button.dataset.kind; updateBrushButtons(); }));
+  $('#scenario-old').addEventListener('click', () => setScenario('old'));
+  $('#scenario-green').addEventListener('click', () => setScenario('green'));
+  $('#run-button').addEventListener('click', start);
+  $('#step-button').addEventListener('click', () => { pause(); oneStep(); });
+  $('#reset-button').addEventListener('click', () => resetState('推演已重置。当前街区、雨势和土壤含水量保持不变。'));
+  $('#compare-button').addEventListener('click', compareWithOld);
+
+  canvas.addEventListener('pointerdown', (event) => {
+    const id = cellAt(eventPoint(event));
+    if (id < 0) return;
+    activeCell = id;
+    hovered = id;
+    canvas.focus({ preventScroll: true });
+    if (!timer) {
+      pointerPainting = true;
+      canvas.setPointerCapture(event.pointerId);
+      editCell(id);
+    } else {
+      drawMap(); updateInspector(id);
+    }
+  });
+  canvas.addEventListener('pointermove', (event) => {
+    const id = cellAt(eventPoint(event));
+    hovered = id;
+    if (pointerPainting && id >= 0) editCell(id);
+    else { drawMap(); updateInspector(id); }
+  });
+  canvas.addEventListener('pointerup', () => { pointerPainting = false; });
+  canvas.addEventListener('pointercancel', () => { pointerPainting = false; });
+  canvas.addEventListener('pointerleave', () => { if (!pointerPainting) { hovered = -1; drawMap(); updateInspector(-1); } });
+  canvas.addEventListener('keydown', (event) => {
+    const p = RunoffCore.xy(activeCell);
+    let x = p.x, y = p.y;
+    if (event.key === 'ArrowRight') x++;
+    else if (event.key === 'ArrowLeft') x--;
+    else if (event.key === 'ArrowDown') y++;
+    else if (event.key === 'ArrowUp') y--;
+    else if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); editCell(activeCell); return; }
+    else return;
+    event.preventDefault();
+    x = Math.max(0, Math.min(RunoffCore.COLS - 1, x));
+    y = Math.max(0, Math.min(RunoffCore.ROWS - 1, y));
+    activeCell = RunoffCore.index(x, y); hovered = activeCell;
+    drawMap(); updateInspector(activeCell);
+  });
+
+  if ('ResizeObserver' in window) new ResizeObserver(resizeCanvas).observe(canvas);
+  else window.addEventListener('resize', resizeCanvas);
+  updateBrushButtons();
+  resizeCanvas();
+  render();
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1967 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#193d3d">
+<meta name="description" content="连接两只半电池，改变电极、溶液浓度、盐桥与负载，用能斯特方程和法拉第定律对照电荷账本。">
+<title>盐桥的账本 · 电化学桌面实验</title>
+<style>
+:root {
+  color-scheme: light;
+  --paper: #f3efe5;
+  --paper-deep: #e8e1d3;
+  --card: #fbf9f2;
+  --ink: #26332f;
+  --ink-soft: #515d56;
+  --muted: #62685f;
+  --line: #d7d0c1;
+  --teal: #527b7c;
+  --teal-deep: #193d3d;
+  --teal-dark: #122d30;
+  --rust: #b64b31;
+  --rust-pale: #f0ded2;
+  --acid: #d8df6c;
+  --amber: #bd8b48;
+  --blue: #718d9a;
+  --serif: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", Georgia, serif;
+  --sans: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  --mono: "Cascadia Code", Consolas, "SFMono-Regular", monospace;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+body {
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 78% 2%, rgba(255, 253, 247, .9) 0, transparent 32rem),
+    linear-gradient(180deg, #f7f3ea 0%, var(--paper) 48%, #eee8dc 100%);
+  font: 14px/1.75 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; }
+button, a, input, select { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid var(--rust);
+  outline-offset: 3px;
+}
+::selection { color: var(--teal-dark); background: #e0e782; }
+[hidden] { display: none !important; }
+
+.skip-link {
+  position: fixed;
+  z-index: 20;
+  top: 8px;
+  left: 8px;
+  padding: 8px 12px;
+  transform: translateY(-150%);
+  background: var(--teal-dark);
+  color: #fffaf0;
+  text-decoration: none;
+}
+.skip-link:focus { transform: translateY(0); }
+
+.site-header {
+  max-width: 1320px;
+  min-height: 76px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 22px;
+  margin: auto;
+  padding: 12px 38px;
+  border-bottom: 1px solid rgba(41, 56, 49, .15);
+}
+.wordmark { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; }
+.brand-mark {
+  width: 39px;
+  height: 39px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ink);
+  color: var(--rust);
+  font: 21px var(--serif);
+}
+.wordmark-copy { display: flex; flex-direction: column; line-height: 1.35; }
+.wordmark-copy strong { font: 600 14px var(--serif); letter-spacing: .04em; }
+.wordmark-copy small { margin-top: 3px; color: var(--muted); font-size: 8px; letter-spacing: .08em; }
+.site-nav { display: flex; align-items: center; gap: clamp(16px, 2.7vw, 34px); margin-left: auto; }
+.site-nav a { padding: 7px 0; color: var(--ink-soft); font-size: 9px; text-decoration: none; white-space: nowrap; }
+.site-nav a:hover { color: var(--rust); }
+.header-index { color: var(--muted); font: 8px var(--mono); letter-spacing: .08em; white-space: nowrap; }
+
+.page-shell { max-width: 1280px; margin: auto; padding: 0 38px; }
+.hero {
+  min-height: 500px;
+  display: grid;
+  grid-template-columns: minmax(0, .92fr) minmax(390px, 1.08fr);
+  gap: clamp(32px, 7vw, 88px);
+  align-items: center;
+  padding: 58px 0 64px;
+  border-bottom: 1px solid var(--line);
+}
+.hero-copy { min-width: 0; }
+.eyebrow { display: flex; align-items: center; gap: 9px; margin: 0 0 17px; color: var(--rust); font: 8px var(--mono); letter-spacing: .1em; }
+.eyebrow-mark { width: 7px; height: 7px; display: inline-block; border: 1px solid var(--rust); transform: rotate(45deg); }
+.hero h1 { margin: 0; color: var(--ink); font: 500 clamp(67px, 8vw, 101px)/.98 var(--serif); letter-spacing: -.045em; }
+.hero h1 em, .chapter h2 em, .closing-note h2 em { color: var(--rust); font-style: normal; }
+.hero-lede { margin: 22px 0 0; color: var(--ink); font: 500 clamp(19px, 2vw, 24px)/1.62 var(--serif); letter-spacing: .015em; }
+.hero-description { max-width: 495px; margin: 13px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 2; }
+.hero-link { display: inline-flex; align-items: center; gap: 16px; margin-top: 23px; padding: 7px 0; border-bottom: 1px solid var(--ink); color: var(--ink); font-size: 9px; text-decoration: none; }
+.hero-link span { color: var(--rust); font-size: 15px; }
+.hero-link:hover { border-color: var(--rust); color: var(--rust); }
+.hero-figure { min-width: 0; position: relative; margin: 0; padding: 13px 16px 15px; border: 1px solid #d8d0c1; background: rgba(251, 249, 242, .67); }
+.hero-figure-top { display: flex; justify-content: space-between; color: var(--muted); font: 8px var(--mono); letter-spacing: .06em; }
+.hero-cell-mark {
+  position: relative;
+  width: min(100%, 450px);
+  aspect-ratio: 1.43;
+  margin: 9px auto 3px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 60%, rgba(82, 123, 124, .1), transparent 53%),
+    repeating-linear-gradient(0deg, transparent 0 31px, rgba(60, 76, 65, .045) 31px 32px),
+    repeating-linear-gradient(90deg, transparent 0 31px, rgba(60, 76, 65, .045) 31px 32px);
+}
+.cell-wire { position: absolute; top: 23%; left: 18%; width: 64%; height: 30%; border: 1px solid var(--teal-deep); border-bottom: 0; }
+.cell-wire::before { position: absolute; right: -1px; bottom: -8px; width: 1px; height: 38%; content: ""; background: var(--teal-deep); }
+.cell-wire::after { position: absolute; left: -1px; bottom: -8px; width: 1px; height: 38%; content: ""; background: var(--teal-deep); }
+.cell-meter { position: absolute; z-index: 1; top: 12%; left: 47%; width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--teal-deep); border-radius: 50%; background: var(--card); color: var(--rust); font: 12px var(--mono); }
+.cell-electrode { position: absolute; z-index: 2; top: 43%; width: 10px; height: 34%; border: 1px solid #455a52; background: #798a82; box-shadow: 3px 2px 0 rgba(27, 48, 43, .13); }
+.cell-anode { left: 30%; }
+.cell-cathode { right: 29%; background: #bc7453; }
+.cell-beaker { position: absolute; bottom: 11%; width: 25%; height: 44%; border: 1px solid rgba(38, 76, 75, .65); border-top: 0; background: linear-gradient(0deg, rgba(88, 152, 155, .27) 0 73%, transparent 73%); }
+.beaker-left { left: 18%; }
+.beaker-right { right: 18%; background: linear-gradient(0deg, rgba(201, 141, 97, .23) 0 73%, transparent 73%); }
+.cell-bridge { position: absolute; top: 37%; left: 41%; width: 18%; height: 19%; border: 6px solid #8aa3a0; border-bottom: 0; border-radius: 13px 13px 0 0; }
+.cell-electron, .cell-ion { position: absolute; z-index: 3; display: grid; place-items: center; border-radius: 50%; font: 8px var(--mono); }
+.cell-electron { top: 22%; width: 22px; height: 22px; border: 1px solid rgba(182, 75, 49, .55); background: #f6e6db; color: var(--rust); }
+.e-one { left: 37%; animation: float-right 2.2s ease-in-out infinite; }
+.e-two { right: 37%; animation: float-right 2.2s ease-in-out .6s infinite; }
+.cell-ion { top: 43%; width: 24px; height: 24px; border: 1px solid rgba(82, 123, 124, .48); background: #edf2eb; color: var(--teal-deep); }
+.ion-one { left: 43%; }
+.ion-two { right: 43%; color: var(--rust); }
+.cell-arrow { position: absolute; right: 2%; bottom: 3%; left: 2%; color: var(--muted); font: 8px var(--mono); letter-spacing: .04em; text-align: center; }
+@keyframes float-right { 0%, 100% { transform: translateX(-4px); } 50% { transform: translateX(8px); } }
+.hero-figure figcaption { display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--muted); font-size: 8px; }
+.hero-figure figcaption i { width: 24px; height: 1px; background: var(--rust); }
+.hero-default { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; align-items: baseline; margin-top: 14px; padding: 10px 12px; border-left: 2px solid var(--acid); background: var(--teal-deep); color: #f5f1e6; }
+.hero-default > span { grid-column: 1; color: #c6d2c2; font-size: 8px; }
+.hero-default strong { grid-column: 2; grid-row: 1 / span 2; justify-self: end; color: var(--acid); font: 15px var(--mono); white-space: nowrap; }
+.hero-default strong b { color: #eab18d; font-weight: 400; }
+.hero-default small { grid-column: 1; color: #d3d9cb; font-size: 8px; }
+
+.chapter { padding-top: 70px; }
+.chapter-heading { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(270px, .95fr); gap: 32px; align-items: end; margin-bottom: 26px; }
+.section-number { width: 22px; height: 22px; display: inline-grid; place-items: center; border: 1px solid var(--rust); font: 9px var(--mono); letter-spacing: 0; }
+.chapter h2 { margin: 0; color: var(--ink); font: 500 clamp(35px, 4vw, 51px)/1.35 var(--serif); letter-spacing: -.035em; }
+.chapter-intro { max-width: 455px; margin: 0 0 4px; color: var(--ink-soft); font-size: 10px; line-height: 2; }
+
+.lab-layout { display: grid; grid-template-columns: minmax(270px, 315px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.controls-panel { min-width: 0; padding: 15px; border: 1px solid var(--line); background: rgba(251, 249, 242, .76); }
+.panel-heading, .control-section-label { display: flex; justify-content: space-between; gap: 12px; align-items: center; color: var(--ink); font: 9px var(--mono); letter-spacing: .06em; }
+.panel-heading { padding-bottom: 12px; border-bottom: 1px solid var(--line); font-weight: 650; }
+.panel-heading span:last-child, .control-section-label span:last-child { color: var(--muted); font-size: 7px; font-weight: 400; }
+.preset-section { margin-top: 14px; }
+.preset-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 9px; }
+.preset-button { min-height: 51px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 6px 8px; border: 1px solid #d6d0c4; background: transparent; color: var(--ink); text-align: left; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
+.preset-button:hover { transform: translateY(-1px); border-color: var(--teal); background: #eef1e8; }
+.preset-button span { font-size: 9px; font-weight: 650; }
+.preset-button small { color: var(--muted); font-size: 7px; line-height: 1.45; }
+.preset-highlight { border-color: var(--teal); background: rgba(82, 123, 124, .09); }
+.cell-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 15px; }
+.half-input { min-width: 0; margin: 0; padding: 9px 8px 8px; border: 1px solid var(--line); }
+.half-input legend { padding: 0 4px; color: var(--ink); font: 9px var(--serif); font-weight: 650; }
+.side-index { width: 15px; height: 15px; display: inline-grid; place-items: center; margin-right: 4px; border: 1px solid var(--teal); border-radius: 50%; color: var(--teal-deep); font: 7px var(--mono); }
+.half-input-right .side-index { border-color: var(--rust); color: var(--rust); }
+.select-control, .range-control { min-width: 0; display: block; }
+.select-control { margin-top: 4px; }
+.control-title { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; color: var(--ink-soft); font-size: 8px; line-height: 1.6; }
+.control-title output { color: var(--teal-deep); font: 9px var(--mono); white-space: nowrap; }
+.select-control select { width: 100%; min-height: 32px; margin-top: 3px; padding: 4px 19px 4px 6px; border: 1px solid #d5cebf; border-radius: 0; background: var(--card); color: var(--ink); font-size: 8px; }
+.range-control { margin-top: 10px; }
+.range-control input[type="range"] { width: 100%; height: 16px; display: block; margin: 3px 0 1px; accent-color: var(--teal); cursor: pointer; }
+.half-input-right input[type="range"] { accent-color: var(--rust); }
+.range-hint { display: flex; justify-content: space-between; gap: 6px; color: var(--muted); font: 7px var(--mono); }
+.half-formula { min-height: 20px; margin: 7px 0 0; padding-top: 6px; border-top: 1px solid rgba(215, 208, 193, .7); color: var(--teal-deep); font: 8px var(--mono); white-space: nowrap; }
+.control-help { margin: 7px 1px 0; color: var(--muted); font-size: 7px; line-height: 1.7; }
+.environment-controls { margin-top: 15px; padding-top: 12px; border-top: 1px solid var(--line); }
+.environment-controls .range-control { margin-top: 10px; }
+.switch-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 13px; }
+.switch-label { position: relative; min-width: 0; display: flex; align-items: center; gap: 7px; padding: 7px 5px; border: 1px solid var(--line); cursor: pointer; }
+.switch-label input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; clip-path: inset(50%); }
+.switch-track { width: 27px; height: 15px; flex: 0 0 auto; display: inline-flex; align-items: center; padding: 2px; border: 1px solid #8d938b; border-radius: 20px; background: #dedbd2; transition: background .16s ease; }
+.switch-track i { width: 9px; height: 9px; display: block; border-radius: 50%; background: #fffdf5; box-shadow: 0 1px 2px rgba(20, 35, 32, .22); transition: transform .16s ease; }
+.switch-label input:checked + .switch-track { border-color: var(--teal-deep); background: var(--teal); }
+.switch-label input:checked + .switch-track i { transform: translateX(11px); }
+.switch-label input:focus-visible + .switch-track { outline: 3px solid var(--rust); outline-offset: 3px; }
+.switch-label > span:last-child { min-width: 0; display: flex; flex-direction: column; line-height: 1.45; }
+.switch-label strong { color: var(--ink); font-size: 8px; }
+.switch-label small { color: var(--muted); font-size: 7px; }
+.time-controls { margin-top: 15px; padding-top: 12px; border-top: 1px solid var(--line); }
+.step-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin-top: 9px; }
+.step-button { min-height: 48px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1px; padding: 4px 2px; border: 1px solid var(--line); background: transparent; color: var(--ink); }
+.step-button:hover { border-color: var(--teal); background: #eef1e8; }
+.step-button strong { font: 9px var(--mono); }
+.step-button small { color: var(--muted); font-size: 6px; }
+.transport-buttons { display: flex; gap: 7px; margin-top: 8px; }
+.run-button, .reset-button { min-height: 37px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 10px; border: 1px solid var(--teal-deep); font-size: 8px; }
+.run-button { flex: 1; background: var(--teal-deep); color: #f7f4e9; }
+.run-button:hover:not(:disabled) { background: #275450; }
+.run-button[aria-pressed="true"] { border-color: var(--rust); background: var(--rust); }
+.run-button:disabled { opacity: .48; cursor: not-allowed; }
+.run-button span { font-size: 9px; }
+.reset-button { border-color: var(--line); background: transparent; color: var(--ink-soft); }
+.reset-button:hover { border-color: var(--rust); color: var(--rust); }
+
+.apparatus-column { min-width: 0; }
+.apparatus-card, .potential-card, .reaction-card, .history-card, .ledger-card { min-width: 0; border: 1px solid var(--line); background: rgba(251, 249, 242, .76); }
+.apparatus-card { padding: 13px 14px 11px; }
+.apparatus-heading, .plot-heading, .outcome-topline, .ledger-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; }
+.plot-kicker { margin: 0 0 3px; color: var(--rust); font: 7px var(--mono); letter-spacing: .09em; }
+.apparatus-heading h3, .plot-heading h3, .reaction-card h3, .ledger-card h3 { margin: 0; color: var(--ink); font: 500 16px/1.4 var(--serif); }
+.state-chip { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; padding: 5px 8px; border: 1px solid #cbd8c9; background: #eef2e8; color: #3b6255; font-size: 7px; white-space: nowrap; }
+.state-chip i { width: 6px; height: 6px; display: block; border-radius: 50%; background: #5d8b68; }
+.state-chip.is-open { border-color: #d9c9ab; background: #f5efe1; color: #795e37; }
+.state-chip.is-open i { background: #b58c4f; }
+.state-chip.is-equilibrium { border-color: #cad0ca; background: #eeefea; color: #636e68; }
+.state-chip.is-equilibrium i { background: #8b958e; }
+.state-chip.is-depleted { border-color: #e2bcae; background: #f6e8e1; color: #99482f; }
+.state-chip.is-depleted i { background: var(--rust); }
+.cell-diagram-frame { margin-top: 8px; overflow: hidden; border: 1px solid #e1dbcf; background: #f7f5ed; }
+#cell-diagram { width: 100%; height: auto; display: block; }
+.wire { fill: none; stroke: #3c5752; stroke-width: 3; stroke-linejoin: round; }
+.load-symbol { fill: none; stroke: var(--rust); stroke-width: 2.2; stroke-linejoin: round; }
+.electron-arrow { fill: none; stroke: var(--rust); stroke-width: 1.4; stroke-dasharray: 4 4; transition: d .2s ease; }
+.electron-flow { fill: var(--rust); opacity: 0; transition: opacity .2s ease; }
+.electron-flow.is-active { opacity: 1; animation: electron-travel 1.1s linear infinite; }
+.electron-flow-right.is-active { animation-name: electron-travel-left; }
+@keyframes electron-travel { from { transform: translateX(-27px); } to { transform: translateX(30px); } }
+@keyframes electron-travel-left { from { transform: translateX(30px); } to { transform: translateX(-27px); } }
+.bridge-tube { fill: none; stroke: #8aa3a0; stroke-width: 18; stroke-linecap: round; stroke-linejoin: round; }
+.bridge-liquid { fill: none; stroke: #e6eadb; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+.bridge-tube.is-disconnected { stroke: #bbb9ae; stroke-dasharray: 5 4; }
+.bridge-liquid.is-disconnected { stroke: #eeece4; }
+.bridge-particle { opacity: .92; transition: opacity .2s ease; }
+.bridge-particle circle { fill: #f8f5e9; stroke: #5d827e; stroke-width: 1; }
+.bridge-particle text { fill: var(--teal-deep); font: 8px var(--mono); text-anchor: middle; }
+.bridge-particle.is-inactive { opacity: .25; }
+.bridge-particle.to-left { animation: ion-travel-left 1.3s ease-in-out infinite alternate; }
+.bridge-particle.to-right { animation: ion-travel-right 1.3s ease-in-out infinite alternate; }
+@keyframes ion-travel-left { from { transform: translateX(0); } to { transform: translateX(-16px); } }
+@keyframes ion-travel-right { from { transform: translateX(0); } to { transform: translateX(16px); } }
+.beaker-outline { fill: none; stroke: #52716b; stroke-width: 2; stroke-linecap: round; }
+.solution-left { fill: rgba(86, 148, 153, .22); stroke: none; }
+.solution-right { fill: rgba(197, 130, 91, .18); stroke: none; }
+.solution-sheen { fill: none; stroke: rgba(75, 128, 126, .65); stroke-width: 1.3; }
+.ion-cloud { fill: #527f7e; opacity: .75; transition: opacity .2s ease; }
+.ion-cloud-right { fill: #af6849; }
+.metal-plate { fill: #858e8d; stroke: #44534e; stroke-width: 1; transition: fill .2s ease; }
+.electrode-shine { fill: none; stroke: rgba(255, 251, 235, .75); stroke-width: 1.3; }
+.svg-label { fill: #263b37; font: 11px var(--serif); }
+.svg-small { fill: #53635d; font: 10px var(--mono); }
+.svg-tiny { fill: #556a62; font: 9px var(--mono); }
+.svg-side-name { fill: #273a35; font: 12px var(--serif); font-weight: 650; }
+.svg-role { fill: #a74932; font: 10px var(--mono); }
+.svg-role-cathode { fill: #347270; }
+.apparatus-caption { margin: 8px 2px 0; color: var(--ink-soft); font-size: 8px; line-height: 1.7; }
+.diagram-legend, .chart-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 8px; color: var(--muted); font-size: 7px; }
+.diagram-legend span, .chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.diagram-legend i, .chart-legend i { width: 9px; height: 3px; display: inline-block; }
+.legend-electron, .legend-load { background: var(--rust); }
+.legend-cation, .legend-cell { background: var(--teal); }
+.legend-anion { background: var(--blue); }
+.readout-grid { display: grid; grid-template-columns: minmax(0, 1.04fr) minmax(0, .96fr); gap: 9px; margin-top: 9px; }
+.potential-card, .reaction-card { padding: 12px; }
+.chart-units { padding-top: 3px; color: var(--muted); font: 7px var(--mono); white-space: nowrap; }
+.potential-reading { display: flex; align-items: baseline; gap: 5px; margin-top: 9px; color: var(--teal-deep); }
+.potential-reading strong { font: 500 clamp(33px, 3vw, 43px)/1 var(--mono); letter-spacing: -.07em; }
+.potential-reading span { color: var(--muted); font: 11px var(--mono); }
+.potential-caption { margin: 5px 0 9px; color: var(--muted); font-size: 7px; }
+.reading-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.reading-pair div { min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 7px 6px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.reading-pair span { color: var(--muted); font-size: 7px; }
+.reading-pair strong { color: var(--ink); font: 9px var(--mono); overflow-wrap: anywhere; }
+.nernst-ledger { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 8px; background: #f0eee5; }
+.nernst-ledger div { min-width: 0; padding: 6px; border-right: 1px solid #e0dbce; }
+.nernst-ledger span { display: block; color: var(--muted); font-size: 6px; }
+.nernst-ledger strong { display: block; margin-top: 2px; color: var(--teal-deep); font: 8px var(--mono); overflow-wrap: anywhere; }
+.nernst-ledger .nernst-equation { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid #e0dbce; border-right: 0; }
+.nernst-ledger .nernst-equation strong { margin: 0; text-align: right; }
+.outcome-topline { align-items: center; margin-bottom: 7px; color: var(--muted); font: 7px var(--mono); letter-spacing: .06em; }
+.outcome-stamp { width: 25px; height: 25px; display: grid; place-items: center; border: 1px solid var(--rust); border-radius: 50%; color: var(--rust); font: 7px var(--mono); }
+.reaction-card h3 { margin-bottom: 10px; }
+.half-reaction { margin-top: 7px; padding: 7px 8px; border-left: 2px solid var(--rust); background: #f5eee5; }
+.half-reaction:nth-of-type(3) { border-left-color: var(--teal); background: #edf1e8; }
+.half-reaction span, .overall-reaction span { display: block; color: var(--muted); font-size: 7px; }
+.half-reaction strong, .overall-reaction strong { display: block; margin-top: 3px; color: var(--ink); font: 8px/1.5 var(--mono); overflow-wrap: anywhere; }
+.half-reaction small { display: block; margin-top: 3px; color: var(--muted); font: 7px var(--mono); }
+.overall-reaction { margin-top: 8px; padding: 8px; border: 1px solid var(--line); background: rgba(255, 255, 255, .22); }
+.reaction-note { margin: 8px 1px 0; color: var(--muted); font-size: 7px; line-height: 1.7; }
+.history-card { margin-top: 9px; padding: 12px 13px 10px; }
+.history-card .plot-heading h3 { font-size: 15px; }
+.chart-intro { margin: 6px 0 8px; color: var(--muted); font-size: 8px; line-height: 1.7; }
+.history-chart-frame { overflow: hidden; border: 1px solid #e0dbcf; background: #faf8f1; }
+#history-chart { width: 100%; height: auto; display: block; }
+.chart-grid { fill: none; stroke: #dcd6ca; stroke-width: 1; stroke-dasharray: 2 4; }
+.chart-axis-labels { fill: #76817b; font: 9px var(--mono); }
+.chart-series { fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.chart-series-cell { stroke: var(--teal); }
+.chart-series-load { stroke: var(--rust); stroke-width: 1.8; stroke-dasharray: 5 3; }
+.chart-dot { stroke: #faf8f1; stroke-width: 2; }
+.chart-dot-cell { fill: var(--teal); }
+.chart-dot-load { fill: var(--rust); }
+.keyboard-note { margin: 9px 2px 0; color: var(--muted); font-size: 7px; line-height: 1.7; }
+.keyboard-note b { color: var(--ink-soft); font-weight: 650; }
+
+.principle-board { display: grid; grid-template-columns: minmax(240px, .72fr) minmax(0, 1.28fr); border: 1px solid var(--line); background: rgba(251, 249, 242, .64); }
+.equation-panel { min-height: 240px; display: flex; flex-direction: column; justify-content: center; padding: 28px; border-right: 1px solid var(--line); background: var(--teal-deep); color: #f7f4e9; }
+.equation-label { color: #cfdbb6; font: 8px var(--mono); letter-spacing: .1em; }
+.equation { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 18px 0 11px; color: var(--acid); font: 500 clamp(27px, 3.4vw, 41px)/1.3 var(--serif); }
+.equation span { font-size: .65em; }
+.equation .fraction-line { padding-top: 3px; border-top: 1px solid rgba(216, 223, 108, .6); }
+.equation-panel small { max-width: 265px; color: #c7d2c4; font-size: 8px; line-height: 1.8; }
+.principle-steps { display: grid; grid-template-columns: 1fr; gap: 0; margin: 0; padding: 8px 23px; list-style: none; }
+.principle-steps li { display: grid; grid-template-columns: 30px 1fr; gap: 9px; align-items: start; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.principle-steps li:last-child { border-bottom: 0; }
+.principle-steps li > span { width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid var(--rust); color: var(--rust); font: 8px var(--mono); }
+.principle-steps strong { color: var(--ink); font: 500 13px var(--serif); }
+.principle-steps p { margin: 4px 0 0; color: var(--ink-soft); font-size: 8px; line-height: 1.8; }
+.potential-note { display: grid; grid-template-columns: 24px 1fr; gap: 12px; margin-top: 12px; padding: 14px 17px; border-left: 2px solid var(--rust); background: #f1e9dc; }
+.potential-note > span { color: var(--rust); font-size: 17px; }
+.potential-note p { margin: 0; color: var(--ink-soft); font-size: 9px; line-height: 1.85; }
+.potential-note strong { color: var(--ink); font: 600 12px var(--serif); }
+
+.account-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.12fr) minmax(0, .9fr); gap: 10px; }
+.ledger-card { padding: 14px; }
+.ledger-heading { align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--rust); font: 7px var(--mono); letter-spacing: .06em; }
+.ledger-heading span:last-child { color: var(--muted); }
+.ledger-card h3 { margin-top: 10px; font-size: 15px; }
+.ledger-value { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; margin: 14px 0 12px; }
+.ledger-value strong { color: var(--teal-deep); font: 500 25px/1.2 var(--mono); letter-spacing: -.04em; }
+.ledger-value span { color: var(--muted); font-size: 7px; }
+.ledger-list { margin: 0; border-top: 1px solid var(--line); }
+.ledger-list div { display: flex; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(215, 208, 193, .72); }
+.ledger-list dt { color: var(--muted); font-size: 7px; }
+.ledger-list dd { margin: 0; color: var(--ink); font: 8px var(--mono); text-align: right; }
+.ledger-foot { margin: 9px 0 0; color: var(--muted); font-size: 7px; line-height: 1.7; }
+.inventory-table-wrap { max-width: 100%; overflow-x: auto; margin-top: 14px; }
+.inventory-table { width: 100%; border-collapse: collapse; text-align: right; }
+.inventory-table th, .inventory-table td { padding: 7px 4px; border-bottom: 1px solid rgba(215, 208, 193, .8); font: 7px var(--mono); white-space: nowrap; }
+.inventory-table thead th { color: var(--muted); font-weight: 400; }
+.inventory-table thead th:first-child, .inventory-table tbody th { text-align: left; }
+.inventory-table tbody th { color: var(--ink); font-weight: 600; }
+.inventory-table tbody th small { display: block; margin-top: 3px; color: var(--muted); font: 6px var(--sans); }
+.inventory-table td { color: var(--ink-soft); }
+.metal-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 14px; }
+.metal-columns > div { min-width: 0; display: flex; flex-direction: column; padding: 9px 7px; border: 1px solid var(--line); background: #f5f1e8; }
+.metal-columns span { color: var(--muted); font-size: 7px; }
+.metal-columns strong { margin-top: 4px; color: var(--teal-deep); font: 11px var(--mono); }
+.metal-columns small { margin-top: 4px; color: var(--muted); font: 6px var(--mono); }
+.mass-rule { display: flex; flex-direction: column; gap: 3px; margin-top: 9px; padding: 8px; background: #eef0e7; color: var(--teal-deep); }
+.mass-rule span:first-child { font: 10px var(--serif); }
+.mass-rule span:last-child { color: var(--muted); font: 6px var(--mono); overflow-wrap: anywhere; }
+
+.limits-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(220px, .85fr); gap: 16px; border: 1px solid var(--line); background: rgba(251, 249, 242, .58); }
+.limits-main { padding: 24px 25px; }
+.stamp-small { display: inline-flex; padding: 5px 8px; border: 1px solid var(--rust); color: var(--rust); font: 7px var(--mono); letter-spacing: .08em; }
+.limits-main h3 { margin: 15px 0 12px; color: var(--ink); font: 500 20px/1.5 var(--serif); }
+.limits-main p { max-width: 700px; margin: 8px 0 0; color: var(--ink-soft); font-size: 8px; line-height: 1.95; }
+.limits-facts { display: grid; grid-template-columns: 1fr; align-content: center; padding: 16px 20px; border-left: 1px solid var(--line); background: rgba(239, 235, 224, .72); }
+.limits-facts div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(208, 200, 186, .78); }
+.limits-facts div:last-child { border-bottom: 0; }
+.limits-facts span { color: var(--muted); font-size: 7px; }
+.limits-facts strong { color: var(--ink); font: 7px var(--mono); text-align: right; }
+.source-note { display: grid; grid-template-columns: 100px 1fr; gap: 14px; margin-top: 12px; padding: 12px 15px; border-left: 2px solid var(--teal); background: #e9eee7; }
+.source-note > span { color: var(--teal-deep); font: 8px var(--mono); }
+.source-note p { margin: 0; color: var(--ink-soft); font-size: 8px; line-height: 1.8; }
+.closing-note { margin-top: 86px; padding: 37px 24px 41px; border-top: 1px solid var(--line); text-align: center; }
+.closing-note .eyebrow { justify-content: center; margin-bottom: 10px; }
+.closing-note h2 { margin: 0; color: var(--ink); font: 500 clamp(35px, 4.6vw, 53px)/1.38 var(--serif); letter-spacing: -.04em; }
+.closing-note > p:not(.eyebrow) { max-width: 495px; margin: 12px auto 0; color: var(--ink-soft); font-size: 9px; line-height: 1.85; }
+.back-to-lab { display: inline-flex; align-items: center; gap: 12px; margin-top: 20px; padding: 7px 0; border-bottom: 1px solid var(--ink); color: var(--ink); font-size: 8px; text-decoration: none; }
+.back-to-lab span { color: var(--rust); font-size: 14px; }
+.site-footer { max-width: 1280px; display: flex; justify-content: space-between; gap: 16px; margin: auto; padding: 17px 38px 22px; border-top: 1px solid var(--line); color: var(--muted); font: 7px var(--mono); }
+
+@media (max-width: 1100px) {
+  .site-header, .page-shell { padding-right: 26px; padding-left: 26px; }
+  .site-header { gap: 14px; }
+  .site-nav { gap: 15px; }
+  .header-index { display: none; }
+  .hero { gap: 35px; }
+  .lab-layout { grid-template-columns: minmax(255px, 290px) minmax(0, 1fr); gap: 12px; }
+  .controls-panel { padding: 12px; }
+  .readout-grid { grid-template-columns: minmax(0, 1fr); }
+  .account-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metal-ledger { grid-column: 1 / -1; }
+  .metal-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 800px) {
+  .site-header { min-height: 69px; flex-wrap: wrap; }
+  .site-nav { order: 3; width: 100%; justify-content: space-between; gap: 10px; margin: 0; padding-top: 3px; border-top: 1px solid rgba(41, 56, 49, .1); }
+  .site-nav a { font-size: 8px; }
+  .hero { min-height: 0; grid-template-columns: minmax(0, 1fr); gap: 27px; padding: 42px 0 45px; }
+  .hero-copy { max-width: 650px; }
+  .hero h1 { font-size: clamp(64px, 14vw, 92px); }
+  .hero-figure { max-width: 590px; width: 100%; margin: auto; }
+  .chapter { padding-top: 54px; }
+  .chapter-heading { grid-template-columns: minmax(0, 1fr); gap: 12px; margin-bottom: 20px; }
+  .chapter-intro { max-width: 650px; }
+  .lab-layout { grid-template-columns: minmax(0, 1fr); }
+  .controls-panel { order: 1; }
+  .apparatus-column { order: 2; }
+  .cell-inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .controls-panel { padding: 16px; }
+  .preset-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .preset-button { min-height: 55px; }
+  .environment-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
+  .environment-controls .control-section-label, .environment-controls .switch-row, .environment-controls > .control-help { grid-column: 1 / -1; }
+  .environment-controls .range-control { margin-top: 12px; }
+  .time-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); gap: 7px 14px; align-items: start; }
+  .time-controls .control-section-label { grid-column: 1 / -1; }
+  .time-controls > .control-help { grid-column: 1 / -1; }
+  .step-grid { grid-column: 1; }
+  .transport-buttons { grid-column: 2; align-self: stretch; flex-direction: column; margin-top: 9px; }
+  .run-button, .reset-button { min-height: 32px; }
+  .step-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .readout-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .principle-board { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); }
+  .equation-panel { padding: 20px; }
+  .limits-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .limits-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; border-top: 1px solid var(--line); border-left: 0; }
+  .site-footer { padding-right: 26px; padding-left: 26px; }
+}
+
+@media (max-width: 580px) {
+  .site-header, .page-shell { padding-right: 18px; padding-left: 18px; }
+  .wordmark-copy strong { font-size: 13px; }
+  .site-nav { flex-wrap: wrap; justify-content: flex-start; column-gap: 18px; }
+  .site-nav a { font-size: 7px; }
+  .hero { padding: 34px 0 37px; }
+  .hero-figure { padding: 11px; }
+  .hero-cell-mark { aspect-ratio: 1.25; }
+  .hero-figure figcaption { gap: 5px; font-size: 7px; }
+  .hero-figure figcaption i { width: 13px; }
+  .chapter { padding-top: 45px; }
+  .chapter h2 { font-size: clamp(32px, 8vw, 43px); }
+  .controls-panel { padding: 12px; }
+  .preset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .preset-button { min-height: 49px; }
+  .cell-inputs { gap: 5px; }
+  .half-input { padding: 7px 5px 6px; }
+  .half-input legend { font-size: 8px; }
+  .half-formula { font-size: 6px; }
+  .environment-controls { column-gap: 11px; }
+  .switch-row { gap: 5px; }
+  .switch-label { gap: 5px; padding: 6px 4px; }
+  .switch-label strong { font-size: 7px; }
+  .switch-label small { font-size: 6px; }
+  .run-button, .reset-button { padding: 0 7px; font-size: 7px; }
+  .apparatus-card { padding: 10px 8px; }
+  .cell-diagram-frame { overflow-x: auto; overscroll-behavior-x: contain; }
+  #cell-diagram { width: 600px; max-width: none; }
+  .cell-diagram-frame::after { content: "左右滑动查看完整电池示意"; display: block; padding: 4px 6px; color: var(--muted); background: #f7f5ed; font: 6px var(--mono); text-align: right; }
+  .apparatus-heading h3, .plot-heading h3, .reaction-card h3 { font-size: 14px; }
+  .state-chip { padding: 4px 5px; font-size: 6px; }
+  .diagram-legend { gap: 6px 9px; }
+  .readout-grid { grid-template-columns: minmax(0, 1fr); }
+  .potential-card, .reaction-card { padding: 11px; }
+  .history-card { padding: 10px 7px 9px; }
+  .history-card .plot-heading { gap: 7px; }
+  .history-card .plot-heading h3 { font-size: 13px; }
+  .chart-units { font-size: 6px; }
+  .account-grid { grid-template-columns: minmax(0, 1fr); }
+  .metal-ledger { grid-column: auto; }
+  .principle-board { grid-template-columns: minmax(0, 1fr); }
+  .equation-panel { min-height: 180px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .equation { font-size: 34px; }
+  .principle-steps { padding: 7px 15px; }
+  .limits-main { padding: 19px 17px; }
+  .limits-main h3 { font-size: 18px; }
+  .limits-facts { padding: 12px 15px; column-gap: 12px; }
+  .source-note { grid-template-columns: 1fr; gap: 5px; }
+  .closing-note { margin-top: 62px; padding-right: 9px; padding-left: 9px; }
+  .site-footer { flex-direction: column; gap: 5px; padding: 14px 18px 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+</style>
+</head>
+<body>
+<a class="skip-link" href="#experiment">跳到电池实验</a>
+
+<header class="site-header" id="top">
+  <a class="wordmark" href="#top" aria-label="盐桥的账本，返回页首">
+    <span class="brand-mark" aria-hidden="true">桥</span>
+    <span class="wordmark-copy"><strong>盐桥的账本</strong><small>电化学桌面实验</small></span>
+  </a>
+  <nav class="site-nav" aria-label="页面导航">
+    <a href="#experiment">搭建电池</a>
+    <a href="#principle">读懂电势</a>
+    <a href="#account">电荷账本</a>
+    <a href="#limits">模型边界</a>
+  </nav>
+  <span class="header-index">ELECTROCHEMISTRY / 01</span>
+</header>
+
+<main id="main" class="page-shell">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span>化学与电流 / GALVANIC CELL</p>
+      <h1 id="hero-title">盐桥的<br><em>账本</em></h1>
+      <p class="hero-lede">电子从一边出发，<br>离子从另一条路补上。</p>
+      <p class="hero-description">把两杯溶液和两片金属接起来。调浓度、换电极、拔掉盐桥，再让负载消耗一段电量；每一步都要在溶液、金属和外电路里对上账。</p>
+      <a class="hero-link" href="#experiment">进入实验台 <span aria-hidden="true">↓</span></a>
+    </div>
+
+    <figure class="hero-figure" aria-hidden="true">
+      <div class="hero-figure-top"><span>电池草图 / FIELD NOTE</span><span>FIG. 01</span></div>
+      <div class="hero-cell-mark">
+        <span class="cell-wire"></span>
+        <span class="cell-meter">V</span>
+        <span class="cell-electrode cell-anode"></span>
+        <span class="cell-electrode cell-cathode"></span>
+        <span class="cell-beaker beaker-left"></span>
+        <span class="cell-beaker beaker-right"></span>
+        <span class="cell-bridge"></span>
+        <span class="cell-electron e-one">e<sup>−</sup></span>
+        <span class="cell-electron e-two">e<sup>−</sup></span>
+        <span class="cell-ion ion-one">K<sup>+</sup></span>
+        <span class="cell-ion ion-two">NO<sub>3</sub><sup>−</sup></span>
+        <span class="cell-arrow">外电路：电子　盐桥：离子</span>
+      </div>
+      <figcaption><span>阳极氧化</span><i></i><span>盐桥导离子</span><i></i><span>阴极还原</span></figcaption>
+      <div class="hero-default"><span>从丹尼尔电池开始</span><strong>Zn <b>→</b> Cu</strong><small>同为 0.100 M · 25 °C · E°cell ≈ 1.10 V</small></div>
+    </figure>
+  </section>
+
+  <section id="experiment" class="chapter experiment-chapter" aria-labelledby="experiment-title">
+    <div class="chapter-heading">
+      <div>
+        <p class="eyebrow"><span class="section-number">01</span>互动实验 / THE CELL BENCH</p>
+        <h2 id="experiment-title">接通两条路，<br><em>让电荷开始迁移。</em></h2>
+      </div>
+      <p class="chapter-intro">金属选择与初始浓度会重新装配整只电池；温度和负载可在运行中调整。电压表读开路电势，负载读端电压。拔掉任一条通路，反应就没有持续电流。</p>
+    </div>
+
+    <div class="lab-layout">
+      <aside class="controls-panel" aria-label="电池实验控制台">
+        <div class="panel-heading"><span>实验设置</span><span>INPUT / CELL</span></div>
+
+        <section class="preset-section" aria-labelledby="preset-title">
+          <div class="control-section-label"><span id="preset-title">从一个电池开始</span><span>PRESETS</span></div>
+          <div class="preset-grid" role="group" aria-label="电池预设">
+            <button id="preset-daniell" class="preset-button preset-highlight" type="button"><span>丹尼尔电池</span><small>Zn / Cu · 约 1.10 V</small></button>
+            <button id="preset-concentration" class="preset-button" type="button"><span>铜的浓差</span><small>同种金属 · 两侧浓度不同</small></button>
+            <button id="preset-reverse" class="preset-button" type="button"><span>反转浓差</span><small>交换浓度 · 电流换向</small></button>
+            <button id="preset-iron-silver" class="preset-button" type="button"><span>铁与银</span><small>Fe / Ag · 换一组电极</small></button>
+          </div>
+        </section>
+
+        <div class="cell-inputs">
+          <fieldset class="half-input half-input-left">
+            <legend><span class="side-index">A</span>左半电池</legend>
+            <label class="select-control" for="left-metal">
+              <span class="control-title">金属 / 离子对</span>
+              <select id="left-metal" name="left-metal">
+                <option value="Zn" selected>锌 · Zn²⁺ / Zn</option>
+                <option value="Fe">铁 · Fe²⁺ / Fe</option>
+                <option value="Cu">铜 · Cu²⁺ / Cu</option>
+                <option value="Ag">银 · Ag⁺ / Ag</option>
+              </select>
+            </label>
+            <label class="range-control" for="left-concentration">
+              <span class="control-title">初始离子浓度 <output id="left-concentration-value" for="left-concentration">0.100 M</output></span>
+              <input id="left-concentration" type="range" min="-3" max="0" step="0.01" value="-1" aria-describedby="concentration-help">
+              <span class="range-hint"><span>0.001 M</span><span>1.000 M</span></span>
+            </label>
+            <p class="half-formula" id="left-couple">Zn²⁺ + 2e⁻ ⇌ Zn(s)</p>
+          </fieldset>
+
+          <fieldset class="half-input half-input-right">
+            <legend><span class="side-index">B</span>右半电池</legend>
+            <label class="select-control" for="right-metal">
+              <span class="control-title">金属 / 离子对</span>
+              <select id="right-metal" name="right-metal">
+                <option value="Zn">锌 · Zn²⁺ / Zn</option>
+                <option value="Fe">铁 · Fe²⁺ / Fe</option>
+                <option value="Cu" selected>铜 · Cu²⁺ / Cu</option>
+                <option value="Ag">银 · Ag⁺ / Ag</option>
+              </select>
+            </label>
+            <label class="range-control" for="right-concentration">
+              <span class="control-title">初始离子浓度 <output id="right-concentration-value" for="right-concentration">0.100 M</output></span>
+              <input id="right-concentration" type="range" min="-3" max="0" step="0.01" value="-1" aria-describedby="concentration-help">
+              <span class="range-hint"><span>0.001 M</span><span>1.000 M</span></span>
+            </label>
+            <p class="half-formula" id="right-couple">Cu²⁺ + 2e⁻ ⇌ Cu(s)</p>
+          </fieldset>
+        </div>
+        <p id="concentration-help" class="control-help">浓度滑块按对数刻度变化。调电极或初始浓度会暂停并重装电池，清空本轮历史。</p>
+
+        <div class="environment-controls">
+          <div class="control-section-label"><span>运行条件</span><span>OPERATING POINT</span></div>
+          <label class="range-control" for="temperature">
+            <span class="control-title">温度 <output id="temperature-value" for="temperature">25 °C</output></span>
+            <input id="temperature" type="range" min="10" max="60" step="1" value="25">
+            <span class="range-hint"><span>10 °C</span><span>60 °C</span></span>
+          </label>
+          <label class="range-control" for="load-resistance">
+            <span class="control-title">负载电阻 <output id="load-resistance-value" for="load-resistance">100 Ω</output></span>
+            <input id="load-resistance" type="range" min="1" max="3" step="0.01" value="2">
+            <span class="range-hint"><span>10 Ω</span><span>1,000 Ω</span></span>
+          </label>
+          <div class="switch-row">
+            <label class="switch-label" for="bridge-switch">
+              <input id="bridge-switch" type="checkbox" checked>
+              <span class="switch-track" aria-hidden="true"><i></i></span>
+              <span><strong>接通盐桥</strong><small>离子回路</small></span>
+            </label>
+            <label class="switch-label" for="load-switch">
+              <input id="load-switch" type="checkbox" checked>
+              <span class="switch-track" aria-hidden="true"><i></i></span>
+              <span><strong>接通负载</strong><small>电子回路</small></span>
+            </label>
+          </div>
+          <p class="control-help">温度、电阻与回路开关即时更新；运行中改浓度会开启新一轮。</p>
+        </div>
+
+        <div class="time-controls">
+          <div class="control-section-label"><span>推进时间</span><span>FARADAY / t</span></div>
+          <div class="step-grid" role="group" aria-label="单次推进时间">
+            <button id="step-10" class="step-button" type="button"><strong>10 s</strong><small>一小步</small></button>
+            <button id="step-60" class="step-button" type="button"><strong>1 min</strong><small>一分钟</small></button>
+            <button id="step-600" class="step-button" type="button"><strong>10 min</strong><small>十分钟</small></button>
+            <button id="step-3600" class="step-button" type="button"><strong>1 h</strong><small>一小时</small></button>
+          </div>
+          <div class="transport-buttons">
+            <button id="run-toggle" class="run-button" type="button" aria-pressed="false"><span aria-hidden="true">▶</span> 连续运行</button>
+            <button id="reset-all" class="reset-button" type="button"><span aria-hidden="true">↺</span> 重置本轮</button>
+          </div>
+          <p class="control-help">连续模式每 0.25 秒推进 60 秒模型时间；按暂停可停在当前账目。</p>
+        </div>
+      </aside>
+
+      <div class="apparatus-column">
+        <article class="apparatus-card" aria-labelledby="apparatus-heading">
+          <div class="apparatus-heading">
+            <div><p class="plot-kicker">电池截面 / GALVANIC CELL</p><h3 id="apparatus-heading">两条回路，都要闭合</h3></div>
+            <span id="live-state" class="state-chip"><i aria-hidden="true"></i>反应进行中</span>
+          </div>
+          <div class="cell-diagram-frame">
+            <svg id="cell-diagram" viewBox="0 0 760 390" role="img" aria-labelledby="cell-diagram-title cell-diagram-desc">
+              <title id="cell-diagram-title">两杯半电池、盐桥和外电路的剖面示意</title>
+              <desc id="cell-diagram-desc">左侧锌电极氧化，电子沿导线经过负载流向右侧铜电极；盐桥内阴离子移向阳极，阳离子移向阴极。</desc>
+              <defs>
+                <pattern id="diagram-grid" width="32" height="32" patternUnits="userSpaceOnUse">
+                  <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#5f7770" stroke-opacity=".10" stroke-width="1"></path>
+                </pattern>
+                <marker id="arrow-rust" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+                  <path d="M0,0 L9,4.5 L0,9 z" fill="#bb6344"></path>
+                </marker>
+                <marker id="arrow-teal" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+                  <path d="M0,0 L9,4.5 L0,9 z" fill="#477c78"></path>
+                </marker>
+              </defs>
+              <rect x="0" y="0" width="760" height="390" fill="url(#diagram-grid)"></rect>
+              <path class="wire" d="M159 161 V71 H601 V161"></path>
+              <path class="load-symbol" d="M340 71 l12 -12 18 24 18 -24 18 24 18 -24 18 24 12 -12"></path>
+              <text x="399" y="42" class="svg-label" text-anchor="middle">外电阻 R<tspan baseline-shift="sub" font-size="9">load</tspan></text>
+              <path id="electron-arrow" class="electron-arrow" d="M225 71 H315" marker-end="url(#arrow-rust)"></path>
+              <text id="electron-label" x="270" y="58" class="svg-small" text-anchor="middle">e⁻ →</text>
+              <g id="electron-flow-left" class="electron-flow">
+                <circle cx="224" cy="71" r="4"></circle>
+                <circle cx="250" cy="71" r="4"></circle>
+                <circle cx="276" cy="71" r="4"></circle>
+              </g>
+              <g id="electron-flow-right" class="electron-flow electron-flow-right">
+                <circle cx="484" cy="71" r="4"></circle>
+                <circle cx="510" cy="71" r="4"></circle>
+                <circle cx="536" cy="71" r="4"></circle>
+              </g>
+
+              <path id="bridge-tube" class="bridge-tube" d="M265 222 V150 Q265 127 290 127 H470 Q495 127 495 150 V222"></path>
+              <path id="bridge-liquid" class="bridge-liquid" d="M265 219 V151 Q265 136 290 136 H470 Q495 136 495 151 V219"></path>
+              <text x="380" y="119" class="svg-label" text-anchor="middle">KNO₃ 盐桥</text>
+              <g id="bridge-particle-anion" class="bridge-particle bridge-anion"><circle cx="317" cy="137" r="8"></circle><text x="317" y="141">−</text></g>
+              <g id="bridge-particle-cation" class="bridge-particle bridge-cation"><circle cx="443" cy="137" r="8"></circle><text x="443" y="141">+</text></g>
+              <text id="bridge-direction" x="380" y="105" class="svg-tiny" text-anchor="middle">NO₃⁻ → 阳极　·　K⁺ → 阴极</text>
+
+              <path class="beaker-outline" d="M94 203 V333 Q94 352 113 352 H285 Q304 352 304 333 V203"></path>
+              <path class="beaker-outline" d="M456 203 V333 Q456 352 475 352 H647 Q666 352 666 333 V203"></path>
+              <path class="solution-left" d="M101 251 H297 V333 Q297 345 284 345 H114 Q101 345 101 333 Z"></path>
+              <path class="solution-right" d="M463 251 H659 V333 Q659 345 646 345 H476 Q463 345 463 333 Z"></path>
+              <path class="solution-sheen" d="M101 251 H297 M463 251 H659"></path>
+              <g id="left-ion-cloud" class="ion-cloud">
+                <circle cx="128" cy="282" r="4"></circle><circle cx="163" cy="315" r="3"></circle><circle cx="203" cy="277" r="4"></circle><circle cx="247" cy="320" r="3"></circle><circle cx="276" cy="287" r="4"></circle><circle cx="139" cy="329" r="3"></circle><circle cx="229" cy="300" r="3"></circle>
+              </g>
+              <g id="right-ion-cloud" class="ion-cloud ion-cloud-right">
+                <circle cx="491" cy="282" r="4"></circle><circle cx="526" cy="315" r="3"></circle><circle cx="566" cy="277" r="4"></circle><circle cx="610" cy="320" r="3"></circle><circle cx="639" cy="287" r="4"></circle><circle cx="502" cy="329" r="3"></circle><circle cx="592" cy="300" r="3"></circle>
+              </g>
+              <rect id="left-metal-plate" class="metal-plate" x="151" y="162" width="17" height="155" rx="2"></rect>
+              <rect id="right-metal-plate" class="metal-plate" x="593" y="162" width="17" height="155" rx="2"></rect>
+              <path class="electrode-shine" d="M155 170 V306 M597 170 V306"></path>
+
+              <text id="left-side-name" x="199" y="224" class="svg-side-name" text-anchor="middle">左 · Zn</text>
+              <text id="right-side-name" x="565" y="224" class="svg-side-name" text-anchor="middle">右 · Cu</text>
+              <text id="left-role" x="199" y="242" class="svg-role" text-anchor="middle">阳极 / −</text>
+              <text id="right-role" x="565" y="242" class="svg-role svg-role-cathode" text-anchor="middle">阴极 / +</text>
+              <text id="left-ion-label" x="198" y="374" class="svg-small" text-anchor="middle">Zn²⁺ · 0.100 M</text>
+              <text id="right-ion-label" x="564" y="374" class="svg-small" text-anchor="middle">Cu²⁺ · 0.100 M</text>
+              <text id="bridge-status" x="380" y="238" class="svg-small" text-anchor="middle">离子通路已接通</text>
+              <text id="wire-status" x="380" y="93" class="svg-small" text-anchor="middle">电子通路已接通</text>
+            </svg>
+          </div>
+          <p id="diagram-caption" class="apparatus-caption">电池图会根据当前两侧的还原电势重排阳极与阴极；盐桥与导线传递的是不同种类的电荷。</p>
+          <div class="diagram-legend"><span><i class="legend-electron" aria-hidden="true"></i>电子：外导线</span><span><i class="legend-cation" aria-hidden="true"></i>阳离子：移向阴极</span><span><i class="legend-anion" aria-hidden="true"></i>阴离子：移向阳极</span></div>
+        </article>
+
+        <div class="readout-grid">
+          <article class="potential-card" aria-labelledby="potential-heading">
+            <div class="plot-heading">
+              <div><p class="plot-kicker">开路电势 / NERNST</p><h3 id="potential-heading">化学状态给出的电压</h3></div>
+              <span class="chart-units">伏特 / V</span>
+            </div>
+            <div class="potential-reading"><strong id="cell-potential">1.103</strong><span>V</span></div>
+            <p id="potential-caption" class="potential-caption">开路电势 Ecell；与负载是否接通无关。</p>
+            <div class="reading-pair">
+              <div><span>负载端电压</span><strong id="load-voltage">1.08 V</strong></div>
+              <div><span>电流</span><strong id="current-reading">10.8 mA</strong></div>
+              <div><span>负载功率</span><strong id="power-reading">11.7 mW</strong></div>
+              <div><span>累计时间</span><strong id="elapsed-reading">00:00</strong></div>
+            </div>
+            <div class="nernst-ledger">
+              <div><span>标准电势差 E°cell</span><strong id="standard-potential">1.102 V</strong></div>
+              <div><span>电子转移数 n</span><strong id="electron-count">2</strong></div>
+              <div><span>反应商 Q</span><strong id="reaction-quotient">1.00</strong></div>
+              <div class="nernst-equation"><span>Nernst 校账</span><strong id="nernst-equation">E° − (RT / nF) ln Q</strong></div>
+            </div>
+          </article>
+
+          <article class="reaction-card" aria-labelledby="reaction-heading">
+            <div class="outcome-topline"><span>氧化还原 / HALF REACTIONS</span><span id="reaction-stamp" class="outcome-stamp" aria-hidden="true">Zn</span></div>
+            <h3 id="reaction-heading">电子从哪一极离开？</h3>
+            <div class="half-reaction"><span>阳极 · 氧化</span><strong id="anode-equation">Zn(s) → Zn²⁺ + 2e⁻</strong><small id="anode-reading">E还原 = −0.791 V</small></div>
+            <div class="half-reaction"><span>阴极 · 还原</span><strong id="cathode-equation">Cu²⁺ + 2e⁻ → Cu(s)</strong><small id="cathode-reading">E还原 = +0.310 V</small></div>
+            <div class="overall-reaction"><span>总反应 / Q 的来源</span><strong id="overall-equation">Zn(s) + Cu²⁺ → Zn²⁺ + Cu(s)</strong></div>
+            <p id="reaction-note" class="reaction-note">氧化失去电子，还原得到电子；两边电子数配平后，才是这只电池的总反应。</p>
+          </article>
+        </div>
+
+        <article class="history-card" aria-labelledby="history-heading">
+          <div class="plot-heading">
+            <div><p class="plot-kicker">运行轨迹 / RECENT 80 READINGS</p><h3 id="history-heading">开路电势与负载端电压</h3></div>
+            <span class="chart-units">最近 80 个样本 · V</span>
+          </div>
+          <p class="chart-intro">只有电池运行时两条电压线才会分开。断开负载后，开路电势仍可读，端电压归零。</p>
+          <div class="history-chart-frame">
+            <svg id="history-chart" viewBox="0 0 760 220" role="img" aria-labelledby="history-chart-title history-chart-desc">
+              <title id="history-chart-title">电池开路电势与负载端电压的最近变化</title>
+              <desc id="history-chart-desc">横轴为模型时间，纵轴为伏特；绿线表示开路电势，红线表示负载端电压。</desc>
+              <g class="chart-grid"><path d="M62 25 H744 M62 65 H744 M62 105 H744 M62 145 H744 M62 185 H744"></path><path d="M62 25 V185 M232 25 V185 M402 25 V185 M572 25 V185 M744 25 V185"></path></g>
+              <g id="chart-y-labels" class="chart-axis-labels"><text x="54" y="29" text-anchor="end">2.0</text><text x="54" y="69" text-anchor="end">1.5</text><text x="54" y="109" text-anchor="end">1.0</text><text x="54" y="149" text-anchor="end">0.5</text><text x="54" y="189" text-anchor="end">0.0</text></g>
+              <path id="cell-series" class="chart-series chart-series-cell" d=""></path>
+              <path id="load-series" class="chart-series chart-series-load" d=""></path>
+              <circle id="cell-series-dot" class="chart-dot chart-dot-cell" cx="62" cy="105" r="4"></circle>
+              <circle id="load-series-dot" class="chart-dot chart-dot-load" cx="62" cy="105" r="4"></circle>
+              <g class="chart-axis-labels"><text id="chart-start-label" x="62" y="208">00:00</text><text id="chart-time-label" x="744" y="208" text-anchor="end">00:00</text><text x="401" y="218" text-anchor="middle">模型时间</text><text transform="translate(15 106) rotate(-90)" text-anchor="middle">电压 / V</text></g>
+            </svg>
+          </div>
+          <div class="chart-legend"><span><i class="legend-cell" aria-hidden="true"></i>开路电势 Ecell</span><span><i class="legend-load" aria-hidden="true"></i>负载端电压 Vload</span></div>
+        </article>
+
+        <p class="keyboard-note"><b>键盘操作：</b>所有输入均可用 Tab 聚焦；方向键调整滑块，Enter 或空格切换按钮与开关。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="principle" class="chapter principle-chapter" aria-labelledby="principle-title">
+    <div class="chapter-heading principle-heading">
+      <div><p class="eyebrow"><span class="section-number">02</span>电势从何而来 / THE NERNST EQUATION</p><h2 id="principle-title">电压是化学倾向的差，<br><em>不是电子的库存。</em></h2></div>
+      <p class="chapter-intro">两支电极各有一个还原电势。现在的浓度改变这个电势；较高的一侧接收电子，较低的一侧释放电子。它们的差，给出电池在当前状态下能推动多少电荷。</p>
+    </div>
+    <div class="principle-board">
+      <div class="equation-panel">
+        <span class="equation-label">能斯特方程 / NERNST</span>
+        <p class="equation">E = E° − <span>RT</span><span class="fraction-line">nF</span> ln Q</p>
+        <small>Q 是总反应的产物活度除以反应物活度；固体金属不写入 Q。</small>
+      </div>
+      <ol class="principle-steps">
+        <li><span>01</span><div><strong>阳极把电子交给导线</strong><p>氧化让金属进入溶液。失去的电子数，与生成的金属离子电荷相等。</p></div></li>
+        <li><span>02</span><div><strong>阴极从溶液接收电子</strong><p>还原消耗溶液里的金属离子，并在电极上沉积金属。反应式先配平电子，再合并成总反应。</p></div></li>
+        <li><span>03</span><div><strong>盐桥把电荷账补平</strong><p>阳极溶液积累正离子，盐桥阴离子移入；阴极消耗正离子，盐桥阳离子移入。离子走盐桥，电子走外导线。</p></div></li>
+      </ol>
+    </div>
+    <div class="potential-note"><span aria-hidden="true">↗</span><p><strong>同一种金属，也能做成电池。</strong>两个 Cu²⁺/Cu 半电池只要浓度不同，标准电势差仍为零，但 Nernst 修正不为零。接通后，稀的一侧溶出铜，浓的一侧沉积铜；电势沿着浓度趋同的方向衰减。</p></div>
+  </section>
+
+  <section id="account" class="chapter account-chapter" aria-labelledby="account-title">
+    <div class="chapter-heading">
+      <div><p class="eyebrow"><span class="section-number">03</span>守恒与材料 / THE CHARGE LEDGER</p><h2 id="account-title">通过多少电荷，<br><em>物质就改了多少。</em></h2></div>
+      <p class="chapter-intro">负载接通一段时间，法拉第常数把库仑换算成电子的物质的量。每流过一摩尔电子，盐桥两端各补一摩尔一价离子电荷；两片电极则按自己的价数增减质量。</p>
+    </div>
+
+    <div class="account-grid">
+      <article class="ledger-card" aria-labelledby="charge-ledger-title">
+        <div class="ledger-heading"><span>01 / 外电路</span><span>CHARGE</span></div>
+        <h3 id="charge-ledger-title">电量与离子通量</h3>
+        <div class="ledger-value"><strong id="charge-total">0.000 C</strong><span>累计电荷</span></div>
+        <dl class="ledger-list">
+          <div><dt>电子通过</dt><dd id="electron-moles">0.000 mmol</dd></div>
+          <div><dt>盐桥 K⁺ → 阴极</dt><dd id="cation-flow">0.000 mmol</dd></div>
+          <div><dt>盐桥 NO₃⁻ → 阳极</dt><dd id="anion-flow">0.000 mmol</dd></div>
+          <div><dt>法拉第常数 F</dt><dd>96,485 C/mol e⁻</dd></div>
+        </dl>
+        <p class="ledger-foot">盐桥当量是化学计量示意；实际离子迁移比例受迁移率与溶液组成影响。</p>
+      </article>
+
+      <article class="ledger-card inventory-card" aria-labelledby="inventory-title">
+        <div class="ledger-heading"><span>02 / 两只烧杯</span><span>INVENTORY</span></div>
+        <h3 id="inventory-title">溶液离子库存</h3>
+        <div class="inventory-table-wrap">
+          <table class="inventory-table">
+            <thead><tr><th scope="col">物种</th><th scope="col">初始</th><th scope="col">剩余</th><th scope="col">浓度</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><span id="left-ion-name">Zn²⁺</span><small>左杯 · 100 mL</small></th><td id="left-ion-start">10.00 mmol</td><td id="left-ion-now">10.00 mmol</td><td id="left-concentration-now">0.100 M</td></tr>
+              <tr><th scope="row"><span id="right-ion-name">Cu²⁺</span><small>右杯 · 100 mL</small></th><td id="right-ion-start">10.00 mmol</td><td id="right-ion-now">10.00 mmol</td><td id="right-concentration-now">0.100 M</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="inventory-note" class="ledger-foot">阳极离子随氧化增加；阴极离子随还原减少。</p>
+      </article>
+
+      <article class="ledger-card metal-ledger" aria-labelledby="metal-ledger-title">
+        <div class="ledger-heading"><span>03 / 电极</span><span>FARADAY</span></div>
+        <h3 id="metal-ledger-title">固体金属的变化</h3>
+        <div class="metal-columns">
+          <div><span id="left-metal-label">Zn 电极</span><strong id="left-metal-mass">10.000 g</strong><small id="left-metal-change">初始 10.000 g</small></div>
+          <div><span id="right-metal-label">Cu 电极</span><strong id="right-metal-mass">10.000 g</strong><small id="right-metal-change">初始 10.000 g</small></div>
+        </div>
+        <div class="mass-rule"><span>Δm = Δn<sub>metal</sub> × M</span><span id="molar-mass-note">M: Zn 65.38 g/mol · Cu 63.546 g/mol</span></div>
+        <p class="ledger-foot">溶解、沉积只按电子数与摩尔质量换算；没有模拟电极表面形状。</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="limits" class="chapter limits-chapter" aria-labelledby="limits-title">
+    <div class="chapter-heading limits-heading">
+      <div><p class="eyebrow"><span class="section-number">04</span>模型说明 / MODEL LIMITS</p><h2 id="limits-title">这本账守恒得很认真，<br><em>但电池本身仍被简化。</em></h2></div>
+      <p class="chapter-intro">模型用可逆的还原电势和一个串联内阻，回答“方向、浓度和已通过的电量如何共同改变读数”。它不是任何实物电池的参数表。</p>
+    </div>
+    <div class="limits-grid">
+      <div class="limits-main">
+        <span class="stamp-small">边界 / ASSUMPTIONS</span>
+        <h3>用一套可追溯的简化规则，<br>看清电荷从哪儿来、到哪儿去。</h3>
+        <p>溶液均匀混合，活度以浓度代替，标准态为 1 mol/L。盐桥按一价惰性离子处理；阴离子移向阳极，阳离子移向阴极。外电路把极化与所有内部损失合并成固定 2 Ω 电阻，电流由串联欧姆关系给出。</p>
+        <p>没有模拟离子活度系数、过电位、扩散层、电极粗糙度、析气、沉淀/络合、膜选择性、热量、导线电阻或具体电池化学。温度只进入能斯特因子 RT/F，标准还原电势视为固定。盐桥离子通量和负载下的长时演化是教学近似，不是实验预测。</p>
+      </div>
+      <div class="limits-facts" aria-label="模型参数">
+        <div><span>标准态</span><strong>1.000 mol/L</strong></div>
+        <div><span>每侧体积</span><strong>100 mL · 固定</strong></div>
+        <div><span>初始金属</span><strong>10.00 g · 固定</strong></div>
+        <div><span>内部电阻</span><strong>2 Ω · 示意</strong></div>
+        <div><span>推进方法</span><strong>1 秒显式步</strong></div>
+        <div><span>运行方式</span><strong>本地离线计算</strong></div>
+      </div>
+    </div>
+    <div class="source-note"><span>延伸阅读</span><p>电极电势、盐桥回路、能斯特方程与浓差电池的定性机制，参照 OpenStax《Chemistry 2e》第 17.2–17.4 节。来源链接与完整模型说明见随附 README。</p></div>
+  </section>
+
+  <section class="closing-note" aria-label="结语">
+    <p class="eyebrow">回到两杯之间</p>
+    <h2>电压给出方向，<br><em>电荷留下账目。</em></h2>
+    <p>换一组电极，交换浓度，再开关盐桥。看每一个读数，能不能沿着同一条反应式追回去。</p>
+    <a href="#experiment" class="back-to-lab">回到实验 <span aria-hidden="true">↑</span></a>
+  </section>
+</main>
+
+<footer class="site-footer"><span>盐桥的账本 · 电化学桌面实验</span><span>单文件 · 离线运行 · 计算留在本机</span></footer>
+
+<script id="cell-lab-core">
+(function (root, factory) {
+  const CellLabModel = factory();
+
+  if (typeof module === "object" && module.exports) {
+    module.exports = CellLabModel;
+  }
+
+  if (root) {
+    root.CellLabModel = CellLabModel;
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  "use strict";
+
+  const R = 8.31446261815324;
+  const F = 96485.33212;
+  const STANDARD_CONCENTRATION = 1;
+  const DEFAULT_VOLUME_L = 0.1;
+  const DEFAULT_ELECTRODE_MASS_G = 10;
+  const INTERNAL_RESISTANCE_OHM = 2;
+  const CURRENT_EPSILON_A = 1e-14;
+  const INVENTORY_EPSILON_MOL = 1e-15;
+  const MAX_HISTORY = 80;
+
+  const METALS = Object.freeze({
+    Zn: Object.freeze({
+      id: "Zn",
+      metal: "Zn",
+      ion: "Zn²⁺",
+      charge: 2,
+      molarMass: 65.38,
+      standardPotential: -0.7618,
+      color: "#858e8d",
+      name: "锌",
+    }),
+    Fe: Object.freeze({
+      id: "Fe",
+      metal: "Fe",
+      ion: "Fe²⁺",
+      charge: 2,
+      molarMass: 55.845,
+      standardPotential: -0.447,
+      color: "#9a7258",
+      name: "铁",
+    }),
+    Cu: Object.freeze({
+      id: "Cu",
+      metal: "Cu",
+      ion: "Cu²⁺",
+      charge: 2,
+      molarMass: 63.546,
+      standardPotential: 0.34,
+      color: "#b86a48",
+      name: "铜",
+    }),
+    Ag: Object.freeze({
+      id: "Ag",
+      metal: "Ag",
+      ion: "Ag⁺",
+      charge: 1,
+      molarMass: 107.8682,
+      standardPotential: 0.7996,
+      color: "#c4c4bc",
+      name: "银",
+    }),
+  });
+
+  const PRESETS = Object.freeze({
+    daniell: Object.freeze({
+      label: "丹尼尔电池",
+      detail: "Zn / Cu · 标准入门对照",
+      left: Object.freeze({ metalId: "Zn", concentration: 0.1 }),
+      right: Object.freeze({ metalId: "Cu", concentration: 0.1 }),
+    }),
+    concentration: Object.freeze({
+      label: "铜的浓差电池",
+      detail: "同种电极 · 浓度差驱动",
+      left: Object.freeze({ metalId: "Cu", concentration: 0.001 }),
+      right: Object.freeze({ metalId: "Cu", concentration: 0.1 }),
+    }),
+    reverseConcentration: Object.freeze({
+      label: "反转浓差",
+      detail: "交换浓度 · 方向也交换",
+      left: Object.freeze({ metalId: "Cu", concentration: 0.1 }),
+      right: Object.freeze({ metalId: "Cu", concentration: 0.001 }),
+    }),
+    ironSilver: Object.freeze({
+      label: "铁与银",
+      detail: "跨过一伏 · 换一组金属",
+      left: Object.freeze({ metalId: "Fe", concentration: 0.1 }),
+      right: Object.freeze({ metalId: "Ag", concentration: 0.1 }),
+    }),
+  });
+
+  const PRESET_IDS = Object.freeze(Object.keys(PRESETS));
+
+  function finiteOr(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function normalizeMetalId(id, fallback) {
+    return METALS[id] ? id : fallback;
+  }
+
+  function normalizeConcentration(value, fallback) {
+    return clamp(finiteOr(value, fallback), 0.001, 1);
+  }
+
+  function normalizeTemperature(value) {
+    return clamp(finiteOr(value, 25), 10, 60);
+  }
+
+  function normalizeLoad(value) {
+    return clamp(finiteOr(value, 100), 10, 1000);
+  }
+
+  function gcd(a, b) {
+    let x = Math.abs(a);
+    let y = Math.abs(b);
+    while (y !== 0) {
+      const remainder = x % y;
+      x = y;
+      y = remainder;
+    }
+    return x;
+  }
+
+  function lcm(a, b) {
+    return (a * b) / gcd(a, b);
+  }
+
+  function buildHalfCell(metalId, concentration) {
+    const metal = METALS[metalId];
+    const initialConcentration = normalizeConcentration(concentration, 0.1);
+    const initialIonMoles = initialConcentration * DEFAULT_VOLUME_L;
+    const initialMetalMoles = DEFAULT_ELECTRODE_MASS_G / metal.molarMass;
+
+    return {
+      metalId,
+      initialConcentration,
+      initialIonMoles,
+      initialMetalMoles,
+      ionMoles: initialIonMoles,
+      metalMoles: initialMetalMoles,
+      volumeL: DEFAULT_VOLUME_L,
+      initialMetalMassG: DEFAULT_ELECTRODE_MASS_G,
+    };
+  }
+
+  function normalizeConfig(config) {
+    const value = config && typeof config === "object" ? config : {};
+    const left = value.left && typeof value.left === "object" ? value.left : {};
+    const right = value.right && typeof value.right === "object" ? value.right : {};
+
+    return {
+      left: {
+        metalId: normalizeMetalId(left.metalId, "Zn"),
+        concentration: normalizeConcentration(left.concentration, 0.1),
+      },
+      right: {
+        metalId: normalizeMetalId(right.metalId, "Cu"),
+        concentration: normalizeConcentration(right.concentration, 0.1),
+      },
+      temperatureC: normalizeTemperature(value.temperatureC),
+      loadOhms: normalizeLoad(value.loadOhms),
+      bridgeConnected: value.bridgeConnected !== false,
+      loadConnected: value.loadConnected !== false,
+    };
+  }
+
+  function createState(config) {
+    const setup = normalizeConfig(config);
+    const state = {
+      left: buildHalfCell(setup.left.metalId, setup.left.concentration),
+      right: buildHalfCell(setup.right.metalId, setup.right.concentration),
+      temperatureC: setup.temperatureC,
+      loadOhms: setup.loadOhms,
+      bridgeConnected: setup.bridgeConnected,
+      loadConnected: setup.loadConnected,
+      elapsedSec: 0,
+      totalChargeC: 0,
+      electronsTransferredMol: 0,
+      bridgeCationMol: 0,
+      bridgeAnionMol: 0,
+      depleted: false,
+      lastReaction: null,
+      history: [],
+    };
+
+    state.history.push(makeSnapshot(state));
+    return state;
+  }
+
+  function cloneState(state) {
+    return {
+      left: { ...state.left },
+      right: { ...state.right },
+      temperatureC: state.temperatureC,
+      loadOhms: state.loadOhms,
+      bridgeConnected: state.bridgeConnected,
+      loadConnected: state.loadConnected,
+      elapsedSec: state.elapsedSec,
+      totalChargeC: state.totalChargeC,
+      electronsTransferredMol: state.electronsTransferredMol,
+      bridgeCationMol: state.bridgeCationMol,
+      bridgeAnionMol: state.bridgeAnionMol,
+      depleted: state.depleted,
+      lastReaction: state.lastReaction ? { ...state.lastReaction } : null,
+      history: state.history.map((point) => ({ ...point })),
+    };
+  }
+
+  function activity(halfCell) {
+    return halfCell.ionMoles / halfCell.volumeL / STANDARD_CONCENTRATION;
+  }
+
+  function halfCellPotential(halfCell, temperatureK) {
+    const metal = METALS[halfCell.metalId];
+    const concentrationActivity = activity(halfCell);
+    if (!(concentrationActivity > 0) || !(halfCell.metalMoles > INVENTORY_EPSILON_MOL)) {
+      return null;
+    }
+
+    return metal.standardPotential +
+      ((R * temperatureK) / (metal.charge * F)) * Math.log(concentrationActivity);
+  }
+
+  function emptyReading(state, status, reason) {
+    return {
+      status,
+      reason,
+      leftPotential: null,
+      rightPotential: null,
+      anodeSide: null,
+      cathodeSide: null,
+      anode: null,
+      cathode: null,
+      electronCount: null,
+      anodeCoefficient: null,
+      cathodeCoefficient: null,
+      standardCellPotential: null,
+      cellPotential: null,
+      reactionQuotient: null,
+      lnReactionQuotient: null,
+      currentA: 0,
+      loadVoltage: 0,
+      loadPowerW: 0,
+      maxReactionExtentMol: 0,
+      limitingInventory: null,
+      elapsedSec: state.elapsedSec,
+      totalChargeC: state.totalChargeC,
+    };
+  }
+
+  function getReading(state) {
+    if (state.depleted) {
+      const reading = emptyReading(state, "depleted", "reactant-depleted");
+      if (state.lastReaction) {
+        reading.anodeSide = state.lastReaction.anodeSide;
+        reading.cathodeSide = state.lastReaction.cathodeSide;
+        reading.anode = state[state.lastReaction.anodeSide];
+        reading.cathode = state[state.lastReaction.cathodeSide];
+        reading.electronCount = state.lastReaction.electronCount;
+        reading.anodeCoefficient = state.lastReaction.anodeCoefficient;
+        reading.cathodeCoefficient = state.lastReaction.cathodeCoefficient;
+        reading.standardCellPotential = state.lastReaction.standardCellPotential;
+      }
+      return reading;
+    }
+
+    const temperatureK = state.temperatureC + 273.15;
+    const leftPotential = halfCellPotential(state.left, temperatureK);
+    const rightPotential = halfCellPotential(state.right, temperatureK);
+
+    if (leftPotential === null || rightPotential === null) {
+      return emptyReading(state, "depleted", "reactant-depleted");
+    }
+
+    const anodeSide = leftPotential <= rightPotential ? "left" : "right";
+    const cathodeSide = anodeSide === "left" ? "right" : "left";
+    const anode = state[anodeSide];
+    const cathode = state[cathodeSide];
+    const anodeMetal = METALS[anode.metalId];
+    const cathodeMetal = METALS[cathode.metalId];
+    const electronCount = lcm(anodeMetal.charge, cathodeMetal.charge);
+    const anodeCoefficient = electronCount / anodeMetal.charge;
+    const cathodeCoefficient = electronCount / cathodeMetal.charge;
+    const anodeActivity = activity(anode);
+    const cathodeActivity = activity(cathode);
+    const lnReactionQuotient =
+      anodeCoefficient * Math.log(anodeActivity) - cathodeCoefficient * Math.log(cathodeActivity);
+    const standardCellPotential = cathodeMetal.standardPotential - anodeMetal.standardPotential;
+    const nernstPotential = standardCellPotential -
+      ((R * temperatureK) / (electronCount * F)) * lnReactionQuotient;
+    const cellPotential = Math.max(0, nernstPotential);
+    const nearEquilibrium = cellPotential <= 1e-12;
+    const closed = state.bridgeConnected && state.loadConnected;
+    const currentA = closed && !nearEquilibrium
+      ? cellPotential / (state.loadOhms + INTERNAL_RESISTANCE_OHM)
+      : 0;
+    const loadVoltage = currentA * state.loadOhms;
+    const loadPowerW = currentA * currentA * state.loadOhms;
+    const anodeExtent = anode.metalMoles / anodeCoefficient;
+    const cathodeExtent = cathode.ionMoles / cathodeCoefficient;
+
+    return {
+      status: nearEquilibrium ? "equilibrium" : (closed ? "connected" : "open"),
+      reason: nearEquilibrium ? "equilibrium" : (closed ? "closed-circuit" : "open-circuit"),
+      leftPotential,
+      rightPotential,
+      anodeSide,
+      cathodeSide,
+      anode,
+      cathode,
+      electronCount,
+      anodeCoefficient,
+      cathodeCoefficient,
+      standardCellPotential,
+      cellPotential,
+      reactionQuotient: Math.exp(clamp(lnReactionQuotient, -700, 700)),
+      lnReactionQuotient,
+      currentA,
+      loadVoltage,
+      loadPowerW,
+      maxReactionExtentMol: Math.min(anodeExtent, cathodeExtent),
+      limitingInventory: anodeExtent <= cathodeExtent ? "anode-metal" : "cathode-ion",
+      elapsedSec: state.elapsedSec,
+      totalChargeC: state.totalChargeC,
+    };
+  }
+
+  function concentrationM(halfCell) {
+    return halfCell.ionMoles / halfCell.volumeL;
+  }
+
+  function makeSnapshot(state) {
+    const reading = getReading(state);
+    return {
+      elapsedSec: state.elapsedSec,
+      cellPotential: reading.cellPotential,
+      loadVoltage: reading.loadVoltage,
+      currentA: reading.currentA,
+      leftConcentrationM: concentrationM(state.left),
+      rightConcentrationM: concentrationM(state.right),
+      totalChargeC: state.totalChargeC,
+    };
+  }
+
+  function appendSnapshot(state) {
+    state.history.push(makeSnapshot(state));
+    if (state.history.length > MAX_HISTORY) {
+      state.history.splice(0, state.history.length - MAX_HISTORY);
+    }
+  }
+
+  function limitingExtent(state, reading) {
+    const anodeCoefficient = reading.anodeCoefficient;
+    const cathodeCoefficient = reading.cathodeCoefficient;
+    const anodeExtent = reading.anode.metalMoles / anodeCoefficient;
+    const cathodeExtent = reading.cathode.ionMoles / cathodeCoefficient;
+    if (anodeExtent <= cathodeExtent) {
+      return { extentMol: anodeExtent, inventory: "anode-metal" };
+    }
+    return { extentMol: cathodeExtent, inventory: "cathode-ion" };
+  }
+
+  function applyCharge(state, reading, chargeC, depleteLimit) {
+    const electronMoles = chargeC / F;
+    const anodeMetal = METALS[reading.anode.metalId];
+    const cathodeMetal = METALS[reading.cathode.metalId];
+
+    reading.anode.metalMoles -= electronMoles / anodeMetal.charge;
+    reading.anode.ionMoles += electronMoles / anodeMetal.charge;
+    reading.cathode.ionMoles -= electronMoles / cathodeMetal.charge;
+    reading.cathode.metalMoles += electronMoles / cathodeMetal.charge;
+
+    if (depleteLimit === "anode-metal") {
+      reading.anode.metalMoles = 0;
+    } else if (depleteLimit === "cathode-ion") {
+      reading.cathode.ionMoles = 0;
+    }
+
+    reading.anode.metalMoles = Math.max(0, reading.anode.metalMoles);
+    reading.anode.ionMoles = Math.max(0, reading.anode.ionMoles);
+    reading.cathode.ionMoles = Math.max(0, reading.cathode.ionMoles);
+    reading.cathode.metalMoles = Math.max(0, reading.cathode.metalMoles);
+    state.totalChargeC += chargeC;
+    state.electronsTransferredMol += electronMoles;
+    state.bridgeCationMol += electronMoles;
+    state.bridgeAnionMol += electronMoles;
+  }
+
+  function advance(inputState, seconds) {
+    const state = cloneState(inputState);
+    const requestedSeconds = clamp(finiteOr(seconds, 0), 0, 86400);
+    let remainingSeconds = requestedSeconds;
+    let actualSeconds = 0;
+    let guard = 0;
+
+    while (remainingSeconds > 1e-10 && !state.depleted && guard < 86402) {
+      guard += 1;
+      const reading = getReading(state);
+      if (reading.status === "depleted") {
+        state.depleted = true;
+        break;
+      }
+
+      if (reading.currentA <= CURRENT_EPSILON_A) {
+        state.elapsedSec += remainingSeconds;
+        actualSeconds += remainingSeconds;
+        remainingSeconds = 0;
+        break;
+      }
+
+      const substepSeconds = Math.min(1, remainingSeconds);
+      const limit = limitingExtent(state, reading);
+      const secondsToDepletion =
+        (limit.extentMol * reading.electronCount * F) / reading.currentA;
+
+      if (!(secondsToDepletion > 0) || !Number.isFinite(secondsToDepletion)) {
+        state.depleted = true;
+        break;
+      }
+
+      const hitsDepletion = secondsToDepletion <= substepSeconds + 1e-12;
+      const dt = hitsDepletion ? Math.min(substepSeconds, secondsToDepletion) : substepSeconds;
+      const chargeC = reading.currentA * dt;
+      state.lastReaction = {
+        anodeSide: reading.anodeSide,
+        cathodeSide: reading.cathodeSide,
+        electronCount: reading.electronCount,
+        anodeCoefficient: reading.anodeCoefficient,
+        cathodeCoefficient: reading.cathodeCoefficient,
+        standardCellPotential: reading.standardCellPotential,
+      };
+      applyCharge(state, reading, chargeC, hitsDepletion ? limit.inventory : null);
+      state.elapsedSec += dt;
+      actualSeconds += dt;
+      remainingSeconds -= dt;
+
+      if (hitsDepletion) {
+        state.depleted = true;
+        remainingSeconds = 0;
+      }
+    }
+
+    if (actualSeconds > 0) {
+      appendSnapshot(state);
+    }
+    state.lastAdvancedSec = actualSeconds;
+    return state;
+  }
+
+  function updateOperating(inputState, changes) {
+    const state = cloneState(inputState);
+    const patch = changes && typeof changes === "object" ? changes : {};
+    if (Object.prototype.hasOwnProperty.call(patch, "temperatureC")) {
+      state.temperatureC = normalizeTemperature(patch.temperatureC);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "loadOhms")) {
+      state.loadOhms = normalizeLoad(patch.loadOhms);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "bridgeConnected")) {
+      state.bridgeConnected = patch.bridgeConnected === true;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "loadConnected")) {
+      state.loadConnected = patch.loadConnected === true;
+    }
+    return state;
+  }
+
+  function configurationForPreset(presetId) {
+    const preset = PRESETS[presetId] || PRESETS.daniell;
+    return {
+      left: { metalId: preset.left.metalId, concentration: preset.left.concentration },
+      right: { metalId: preset.right.metalId, concentration: preset.right.concentration },
+      temperatureC: 25,
+      loadOhms: 100,
+      bridgeConnected: true,
+      loadConnected: true,
+    };
+  }
+
+  function copyHistory(state) {
+    return state.history.map((point) => ({ ...point }));
+  }
+
+  return Object.freeze({
+    constants: Object.freeze({
+      gasConstant: R,
+      faraday: F,
+      internalResistanceOhm: INTERNAL_RESISTANCE_OHM,
+      maxHistory: MAX_HISTORY,
+      volumeL: DEFAULT_VOLUME_L,
+      electrodeMassG: DEFAULT_ELECTRODE_MASS_G,
+      standardConcentration: STANDARD_CONCENTRATION,
+    }),
+    metals: METALS,
+    presets: PRESETS,
+    presetIds: PRESET_IDS,
+    createState,
+    configurationForPreset,
+    cloneState,
+    getReading,
+    updateOperating,
+    advance,
+    makeSnapshot,
+    concentrationM,
+    copyHistory,
+  });
+});
+
+</script>
+<script id="cell-lab-ui">
+(function () {
+  "use strict";
+
+  const model = window.CellLabModel;
+  if (!model) return;
+
+  const byId = (id) => document.getElementById(id);
+  const nodes = {
+    leftMetal: byId("left-metal"),
+    rightMetal: byId("right-metal"),
+    leftConcentration: byId("left-concentration"),
+    rightConcentration: byId("right-concentration"),
+    leftConcentrationValue: byId("left-concentration-value"),
+    rightConcentrationValue: byId("right-concentration-value"),
+    temperature: byId("temperature"),
+    temperatureValue: byId("temperature-value"),
+    loadResistance: byId("load-resistance"),
+    loadResistanceValue: byId("load-resistance-value"),
+    bridgeSwitch: byId("bridge-switch"),
+    loadSwitch: byId("load-switch"),
+    leftCouple: byId("left-couple"),
+    rightCouple: byId("right-couple"),
+    liveState: byId("live-state"),
+    electronArrow: byId("electron-arrow"),
+    electronLabel: byId("electron-label"),
+    electronFlowLeft: byId("electron-flow-left"),
+    electronFlowRight: byId("electron-flow-right"),
+    bridgeTube: byId("bridge-tube"),
+    bridgeLiquid: byId("bridge-liquid"),
+    bridgeAnion: byId("bridge-particle-anion"),
+    bridgeCation: byId("bridge-particle-cation"),
+    bridgeDirection: byId("bridge-direction"),
+    bridgeStatus: byId("bridge-status"),
+    wireStatus: byId("wire-status"),
+    leftMetalPlate: byId("left-metal-plate"),
+    rightMetalPlate: byId("right-metal-plate"),
+    leftSideName: byId("left-side-name"),
+    rightSideName: byId("right-side-name"),
+    leftRole: byId("left-role"),
+    rightRole: byId("right-role"),
+    leftIonLabel: byId("left-ion-label"),
+    rightIonLabel: byId("right-ion-label"),
+    leftIonCloud: byId("left-ion-cloud"),
+    rightIonCloud: byId("right-ion-cloud"),
+    diagramDescription: byId("cell-diagram-desc"),
+    diagramCaption: byId("diagram-caption"),
+    cellPotential: byId("cell-potential"),
+    potentialCaption: byId("potential-caption"),
+    loadVoltage: byId("load-voltage"),
+    currentReading: byId("current-reading"),
+    powerReading: byId("power-reading"),
+    elapsedReading: byId("elapsed-reading"),
+    standardPotential: byId("standard-potential"),
+    electronCount: byId("electron-count"),
+    reactionQuotient: byId("reaction-quotient"),
+    nernstEquation: byId("nernst-equation"),
+    reactionStamp: byId("reaction-stamp"),
+    anodeEquation: byId("anode-equation"),
+    cathodeEquation: byId("cathode-equation"),
+    anodeReading: byId("anode-reading"),
+    cathodeReading: byId("cathode-reading"),
+    overallEquation: byId("overall-equation"),
+    reactionNote: byId("reaction-note"),
+    chargeTotal: byId("charge-total"),
+    electronMoles: byId("electron-moles"),
+    cationFlow: byId("cation-flow"),
+    anionFlow: byId("anion-flow"),
+    leftIonName: byId("left-ion-name"),
+    rightIonName: byId("right-ion-name"),
+    leftIonStart: byId("left-ion-start"),
+    rightIonStart: byId("right-ion-start"),
+    leftIonNow: byId("left-ion-now"),
+    rightIonNow: byId("right-ion-now"),
+    leftConcentrationNow: byId("left-concentration-now"),
+    rightConcentrationNow: byId("right-concentration-now"),
+    leftMetalLabel: byId("left-metal-label"),
+    rightMetalLabel: byId("right-metal-label"),
+    leftMetalMass: byId("left-metal-mass"),
+    rightMetalMass: byId("right-metal-mass"),
+    leftMetalChange: byId("left-metal-change"),
+    rightMetalChange: byId("right-metal-change"),
+    molarMassNote: byId("molar-mass-note"),
+    inventoryNote: byId("inventory-note"),
+    cellSeries: byId("cell-series"),
+    loadSeries: byId("load-series"),
+    cellSeriesDot: byId("cell-series-dot"),
+    loadSeriesDot: byId("load-series-dot"),
+    chartYLabels: byId("chart-y-labels"),
+    chartStartLabel: byId("chart-start-label"),
+    chartTimeLabel: byId("chart-time-label"),
+    runToggle: byId("run-toggle"),
+    resetAll: byId("reset-all"),
+  };
+
+  let state = model.createState(readSetup());
+  let runTimer = null;
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function cleanFloat(value, digits) {
+    if (!Number.isFinite(value)) return "—";
+    const rounded = Number(value.toFixed(digits));
+    return Object.is(rounded, -0) ? "0" : String(rounded);
+  }
+
+  function formatConcentration(value, digits) {
+    if (!Number.isFinite(value)) return "—";
+    const places = Number.isFinite(digits) ? digits : (value < 0.01 ? 4 : 3);
+    return `${value.toFixed(places)} M`;
+  }
+
+  function formatMmol(moles, digits) {
+    return `${cleanFloat(moles * 1000, digits === undefined ? 3 : digits)} mmol`;
+  }
+
+  function formatVoltage(value) {
+    return Number.isFinite(value) ? `${value.toFixed(3)} V` : "—";
+  }
+
+  function formatCurrent(value) {
+    if (!Number.isFinite(value) || value <= 0) return "0.000 mA";
+    if (value >= 1) return `${value.toFixed(3)} A`;
+    return `${(value * 1000).toFixed(value < 0.001 ? 4 : 2)} mA`;
+  }
+
+  function formatPower(value) {
+    if (!Number.isFinite(value) || value <= 0) return "0.000 mW";
+    if (value >= 1) return `${value.toFixed(3)} W`;
+    return `${(value * 1000).toFixed(3)} mW`;
+  }
+
+  function formatLoad(value) {
+    if (value >= 100) return `${Math.round(value).toLocaleString("en-US")} Ω`;
+    if (value >= 10) return `${value.toFixed(1)} Ω`;
+    return `${value.toFixed(2)} Ω`;
+  }
+
+  function formatTime(seconds) {
+    const safeSeconds = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const remainder = safeSeconds % 60;
+    const two = (number) => String(number).padStart(2, "0");
+    if (hours > 0) return `${two(hours)}:${two(minutes)}:${two(remainder)}`;
+    return `${two(minutes)}:${two(remainder)}`;
+  }
+
+  function formatMass(moles, metalId) {
+    return `${(moles * model.metals[metalId].molarMass).toFixed(5)} g`;
+  }
+
+  function formatMassChange(moles, initialMoles, metalId) {
+    const delta = (moles - initialMoles) * model.metals[metalId].molarMass;
+    if (Math.abs(delta) < 0.000005) return "初始质量，变化 < 0.00001 g";
+    const direction = delta > 0 ? "沉积" : "溶解";
+    return `${direction} ${Math.abs(delta).toFixed(5)} g`;
+  }
+
+  function formatQuotient(value) {
+    if (!Number.isFinite(value)) return "—";
+    if (value >= 10000 || (value > 0 && value < 0.001)) return value.toExponential(2);
+    return value.toPrecision(3);
+  }
+
+  function concentrationFromSlider(input) {
+    return clamp(Math.pow(10, Number(input.value)), 0.001, 1);
+  }
+
+  function readSetup() {
+    return {
+      left: {
+        metalId: nodes.leftMetal.value,
+        concentration: concentrationFromSlider(nodes.leftConcentration),
+      },
+      right: {
+        metalId: nodes.rightMetal.value,
+        concentration: concentrationFromSlider(nodes.rightConcentration),
+      },
+      temperatureC: Number(nodes.temperature.value),
+      loadOhms: Math.pow(10, Number(nodes.loadResistance.value)),
+      bridgeConnected: nodes.bridgeSwitch.checked,
+      loadConnected: nodes.loadSwitch.checked,
+    };
+  }
+
+  function stopRun() {
+    if (runTimer !== null) {
+      window.clearInterval(runTimer);
+      runTimer = null;
+    }
+    nodes.runToggle.setAttribute("aria-pressed", "false");
+    nodes.runToggle.innerHTML = '<span aria-hidden="true">▶</span> 连续运行';
+  }
+
+  function startRun() {
+    if (state.depleted || runTimer !== null) return;
+    nodes.runToggle.setAttribute("aria-pressed", "true");
+    nodes.runToggle.innerHTML = '<span aria-hidden="true">Ⅱ</span> 暂停运行';
+    runTimer = window.setInterval(() => {
+      state = model.advance(state, 60);
+      updateAll();
+      if (state.depleted) {
+        stopRun();
+        updateAll();
+      }
+    }, 250);
+  }
+
+  function setText(node, text) {
+    if (node) node.textContent = text;
+  }
+
+  function sideMetalName(halfCell) {
+    const metal = model.metals[halfCell.metalId];
+    return `${metal.name} · ${metal.id}`;
+  }
+
+  function ionEquation(metalId) {
+    return model.metals[metalId].ion;
+  }
+
+  function metalEquation(metalId) {
+    return `${model.metals[metalId].metal}(s)`;
+  }
+
+  function simpleReductionEquation(halfCell) {
+    const metal = model.metals[halfCell.metalId];
+    const electrons = metal.charge === 1 ? "e⁻" : `${metal.charge}e⁻`;
+    return `${metal.ion} + ${electrons} ⇌ ${metalEquation(halfCell.metalId)}`;
+  }
+
+  function coefficient(value) {
+    return value === 1 ? "" : String(value);
+  }
+
+  function buildHalfReaction(halfCell, count, isAnode) {
+    const metal = model.metals[halfCell.metalId];
+    const solid = `${coefficient(count)}${metalEquation(halfCell.metalId)}`;
+    const ion = `${coefficient(count)}${ionEquation(halfCell.metalId)}`;
+    const electrons = `${metal.charge * count}e⁻`;
+    return isAnode
+      ? `${solid} → ${ion} + ${electrons}`
+      : `${ion} + ${electrons} → ${solid}`;
+  }
+
+  function actualReductionPotential(halfCell, reading, side) {
+    if (reading.status === "depleted") return null;
+    return side === "left" ? reading.leftPotential : reading.rightPotential;
+  }
+
+  function buildOverallReaction(reading) {
+    if (!reading.anode || !reading.cathode) return "—";
+    const anodeId = reading.anode.metalId;
+    const cathodeId = reading.cathode.metalId;
+    if (anodeId === cathodeId) {
+      return `${ionEquation(cathodeId)}(浓) → ${ionEquation(anodeId)}(稀)`;
+    }
+    const left = `${coefficient(reading.anodeCoefficient)}${metalEquation(anodeId)} + ${coefficient(reading.cathodeCoefficient)}${ionEquation(cathodeId)}`;
+    const right = `${coefficient(reading.anodeCoefficient)}${ionEquation(anodeId)} + ${coefficient(reading.cathodeCoefficient)}${metalEquation(cathodeId)}`;
+    return `${left} → ${right}`;
+  }
+
+  function logNernst(reading) {
+    if (reading.status === "depleted") return "反应物耗尽 · Nernst 项无定义";
+    const factor = (8.31446261815324 * (Number(nodes.temperature.value) + 273.15)) /
+      (reading.electronCount * 96485.33212);
+    return `${reading.standardCellPotential.toFixed(3)} − (${factor.toFixed(5)} V) ln Q`;
+  }
+
+  function updateControlOutputs() {
+    setText(nodes.leftConcentrationValue, formatConcentration(concentrationFromSlider(nodes.leftConcentration), 3));
+    setText(nodes.rightConcentrationValue, formatConcentration(concentrationFromSlider(nodes.rightConcentration), 3));
+    setText(nodes.temperatureValue, `${Number(nodes.temperature.value)} °C`);
+    setText(nodes.loadResistanceValue, formatLoad(Math.pow(10, Number(nodes.loadResistance.value))));
+    setText(nodes.leftCouple, simpleReductionEquation(state.left));
+    setText(nodes.rightCouple, simpleReductionEquation(state.right));
+  }
+
+  function updateStatus(reading) {
+    nodes.liveState.className = "state-chip";
+    let label = "电流已接通";
+    if (reading.status === "depleted") {
+      nodes.liveState.classList.add("is-depleted");
+      label = "反应物耗尽 · 已停止";
+    } else if (reading.status === "equilibrium") {
+      nodes.liveState.classList.add("is-equilibrium");
+      label = "接近平衡 · 无净电流";
+    } else if (!state.bridgeConnected || !state.loadConnected) {
+      nodes.liveState.classList.add("is-open");
+      label = !state.bridgeConnected ? "盐桥断开 · 电流为零" : "负载断开 · 电流为零";
+    }
+    nodes.liveState.innerHTML = `<i aria-hidden="true"></i>${label}`;
+    nodes.runToggle.disabled = state.depleted;
+  }
+
+  function updateDiagram(reading) {
+    const left = state.left;
+    const right = state.right;
+    const leftMetal = model.metals[left.metalId];
+    const rightMetal = model.metals[right.metalId];
+    const anodeSide = reading.anodeSide || (reading.leftPotential <= reading.rightPotential ? "left" : "right");
+    const anodeLeft = anodeSide === "left";
+    const active = reading.currentA > 0;
+    const leftConcentration = model.concentrationM(left);
+    const rightConcentration = model.concentrationM(right);
+
+    nodes.leftMetalPlate.setAttribute("fill", leftMetal.color);
+    nodes.rightMetalPlate.setAttribute("fill", rightMetal.color);
+    setText(nodes.leftSideName, `左 · ${leftMetal.id}`);
+    setText(nodes.rightSideName, `右 · ${rightMetal.id}`);
+    setText(nodes.leftRole, anodeLeft ? "阳极 / −" : "阴极 / +");
+    setText(nodes.rightRole, anodeLeft ? "阴极 / +" : "阳极 / −");
+    nodes.leftRole.setAttribute("class", anodeLeft ? "svg-role" : "svg-role svg-role-cathode");
+    nodes.rightRole.setAttribute("class", anodeLeft ? "svg-role svg-role-cathode" : "svg-role");
+    nodes.leftIonCloud.setAttribute("opacity", String(0.3 + 0.55 * Math.min(1, leftConcentration)));
+    nodes.rightIonCloud.setAttribute("opacity", String(0.3 + 0.55 * Math.min(1, rightConcentration)));
+    setText(nodes.leftIonLabel, `${leftMetal.ion} · ${formatConcentration(leftConcentration, 3)}`);
+    setText(nodes.rightIonLabel, `${rightMetal.ion} · ${formatConcentration(rightConcentration, 3)}`);
+
+    nodes.electronArrow.setAttribute("d", anodeLeft ? "M225 71 H315" : "M535 71 H445");
+    setText(nodes.electronLabel, anodeLeft ? "e⁻ →" : "← e⁻");
+    nodes.electronLabel.setAttribute("x", anodeLeft ? "270" : "490");
+    nodes.electronFlowLeft.classList.toggle("is-active", active && anodeLeft);
+    nodes.electronFlowRight.classList.toggle("is-active", active && !anodeLeft);
+    nodes.bridgeTube.classList.toggle("is-disconnected", !state.bridgeConnected);
+    nodes.bridgeLiquid.classList.toggle("is-disconnected", !state.bridgeConnected);
+    nodes.bridgeAnion.classList.toggle("is-inactive", !state.bridgeConnected || !active);
+    nodes.bridgeCation.classList.toggle("is-inactive", !state.bridgeConnected || !active);
+    nodes.bridgeAnion.classList.toggle("to-left", state.bridgeConnected && active && anodeLeft);
+    nodes.bridgeAnion.classList.toggle("to-right", state.bridgeConnected && active && !anodeLeft);
+    nodes.bridgeCation.classList.toggle("to-left", state.bridgeConnected && active && !anodeLeft);
+    nodes.bridgeCation.classList.toggle("to-right", state.bridgeConnected && active && anodeLeft);
+    setText(nodes.bridgeDirection, anodeLeft
+      ? "NO₃⁻ ← 阳极侧　·　阴极侧 → K⁺"
+      : "K⁺ ← 阴极侧　·　阳极侧 → NO₃⁻");
+    setText(nodes.bridgeStatus, state.bridgeConnected ? "离子通路已接通" : "盐桥断开：无离子通路");
+    setText(nodes.wireStatus, state.loadConnected ? "电子通路已接通" : "外负载断开：无持续电流");
+    setText(nodes.diagramDescription,
+      `${anodeLeft ? leftMetal.name : rightMetal.name}侧为阳极，向外电路释放电子；${anodeLeft ? rightMetal.name : leftMetal.name}侧为阴极，接收电子。盐桥${state.bridgeConnected ? "已接通" : "断开"}，外负载${state.loadConnected ? "已接通" : "断开"}。当前电流 ${formatCurrent(reading.currentA)}。`);
+
+    let caption;
+    if (reading.status === "depleted") {
+      caption = "必要反应物已经耗尽；保持库存为零，重置后可重新开始。";
+    } else if (anodeSide && left.metalId === right.metalId) {
+      caption = `同种电极形成浓差电池：${anodeLeft ? "左" : "右"}侧较稀，氧化使该侧离子浓度回升。`;
+    } else {
+      caption = `${anodeLeft ? "左" : "右"}侧氧化、${anodeLeft ? "右" : "左"}侧还原；外线送电子，盐桥补离子。`;
+    }
+    setText(nodes.diagramCaption, caption);
+  }
+
+  function updateReaction(reading) {
+    if (!reading.anode || !reading.cathode) {
+      setText(nodes.anodeEquation, "—");
+      setText(nodes.cathodeEquation, "—");
+      setText(nodes.overallEquation, "反应物耗尽");
+      setText(nodes.anodeReading, "E还原 = —");
+      setText(nodes.cathodeReading, "E还原 = —");
+      setText(nodes.reactionStamp, "停");
+      setText(nodes.reactionNote, "本轮已在反应物耗尽时停止；重置可装入新的初始库存。");
+      return;
+    }
+
+    const anode = reading.anode;
+    const cathode = reading.cathode;
+    const anodeSide = reading.anodeSide;
+    const cathodeSide = reading.cathodeSide;
+    const anodePotential = actualReductionPotential(anode, reading, anodeSide);
+    const cathodePotential = actualReductionPotential(cathode, reading, cathodeSide);
+    const anodeCount = reading.anodeCoefficient;
+    const cathodeCount = reading.cathodeCoefficient;
+
+    setText(nodes.anodeEquation, buildHalfReaction(anode, anodeCount, true));
+    setText(nodes.cathodeEquation, buildHalfReaction(cathode, cathodeCount, false));
+    setText(nodes.anodeReading, `E还原 = ${Number.isFinite(anodePotential) ? `${anodePotential >= 0 ? "+" : ""}${anodePotential.toFixed(3)} V` : "—"}`);
+    setText(nodes.cathodeReading, `E还原 = ${Number.isFinite(cathodePotential) ? `${cathodePotential >= 0 ? "+" : ""}${cathodePotential.toFixed(3)} V` : "—"}`);
+    setText(nodes.overallEquation, buildOverallReaction(reading));
+    setText(nodes.reactionStamp, `${model.metals[anode.metalId].metal} →`);
+
+    if (reading.status === "depleted") {
+      setText(nodes.reactionNote, "本轮已在反应物耗尽时停止；重置可装入新的初始库存。");
+    } else if (anode.metalId === cathode.metalId) {
+      setText(nodes.reactionNote, "浓侧金属离子在阴极还原并沉积，稀侧电极溶解补回离子；KNO₃载流离子仍按盐桥方向迁移。");
+    } else {
+      setText(nodes.reactionNote, "阳极氧化、阴极还原；总反应的活度商 Q 决定当前电势偏离标准电势多少。");
+    }
+  }
+
+  function updateReadout(reading) {
+    setText(nodes.cellPotential, reading.status === "depleted" ? "—" : reading.cellPotential.toFixed(3));
+    setText(nodes.potentialCaption, reading.status === "depleted"
+      ? "反应物耗尽；零浓度下 Nernst 对数无定义。"
+      : "开路电势 Ecell；与负载是否接通无关。");
+    setText(nodes.loadVoltage, formatVoltage(reading.loadVoltage));
+    setText(nodes.currentReading, formatCurrent(reading.currentA));
+    setText(nodes.powerReading, formatPower(reading.loadPowerW));
+    setText(nodes.elapsedReading, formatTime(state.elapsedSec));
+    setText(nodes.standardPotential, Number.isFinite(reading.standardCellPotential)
+      ? `${reading.standardCellPotential >= 0 ? "+" : ""}${reading.standardCellPotential.toFixed(3)} V`
+      : "—");
+    setText(nodes.electronCount, Number.isFinite(reading.electronCount) ? String(reading.electronCount) : "—");
+    setText(nodes.reactionQuotient, formatQuotient(reading.reactionQuotient));
+    setText(nodes.nernstEquation, logNernst(reading));
+  }
+
+  function updateInventory(reading) {
+    const leftMetal = model.metals[state.left.metalId];
+    const rightMetal = model.metals[state.right.metalId];
+    const leftCurrent = model.concentrationM(state.left);
+    const rightCurrent = model.concentrationM(state.right);
+    const anodeId = reading.anode ? reading.anode.metalId : null;
+    const anodeSide = reading.anodeSide;
+    const cathodeSide = reading.cathodeSide;
+
+    setText(nodes.chargeTotal, `${state.totalChargeC.toFixed(3)} C`);
+    setText(nodes.electronMoles, formatMmol(state.electronsTransferredMol, 4));
+    setText(nodes.cationFlow, formatMmol(state.bridgeCationMol, 4));
+    setText(nodes.anionFlow, formatMmol(state.bridgeAnionMol, 4));
+    setText(nodes.leftIonName, leftMetal.ion);
+    setText(nodes.rightIonName, rightMetal.ion);
+    setText(nodes.leftIonStart, formatMmol(state.left.initialIonMoles, 3));
+    setText(nodes.rightIonStart, formatMmol(state.right.initialIonMoles, 3));
+    setText(nodes.leftIonNow, formatMmol(state.left.ionMoles, 4));
+    setText(nodes.rightIonNow, formatMmol(state.right.ionMoles, 4));
+    setText(nodes.leftConcentrationNow, formatConcentration(leftCurrent, 5));
+    setText(nodes.rightConcentrationNow, formatConcentration(rightCurrent, 5));
+
+    setText(nodes.leftMetalLabel, `${leftMetal.id} 电极`);
+    setText(nodes.rightMetalLabel, `${rightMetal.id} 电极`);
+    setText(nodes.leftMetalMass, formatMass(state.left.metalMoles, state.left.metalId));
+    setText(nodes.rightMetalMass, formatMass(state.right.metalMoles, state.right.metalId));
+    setText(nodes.leftMetalChange, formatMassChange(state.left.metalMoles, state.left.initialMetalMoles, state.left.metalId));
+    setText(nodes.rightMetalChange, formatMassChange(state.right.metalMoles, state.right.initialMetalMoles, state.right.metalId));
+    setText(nodes.molarMassNote, `M: ${leftMetal.id} ${leftMetal.molarMass} g/mol · ${rightMetal.id} ${rightMetal.molarMass} g/mol`);
+
+    if (state.left.metalId === state.right.metalId) {
+      setText(nodes.inventoryNote, `同种离子：${anodeSide === "left" ? "左" : "右"}杯氧化生成离子，${cathodeSide === "left" ? "左" : "右"}杯还原消耗离子；体积固定，浓度随物质的量变化。`);
+    } else if (anodeId) {
+      setText(nodes.inventoryNote, `${model.metals[anodeId].ion} 在阳极侧生成；${model.metals[reading.cathode.metalId].ion} 在阴极侧消耗。`);
+    }
+  }
+
+  function drawHistory() {
+    const points = state.history;
+    const left = 62;
+    const right = 744;
+    const top = 25;
+    const bottom = 185;
+    const validCells = points.map((point) => point.cellPotential).filter(Number.isFinite);
+    const maxReading = Math.max(0.5, ...validCells, ...points.map((point) => point.loadVoltage || 0));
+    const yMaximum = Math.max(0.5, Math.ceil((maxReading * 1.08) / 0.5) * 0.5);
+    const firstTime = points.length ? points[0].elapsedSec : state.elapsedSec;
+    const lastTime = points.length ? points[points.length - 1].elapsedSec : state.elapsedSec;
+    const elapsedSpan = lastTime - firstTime;
+    const xFor = (index) => {
+      if (elapsedSpan > 0) return left + ((points[index].elapsedSec - firstTime) / elapsedSpan) * (right - left);
+      return points.length <= 1 ? left : left + (index / (points.length - 1)) * (right - left);
+    };
+    const yFor = (value) => bottom - (clamp(value, 0, yMaximum) / yMaximum) * (bottom - top);
+    const cellCoords = [];
+    const loadCoords = [];
+
+    points.forEach((point, index) => {
+      const x = xFor(index);
+      if (Number.isFinite(point.cellPotential)) cellCoords.push([x, yFor(point.cellPotential)]);
+      if (Number.isFinite(point.loadVoltage)) loadCoords.push([x, yFor(point.loadVoltage)]);
+    });
+
+    nodes.cellSeries.setAttribute("d", cellCoords.map((point, index) => `${index ? "L" : "M"}${point[0].toFixed(1)} ${point[1].toFixed(1)}`).join(" "));
+    nodes.loadSeries.setAttribute("d", loadCoords.map((point, index) => `${index ? "L" : "M"}${point[0].toFixed(1)} ${point[1].toFixed(1)}`).join(" "));
+    if (cellCoords.length) nodes.cellSeriesDot.setAttribute("cx", cellCoords[cellCoords.length - 1][0].toFixed(1));
+    if (cellCoords.length) nodes.cellSeriesDot.setAttribute("cy", cellCoords[cellCoords.length - 1][1].toFixed(1));
+    if (loadCoords.length) nodes.loadSeriesDot.setAttribute("cx", loadCoords[loadCoords.length - 1][0].toFixed(1));
+    if (loadCoords.length) nodes.loadSeriesDot.setAttribute("cy", loadCoords[loadCoords.length - 1][1].toFixed(1));
+
+    const yLabels = nodes.chartYLabels.querySelectorAll("text");
+    [1, 0.75, 0.5, 0.25, 0].forEach((fraction, index) => {
+      if (yLabels[index]) setText(yLabels[index], (yMaximum * fraction).toFixed(1));
+    });
+    setText(nodes.chartStartLabel, formatTime(firstTime));
+    setText(nodes.chartTimeLabel, formatTime(lastTime));
+  }
+
+  function updateAll() {
+    const reading = model.getReading(state);
+    updateControlOutputs();
+    updateStatus(reading);
+    updateDiagram(reading);
+    updateReaction(reading);
+    updateReadout(reading);
+    updateInventory(reading);
+    drawHistory();
+  }
+
+  function initializeFromControls() {
+    stopRun();
+    state = model.createState(readSetup());
+    updateAll();
+  }
+
+  function selectPreset(presetId) {
+    const config = model.configurationForPreset(presetId);
+    nodes.leftMetal.value = config.left.metalId;
+    nodes.rightMetal.value = config.right.metalId;
+    nodes.leftConcentration.value = Math.log10(config.left.concentration).toFixed(2);
+    nodes.rightConcentration.value = Math.log10(config.right.concentration).toFixed(2);
+    nodes.temperature.value = String(config.temperatureC);
+    nodes.loadResistance.value = Math.log10(config.loadOhms).toFixed(2);
+    nodes.bridgeSwitch.checked = config.bridgeConnected;
+    nodes.loadSwitch.checked = config.loadConnected;
+    initializeFromControls();
+  }
+
+  function updateOperatingValue(key, value) {
+    state = model.updateOperating(state, { [key]: value });
+    updateAll();
+  }
+
+  function handleStep(seconds) {
+    stopRun();
+    state = model.advance(state, seconds);
+    updateAll();
+  }
+
+  [
+    ["preset-daniell", "daniell"],
+    ["preset-concentration", "concentration"],
+    ["preset-reverse", "reverseConcentration"],
+    ["preset-iron-silver", "ironSilver"],
+  ].forEach(([buttonId, presetId]) => {
+    byId(buttonId).addEventListener("click", () => selectPreset(presetId));
+  });
+
+  nodes.leftMetal.addEventListener("change", initializeFromControls);
+  nodes.rightMetal.addEventListener("change", initializeFromControls);
+  nodes.leftConcentration.addEventListener("input", initializeFromControls);
+  nodes.rightConcentration.addEventListener("input", initializeFromControls);
+  nodes.temperature.addEventListener("input", () => updateOperatingValue("temperatureC", Number(nodes.temperature.value)));
+  nodes.loadResistance.addEventListener("input", () => updateOperatingValue("loadOhms", Math.pow(10, Number(nodes.loadResistance.value))));
+  nodes.bridgeSwitch.addEventListener("change", () => updateOperatingValue("bridgeConnected", nodes.bridgeSwitch.checked));
+  nodes.loadSwitch.addEventListener("change", () => updateOperatingValue("loadConnected", nodes.loadSwitch.checked));
+
+  [["step-10", 10], ["step-60", 60], ["step-600", 600], ["step-3600", 3600]].forEach(([buttonId, seconds]) => {
+    byId(buttonId).addEventListener("click", () => handleStep(seconds));
+  });
+
+  nodes.runToggle.addEventListener("click", () => {
+    if (runTimer === null) startRun();
+    else stopRun();
+    updateAll();
+  });
+  nodes.resetAll.addEventListener("click", initializeFromControls);
+
+  updateAll();
+})();
+
+</script>
+</body>
+</html>

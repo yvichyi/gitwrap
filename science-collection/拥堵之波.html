@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="在一条没有路障的单车道环路里运行交通流模型，改变车辆密度、随机减速与一次刹车，观察车流和拥堵波。">
+<title>拥堵之波 · 单车道交通流实验</title>
+<style>
+:root {
+  --ink: #18282a;
+  --ink-soft: #34494a;
+  --paper: #f0ece3;
+  --paper-light: #faf8f2;
+  --paper-deep: #e5dfd2;
+  --line: #d3ccbf;
+  --teal: #1b403f;
+  --teal-mid: #315b55;
+  --rust: #c86443;
+  --acid: #d5e46b;
+  --sage: #91a98e;
+  --muted: #6f7b77;
+  --serif: "Iowan Old Style", "Songti SC", "STSong", "Noto Serif CJK SC", Georgia, serif;
+  --sans: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; color: var(--ink); background: var(--paper); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; }
+button { color: inherit; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--rust); outline-offset: 3px; }
+.skip-link { position: fixed; z-index: 20; top: 9px; left: 9px; padding: 9px 12px; color: var(--ink); background: var(--acid); transform: translateY(-150%); }
+.skip-link:focus { transform: translateY(0); }
+.page { width: min(1240px, calc(100% - 64px)); margin: 0 auto; }
+.mast { height: 59px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 10px; font-weight: 700; letter-spacing: .02em; }
+.brand b { padding: 0 3px; color: var(--rust); font-weight: 500; }
+.brand-glyph { position: relative; width: 19px; height: 19px; display: inline-flex; align-items: end; gap: 2px; padding: 3px; background: var(--teal); transform: rotate(-8deg); }
+.brand-glyph i { display: block; width: 3px; background: var(--acid); border-radius: 3px; }
+.brand-glyph i:nth-child(1) { height: 6px; }.brand-glyph i:nth-child(2) { height: 10px; }.brand-glyph i:nth-child(3) { height: 4px; }
+.local-mark { display: flex; align-items: center; gap: 7px; color: #71807a; font-size: 8px; letter-spacing: .06em; }
+.local-mark i, .local-pill i, .model-tag i { display: inline-block; width: 5px; height: 5px; background: #81a081; border-radius: 50%; }
+.local-mark span { color: var(--rust); }
+.hero { display: grid; grid-template-columns: minmax(0, .93fr) minmax(0, 1.07fr); align-items: center; gap: 46px; padding: 45px 0 44px; }
+.hero-copy { min-width: 0; padding: 4px 0 0 10px; }
+.eyebrow { display: flex; align-items: center; gap: 9px; margin: 0 0 17px; color: #71807b; font-size: 8px; letter-spacing: .15em; text-transform: uppercase; }
+.eyebrow i { width: 18px; border-top: 1px solid var(--rust); }
+.hero h1 { margin: 0; color: var(--teal); font: 500 clamp(62px, 8vw, 100px)/.98 var(--serif); letter-spacing: -.075em; }
+.hero h1 span { color: var(--rust); }
+.deck { margin: 20px 0 12px; color: var(--ink); font: 500 clamp(21px, 2.5vw, 30px)/1.65 var(--serif); letter-spacing: -.035em; }
+.hero-note { max-width: 455px; margin: 0; color: #697772; font-size: 10px; line-height: 2; }
+.jump-link { display: inline-flex; align-items: center; gap: 24px; min-height: 39px; margin-top: 22px; padding: 0 13px; color: #f5f2e9; background: var(--teal); text-decoration: none; font-size: 9px; font-weight: 650; transition: background .18s ease, transform .18s ease; }
+.jump-link span { color: var(--acid); font-size: 14px; }
+.jump-link:hover { background: #244e49; transform: translateY(-2px); }
+.hero-art { min-width: 0; padding: 9px; background: #e5e1d6; border: 1px solid #cdc9bd; box-shadow: 9px 9px 0 #dfdbcf; }
+.hero-art svg { display: block; width: 100%; height: auto; }
+.art-caption { display: flex; justify-content: space-between; gap: 10px; padding: 8px 4px 1px; color: var(--muted); font-size: 8px; letter-spacing: .045em; }
+.experiment { padding-top: 27px; border-top: 1px solid var(--line); }
+.section-head { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 15px; }
+.small-cap { margin: 0; color: #839087; font-size: 8px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
+.section-head h2, .reading-head h2, .notes-heading h2 { margin: 3px 0 0; color: var(--ink); font: 500 clamp(27px, 3vw, 36px)/1.35 var(--serif); letter-spacing: -.035em; }
+.model-tag { display: flex; align-items: center; gap: 7px; padding-bottom: 5px; color: #76847c; font-size: 8px; letter-spacing: .08em; }
+.scenario-strip { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 69px; padding: 10px 13px; margin-bottom: 12px; background: #e9e5da; border: 1px solid var(--line); }
+.scenario-strip > div:first-child { display: grid; gap: 5px; }
+.scenario-hint { color: #818a80; font-size: 8px; }
+.scenario-buttons { display: flex; gap: 5px; }
+.scenario-buttons button { min-width: 91px; padding: 6px 12px 5px; color: #64736c; background: #f6f3ea; border: 1px solid #d1d3c5; text-align: left; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+.scenario-buttons button b, .scenario-buttons button small { display: block; }
+.scenario-buttons button b { font: 500 14px/1.3 var(--serif); }
+.scenario-buttons button small { margin-top: 2px; color: #839087; font-size: 7px; }
+.scenario-buttons button:hover, .scenario-buttons button.selected { color: var(--teal); background: #e4ebdf; border-color: #92aa98; }
+.lab-grid { display: grid; grid-template-columns: minmax(0, 1.58fr) minmax(275px, .72fr); gap: 13px; align-items: start; }
+.visual-column, .controls { min-width: 0; }
+.visual-column { display: grid; gap: 12px; }
+.canvas-card { min-width: 0; padding: 12px 13px 10px; background: var(--paper-light); border: 1px solid var(--line); }
+.canvas-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 2px 9px; }
+.canvas-head > div { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+.canvas-index { color: var(--rust); font: 9px/1 var(--serif); letter-spacing: .12em; white-space: nowrap; }
+.canvas-head h3, .control-title h3 { margin: 0; color: var(--ink); font: 500 17px/1.45 var(--serif); }
+.canvas-status { color: #78857b; font-size: 8px; text-align: right; }
+.canvas-wrap { position: relative; overflow: hidden; background: var(--teal); }
+.canvas-wrap canvas { display: block; width: 100%; height: auto; }
+.road-wrap { background: #183a3b; }
+.canvas-hud { position: absolute; left: 8px; bottom: 8px; display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 6px 8px; color: #d9dfcf; background: rgb(18 43 43 / 86%); font-size: 7px; pointer-events: none; }
+.canvas-hud span { white-space: nowrap; }
+.legend-dot { display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; vertical-align: -1px; }
+.legend-dot.fast { background: var(--acid); }.legend-dot.slow { background: #dd8057; }
+.legend-dash { display: inline-block; width: 13px; height: 4px; margin-right: 4px; border-top: 1px dashed #cbd7bf; vertical-align: 2px; }
+.canvas-corner { position: absolute; top: 8px; right: 8px; padding: 4px 6px; color: #cfdbcb; background: rgb(18 43 43 / 76%); font: 8px/1.4 var(--serif); pointer-events: none; }
+.canvas-foot { display: flex; justify-content: space-between; gap: 8px; padding: 7px 2px 0; color: var(--muted); font-size: 8px; }
+.metric-strip { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 10px; border-top: 1px solid #d8d6ca; border-bottom: 1px solid #d8d6ca; }
+.metric-strip > div { min-width: 0; padding: 8px 9px 7px; border-right: 1px solid #e4e0d6; }
+.metric-strip > div:first-child { padding-left: 2px; }.metric-strip > div:last-child { border: 0; }
+.metric-strip span, .metric-strip strong { display: block; }
+.metric-strip span { color: #849087; font-size: 7px; }
+.metric-strip strong { overflow: hidden; margin-top: 2px; color: var(--teal); font: 500 clamp(12px, 1.35vw, 17px)/1.4 var(--serif); text-overflow: ellipsis; white-space: nowrap; }
+.timeline-card { background: #e8e9df; }
+.timeline-card .canvas-wrap { border: 1px solid #ccd2c4; }
+.plot-wrap { background: #193d3d; }
+.chart-axis { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 2px 0; color: #77837a; font-size: 7px; }
+.chart-note { margin: 6px 0 0; color: #758078; font-size: 8px; line-height: 1.7; }
+.flow-card { background: #f4f0e6; }
+.flow-wrap { background: #f7f4eb; border: 1px solid #ddd7ca; }
+.flow-wrap canvas { background: #f7f4eb; }
+.controls { position: sticky; top: 12px; padding: 14px 15px 12px; background: var(--paper-light); border: 1px solid var(--line); }
+.control-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+.control-title h3 { margin-top: 2px; font-size: 20px; }
+.local-pill { padding: 3px 6px; color: #738379; border: 1px solid #d4ddce; font-size: 7px; letter-spacing: .1em; white-space: nowrap; }
+.local-pill i { width: 5px; height: 5px; margin-right: 3px; }
+.control-rule { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-top: 9px; margin-top: 12px; color: var(--teal); border-top: 1px solid #e1dfd5; font-size: 9px; font-weight: 650; letter-spacing: .035em; }
+.control-rule small { color: #859087; font-size: 7px; font-weight: 400; letter-spacing: 0; text-align: right; }
+.range-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 5px; color: #596b61; font-size: 8px; }
+.range-label output { color: var(--teal); font: 13px var(--serif); white-space: nowrap; }
+input[type="range"] { display: block; width: 100%; height: 18px; margin: 0; accent-color: var(--teal); cursor: pointer; }
+.range-ends { display: flex; justify-content: space-between; margin-top: -3px; color: #969e92; font-size: 7px; }
+.micro { margin: 3px 0 0; color: #818b80; font-size: 7.5px; line-height: 1.65; }
+.state-readout { display: grid; grid-template-columns: 1fr 1.2fr; gap: 7px; padding: 8px 9px; margin-top: 8px; background: #ecebe2; }
+.state-readout span, .state-readout b { display: block; }
+.state-readout span { color: #879087; font-size: 7px; }
+.state-readout b { margin-top: 2px; color: var(--teal); font: 500 12px/1.4 var(--serif); }
+.run-controls { display: grid; grid-template-columns: 1.2fr .9fr; gap: 5px; margin-top: 7px; }
+.run-controls button, .reset-row button { min-height: 34px; padding: 5px; border: 1px solid #cbd2c6; background: #f2efe6; font-size: 8px; cursor: pointer; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
+.run-controls button:hover, .reset-row button:hover { border-color: var(--teal-mid); background: #edf0e8; }
+.run-controls .primary { color: #f6f3e9; background: var(--teal); border-color: var(--teal); font-weight: 650; }
+.run-controls .primary:hover { background: #254c49; }
+.run-controls button:active, .reset-row button:active, .brake-button:active { transform: translateY(1px); }
+.play-icon { margin-right: 5px; color: var(--acid); font-size: 8px; }
+.brake-button { width: 100%; min-height: 43px; display: flex; align-items: center; gap: 8px; padding: 5px 9px; margin-top: 6px; color: #783f31; background: #f3e6db; border: 1px solid #dfbeaa; font-size: 9px; font-weight: 700; text-align: left; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+.brake-button:hover { background: #f4ddd0; border-color: #cc8c6f; }
+.brake-button > span { display: grid; width: 21px; height: 21px; place-items: center; color: #fff5ec; background: var(--rust); font-size: 10px; }
+.brake-button small { margin-left: auto; color: #9b7562; font-size: 7px; font-weight: 400; text-align: right; }
+.reset-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 6px; }
+.reset-row button { min-height: 29px; color: #64736a; }
+.key-help { margin: 7px 0 0; color: #92998f; font-size: 7px; line-height: 1.6; text-align: center; }
+.brake-note { min-height: 25px; padding-top: 6px; margin: 7px 0 0; color: #8d7466; border-top: 1px solid #e6ddd0; font-size: 7.5px; line-height: 1.55; }
+.reading { padding-top: 28px; margin-top: 44px; border-top: 1px solid var(--line); }
+.reading-head { display: grid; grid-template-columns: 1fr minmax(280px, .9fr); align-items: end; gap: 45px; }
+.reading-head > p { max-width: 540px; margin: 0 0 3px; color: var(--muted); font-size: 10px; line-height: 1.95; }
+.reading-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; margin: 19px 0 22px; }
+.reading-grid article { min-width: 0; padding: 13px 14px 12px; background: #e7e5d9; border-top: 2px solid var(--teal); }
+.roman { color: var(--rust); font: 25px/1 var(--serif); }
+.reading-grid h3 { margin: 7px 0 5px; color: var(--ink); font: 500 16px/1.4 var(--serif); }
+.reading-grid p { min-height: 56px; margin: 0; color: #6e7a74; font-size: 8.5px; line-height: 1.8; }
+.rule-figure { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 7px; padding: 9px; margin-top: 10px; background: #f3f0e6; border: 1px solid #d7d3c7; }
+.rule-figure span { grid-row: span 2; padding: 4px 5px; color: #f3f0e6; background: var(--teal); font-size: 7px; white-space: nowrap; }
+.rule-figure b { color: var(--teal); font: 500 11px/1.4 var(--serif); }
+.rule-figure i { color: #90978b; font-size: 7px; font-style: normal; }
+.wave-rule b { color: var(--rust); }
+.equation-panel { border: 1px solid var(--line); background: #f6f3e9; }
+.equation-panel summary { padding: 11px 14px; color: var(--teal); font: 500 13px/1.4 var(--serif); cursor: pointer; }
+.equation-panel summary::marker { color: var(--rust); }
+.equation-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 17px; padding: 0 14px 14px; }
+.equation-grid > div + div { padding-left: 17px; border-left: 1px solid #dcd7ca; }
+.equation-label { margin: 7px 0; color: #879086; font-size: 7px; letter-spacing: .1em; text-transform: uppercase; }
+.equation { margin: 0; color: var(--ink); font: 14px/1.9 var(--serif); }
+.equation-note { margin: 7px 0 0; color: #747f77; font-size: 8px; line-height: 1.75; }
+.model-notes { display: grid; grid-template-columns: .62fr 1.38fr; gap: 21px 38px; padding: 28px 0 30px; margin-top: 40px; border-top: 1px solid var(--line); }
+.notes-heading h2 { font-size: 23px; }
+.limits-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
+.limits-grid p { margin: 0; padding-left: 11px; color: #747f77; border-left: 2px solid #a9b69b; font-size: 8px; line-height: 1.85; }
+.limits-grid b { display: block; margin-bottom: 3px; color: var(--teal); font-size: 9px; }
+.source-band { grid-column: 1 / -1; display: grid; grid-template-columns: 58px minmax(180px, 1fr) auto; align-items: center; gap: 15px; padding: 12px 14px; background: #e5e1d5; }
+.source-mark { color: var(--rust); font: 9px/1.55 var(--serif); letter-spacing: .12em; }
+.source-band p { max-width: 490px; margin: 0; color: #707c74; font-size: 8px; line-height: 1.7; }
+.source-links { display: grid; gap: 5px; }
+.source-links a { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-width: 220px; padding: 5px 7px; color: var(--teal); background: #f5f2e9; text-decoration: none; font-size: 7px; }
+.source-links a:hover { background: #edf0e4; }
+.source-links b { color: var(--rust); font-size: 10px; }
+.footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 49px; color: #8a9288; border-top: 1px solid var(--line); font-size: 8px; }
+.footer a { color: var(--ink); font: 500 13px var(--serif); text-decoration: none; }
+
+@media (max-width: 980px) {
+  .page { width: min(100% - 40px, 820px); }
+  .hero { gap: 28px; }
+  .lab-grid { grid-template-columns: minmax(0, 1fr); }
+  .controls { position: static; }
+  .reading-head { gap: 25px; }
+  .model-notes { grid-template-columns: 1fr; }
+  .limits-grid { gap: 10px; }
+}
+@media (max-width: 680px) {
+  .page { width: calc(100% - 30px); }
+  .mast { height: 50px; }
+  .brand { font-size: 8px; }.local-mark { font-size: 7px; }
+  .hero { grid-template-columns: 1fr; gap: 23px; padding: 33px 0 35px; }
+  .hero-copy { padding-left: 3px; }
+  .hero h1 { font-size: clamp(65px, 17vw, 92px); }
+  .deck { margin-top: 15px; font-size: 23px; }
+  .hero-note { max-width: 100%; font-size: 9px; }
+  .hero-art { max-width: 540px; }
+  .section-head { align-items: start; flex-direction: column; gap: 7px; }
+  .model-tag { padding-bottom: 0; }
+  .scenario-strip { align-items: stretch; flex-direction: column; gap: 9px; padding: 10px; }
+  .scenario-buttons button { flex: 1; min-width: 0; padding: 5px 8px; }
+  .canvas-card { padding: 9px; }
+  .canvas-head { align-items: start; flex-direction: column; gap: 3px; }
+  .canvas-head h3 { font-size: 15px; }
+  .canvas-status { align-self: flex-end; margin-top: -20px; font-size: 7px; }
+  .road-wrap .canvas-hud { left: 5px; bottom: 5px; gap: 5px 8px; padding: 5px; font-size: 6px; }
+  .canvas-corner { top: 5px; right: 5px; font-size: 7px; }
+  .canvas-foot { flex-direction: column; gap: 3px; font-size: 7px; }
+  .metric-strip > div { padding: 7px 6px; }
+  .metric-strip strong { font-size: 13px; }
+  .chart-axis { font-size: 6px; }
+  .controls { display: block; padding: 12px; }
+  .control-rule { margin-top: 10px; }
+  .reading { margin-top: 32px; padding-top: 23px; }
+  .reading-head { grid-template-columns: 1fr; gap: 8px; }
+  .reading-head > p { font-size: 9px; }
+  .reading-grid { grid-template-columns: 1fr; gap: 8px; }
+  .reading-grid article { padding: 11px 12px; }
+  .reading-grid p { min-height: 0; }
+  .rule-figure { max-width: 380px; }
+  .equation-grid { grid-template-columns: 1fr; gap: 10px; }
+  .equation-grid > div + div { padding: 10px 0 0; border-top: 1px solid #dcd7ca; border-left: 0; }
+  .equation { font-size: 12px; }
+  .model-notes { gap: 16px; margin-top: 30px; padding-top: 22px; }
+  .limits-grid { grid-template-columns: 1fr; gap: 10px; }
+  .source-band { grid-template-columns: 40px 1fr; gap: 8px 10px; padding: 10px; }
+  .source-links { grid-column: 1 / -1; grid-template-columns: 1fr; }
+  .source-links a { min-width: 0; }
+  .footer { min-height: 45px; font-size: 7px; }
+  .footer span:last-child { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+</style>
+</head><body>
+<a class="skip-link" href="#experiment">跳到车流实验</a>
+<div class="page" id="top">
+  <header class="mast">
+    <a class="brand" href="#top" aria-label="回到页面顶部">
+      <span class="brand-glyph" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span>可交互的科学装置 <b>/</b> 交通流</span>
+    </a>
+    <div class="local-mark"><i></i> 单页运行 <span>·</span> 无需联网</div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span>非平衡系统</span><i></i><span>TRAFFIC / 01</span></p>
+        <h1 id="page-title">拥堵<span>之波。</span></h1>
+        <p class="deck">前方没有路障，<br>车流为什么还是慢了下来？</p>
+        <p class="hero-note">一辆车轻轻点下刹车，身后的车一辆接一辆减速。让道路密度、驾驶差异和一次小扰动在环路上相遇，看看拥堵怎样长成一列向后移动的波。</p>
+        <a class="jump-link" href="#experiment">进入车流实验 <span aria-hidden="true">↓</span></a>
+      </div>
+      <div class="hero-art">
+        <svg viewBox="0 0 560 350" role="img" aria-labelledby="hero-svg-title hero-svg-desc">
+          <title id="hero-svg-title">环路上形成并向后传播的车流波</title>
+          <desc id="hero-svg-desc">一圈深色单车道上，车辆沿顺时针方向行驶；橙色车辆聚成短队，虚线箭头指向与行车方向相反的拥堵波。</desc>
+          <defs>
+            <pattern id="hero-grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#c2d1c1" stroke-opacity=".09"/></pattern>
+            <linearGradient id="hero-road" x1="0" x2="1"><stop stop-color="#304f4c"/><stop offset="1" stop-color="#253f3e"/></linearGradient>
+          </defs>
+          <rect width="560" height="350" fill="#183a3b"/>
+          <rect width="560" height="350" fill="url(#hero-grid)"/>
+          <ellipse cx="281" cy="184" rx="191" ry="105" fill="none" stroke="#879f8d" stroke-opacity=".36" stroke-width="86"/>
+          <ellipse cx="281" cy="184" rx="191" ry="105" fill="none" stroke="url(#hero-road)" stroke-width="78"/>
+          <ellipse cx="281" cy="184" rx="191" ry="105" fill="none" stroke="#d5e0cb" stroke-opacity=".4" stroke-width="1.4" stroke-dasharray="3 12"/>
+          <g fill="#c8d3c1" font-family="serif" font-size="12" text-anchor="middle">
+            <text x="281" y="177">同一辆车绕一圈，再遇见自己</text>
+            <text x="281" y="195" fill="#93a89b" font-family="sans-serif" font-size="8" letter-spacing="2">CLOSED LOOP / NO BOTTLENECK</text>
+          </g>
+          <g fill="#d5e46b">
+            <rect x="441" y="174" width="25" height="11" rx="5" transform="rotate(77 453 179)"/>
+            <rect x="406" y="244" width="25" height="11" rx="5" transform="rotate(127 418 249)"/>
+            <rect x="326" y="282" width="25" height="11" rx="5" transform="rotate(171 338 287)"/>
+            <rect x="210" y="276" width="25" height="11" rx="5" transform="rotate(195 222 281)"/>
+            <rect x="119" y="236" width="25" height="11" rx="5" transform="rotate(230 131 241)"/>
+            <rect x="91" y="171" width="25" height="11" rx="5" transform="rotate(273 103 176)"/>
+          </g>
+          <g fill="#dc7954">
+            <rect x="374" y="271" width="25" height="11" rx="5" transform="rotate(153 386 276)"/>
+            <rect x="350" y="281" width="25" height="11" rx="5" transform="rotate(165 362 286)"/>
+            <rect x="402" y="256" width="25" height="11" rx="5" transform="rotate(140 414 261)"/>
+          </g>
+          <path d="M378 316C344 335 300 339 263 329" fill="none" stroke="#dd8057" stroke-width="2" stroke-dasharray="4 6"/>
+          <path d="M258 325l9 1-5 8" fill="none" stroke="#dd8057" stroke-width="2"/>
+          <text x="319" y="338" fill="#e3a37d" font-family="sans-serif" font-size="8" letter-spacing="1">JAM WAVE / UPSTREAM</text>
+          <text x="26" y="28" fill="#a9bdb0" font-family="monospace" font-size="9" letter-spacing="2">POSITION × TIME</text>
+          <text x="26" y="328" fill="#91aa9b" font-family="monospace" font-size="8">CARS → / WAVE ←</text>
+        </svg>
+        <div class="art-caption"><span>环形单车道示意</span><span>车流与拥堵波方向相反</span></div>
+      </div>
+    </section>
+
+    <section class="experiment" id="experiment" aria-labelledby="experiment-title">
+      <div class="section-head">
+        <div>
+          <p class="small-cap">01 / 车流实验室</p>
+          <h2 id="experiment-title">让一条路自己堵起来</h2>
+        </div>
+        <div class="model-tag"><i></i> NAGEL–SCHRECKENBERG 型元胞模型</div>
+      </div>
+
+      <div class="scenario-strip">
+        <div><span class="small-cap">从哪种车流开始</span><span class="scenario-hint">同一个随机种子 · 只改变车辆密度</span></div>
+        <div class="scenario-buttons" role="group" aria-label="选择初始车辆密度">
+          <button type="button" data-preset="light" aria-pressed="false"><b>稀疏</b><small>18%</small></button>
+          <button type="button" data-preset="edge" class="selected" aria-pressed="true"><b>接近</b><small>34%</small></button>
+          <button type="button" data-preset="dense" aria-pressed="false"><b>拥挤</b><small>50%</small></button>
+        </div>
+      </div>
+
+      <div class="lab-grid">
+        <div class="visual-column">
+          <section class="canvas-card road-card" aria-labelledby="road-title">
+            <div class="canvas-head">
+              <div><span class="canvas-index">FIG. 01</span><h3 id="road-title">环路快照</h3></div>
+              <span class="canvas-status" id="run-status">就绪 · 可以运行</span>
+            </div>
+            <div class="canvas-wrap road-wrap">
+              <canvas id="road-canvas" width="960" height="400" tabindex="0" aria-label="环形单车道的俯视示意。车辆沿环路顺时针移动，橙色表示低速或停车。按空格运行，按 B 轻点刹车。">环路车流快照。</canvas>
+              <div class="canvas-hud"><span><i class="legend-dot fast"></i>畅行</span><span><i class="legend-dot slow"></i>低速 / 停车</span><span><i class="legend-dash"></i>行车方向</span></div>
+              <div class="canvas-corner" id="seed-readout">种子 237</div>
+            </div>
+            <div class="canvas-foot"><span id="road-length">环长 900 m · 单车道 · 周期边界</span><span>车辆随模型步长同步更新</span></div>
+            <div class="metric-strip" aria-label="当前车流指标">
+              <div><span>密度</span><strong id="metric-density">—</strong></div>
+              <div><span>平均速度</span><strong id="metric-speed">—</strong></div>
+              <div><span>流量</span><strong id="metric-flow">—</strong></div>
+              <div><span>停车车辆</span><strong id="metric-stopped">—</strong></div>
+            </div>
+          </section>
+
+          <section class="canvas-card timeline-card" aria-labelledby="space-title">
+            <div class="canvas-head">
+              <div><span class="canvas-index">FIG. 02</span><h3 id="space-title">车向前走，堵向后走</h3></div>
+              <span class="canvas-status" id="history-status">最近 180 秒</span>
+            </div>
+            <div class="canvas-wrap plot-wrap">
+              <canvas id="space-canvas" width="960" height="280" aria-label="车辆位置与时间的时空图。横轴沿行车方向，纵轴从上到下表示时间；橙色区域是低速和停车的车群。">车辆位置与时间的时空图。</canvas>
+            </div>
+            <div class="chart-axis"><span>早些时候</span><span>沿环路位置 →</span><span>现在</span></div>
+            <p class="chart-note">每一行是一秒。橙色条纹若斜向左下延伸，表示拥堵边界在向上游传播；每辆车本身仍向右前进。</p>
+          </section>
+
+          <section class="canvas-card flow-card" aria-labelledby="flow-title">
+            <div class="canvas-head">
+              <div><span class="canvas-index">FIG. 03</span><h3 id="flow-title">流量随密度变化</h3></div>
+              <span class="canvas-status" id="sample-status">每 5 秒记一个时间窗</span>
+            </div>
+            <div class="canvas-wrap flow-wrap">
+              <canvas id="flow-canvas" width="960" height="300" aria-label="流量对密度散点图。横轴是每公里车辆数，纵轴是每小时通过观测点的车辆数。">流量对密度散点图。</canvas>
+            </div>
+            <div class="chart-axis"><span>密度较低</span><span>密度增大 →</span><span id="sample-count">0 个观测</span></div>
+            <p class="chart-note">每点来自当前随机种子下的一个短时间窗。换一档密度继续运行，比较这条环路何时能送过最多车辆。</p>
+          </section>
+        </div>
+
+        <aside class="controls" aria-label="车流实验设置">
+          <div class="control-title">
+            <div><p class="small-cap">实验旋钮</p><h3>改一项，再观察</h3></div>
+            <span class="local-pill"><i></i> LOCAL</span>
+          </div>
+
+          <div class="control-rule"><span>道路占用</span><small>环路上的车辆数</small></div>
+          <div class="range-label"><label for="density-range">车辆密度</label><output id="density-output" for="density-range">34%</output></div>
+          <input id="density-range" type="range" min="8" max="58" step="1" value="34" aria-describedby="density-help">
+          <div class="range-ends"><span>8% / 较空</span><span>58% / 较挤</span></div>
+          <p class="micro" id="density-help">改变密度会重新排车；“重置”可回到同一组车辆位置。</p>
+
+          <div class="control-rule"><span>驾驶差异</span><small>随机慢一格的概率</small></div>
+          <div class="range-label"><label for="noise-range">随机减速</label><output id="noise-output" for="noise-range">6%</output></div>
+          <input id="noise-range" type="range" min="0" max="30" step="1" value="6" aria-describedby="noise-help">
+          <div class="range-ends"><span>0% / 整齐</span><span>30% / 常减速</span></div>
+          <p class="micro" id="noise-help">每辆车各自抽取随机数。它代表微小差异，不对应实测驾驶者。</p>
+
+          <div class="control-rule"><span>最高速度</span><small>元胞 / 秒</small></div>
+          <div class="range-label"><label for="speed-range">畅行时速度上限</label><output id="speed-output" for="speed-range">5 格 / 秒</output></div>
+          <input id="speed-range" type="range" min="2" max="6" step="1" value="5" aria-describedby="speed-help">
+          <div class="range-ends"><span>2 格 / 秒</span><span>6 格 / 秒</span></div>
+          <p class="micro" id="speed-help">每格 7.5 m，每步 1 秒；单位换算只为读图，不代表道路标定。</p>
+
+          <div class="control-rule"><span>状态观察</span><small>基于最近 24 秒和当前一秒</small></div>
+          <div class="state-readout">
+            <div><span>模型时间</span><b id="time-readout">00:00</b></div>
+            <div><span>拥堵状态</span><b id="jam-readout">尚未运行</b></div>
+          </div>
+
+          <div class="control-rule"><span>运行实验</span><small>也可用空格暂停 / 继续</small></div>
+          <div class="run-controls">
+            <button type="button" class="primary" id="play-button"><span class="play-icon" aria-hidden="true">▶</span><span id="play-label">开始车流</span></button>
+            <button type="button" id="step-button" aria-label="推进一秒">单步 +1 秒</button>
+          </div>
+          <button type="button" class="brake-button" id="brake-button"><span aria-hidden="true">Ⅱ</span> 前方轻点刹车 <small>在单个模型步长内停车</small></button>
+          <div class="reset-row">
+            <button type="button" id="reset-button">同种子重置</button>
+            <button type="button" id="new-seed-button">换一个种子 ↻</button>
+          </div>
+          <p class="key-help">键盘：空格运行 / 暂停 · . 单步 · B 刹车 · R 重置</p>
+          <p class="brake-note" id="brake-note" aria-live="polite">刹车只作用于一辆车的一秒。看看后方如何回应。</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="reading" aria-labelledby="reading-title">
+      <div class="reading-head">
+        <div><p class="small-cap">02 / 读懂这列车</p><h2 id="reading-title">堵住的是波，不是路。</h2></div>
+        <p>环路上没有入口，也没有出口。车辆只向一个方向移动；如果低速区域仍能留在图上，并且不断吞进后车、在上游一侧吐出车辆，它就是一列移动的拥堵波。</p>
+      </div>
+      <div class="reading-grid">
+        <article>
+          <span class="roman">Ⅰ</span><h3>车先看见一段空隙</h3>
+          <p>每辆车只读取前方到下一辆车之间有几格。先加速，再把速度压到空隙以内，因此不会穿过前车。</p>
+          <div class="rule-figure"><span>加速</span><b>v → min(v + 1, v<sub>max</sub>)</b><i>给速度上限</i></div>
+        </article>
+        <article>
+          <span class="roman">Ⅱ</span><h3>小减速会排成一串</h3>
+          <p>车辆各自以设定概率慢一格。一个短暂的速度差会缩小后车间距，后车也跟着减速；密度越高，队列越容易延长。</p>
+          <div class="rule-figure"><span>随机慢行</span><b>概率 p：v → v − 1</b><i>仅当 v &gt; 0</i></div>
+        </article>
+        <article>
+          <span class="roman">Ⅲ</span><h3>波走向与车行相反</h3>
+          <p>车从队尾加入低速队列，又从队首离开。队列边界因此向上游退去，虽然所有汽车一直朝下游行驶。</p>
+          <div class="rule-figure wave-rule"><span>方向</span><b>车辆 →　拥堵波 ←</b><i>时空图里的斜纹</i></div>
+        </article>
+      </div>
+      <details class="equation-panel">
+        <summary>展开每一步的同步更新规则</summary>
+        <div class="equation-grid">
+          <div>
+            <p class="equation-label">对每辆车 i 同时执行</p>
+            <p class="equation">① vᵢ ← min(vᵢ + 1, v<sub>max</sub>)<br>② vᵢ ← min(vᵢ, gapᵢ)<br>③ 若随机数 &lt; p 且 vᵢ &gt; 0：vᵢ ← vᵢ − 1<br>④ xᵢ ← (xᵢ + vᵢ) mod 120</p>
+            <p class="equation-note">`gapᵢ` 是车前直到下一辆车之前的空格数。先读取旧车道，再一起写入新车道，这样汽车不会因为执行先后顺序而互相穿越。</p>
+          </div>
+          <div>
+            <p class="equation-label">图中两项读数</p>
+            <p class="equation">密度 ρ = N / L<br>流量 Q ≈ ⟨Σvᵢ⟩ / 120 × 3600<br>平均速度 = ⟨vᵢ⟩ × 7.5 × 3.6 km/h</p>
+            <p class="equation-note">尖括号表示滚动时间窗内的平均值。元胞长度 7.5 m，更新步长 1 s；Q 的单位为辆 / 小时，ρ 为辆 / 公里。</p>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section class="model-notes" aria-labelledby="limits-title">
+      <div class="notes-heading"><p class="small-cap">03 / 模型边界</p><h2 id="limits-title">这是一条简单、封闭的路。</h2></div>
+      <div class="limits-grid">
+        <p><b>只有一条车道。</b>这里不含换道、入口、出口、匝道、信号灯、坡度、事故或路面变化。周期边界把环路最后一格与第一格相连，车辆总数保持不变。</p>
+        <p><b>规则不是驾驶员画像。</b>一格、一秒和随机慢行把复杂行为压缩成可计算规则。模型适合观察车流如何互相影响，不用于估计真实道路的拥堵时间或容量。</p>
+        <p><b>一次刹车是干预。</b>按钮会让一辆车在一个模型步长内停下。真实无瓶颈拥堵还取决于车距、反应和道路条件；模型里的波是机制示意，不能证明某次现实拥堵由某一位驾驶者造成。</p>
+      </div>
+      <div class="source-band">
+        <span class="source-mark">READ<br>MORE</span>
+        <p>模型源自随机单车道元胞自动机的研究；无瓶颈环道实验也曾观察到拥堵自发形成。两者提供背景，不意味着本页面使用了实验数据。</p>
+        <div class="source-links">
+          <a href="https://doi.org/10.1051/jp1:1992277">Nagel &amp; Schreckenberg · 1992 <b>↗</b></a>
+          <a href="https://doi.org/10.1088/1367-2630/10/3/033001">Sugiyama et al. · 2008 <b>↗</b></a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="footer"><a href="#top">拥堵之波</a><span>单车道 · 同步更新 · 本地计算</span><span>问题 → 模型 → 证据</span></footer>
+</div>
+
+<script>
+'use strict';
+
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.TrafficWaveCore = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  const CELLS = 120;
+  const CELL_METRES = 7.5;
+  const SECONDS_PER_STEP = 1;
+  const MAX_HISTORY = 180;
+  const FLOW_WINDOW = 24;
+  const PRESETS = {
+    light: { density: 18, label: '车少：留有余地' },
+    edge: { density: 34, label: '接近：扰动值得观察' },
+    dense: { density: 50, label: '拥挤：间隙很短' }
+  };
+
+  function clamp(value, low, high) { return Math.max(low, Math.min(high, value)); }
+  function makeRandom(seed) {
+    let value = (Number(seed) >>> 0) || 1;
+    return function () {
+      value ^= value << 13; value ^= value >>> 17; value ^= value << 5;
+      return (value >>> 0) / 4294967296;
+    };
+  }
+  function normalizeOptions(options) {
+    options = options || {};
+    return {
+      density: clamp(Number(options.density) || 34, 8, 58),
+      maxSpeed: Math.round(clamp(Number(options.maxSpeed) || 5, 2, 6)),
+      brakeProbability: clamp(Number(options.brakeProbability) || 0, 0, 0.3),
+      seed: (Number(options.seed) >>> 0) || 237
+    };
+  }
+  function addHistory(state) {
+    const row = new Uint8Array(CELLS);
+    for (let i = 0; i < CELLS; i++) row[i] = state.road[i] < 0 ? 0 : state.road[i] + 1;
+    state.history.push(row);
+    if (state.history.length > MAX_HISTORY) state.history.shift();
+  }
+  function createState(options) {
+    const config = normalizeOptions(options);
+    const random = makeRandom(config.seed);
+    const road = new Int8Array(CELLS);
+    road.fill(-1);
+    const carCount = Math.max(1, Math.round(CELLS * config.density / 100));
+    const spacing = CELLS / carCount;
+    const initialSpeed = Math.min(config.maxSpeed, Math.max(0, Math.floor(spacing) - 1));
+    const offset = random() * spacing;
+    for (let i = 0; i < carCount; i++) {
+      const cell = Math.floor((offset + i * spacing) % CELLS);
+      road[cell] = initialSpeed;
+    }
+    const state = {
+      road, carCount, density: config.density, maxSpeed: config.maxSpeed,
+      brakeProbability: config.brakeProbability, seed: config.seed, random,
+      tick: 0, history: [], flowWindow: [], pendingBrake: false,
+      brakeFlash: null, lastBrake: null
+    };
+    addHistory(state);
+    state.flowWindow.push(totalSpeed(state.road));
+    return state;
+  }
+  function totalSpeed(road) {
+    let sum = 0;
+    for (let i = 0; i < road.length; i++) if (road[i] > 0) sum += road[i];
+    return sum;
+  }
+  function findGap(road, cell) {
+    for (let gap = 1; gap <= CELLS; gap++) {
+      if (road[(cell + gap) % CELLS] >= 0) return gap - 1;
+    }
+    return CELLS - 1;
+  }
+  function findBrakeTarget(road) {
+    const preferred = Math.floor(CELLS * 0.36);
+    let target = -1, nearest = CELLS + 1;
+    for (let cell = 0; cell < CELLS; cell++) {
+      if (road[cell] < 0) continue;
+      const distance = (cell - preferred + CELLS) % CELLS;
+      if (distance < nearest) { nearest = distance; target = cell; }
+    }
+    return target;
+  }
+  function step(state) {
+    const previous = state.road;
+    const next = new Int8Array(CELLS);
+    next.fill(-1);
+    const brakeTarget = state.pendingBrake ? findBrakeTarget(previous) : -1;
+
+    for (let cell = 0; cell < CELLS; cell++) {
+      const oldSpeed = previous[cell];
+      if (oldSpeed < 0) continue;
+      const gap = findGap(previous, cell);
+      let speed = Math.min(oldSpeed + 1, state.maxSpeed);
+      speed = Math.min(speed, gap);
+      if (cell === brakeTarget) speed = 0;
+      else if (speed > 0 && state.random() < state.brakeProbability) speed--;
+      const destination = (cell + speed) % CELLS;
+      if (next[destination] >= 0) {
+        // A defensive collision guard; the gap rule should make this unreachable.
+        next[destination] = Math.min(next[destination], 0);
+      } else next[destination] = speed;
+    }
+
+    state.road = next;
+    state.tick++;
+    state.pendingBrake = false;
+    if (brakeTarget >= 0) {
+      state.lastBrake = { tick: state.tick, cell: brakeTarget };
+      state.brakeFlash = { tick: state.tick, cell: brakeTarget };
+    }
+    if (state.brakeFlash && state.tick - state.brakeFlash.tick > 7) state.brakeFlash = null;
+    addHistory(state);
+    state.flowWindow.push(totalSpeed(next));
+    if (state.flowWindow.length > FLOW_WINDOW) state.flowWindow.shift();
+    return state;
+  }
+  function stepMany(state, count) {
+    const steps = Math.max(0, Math.floor(Number(count) || 0));
+    for (let i = 0; i < steps; i++) step(state);
+    return state;
+  }
+  function requestBrake(state) { state.pendingBrake = true; }
+  function setConditions(state, conditions) {
+    if (conditions && Number.isFinite(Number(conditions.maxSpeed))) {
+      state.maxSpeed = Math.round(clamp(Number(conditions.maxSpeed), 2, 6));
+    }
+    if (conditions && Number.isFinite(Number(conditions.brakeProbability))) {
+      state.brakeProbability = clamp(Number(conditions.brakeProbability), 0, 0.3);
+    }
+    return state;
+  }
+  function stats(state) {
+    let speedTotal = 0, stopped = 0, cars = 0;
+    for (let i = 0; i < CELLS; i++) {
+      if (state.road[i] < 0) continue;
+      cars++;
+      if (state.road[i] === 0) stopped++;
+      speedTotal += state.road[i];
+    }
+    const windowTotal = state.flowWindow.reduce((sum, value) => sum + value, 0);
+    const meanCellsPerSecond = cars ? speedTotal / cars : 0;
+    const meanWindowFlow = state.flowWindow.length
+      ? windowTotal / state.flowWindow.length / CELLS * 3600
+      : 0;
+    return {
+      cars,
+      densityPercent: cars / CELLS * 100,
+      densityPerKm: cars / (CELLS * CELL_METRES / 1000),
+      meanCellsPerSecond,
+      meanSpeedKmh: meanCellsPerSecond * CELL_METRES * 3.6,
+      flowPerHour: meanWindowFlow,
+      stopped,
+      stoppedPercent: cars ? stopped / cars * 100 : 0,
+      timeSeconds: state.tick * SECONDS_PER_STEP
+    };
+  }
+  function encodeSpeed(speed) { return speed < 0 ? 0 : speed + 1; }
+
+  return {
+    CELLS, CELL_METRES, SECONDS_PER_STEP, MAX_HISTORY, PRESETS,
+    clamp, createState, step, stepMany, requestBrake, setConditions,
+    stats, encodeSpeed
+  };
+});
+
+</script>
+<script>
+'use strict';
+
+(function () {
+  const Core = window.TrafficWaveCore;
+  const byId = id => document.getElementById(id);
+  const els = {
+    road: byId('road-canvas'), space: byId('space-canvas'), flow: byId('flow-canvas'),
+    status: byId('run-status'), seed: byId('seed-readout'), time: byId('time-readout'),
+    jam: byId('jam-readout'), brakeNote: byId('brake-note'), sampleCount: byId('sample-count'),
+    metricDensity: byId('metric-density'), metricSpeed: byId('metric-speed'),
+    metricFlow: byId('metric-flow'), metricStopped: byId('metric-stopped'),
+    density: byId('density-range'), densityOutput: byId('density-output'),
+    noise: byId('noise-range'), noiseOutput: byId('noise-output'),
+    speed: byId('speed-range'), speedOutput: byId('speed-output'),
+    play: byId('play-button'), playIcon: document.querySelector('.play-icon'), playLabel: byId('play-label'),
+    step: byId('step-button'), brake: byId('brake-button'), reset: byId('reset-button'),
+    newSeed: byId('new-seed-button'), presets: Array.from(document.querySelectorAll('[data-preset]'))
+  };
+
+  const ROAD = { width: 960, height: 400, cx: 480, cy: 193, rx: 307, ry: 126 };
+  const SPACE = { width: 960, height: 280, left: 52, right: 16, top: 13, bottom: 24 };
+  const FLOW = { width: 960, height: 300, left: 66, right: 18, top: 19, bottom: 43, maxDensity: 85, maxFlow: 4200 };
+  const RUN_COLORS = ['#426b61', '#bd6848', '#86986e', '#88734f', '#496f82', '#9a735e', '#66734f', '#8c5e51'];
+  let seed = 237;
+  let runNumber = 0;
+  let density = Number(els.density.value);
+  let noise = Number(els.noise.value) / 100;
+  let maxSpeed = Number(els.speed.value);
+  let state = createState();
+  let running = false;
+  let lastFrame = performance.now();
+  let accumulator = 0;
+  let lastSampleTick = 0;
+  const observations = [];
+
+  function createState() {
+    const next = Core.createState({ density, brakeProbability: noise, maxSpeed, seed });
+    Core.setConditions(next, { brakeProbability: noise, maxSpeed });
+    return next;
+  }
+  function pad(value) { return String(value).padStart(2, '0'); }
+  function formatTime(seconds) {
+    const total = Math.max(0, Math.floor(seconds));
+    return pad(Math.floor(total / 60)) + ':' + pad(total % 60);
+  }
+  function resetRun(nextSeed) {
+    running = false;
+    accumulator = 0;
+    lastSampleTick = 0;
+    if (nextSeed) seed = (seed + 1013904223) >>> 0;
+    runNumber++;
+    state = createState();
+    els.brakeNote.textContent = '刹车只作用于一辆车的一秒。看看后方如何回应。';
+    render();
+  }
+  function selectPreset(name) {
+    const preset = Core.PRESETS[name];
+    if (!preset) return;
+    density = preset.density;
+    els.density.value = String(density);
+    els.densityOutput.value = density + '%';
+    els.densityOutput.textContent = density + '%';
+    updatePresetState();
+    resetRun(false);
+  }
+  function updatePresetState() {
+    els.presets.forEach(button => {
+      const selected = Core.PRESETS[button.dataset.preset].density === density;
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+  }
+  function updateConditions() {
+    Core.setConditions(state, { brakeProbability: noise, maxSpeed });
+  }
+  function tick() {
+    Core.step(state);
+    const stats = Core.stats(state);
+    if (state.tick >= 24 && state.tick - lastSampleTick >= 5) {
+      observations.push({ density: stats.densityPerKm, flow: stats.flowPerHour, run: runNumber });
+      if (observations.length > 900) observations.shift();
+      lastSampleTick = state.tick;
+    }
+    if (state.lastBrake && state.lastBrake.tick === state.tick) {
+      els.brakeNote.textContent = '第 ' + state.tick + ' 秒：在环路约 ' + Math.round(state.lastBrake.cell / Core.CELLS * 100) + '% 处施加了一次刹车。';
+    }
+  }
+  function toggleRunning() {
+    running = !running;
+    accumulator = 0;
+    lastFrame = performance.now();
+    render();
+  }
+  function triggerBrake() {
+    Core.requestBrake(state);
+    els.brakeNote.textContent = running ? '刹车已排入下一秒。接着观察橙色区域怎样变化。' : '正在推进一秒，并在环路前方施加一次刹车。';
+    if (!running) tick();
+    render();
+  }
+  function colorForSpeed(speed) {
+    if (speed <= 0) return '#dc7954';
+    if (speed <= 2) return '#e1aa72';
+    if (speed <= 3) return '#a4b790';
+    if (speed <= 4) return '#b6c992';
+    return '#d5e46b';
+  }
+  function drawArrow(context, x, y, angle, color, scale) {
+    context.save();
+    context.translate(x, y);
+    context.rotate(angle);
+    context.fillStyle = color;
+    context.beginPath();
+    context.moveTo(8 * scale, 0);
+    context.lineTo(-5 * scale, -5 * scale);
+    context.lineTo(-3 * scale, 0);
+    context.lineTo(-5 * scale, 5 * scale);
+    context.closePath();
+    context.fill();
+    context.restore();
+  }
+  function drawRoad() {
+    const context = els.road.getContext('2d');
+    const { width, height, cx, cy, rx, ry } = ROAD;
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = '#183a3b';
+    context.fillRect(0, 0, width, height);
+    context.strokeStyle = 'rgba(194, 211, 194, .065)';
+    context.lineWidth = 1;
+    for (let x = 20; x < width; x += 40) {
+      context.beginPath(); context.moveTo(x, 0); context.lineTo(x, height); context.stroke();
+    }
+    for (let y = 20; y < height; y += 40) {
+      context.beginPath(); context.moveTo(0, y); context.lineTo(width, y); context.stroke();
+    }
+
+    context.beginPath();
+    context.ellipse(cx, cy, rx + 34, ry + 34, 0, 0, Math.PI * 2);
+    context.strokeStyle = 'rgba(154, 177, 157, .35)';
+    context.lineWidth = 2;
+    context.stroke();
+    context.beginPath();
+    context.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    context.strokeStyle = '#435f58';
+    context.lineWidth = 70;
+    context.stroke();
+    context.beginPath();
+    context.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    context.strokeStyle = '#294845';
+    context.lineWidth = 61;
+    context.stroke();
+    context.beginPath();
+    context.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    context.setLineDash([2, 12]);
+    context.strokeStyle = 'rgba(218, 225, 204, .58)';
+    context.lineWidth = 1.25;
+    context.stroke();
+    context.setLineDash([]);
+
+    const arrowAngle = -Math.PI / 5;
+    const arrowA = (Math.cos(arrowAngle) + 1) * .5 * Math.PI * 2 - Math.PI / 2;
+    drawArrow(context, cx + rx * Math.cos(arrowA), cy + ry * Math.sin(arrowA), Math.atan2(ry * Math.cos(arrowA), -rx * Math.sin(arrowA)), '#d5e46b', 1.15);
+    const arrowB = arrowA + Math.PI;
+    drawArrow(context, cx + rx * Math.cos(arrowB), cy + ry * Math.sin(arrowB), Math.atan2(ry * Math.cos(arrowB), -rx * Math.sin(arrowB)), '#d5e46b', 1.15);
+
+    for (let cell = 0; cell < Core.CELLS; cell++) {
+      const speed = state.road[cell];
+      if (speed < 0) continue;
+      const angle = -Math.PI / 2 + cell / Core.CELLS * Math.PI * 2;
+      const x = cx + rx * Math.cos(angle);
+      const y = cy + ry * Math.sin(angle);
+      const heading = Math.atan2(ry * Math.cos(angle), -rx * Math.sin(angle));
+      context.save();
+      context.translate(x, y);
+      context.rotate(heading);
+      context.fillStyle = 'rgba(10, 24, 25, .28)';
+      context.fillRect(-8, -3.1, 18, 8);
+      context.fillStyle = colorForSpeed(speed);
+      context.fillRect(-9, -4.2, 18, 8.4);
+      context.fillStyle = 'rgba(24, 40, 40, .66)';
+      context.fillRect(-4.5, -3, 6.5, 1.6);
+      context.restore();
+    }
+
+    if (state.brakeFlash && state.tick - state.brakeFlash.tick <= 7) {
+      const angle = -Math.PI / 2 + state.brakeFlash.cell / Core.CELLS * Math.PI * 2;
+      const x = cx + rx * Math.cos(angle), y = cy + ry * Math.sin(angle);
+      const opacity = 1 - (state.tick - state.brakeFlash.tick) / 8;
+      context.beginPath(); context.arc(x, y, 13 + (1 - opacity) * 7, 0, Math.PI * 2);
+      context.strokeStyle = 'rgba(236, 142, 99, ' + opacity + ')';
+      context.lineWidth = 2;
+      context.stroke();
+    }
+
+    context.textAlign = 'center';
+    context.fillStyle = '#d3ded0';
+    context.font = '500 17px "Iowan Old Style", "Songti SC", Georgia, serif';
+    context.fillText('环行中的每一格', cx, cy - 3);
+    context.fillStyle = '#91a79a';
+    context.font = '9px "Avenir Next", "PingFang SC", sans-serif';
+    context.fillText('周期边界　·　没有入口与出口', cx, cy + 15);
+    context.fillStyle = '#aabcae';
+    context.font = '8px "Avenir Next", "PingFang SC", sans-serif';
+    context.fillText('行车方向 →', cx + 1, 25);
+    context.fillText('环路长 900 m', cx, height - 13);
+  }
+  function drawSpace() {
+    const context = els.space.getContext('2d');
+    const { width, height, left, right, top, bottom } = SPACE;
+    const plotW = width - left - right;
+    const plotH = height - top - bottom;
+    const rowCount = Core.MAX_HISTORY;
+    const cellW = plotW / Core.CELLS;
+    const rowH = plotH / rowCount;
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = '#193d3d';
+    context.fillRect(0, 0, width, height);
+    context.fillStyle = 'rgba(238, 238, 216, .035)';
+    context.fillRect(left, top, plotW, plotH);
+    context.strokeStyle = 'rgba(214, 224, 207, .16)';
+    context.lineWidth = 1;
+    for (let i = 0; i <= 8; i++) {
+      const x = left + plotW * i / 8;
+      context.beginPath(); context.moveTo(x, top); context.lineTo(x, top + plotH); context.stroke();
+    }
+    for (let i = 0; i <= 6; i++) {
+      const y = top + plotH * i / 6;
+      context.beginPath(); context.moveTo(left, y); context.lineTo(left + plotW, y); context.stroke();
+    }
+    const history = state.history;
+    const firstY = top + (rowCount - history.length) * rowH;
+    for (let row = 0; row < history.length; row++) {
+      const y = firstY + row * rowH;
+      const snapshot = history[row];
+      for (let cell = 0; cell < Core.CELLS; cell++) {
+        const encoded = snapshot[cell];
+        if (!encoded) continue;
+        const speed = encoded - 1;
+        context.fillStyle = colorForSpeed(speed);
+        context.fillRect(left + cell * cellW + .2, y + .12, Math.max(1, cellW - .45), Math.max(1, rowH - .18));
+      }
+    }
+    if (state.lastBrake) {
+      const age = state.tick - state.lastBrake.tick;
+      const row = history.length - 1 - age;
+      if (row >= 0 && row < history.length) {
+        const y = firstY + (row + .5) * rowH;
+        const x = left + (state.lastBrake.cell + .5) * cellW;
+        context.beginPath(); context.arc(x, y, 4, 0, Math.PI * 2);
+        context.fillStyle = '#f2ede0'; context.fill();
+        context.strokeStyle = '#c86443'; context.lineWidth = 1.5; context.stroke();
+      }
+    }
+    context.fillStyle = '#9eb1a4';
+    context.font = '8px "Avenir Next", "PingFang SC", sans-serif';
+    context.textAlign = 'left'; context.fillText('180 s 前', 4, top + 3);
+    context.fillText('0 m', left, height - 6);
+    context.textAlign = 'center'; context.fillText('450 m', left + plotW / 2, height - 6);
+    context.textAlign = 'right'; context.fillText('900 m', left + plotW, height - 6);
+    context.textAlign = 'left'; context.fillText('现在', 4, top + plotH - 1);
+  }
+  function drawFlow(stats) {
+    const context = els.flow.getContext('2d');
+    const { width, height, left, right, top, bottom, maxDensity, maxFlow } = FLOW;
+    const plotW = width - left - right;
+    const plotH = height - top - bottom;
+    const xFor = densityValue => left + Math.max(0, Math.min(maxDensity, densityValue)) / maxDensity * plotW;
+    const yFor = flowValue => top + plotH - Math.max(0, Math.min(maxFlow, flowValue)) / maxFlow * plotH;
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = '#f7f4eb';
+    context.fillRect(0, 0, width, height);
+    context.strokeStyle = '#ded9cd';
+    context.lineWidth = 1;
+    context.font = '9px "Avenir Next", "PingFang SC", sans-serif';
+    context.fillStyle = '#7a857b';
+    context.textAlign = 'right';
+    for (let flow = 0; flow <= maxFlow; flow += 1000) {
+      const y = yFor(flow);
+      context.beginPath(); context.moveTo(left, y); context.lineTo(width - right, y); context.stroke();
+      context.fillText(String(flow), left - 9, y + 3);
+    }
+    context.textAlign = 'center';
+    for (let d = 0; d <= 80; d += 20) {
+      const x = xFor(d);
+      context.beginPath(); context.moveTo(x, top); context.lineTo(x, top + plotH); context.stroke();
+      context.fillText(String(d), x, top + plotH + 15);
+    }
+    context.save();
+    context.translate(15, top + plotH / 2);
+    context.rotate(-Math.PI / 2);
+    context.fillStyle = '#52645a'; context.font = '10px "Avenir Next", "PingFang SC", sans-serif';
+    context.textAlign = 'center'; context.fillText('流量 / 辆·小时⁻¹', 0, 0);
+    context.restore();
+    context.fillStyle = '#52645a'; context.font = '10px "Avenir Next", "PingFang SC", sans-serif';
+    context.textAlign = 'right'; context.fillText('密度 / 辆·公里⁻¹', width - right, height - 5);
+
+    for (let i = 0; i < observations.length; i++) {
+      const point = observations[i];
+      context.beginPath(); context.arc(xFor(point.density), yFor(point.flow), 3.1, 0, Math.PI * 2);
+      context.fillStyle = RUN_COLORS[point.run % RUN_COLORS.length];
+      context.globalAlpha = .42;
+      context.fill();
+      context.globalAlpha = 1;
+    }
+    context.beginPath(); context.arc(xFor(stats.densityPerKm), yFor(stats.flowPerHour), 6, 0, Math.PI * 2);
+    context.fillStyle = '#c86443'; context.fill();
+    context.lineWidth = 2; context.strokeStyle = '#f7f4eb'; context.stroke();
+    context.beginPath(); context.arc(xFor(stats.densityPerKm), yFor(stats.flowPerHour), 9, 0, Math.PI * 2);
+    context.lineWidth = 1; context.strokeStyle = 'rgba(200, 100, 67, .45)'; context.stroke();
+  }
+  function render() {
+    const stats = Core.stats(state);
+    drawRoad();
+    drawSpace();
+    drawFlow(stats);
+    const roundedDensity = Math.round(stats.densityPerKm);
+    els.metricDensity.textContent = roundedDensity + ' 辆 / km';
+    els.metricSpeed.textContent = stats.meanSpeedKmh.toFixed(0) + ' km/h';
+    els.metricFlow.textContent = Math.round(stats.flowPerHour).toLocaleString('zh-CN') + ' 辆 / h';
+    els.metricStopped.textContent = stats.stopped + ' / ' + stats.cars;
+    els.time.textContent = formatTime(stats.timeSeconds);
+    els.seed.textContent = '种子 ' + seed;
+    els.sampleCount.textContent = observations.length + ' 个观测';
+    els.status.textContent = running ? '运行中 · 第 ' + state.tick + ' 秒' : state.tick === 0 ? '就绪 · 可以运行' : '已暂停 · 第 ' + state.tick + ' 秒';
+    els.playIcon.textContent = running ? 'Ⅱ' : '▶';
+    els.playLabel.textContent = running ? '暂停车流' : state.tick > 0 ? '继续车流' : '开始车流';
+    const stoppedShare = stats.stoppedPercent;
+    els.jam.textContent = state.tick === 0 ? '尚未运行' : stoppedShare >= 18 ? '有车群停驶' : stats.stopped > 0 ? '低速波形成中' : '暂未停车';
+    els.brake.disabled = false;
+    updatePresetState();
+  }
+  function frame(now) {
+    const elapsed = Math.min(.1, Math.max(0, (now - lastFrame) / 1000));
+    lastFrame = now;
+    if (running) {
+      accumulator += elapsed * 8;
+      let updates = 0;
+      while (accumulator >= 1 && updates < 5) {
+        tick(); accumulator -= 1; updates++;
+      }
+      render();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  els.presets.forEach(button => button.addEventListener('click', () => selectPreset(button.dataset.preset)));
+  els.density.addEventListener('input', () => {
+    density = Number(els.density.value);
+    els.densityOutput.value = density + '%';
+    els.densityOutput.textContent = density + '%';
+    updatePresetState();
+  });
+  els.density.addEventListener('change', () => resetRun(false));
+  els.noise.addEventListener('input', () => {
+    noise = Number(els.noise.value) / 100;
+    els.noiseOutput.value = Math.round(noise * 100) + '%';
+    els.noiseOutput.textContent = Math.round(noise * 100) + '%';
+    updateConditions(); render();
+  });
+  els.speed.addEventListener('input', () => {
+    maxSpeed = Number(els.speed.value);
+    els.speedOutput.value = maxSpeed + ' 格 / 秒';
+    els.speedOutput.textContent = maxSpeed + ' 格 / 秒';
+    updateConditions(); render();
+  });
+  els.play.addEventListener('click', toggleRunning);
+  els.step.addEventListener('click', () => {
+    running = false;
+    tick(); render();
+  });
+  els.brake.addEventListener('click', triggerBrake);
+  els.reset.addEventListener('click', () => resetRun(false));
+  els.newSeed.addEventListener('click', () => resetRun(true));
+  window.addEventListener('keydown', event => {
+    if (event.target && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(event.target.tagName)) return;
+    if (event.code === 'Space') { event.preventDefault(); toggleRunning(); }
+    else if (event.key === '.' || event.key === '>') { running = false; tick(); render(); }
+    else if (event.key.toLowerCase() === 'b') triggerBrake();
+    else if (event.key.toLowerCase() === 'r') resetRun(false);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && running) { running = false; accumulator = 0; render(); }
+  });
+  window.addEventListener('resize', render, { passive: true });
+
+  els.densityOutput.value = density + '%';
+  els.noiseOutput.value = Math.round(noise * 100) + '%';
+  els.speedOutput.value = maxSpeed + ' 格 / 秒';
+  updatePresetState();
+  render();
+  requestAnimationFrame(frame);
+})();
+
+</script>
+</body></html>

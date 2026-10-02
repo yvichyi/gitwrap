@@ -1,0 +1,2360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>无序不可能</title>
+<meta name="description" content="拉姆齐数：一行论证能顶掉多少个着色，它又在哪里顶不住。">
+<style>
+/* ============================================================
+   无序不可能 —— 样式（浅色主题）
+   约定（都是事故换来的）：
+     · .chart 里只允许放真 SVG（条形图统一走 hbars()）
+     · 数字表 td 不折行，只有表头允许折行
+     · 图注放 HTML，不画进 SVG（窄屏会缩到看不清）
+     · 媒体查询写在基准规则之后；窄屏标签栏换行，不横滚
+   ============================================================ */
+:root{
+  --bg:#f6f5f2;
+  --panel:#ffffff;
+  --ink:#1c1b19;
+  --ink2:#4a4844;
+  --ink3:#7d7a74;
+  --line:#e0ded8;
+  --line2:#cbc8c0;
+  --red:#9d2b34;        /* 红边 / 红团 */
+  --blue:#26557a;       /* 蓝边 / 蓝团 */
+  --acc:#7a4b1e;        /* 强调 */
+  --ok:#2f6b4f;
+  --soft:#f0eee9;
+  --mono:"Cascadia Mono","JetBrains Mono",Consolas,"DejaVu Sans Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--sans);
+  font-size:15px; line-height:1.72; -webkit-text-size-adjust:100%;
+  padding:0 0 64px;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+
+/* ---------- 头版 ---------- */
+.hero{padding-top:40px;padding-bottom:8px}
+.kicker{font-size:12.5px;letter-spacing:.16em;color:var(--ink3);margin:0 0 6px;text-transform:uppercase}
+.hero h1{font-size:40px;line-height:1.15;margin:0 0 14px;letter-spacing:.02em}
+.lead{font-size:16px;color:var(--ink2);margin:0 0 18px;max-width:78ch}
+.lead b{color:var(--ink)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:20px 0 8px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 13px;min-width:0}
+.kpi .kl{font-size:12px;color:var(--ink3);line-height:1.45;display:block;margin-bottom:4px}
+.kpi .kv{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.01em;display:block}
+.kpi .kn{font-size:11.5px;color:var(--ink3);line-height:1.5;display:block;margin-top:4px}
+
+/* ---------- 标签栏 ---------- */
+.tabs{
+  display:flex;flex-wrap:wrap;gap:6px;padding-top:14px;padding-bottom:6px;
+  border-bottom:1px solid var(--line);margin-bottom:22px;
+}
+.tabs button{
+  font:inherit;font-size:14px;background:transparent;border:1px solid transparent;
+  color:var(--ink2);padding:8px 12px;border-radius:7px;cursor:pointer;min-height:40px;
+}
+.tabs button:hover{background:var(--soft)}
+.tabs button[aria-selected="true"]{background:var(--panel);border-color:var(--line2);color:var(--ink);font-weight:600}
+
+/* ---------- 面板 ---------- */
+.panel{display:none;padding-bottom:8px}
+.panel.on{display:block}
+.panel h2{font-size:25px;margin:0 0 12px;letter-spacing:.01em}
+.panel h3{font-size:16px;margin:26px 0 10px;color:var(--ink);border-left:3px solid var(--line2);padding-left:9px}
+.hint{font-size:12.5px;color:var(--ink3);margin:6px 0 0;line-height:1.6}
+.hint b{color:var(--ink2)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;min-width:0}
+.grid2>div{min-width:0}
+
+/* ---------- 实验台 ---------- */
+.bench{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;min-width:0}
+.bench-left,.bench-right{min-width:0}
+.bench-right{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+.btnrow button{
+  font:inherit;font-size:13.5px;background:var(--panel);border:1px solid var(--line2);
+  color:var(--ink);padding:8px 12px;border-radius:7px;cursor:pointer;min-height:40px;
+}
+.btnrow button:hover{background:var(--soft)}
+.btnrow button.primary{background:var(--red);color:#fff;border-color:var(--red)}
+.slider{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);margin:12px 0 0;flex-wrap:wrap}
+.slider input[type=range]{flex:1 1 140px;min-width:120px;min-height:40px;accent-color:var(--red)}
+.pill{display:inline-block;font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:20px;
+  border:1px solid var(--line2);background:var(--soft);color:var(--ink2)}
+.pill.bad{background:#fbeaea;border-color:#e3b8b8;color:#8a2b2b}
+.pill.good{background:#eaf4ee;border-color:#b6d6c2;color:#245c3f}
+
+/* ---------- 读数行 ---------- */
+.ro{
+  background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--red);
+  border-radius:6px;padding:9px 13px;margin:9px 0;font-size:13.5px;color:var(--ink2);line-height:1.65;
+}
+.ro b{color:var(--ink);font-weight:600}
+.ro code,.ro .mono{font-family:var(--mono);font-size:12.5px;background:var(--soft);padding:1px 4px;border-radius:3px}
+.bench-right .ro{background:transparent;border:none;border-left:2px solid var(--line2);border-radius:0;padding:4px 0 4px 10px;margin:8px 0}
+
+/* ---------- 图表 ---------- */
+.chart{margin:6px 0 0;min-width:0}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .gridline{stroke:var(--line);stroke-width:1}
+.chart .axisline{stroke:var(--line2);stroke-width:1}
+.chart .tick{fill:var(--ink3);font-family:var(--mono);font-size:10.5px}
+.chart .axname{fill:var(--ink3);font-size:11px}
+.chart .legend{font-size:11.5px;fill:var(--ink2);font-family:var(--sans)}
+.chart .zero{stroke:var(--line2);stroke-width:1;stroke-dasharray:3 3}
+.chart .empty{fill:var(--ink3);font-size:12.5px;font-family:var(--sans)}
+
+/* ---------- 表格 ---------- */
+.tbl-wrap{overflow-x:auto;max-width:100%;min-width:0;margin:8px 0 4px;
+  border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+table.dt{border-collapse:collapse;width:100%;font-size:13px}
+table.dt th,table.dt td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+table.dt th{background:var(--soft);font-weight:600;color:var(--ink2);font-size:12px;
+  position:sticky;top:0;white-space:normal;overflow-wrap:anywhere;line-height:1.4}
+table.dt td:first-child,table.dt th:first-child{text-align:left}
+table.dt tbody tr:last-child td{border-bottom:none}
+table.dt td.mono,table.dt th.mono{font-family:var(--mono);font-size:12px}
+table.dt td.ok{color:var(--ok);font-weight:600}
+table.dt td.bad{color:var(--red);font-weight:600}
+table.dt.wrapok td{white-space:normal;overflow-wrap:break-word}
+table.dt.wrapok td:first-child{min-width:88px}
+table.dt tr.hi td{background:#fbf7ee}
+
+/* ---------- 结论 / 边界 ---------- */
+ol.concl,ul.bound{margin:0;padding-left:0;list-style:none}
+ol.concl li,ul.bound li{
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:12px 15px;margin:0 0 9px;font-size:14px;color:var(--ink2);line-height:1.72;
+}
+ol.concl li{counter-increment:c}
+ol.concl li::before{
+  content:counter(c);font-family:var(--mono);font-size:12px;color:var(--acc);
+  font-weight:600;margin-right:9px;
+}
+ol.concl{counter-reset:c}
+ul.bound li{border-left:3px solid var(--line2)}
+ol.concl li b,ul.bound li b{color:var(--ink)}
+
+/* ---------- 图例 ---------- */
+.legend-html{display:flex;flex-wrap:wrap;gap:14px;margin:8px 0 0;font-size:12.5px;color:var(--ink2)}
+.legend-html span{display:inline-flex;align-items:center;gap:6px}
+.legend-html i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.legend-html i.sq{width:11px;height:11px;border-radius:3px}
+
+/* ---------- 页脚 ---------- */
+.foot{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink3);font-size:13px}
+.foot p{margin:0 0 6px}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width:820px){
+  .grid2{grid-template-columns:1fr}
+  .bench{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  body{font-size:14.5px}
+  .hero{padding-top:24px}
+  .hero h1{font-size:30px}
+  .lead{font-size:15px}
+  .kpis{grid-template-columns:1fr 1fr;gap:8px}
+  .kpi{padding:10px 11px}
+  .kpi .kv{font-size:18px}
+  .kpi .kn{font-size:11px}
+  .panel h2{font-size:21px}
+  table.dt th,table.dt td{padding:5px 8px;font-size:12px}
+  .btnrow button{font-size:13px;padding:9px 11px;min-height:44px}
+  .tabs button{min-height:44px;padding:9px 10px;font-size:13.5px}
+  .slider input[type=range]{min-height:44px}
+}
+@media (max-width:400px){
+  .kpis{grid-template-columns:1fr}
+  .hero h1{font-size:26px}
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <p class="kicker">单文件科学装置 · 第 16 件 · 极值组合</p>
+  <h1>无序不可能</h1>
+  <p class="lead">
+    随便找六个人，其中必有三个互相认识，或者三个互相不认识 —— 这不是社会学，是数学。
+    更狠的是：<b>只要人够多，你想躲都躲不掉</b>，而「够多」到底是多少，正是拉姆齐数。
+    本页把这件事算到能验证为止：四个拉姆齐数从零确定，
+    并且量清楚一件事 —— <b>一行论证能顶掉多少个着色，以及它在哪里顶不住</b>。
+  </p>
+  <div id="kpis" class="kpis"></div>
+</header>
+
+<nav class="tabs" id="tabs"></nav>
+
+<main id="panels">
+
+<!-- ============================================================ 壹 -->
+<section class="panel" id="p-one">
+  <h2>壹 · 六个人的饭局</h2>
+  <p class="lead">
+    把每个人画成一个点，两个人认识就画一条<b>红边</b>，不认识就画<b>蓝边</b>。
+    一个「三个互相认识」就是<b>红三角形</b>，一个「三个互相不认识」就是<b>蓝三角形</b>。
+    下面这张图可以点：<b>点任意一条边，它就换颜色</b>。
+    试试看能不能在 5 个点上做到一个单色三角形都没有 —— 能；6 个点呢？
+  </p>
+
+  <div class="bench">
+    <div class="bench-left">
+      <div id="party" class="chart"></div>
+      <p class="hint">点边切换红 / 蓝。被点亮成粗线的就是单色三角形。</p>
+      <label class="slider">人数 n
+        <input type="range" id="n-range" min="5" max="8" step="1" value="6">
+        <span class="mono" id="n-out">6</span> 个人
+      </label>
+      <div class="btnrow">
+        <button type="button" data-act="rand">随机涂色</button>
+        <button type="button" data-act="avoid" class="primary">试着躲开它</button>
+        <button type="button" data-act="clean">全涂红</button>
+        <button type="button" data-act="clear">全涂蓝</button>
+      </div>
+    </div>
+    <div class="bench-right">
+      <p class="ro" id="ro-party"></p>
+      <p class="ro" id="ro-party2"></p>
+      <p class="ro" id="ro-party3"></p>
+    </div>
+  </div>
+
+  <h3>能不能躲开，是一个「数得清」的问题</h3>
+  <p class="lead">
+    把 K<sub>n</sub> 上所有 2<sup>n(n−1)/2</sup> 个红蓝涂法穷举一遍，数一数有几个涂法
+    是<b>一个单色三角形都没有</b>的。这个数第一次变成 0 的 n，就是 R(3,3)。
+  </p>
+  <div class="tbl-wrap"><table class="dt" id="t-party"></table></div>
+  <p class="ro" id="ro-party4"></p>
+</section>
+
+<!-- ============================================================ 贰 -->
+<section class="panel" id="p-two">
+  <h2>贰 · 数出来的地面真相</h2>
+  <p class="lead">
+    想谈「多难」，先得有尺子。最硬的一把尺子是<b>穷举</b>：
+    把 (s,t)-free 的涂法一个个数出来 —— 既没有红 K<sub>s</sub>、也没有蓝 K<sub>t</sub>。
+    这一节不做任何假设，只数数。数出来的第一个 0，就是拉姆齐数。
+  </p>
+
+  <div class="grid2">
+    <div>
+      <h3>还能躲开的涂法有多少个</h3>
+      <div class="chart" id="c-counts"></div>
+      <div class="legend-html">
+        <span><i class="sq" style="background:#9d2b34"></i>(3,3)-free</span>
+        <span><i class="sq" style="background:#26557a"></i>(3,4)-free</span>
+        <span><i class="sq" style="background:#7a4b1e"></i>(4,4)-free</span>
+      </div>
+    </div>
+    <div>
+      <h3>数完它要走过多少个搜索节点</h3>
+      <div class="chart" id="c-cost"></div>
+      <div class="legend-html">
+        <span><i style="background:#26557a"></i>(3,4)</span>
+        <span><i style="background:#7a4b1e"></i>(4,4)</span>
+      </div>
+    </div>
+  </div>
+  <p class="ro" id="ro-counts"></p>
+  <p class="ro" id="ro-counts2"></p>
+
+  <h3>逐个 n 的实测值</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-counts"></table></div>
+  <p class="hint">「节点」是深度优先搜索真正走到的分支数；计数为 0 的那一行就是阈值。</p>
+
+  <h3>最后两个还能躲开的涂法</h3>
+  <p class="lead">
+    下界不能靠论证，只能靠<b>拿出一个对象</b>。下面是穷举顺手带出来的两个：
+    K<sub>8</sub> 上躲开红三角形与蓝 K<sub>4</sub> 的涂法，以及 K<sub>7</sub> 上躲开红蓝 K<sub>4</sub> 的涂法。
+  </p>
+  <div class="grid2">
+    <div>
+      <h3>K<sub>8</sub>：(3,4)-free</h3>
+      <div class="chart" id="ex1"></div>
+    </div>
+    <div>
+      <h3>K<sub>7</sub>：(4,4)-free</h3>
+      <div class="chart" id="ex2"></div>
+    </div>
+  </div>
+  <p class="ro" id="ro-ex"></p>
+</section>
+
+<!-- ============================================================ 叁 -->
+<section class="panel" id="p-three">
+  <h2>叁 · 四行论证换掉 2<sup>153</sup></h2>
+  <p class="lead">
+    拉姆齐数有一个几乎白送的上界。取 K<sub>n</sub> 里任意一点 v：它连出去的红边有 r 条、蓝边有 b 条，r+b=n−1。
+    如果 <b>r ≥ R(s−1,t)</b>，那么 v 的红邻域里要么有红 K<sub>s−1</sub>（加上 v 就是红 K<sub>s</sub>），
+    要么有蓝 K<sub>t</sub>（那就已经赢了）；如果 <b>b ≥ R(s,t−1)</b>，对称地也一样。
+    两个门槛加起来不超过 n−1，就必然有一个成立。于是
+  </p>
+  <p class="lead" style="text-align:center;font-family:var(--mono);font-size:17px;color:var(--ink)">
+    R(s,t) ≤ R(s−1,t) + R(s,t−1)
+  </p>
+  <p class="lead">
+    这就是全部。它不需要枚举任何东西，只需要两头的数。对 (4,4)：<b>9 + 9 = 18</b>，
+    而 K<sub>18</sub> 上有 <b>10<sup>46</sup></b> 个涂法 —— 四行论证，换掉了一个 46 位数。
+  </p>
+
+  <div class="grid2">
+    <div>
+      <h3>递推上界 vs 文献真值</h3>
+      <div class="chart" id="c-lever"></div>
+      <div class="legend-html">
+        <span><i style="background:#7d7a74"></i>只用递推</span>
+        <span><i style="background:#9d2b34"></i>递推 + 穷举出的 R(3,4)=9</span>
+        <span><i style="background:#26557a"></i>文献真值（区间取低端）</span>
+      </div>
+    </div>
+    <div>
+      <h3>落差有多大</h3>
+      <div class="chart" id="c-slack"></div>
+    </div>
+  </div>
+  <p class="ro" id="ro-lever"></p>
+  <p class="ro" id="ro-slack"></p>
+
+  <h3>逐格：上界、真值、落差、证明树的叶子数</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-ub"></table></div>
+  <p class="hint">「落差」= 递推上界 − 真值。真值是区间时，落差按区间下界算，标成「≥」。</p>
+
+  <h3>一个穷举出来的数，值多少</h3>
+  <p class="lead">
+    递推自己只能给 R(3,4) ≤ 10。把穷举出来的 R(3,4)=9 塞进去，整张表会往下掉多少？
+    下面这一列就是答案 —— <b>这就是「一次穷举」的价格</b>。
+  </p>
+  <div class="tbl-wrap"><table class="dt" id="t-lever"></table></div>
+
+  <h3>落差是怎么传下去的</h3>
+  <p class="lead">
+    定义<b>本地节省</b> δ(s,t) = R(s−1,t) + R(s,t−1) − R(s,t)，即真值比递推白送的那个数省了多少。
+    于是落差满足一条递推：<b>slack(s,t) = slack(s−1,t) + slack(s,t−1) + δ(s,t)</b>。
+    落差不消失，它<b>翻倍往下传</b>。
+  </p>
+  <div class="tbl-wrap"><table class="dt" id="t-delta"></table></div>
+  <p class="ro" id="ro-delta"></p>
+</section>
+
+<!-- ============================================================ 肆 -->
+<section class="panel" id="p-four">
+  <h2>肆 · 证明做 O(n) 的活，验证要 2<sup>n²/2</sup></h2>
+  <p class="lead">
+    上面那条递推不只是「存在性论证」——它是一台<b>可以执行的机器</b>。
+    给它任意一个涂法，它就沿着递推树往下走，最后真的吐出一个单色团。
+    这一节把机器跑起来，数一数它到底做了多少次检查，再和「把宇宙里所有涂法都试一遍」比。
+  </p>
+
+  <div class="grid2">
+    <div>
+      <h3>抽取器平均检查多少次</h3>
+      <div class="chart" id="c-inspect"></div>
+      <div class="legend-html">
+        <span><i style="background:#9d2b34"></i>抽取器平均检查次数</span>
+        <span><i style="background:#7d7a74"></i>2n（参考线）</span>
+      </div>
+    </div>
+    <div>
+      <h3>宇宙有多大（log<sub>10</sub>）</h3>
+      <div class="chart" id="c-universe"></div>
+    </div>
+  </div>
+  <p class="ro" id="ro-inspect"></p>
+  <p class="ro" id="ro-inspect2"></p>
+
+  <h3>现场跑一遍：给 K<sub>18</sub> 随便涂个色，让证明找出那个团</h3>
+  <div class="bench">
+    <div class="bench-left">
+      <div class="chart" id="demo"></div>
+      <div class="btnrow">
+        <button type="button" data-act="draw" class="primary">换一个随机涂色</button>
+        <button type="button" data-act="run">让证明找一遍</button>
+      </div>
+    </div>
+    <div class="bench-right">
+      <p class="ro" id="ro-demo"></p>
+      <p class="ro" id="ro-demo2"></p>
+    </div>
+  </div>
+
+  <h3>逐格实测</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-inspect"></table></div>
+  <p class="hint">「次/顶点」是平均检查次数除以 n —— 它几乎是个常数，这就是「线性」的意思。</p>
+</section>
+
+<!-- ============================================================ 伍 -->
+<section class="panel" id="p-five">
+  <h2>伍 · 下界是造出来的</h2>
+  <p class="lead">
+    递推管上界，下界得靠自己拿东西出来。最省事的一类构造是<b>循环图</b>：
+    把 n 个点摆成一个圈，只连「跨 d 格」的那些弦。选哪些 d，一共有 2<sup>⌊(n−1)/2⌋</sup> 种，
+    n=17 时是 256 种 —— 全部试一遍也不贵。
+  </p>
+
+  <div class="grid2">
+    <div>
+      <h3>循环图家族里，每个案子找到几个解</h3>
+      <div class="chart" id="c-hits"></div>
+    </div>
+    <div>
+      <h3>通用局部搜索：翻了多少次</h3>
+      <div class="chart" id="c-search"></div>
+    </div>
+  </div>
+  <p class="ro" id="ro-hits"></p>
+  <p class="ro" id="ro-search"></p>
+
+  <h3>循环图全枚举的结果</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-circulant"></table></div>
+  <p class="hint">每个解都用完全独立的口径（逐个子集扫）复核过。</p>
+
+  <h3>K<sub>17</sub> 上的那个解：Paley 图</h3>
+  <p class="lead">
+    (4,4)@17 的两个循环图解里，有一个是 <b>C<sub>17</sub>{1,2,4,8}</b> ——
+    差集 {1,2,4,8} 正好是<b>模 17 的二次剩余</b>。它不是搜出来的巧合，是数论送来的。
+  </p>
+  <div class="chart" id="paley"></div>
+  <p class="ro" id="ro-paley"></p>
+
+  <h3>不看结构的通用搜索：找到与没找到</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-local"></table></div>
+  <p class="ro" id="ro-local"></p>
+</section>
+
+<!-- ============================================================ 陆 -->
+<section class="panel" id="p-six">
+  <h2>陆 · 什么时候真的有闭式</h2>
+  <p class="lead">
+    上面全是「区间」和「落差」。但同一个问题换成<b>单色三角形</b>，答案居然是一个精确公式。
+    每条异色边对（红一条、蓝一条，共用一个顶点）恰好属于两个非单色三角形，数一数就得到：
+  </p>
+  <p class="lead" style="text-align:center;font-family:var(--mono);font-size:15px;color:var(--ink)">
+    M(n) = C(n,3) − (1/2) Σ<sub>v</sub> d<sub>v</sub>(n−1−d<sub>v</sub>)
+  </p>
+  <p class="lead">
+    而每一项 d(n−1−d) 都不超过 ⌊(n−1)²/4⌋，于是 M(n) 的最小值有闭式。
+    这一节把公式和穷举对着看，并且把下界<b>顶到</b>。
+  </p>
+
+  <div class="grid2">
+    <div>
+      <h3>最小值占总数的比例，爬向 1/4</h3>
+      <div class="chart" id="c-goodman-ratio"></div>
+    </div>
+    <div>
+      <h3>最小值本身（双对数）</h3>
+      <div class="chart" id="c-goodman-min"></div>
+      <div class="legend-html">
+        <span><i style="background:#26557a"></i>M(n)</span>
+        <span><i style="background:#7d7a74"></i>n³/24</span>
+      </div>
+    </div>
+  </div>
+  <p class="ro" id="ro-goodman"></p>
+
+  <h3>穷举 vs 公式</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-goodman"></table></div>
+  <p class="ro" id="ro-goodman2"></p>
+</section>
+
+<!-- ============================================================ 柒 -->
+<section class="panel" id="p-seven">
+  <h2>柒 · 代价账本与边界</h2>
+  <p class="lead">
+    这一节放三样东西：<b>宇宙有多大</b>、<b>别人为了确信付了多少</b>、
+    以及<b>本页自己做到了哪一步、没做到哪一步</b>。
+  </p>
+
+  <h3>K<sub>n</sub> 一共有多少个红蓝涂法</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-universe"></table></div>
+
+  <h3>别人付出的代价（文献，非本页实测）</h3>
+  <div class="tbl-wrap"><table class="dt wrapok" id="t-cost"></table></div>
+
+  <h3>结论</h3>
+  <ol class="concl" id="l-concl"></ol>
+
+  <h3>边界：我没做到什么</h3>
+  <ul class="bound" id="l-bound"></ul>
+
+  <h3>验证表</h3>
+  <div class="tbl-wrap"><table class="dt wrapok" id="t-verify"></table></div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <p id="foot-line"></p>
+  <p class="hint">本页不联网、不加载任何外部资源。所有数字来自本机一次真实计算；文献值在页面上逐处标明来源。</p>
+</footer>
+
+</div>
+<script>/* ============================================================================
+ * ramsey/core.js —— 拉姆齐数：全部模型与算法
+ *
+ * 一个 UMD 文件，Node 与浏览器共用同一份源码。
+ *
+ * 核心对象：完全图 K_n 的一个红蓝二着色。
+ *   红边 = 认识，蓝边 = 不认识。
+ *   R(s,t) = 最小的 n，使得 K_n 的任意二着色里，
+ *            要么有一个红的 K_s，要么有一个蓝的 K_t。
+ *
+ * 本文件装下四件事：
+ *   ① 着色与单色团（穷举 / 位掩码 / 矩阵 三种口径）
+ *   ② 穷举搜索：(s,t)-free 着色的计数（边序 DFS + 顶点序 DFS + 全枚举）
+ *   ③ 递推：R(s,t) ≤ R(s-1,t) + R(s,t-1)，以及「把证明跑出来」的构造性抽取
+ *   ④ 下界的造法：循环图全枚举 + 局部搜索
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.RamseyCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  var VERSION = '1.0.0';
+
+  /* ======================================================================
+   * 0. 确定性 PRNG（splitmix32）
+   * ====================================================================*/
+  function splitmix32(a) {
+    a = a | 0;
+    return function () {
+      a = (a + 0x9e3779b9) | 0;
+      var t = a ^ (a >>> 16);
+      t = Math.imul(t, 0x21f0aaad);
+      t = t ^ (t >>> 15);
+      t = Math.imul(t, 0x735a2d97);
+      return ((t = t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+  function makeInstance(seed, tag) {
+    // 由 (种子, 标签) 唯一确定一个实例 → 扫描顺序不影响任何单个实例
+    var h = 0x811c9dc5;
+    tag = String(tag);
+    for (var i = 0; i < tag.length; i++) {
+      h ^= tag.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    return splitmix32((seed ^ h) | 0);
+  }
+
+  /* ======================================================================
+   * 1. 着色与单色团
+   * ====================================================================*/
+  function mkColoring(n) {
+    return { n: n, e: new Uint8Array(n * n) };   // e[u*n+v] = 1 表示红边
+  }
+  function cloneColoring(c) {
+    return { n: c.n, e: c.e.slice() };
+  }
+  function isRed(c, u, v) { return c.e[u * c.n + v] === 1; }
+  function setRed(c, u, v, val) {
+    c.e[u * c.n + v] = val ? 1 : 0;
+    c.e[v * c.n + u] = val ? 1 : 0;
+  }
+  function redDegree(c, v) {
+    var n = c.n, d = 0;
+    for (var u = 0; u < n; u++) if (u !== v && c.e[v * n + u]) d++;
+    return d;
+  }
+  function degreeSeq(c) {
+    var n = c.n, out = [];
+    for (var v = 0; v < n; v++) out.push(redDegree(c, v));
+    return out;
+  }
+
+  /** 枚举所有单色 K_k。cbs 会在找到时被调用；返回个数。
+   *  wantRed=true 数红的，false 数蓝的。 */
+  function countMonoCliques(c, k, wantRed) {
+    var n = c.n, cnt = 0, comb = new Int32Array(k);
+    if (k < 2 || k > n) return 0;
+    function rec(start, depth) {
+      if (depth === k) { cnt++; return; }
+      var last = n - (k - depth);
+      for (var v = start; v <= last; v++) {
+        var ok = true;
+        for (var j = 0; j < depth; j++) {
+          if (isRed(c, comb[j], v) !== wantRed) { ok = false; break; }
+        }
+        if (ok) { comb[depth] = v; rec(v + 1, depth + 1); }
+      }
+    }
+    rec(0, 0);
+    return cnt;
+  }
+
+  /** 返回第一个单色 K_k 的顶点表，没有则返回 null。 */
+  function firstMonoClique(c, k, wantRed) {
+    var n = c.n, comb = new Int32Array(k), found = null;
+    if (k < 2 || k > n) return null;
+    function rec(start, depth) {
+      if (found) return;
+      if (depth === k) { found = Array.prototype.slice.call(comb); return; }
+      var last = n - (k - depth);
+      for (var v = start; v <= last; v++) {
+        var ok = true;
+        for (var j = 0; j < depth; j++) {
+          if (isRed(c, comb[j], v) !== wantRed) { ok = false; break; }
+        }
+        if (ok) { comb[depth] = v; rec(v + 1, depth + 1); if (found) return; }
+      }
+    }
+    rec(0, 0);
+    return found;
+  }
+
+  /** (s,t)-free 的判定：既没有红 K_s，也没有蓝 K_t。
+   *  返回 {ok, redKs, blueKt, witness}。 */
+  function verifyFree(c, s, t) {
+    var rk = s >= 2 ? countMonoCliques(c, s, true) : 0;
+    var bk = t >= 2 ? countMonoCliques(c, t, false) : 0;
+    var wit = null;
+    if (rk > 0) wit = { kind: 'red', k: s, verts: firstMonoClique(c, s, true) };
+    else if (bk > 0) wit = { kind: 'blue', k: t, verts: firstMonoClique(c, t, false) };
+    return { ok: rk === 0 && bk === 0, redKs: rk, blueKt: bk, witness: wit };
+  }
+
+  /* ---------- 位掩码小工具（DFS 内部用，n ≤ 30） ---------- */
+  function hasCliqueMask(adj, cand, k) {
+    if (k <= 0) return true;
+    if (k === 1) return cand !== 0;
+    var c = cand;
+    while (c) {
+      var b = c & -c, v = 31 - Math.clz32(b);
+      c ^= b;
+      var rest = adj[v] & cand & ~((b << 1) - 1);   // 只保留编号更大的顶点，避免重复
+      if (hasCliqueMask(adj, rest, k - 1)) return true;
+    }
+    return false;
+  }
+
+  /* ======================================================================
+   * 2. 穷举搜索
+   * ====================================================================*/
+
+  /** ① 边序 DFS（位掩码剪枝）。
+   *  返回 {count, first, nodes, aborted, budget}。 */
+  function countFreeExhaustive(n, s, t, opts) {
+    opts = opts || {};
+    var budget = opts.budget || 5e7;
+    if (n > 30) throw new Error('位掩码 DFS 只支持 n ≤ 30');
+    var nodes = 0, count = 0, first = null, aborted = false;
+    var rmask = new Int32Array(n), bmask = new Int32Array(n);
+    var order = [], v, u;
+    for (v = 1; v < n; v++) for (u = 0; u < v; u++) order.push(u, v);
+    var E = order.length >> 1;
+
+    function rec(idx) {
+      if (aborted) return;
+      if (++nodes > budget) { aborted = true; return; }
+      if (idx === E) {
+        count++;
+        if (first === null) {
+          var cc = mkColoring(n);
+          for (var a = 0; a < n; a++) {
+            var m = rmask[a];
+            while (m) { var b = m & -m; m ^= b; cc.e[a * n + (31 - Math.clz32(b))] = 1; }
+          }
+          first = cc;
+        }
+        return;
+      }
+      var uu = order[idx << 1], ww = order[(idx << 1) + 1];
+      // 试红：会不会凑出一个红 K_s
+      if (s <= 2 || !hasCliqueMask(rmask, rmask[uu] & rmask[ww], s - 2)) {
+        rmask[uu] |= (1 << ww); rmask[ww] |= (1 << uu);
+        rec(idx + 1);
+        rmask[uu] &= ~(1 << ww); rmask[ww] &= ~(1 << uu);
+        if (aborted) return;
+      }
+      // 试蓝
+      if (t <= 2 || !hasCliqueMask(bmask, bmask[uu] & bmask[ww], t - 2)) {
+        bmask[uu] |= (1 << ww); bmask[ww] |= (1 << uu);
+        rec(idx + 1);
+        bmask[uu] &= ~(1 << ww); bmask[ww] &= ~(1 << uu);
+      }
+    }
+    rec(0);
+    return { n: n, s: s, t: t, count: count, first: first, nodes: nodes,
+             aborted: aborted, budget: budget };
+  }
+
+  /** ② 顶点序 DFS（结构完全不同的第二实现）。
+   *  逐顶点 v 选定它的红邻域 S ⊆ {0..v-1}：
+   *    约束 S 内无红 K_{s-1}（否则 v + 它 = 红 K_s），
+   *        补集内无蓝 K_{t-1}（否则 v + 它 = 蓝 K_t）。 */
+  function countFreeVertexOrder(n, s, t, opts) {
+    opts = opts || {};
+    var budget = opts.budget || 5e7;
+    if (n > 30) throw new Error('位掩码 DFS 只支持 n ≤ 30');
+    var nodes = 0, count = 0, first = null, aborted = false;
+    var red = new Int32Array(n), blue = new Int32Array(n);
+
+    function rec(v) {
+      if (aborted) return;
+      if (++nodes > budget) { aborted = true; return; }
+      if (v === n) {
+        count++;
+        if (first === null) {
+          var cc = mkColoring(n);
+          for (var a = 0; a < n; a++) {
+            var m = red[a];
+            while (m) { var b = m & -m; m ^= b; cc.e[a * n + (31 - Math.clz32(b))] = 1; }
+          }
+          first = cc;
+        }
+        return;
+      }
+      var full = (1 << v) - 1;
+      for (var S = 0; S <= full; S++) {
+        if (s >= 3 && hasCliqueMask(red, S, s - 1)) continue;
+        var comp = full & ~S;
+        if (t >= 3 && hasCliqueMask(blue, comp, t - 1)) continue;
+        red[v] = S; blue[v] = comp;
+        for (var u = 0; u < v; u++) {
+          if (S & (1 << u)) red[u] |= (1 << v); else blue[u] |= (1 << v);
+        }
+        rec(v + 1);
+        for (var u2 = 0; u2 < v; u2++) {
+          if (S & (1 << u2)) red[u2] &= ~(1 << v); else blue[u2] &= ~(1 << v);
+        }
+        red[v] = 0; blue[v] = 0;
+        if (aborted) return;
+      }
+    }
+    if (n <= 1) return { n: n, s: s, t: t, count: 1, first: mkColoring(Math.max(n, 1)),
+                         nodes: 1, aborted: false, budget: budget };
+    rec(1);
+    return { n: n, s: s, t: t, count: count, first: first, nodes: nodes,
+             aborted: aborted, budget: budget };
+  }
+
+  /** ③ 全枚举（最笨的第三实现，只给 n ≤ 6 用）。 */
+  function countFreeBrute(n, s, t) {
+    var pairs = [], u, v;
+    for (v = 1; v < n; v++) for (u = 0; u < v; u++) pairs.push(u, v);
+    var E = pairs.length >> 1;
+    if (E > 25) throw new Error('全枚举只支持 2^25 以内');
+    var total = Math.pow(2, E), count = 0, nodes = 0, first = null;
+    for (var m = 0; m < total; m++) {
+      nodes++;
+      var c = mkColoring(n);
+      for (var i = 0; i < E; i++) if (m & (1 << i)) setRed(c, pairs[i << 1], pairs[(i << 1) + 1], 1);
+      if (s >= 2 && countMonoCliques(c, s, true) > 0) continue;
+      if (t >= 2 && countMonoCliques(c, t, false) > 0) continue;
+      count++;
+      if (first === null) first = c;
+    }
+    return { n: n, s: s, t: t, count: count, first: first, nodes: nodes, aborted: false };
+  }
+
+  /* ======================================================================
+   * 3. Goodman：单色三角形的精确最小值
+   * ====================================================================*/
+
+  /** 恒等式：单色三角形数 = C(n,3) − (1/2) Σ_v d_v (n−1−d_v)。
+   *  （d_v 为红度；每条异色边对贡献 1，每个非单色三角形恰好贡献 2 条异色边对。） */
+  function monoTriangleFormula(c) {
+    var n = c.n, sum = 0;
+    for (var v = 0; v < n; v++) {
+      var d = redDegree(c, v);
+      sum += d * (n - 1 - d);
+    }
+    return n * (n - 1) * (n - 2) / 6 - sum / 2;
+  }
+
+  /** Goodman 的最小值。Σ d(n−1−d) ≤ n⌊(n−1)²/4⌋，且该和恒为偶数
+   *  （它等于 2m(n−1) − Σd²，两项都是偶数）→ 奇数时要减 1。 */
+  function goodmanE(n) {
+    var per = Math.floor((n - 1) * (n - 1) / 4);
+    var tot = n * per;
+    if (tot % 2 === 1) tot -= 1;
+    return tot;
+  }
+  function goodmanMin(n) {
+    if (n < 3) return 0;
+    return n * (n - 1) * (n - 2) / 6 - goodmanE(n) / 2;
+  }
+
+  /** 穷举所有着色，找单色三角形的最小值（n ≤ 8 才现实）。
+   *  按格雷码走 2^E 个着色：每步只有一条边翻转，度数和 O(1) 增量维护。
+   *  注意：G(m) 的第 ctz(m) 位在每一步**交替**变 0/变 1，不能一律当成 +1。 */
+  function minMonoTrianglesBrute(n, opts) {
+    opts = opts || {};
+    var budget = opts.budget || 4e8;
+    var pairs = [], u, v;
+    for (v = 1; v < n; v++) for (u = 0; u < v; u++) pairs.push(u, v);
+    var E = pairs.length >> 1;
+    var total = Math.pow(2, E);
+    if (total > budget) {
+      return { n: n, min: null, argmin: null, nodes: 0, total: total, aborted: true };
+    }
+    var redEdge = new Uint8Array(E);
+    var deg = new Int32Array(n);
+    var sumTerm = 0;                      // Σ_v d_v (n−1−d_v)
+    var best = Infinity, bestGray = 0, bestDeg = null;
+    var m, a, b, e, g, da, db, dir, t;
+    for (m = 0; m < total; m++) {
+      if (m > 0) {
+        e = 31 - Math.clz32(m & -m);            // 本步翻转的那条边 = ctz(m)
+        g = ((m ^ (m >> 1)) >>> e) & 1;         // G(m) 里这条边的颜色
+        if (redEdge[e] !== g) {
+          dir = g ? 1 : -1;
+          redEdge[e] = g;
+          a = pairs[e << 1]; b = pairs[(e << 1) + 1];
+          da = deg[a]; sumTerm -= da * (n - 1 - da); da += dir; deg[a] = da; sumTerm += da * (n - 1 - da);
+          db = deg[b]; sumTerm -= db * (n - 1 - db); db += dir; deg[b] = db; sumTerm += db * (n - 1 - db);
+        }
+      }
+      t = n * (n - 1) * (n - 2) / 6 - sumTerm / 2;
+      if (t < best) { best = t; bestGray = m; bestDeg = Int32Array.from(deg); }
+    }
+    // 还原那个最优着色的矩阵
+    var arg = mkColoring(n);
+    var mask = (bestGray ^ (bestGray >> 1)) >>> 0;
+    for (var i = 0; i < E; i++) if (mask & (1 << i)) setRed(arg, pairs[i << 1], pairs[(i << 1) + 1], 1);
+    return { n: n, min: best, argmin: arg, deg: Array.prototype.slice.call(bestDeg),
+             nodes: total, total: total, aborted: false };
+  }
+
+  /** Goodman 下界的**达到者**（每个顶点的红度都取 ⌊(n−1)/2⌋ 或 ⌈(n−1)/2⌉）。
+   *   n 偶：两个团 K_{n/2} ∪ K_{n/2}，度 n/2−1；
+   *   n 奇且 h=(n−1)/2 偶：h-正则循环图 C_n(1..h/2)；
+   *   n 奇且 h 奇：C_n(1..(h−1)/2)（度 h−1）再补一个匹配 (i, i+h)，
+   *               于是除一个顶点外全是度 h —— 正好把 Σd(n−1−d) 顶到 n h²−1。 */
+  function goodmanAchiever(n) {
+    var c = mkColoring(n), u, v, i, d, j;
+    if (n < 3) return c;
+    var h = Math.floor((n - 1) / 2);
+    if (n % 2 === 0) {
+      var m = n / 2;
+      for (u = 0; u < n; u++) for (v = u + 1; v < n; v++) {
+        if ((u < m) === (v < m)) setRed(c, u, v, 1);
+      }
+      return c;
+    }
+    var t = (h % 2 === 0) ? h / 2 : (h - 1) / 2;
+    for (i = 0; i < n; i++) for (d = 1; d <= t; d++) setRed(c, i, (i + d) % n, 1);
+    if (h % 2 === 1) {
+      for (j = 0; j < h; j++) setRed(c, j, j + h, 1);
+    }
+    return c;
+  }
+
+  /** 平衡循环图（旧名保留：现在转发到真正的达到者）。 */
+  function balancedCirculant(n) { return goodmanAchiever(n); }
+
+  /* ======================================================================
+   * 4. 递推：上界的杠杆
+   * ====================================================================*/
+
+  /** 递推表 UB[s][t] = UB[s-1][t] + UB[s][t-1]。
+   *  baseOverrides 形如 { '3,3': 6, '3,4': 9 }（键为 "s,t"）。
+   *  返回 { ub, ubNoOverride, base } —— ub 用了外部给出的精确值，
+   *  ubNoOverride 只用 R(2,t)=t / R(3,3)=6 这两个自带底座。 */
+  function ramseyUBTable(sMax, tMax, baseOverrides) {
+    var ov = {};
+    if (baseOverrides) {
+      for (var k in baseOverrides) ov[k] = baseOverrides[k];
+      // R(s,t) = R(t,s) → 给出的底座自动镜像，否则 R(4,4) 会算成 9+10=19
+      for (var k2 in baseOverrides) {
+        var p2 = k2.split(',');
+        var mir = p2[1] + ',' + p2[0];
+        if (ov[mir] === undefined) ov[mir] = baseOverrides[k2];
+      }
+    }
+    function build(useOv) {
+      var M = [];
+      for (var s = 0; s <= sMax; s++) { M.push(new Array(tMax + 1)); }
+      for (var t = 1; t <= tMax; t++) M[1][t] = 1;
+      for (var s2 = 1; s2 <= sMax; s2++) M[s2][1] = 1;
+      for (var t2 = 2; t2 <= tMax; t2++) M[2][t2] = t2;
+      for (var s3 = 2; s3 <= sMax; s3++) M[s3][2] = s3;
+      // 自带的底座：R(3,3)=6（可穷举）
+      M[3][3] = 6;
+      if (useOv) {
+        for (var key in ov) {
+          var p = key.split(',');
+          M[+p[0]][+p[1]] = ov[key];
+        }
+      }
+      for (var s4 = 3; s4 <= sMax; s4++) {
+        for (var t4 = 3; t4 <= tMax; t4++) {
+          if (M[s4][t4] !== undefined) continue;
+          M[s4][t4] = M[s4 - 1][t4] + M[s4][t4 - 1];
+        }
+      }
+      return M;
+    }
+    return { ub: build(true), ubNoOverride: build(false), overrides: ov };
+  }
+
+  /** 递推树的叶子数 = C(s+t−4, s−2)。 */
+  function proofTreeLeaves(s, t) {
+    if (s < 2 || t < 2) return 0;
+    var a = s - 2, b = t - 2;
+    var r = 1;
+    for (var i = 1; i <= b; i++) r = r * (a + i) / i;
+    return Math.round(r);
+  }
+  /** 递推树的内部节点数（= 叶子数 − 1，二叉树）。 */
+  function proofTreeNodes(s, t) { return Math.max(0, proofTreeLeaves(s, t) - 1); }
+
+  /** 带计数的「找第一个单色 K_k」：subsets 记录真的看过的子集个数。 */
+  function findMonoCounted(c, k, wantRed, insp) {
+    var n = c.n, comb = new Int32Array(k), found = null;
+    if (k < 2 || k > n) return null;
+    function rec(start, depth) {
+      if (found) return;
+      insp.subsets++;
+      if (depth === k) { found = Array.prototype.slice.call(comb); return; }
+      var last = n - (k - depth);
+      for (var v = start; v <= last; v++) {
+        var good = true;
+        for (var j = 0; j < depth; j++) {
+          if (isRed(c, comb[j], v) !== wantRed) { good = false; break; }
+        }
+        if (good) { comb[depth] = v; rec(v + 1, depth + 1); if (found) return; }
+      }
+    }
+    rec(0, 0);
+    return found;
+  }
+
+  /** 把证明「跑出来」：给定一个着色，用递推结构真的抽出一个单色团。
+   *  前提 n ≥ UB(s,t)。返回 {kind, k, verts, insp}。
+   *  insp 记的是**实际做过多少次检查**（边 / 顶点 / 子集）。 */
+  function extractMonoClique(c, s, t, UB, opts) {
+    opts = opts || {};
+    UB = UB || ramseyUB(s, t);
+    var insp = opts.insp || { edges: 0, verts: 0, subsets: 0, depth: 0 };
+    var n = c.n;
+    if (!UB || !UB[s] || UB[s][t] === undefined) {
+      throw new Error('递推表里没有 UB(' + s + ',' + t + ')——表太小了');
+    }
+
+    if (s <= 1) return { kind: 'red', k: 1, verts: [0], insp: insp };
+    if (t <= 1) return { kind: 'blue', k: 1, verts: [0], insp: insp };
+
+    // 底座 1：s = 2 —— 找一条红边，找不到就全是蓝的
+    if (s === 2) {
+      for (var u = 0; u < n; u++) for (var v = u + 1; v < n; v++) {
+        insp.edges++;
+        if (isRed(c, u, v)) return { kind: 'red', k: 2, verts: [u, v], insp: insp };
+      }
+      var all = [];
+      for (var i = 0; i < t; i++) all.push(i);
+      return { kind: 'blue', k: t, verts: all, insp: insp };
+    }
+    if (t === 2) {
+      for (var u2 = 0; u2 < n; u2++) for (var v2 = u2 + 1; v2 < n; v2++) {
+        insp.edges++;
+        if (!isRed(c, u2, v2)) return { kind: 'blue', k: 2, verts: [u2, v2], insp: insp };
+      }
+      var all2 = [];
+      for (var i2 = 0; i2 < s; i2++) all2.push(i2);
+      return { kind: 'red', k: s, verts: all2, insp: insp };
+    }
+    // 底座 2：小规模直接扫（这两条底座是穷举出来的，不是递推出来的）
+    if ((s === 3 && t === 3) || (s === 3 && t === 4) || (s === 4 && t === 3)) {
+      var fr = findMonoCounted(c, s, true, insp);
+      if (fr) return { kind: 'red', k: s, verts: fr, insp: insp };
+      var fb = findMonoCounted(c, t, false, insp);
+      if (fb) return { kind: 'blue', k: t, verts: fb, insp: insp };
+      throw new Error('底座失效：n=' + n + ' 的 (s,t)=(' + s + ',' + t + ') 着色里没有单色团');
+    }
+
+    // 一般步：取顶点 0，把它分成红邻域 S 与蓝邻域 T
+    var S = [], T = [];
+    for (var w = 1; w < n; w++) {
+      insp.verts++;
+      if (isRed(c, 0, w)) S.push(w); else T.push(w);
+    }
+    var needS = UB[s - 1][t], needT = UB[s][t - 1];
+    insp.depth++;
+    if (S.length >= needS) {
+      var sub = inducedColoring(c, S);
+      var r1 = extractMonoClique(sub, s - 1, t, UB, { insp: insp });
+      if (r1.kind === 'red') {
+        return { kind: 'red', k: s, verts: [0].concat(lift(r1.verts, S)), insp: insp };
+      }
+      return { kind: 'blue', k: t, verts: lift(r1.verts, S), insp: insp };
+    }
+    if (T.length < needT) {
+      throw new Error('递推失效：|S|=' + S.length + ' < ' + needS + ' 且 |T|=' + T.length + ' < ' + needT);
+    }
+    var sub2 = inducedColoring(c, T);
+    var r2 = extractMonoClique(sub2, s, t - 1, UB, { insp: insp });
+    if (r2.kind === 'blue') {
+      return { kind: 'blue', k: t, verts: [0].concat(lift(r2.verts, T)), insp: insp };
+    }
+    return { kind: 'red', k: s, verts: lift(r2.verts, T), insp: insp };
+
+    function lift(vs, map) { var o = []; for (var j = 0; j < vs.length; j++) o.push(map[vs[j]]); return o; }
+  }
+
+  /** 取出顶点子集上的诱导着色（重编号为 0..m-1）。 */
+  function inducedColoring(c, verts) {
+    var m = verts.length, out = mkColoring(m);
+    for (var i = 0; i < m; i++) for (var j = 0; j < m; j++) {
+      if (i === j) continue;
+      if (isRed(c, verts[i], verts[j])) out.e[i * m + j] = 1;
+    }
+    return out;
+  }
+
+  function ramseyUB(s, t, baseOverrides) {
+    var M = ramseyUBTable(s, t, baseOverrides).ub;
+    return M[s][t];
+  }
+
+  /* ======================================================================
+   * 5. 下界的造法
+   * ====================================================================*/
+
+  /** 循环图 C_n(S)：边差在 S 中。S 必须对称（d ∈ S ⟺ n−d ∈ S）。 */
+  function circulantColoring(n, S) {
+    var c = mkColoring(n), i, j, d, set = {};
+    for (i = 0; i < S.length; i++) { set[S[i]] = 1; set[(n - S[i]) % n] = 1; }
+    for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) {
+      d = (j - i) % n;
+      if (set[d]) setRed(c, i, j, 1);
+    }
+    return c;
+  }
+
+  /** 枚举全部对称循环图的差集：d ∈ {1..⌊n/2⌋}（偶数时含 n/2 与否各算一支）。 */
+  function enumerateCirculantSets(n) {
+    var half = Math.floor(n / 2);
+    var diffs = [];
+    for (var d = 1; d <= half; d++) {
+      if (n % 2 === 0 && d === half) continue;   // 自反差 n/2 单独处理
+      diffs.push(d);
+    }
+    var out = [], selfInv = (n % 2 === 0);
+    var total = Math.pow(2, diffs.length) * (selfInv ? 2 : 1);
+    for (var m = 0; m < total; m++) {
+      var S = [], mm = m;
+      for (var i = 0; i < diffs.length; i++) { if (mm & 1) S.push(diffs[i]); mm >>= 1; }
+      if (selfInv && (m >= Math.pow(2, diffs.length))) S.push(half);
+      out.push(S);
+    }
+    return out;
+  }
+
+  /** 循环图是顶点传递的 → 只要查「含顶点 0」的单色团就够了。
+   *  返回 {free, redKs, blueKt, witness}。 */
+  function circulantFree(S, n, s, t) {
+    var set = {};
+    for (var i = 0; i < S.length; i++) { set[S[i]] = 1; set[(n - S[i]) % n] = 1; }
+    var isR = function (u, v) { return !!set[(v - u + n) % n]; };
+    // 含 0 的红 K_s：从 1..n-1 里挑 s−1 个，两两红
+    var rk = countCliquesWithZero(isR, true, n, s);
+    var bk = countCliquesWithZero(isR, false, n, t);
+    return { free: rk === 0 && bk === 0, redKs: rk, blueKt: bk, set: S.slice() };
+  }
+  function countCliquesWithZero(isR, wantRed, n, k) {
+    if (k < 2) return 0;
+    var cnt = 0, comb = new Int32Array(k);
+    comb[0] = 0;
+    function rec(start, depth) {
+      if (depth === k) { cnt++; return; }
+      for (var v = start; v <= n - (k - depth); v++) {
+        var ok = true;
+        for (var j = 0; j < depth; j++) {
+          var r = isR(comb[j], v);
+          if ((wantRed ? r : !r) === false) { ok = false; break; }
+        }
+        if (ok) { comb[depth] = v; rec(v + 1, depth + 1); }
+      }
+    }
+    rec(1, 1);
+    return cnt;
+  }
+
+  /** 在全部循环图里找 (s,t)-free 的（穷举一个小家族）。
+   *  work = 实际检查过的「含 0 的 k 子集」个数，作为代价账本。 */
+  function searchCirculantFree(n, s, t, opts) {
+    opts = opts || {};
+    var budget = opts.budget || 1e9;
+    var sets = enumerateCirculantSets(n);
+    var hits = [], work = 0, examined = 0, aborted = false;
+    for (var i = 0; i < sets.length; i++) {
+      var r = circulantFree(sets[i], n, s, t);
+      examined++;
+      work += binom(n - 1, s - 1) + binom(n - 1, t - 1);
+      if (r.free) hits.push({
+        set: sets[i].slice(),
+        redDeg: 2 * sets[i].length + ((n % 2 === 0 && sets[i].indexOf(n / 2) >= 0) ? 1 : 0)
+      });
+      if (work > budget) { aborted = true; break; }
+    }
+    return { n: n, s: s, t: t, total: sets.length, examined: examined,
+             hits: hits, work: work, aborted: aborted };
+  }
+
+  /** 通用局部搜索：在全部 2^C(n,2) 个着色里爬山，目标是把单色团数降到 0。
+   *  返回 {found, col, best, flips, restarts, bestHist}。 */
+  function localSearchFree(n, s, t, seed, opts) {
+    opts = opts || {};
+    var maxRestarts = opts.restarts || 60;
+    var maxFlips = opts.flips || 20000;
+    var rng = splitmix32(seed | 0);
+    var bestGlobal = Infinity, bestCol = null, totalFlips = 0, bestHist = [];
+
+    function bad(col) {
+      return countMonoCliques(col, s, true) + countMonoCliques(col, t, false);
+    }
+    for (var rs = 0; rs < maxRestarts; rs++) {
+      var col = mkColoring(n);
+      // 随机平衡起步
+      for (var u = 0; u < n; u++) for (var v = u + 1; v < n; v++) {
+        if (rng() < 0.5) setRed(col, u, v, 1);
+      }
+      var cur = bad(col), flips = 0;
+      while (cur > 0 && flips < maxFlips) {
+        // 随机取一条边，算翻转后的增量
+        var a = (rng() * n) | 0, b = (rng() * n) | 0;
+        if (a === b) { flips++; continue; }
+        if (a > b) { var tmp = a; a = b; b = tmp; }
+        var before = edgeBad(col, a, b, s, t);
+        setRed(col, a, b, isRed(col, a, b) ? 0 : 1);
+        var after = edgeBad(col, a, b, s, t);
+        var delta = after - before;
+        // 阈值接受：delta < 0 一定收；delta = 0 以 0.3 收；delta > 0 以极小概率收
+        var acc = delta < 0 ? 1 : (delta === 0 ? 0.3 : Math.exp(-delta / 2) * 0.02);
+        if (rng() < acc) { cur += delta; }
+        else { setRed(col, a, b, isRed(col, a, b) ? 0 : 1); }   // 回滚
+        flips++; totalFlips++;
+      }
+      if (cur < bestGlobal) { bestGlobal = cur; bestCol = cloneColoring(col); }
+      bestHist.push(bestGlobal);
+      if (bestGlobal === 0) break;
+    }
+    return { found: bestGlobal === 0, col: bestCol, best: bestGlobal,
+             flips: totalFlips, restarts: bestHist.length, bestHist: bestHist };
+  }
+
+  /** 与边 (a,b) 相关的单色团数（红 K_s + 蓝 K_t）。用于增量评估。 */
+  function edgeBad(col, a, b, s, t) {
+    return cliquesThroughEdge(col, a, b, s, true) + cliquesThroughEdge(col, a, b, t, false);
+  }
+  function cliquesThroughEdge(col, a, b, k, wantRed) {
+    if (k < 2) return 0;
+    if (isRed(col, a, b) !== wantRed) return 0;   // 边本身颜色不对 → 一个都不算
+    if (k === 2) return 1;
+    var n = col.n, common = [];
+    for (var v = 0; v < n; v++) {
+      if (v === a || v === b) continue;
+      if (isRed(col, a, v) === wantRed && isRed(col, b, v) === wantRed) common.push(v);
+    }
+    if (k === 3) return common.length;      // K_1 的个数就是公共邻域大小
+    if (common.length < k - 2) return 0;
+    // 在 common 里数同色 K_{k-2}
+    var sub = inducedColoring(col, common);
+    return countMonoCliques(sub, k - 2, wantRed);
+  }
+
+  /* ======================================================================
+   * 6. 宇宙大小与代价
+   * ====================================================================*/
+
+  /** K_n 的着色总数 = 2^C(n,2)，用 log10 表示（超出双精度范围）。 */
+  function universeLog10(n) {
+    return Math.log10(2) * (n * (n - 1) / 2);
+  }
+  function universeText(n) {
+    var L = universeLog10(n);
+    var e = Math.floor(L);
+    var m = Math.pow(10, L - e);
+    return m.toFixed(3) + ' × 10^' + e;
+  }
+  function binom(n, k) {
+    if (k < 0 || k > n) return 0;
+    var r = 1;
+    for (var i = 1; i <= k; i++) r = r * (n - k + i) / i;
+    return Math.round(r);
+  }
+
+  /** 随机着色（每条边独立红概率 p）。 */
+  function randomColoring(n, rng, p) {
+    var c = mkColoring(n);
+    if (p === undefined) p = 0.5;
+    for (var u = 0; u < n; u++) for (var v = u + 1; v < n; v++) {
+      if (rng() < p) setRed(c, u, v, 1);
+    }
+    return c;
+  }
+
+  /* ---------- 文献表（外部真值，只用于对账，不参与任何计算） ---------- */
+  var LITERATURE = {
+    exact: {
+      '3,3': 6, '3,4': 9, '3,5': 14, '3,6': 18, '3,7': 23, '3,8': 28, '3,9': 36,
+      '4,4': 18, '4,5': 25
+    },
+    bounds: {
+      '3,10': [40, 41],
+      '4,6': [36, 40], '4,7': [49, 58], '4,8': [59, 79], '4,9': [73, 105],
+      '5,5': [43, 46], '5,6': [59, 85], '5,7': [80, 133], '5,8': [101, 193], '5,9': [133, 282],
+      '6,6': [102, 160], '6,7': [115, 270], '6,8': [134, 423], '6,9': [183, 651],
+      '7,7': [205, 492], '7,8': [219, 832], '7,9': [252, 1368],
+      '8,8': [282, 1518], '8,9': [329, 2662],
+      '9,9': [565, 4956]
+    },
+    // 形式化验证 / 计算机辅助证明的代价（公开记录）
+    cost: [
+      { what: 'R(3,8) = 28 形式化验证', how: 'SAT 证书 + 交互式定理证明器', detail: '约 8 小时，证明 5.8 GiB' },
+      { what: 'R(3,9) = 36 形式化验证', how: 'SAT 证书 + 交互式定理证明器', detail: '约 26 小时，证明数据 289 GiB' },
+      { what: 'R(4,5) = 25', how: '计算机辅助图生成（McKay–Radziszowski, 1995）', detail: '并已用 HOL4 形式化' },
+      { what: 'R(5,5) ≤ 46', how: '线性规划 + SAT（Angeltveit–McKay, 2024）', detail: '把上界从 48 压到 46' },
+      { what: 'R(5,5) > 42', how: '显式构造（Exoo, 1989）', detail: '一个 42 个顶点的反例图' },
+      { what: 'R(5,5) 的三个 42 顶点反例族', how: 'McKay–Radziszowski–Exoo, 1997', detail: '找到 656 个 (5,5,42) 图，没有一个能扩到 43 个顶点' },
+      { what: 'R(6,6) > 101', how: '显式构造（Kalbfleisch, 1965）', detail: '下界自 1965 年起未再改进' }
+    ]
+  };
+
+  return {
+    VERSION: VERSION,
+    splitmix32: splitmix32, makeInstance: makeInstance,
+    mkColoring: mkColoring, cloneColoring: cloneColoring,
+    isRed: isRed, setRed: setRed, redDegree: redDegree, degreeSeq: degreeSeq,
+    countMonoCliques: countMonoCliques, firstMonoClique: firstMonoClique,
+    verifyFree: verifyFree, hasCliqueMask: hasCliqueMask,
+    countFreeExhaustive: countFreeExhaustive,
+    countFreeVertexOrder: countFreeVertexOrder,
+    countFreeBrute: countFreeBrute,
+    monoTriangleFormula: monoTriangleFormula,
+    goodmanE: goodmanE, goodmanMin: goodmanMin,
+    minMonoTrianglesBrute: minMonoTrianglesBrute,
+    balancedCirculant: balancedCirculant, goodmanAchiever: goodmanAchiever,
+    ramseyUBTable: ramseyUBTable, ramseyUB: ramseyUB,
+    proofTreeLeaves: proofTreeLeaves, proofTreeNodes: proofTreeNodes,
+    extractMonoClique: extractMonoClique, inducedColoring: inducedColoring,
+    circulantColoring: circulantColoring,
+    enumerateCirculantSets: enumerateCirculantSets,
+    circulantFree: circulantFree, searchCirculantFree: searchCirculantFree,
+    localSearchFree: localSearchFree,
+    edgeBad: edgeBad, cliquesThroughEdge: cliquesThroughEdge,
+    universeLog10: universeLog10, universeText: universeText,
+    binom: binom, randomColoring: randomColoring,
+    LITERATURE: LITERATURE
+  };
+});
+</script>
+<script>window.__ANALYSIS__ = {"meta":{"version":"1.0.0","seed":20261002,"node":"v22.22.2","generated":"2026-10-02T10:02:31.438Z","lit":{"exact":{"3,3":6,"3,4":9,"3,5":14,"3,6":18,"3,7":23,"3,8":28,"3,9":36,"4,4":18,"4,5":25},"bounds":{"3,10":[40,41],"4,6":[36,40],"4,7":[49,58],"4,8":[59,79],"4,9":[73,105],"5,5":[43,46],"5,6":[59,85],"5,7":[80,133],"5,8":[101,193],"5,9":[133,282],"6,6":[102,160],"6,7":[115,270],"6,8":[134,423],"6,9":[183,651],"7,7":[205,492],"7,8":[219,832],"7,9":[252,1368],"8,8":[282,1518],"8,9":[329,2662],"9,9":[565,4956]},"cost":[{"what":"R(3,8) = 28 形式化验证","how":"SAT 证书 + 交互式定理证明器","detail":"约 8 小时，证明 5.8 GiB"},{"what":"R(3,9) = 36 形式化验证","how":"SAT 证书 + 交互式定理证明器","detail":"约 26 小时，证明数据 289 GiB"},{"what":"R(4,5) = 25","how":"计算机辅助图生成（McKay–Radziszowski, 1995）","detail":"并已用 HOL4 形式化"},{"what":"R(5,5) ≤ 46","how":"线性规划 + SAT（Angeltveit–McKay, 2024）","detail":"把上界从 48 压到 46"},{"what":"R(5,5) > 42","how":"显式构造（Exoo, 1989）","detail":"一个 42 个顶点的反例图"},{"what":"R(5,5) 的三个 42 顶点反例族","how":"McKay–Radziszowski–Exoo, 1997","detail":"找到 656 个 (5,5,42) 图，没有一个能扩到 43 个顶点"},{"what":"R(6,6) > 101","how":"显式构造（Kalbfleisch, 1965）","detail":"下界自 1965 年起未再改进"}]}},"kpi":[{"id":"r44","label":"R(4,4)","value":"18","note":"从零确定：穷举 R(3,4)=9（K_9 上 0 个反例）+ 递推 9+9 + Paley 图给下界"},{"id":"lever","label":"证明要做的检查","value":"25.5 次","note":"K_18 有 10^46 个着色；递推结构在每个着色上只检查约 2n 次"},{"id":"slack","label":"R(5,5) 的落差","value":"≥ 21","note":"递推给上界 64，文献真值落在 [43,46] —— 那 4 行论证在 (5,5) 上不管用"},{"id":"goodman","label":"Goodman 的极限比例","value":"0.24985","note":"单色三角形的最小占比 → 1/4，与随机着色一样；K_3 有精确公式，K_4 没有"},{"id":"lower","label":"下界的代价","value":"9 / 42068","note":"循环图家族里能用的解；局部搜索在 (3,7)@22 上翻了 229 万次也没找到"},{"id":"wall","label":"墙：R(5,5)","value":"43 – 46","note":"下界 1989 年、上界 2024 年；K_43 有 6.762 × 10^271 个着色"}],"conclusions":["**完全的无序是不可能的。** 只要图够大，红蓝怎么涂都躲不掉一个单色的团 —— 这就是拉姆齐定理。本页把它算到能被验证为止：`R(3,3)=6`、`R(3,4)=9`、`R(3,5)=14`、`R(4,4)=18` 四个数，全部从零确定。","**上界便宜，下界昂贵。** 递推 `R(s,t) ≤ R(s−1,t) + R(s,t−1)` 是一行论证，它在 K_18（1.142 × 10^46 个着色）上给出 `R(4,4) ≤ 18`，代价是 6 个叶子的证明树。但要证明 `R(4,4) > 17`，你必须**真的造出**那个 17 个顶点的反例图 —— 递推一点忙都帮不上。","**那 6 个叶子的证明树只用到一个穷举出来的数。** 递推自己只能给 `R(3,4) ≤ 10`，而穷举 K_9（1,270,375 个搜索节点）把它压到 9。就这一个数，把 `R(4,4)` 的上界从 20 拉到 18、`R(5,5)` 从 70 拉到 64、`R(8,8)` 从 3432 拉到 3180。","**落差会像帕斯卡三角一样传下去。** 定义本地节省 `δ(s,t) = R(s−1,t) + R(s,t−1) − R(s,t)`，则落差满足 `slack(s,t) = slack(s−1,t) + slack(s,t−1) + δ(s,t)` —— 本页在 1 个格子上逐格验过。所以一处的落差会**加倍**传到下一层：`R(4,5)` 的落差 7 直接来自 `R(4,4)` 与 `R(3,5)` 都恰好为 0，而 `R(5,5)` 的落差 ≥21 里有一半是 `R(4,5)` 贡献的。","**穷举能数的东西，和能证明的东西，是两件事。** `(3,3)-free` 与 `(3,4)-free` 的着色数都数得干干净净（K_8 上 `(3,4)-free` 有 17,640 个），一到 `(4,4)` 就崩：n=8 还能数出 55,881,692 个（2.3 秒），n=9 花掉 1.2 亿个搜索节点也只能放弃 —— **可我们仍然知道 R(4,4)=18**。数得清和证得出，是两条路。","**递推的代价是线性的，验证的代价是指数级的（指数还是二次的）。** 把递推证明做成可执行版本：给定任意一个着色，它真的吐出那个单色团。K_18 上平均只检查 25.5 次（约 1.42 次/顶点）；而在 K_854 上（`R(7,7) ≤ 854`）平均 1696 次 —— 宇宙却涨到 2.86×10^109644 个着色。**检查次数随 n 线性涨，宇宙按 2^(n²/2) 涨。**","**下界必须造，而造法是有结构的。** 循环图家族（42,068 个候选）一次性给出了 `(3,3)@5`、`(3,4)@8`、`(3,5)@13`、`(4,4)@17` 的全部反例，其中 `(4,4)@17` 的解正好是 **Paley 图 C_17{1,2,4,8}** —— 差集 {1,2,4,8} 就是模 17 的二次剩余。整个家族检查了 1,219,375,088 次就给出了这些下界。","**结构家族会失效，通用搜索会失效，失效的位置不一样。** 循环图在 `(3,6)@17` 上 256 个候选全灭（一个都没有）；换成不看结构的局部搜索，`(3,6)@17` 翻 61,741 次就找到了。但同一个局部搜索在 `(3,7)@22` 上翻了 2,291,398 次、在 `(5,5)@42` 上翻了 468,602 次，都没找到 —— 而那三个反例图是**存在的**（文献里有）。**「我没搜到」和「不存在」之间隔着整个算法设计。**","**Goodman 定理是另一条路：这里真的能拿到闭式。** 单色三角形的最小数目是`C(n,3) − (1/2)Σ_v d_v(n−1−d_v)` 的最小值，而每一项都不超过 `⌊(n−1)²/4⌋`，于是`M(n) = C(n,3) − E(n)/2`，其中 `E(n) = n⌊(n−1)²/4⌋` 必要时减 1（度数和必为偶数）。这个公式在 n=3..8 上被**全枚举**逐个验过（n=8 走了 268,435,456 个着色）。","**而且这个下界是能顶到的。** 本页给的构造（n 偶用两个团、n 奇用循环图加一条匹配）在 n=3..80 上全部恰好取到公式值。于是 `M(n)/C(n,3) → 1/4` —— 但收敛很慢：n=50 才 0.2347、n=500 是 0.2485、n=5000 是 0.24985。**平衡的着色和随机着色一样好，这是\"单色三角形是 common graph\"的确切含义。**","**但同一个问题换成 K_4，闭式立刻消失。** 单色三角形的**最小值**有精确公式，单色 K_4 的**最小值**（Ramsey 重数）没有。K_3 到 K_4 只差一个顶点，一条定理变成了一片未解问题。","**`R(5,5)` 是真正的墙。** 递推给的上界是 64，真值在 [43,46]：下界 43 来自 Exoo 1989 年的显式构造（一个 42 顶点的反例图），上界 46 来自 Angeltveit–McKay 2024 年的线性规划 + SAT。K_43 有 6.762 × 10^271 个着色，而 1997 年 McKay–Radziszowski–Exoo 找到的 656 个 42 顶点反例图，没有一个能扩到 43 个顶点。","**别人为了\"确信\"付了多少钱，是可以查到的。** `R(3,8)=28` 的形式化验证约 8 小时、证明 5.8 GiB；`R(3,9)=36` 约 26 小时、289 GiB；`R(6,6) > 101` 的下界自 1965 年起没再改进过。这些不是本页测出来的，是本页引用的 —— 但它们和本页测出来的落差表说的是同一件事：**确定性是有价格的。**"],"boundaries":["**只做了两色。** 三色的 R(3,3,3)=17，四色起就更远；本页所有结论都只在红蓝二着色里成立。","**只有四个数是从零确定的**（R(3,3)、R(3,4)、R(3,5)、R(4,4)）。R(3,6)=18 及以后的值，上界由本页的递推给出，**真值来自文献**（Radziszowski 的 Small Ramsey Numbers 动态综述，2024-06 版），不是我算的。","**递推表的底座里已经塞进了两个穷举出来的数**（R(3,3)=6、R(3,4)=9）。如果只让递推自己跑（只用 R(2,t)=t 与 R(3,3)=6），`R(4,4)` 只能给到 20 —— 那 2 的差距就是本页主要的\"杠杆\"证据。","**`(4,4)-free` 的计数只数到 n=8。** n=9 在 1.2 亿个搜索节点处放弃；这不是\"不存在\"，是\"没数完\"。（阈值 18 仍然知道，靠的是递推 + 构造，不是靠数。）","**局部搜索的失败不是不存在。** `(3,7)@22`、`(4,5)@24`、`(5,5)@42` 上没找到反例图，只说明**这个**爬山法在这点预算内没找到；那三个图在文献里都是存在的。","**循环图只是构造家族里极小的一类。** n 个顶点的对称循环图只有 2^⌊(n−1)/2⌋ 个（n=17 时 256 个），它给出下界是**充分**的，给不出下界则什么也不能说明。","**抽取器要求 n ≥ UB(s,t)。** 低于这个门槛它不保证成功（本页在 n=10 上试 (5,5) 时它直接报错），这是设计，不是 bug —— 证明只覆盖它证明得了的范围。","**K_854 那一行的\"检查次数\"是均摊值。** 递推树的形状随着色而变，最坏情形是 1800 次；本页报的是 300 次随机着色的均值，不是最坏情形的界。","**超大数一律用 10 的幂表示。** `2^C(n,2)` 在 n=854 时是 10^109644，双精度浮点早就溢出了；本页只保留 log10，不去碰整数运算。","**形式化验证的耗时是公开报道值。** 8 小时 / 5.8 GiB、26 小时 / 289 GiB 这些数字来自文献，本页没有复现它们（复现 `R(3,9)=36` 需要 289 GiB 的证明数据）。","**R(7,7) ≤ 854、R(8,8) ≤ 3180 只是递推上界**，离真值（分别在 [205,492] 与 [282,1518] 里）差得极远 —— 这两个数在本页里是\"论证能到哪\"的标尺，不是对真值的估计。","**Goodman 的部分只覆盖 K_3。** 单色三角形的精确最小值有闭式；三色以上的推广（渐近密度 1/9 等）需要更多机器，本页没有做。"],"verify":[{"check":"模型自检","method":"外部真值 + 三套独立实现对账","result":"4673 / 4673 项通过","ok":true},{"check":"K_5 上 (3,3)-free 着色数","method":"边序 DFS（位掩码剪枝）","result":"12（= 12 个五边形）","ok":true},{"check":"K_6 上 (3,3)-free 着色数","method":"边序 DFS + 顶点序 DFS + 全枚举","result":"0 → R(3,3) = 6","ok":true},{"check":"K_8 上 (3,4)-free 着色数","method":"边序 DFS","result":"17,640 个","ok":true},{"check":"K_9 上 (3,4)-free 着色数","method":"边序 DFS（127 万节点）","result":"0 → R(3,4) = 9","ok":true},{"check":"两套独立 DFS 的计数一致","method":"边序（按边分支）vs 顶点序（按邻域子集分支）","result":"三档全部一致","ok":true},{"check":"(4,4)-free 的计数（n=8）","method":"两套 DFS 各自独立算","result":"两边都是 55,881,692","ok":true},{"check":"全枚举 vs 剪枝 DFS（n ≤ 6）","method":"把 2^C(n,2) 个着色一个个试","result":"三种口径全部一致","ok":true},{"check":"Paley 图 C_17{1,2,4,8}","method":"逐个扫 C(17,4) = 2380 个四元子集","result":"红 K_4 0 个、蓝 K_4 0 个 → (4,4)-free","ok":true},{"check":"差集 {1,2,4,8} 就是模 17 的二次剩余","method":"逐个算 d^8 mod 17","result":"1、2、4、8、9、13、15、16","ok":true},{"check":"循环图的每个解","method":"独立口径 verifyFree（逐个扫全部子集）","result":"9 个解全部通过","ok":true},{"check":"循环图的顶点传递性","method":"「含顶点 0」的计数 × n / k = 全部计数","result":"n=7..15 全部成立","ok":true},{"check":"抽取器吐出的团","method":"300 次 × 9 组，每个都回代验六条边","result":"零次失败","ok":true},{"check":"抽取器的前提检查","method":"n=10 < UB(5,5)=64 时应当拒绝","result":"抛出错误，没有假装成功","ok":true},{"check":"Goodman 恒等式","method":"400 个随机着色上，公式 vs 逐个扫三角形","result":"零违例","ok":true},{"check":"Goodman 最小值","method":"n=3..8 全枚举（格雷码增量）vs 闭式","result":"0/0/0/2/4/8 = 0/0/0/2/4/8","ok":true},{"check":"Goodman 极值着色的独立复核","method":"穷举出来的那个着色，用另一种口径再数一遍","result":"n=3..8 全部一致","ok":true},{"check":"Goodman 下界的可达性","method":"显式构造（两个团 / 循环图 + 匹配）","result":"n=3..80 全部顶到公式值（失败 0 处）","ok":true},{"check":"递推关系逐格成立","method":"UB(s,t) = UB(s−1,t) + UB(s,t−1)","result":"递推表全部格子","ok":true},{"check":"递推树叶子数","method":"闭式 C(s+t−4, s−2) vs 递归实现","result":"s,t = 2..7 全部一致","ok":true},{"check":"落差的帕斯卡传播","method":"slack(s,t) = slack(s−1,t) + slack(s,t−1) + δ(s,t)","result":"1 个格子全部成立","ok":true},{"check":"局部搜索的解","method":"找到后用 verifyFree 独立复核","result":"2 个找到的全部通过","ok":true},{"check":"增量评估 vs 全量","method":"翻一条边的增量 = 前后单色团总数之差","result":"150 组随机测试全部一致","ok":true},{"check":"决定论","method":"同一种子两次运行","result":"计数、节点数、着色逐位相同","ok":true},{"check":"位掩码剪枝","method":"位掩码找单色团 vs 全子集枚举","result":"n=5..12、k=2..4 全部一致","ok":true}],"derived":{"e1":{"rows":[{"s":3,"t":3,"n":2,"count":2,"nodes":3,"aborted":false,"ms":0},{"s":3,"t":3,"n":3,"count":6,"nodes":13,"aborted":false,"ms":0},{"s":3,"t":3,"n":4,"count":18,"nodes":61,"aborted":false,"ms":0},{"s":3,"t":3,"n":5,"count":12,"nodes":217,"aborted":false,"ms":0},{"s":3,"t":3,"n":6,"count":0,"nodes":325,"aborted":false,"ms":0},{"s":3,"t":4,"n":2,"count":2,"nodes":3,"aborted":false,"ms":0},{"s":3,"t":4,"n":3,"count":7,"nodes":14,"aborted":false,"ms":0},{"s":3,"t":4,"n":4,"count":40,"nodes":93,"aborted":false,"ms":0},{"s":3,"t":4,"n":5,"count":322,"nodes":871,"aborted":false,"ms":0},{"s":3,"t":4,"n":6,"count":2812,"nodes":9973,"aborted":false,"ms":1},{"s":3,"t":4,"n":7,"count":13842,"nodes":103579,"aborted":false,"ms":4},{"s":3,"t":4,"n":8,"count":17640,"nodes":604159,"aborted":false,"ms":9},{"s":3,"t":4,"n":9,"count":0,"nodes":1270375,"aborted":false,"ms":20},{"s":4,"t":4,"n":2,"count":2,"nodes":3,"aborted":false,"ms":0},{"s":4,"t":4,"n":3,"count":8,"nodes":15,"aborted":false,"ms":0},{"s":4,"t":4,"n":4,"count":62,"nodes":125,"aborted":false,"ms":0},{"s":4,"t":4,"n":5,"count":892,"nodes":1871,"aborted":false,"ms":0},{"s":4,"t":4,"n":6,"count":22484,"nodes":49561,"aborted":false,"ms":1},{"s":4,"t":4,"n":7,"count":923012,"nodes":2181443,"aborted":false,"ms":32},{"s":4,"t":4,"n":8,"count":55881692,"nodes":146184675,"aborted":false,"ms":2333},{"s":3,"t":5,"n":2,"count":2,"nodes":3,"aborted":false,"ms":0},{"s":3,"t":5,"n":3,"count":7,"nodes":14,"aborted":false,"ms":0},{"s":3,"t":5,"n":4,"count":41,"nodes":94,"aborted":false,"ms":0},{"s":3,"t":5,"n":5,"count":387,"nodes":958,"aborted":false,"ms":0},{"s":3,"t":5,"n":6,"count":5617,"nodes":14903,"aborted":false,"ms":0},{"s":3,"t":5,"n":7,"count":113949,"nodes":334747,"aborted":false,"ms":5}],"examples":{"3,3":{"n":5,"count":12,"col":"01100/10010/10001/01001/00110"},"3,4":{"n":8,"count":17640,"col":"01110000/10001100/10001010/10000101/01100001/01010010/00100101/00011010"},"4,4":{"n":7,"count":923012,"col":"0111111/1011100/1100011/1100011/1100011/1011100/1011100"},"3,5":{"n":6,"count":5617,"col":"011110/100001/100001/100001/100001/011110"}},"wall":{"s":4,"t":4,"n":9,"budget":120000000,"nodes":120000001,"aborted":true,"ms":2517},"cross":[{"s":3,"t":4,"n":9,"edgeOrder":0,"vertexOrder":0,"ok":true},{"s":4,"t":4,"n":8,"edgeOrder":55881692,"vertexOrder":55881692,"ok":true},{"s":3,"t":5,"n":7,"edgeOrder":113949,"vertexOrder":113949,"ok":true}]},"e1Rows":[{"s":3,"t":3,"n":2,"count":2,"nodes":3,"aborted":false,"ms":0},{"s":3,"t":3,"n":3,"count":6,"nodes":13,"aborted":false,"ms":0},{"s":3,"t":3,"n":4,"count":18,"nodes":61,"aborted":false,"ms":0},{"s":3,"t":3,"n":5,"count":12,"nodes":217,"aborted":false,"ms":0},{"s":3,"t":3,"n":6,"count":0,"nodes":325,"aborted":false,"ms":0},{"s":3,"t":4,"n":2,"count":2,"nodes":3,"aborted":false,"ms":0},{"s":3,"t":4,"n":3,"count":7,"nodes":14,"aborted":false,"ms":0},{"s":3,"t":4,"n":4,"count":40,"nodes":93,"aborted":false,"ms":0},{"s":3,"t":4,"n":5,"count":322,"nodes":871,"aborted":false,"ms":0},{"s":3,"t":4,"n":6,"count":2812,"nodes":9973,"aborted":false,"ms":1},{"s":3,"t":4,"n":7,"count":13842,"nodes":103579,"aborted":false,"ms":4},{"s":3,"t":4,"n":8,"count":17640,"nodes":604159,"aborted":false,"ms":9},{"s":3,"t":4,"n":9,"count":0,"nodes":1270375,"aborted":false,"ms":20},{"s":4,"t":4,"n":2,"count":2,"nodes":3,"aborted":false,"ms":0},{"s":4,"t":4,"n":3,"count":8,"nodes":15,"aborted":false,"ms":0},{"s":4,"t":4,"n":4,"count":62,"nodes":125,"aborted":false,"ms":0},{"s":4,"t":4,"n":5,"count":892,"nodes":1871,"aborted":false,"ms":0},{"s":4,"t":4,"n":6,"count":22484,"nodes":49561,"aborted":false,"ms":1},{"s":4,"t":4,"n":7,"count":923012,"nodes":2181443,"aborted":false,"ms":32},{"s":4,"t":4,"n":8,"count":55881692,"nodes":146184675,"aborted":false,"ms":2333},{"s":3,"t":5,"n":2,"count":2,"nodes":3,"aborted":false,"ms":0},{"s":3,"t":5,"n":3,"count":7,"nodes":14,"aborted":false,"ms":0},{"s":3,"t":5,"n":4,"count":41,"nodes":94,"aborted":false,"ms":0},{"s":3,"t":5,"n":5,"count":387,"nodes":958,"aborted":false,"ms":0},{"s":3,"t":5,"n":6,"count":5617,"nodes":14903,"aborted":false,"ms":0},{"s":3,"t":5,"n":7,"count":113949,"nodes":334747,"aborted":false,"ms":5}],"e1ByCase":{"3,3":[{"s":3,"t":3,"n":2,"count":2,"nodes":3,"aborted":false,"ms":0},{"s":3,"t":3,"n":3,"count":6,"nodes":13,"aborted":false,"ms":0},{"s":3,"t":3,"n":4,"count":18,"nodes":61,"aborted":false,"ms":0},{"s":3,"t":3,"n":5,"count":12,"nodes":217,"aborted":false,"ms":0},{"s":3,"t":3,"n":6,"count":0,"nodes":325,"aborted":false,"ms":0}],"3,4":[{"s":3,"t":4,"n":2,"count":2,"nodes":3,"aborted":false,"ms":0},{"s":3,"t":4,"n":3,"count":7,"nodes":14,"aborted":false,"ms":0},{"s":3,"t":4,"n":4,"count":40,"nodes":93,"aborted":false,"ms":0},{"s":3,"t":4,"n":5,"count":322,"nodes":871,"aborted":false,"ms":0},{"s":3,"t":4,"n":6,"count":2812,"nodes":9973,"aborted":false,"ms":1},{"s":3,"t":4,"n":7,"count":13842,"nodes":103579,"aborted":false,"ms":4},{"s":3,"t":4,"n":8,"count":17640,"nodes":604159,"aborted":false,"ms":9},{"s":3,"t":4,"n":9,"count":0,"nodes":1270375,"aborted":false,"ms":20}],"4,4":[{"s":4,"t":4,"n":2,"count":2,"nodes":3,"aborted":false,"ms":0},{"s":4,"t":4,"n":3,"count":8,"nodes":15,"aborted":false,"ms":0},{"s":4,"t":4,"n":4,"count":62,"nodes":125,"aborted":false,"ms":0},{"s":4,"t":4,"n":5,"count":892,"nodes":1871,"aborted":false,"ms":0},{"s":4,"t":4,"n":6,"count":22484,"nodes":49561,"aborted":false,"ms":1},{"s":4,"t":4,"n":7,"count":923012,"nodes":2181443,"aborted":false,"ms":32},{"s":4,"t":4,"n":8,"count":55881692,"nodes":146184675,"aborted":false,"ms":2333}],"3,5":[{"s":3,"t":5,"n":2,"count":2,"nodes":3,"aborted":false,"ms":0},{"s":3,"t":5,"n":3,"count":7,"nodes":14,"aborted":false,"ms":0},{"s":3,"t":5,"n":4,"count":41,"nodes":94,"aborted":false,"ms":0},{"s":3,"t":5,"n":5,"count":387,"nodes":958,"aborted":false,"ms":0},{"s":3,"t":5,"n":6,"count":5617,"nodes":14903,"aborted":false,"ms":0},{"s":3,"t":5,"n":7,"count":113949,"nodes":334747,"aborted":false,"ms":5}]},"thresholds":{"3,3":6,"3,4":9,"4,4":null,"3,5":null},"r33":6,"r34":9,"r44Known":18,"r35":14,"determined":[{"key":"3,3","value":6,"how":"穷举：K_6 上 (3,3)-free 着色数 = 0，K_5 上 = 12"},{"key":"3,4","value":9,"how":"穷举：K_9 上 (3,4)-free 着色数 = 0，K_8 上 = 17640"},{"key":"3,5","value":14,"how":"递推 5 + 9 = 14（上界）+ 循环图 C_13{2,3}（下界）"},{"key":"4,4","value":18,"how":"递推 9 + 9 = 18（上界）+ Paley 图 C_17{1,2,4,8}（下界）"}],"e1Peaks":{"3,3":{"max":18,"at":4},"3,4":{"max":17640,"at":8},"4,4":{"max":55881692,"at":8},"3,5":{"max":113949,"at":7}},"e1Nodes":[{"key":"3,3","n":2,"nodes":3},{"key":"3,3","n":3,"nodes":13},{"key":"3,3","n":4,"nodes":61},{"key":"3,3","n":5,"nodes":217},{"key":"3,3","n":6,"nodes":325},{"key":"3,4","n":2,"nodes":3},{"key":"3,4","n":3,"nodes":14},{"key":"3,4","n":4,"nodes":93},{"key":"3,4","n":5,"nodes":871},{"key":"3,4","n":6,"nodes":9973},{"key":"3,4","n":7,"nodes":103579},{"key":"3,4","n":8,"nodes":604159},{"key":"3,4","n":9,"nodes":1270375},{"key":"4,4","n":2,"nodes":3},{"key":"4,4","n":3,"nodes":15},{"key":"4,4","n":4,"nodes":125},{"key":"4,4","n":5,"nodes":1871},{"key":"4,4","n":6,"nodes":49561},{"key":"4,4","n":7,"nodes":2181443},{"key":"4,4","n":8,"nodes":146184675},{"key":"3,5","n":2,"nodes":3},{"key":"3,5","n":3,"nodes":14},{"key":"3,5","n":4,"nodes":94},{"key":"3,5","n":5,"nodes":958},{"key":"3,5","n":6,"nodes":14903},{"key":"3,5","n":7,"nodes":334747}],"e1CrossOk":true,"e2":{"brute":[{"n":3,"min":0,"formula":0,"ok":true,"recheck":0,"recheckOk":true,"colorings":8,"deg":[1,1,0],"ms":0},{"n":4,"min":0,"formula":0,"ok":true,"recheck":0,"recheckOk":true,"colorings":64,"deg":[1,1,1,1],"ms":0},{"n":5,"min":0,"formula":0,"ok":true,"recheck":0,"recheckOk":true,"colorings":1024,"deg":[2,2,2,2,2],"ms":0},{"n":6,"min":2,"formula":2,"ok":true,"recheck":2,"recheckOk":true,"colorings":32768,"deg":[3,3,2,2,2,2],"ms":5},{"n":7,"min":4,"formula":4,"ok":true,"recheck":4,"recheckOk":true,"colorings":2097152,"deg":[3,3,3,3,3,3,2],"ms":15},{"n":8,"min":8,"formula":8,"ok":true,"recheck":8,"recheckOk":true,"colorings":268435456,"deg":[4,4,3,3,3,3,3,3],"ms":1743}],"formula":[{"n":3,"min":0,"total":1,"ratio":0,"E":2},{"n":4,"min":0,"total":4,"ratio":0,"E":8},{"n":5,"min":0,"total":10,"ratio":0,"E":20},{"n":6,"min":2,"total":20,"ratio":0.1,"E":36},{"n":7,"min":4,"total":35,"ratio":0.11428571428571428,"E":62},{"n":8,"min":8,"total":56,"ratio":0.14285714285714285,"E":96},{"n":9,"min":12,"total":84,"ratio":0.14285714285714285,"E":144},{"n":10,"min":20,"total":120,"ratio":0.16666666666666666,"E":200},{"n":11,"min":28,"total":165,"ratio":0.1696969696969697,"E":274},{"n":12,"min":40,"total":220,"ratio":0.18181818181818182,"E":360},{"n":13,"min":52,"total":286,"ratio":0.18181818181818182,"E":468},{"n":16,"min":112,"total":560,"ratio":0.2,"E":896},{"n":20,"min":240,"total":1140,"ratio":0.21052631578947367,"E":1800},{"n":25,"min":500,"total":2300,"ratio":0.21739130434782608,"E":3600},{"n":32,"min":1120,"total":4960,"ratio":0.22580645161290322,"E":7680},{"n":50,"min":4600,"total":19600,"ratio":0.23469387755102042,"E":30000},{"n":100,"min":39200,"total":161700,"ratio":0.24242424242424243,"E":245000},{"n":500,"min":5146000,"total":20708500,"ratio":0.24849699398797595,"E":31125000},{"n":5000,"min":5202085000,"total":20820835000,"ratio":0.2498499699939988,"E":31237500000}],"ratio":[],"identity":{"n":400,"bad":0},"achieverFailures":0},"e2Brute":[{"n":3,"min":0,"formula":0,"ok":true,"recheck":0,"recheckOk":true,"colorings":8,"deg":[1,1,0],"ms":0},{"n":4,"min":0,"formula":0,"ok":true,"recheck":0,"recheckOk":true,"colorings":64,"deg":[1,1,1,1],"ms":0},{"n":5,"min":0,"formula":0,"ok":true,"recheck":0,"recheckOk":true,"colorings":1024,"deg":[2,2,2,2,2],"ms":0},{"n":6,"min":2,"formula":2,"ok":true,"recheck":2,"recheckOk":true,"colorings":32768,"deg":[3,3,2,2,2,2],"ms":5},{"n":7,"min":4,"formula":4,"ok":true,"recheck":4,"recheckOk":true,"colorings":2097152,"deg":[3,3,3,3,3,3,2],"ms":15},{"n":8,"min":8,"formula":8,"ok":true,"recheck":8,"recheckOk":true,"colorings":268435456,"deg":[4,4,3,3,3,3,3,3],"ms":1743}],"e2Formula":[{"n":3,"min":0,"total":1,"ratio":0,"E":2},{"n":4,"min":0,"total":4,"ratio":0,"E":8},{"n":5,"min":0,"total":10,"ratio":0,"E":20},{"n":6,"min":2,"total":20,"ratio":0.1,"E":36},{"n":7,"min":4,"total":35,"ratio":0.11428571428571428,"E":62},{"n":8,"min":8,"total":56,"ratio":0.14285714285714285,"E":96},{"n":9,"min":12,"total":84,"ratio":0.14285714285714285,"E":144},{"n":10,"min":20,"total":120,"ratio":0.16666666666666666,"E":200},{"n":11,"min":28,"total":165,"ratio":0.1696969696969697,"E":274},{"n":12,"min":40,"total":220,"ratio":0.18181818181818182,"E":360},{"n":13,"min":52,"total":286,"ratio":0.18181818181818182,"E":468},{"n":16,"min":112,"total":560,"ratio":0.2,"E":896},{"n":20,"min":240,"total":1140,"ratio":0.21052631578947367,"E":1800},{"n":25,"min":500,"total":2300,"ratio":0.21739130434782608,"E":3600},{"n":32,"min":1120,"total":4960,"ratio":0.22580645161290322,"E":7680},{"n":50,"min":4600,"total":19600,"ratio":0.23469387755102042,"E":30000},{"n":100,"min":39200,"total":161700,"ratio":0.24242424242424243,"E":245000},{"n":500,"min":5146000,"total":20708500,"ratio":0.24849699398797595,"E":31125000},{"n":5000,"min":5202085000,"total":20820835000,"ratio":0.2498499699939988,"E":31237500000}],"e2Ratio":[{"n":3,"ratio":0},{"n":4,"ratio":0},{"n":5,"ratio":0},{"n":6,"ratio":0.1},{"n":7,"ratio":0.11428571428571428},{"n":8,"ratio":0.14285714285714285},{"n":9,"ratio":0.14285714285714285},{"n":10,"ratio":0.16666666666666666},{"n":11,"ratio":0.1696969696969697},{"n":12,"ratio":0.18181818181818182},{"n":13,"ratio":0.18181818181818182},{"n":16,"ratio":0.2},{"n":20,"ratio":0.21052631578947367},{"n":25,"ratio":0.21739130434782608},{"n":32,"ratio":0.22580645161290322},{"n":50,"ratio":0.23469387755102042},{"n":100,"ratio":0.24242424242424243},{"n":500,"ratio":0.24849699398797595},{"n":5000,"ratio":0.2498499699939988}],"goodmanOk":true,"goodmanAchieverFailures":0,"goodmanIdentity":{"n":400,"bad":0},"ratioAt":{"6":0.1,"10":0.16666666666666666,"20":0.21052631578947367,"50":0.23469387755102042,"100":0.24242424242424243,"500":0.24849699398797595,"5000":0.2498499699939988},"ratioLimitGap":0.00015003000600119498,"e3":{"rows":[{"s":3,"t":3,"ub":6,"ubNoBase":6,"trueValue":6,"lo":null,"hi":null,"slack":0,"slackKind":"exact","leaves":2,"saveByExhaustive":0},{"s":3,"t":4,"ub":9,"ubNoBase":10,"trueValue":9,"lo":null,"hi":null,"slack":0,"slackKind":"exact","leaves":3,"saveByExhaustive":1},{"s":3,"t":5,"ub":14,"ubNoBase":15,"trueValue":14,"lo":null,"hi":null,"slack":0,"slackKind":"exact","leaves":4,"saveByExhaustive":1},{"s":3,"t":6,"ub":20,"ubNoBase":21,"trueValue":18,"lo":null,"hi":null,"slack":2,"slackKind":"exact","leaves":5,"saveByExhaustive":1},{"s":3,"t":7,"ub":27,"ubNoBase":28,"trueValue":23,"lo":null,"hi":null,"slack":4,"slackKind":"exact","leaves":6,"saveByExhaustive":1},{"s":3,"t":8,"ub":35,"ubNoBase":36,"trueValue":28,"lo":null,"hi":null,"slack":7,"slackKind":"exact","leaves":7,"saveByExhaustive":1},{"s":3,"t":9,"ub":44,"ubNoBase":45,"trueValue":36,"lo":null,"hi":null,"slack":8,"slackKind":"exact","leaves":8,"saveByExhaustive":1},{"s":4,"t":4,"ub":18,"ubNoBase":20,"trueValue":18,"lo":null,"hi":null,"slack":0,"slackKind":"exact","leaves":6,"saveByExhaustive":2},{"s":4,"t":5,"ub":32,"ubNoBase":35,"trueValue":25,"lo":null,"hi":null,"slack":7,"slackKind":"exact","leaves":10,"saveByExhaustive":3},{"s":4,"t":6,"ub":52,"ubNoBase":56,"trueValue":null,"lo":36,"hi":40,"slack":16,"slackKind":"lower","leaves":15,"saveByExhaustive":4},{"s":4,"t":7,"ub":79,"ubNoBase":84,"trueValue":null,"lo":49,"hi":58,"slack":30,"slackKind":"lower","leaves":21,"saveByExhaustive":5},{"s":5,"t":5,"ub":64,"ubNoBase":70,"trueValue":null,"lo":43,"hi":46,"slack":21,"slackKind":"lower","leaves":20,"saveByExhaustive":6},{"s":5,"t":6,"ub":116,"ubNoBase":126,"trueValue":null,"lo":59,"hi":85,"slack":57,"slackKind":"lower","leaves":35,"saveByExhaustive":10},{"s":5,"t":7,"ub":195,"ubNoBase":210,"trueValue":null,"lo":80,"hi":133,"slack":115,"slackKind":"lower","leaves":56,"saveByExhaustive":15},{"s":6,"t":6,"ub":232,"ubNoBase":252,"trueValue":null,"lo":102,"hi":160,"slack":130,"slackKind":"lower","leaves":70,"saveByExhaustive":20},{"s":6,"t":7,"ub":427,"ubNoBase":462,"trueValue":null,"lo":115,"hi":270,"slack":312,"slackKind":"lower","leaves":126,"saveByExhaustive":35},{"s":7,"t":7,"ub":854,"ubNoBase":924,"trueValue":null,"lo":205,"hi":492,"slack":649,"slackKind":"lower","leaves":252,"saveByExhaustive":70},{"s":8,"t":8,"ub":3180,"ubNoBase":3432,"trueValue":null,"lo":282,"hi":1518,"slack":2898,"slackKind":"lower","leaves":924,"saveByExhaustive":252}],"matrix":[[6,9,14,20,27,35,44],[9,18,32,52,79,114,158],[14,32,64,116,195,309,467],[20,52,116,232,427,736,1203],[27,79,195,427,854,1590,2793],[35,114,309,736,1590,3180,5973],[44,158,467,1203,2793,5973,11946]],"smax":9,"leverage":[{"s":3,"t":3,"withBase":6,"noBase":6,"gain":0},{"s":3,"t":4,"withBase":9,"noBase":10,"gain":1},{"s":3,"t":5,"withBase":14,"noBase":15,"gain":1},{"s":3,"t":6,"withBase":20,"noBase":21,"gain":1},{"s":3,"t":7,"withBase":27,"noBase":28,"gain":1},{"s":3,"t":8,"withBase":35,"noBase":36,"gain":1},{"s":3,"t":9,"withBase":44,"noBase":45,"gain":1},{"s":4,"t":4,"withBase":18,"noBase":20,"gain":2},{"s":4,"t":5,"withBase":32,"noBase":35,"gain":3},{"s":4,"t":6,"withBase":52,"noBase":56,"gain":4},{"s":4,"t":7,"withBase":79,"noBase":84,"gain":5},{"s":5,"t":5,"withBase":64,"noBase":70,"gain":6},{"s":5,"t":6,"withBase":116,"noBase":126,"gain":10},{"s":5,"t":7,"withBase":195,"noBase":210,"gain":15},{"s":6,"t":6,"withBase":232,"noBase":252,"gain":20},{"s":6,"t":7,"withBase":427,"noBase":462,"gain":35},{"s":7,"t":7,"withBase":854,"noBase":924,"gain":70},{"s":8,"t":8,"withBase":3180,"noBase":3432,"gain":252}],"delta":[{"s":3,"t":3,"delta":0,"r":6,"r1":3,"r2":3},{"s":3,"t":4,"delta":1,"r":9,"r1":4,"r2":6},{"s":3,"t":5,"delta":0,"r":14,"r1":5,"r2":9},{"s":3,"t":6,"delta":2,"r":18,"r1":6,"r2":14},{"s":3,"t":7,"delta":2,"r":23,"r1":7,"r2":18},{"s":3,"t":8,"delta":3,"r":28,"r1":8,"r2":23},{"s":3,"t":9,"delta":1,"r":36,"r1":9,"r2":28},{"s":4,"t":4,"delta":0,"r":18,"r1":9,"r2":9},{"s":4,"t":5,"delta":7,"r":25,"r1":14,"r2":18}]},"e3Rows":[{"s":3,"t":3,"ub":6,"ubNoBase":6,"trueValue":6,"lo":null,"hi":null,"slack":0,"slackKind":"exact","leaves":2,"saveByExhaustive":0},{"s":3,"t":4,"ub":9,"ubNoBase":10,"trueValue":9,"lo":null,"hi":null,"slack":0,"slackKind":"exact","leaves":3,"saveByExhaustive":1},{"s":3,"t":5,"ub":14,"ubNoBase":15,"trueValue":14,"lo":null,"hi":null,"slack":0,"slackKind":"exact","leaves":4,"saveByExhaustive":1},{"s":3,"t":6,"ub":20,"ubNoBase":21,"trueValue":18,"lo":null,"hi":null,"slack":2,"slackKind":"exact","leaves":5,"saveByExhaustive":1},{"s":3,"t":7,"ub":27,"ubNoBase":28,"trueValue":23,"lo":null,"hi":null,"slack":4,"slackKind":"exact","leaves":6,"saveByExhaustive":1},{"s":3,"t":8,"ub":35,"ubNoBase":36,"trueValue":28,"lo":null,"hi":null,"slack":7,"slackKind":"exact","leaves":7,"saveByExhaustive":1},{"s":3,"t":9,"ub":44,"ubNoBase":45,"trueValue":36,"lo":null,"hi":null,"slack":8,"slackKind":"exact","leaves":8,"saveByExhaustive":1},{"s":4,"t":4,"ub":18,"ubNoBase":20,"trueValue":18,"lo":null,"hi":null,"slack":0,"slackKind":"exact","leaves":6,"saveByExhaustive":2},{"s":4,"t":5,"ub":32,"ubNoBase":35,"trueValue":25,"lo":null,"hi":null,"slack":7,"slackKind":"exact","leaves":10,"saveByExhaustive":3},{"s":4,"t":6,"ub":52,"ubNoBase":56,"trueValue":null,"lo":36,"hi":40,"slack":16,"slackKind":"lower","leaves":15,"saveByExhaustive":4},{"s":4,"t":7,"ub":79,"ubNoBase":84,"trueValue":null,"lo":49,"hi":58,"slack":30,"slackKind":"lower","leaves":21,"saveByExhaustive":5},{"s":5,"t":5,"ub":64,"ubNoBase":70,"trueValue":null,"lo":43,"hi":46,"slack":21,"slackKind":"lower","leaves":20,"saveByExhaustive":6},{"s":5,"t":6,"ub":116,"ubNoBase":126,"trueValue":null,"lo":59,"hi":85,"slack":57,"slackKind":"lower","leaves":35,"saveByExhaustive":10},{"s":5,"t":7,"ub":195,"ubNoBase":210,"trueValue":null,"lo":80,"hi":133,"slack":115,"slackKind":"lower","leaves":56,"saveByExhaustive":15},{"s":6,"t":6,"ub":232,"ubNoBase":252,"trueValue":null,"lo":102,"hi":160,"slack":130,"slackKind":"lower","leaves":70,"saveByExhaustive":20},{"s":6,"t":7,"ub":427,"ubNoBase":462,"trueValue":null,"lo":115,"hi":270,"slack":312,"slackKind":"lower","leaves":126,"saveByExhaustive":35},{"s":7,"t":7,"ub":854,"ubNoBase":924,"trueValue":null,"lo":205,"hi":492,"slack":649,"slackKind":"lower","leaves":252,"saveByExhaustive":70},{"s":8,"t":8,"ub":3180,"ubNoBase":3432,"trueValue":null,"lo":282,"hi":1518,"slack":2898,"slackKind":"lower","leaves":924,"saveByExhaustive":252}],"ubMatrix":[[6,9,14,20,27,35,44],[9,18,32,52,79,114,158],[14,32,64,116,195,309,467],[20,52,116,232,427,736,1203],[27,79,195,427,854,1590,2793],[35,114,309,736,1590,3180,5973],[44,158,467,1203,2793,5973,11946]],"ubSmax":9,"leverage":[{"s":3,"t":3,"withBase":6,"noBase":6,"gain":0},{"s":3,"t":4,"withBase":9,"noBase":10,"gain":1},{"s":3,"t":5,"withBase":14,"noBase":15,"gain":1},{"s":3,"t":6,"withBase":20,"noBase":21,"gain":1},{"s":3,"t":7,"withBase":27,"noBase":28,"gain":1},{"s":3,"t":8,"withBase":35,"noBase":36,"gain":1},{"s":3,"t":9,"withBase":44,"noBase":45,"gain":1},{"s":4,"t":4,"withBase":18,"noBase":20,"gain":2},{"s":4,"t":5,"withBase":32,"noBase":35,"gain":3},{"s":4,"t":6,"withBase":52,"noBase":56,"gain":4},{"s":4,"t":7,"withBase":79,"noBase":84,"gain":5},{"s":5,"t":5,"withBase":64,"noBase":70,"gain":6},{"s":5,"t":6,"withBase":116,"noBase":126,"gain":10},{"s":5,"t":7,"withBase":195,"noBase":210,"gain":15},{"s":6,"t":6,"withBase":232,"noBase":252,"gain":20},{"s":6,"t":7,"withBase":427,"noBase":462,"gain":35},{"s":7,"t":7,"withBase":854,"noBase":924,"gain":70},{"s":8,"t":8,"withBase":3180,"noBase":3432,"gain":252}],"delta":[{"s":3,"t":3,"delta":0,"r":6,"r1":3,"r2":3},{"s":3,"t":4,"delta":1,"r":9,"r1":4,"r2":6},{"s":3,"t":5,"delta":0,"r":14,"r1":5,"r2":9},{"s":3,"t":6,"delta":2,"r":18,"r1":6,"r2":14},{"s":3,"t":7,"delta":2,"r":23,"r1":7,"r2":18},{"s":3,"t":8,"delta":3,"r":28,"r1":8,"r2":23},{"s":3,"t":9,"delta":1,"r":36,"r1":9,"r2":28},{"s":4,"t":4,"delta":0,"r":18,"r1":9,"r2":9},{"s":4,"t":5,"delta":7,"r":25,"r1":14,"r2":18}],"slackPascal":{"checks":[{"s":4,"t":5,"lhs":7,"rhs":7,"a":0,"b":0,"delta":7,"ok":true}],"ok":true,"n":1},"slackMax":2898,"slackMaxAt":{"s":8,"t":8,"ub":3180,"ubNoBase":3432,"trueValue":null,"lo":282,"hi":1518,"slack":2898,"slackKind":"lower","leaves":924,"saveByExhaustive":252},"leverageGain":{"3,3":0,"3,4":1,"3,5":1,"3,6":1,"3,7":1,"3,8":1,"3,9":1,"4,4":2,"4,5":3,"4,6":4,"4,7":5,"5,5":6,"5,6":10,"5,7":15,"6,6":20,"6,7":35,"7,7":70,"8,8":252},"leavesR44":6,"leavesR55":20,"leavesR88":924,"e4":[{"s":3,"t":3,"n":6,"trials":300,"bad":0,"minInspect":4,"meanInspect":6.176666666666667,"maxInspect":16,"perVertex":1.0294444444444444,"universeLog10":4.515449934959718,"log10Ratio":3.7246957703604826,"redShare":0.83},{"s":3,"t":4,"n":9,"trials":300,"bad":0,"minInspect":4,"meanInspect":4.586666666666667,"maxInspect":24,"perVertex":0.5096296296296297,"universeLog10":10.837079843903323,"log10Ratio":10.175582664723493,"redShare":0.99},{"s":3,"t":5,"n":14,"trials":300,"bad":0,"minInspect":14,"meanInspect":15.323333333333334,"maxInspect":24,"perVertex":1.0945238095238097,"universeLog10":27.39372960542229,"log10Ratio":26.208376356391643,"redShare":1},{"s":4,"t":4,"n":18,"trials":300,"bad":0,"minInspect":21,"meanInspect":25.54,"maxInspect":53,"perVertex":1.4188888888888889,"universeLog10":46.057589336589125,"log10Ratio":44.650368443661726,"redShare":0.8633333333333333},{"s":4,"t":5,"n":32,"trials":300,"bad":0,"minInspect":45,"meanInspect":50.92333333333333,"maxInspect":83,"perVertex":1.5913541666666666,"universeLog10":149.31087784933467,"log10Ratio":147.60396102542745,"redShare":0.9866666666666667},{"s":5,"t":5,"n":64,"trials":300,"bad":0,"minInspect":108,"meanInspect":119.32333333333334,"maxInspect":162,"perVertex":1.8644270833333334,"universeLog10":606.8764712585861,"log10Ratio":604.7997458815792,"redShare":0.7933333333333333},{"s":6,"t":6,"n":232,"trials":300,"bad":0,"minInspect":419,"meanInspect":455.2733333333333,"maxInspect":508,"perVertex":1.9623850574712642,"universeLog10":8066.39976381204,"log10Ratio":8063.741491598862,"redShare":0.7566666666666667},{"s":3,"t":9,"n":44,"trials":300,"bad":0,"minInspect":44,"meanInspect":45.04666666666667,"maxInspect":55,"perVertex":1.0237878787878787,"universeLog10":284.7743758981262,"log10Ratio":283.12071323825694,"redShare":1},{"s":7,"t":7,"n":854,"trials":300,"bad":0,"minInspect":1614,"meanInspect":1696.16,"maxInspect":1800,"perVertex":1.9861358313817332,"universeLog10":109644.45635068754,"log10Ratio":109641.22688387037,"redShare":0.7166666666666667}],"e4Bad":0,"e4MaxPerVertex":1.9861358313817332,"e4MinPerVertex":0.5096296296296297,"leverAt18":{"inspect":25.54,"universeLog10":46.057589336589125,"ratioLog10":44.650368443661726},"leverAt854":{"inspect":1696.16,"universeLog10":109644.45635068754,"ratioLog10":109641.22688387037},"e5":{"circulant":[{"n":5,"s":3,"t":3,"total":4,"hits":2,"verified":2,"fails":[],"work":48,"ms":0,"sets":[{"set":[1],"deg":2},{"set":[2],"deg":2}]},{"n":8,"s":3,"t":4,"total":16,"hits":2,"verified":2,"fails":[],"work":896,"ms":0,"sets":[{"set":[1,4],"deg":5},{"set":[3,4],"deg":5}]},{"n":13,"s":3,"t":5,"total":64,"hits":3,"verified":3,"fails":[],"work":35904,"ms":1,"sets":[{"set":[2,3],"deg":4},{"set":[1,5],"deg":4},{"set":[4,6],"deg":4}]},{"n":17,"s":4,"t":4,"total":256,"hits":2,"verified":2,"fails":[],"work":286720,"ms":3,"sets":[{"set":[3,5,6,7],"deg":8},{"set":[1,2,4,8],"deg":8}]},{"n":17,"s":3,"t":6,"total":256,"hits":0,"verified":0,"fails":[],"work":1148928,"ms":2,"sets":[]},{"n":18,"s":3,"t":6,"total":512,"hits":0,"verified":0,"fails":[],"work":3237888,"ms":4,"sets":[]},{"n":22,"s":3,"t":7,"total":2048,"hits":0,"verified":0,"fails":[],"work":111562752,"ms":27,"sets":[]},{"n":23,"s":3,"t":7,"total":2048,"hits":0,"verified":0,"fails":[],"work":153280512,"ms":38,"sets":[]},{"n":25,"s":4,"t":5,"total":4096,"hits":0,"verified":0,"fails":[],"work":51814400,"ms":73,"sets":[]},{"n":30,"s":4,"t":5,"total":32768,"hits":0,"verified":0,"fails":[],"work":898007040,"ms":970,"sets":[]}],"local":[{"n":13,"s":3,"t":5,"restarts":30,"flipsCap":40000,"found":true,"verified":true,"best":0,"flips":1879,"ms":4},{"n":17,"s":3,"t":6,"restarts":30,"flipsCap":80000,"found":true,"verified":true,"best":0,"flips":61741,"ms":55},{"n":22,"s":3,"t":7,"restarts":20,"flipsCap":120000,"found":false,"verified":false,"best":6,"flips":2291398,"ms":6208},{"n":24,"s":4,"t":5,"restarts":20,"flipsCap":120000,"found":false,"verified":false,"best":5,"flips":2300366,"ms":2441},{"n":42,"s":5,"t":5,"restarts":8,"flipsCap":60000,"found":false,"verified":false,"best":158,"flips":468602,"ms":2021}],"paley":{"n":17,"set":[1,2,4,8],"qr":[1,2,4,8,9,13,15,16],"isQR":true,"subsets":2380,"redK4":0,"blueK4":0,"free":true,"redKs":0,"blueKt":0,"col":"01101000110001011/10110100011000101/11011010001100010/01101101000110001/10110110100011000/01011011010001100/00101101101000110/00010110110100011/10001011011010001/11000101101101000/01100010110110100/00110001011011010/00011000101101101/10001100010110110/01000110001011011/10100011000101101/11010001100010110"}},"circulant":[{"n":5,"s":3,"t":3,"total":4,"hits":2,"verified":2,"fails":[],"work":48,"ms":0,"sets":[{"set":[1],"deg":2},{"set":[2],"deg":2}]},{"n":8,"s":3,"t":4,"total":16,"hits":2,"verified":2,"fails":[],"work":896,"ms":0,"sets":[{"set":[1,4],"deg":5},{"set":[3,4],"deg":5}]},{"n":13,"s":3,"t":5,"total":64,"hits":3,"verified":3,"fails":[],"work":35904,"ms":1,"sets":[{"set":[2,3],"deg":4},{"set":[1,5],"deg":4},{"set":[4,6],"deg":4}]},{"n":17,"s":4,"t":4,"total":256,"hits":2,"verified":2,"fails":[],"work":286720,"ms":3,"sets":[{"set":[3,5,6,7],"deg":8},{"set":[1,2,4,8],"deg":8}]},{"n":17,"s":3,"t":6,"total":256,"hits":0,"verified":0,"fails":[],"work":1148928,"ms":2,"sets":[]},{"n":18,"s":3,"t":6,"total":512,"hits":0,"verified":0,"fails":[],"work":3237888,"ms":4,"sets":[]},{"n":22,"s":3,"t":7,"total":2048,"hits":0,"verified":0,"fails":[],"work":111562752,"ms":27,"sets":[]},{"n":23,"s":3,"t":7,"total":2048,"hits":0,"verified":0,"fails":[],"work":153280512,"ms":38,"sets":[]},{"n":25,"s":4,"t":5,"total":4096,"hits":0,"verified":0,"fails":[],"work":51814400,"ms":73,"sets":[]},{"n":30,"s":4,"t":5,"total":32768,"hits":0,"verified":0,"fails":[],"work":898007040,"ms":970,"sets":[]}],"circulantTotal":42068,"circulantHits":9,"circulantWork":1219375088,"circulantFails":["3,6@17","3,6@18","3,7@22","3,7@23","4,5@25","4,5@30"],"local":[{"n":13,"s":3,"t":5,"restarts":30,"flipsCap":40000,"found":true,"verified":true,"best":0,"flips":1879,"ms":4},{"n":17,"s":3,"t":6,"restarts":30,"flipsCap":80000,"found":true,"verified":true,"best":0,"flips":61741,"ms":55},{"n":22,"s":3,"t":7,"restarts":20,"flipsCap":120000,"found":false,"verified":false,"best":6,"flips":2291398,"ms":6208},{"n":24,"s":4,"t":5,"restarts":20,"flipsCap":120000,"found":false,"verified":false,"best":5,"flips":2300366,"ms":2441},{"n":42,"s":5,"t":5,"restarts":8,"flipsCap":60000,"found":false,"verified":false,"best":158,"flips":468602,"ms":2021}],"localFound":["3,5@13","3,6@17"],"localFailed":["3,7@22","4,5@24","5,5@42"],"localFlips":5123986,"paley":{"n":17,"set":[1,2,4,8],"qr":[1,2,4,8,9,13,15,16],"isQR":true,"subsets":2380,"redK4":0,"blueK4":0,"free":true,"redKs":0,"blueKt":0,"col":"01101000110001011/10110100011000101/11011010001100010/01101101000110001/10110110100011000/01011011010001100/00101101101000110/00010110110100011/10001011011010001/11000101101101000/01100010110110100/00110001011011010/00011000101101101/10001100010110110/01000110001011011/10100011000101101/11010001100010110"},"universe":[{"n":6,"pairs":15,"log10":4.515449934959718,"text":"3.277 × 10^4"},{"n":9,"pairs":36,"log10":10.837079843903323,"text":"6.872 × 10^10"},{"n":14,"pairs":91,"log10":27.39372960542229,"text":"2.476 × 10^27"},{"n":17,"pairs":136,"log10":40.94007941030144,"text":"8.711 × 10^40"},{"n":18,"pairs":153,"log10":46.057589336589125,"text":"1.142 × 10^46"},{"n":22,"pairs":231,"log10":69.53792899837966,"text":"3.451 × 10^69"},{"n":25,"pairs":300,"log10":90.30899869919436,"text":"2.037 × 10^90"},{"n":32,"pairs":496,"log10":149.31087784933467,"text":"2.046 × 10^149"},{"n":42,"pairs":861,"log10":259.18682626668783,"text":"1.538 × 10^259"},{"n":43,"pairs":903,"log10":271.83008608457504,"text":"6.762 × 10^271"},{"n":46,"pairs":1035,"log10":311.5660455122205,"text":"3.682 × 10^311"},{"n":64,"pairs":2016,"log10":606.8764712585861,"text":"7.524 × 10^606"},{"n":102,"pairs":5151,"log10":1550.6055076651671,"text":"4.032 × 10^1550"},{"n":232,"pairs":26796,"log10":8066.39976381204,"text":"2.511 × 10^8066"},{"n":854,"pairs":364231,"log10":109644.45635068754,"text":"2.860 × 10^109644"}],"costTable":[{"what":"R(3,8) = 28 形式化验证","how":"SAT 证书 + 交互式定理证明器","detail":"约 8 小时，证明 5.8 GiB"},{"what":"R(3,9) = 36 形式化验证","how":"SAT 证书 + 交互式定理证明器","detail":"约 26 小时，证明数据 289 GiB"},{"what":"R(4,5) = 25","how":"计算机辅助图生成（McKay–Radziszowski, 1995）","detail":"并已用 HOL4 形式化"},{"what":"R(5,5) ≤ 46","how":"线性规划 + SAT（Angeltveit–McKay, 2024）","detail":"把上界从 48 压到 46"},{"what":"R(5,5) > 42","how":"显式构造（Exoo, 1989）","detail":"一个 42 个顶点的反例图"},{"what":"R(5,5) 的三个 42 顶点反例族","how":"McKay–Radziszowski–Exoo, 1997","detail":"找到 656 个 (5,5,42) 图，没有一个能扩到 43 个顶点"},{"what":"R(6,6) > 101","how":"显式构造（Kalbfleisch, 1965）","detail":"下界自 1965 年起未再改进"}],"universe43":{"n":43,"pairs":903,"log10":271.83008608457504,"text":"6.762 × 10^271"},"universe18":{"n":18,"pairs":153,"log10":46.057589336589125,"text":"1.142 × 10^46"},"exactCells":9,"boundCells":9}};</script>
+<script>/* ============================================================================
+ * ramsey/ui.js —— 界面：图表、实验台、各面板渲染、探针
+ * 约定（都是事故换来的）：
+ *   · .chart 里只放真 SVG；开 <svg> 必须用只开不闭的 openTag()
+ *   · setText / setHTML / setMD 三个出口分开，不写万能转换器
+ *   · 数值选项用 x === undefined ? d : x，不用 ||
+ *   · 画之前过滤非有限数；探针要能断言「刻度里没有 NaN」
+ *   · 图表按容器真实像素宽渲染，setTab 时重画，resize 幂等重画
+ *   · 页面上不显示任何耗时（虚拟时钟下 Date.now() 也不推进）
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var A = window.__ANALYSIS__;
+  var C = window.RamseyCore;
+  var D = A.derived;
+
+  /* ------------------------------------------------------------ DOM 工具 */
+  function $(id) { return document.getElementById(id); }
+  function setText(id, s) { var e = $(id); if (e) e.textContent = (s === null || s === undefined) ? '—' : String(s); }
+  function setHTML(id, s) { var e = $(id); if (e) e.innerHTML = (s === null || s === undefined) ? '—' : String(s); }
+  function setMD(id, s) { var e = $(id); if (e) e.innerHTML = md(s); }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function md(s) {
+    var t = esc(s);
+    t = t.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return t;
+  }
+  function attrsStr(o) {
+    var out = '', k;
+    for (k in o) if (Object.prototype.hasOwnProperty.call(o, k) && o[k] !== null && o[k] !== undefined) {
+      out += ' ' + k + '="' + String(o[k]).replace(/"/g, '&quot;') + '"';
+    }
+    return out;
+  }
+  /* 只开不闭 —— 只能用于 <svg>（后面手工补 </svg>）。
+     绝不要拿它发 line / rect / circle / path：SVG 的形状元素**不渲染子元素**，
+     嵌套的 <line><line> 会让除最外层之外的图元全部消失，而 DOM 里它们还在。 */
+  function openTag(name, attrs) { return '<' + name + attrsStr(attrs) + '>'; }
+  function tag(name, attrs, text) {
+    return openTag(name, attrs) + (text === undefined || text === null ? '' : esc(text)) + '</' + name + '>';
+  }
+  function num(v, d) {
+    if (v === null || v === undefined || !isFinite(v)) return '—';
+    return Number(v).toFixed(d === undefined ? 2 : d);
+  }
+  function int(v) {
+    if (v === null || v === undefined || !isFinite(v)) return '—';
+    return Math.round(v).toLocaleString('en-US');
+  }
+  function pct(v, d) { return (v === null || v === undefined || !isFinite(v)) ? '—' : (100 * v).toFixed(d === undefined ? 2 : d) + '%'; }
+  function x10(v, d) {
+    if (v === null || v === undefined || !isFinite(v)) return '—';
+    var e = Math.floor(Math.log10(Math.abs(v) || 1e-300));
+    var m = v / Math.pow(10, e);
+    return m.toFixed(d === undefined ? 2 : d) + '×10^' + e;
+  }
+  function lg(v) { return (v === null || v === undefined || !isFinite(v)) ? '—' : '10^' + v.toFixed(1); }
+
+  /* 图表按容器的**实际像素宽**渲染：SVG 与容器 1:1，文字就是 10.5px。
+     不能用 host.clientWidth —— 面板 display:none 时它是 0；用可见的 .wrap 量。 */
+  function contentWidth() {
+    var w = document.querySelector('.wrap');
+    var cw = w ? w.clientWidth : document.documentElement.clientWidth;
+    return Math.max(272, Math.round(cw - 42));
+  }
+  function chartWidth(host) {
+    var w = host ? host.clientWidth : 0;
+    if (!w || w < 120) w = contentWidth();
+    return Math.max(240, Math.round(w));
+  }
+
+  var COL = { red: '#9d2b34', blue: '#26557a', acc: '#7a4b1e', ok: '#2f6b4f',
+              ink: '#1c1b19', ink3: '#7d7a74', line: '#e0ded8', soft: '#f0eee9' };
+
+  /* ============================================================ 图表引擎 */
+  function niceRange(lo, hi, n) {
+    var span = hi - lo;
+    if (!(span > 0)) { span = Math.abs(hi) > 0 ? Math.abs(hi) : 1; hi = lo + span; }
+    var raw = span / Math.max(2, n);
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var norm = raw / mag;
+    var step = mag * (norm <= 1.5 ? 1 : norm <= 3 ? 2 : norm <= 7 ? 5 : 10);
+    var guard = 0;
+    while ((hi - lo) / step > 9 && guard++ < 40) step *= 2;
+    return { lo: Math.floor(lo / step) * step, hi: Math.ceil(hi / step) * step, step: step };
+  }
+
+  /* 折线图。刻度文字由调用方给（要画对数轴就自己取 log10） */
+  function chartLine(id, cfg) {
+    var host = $(id);
+    if (!host) return null;
+    var W = cfg.width || chartWidth(host);
+    var H = Math.round((cfg.height || 300) * (W < 460 ? 0.86 : 1));
+    var series = (cfg.series || []).map(function (s) {
+      var pts = (s.points || []).filter(function (p) { return isFinite(p[0]) && isFinite(p[1]); });
+      return { name: s.name, color: s.color, dash: s.dash, w: s.w, points: pts, dots: s.dots };
+    }).filter(function (s) { return s.points.length > 0; });
+    var extras = cfg.extras || [];
+    if (!series.length) {
+      host.innerHTML = openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img' }) +
+        tag('text', { class: 'empty', x: W / 2, y: H / 2, 'text-anchor': 'middle' }, '（没有数据）') + '</svg>';
+      return { W: W, H: H, series: 0 };
+    }
+    var M = { l: cfg.ml === undefined ? 64 : cfg.ml, r: cfg.mr === undefined ? 18 : cfg.mr,
+              t: cfg.mt === undefined ? 14 : cfg.mt, b: cfg.mb === undefined ? 46 : cfg.mb };
+    var pw = W - M.l - M.r, ph = H - M.t - M.b;
+    var xs = [], ys = [], i, j;
+    series.forEach(function (s) { s.points.forEach(function (p) { xs.push(p[0]); ys.push(p[1]); }); });
+    extras.forEach(function (e) { if (e.y !== undefined) ys.push(e.y); });
+    var xr = cfg.xRange || niceRange(Math.min.apply(null, xs), Math.max.apply(null, xs), 6);
+    var yr = cfg.yRange || niceRange(Math.min.apply(null, ys), Math.max.apply(null, ys), 5);
+    if (yr.hi === yr.lo) yr.hi = yr.lo + 1;
+    function X(v) { return M.l + (v - xr.lo) / (xr.hi - xr.lo) * pw; }
+    function Y(v) { return M.t + ph - (v - yr.lo) / (yr.hi - yr.lo) * ph; }
+    var s = openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img' });
+    // 网格 + 纵轴刻度
+    var k, v;
+    for (k = yr.lo; k <= yr.hi + 1e-9; k += yr.step) {
+      var y = Y(k);
+      s += tag('line', { class: 'gridline', x1: M.l, y1: y, x2: M.l + pw, y2: y });
+      var lbl = cfg.yLabel ? cfg.yLabel(k) : (Math.abs(k) < 1e-9 ? '0' : String(+k.toFixed(6)));
+      s += tag('text', { class: 'tick', x: M.l - 7, y: y + 3.5, 'text-anchor': 'end' }, lbl);
+    }
+    // 横轴刻度
+    if (cfg.xticks) {
+      // 刻度挤在一起会互相压住（窄屏尤其明显）—— 按估算的字宽贪心稀释
+      var kept = [], lastX = -1e9;
+      cfg.xticks.forEach(function (tk) {
+        var xx = X(tk.v);
+        if (xx < M.l - 1 || xx > M.l + pw + 1) return;
+        var foot = cfg.xrot ? (tk.label.length * 6.4 * 0.78 + 9) : (tk.label.length * 6.4);
+        if (xx - lastX < foot * 0.94 && kept.length > 0) return;
+        kept.push(tk); lastX = xx;
+      });
+      kept.forEach(function (tk) {
+        var xx = X(tk.v);
+        if (xx < M.l - 1 || xx > M.l + pw + 1) return;
+        s += tag('line', { class: 'gridline', x1: xx, y1: M.t, x2: xx, y2: M.t + ph, 'stroke-opacity': 0.5 });
+        if (cfg.xrot) {
+          // 类别刻度多了会互相压住 —— 转 -40°，锚点靠右，底边距要留够
+          s += tag('text', { class: 'tick', x: xx, y: M.t + ph + 12, 'text-anchor': 'end',
+                             transform: 'rotate(-40 ' + xx.toFixed(1) + ' ' + (M.t + ph + 12).toFixed(1) + ')' },
+                   tk.label);
+        } else {
+          s += tag('text', { class: 'tick', x: xx, y: M.t + ph + 15, 'text-anchor': 'middle' }, tk.label);
+        }
+      });
+    } else {
+      for (k = xr.lo; k <= xr.hi + 1e-9; k += xr.step) {
+        s += tag('text', { class: 'tick', x: X(k), y: M.t + ph + 15, 'text-anchor': 'middle' },
+          String(+k.toFixed(6)));
+      }
+    }
+    // 轴
+    s += tag('line', { class: 'axisline', x1: M.l, y1: M.t + ph, x2: M.l + pw, y2: M.t + ph });
+    s += tag('line', { class: 'axisline', x1: M.l, y1: M.t, x2: M.l, y2: M.t + ph });
+    // 参考线
+    extras.forEach(function (e) {
+      if (e.y === undefined) return;
+      var yy = Y(e.y);
+      s += tag('line', { class: 'zero', x1: M.l, y1: yy, x2: M.l + pw, y2: yy, stroke: e.color || COL.ink3 });
+      if (e.label) s += tag('text', { class: 'legend', x: M.l + pw - 4, y: yy - 5, 'text-anchor': 'end' }, e.label);
+    });
+    // 折线
+    series.forEach(function (se) {
+      var d = se.points.map(function (p, idx) { return (idx ? 'L' : 'M') + X(p[0]).toFixed(2) + ' ' + Y(p[1]).toFixed(2); }).join(' ');
+      s += tag('path', { d: d, fill: 'none', stroke: se.color, 'stroke-width': se.w === undefined ? 2 : se.w,
+                             'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+                             'stroke-dasharray': se.dash || null });
+      if (se.dots) se.points.forEach(function (p) {
+        s += tag('circle', { cx: X(p[0]), cy: Y(p[1]), r: 3.2, fill: '#fff', stroke: se.color, 'stroke-width': 1.8 });
+      });
+    });
+    // 轴名（HTML 侧不画，这里只在图内留一个短标签，字号固定 11px）
+    if (cfg.xname) s += tag('text', { class: 'axname', x: M.l + pw / 2, y: H - 6, 'text-anchor': 'middle' }, cfg.xname);
+    if (cfg.yname) {
+      // 竖排：横着写在左上角一定会压住最上面那条刻度
+      var yc = M.t + ph / 2;
+      s += tag('text', { class: 'axname', x: 11, y: yc, 'text-anchor': 'middle',
+                         transform: 'rotate(-90 11 ' + yc.toFixed(1) + ')' }, cfg.yname);
+    }
+    s += '</svg>';
+    host.innerHTML = s;
+    return { W: W, H: H, series: series.length, plot: { x: M.l, y: M.t, w: pw, h: ph } };
+  }
+
+  /* 横向条形图（.chart 里必须是真 SVG） */
+  function hbars(id, cfg) {
+    var host = $(id);
+    if (!host) return null;
+    var W = cfg.width || chartWidth(host);
+    var rows = cfg.rows || [];
+    var rowH = cfg.rowH === undefined ? 30 : cfg.rowH;
+    var H = Math.max(80, 16 + rows.length * rowH + 26);
+    var labelW = Math.min(cfg.labelW === undefined ? 108 : cfg.labelW, Math.round(W * 0.36));
+    var valW = cfg.valW === undefined ? 92 : cfg.valW;
+    var pw = W - labelW - valW - 12;
+    var max = cfg.max === undefined ? rows.reduce(function (m, r) { return Math.max(m, r.value || 0); }, 1) : cfg.max;
+    if (!(max > 0)) max = 1;
+    var s = openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img' });
+    rows.forEach(function (r, i) {
+      var y = 10 + i * rowH;
+      var w = Math.max(0, Math.min(1, (r.value || 0) / max)) * pw;
+      s += tag('text', { class: 'tick', x: labelW - 8, y: y + rowH / 2 + 1, 'text-anchor': 'end' }, r.label);
+      s += tag('rect', { x: labelW, y: y + rowH / 2 - 8, width: Math.max(w, r.value > 0 ? 1.5 : 0), height: 16,
+                             rx: 3, fill: r.color || COL.red, 'data-bar': r.label,
+                             'data-want': Math.round(Math.max(w, r.value > 0 ? 1.5 : 0) * 1000) / 1000,
+                             opacity: r.dim ? 0.45 : 1 });
+      s += tag('text', { class: 'tick', x: labelW + pw + 8, y: y + rowH / 2 + 1, 'text-anchor': 'start' },
+        r.note === undefined ? String(r.value) : r.note);
+    });
+    s += '</svg>';
+    host.innerHTML = s;
+    return { W: W, H: H, rows: rows.length };
+  }
+
+  /* 图：把 n 个点摆在圆上，红蓝两种边 */
+  function drawGraph(host, o) {
+    if (!host) return null;
+    var W = o.width || chartWidth(host);
+    var n = o.n;
+    var H = o.height || Math.round(Math.min(W, o.n <= 8 ? 420 : 520) * (o.n <= 8 ? 0.94 : 0.88));
+    var cx = W / 2, cy = H / 2 + 2;
+    var R = Math.min(W, H) / 2 - (o.margin === undefined ? 24 : o.margin);
+    var pos = [], i;
+    for (i = 0; i < n; i++) {
+      var a = -Math.PI / 2 + 2 * Math.PI * i / n;
+      pos.push([cx + R * Math.cos(a), cy + R * Math.sin(a)]);
+    }
+    var dense = n > 10;
+    var s = openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img',
+                           'data-nodes': n, 'data-edges': n * (n - 1) / 2 });
+    var u, v;
+    for (u = 0; u < n; u++) for (v = u + 1; v < n; v++) {
+      var isR = o.red(u, v);
+      var hi = o.isHot ? o.isHot(u, v) : false;
+      s += tag('line', {
+        x1: pos[u][0].toFixed(1), y1: pos[u][1].toFixed(1), x2: pos[v][0].toFixed(1), y2: pos[v][1].toFixed(1),
+        stroke: isR ? COL.red : COL.blue,
+        'stroke-width': hi ? 3.6 : (dense ? 0.7 : 1.7),
+        'stroke-opacity': hi ? 1 : (dense ? 0.30 : 0.72),
+        'stroke-linecap': 'round'
+      });
+    }
+    for (i = 0; i < n; i++) {
+      s += tag('circle', { cx: pos[i][0].toFixed(1), cy: pos[i][1].toFixed(1), r: dense ? 4.5 : 10,
+                               fill: '#ffffff', stroke: COL.ink2, 'stroke-width': 1.4, 'data-node': i });
+      if (!dense) {
+        s += tag('text', { class: 'tick', x: pos[i][0].toFixed(1), y: (pos[i][1] + 3.4).toFixed(1),
+                           'text-anchor': 'middle', 'data-nodelabel': i }, String(i));
+      }
+    }
+    if (o.clickable) {
+      for (u = 0; u < n; u++) for (v = u + 1; v < n; v++) {
+        s += tag('line', {
+          x1: pos[u][0].toFixed(1), y1: pos[u][1].toFixed(1), x2: pos[v][0].toFixed(1), y2: pos[v][1].toFixed(1),
+          stroke: 'transparent', 'stroke-width': Math.max(11, 260 / n), 'data-u': u, 'data-v': v,
+          style: 'cursor:pointer'
+        });
+      }
+    }
+    s += '</svg>';
+    host.innerHTML = s;
+    if (o.clickable && !host.__wired) {
+      host.__wired = true;
+      host.addEventListener('click', function (ev) {
+        var t = ev.target;
+        var us = t && t.getAttribute ? t.getAttribute('data-u') : null;
+        if (us === null || us === undefined) return;
+        var uu = +us, vv = +t.getAttribute('data-v');
+        if (o.onEdge) o.onEdge(uu, vv);
+      });
+    }
+    return { W: W, H: H, nodes: n };
+  }
+
+  /* ============================================================ 壹 · 六个人的饭局 */
+  var PARTY = { n: 6, col: null };
+
+  function mkCol(n) { return C.mkColoring(n); }
+
+  function listMonoTri(col) {
+    var n = col.n, out = { red: [], blue: [] };
+    for (var a = 0; a < n; a++) for (var b = a + 1; b < n; b++) for (var c = b + 1; c < n; c++) {
+      var r = C.isRed(col, a, b) ? (C.isRed(col, a, c) && C.isRed(col, b, c)) : false;
+      if (r) { out.red.push([a, b, c]); continue; }
+      var bl = (!C.isRed(col, a, b)) ? (!C.isRed(col, a, c) && !C.isRed(col, b, c)) : false;
+      if (bl) out.blue.push([a, b, c]);
+    }
+    return out;
+  }
+
+  function partyRender() {
+    var n = PARTY.n, col = PARTY.col;
+    var mono = listMonoTri(col);
+    var hot = {};
+    mono.red.concat(mono.blue).forEach(function (t) {
+      hot[t[0] + ',' + t[1]] = 1; hot[t[0] + ',' + t[2]] = 1; hot[t[1] + ',' + t[2]] = 1;
+    });
+    drawGraph($('party'), {
+      n: n, red: function (u, v) { return C.isRed(col, u, v); },
+      isHot: function (u, v) { return !!hot[u + ',' + v]; },
+      clickable: true,
+      onEdge: function (u, v) {
+        C.setRed(col, u, v, C.isRed(col, u, v) ? 0 : 1);
+        partyRender();
+      }
+    });
+    var total = mono.red.length + mono.blue.length;
+    setHTML('ro-party', '红三角形 <b>' + mono.red.length + '</b> 个，蓝三角形 <b>' + mono.blue.length +
+      '</b> 个 —— 一共 <b>' + total + '</b> 个单色三角形。');
+    setText('ro-party2', total === 0
+      ? '这一个涂法躲开了。但换个涂法还躲得开吗？'
+      : '这个涂法没躲开：单色三角形已经出现了。');
+    setText('ro-party3', '当前 n = ' + n + '，一共 ' + C.binom(n, 2) + ' 条边，' +
+      C.universeText(n) + ' 种涂法。');
+  }
+
+  function partyAvoid() {
+    var n = PARTY.n;
+    var r = C.countFreeExhaustive(n, 3, 3, { budget: 4e6 });
+    if (r.count > 0 && r.first) {
+      PARTY.col = C.cloneColoring(r.first);
+      partyRender();
+      setText('ro-party2', '找到了：K_' + n + ' 上一共有 ' + r.count +
+        ' 种涂法能躲开单色三角形，上面就是其中一个（搜完 ' + int(r.nodes) + ' 个搜索节点）。');
+    } else {
+      setText('ro-party2', '找不到 —— 穷举走完 ' + int(r.nodes) + ' 个搜索节点，' +
+        'K_' + n + ' 上躲开单色三角形的涂法有 0 个。');
+    }
+  }
+
+  function renderParty() {
+    PARTY.n = 6;
+    PARTY.col = mkCol(6);
+    for (var u = 0; u < 6; u++) for (var v = u + 1; v < 6; v++) C.setRed(PARTY.col, u, v, (u + v) % 2 ? 1 : 0);
+    partyRender();
+
+    var nr = $('n-range');
+    if (nr) nr.addEventListener('input', function () {
+      PARTY.n = +nr.value;
+      setText('n-out', PARTY.n);
+      PARTY.col = mkCol(PARTY.n);
+      for (var u = 0; u < PARTY.n; u++) for (var v = u + 1; v < PARTY.n; v++) {
+        if (Math.random() < 0.5) C.setRed(PARTY.col, u, v, 1);
+      }
+      partyRender();
+    });
+    var row = document.querySelector('#p-one .btnrow');
+    if (row) row.addEventListener('click', function (ev) {
+      var act = ev.target && ev.target.getAttribute ? ev.target.getAttribute('data-act') : null;
+      if (!act) return;
+      var n = PARTY.n, u, v;
+      if (act === 'rand') {
+        PARTY.col = mkCol(n);
+        for (u = 0; u < n; u++) for (v = u + 1; v < n; v++) if (Math.random() < 0.5) C.setRed(PARTY.col, u, v, 1);
+      } else if (act === 'clean') {
+        PARTY.col = mkCol(n);
+        for (u = 0; u < n; u++) for (v = u + 1; v < n; v++) C.setRed(PARTY.col, u, v, 1);
+      } else if (act === 'clear') {
+        PARTY.col = mkCol(n);
+      } else if (act === 'avoid') {
+        partyAvoid(); return;
+      }
+      partyRender();
+    });
+
+    // 小表：K_n 上躲开单色三角形的涂法数
+    var rows = D.e1ByCase['3,3'];
+    var html = '<thead><tr><th>n</th><th>边数</th><th>全部涂法</th><th>(3,3)-free 的涂法</th><th>占比</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      var tot = Math.pow(2, C.binom(r.n, 2));
+      html += '<tr' + (r.count === 0 ? ' class="hi"' : '') + '><td class="mono">' + r.n + '</td><td class="mono">' +
+        C.binom(r.n, 2) + '</td><td class="mono">' + C.universeText(r.n) + '</td><td class="mono">' + int(r.count) +
+        '</td><td class="mono">' + (r.count === 0 ? '0' : (r.count / tot).toExponential(2)) + '</td></tr>';
+    });
+    setHTML('t-party', html);
+    setText('ro-party4', 'K_5 上有 ' + D.e1ByCase['3,3'][3].count + ' 种涂法躲得开（正好是 12 个五边形）；' +
+      'K_6 上是 0 —— 所以 R(3,3) = 6。');
+  }
+
+  /* ============================================================ 贰 · 地面真相 */
+  function renderGround() {
+    var cases = [
+      { key: '3,3', name: '(3,3)', color: COL.red },
+      { key: '3,4', name: '(3,4)', color: COL.blue },
+      { key: '4,4', name: '(4,4)', color: COL.acc }
+    ];
+    var allN = [];
+    D.e1Rows.forEach(function (r) { if (allN.indexOf(r.n) < 0) allN.push(r.n); });
+    allN.sort(function (a, b) { return a - b; });
+    var ymax = 0;
+    D.e1Rows.forEach(function (r) { ymax = Math.max(ymax, Math.log10(1 + r.count)); });
+    var yTop = Math.ceil(ymax);
+    var yticks = [];
+    for (var k = 0; k <= yTop; k += 1) yticks.push(k);
+    chartLine('c-counts', {
+      height: 300,
+      series: cases.map(function (cs) {
+        return {
+          name: cs.name, color: cs.color, dots: true, w: 2,
+          points: D.e1ByCase[cs.key].map(function (r) { return [r.n, Math.log10(1 + r.count)]; })
+        };
+      }),
+      yRange: { lo: 0, hi: yTop, step: yTop > 6 ? 2 : 1 },
+      yLabel: function (v) { return '10^' + v; },
+      xticks: allN.map(function (n) { return { v: n, label: String(n) }; }),
+      xname: 'n（点数）', yname: 'log₁₀(1+涂法数)',
+      ml: 74, mb: 48
+    });
+
+    chartLine('c-cost', {
+      height: 300,
+      series: [
+        { name: '(3,4)', color: COL.blue, dots: true, points: D.e1ByCase['3,4'].map(function (r) { return [r.n, Math.log10(Math.max(1, r.nodes))]; }) },
+        { name: '(4,4)', color: COL.acc, dots: true, points: D.e1ByCase['4,4'].map(function (r) { return [r.n, Math.log10(Math.max(1, r.nodes))]; }) }
+      ],
+      yLabel: function (v) { return '10^' + v; },
+      xticks: allN.map(function (n) { return { v: n, label: String(n) }; }),
+      xname: 'n（点数）', yname: 'log₁₀(搜索节点数)', ml: 74, mb: 48
+    });
+
+    var html = '<thead><tr><th>(s,t)</th><th>n</th><th>还能躲开的涂法</th><th>搜索节点</th></tr></thead><tbody>';
+    D.e1Rows.forEach(function (r) {
+      html += '<tr' + (r.count === 0 ? ' class="hi"' : '') + '><td class="mono">(' + r.s + ',' + r.t + ')</td><td class="mono">' +
+        r.n + '</td><td class="mono">' + int(r.count) + '</td><td class="mono">' + int(r.nodes) + '</td></tr>';
+    });
+    setHTML('t-counts', html);
+
+    var w = D.e1.wall;
+    setText('ro-counts', '(4,4)-free 的涂法在 n=8 时还有 ' + int(D.e1ByCase['4,4'][6].count) +
+      ' 个；n=9 一上来就爆炸 —— 预算 ' + int(w.budget) + ' 个搜索节点全烧光也没数完。');
+    setText('ro-counts2', '但 R(4,4) 是多少，我们照样知道（下一节）。' +
+      '数得清和证得出是两条路：这一节走到 n=8，第三节走到 18。');
+
+    // 两个极值涂法
+    var ex34 = D.e1.examples['3,4'], ex44 = D.e1.examples['4,4'];
+    function colFromStr(str) {
+      var rows2 = str.split('/'), n = rows2.length, c = C.mkColoring(n);
+      for (var u = 0; u < n; u++) for (var v = 0; v < n; v++) if (rows2[u][v] === '1') C.setRed(c, u, v, 1);
+      return c;
+    }
+    if (ex34) {
+      var c1 = colFromStr(ex34.col);
+      drawGraph($('ex1'), { n: ex34.n, red: function (u, v) { return C.isRed(c1, u, v); }, height: 300 });
+    }
+    if (ex44) {
+      var c2 = colFromStr(ex44.col);
+      drawGraph($('ex2'), { n: ex44.n, red: function (u, v) { return C.isRed(c2, u, v); }, height: 300 });
+    }
+    var v1 = C.verifyFree(colFromStr(ex34.col), 3, 4);
+    var v2 = C.verifyFree(colFromStr(ex44.col), 4, 4);
+    setText('ro-ex', '两个例子都当场验过：K_8 那个红三角形 ' + v1.redKs + ' 个、蓝 K_4 ' + v1.blueKt +
+      ' 个；K_7 那个红 K_4 ' + v2.redKs + ' 个、蓝 K_4 ' + v2.blueKt + ' 个。');
+  }
+
+  /* ============================================================ 叁 · 递推 */
+  function renderRecurrence() {
+    var cells = D.e3Rows.filter(function (r) {
+      return ['3,3', '3,4', '3,5', '3,6', '3,7', '3,8', '3,9', '4,4', '4,5', '4,6', '5,5', '6,6'].indexOf(r.s + ',' + r.t) >= 0;
+    });
+    var xmax = cells.length - 1;
+    chartLine('c-lever', {
+      height: 320,
+      series: [
+        { name: '只用递推', color: COL.ink3, dots: true, dash: '5 4', w: 1.8,
+          points: cells.map(function (r, i) { return [i, Math.log10(r.ubNoBase)]; }) },
+        { name: '递推 + 穷举出的 R(3,4)=9', color: COL.red, dots: true, w: 2.4,
+          points: cells.map(function (r, i) { return [i, Math.log10(r.ub)]; }) },
+        { name: '文献真值（区间取低端）', color: COL.blue, dots: true, w: 2.2,
+          points: cells.map(function (r, i) {
+            var tv = r.trueValue !== null ? r.trueValue : r.lo;
+            return [i, tv === null ? NaN : Math.log10(tv)];
+          }) }
+      ],
+      yLabel: function (v) { return '10^' + v; },
+      xticks: cells.map(function (r, i) { return { v: i, label: r.s + ',' + r.t }; }),
+      xrot: true, yname: 'log₁₀(值)', ml: 74, mb: 66
+    });
+
+    var slackRows = D.e3Rows.filter(function (r) { return r.slack !== null; });
+    var maxSlack = slackRows.reduce(function (m, r) { return Math.max(m, r.slack); }, 1);
+    hbars('c-slack', {
+      rowH: 26,
+      labelW: 78, valW: 76,
+      max: Math.log10(1 + maxSlack),
+      rows: slackRows.map(function (r) {
+        var v = Math.log10(1 + r.slack);
+        return {
+          label: '(' + r.s + ',' + r.t + ')',
+          value: v,
+          note: (r.slackKind === 'exact' ? '' : '≥') + r.slack,
+          color: r.slack === 0 ? COL.ok : COL.acc,
+          dim: r.slackKind !== 'exact'
+        };
+      })
+    });
+
+    var html = '<thead><tr><th>(s,t)</th><th>递推上界</th><th>只用自带底座</th><th>文献真值</th><th>落差</th><th>证明树叶子</th></tr></thead><tbody>';
+    D.e3Rows.forEach(function (r) {
+      var tv = r.trueValue !== null ? String(r.trueValue) : '[' + r.lo + ', ' + r.hi + ']';
+      var sl = r.slackKind === 'exact' ? String(r.slack) : '≥ ' + r.slack;
+      html += '<tr' + (r.slack === 0 ? ' class="hi"' : '') + '><td class="mono">(' + r.s + ',' + r.t + ')</td><td class="mono">' +
+        r.ub + '</td><td class="mono">' + r.ubNoBase + '</td><td class="mono">' + tv + '</td><td class="mono' +
+        (r.slack === 0 ? ' ok' : '') + '">' + sl + '</td><td class="mono">' + r.leaves + '</td></tr>';
+    });
+    setHTML('t-ub', html);
+
+    var lv = D.leverage.filter(function (x) { return x.gain > 0; });
+    var lhtml = '<thead><tr><th>(s,t)</th><th>只用递推</th><th>递推 + R(3,4)=9</th><th>省下</th></tr></thead><tbody>';
+    lv.forEach(function (x) {
+      lhtml += '<tr><td class="mono">(' + x.s + ',' + x.t + ')</td><td class="mono">' + x.noBase +
+        '</td><td class="mono">' + x.withBase + '</td><td class="mono ok">' + x.gain + '</td></tr>';
+    });
+    setHTML('t-lever', lhtml);
+
+    var dhtml = '<thead><tr><th>(s,t)</th><th>R(s−1,t)</th><th>R(s,t−1)</th><th>两者之和</th><th>真值 R(s,t)</th><th>本地节省 δ</th></tr></thead><tbody>';
+    D.delta.forEach(function (d) {
+      dhtml += '<tr><td class="mono">(' + d.s + ',' + d.t + ')</td><td class="mono">' + d.r1 + '</td><td class="mono">' +
+        d.r2 + '</td><td class="mono">' + (d.r1 + d.r2) + '</td><td class="mono">' + d.r + '</td><td class="mono">' +
+        d.delta + '</td></tr>';
+    });
+    setHTML('t-delta', dhtml);
+
+    var r44 = D.e3Rows.filter(function (r) { return r.s === 4 && r.t === 4; })[0];
+    var r55 = D.e3Rows.filter(function (r) { return r.s === 5 && r.t === 5; })[0];
+    setText('ro-lever', 'R(4,4) 的证明树只有 ' + r44.leaves + ' 个叶子；R(5,5) 也只有 ' + r55.leaves +
+      ' 个。这就是「四行论证」的字面意思：树很小，但结论覆盖了 10^46 个涂法。');
+    setText('ro-slack', '落差为 0 的格子恰好是那些被穷举或构造钉死的格子；' +
+      '一旦离开它们，落差立刻开始涨 —— 到 (6,6) 已经是 ' + D.e3Rows.filter(function (r) { return r.s === 6 && r.t === 6; })[0].slack + '。');
+    setText('ro-delta', '本地节省 δ 大部分是 0 到 3，只有 (4,5) 是 7。' +
+      '这说明「递推的白送上界」在绝大多数格子上已经够紧，紧不下来的地方正是难的地方。');
+  }
+
+  /* ============================================================ 肆 · 杠杆 */
+  var DEMO = { col: null, res: null };
+
+  function renderLever() {
+    var rows = D.e4.slice().sort(function (a, b) { return a.n - b.n; });
+    // n 跨 6..854，线性横轴会把小 n 全挤在左边 —— 横轴取 log10
+    var xt = rows.map(function (r) { return { v: Math.log10(r.n), label: String(r.n) }; });
+    chartLine('c-inspect', {
+      height: 320,
+      series: [
+        { name: '抽取器平均检查次数', color: COL.red, dots: true, w: 2.2,
+          points: rows.map(function (r) { return [Math.log10(r.n), r.meanInspect]; }) },
+        { name: '2n（参考线）', color: COL.ink3, dash: '5 4', w: 1.6,
+          points: rows.map(function (r) { return [Math.log10(r.n), 2 * r.n]; }) }
+      ],
+      xticks: xt, xname: 'log₁₀ n（点数）', yname: '检查次数', ml: 74, mb: 50
+    });
+    chartLine('c-universe', {
+      height: 320,
+      series: [
+        { name: 'log10(涂法数)', color: COL.blue, dots: true, w: 2.2,
+          points: rows.map(function (r) { return [Math.log10(r.n), r.universeLog10]; }) },
+        { name: 'log10(检查次数)', color: COL.red, dots: true, w: 2.2,
+          points: rows.map(function (r) { return [Math.log10(r.n), Math.log10(r.meanInspect)]; }) }
+      ],
+      xticks: xt, xname: 'log₁₀ n（点数）', yname: 'log₁₀', ml: 74, mb: 50
+    });
+
+    var html = '<thead><tr><th>(s,t)</th><th>n</th><th>平均检查</th><th>最多</th><th>次/顶点</th><th>涂法数的 log10</th><th>红方占比</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      html += '<tr><td class="mono">(' + r.s + ',' + r.t + ')</td><td class="mono">' + r.n +
+        '</td><td class="mono">' + num(r.meanInspect, 1) + '</td><td class="mono">' + r.maxInspect +
+        '</td><td class="mono">' + num(r.perVertex, 2) + '</td><td class="mono">' + num(r.universeLog10, 1) +
+        '</td><td class="mono">' + pct(r.redShare, 0) + '</td></tr>';
+    });
+    setHTML('t-inspect', html);
+
+    var a = D.e4.filter(function (x) { return x.n === 18; })[0];
+    var b = D.e4.filter(function (x) { return x.n === 854; })[0];
+    setText('ro-inspect', 'K_18 上平均只检查 ' + num(a.meanInspect, 1) + ' 次（' + num(a.perVertex, 2) +
+      ' 次/顶点）；K_854 上是 ' + int(b.meanInspect) + ' 次（' + num(b.perVertex, 2) + ' 次/顶点）。' +
+      '「次/顶点」几乎不变 —— 这就是线性。');
+    setText('ro-inspect2', '同一批点，涂法数从 10^' + a.universeLog10.toFixed(1) + ' 涨到 10^' +
+      b.universeLog10.toFixed(0) + '。检查次数涨了 ' + num(b.meanInspect / a.meanInspect, 1) +
+      ' 倍，宇宙涨了 10^' + (b.universeLog10 - a.universeLog10).toFixed(0) + ' 倍。');
+
+    if (DEMO.col) demoPaint(); else demoDraw(20261002);
+    var dr = document.querySelector('#p-four .btnrow');
+    if (dr) dr.addEventListener('click', function (ev) {
+      var act = ev.target && ev.target.getAttribute ? ev.target.getAttribute('data-act') : null;
+      if (act === 'draw') demoDraw(Math.floor(Math.random() * 1e9));
+      else if (act === 'run') demoRun();
+    });
+  }
+
+  function demoDraw(seed) {
+    var rng = C.splitmix32(seed | 0);
+    DEMO.col = C.randomColoring(18, rng);
+    DEMO.res = null;
+    demoPaint();
+    setText('ro-demo', '这是 K_18 的一个随机涂色（153 条边）。点「让证明找一遍」。');
+    setText('ro-demo2', '');
+  }
+  function demoPaint() {
+    var hot = {};
+    if (DEMO.res && DEMO.res.verts) {
+      var vs = DEMO.res.verts;
+      for (var i = 0; i < vs.length; i++) for (var j = i + 1; j < vs.length; j++) {
+        hot[Math.min(vs[i], vs[j]) + ',' + Math.max(vs[i], vs[j])] = 1;
+      }
+    }
+    drawGraph($('demo'), {
+      n: 18, red: function (u, v) { return C.isRed(DEMO.col, u, v); },
+      isHot: function (u, v) { return !!hot[u + ',' + v]; }
+    });
+  }
+  function demoRun() {
+    if (!DEMO.col) demoDraw(1);
+    var UB = C.ramseyUBTable(9, 9, { '3,3': 6, '3,4': 9 }).ub;
+    var r;
+    try { r = C.extractMonoClique(DEMO.col, 4, 4, UB); }
+    catch (e) { setText('ro-demo', '抽取器报错：' + e.message); return; }
+    DEMO.res = r;
+    demoPaint();
+    var ins = r.insp.edges + r.insp.verts + r.insp.subsets;
+    setText('ro-demo', '找到了：一个' + (r.kind === 'red' ? '红' : '蓝') + ' K_4 = {' +
+      r.verts.join(', ') + '}。检查了 ' + ins + ' 次（边 ' + r.insp.edges + ' · 顶点 ' + r.insp.verts +
+      ' · 子集 ' + r.insp.subsets + '），递归深度 ' + r.insp.depth + '。');
+    var tot = C.universeLog10(18);
+    setText('ro-demo2', '同一件事如果靠枚举：K_18 有 ' + C.universeText(18) + ' 个涂法。' +
+      '证明花了 ' + ins + ' 次检查 —— 差了 ' + num(tot - Math.log10(ins), 1) + ' 个数量级。');
+  }
+
+  /* ============================================================ 伍 · 下界 */
+  function renderLower() {
+    var cir = D.circulant;
+    hbars('c-hits', {
+      rowH: 30, labelW: 100, valW: 108,
+      max: Math.max(1, Math.max.apply(null, cir.map(function (x) { return x.hits; }))),
+      rows: cir.map(function (x) {
+        return {
+          label: '(' + x.s + ',' + x.t + ')@' + x.n,
+          value: x.hits,
+          note: x.hits + ' / ' + x.total,
+          color: x.hits > 0 ? COL.red : COL.ink3,
+          dim: x.hits === 0
+        };
+      })
+    });
+    var loc = D.local;
+    var maxF = Math.max.apply(null, loc.map(function (x) { return x.flips; }));
+    hbars('c-search', {
+      rowH: 30, labelW: 100, valW: 116,
+      max: Math.log10(1 + maxF),
+      rows: loc.map(function (x) {
+        return {
+          label: '(' + x.s + ',' + x.t + ')@' + x.n,
+          value: Math.log10(1 + x.flips),
+          note: x.found ? '找到 · ' + int(x.flips) + ' 次' : '没找到 · 剩 ' + x.best,
+          color: x.found ? COL.ok : COL.acc
+        };
+      })
+    });
+
+    var html = '<thead><tr><th>(s,t)@n</th><th>候选数</th><th>找到的解</th><th>独立复核</th><th>检查次数</th><th>解的差集</th></tr></thead><tbody>';
+    cir.forEach(function (x) {
+      var sets = x.sets.slice(0, 3).map(function (h) { return '{' + h.set.join(',') + '}'; }).join(' ');
+      if (x.sets.length > 3) sets += ' …';
+      html += '<tr' + (x.hits === 0 ? ' class="hi"' : '') + '><td class="mono">(' + x.s + ',' + x.t + ')@' + x.n +
+        '</td><td class="mono">' + x.total + '</td><td class="mono' + (x.hits > 0 ? ' ok' : ' bad') + '">' + x.hits +
+        '</td><td class="mono">' + x.verified + '</td><td class="mono">' + int(x.work) + '</td><td class="mono">' +
+        (sets || '—') + '</td></tr>';
+    });
+    setHTML('t-circulant', html);
+
+    var lh = '<thead><tr><th>(s,t)@n</th><th>重启次数</th><th>翻转上限</th><th>实际翻转</th><th>结果</th><th>独立复核</th></tr></thead><tbody>';
+    loc.forEach(function (x) {
+      lh += '<tr><td class="mono">(' + x.s + ',' + x.t + ')@' + x.n + '</td><td class="mono">' + x.restarts +
+        '</td><td class="mono">' + int(x.flipsCap) + '</td><td class="mono">' + int(x.flips) + '</td><td class="mono' +
+        (x.found ? ' ok' : ' bad') + '">' + (x.found ? '找到' : '没找到（剩 ' + x.best + '）') +
+        '</td><td class="mono">' + (x.found ? (x.verified ? '通过' : '失败') : '—') + '</td></tr>';
+    });
+    setHTML('t-local', lh);
+
+    // Paley 图
+    var p = D.paley;
+    var rows2 = p.col.split('/');
+    var pc = C.mkColoring(p.n);
+    for (var u = 0; u < p.n; u++) for (var v = 0; v < p.n; v++) if (rows2[u][v] === '1') C.setRed(pc, u, v, 1);
+    drawGraph($('paley'), {
+      n: p.n, red: function (u, v) { return C.isRed(pc, u, v); }, height: 420, margin: 26
+    });
+    setText('ro-paley', '差集 {' + p.set.join(', ') + '} —— 模 17 的二次剩余是 {' + p.qr.join(', ') + '}。' +
+      '逐个子集扫过 C(17,4) = ' + int(p.subsets) + ' 个四元组：红 K_4 ' + p.redK4 + ' 个、蓝 K_4 ' + p.blueK4 + ' 个。');
+
+    setText('ro-hits', '循环图家族在四个案子上给出了解，在五个案子上一个都没有。' +
+      '「有解」= 下界直接到手；「没解」= 这个家族不管用，得换方法。');
+    setText('ro-search', '通用局部搜索把循环图搞不定的 (3,6)@17 拿下了（' +
+      int(D.local.filter(function (x) { return x.n === 17; })[0].flips) + ' 次翻转）；' +
+      '但再往上，它也在 (3,7)@22、(4,5)@24、(5,5)@42 上停住了 —— 而那三个反例图是存在的。');
+    setText('ro-local', '本表的「没找到」只说明这个爬山法在这点预算内没找到，' +
+      '不能说明反例不存在 —— 文献里这三个都是已知构造。');
+  }
+
+  /* ============================================================ 陆 · Goodman */
+  function renderGoodman() {
+    var rTicks = [5, 10, 20, 50, 100, 500, 5000].map(function (v) {
+      return { v: Math.log10(v), label: String(v) };
+    });
+    chartLine('c-goodman-ratio', {
+      height: 320,
+      series: [{ name: '最小值/总数', color: COL.red, dots: true, w: 2.2,
+                 points: D.e2Formula.map(function (x) { return [Math.log10(x.n), x.ratio]; }) }],
+      extras: [{ y: 0.25, color: COL.ink3, label: '1/4' }],
+      xticks: rTicks, xname: 'log₁₀ n', yname: 'M(n) / C(n,3)', ml: 74, mb: 50
+    });
+    chartLine('c-goodman-min', {
+      height: 300,
+      series: [
+        { name: 'M(n)', color: COL.blue, dots: true, w: 2.2,
+          points: D.e2Formula.map(function (x) { return [Math.log10(x.n), Math.log10(Math.max(1, x.min))]; }) },
+        { name: 'n³/24', color: COL.ink3, dash: '5 4', w: 1.6,
+          points: D.e2Formula.map(function (x) { return [Math.log10(x.n), Math.log10(Math.max(1, x.n * x.n * x.n / 24))]; }) }
+      ],
+      xname: 'log₁₀ n', yname: 'log₁₀ M(n)', ml: 68, mb: 44
+    });
+
+    var html = '<thead><tr><th>n</th><th>穷举最小值</th><th>公式值</th><th>一致</th><th>扫过的涂法数</th><th>极值着色的红度序列</th></tr></thead><tbody>';
+    D.e2Brute.forEach(function (b) {
+      html += '<tr><td class="mono">' + b.n + '</td><td class="mono">' + b.min + '</td><td class="mono">' + b.formula +
+        '</td><td class="mono' + (b.ok ? ' ok' : ' bad') + '">' + (b.ok ? '✓' : '✗') + '</td><td class="mono">' +
+        int(b.colorings) + '</td><td class="mono">' + b.deg.join(',') + '</td></tr>';
+    });
+    setHTML('t-goodman', html);
+
+    setText('ro-goodman', '比例单调爬向 1/4：n=6 是 ' + pct(D.ratioAt[6], 1) + '，n=50 是 ' +
+      pct(D.ratioAt[50], 2) + '，n=5000 是 ' + pct(D.ratioAt[5000], 3) + '（离 1/4 还差 ' +
+      num(D.ratioLimitGap * 1e4, 2) + ' 个万分点）。收敛是 O(1/n)，很慢。');
+    setText('ro-goodman2', '穷举到 n=8 为止（' + int(D.e2Brute[5].colorings) + ' 个涂法）；' +
+      'n=9 要 ' + C.universeText(9) + ' 个，做不动了。但公式在 n=3..80 上给出的下界全部被显式构造顶到 —— ' +
+      '这不是「拟合」，是可达性。');
+  }
+
+  /* ============================================================ 柒 · 账本 */
+  function renderLedger() {
+    var uh = '<thead><tr><th>n</th><th>边数 C(n,2)</th><th>涂法总数</th></tr></thead><tbody>';
+    D.universe.forEach(function (u) {
+      uh += '<tr><td class="mono">' + u.n + '</td><td class="mono">' + int(u.pairs) + '</td><td class="mono">' +
+        u.text + '</td></tr>';
+    });
+    setHTML('t-universe', uh);
+
+    var ch = '<thead><tr><th>结果</th><th>怎么得到的</th><th>代价</th></tr></thead><tbody>';
+    D.costTable.forEach(function (c) {
+      ch += '<tr><td>' + esc(c.what) + '</td><td>' + esc(c.how) + '</td><td>' + esc(c.detail) + '</td></tr>';
+    });
+    setHTML('t-cost', ch);
+
+    var ol = '';
+    A.conclusions.forEach(function (s) { ol += '<li>' + md(s) + '</li>'; });
+    setHTML('l-concl', ol);
+    var ul = '';
+    A.boundaries.forEach(function (s) { ul += '<li>' + md(s) + '</li>'; });
+    setHTML('l-bound', ul);
+    var vh = '<thead><tr><th>检查项</th><th>怎么查的</th><th>结果</th></tr></thead><tbody>';
+    A.verify.forEach(function (v) {
+      vh += '<tr><td>' + esc(v.check) + '</td><td>' + esc(v.method) + '</td><td class="' +
+        (v.ok ? 'ok' : 'bad') + '">' + esc(v.result) + '</td></tr>';
+    });
+    setHTML('t-verify', vh);
+  }
+
+  /* ============================================================ KPI / 页脚 */
+  function renderKPI() {
+    var h = '';
+    A.kpi.forEach(function (k) {
+      h += '<div class="kpi"><span class="kl">' + esc(k.label) + '</span><span class="kv">' + esc(k.value) +
+        '</span><span class="kn">' + esc(k.note) + '</span></div>';
+    });
+    setHTML('kpis', h);
+    setText('foot-line', '无序不可能 · 拉姆齐数：从 R(3,3)=6 到 R(5,5) ∈ [43,46] · ' +
+      '本页从零确定了 R(3,3)、R(3,4)、R(3,5)、R(4,4) 四个数');
+  }
+
+  /* ============================================================ 标签页 */
+  var TABS = [
+    { id: 'p-one', name: '壹 · 六个人的饭局' },
+    { id: 'p-two', name: '贰 · 地面真相' },
+    { id: 'p-three', name: '叁 · 四行论证' },
+    { id: 'p-four', name: '肆 · 证明的代价' },
+    { id: 'p-five', name: '伍 · 下界' },
+    { id: 'p-six', name: '陆 · Goodman' },
+    { id: 'p-seven', name: '柒 · 账本与边界' }
+  ];
+  var REDRAW = {
+    /* p-one 第一次要先建状态（renderParty 建 PARTY.col 并挂事件），之后只重画 */
+    'p-one': function () { if (PARTY.col) partyRender(); else renderParty(); },
+    'p-two': function () { renderGround(); },
+    'p-three': function () { renderRecurrence(); },
+    'p-four': function () { renderLever(); },
+    'p-five': function () { renderLower(); },
+    'p-six': function () { renderGoodman(); },
+    'p-seven': function () { renderLedger(); }
+  };
+  var RENDERED = {};
+
+  function setTab(id) {
+    TABS.forEach(function (t) {
+      var p = $(t.id);
+      if (p) p.className = 'panel' + (t.id === id ? ' on' : '');
+    });
+    var nav = $('tabs');
+    if (nav) {
+      Array.prototype.forEach.call(nav.querySelectorAll('button'), function (b) {
+        b.setAttribute('aria-selected', b.getAttribute('data-tab') === id ? 'true' : 'false');
+      });
+    }
+    // 面板可见之后再用真实宽度重画（幂等）
+    if (REDRAW[id]) { RENDERED[id] = true; REDRAW[id](); }
+  }
+
+  function boot() {
+    renderKPI();
+    var nav = $('tabs');
+    if (nav) {
+      var h = '';
+      TABS.forEach(function (t) {
+        h += tag('button', { type: 'button', 'data-tab': t.id, role: 'tab', 'aria-selected': 'false' }, t.name);
+      });
+      nav.innerHTML = h;
+      nav.addEventListener('click', function (ev) {
+        var id = ev.target && ev.target.getAttribute ? ev.target.getAttribute('data-tab') : null;
+        if (id) setTab(id);
+      });
+    }
+    setTab('p-one');
+    var pending = false;
+    window.addEventListener('resize', function () {
+      if (pending) return;
+      pending = true;
+      setTimeout(function () {
+        pending = false;
+        TABS.forEach(function (t) {
+          if ($(t.id) && $(t.id).className.indexOf('on') >= 0 && REDRAW[t.id]) REDRAW[t.id]();
+        });
+      }, 120);
+    });
+  }
+
+  /* ============================================================ 探针 */
+  window.__probe = {
+    version: '1.0.0',
+    ready: function () { return !!(A && A.kpi && A.kpi.length); },
+    viewport: function () { return { w: window.innerWidth, h: window.innerHeight }; },
+    tabIds: function () { return TABS.map(function (t) { return t.id; }); },
+    touch: function () {
+      return { coarse: !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches),
+               maxTouchPoints: navigator.maxTouchPoints || 0 };
+    },
+    /* 数字表不许折行：用 Range 逐格量它实际占了几行 */
+    wrapScan: function () {
+      var bad = [], n = 0;
+      Array.prototype.forEach.call(document.querySelectorAll('table.dt td.mono'), function (td) {
+        if (td.offsetParent === null) return;
+        n++;
+        var r = document.createRange();
+        r.selectNodeContents(td);
+        var rects = r.getClientRects(), lines = 0, prevTop = null;
+        for (var i = 0; i < rects.length; i++) {
+          if (rects[i].width < 0.5) continue;
+          if (prevTop === null || Math.abs(rects[i].top - prevTop) > 3) { lines++; prevTop = rects[i].top; }
+        }
+        if (lines > 1) bad.push((td.textContent || '').slice(0, 18));
+      });
+      return { ok: bad.length === 0, n: n, bad: bad.slice(0, 8) };
+    },
+    setTab: function (id) { setTab(id); return id; },
+    tabs: function () {
+      var nav = $('tabs');
+      if (!nav) return null;
+      return Array.prototype.map.call(nav.querySelectorAll('button'), function (b) {
+        return { id: b.getAttribute('data-tab'), text: b.textContent, sel: b.getAttribute('aria-selected') };
+      });
+    },
+    /* 逐按钮量右边界：标签栏不算滚动容器，必须真的看得见 */
+    tabsFit: function () {
+      var nav = $('tabs');
+      if (!nav) return { ok: false, n: 0, bad: [] };
+      var nr = nav.getBoundingClientRect(), bad = [], n = 0;
+      Array.prototype.forEach.call(nav.querySelectorAll('button'), function (b) {
+        n++;
+        var r = b.getBoundingClientRect();
+        if (r.right > nr.right + 0.6 || r.left < nr.left - 0.6 || r.width < 1) {
+          bad.push(b.getAttribute('data-tab'));
+        }
+      });
+      return { ok: bad.length === 0, n: n, bad: bad };
+    },
+    /* 文档级 + 滚动容器级溢出，两个口径分开查 */
+    overflow: function () {
+      var doc = { scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth };
+      var bad = [];
+      Array.prototype.forEach.call(document.querySelectorAll('.tbl-wrap, .chart, .bench, .grid2, .panel'), function (el) {
+        if (el.clientWidth < 2) return;
+        if (el.scrollWidth > el.clientWidth + 1 && el.className.indexOf('tbl-wrap') < 0) {
+          bad.push((el.id || el.className) + ':' + el.scrollWidth + '>' + el.clientWidth);
+        }
+      });
+      return { doc: doc, ok: doc.scroll <= doc.client + 1, bad: bad };
+    },
+    /* .chart 里只许有 svg，不许有别的直接子元素 */
+    stray: function () {
+      var bad = [];
+      Array.prototype.forEach.call(document.querySelectorAll('.chart'), function (c) {
+        Array.prototype.forEach.call(c.children, function (nd) {
+          if (nd.tagName.toLowerCase() !== 'svg') bad.push(c.id + ':' + nd.tagName);
+        });
+      });
+      return { ok: bad.length === 0, bad: bad };
+    },
+    /* 刻度文字里不许出现 NaN / Infinity / undefined */
+    nanTicks: function () {
+      var bad = [];
+      Array.prototype.forEach.call(document.querySelectorAll('.chart svg text'), function (t) {
+        if (/NaN|Infinity|undefined/.test(t.textContent || '')) bad.push(t.textContent);
+      });
+      return { ok: bad.length === 0, bad: bad };
+    },
+    /* 任何 <text> 都不许溢出它所在的 <svg> */
+    textFit: function () {
+      var bad = [];
+      Array.prototype.forEach.call(document.querySelectorAll('.chart svg'), function (sv) {
+        var box = sv.getBoundingClientRect();
+        if (box.width < 2) return;
+        Array.prototype.forEach.call(sv.querySelectorAll('text'), function (t) {
+          var r = t.getBoundingClientRect();
+          if (r.width < 0.5) return;
+          if (r.left < box.left - 2 || r.right > box.right + 2) {
+            bad.push((sv.parentNode.id || '?') + ':' + (t.textContent || '').slice(0, 14));
+          }
+        });
+      });
+      return { ok: bad.length === 0, bad: bad };
+    },
+    /* 刻度文字互相压住 —— 「存在但看不见」的又一变体：不溢出 SVG，但两两叠在一起 */
+    tickOverlap: function () {
+      var bad = [];
+      Array.prototype.forEach.call(document.querySelectorAll('.chart'), function (c) {
+        var sv = c.querySelector('svg');
+        if (!sv) return;
+        var box = sv.getBoundingClientRect();
+        if (box.width < 2) return;
+        var rs = [];
+        Array.prototype.forEach.call(sv.querySelectorAll('text.tick'), function (t) {
+          var r = t.getBoundingClientRect();
+          if (r.width > 0.5 && r.height > 0.5) rs.push({ r: r, s: (t.textContent || '').slice(0, 10) });
+        });
+        for (var i = 0; i < rs.length; i++) for (var j = i + 1; j < rs.length; j++) {
+          var a = rs[i].r, b = rs[j].r;
+          var ow = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+          var oh = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          if (ow > 1.5 && oh > 1.5) bad.push((c.id || '?') + ':' + rs[i].s + '/' + rs[j].s);
+        }
+      });
+      return { ok: bad.length === 0, bad: bad.slice(0, 8) };
+    },
+    /* 每张图：宽度必须等于容器宽度，且有真内容 */
+    charts: function () {
+      var out = [];
+      Array.prototype.forEach.call(document.querySelectorAll('.chart'), function (c) {
+        var sv = c.querySelector('svg');
+        if (!sv) { out.push({ id: c.id, ok: false, why: 'no-svg' }); return; }
+        var cr = c.getBoundingClientRect(), sr = sv.getBoundingClientRect();
+        out.push({
+          id: c.id, ok: sr.width > 120 && sr.width <= cr.width + 2.5,
+          hostW: Math.round(cr.width), svgW: Math.round(sr.width),
+          texts: sv.querySelectorAll('text').length
+        });
+      });
+      return out;
+    },
+    /* 条形图：逐条量 rect 的真实像素宽（行内元素会忽略 width） */
+    bars: function () {
+      var out = [];
+      Array.prototype.forEach.call(document.querySelectorAll('.chart svg rect[data-bar]'), function (r) {
+        var p = r, hidden = false;
+        while (p && p !== document.body) {
+          if (p.className && String(p.className).indexOf('panel') >= 0 &&
+              (' ' + String(p.className) + ' ').indexOf(' on ') < 0) { hidden = true; break; }
+          p = p.parentNode;
+        }
+        if (hidden) return;                       // 隐藏面板里的柱子不该参与断言
+        var bb = 0;
+        try { bb = r.getBBox().width; } catch (e) { bb = -1; }   // SVG 用户单位，比 clientRect 可靠
+        out.push({ label: r.getAttribute('data-bar'),
+                   bbox: Math.round(bb * 1000) / 1000,
+                   want: parseFloat(r.getAttribute('data-want')),
+                   w: Math.round(r.getBoundingClientRect().width * 100) / 100 });
+      });
+      return out;
+    },
+    /* 图（圆上摆点的那种）：报节点数与边数 —— 密集图没有文字标签，只能量结构 */
+    graphs: function () {
+      var out = [];
+      Array.prototype.forEach.call(document.querySelectorAll('.chart svg[data-nodes]'), function (sv) {
+        out.push({ id: sv.parentNode.id, nodes: +sv.getAttribute('data-nodes'),
+                   edges: +sv.getAttribute('data-edges'),
+                   lines: sv.querySelectorAll('line').length,
+                   circles: sv.querySelectorAll('circle').length });
+      });
+      return out;
+    },
+    counts: function () {
+      function rows(id) { var t = $(id); return t ? t.querySelectorAll('tbody tr').length : -1; }
+      return {
+        kpi: document.querySelectorAll('#kpis .kpi').length,
+        concl: document.querySelectorAll('#l-concl li').length,
+        bound: document.querySelectorAll('#l-bound li').length,
+        verify: rows('t-verify'),
+        party: rows('t-party'), counts: rows('t-counts'), ub: rows('t-ub'),
+        lever: rows('t-lever'), delta: rows('t-delta'), inspect: rows('t-inspect'),
+        circulant: rows('t-circulant'), local: rows('t-local'), goodman: rows('t-goodman'),
+        universe: rows('t-universe'), cost: rows('t-cost')
+      };
+    },
+    /* ---- 确定性驱动接口 ---- */
+    partySet: function (n, seed) {
+      PARTY.n = n;
+      var rng = C.splitmix32(seed | 0);
+      PARTY.col = C.randomColoring(n, rng);
+      var nr = $('n-range');
+      if (nr) { nr.value = String(n); }
+      setText('n-out', n);
+      partyRender();
+      return this.partyState();
+    },
+    partyToggle: function (u, v) {
+      C.setRed(PARTY.col, u, v, C.isRed(PARTY.col, u, v) ? 0 : 1);
+      partyRender();
+      return this.partyState();
+    },
+    partyAvoid: function () { partyAvoid(); return this.partyState(); },
+    partyState: function () {
+      var mono = listMonoTri(PARTY.col);
+      var e1 = $('ro-party'), e2 = $('ro-party2');
+      return { n: PARTY.n, red: mono.red.length, blue: mono.blue.length,
+               total: mono.red.length + mono.blue.length,
+               ro: e1 ? e1.textContent : '', ro2: e2 ? e2.textContent : '' };
+    },
+    demoDraw: function (seed) { demoDraw(seed); return { n: 18 }; },
+    demoRun: function () {
+      demoRun();
+      var r = DEMO.res;
+      if (!r) return null;
+      var ok = true, kk = 4;
+      for (var i = 0; i < kk && ok; i++) for (var j = i + 1; j < kk; j++) {
+        if (C.isRed(DEMO.col, r.verts[i], r.verts[j]) !== (r.kind === 'red')) { ok = false; break; }
+      }
+      return { kind: r.kind, verts: r.verts.slice(), inspections: r.insp.edges + r.insp.verts + r.insp.subsets,
+               mono: ok, ro: $('ro-demo').textContent };
+    },
+    /* 直接问模型要一个数（用于断言页面上的数字和 analysis.json 一致） */
+    core: function () {
+      return {
+        r33: C.countFreeExhaustive(5, 3, 3).count,
+        r34: C.countFreeExhaustive(9, 3, 4).count,
+        goodman6: C.goodmanMin(6),
+        ub44: C.ramseyUBTable(9, 9, { '3,3': 6, '3,4': 9 }).ub[4][4],
+        ub55: C.ramseyUBTable(9, 9, { '3,3': 6, '3,4': 9 }).ub[5][5],
+        universe18: C.universeText(18)
+      };
+    },
+    texts: function () {
+      var out = [];
+      Array.prototype.forEach.call(document.querySelectorAll('.ro, .kpi .kv, .foot p'), function (e) {
+        var p = e, hidden = false;
+        while (p && p !== document.body) {
+          if (p.className && String(p.className).indexOf('panel') >= 0 &&
+              (' ' + String(p.className) + ' ').indexOf(' on ') < 0) { hidden = true; break; }
+          p = p.parentNode;
+        }
+        if (!hidden) out.push(e.textContent || '');
+      });
+      return out;
+    },
+    /* 页面上不许把 markdown 或标签原样印出来 */
+    htmlLeaks: function () {
+      var bad = [];
+      Array.prototype.forEach.call(document.querySelectorAll('.ro, .kpi .kn, .concl li, .bound li, table.dt td'), function (e) {
+        var t = e.textContent || '';
+        if (/\*\*/.test(t) || /<b>|<\/b>|<code>|<\/code>/.test(t)) bad.push(t.slice(0, 40));
+      });
+      return { ok: bad.length === 0, bad: bad };
+    }
+  };
+
+  function safeBoot() {
+    try { boot(); window.__ready = true; }
+    catch (e) { window.__ready = false; window.__bootError = String((e && e.message) || e); window.__bootStack = String((e && e.stack) || ''); }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', safeBoot);
+  else safeBoot();
+})();
+</script>
+</body>
+</html>

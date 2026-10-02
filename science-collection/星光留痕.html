@@ -1,0 +1,1328 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#193d3d">
+<meta name="description" content="改变恒星温度、视向速度、元素吸收线与仪器分辨率，在一张离线谱图里读出几类线索。">
+<title>星光留痕 · 恒星光谱实验札记</title>
+<style>
+:root {
+  color-scheme: light;
+  --paper: #f3efe5;
+  --paper-deep: #e8e1d3;
+  --card: #fbf9f2;
+  --ink: #26332f;
+  --ink-soft: #515d56;
+  --muted: #62685f;
+  --line: #d7d0c1;
+  --teal: #527b7c;
+  --teal-deep: #193d3d;
+  --teal-dark: #122d30;
+  --rust: #b64b31;
+  --rust-pale: #f0ded2;
+  --acid: #d8df6c;
+  --amber: #bd8b48;
+  --serif: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", Georgia, serif;
+  --sans: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  --mono: "Cascadia Code", Consolas, "SFMono-Regular", monospace;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 22px; }
+body {
+  min-width: 320px;
+  margin: 0;
+  color: var(--ink);
+  background: radial-gradient(ellipse at 76% 0%, rgba(255, 253, 247, .94), transparent 32rem), linear-gradient(180deg, #f7f3ea 0%, var(--paper) 48%, #eee8dc 100%);
+  font: 14px/1.75 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible, canvas:focus-visible { outline: 3px solid var(--acid); outline-offset: 3px; }
+::selection { color: var(--teal-dark); background: #e0e782; }
+[hidden] { display: none !important; }
+
+.skip-link { position: fixed; z-index: 20; top: 8px; left: 8px; padding: 8px 12px; color: var(--teal-dark); background: var(--acid); transform: translateY(-150%); }
+.skip-link:focus { transform: translateY(0); }
+.site-header { max-width: 1320px; min-height: 76px; display: flex; align-items: center; gap: 22px; margin: auto; padding: 12px 38px; border-bottom: 1px solid rgba(41, 56, 49, .15); }
+.wordmark { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; }
+.brand-mark { width: 39px; height: 39px; display: grid; place-items: center; border: 1px solid var(--ink); color: var(--rust); font: 21px var(--serif); }
+.wordmark-copy { display: flex; flex-direction: column; line-height: 1.35; }
+.wordmark-copy strong { font: 600 14px var(--serif); letter-spacing: .04em; }
+.wordmark-copy small { margin-top: 3px; color: var(--muted); font-size: 8px; letter-spacing: .08em; }
+.site-nav { display: flex; align-items: center; gap: clamp(16px, 3vw, 37px); margin-left: auto; }
+.site-nav a { padding: 7px 0; color: var(--ink-soft); font-size: 9px; text-decoration: none; }
+.site-nav a:hover { color: var(--rust); }
+.header-index { color: var(--muted); font: 8px var(--mono); letter-spacing: .09em; white-space: nowrap; }
+.page-shell { max-width: 1280px; margin: auto; padding: 0 38px; }
+
+.hero { min-height: 488px; display: grid; grid-template-columns: minmax(0, .92fr) minmax(390px, 1.08fr); gap: clamp(32px, 7vw, 92px); align-items: center; padding: 55px 0 61px; border-bottom: 1px solid var(--line); }
+.hero-copy { min-width: 0; }
+.eyebrow { display: flex; align-items: center; gap: 9px; margin: 0 0 17px; color: var(--rust); font: 8px var(--mono); letter-spacing: .1em; }
+.eyebrow-mark { width: 7px; height: 7px; display: inline-block; border: 1px solid var(--rust); transform: rotate(45deg); }
+.hero h1 { margin: 0; color: var(--ink); font: 500 clamp(70px, 8vw, 105px)/.92 var(--serif); letter-spacing: -.06em; }
+.hero h1 em, .chapter h2 em, .closing-note h2 span { color: var(--rust); font-style: normal; }
+.hero-lede { margin: 23px 0 0; color: var(--ink); font: 500 clamp(19px, 2vw, 24px)/1.62 var(--serif); letter-spacing: .015em; }
+.hero-description { max-width: 470px; margin: 14px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 2; }
+.hero-link { display: inline-flex; align-items: center; gap: 16px; margin-top: 22px; padding: 7px 0; border-bottom: 1px solid var(--ink); color: var(--ink); font-size: 9px; text-decoration: none; }
+.hero-link span { color: var(--rust); font-size: 15px; }
+.hero-link:hover { border-color: var(--rust); color: var(--rust); }
+.hero-figure { min-width: 0; position: relative; margin: 0; padding: 14px 16px 13px; border: 1px solid #d8d0c1; background: rgba(251, 249, 242, .74); }
+.hero-figure-top { display: flex; justify-content: space-between; color: var(--muted); font: 8px var(--mono); letter-spacing: .06em; }
+.hero-spectrum { position: relative; height: 245px; display: flex; flex-direction: column; justify-content: center; margin: 7px 0 2px; overflow: hidden; background: radial-gradient(ellipse at 50% 50%, rgba(82, 123, 124, .11), transparent 49%), repeating-linear-gradient(0deg, transparent 0 32px, rgba(60, 76, 65, .045) 32px 33px), repeating-linear-gradient(90deg, transparent 0 32px, rgba(60, 76, 65, .045) 32px 33px); }
+.hero-spectrum-glow { position: absolute; inset: 35% 3%; height: 30%; background: linear-gradient(90deg, rgba(105, 91, 176, .16), rgba(70, 124, 192, .18) 18%, rgba(71, 162, 153, .17) 38%, rgba(190, 189, 109, .2) 58%, rgba(210, 145, 73, .19) 78%, rgba(182, 75, 49, .16)); filter: blur(20px); }
+.hero-spectrum-band { position: relative; height: 70px; margin: 0 6%; border: 1px solid rgba(38, 51, 47, .2); background: linear-gradient(90deg, #665cac 0%, #4778bb 16%, #479fbd 29%, #54a886 43%, #b2b96c 58%, #d5b052 70%, #d88a4d 82%, #b64b31 100%); box-shadow: 0 0 24px rgba(124, 136, 110, .26); }
+.hero-line { position: absolute; top: 0; bottom: 0; width: 4px; background: rgba(18, 34, 36, .79); box-shadow: 0 0 6px rgba(20, 25, 25, .5); }
+.hero-line-h { left: 24%; }.hero-line-ca { left: 8%; width: 8px; opacity: .9; }.hero-line-na-one { left: 66%; }.hero-line-na-two { left: 67.5%; }.hero-line-h-two { left: 86%; }
+.hero-mark { position: absolute; bottom: 13px; color: var(--muted); font: 8px var(--mono); }.hero-mark-blue { left: 8px; }.hero-mark-red { right: 8px; }
+.hero-figure figcaption { display: flex; justify-content: center; align-items: center; gap: 9px; color: var(--muted); font-size: 8px; }
+.hero-figure figcaption i { width: 24px; height: 1px; background: var(--rust); }
+.hero-caption { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 14px; padding: 9px 12px; border-left: 2px solid var(--acid); background: var(--teal-deep); color: #f5f1e6; font: 9px var(--serif); }
+.hero-caption b { color: #eab18d; font: 14px var(--mono); }
+
+.chapter { padding-top: 70px; }
+.chapter-heading { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(270px, .95fr); gap: 32px; align-items: end; margin-bottom: 26px; }
+.section-number { width: 22px; height: 22px; display: inline-grid; place-items: center; border: 1px solid var(--rust); font: 9px var(--mono); letter-spacing: 0; }
+.chapter h2 { margin: 0; color: var(--ink); font: 500 clamp(35px, 4vw, 51px)/1.35 var(--serif); letter-spacing: -.035em; }
+.chapter-intro { max-width: 500px; justify-self: end; margin: 0 0 5px; color: var(--ink-soft); font-size: 10px; line-height: 2; }
+
+.lab-layout { display: grid; grid-template-columns: minmax(250px, .7fr) minmax(0, 1.75fr); gap: 15px; align-items: start; }
+.controls-panel { min-width: 0; padding: 16px 16px 14px; background: var(--teal-deep); color: #f4f0e5; }
+.panel-heading, .control-section-label { display: flex; justify-content: space-between; align-items: baseline; gap: 9px; }
+.panel-heading { margin-bottom: 13px; padding-bottom: 10px; border-bottom: 1px solid rgba(236, 239, 218, .25); color: #f7f2e8; font: 10px var(--serif); }
+.panel-heading span:last-child, .control-section-label span:last-child { color: #aebeb1; font: 7px var(--mono); letter-spacing: .08em; }
+.preset-section { margin-bottom: 16px; }
+.control-section-label { margin-bottom: 7px; color: #e1e5d9; font-size: 9px; }
+.preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.preset-button { min-width: 0; min-height: 52px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 2px; padding: 7px 8px; border: 1px solid rgba(230, 236, 216, .3); background: rgba(7, 28, 31, .18); color: #e8ece0; text-align: left; transition: border-color .16s, background .16s, color .16s; }
+.preset-button:hover, .preset-button:focus-visible { border-color: var(--acid); background: rgba(216, 223, 108, .1); }
+.preset-button span { color: #f5f0e4; font-size: 8px; font-weight: 600; }
+.preset-button small { color: #afbeb2; font-size: 7px; line-height: 1.45; }
+.range-control { display: block; min-width: 0; margin-top: 14px; }
+.control-title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: #dbe1d6; font-size: 9px; }
+.control-title output { color: var(--acid); font: 10px var(--mono); white-space: nowrap; }
+.range-control input[type="range"] { width: 100%; height: 18px; display: block; margin: 6px 0 2px; accent-color: var(--acid); cursor: pointer; }
+.range-control input[type="range"]:focus-visible { outline-color: var(--acid); }
+.range-hint { display: flex; justify-content: space-between; gap: 8px; color: #a7b5a9; font: 7px var(--mono); }
+.control-help { display: block; margin: 6px 0 0; color: #aebbb0; font-size: 8px; line-height: 1.65; }
+.species-fieldset { min-width: 0; margin: 17px 0 0; padding: 12px 0 0; border: 0; border-top: 1px solid rgba(236, 239, 218, .22); }
+.species-fieldset legend { margin-bottom: 7px; padding: 0; color: #e1e5d9; font-size: 9px; }
+.species-option { position: relative; display: grid; grid-template-columns: 16px 9px 1fr; gap: 8px; align-items: start; margin-top: 6px; padding: 8px 7px; border: 1px solid rgba(230, 236, 216, .18); background: rgba(10, 34, 36, .17); cursor: pointer; }
+.species-option:has(input:checked) { border-color: rgba(216, 223, 108, .55); background: rgba(216, 223, 108, .055); }
+.species-option input { width: 15px; height: 15px; margin: 1px 0 0; accent-color: var(--acid); }
+.species-swatch { width: 8px; height: 8px; display: inline-block; margin-top: 5px; border-radius: 50%; }
+.swatch-h { color: #e18b65 !important; background-color: #e18b65; }
+.swatch-na { color: #e0c36e !important; background-color: #e0c36e; }
+.swatch-ca { color: #91b6ad !important; background-color: #91b6ad; }
+.species-option strong { display: block; color: #f5f0e4; font-size: 8px; font-weight: 600; }
+.species-option small { display: block; margin-top: 2px; color: #afbeb2; font-size: 7px; line-height: 1.45; }
+.control-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 17px; padding-top: 12px; border-top: 1px solid rgba(236, 239, 218, .22); }
+.button-secondary { min-height: 34px; padding: 0 11px; border: 1px solid var(--acid); background: rgba(216, 223, 108, .1); color: #f4f0e5; font-size: 8px; }
+.button-secondary:hover { background: rgba(216, 223, 108, .2); }
+.button-secondary span { margin-left: 7px; color: var(--acid); }
+.text-button { padding: 6px 0; border: 0; background: transparent; color: #c4cec1; font-size: 8px; text-decoration: underline; text-decoration-color: rgba(196, 206, 193, .45); text-underline-offset: 3px; }
+.text-button:hover { color: var(--acid); }
+.control-footnote { margin: 8px 0 0; color: #9eafa5; font-size: 7px; line-height: 1.7; }
+
+.observatory-panel { min-width: 0; padding: 16px; border: 1px solid #d8d0c1; background: rgba(251, 249, 242, .82); }
+.observatory-heading, .detail-heading, .roster-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.plate-index { display: block; color: var(--rust); font: 7px var(--mono); letter-spacing: .1em; }
+.observatory-heading h3 { margin: 3px 0 0; color: var(--ink); font: 500 18px/1.4 var(--serif); }
+.offline-stamp { display: inline-flex; align-items: center; gap: 6px; padding: 4px 7px; border: 1px solid var(--line); color: var(--muted); font: 7px var(--mono); white-space: nowrap; }
+.offline-stamp i { width: 6px; height: 6px; border-radius: 50%; background: #7b967f; }
+.mode-switch { display: inline-flex; gap: 4px; margin-top: 11px; padding: 3px; border: 1px solid var(--line); background: #f0ece2; }
+.mode-button { padding: 6px 10px; border: 0; background: transparent; color: var(--muted); font-size: 8px; }
+.mode-button.is-active { background: var(--teal-deep); color: #f4f0e5; }
+.mode-description { margin: 6px 0 1px; color: var(--muted); font-size: 8px; line-height: 1.6; }
+.main-chart-wrap { min-width: 0; margin-top: 6px; background: #142f33; }
+.spectrum-canvas { width: 100%; height: 288px; display: block; outline-color: var(--rust); }
+.chart-caption { display: flex; justify-content: space-between; gap: 12px; margin-top: 5px; color: var(--muted); font: 7px var(--mono); }
+.wavelength-key { display: inline-flex; align-items: center; gap: 6px; }
+.wavelength-key i { width: 31px; height: 5px; display: inline-block; border: 1px solid rgba(38, 51, 47, .25); background: linear-gradient(90deg, #665cac, #4778bb 18%, #54a886 44%, #d5b052 70%, #b64b31); }
+.readout-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 13px; }
+.readout-strip > div { min-width: 0; padding: 8px 9px; border-top: 2px solid var(--teal); background: #f0ede3; }
+.readout-strip > div:nth-child(2) { border-color: var(--rust); }
+.readout-strip > div:nth-child(3) { border-color: var(--amber); }
+.readout-strip span { display: block; color: var(--muted); font-size: 7px; }
+.readout-strip strong { display: block; margin-top: 3px; color: var(--ink); font: 10px var(--mono); line-height: 1.45; }
+.detail-section { margin-top: 17px; padding-top: 13px; border-top: 1px solid var(--line); }
+.detail-heading h4, .roster-heading h4 { margin: 3px 0 0; color: var(--ink); font: 500 14px/1.4 var(--serif); }
+.detail-heading > p { margin: 0; color: var(--rust); font: 8px var(--mono); text-align: right; }
+.detail-description { max-width: 650px; margin: 6px 0 7px; color: var(--muted); font-size: 8px; line-height: 1.65; }
+.detail-canvas { width: 100%; height: 155px; display: block; background: #193d3d; outline-color: var(--rust); }
+.detail-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 5px; color: var(--muted); font-size: 7px; }
+.detail-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.detail-legend i { width: 14px; height: 1px; display: inline-block; }
+.legend-rest { border-top: 1px dashed #a9b7a9; }
+.legend-observed { border-top: 2px solid var(--rust); }
+.line-roster { margin-top: 18px; padding-top: 13px; border-top: 1px solid var(--line); }
+.roster-hint { color: var(--muted); font-size: 7px; text-align: right; }
+.line-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; margin: 9px 0 0; padding: 0; list-style: none; }
+.line-chip { width: 100%; min-width: 0; min-height: 42px; display: grid; grid-template-columns: 36px 24px minmax(58px, 1fr) minmax(64px, 1fr); gap: 5px; align-items: center; padding: 6px 7px; border: 1px solid var(--line); background: #f7f4eb; color: var(--ink-soft); text-align: left; transition: border-color .15s, background .15s; }
+.line-chip:hover, .line-chip.is-selected { border-color: var(--rust); background: #fbf1e8; }
+.line-chip .line-family { display: inline-flex; align-items: center; gap: 4px; font: 7px var(--mono); }
+.line-chip .line-family.swatch-h, .line-chip .line-family.swatch-na, .line-chip .line-family.swatch-ca { background: transparent; }
+.line-chip .line-family::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ""; }
+.line-chip strong { color: var(--ink); font: 600 8px var(--sans); }
+.line-chip > span:nth-of-type(2) { color: var(--muted); font: 7px var(--mono); white-space: nowrap; }
+.line-chip output { color: var(--rust); font: 7px var(--mono); text-align: right; white-space: nowrap; }
+.empty-lines-note { margin: 9px 0 0; padding: 11px; border: 1px dashed var(--line); color: var(--muted); font-size: 8px; text-align: center; }
+.insight-text { margin: 14px 0 0; padding: 11px 12px; border-left: 2px solid var(--acid); background: var(--teal-deep); color: #e7ebdf; font: 9px/1.8 var(--serif); }
+.keyboard-note { margin: 11px 0 0; color: var(--muted); font-size: 8px; }
+.keyboard-note b { color: var(--rust); font-weight: 600; }
+
+.principle-heading { margin-bottom: 24px; }
+.principle-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.principle-card { min-height: 245px; position: relative; overflow: hidden; padding: 17px 18px; border: 1px solid var(--line); background: rgba(251, 249, 242, .67); }
+.principle-number { color: var(--rust); font: 7px var(--mono); letter-spacing: .1em; }
+.principle-card h3 { margin: 17px 0 8px; font: 500 17px/1.4 var(--serif); }
+.principle-card p { max-width: 330px; margin: 0; color: var(--ink-soft); font-size: 9px; line-height: 1.9; }
+.principle-card code { color: var(--rust); font: 9px var(--mono); }
+.mini-sketch { position: absolute; right: 17px; bottom: 14px; width: 144px; height: 54px; border-bottom: 1px solid #bfc5b7; background: repeating-linear-gradient(0deg, transparent 0 17px, rgba(72, 100, 84, .08) 17px 18px); }
+.sketch-curve::before { position: absolute; inset: 12px 2px 0; border-top: 2px solid var(--teal); border-radius: 60% 60% 0 0; content: ""; transform: rotate(-8deg) scaleY(1.2); }
+.sketch-curve i, .sketch-curve b { position: absolute; bottom: 0; width: 1px; height: 100%; background: rgba(182, 75, 49, .45); }
+.sketch-curve i { left: 28%; }.sketch-curve b { right: 26%; }
+.sketch-curve span { position: absolute; right: 15px; top: 2px; width: 6px; height: 6px; border-radius: 50%; background: var(--rust); }
+.sketch-lines { display: flex; align-items: end; justify-content: space-around; padding: 0 6px; }
+.sketch-lines i { width: 2px; height: 37px; background: var(--rust); }
+.sketch-lines i:nth-child(2) { height: 22px; }.sketch-lines i:nth-child(3) { height: 30px; }.sketch-lines i:nth-child(4) { height: 18px; }.sketch-lines i:nth-child(5) { height: 35px; }
+.sketch-shift { display: flex; align-items: center; justify-content: space-around; color: var(--muted); font: 8px var(--mono); }
+.sketch-shift i { width: 42px; height: 1px; background: var(--teal); }
+.sketch-shift i::before, .sketch-shift i::after { position: absolute; bottom: 0; width: 2px; height: 17px; background: var(--rust); content: ""; }
+.sketch-shift i::before { left: 38%; }.sketch-shift i::after { right: 27%; }
+.sketch-shift b { position: absolute; left: 12px; top: 15px; font-weight: 400; }.sketch-shift span { position: absolute; right: 8px; top: 15px; }
+.equation-board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 13px; padding: 14px 10px; background: var(--teal-deep); color: #f4f0e5; }
+.equation-board > div { min-width: 0; padding: 1px 14px; border-right: 1px solid rgba(236, 239, 218, .22); }
+.equation-board > div:last-child { border-right: 0; }
+.equation-board span, .equation-board small { display: block; color: #aebeb1; font-size: 7px; }
+.equation-board strong { display: block; min-height: 34px; margin: 7px 0 3px; color: var(--acid); font: 11px/1.55 var(--mono); }
+.equation-board small { color: #d0d9cb; }
+.air-note { margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--line); color: var(--muted); font-size: 8px; line-height: 1.8; }
+.air-note strong { margin-right: 8px; color: var(--rust); }
+
+.limits-chapter { padding-bottom: 52px; }
+.limits-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 13px; }
+.limits-main { padding: 20px 21px; background: var(--teal-deep); color: #f4f0e5; }
+.stamp-small { display: inline-block; padding: 3px 6px; border: 1px solid var(--acid); color: var(--acid); font: 7px var(--mono); letter-spacing: .08em; }
+.limits-main h3 { margin: 16px 0 10px; font: 500 20px/1.5 var(--serif); }
+.limits-main p { margin: 0 0 10px; color: #d0d9cb; font-size: 9px; line-height: 1.9; }
+.limits-main p:last-child { margin-bottom: 0; }
+.boundary-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.boundary-list li { padding: 13px; border: 1px solid var(--line); background: rgba(251, 249, 242, .72); }
+.boundary-list b { display: block; margin-bottom: 4px; color: var(--rust); font: 500 12px var(--serif); }
+.boundary-list span { display: block; color: var(--ink-soft); font-size: 8px; line-height: 1.75; }
+.source-note { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: center; margin-top: 13px; padding: 11px 13px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.source-mark { width: 27px; height: 27px; display: grid; place-items: center; border: 1px solid var(--rust); color: var(--rust); font: 12px var(--serif); }
+.source-note p { margin: 0; color: var(--muted); font-size: 8px; line-height: 1.8; }
+.source-note strong { margin-right: 7px; color: var(--ink); }
+.closing-note { display: flex; flex-direction: column; align-items: flex-start; padding: 32px 0 48px; border-top: 1px solid var(--line); }
+.closing-note .eyebrow { margin-bottom: 10px; }
+.closing-note h2 { margin: 0; font: 500 clamp(30px, 4vw, 43px)/1.38 var(--serif); letter-spacing: -.03em; }
+.closing-note a { display: inline-flex; gap: 12px; align-items: center; margin-top: 16px; padding-bottom: 4px; border-bottom: 1px solid var(--ink); color: var(--ink); font-size: 9px; text-decoration: none; }
+.closing-note a span { color: var(--rust); }
+.site-footer { max-width: 1280px; display: flex; justify-content: space-between; gap: 14px; margin: auto; padding: 13px 38px; border-top: 1px solid var(--line); color: var(--muted); font-size: 8px; }
+.noscript-note { margin: 10px auto; padding: 10px 20px; color: var(--rust); text-align: center; }
+
+@media (max-width: 1000px) {
+  .site-header { padding-inline: 26px; }
+  .page-shell { padding-inline: 26px; }
+  .hero { grid-template-columns: minmax(0, .85fr) minmax(350px, 1.15fr); gap: 35px; }
+  .lab-layout { grid-template-columns: minmax(230px, .74fr) minmax(0, 1.5fr); }
+  .line-chip { grid-template-columns: 34px 21px minmax(50px, 1fr) minmax(58px, 1fr); gap: 3px; padding-inline: 5px; }
+  .site-footer { padding-inline: 26px; }
+}
+@media (max-width: 820px) {
+  .site-header { flex-wrap: wrap; row-gap: 3px; padding-block: 10px; }
+  .site-nav { order: 3; width: 100%; justify-content: flex-start; margin-left: 50px; }
+  .header-index { margin-left: auto; }
+  .hero { min-height: 0; grid-template-columns: 1fr 1.1fr; gap: 24px; padding-block: 40px 48px; }
+  .hero-spectrum { height: 205px; }
+  .lab-layout { grid-template-columns: 1fr; }
+  .controls-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+  .panel-heading, .preset-section, .species-fieldset, .control-actions, .control-footnote { grid-column: 1 / -1; }
+  .panel-heading { margin-bottom: 12px; }
+  .preset-section { margin-bottom: 1px; }
+  .range-control { margin-top: 11px; }
+  .species-fieldset { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 7px; }
+  .species-fieldset legend { grid-column: 1 / -1; }
+  .species-option { grid-template-columns: 15px 1fr; gap: 7px; }
+  .species-option .species-swatch { display: none; }
+  .controls-panel > .range-control:nth-of-type(4) { grid-column: 1 / -1; }
+  .chapter-heading { grid-template-columns: 1fr; gap: 14px; }
+  .chapter-intro { justify-self: start; }
+}
+@media (max-width: 620px) {
+  .site-header { min-height: auto; padding: 10px 18px 8px; }
+  .brand-mark { width: 34px; height: 34px; }
+  .site-nav { gap: 17px; margin-left: 45px; }
+  .site-nav a { font-size: 8px; }
+  .header-index { font-size: 7px; }
+  .page-shell { padding-inline: 18px; }
+  .hero { grid-template-columns: 1fr; gap: 22px; padding: 37px 0 39px; }
+  .hero h1 { font-size: clamp(66px, 20vw, 88px); }
+  .hero-lede { margin-top: 16px; font-size: 19px; }
+  .hero-description { margin-top: 9px; }
+  .hero-link { margin-top: 14px; }
+  .hero-figure { padding-inline: 12px; }
+  .hero-spectrum { height: 170px; }
+  .hero-spectrum-band { height: 54px; }
+  .chapter { padding-top: 50px; }
+  .chapter-heading { margin-bottom: 18px; }
+  .chapter h2 { font-size: clamp(32px, 9vw, 43px); }
+  .controls-panel { padding: 13px; }
+  .preset-button { min-height: 47px; }
+  .species-option { padding-inline: 5px; }
+  .species-option strong { font-size: 7px; }
+  .species-option small { font-size: 6px; }
+  .observatory-panel { padding: 12px; }
+  .spectrum-canvas { height: 245px; }
+  .chart-caption { font-size: 6px; }
+  .readout-strip { gap: 4px; }
+  .readout-strip > div { padding: 7px 6px; }
+  .readout-strip span { font-size: 6px; }
+  .readout-strip strong { font-size: 8px; }
+  .detail-canvas { height: 142px; }
+  .line-list { grid-template-columns: 1fr; }
+  .line-chip { grid-template-columns: 41px 30px minmax(70px, 1fr) minmax(82px, 1fr); gap: 6px; padding-inline: 8px; }
+  .line-chip .line-family, .line-chip strong, .line-chip > span:nth-of-type(2), .line-chip output { font-size: 8px; }
+  .principle-grid { grid-template-columns: 1fr; gap: 8px; }
+  .principle-card { min-height: 200px; }
+  .principle-card h3 { margin-top: 10px; }
+  .equation-board { grid-template-columns: 1fr; gap: 11px; padding: 13px; }
+  .equation-board > div { padding: 0 0 9px; border-right: 0; border-bottom: 1px solid rgba(236, 239, 218, .22); }
+  .equation-board > div:last-child { padding-bottom: 0; border-bottom: 0; }
+  .equation-board strong { min-height: 0; margin: 4px 0; }
+  .limits-grid { grid-template-columns: 1fr; }
+  .boundary-list { gap: 6px; }
+  .boundary-list li { padding: 10px; }
+  .closing-note { padding-block: 28px 36px; }
+  .site-footer { flex-direction: column; padding: 12px 18px; }
+}
+@media (max-width: 380px) {
+  .site-header { padding-inline: 14px; }
+  .site-nav { gap: 11px; margin-left: 42px; }
+  .header-index { letter-spacing: .025em; }
+  .page-shell { padding-inline: 14px; }
+  .hero-caption { gap: 8px; font-size: 8px; }
+  .controls-panel { grid-template-columns: 1fr; }
+  .controls-panel > * { grid-column: 1 / -1; }
+  .species-fieldset { grid-template-columns: 1fr; }
+  .species-option { grid-template-columns: 16px 9px 1fr; }
+  .species-option .species-swatch { display: inline-block; }
+  .boundary-list { grid-template-columns: 1fr; }
+  .detail-heading { align-items: flex-start; }
+  .detail-heading > p { max-width: 120px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: .01ms !important; }
+}
+
+</style></head><body>
+<a class="skip-link" href="#experiment">跳到光谱实验</a>
+
+<header class="site-header" id="top">
+  <a class="wordmark" href="#top" aria-label="星光留痕，返回页首">
+    <span class="brand-mark" aria-hidden="true">光</span>
+    <span class="wordmark-copy"><strong>星光留痕</strong><small>恒星光谱实验札记</small></span>
+  </a>
+  <nav class="site-nav" aria-label="页面导航">
+    <a href="#experiment">读一条光谱</a>
+    <a href="#principle">三种线索</a>
+    <a href="#limits">模型边界</a>
+  </nav>
+  <span class="header-index">STELLAR SPECTRA / 01</span>
+</header>
+
+<main class="page-shell" id="main">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span>天文学 / SPECTRAL READING</p>
+      <h1 id="hero-title">星光<br><em>留痕</em></h1>
+      <p class="hero-lede">颜色铺出温度，<br>暗线写下原子的名字。</p>
+      <p class="hero-description">把恒星的连续光拆开，再放大那些被气体削暗的窄线。改变温度、运动方向和仪器本领，看一束光怎样留下几类不同的证词。</p>
+      <a class="hero-link" href="#experiment">打开光谱台 <span aria-hidden="true">↓</span></a>
+    </div>
+
+    <figure class="hero-figure" aria-label="一条带有暗线的可见光谱示意图">
+      <div class="hero-figure-top"><span>观测草图 / OBSERVED LIGHT</span><span>FIG. 01</span></div>
+      <div class="hero-spectrum" aria-hidden="true">
+        <div class="hero-spectrum-glow"></div>
+        <div class="hero-spectrum-band">
+          <i class="hero-line hero-line-h"></i><i class="hero-line hero-line-ca"></i>
+          <i class="hero-line hero-line-na-one"></i><i class="hero-line hero-line-na-two"></i>
+          <i class="hero-line hero-line-h-two"></i>
+        </div>
+        <span class="hero-mark hero-mark-blue">380 nm</span><span class="hero-mark hero-mark-red">700 nm</span>
+      </div>
+      <figcaption><span>蓝端 / 短波</span><i></i><span>红端 / 长波</span></figcaption>
+      <div class="hero-caption"><span>一条连续的颜色带</span><b>＋</b><span>几道原子吸收线</span></div>
+    </figure>
+  </section>
+
+  <section id="experiment" class="chapter experiment-chapter" aria-labelledby="experiment-title">
+    <div class="chapter-heading">
+      <div><p class="eyebrow"><span class="section-number">01</span>互动实验 / THE SPECTRUM BENCH</p><h2 id="experiment-title">先看整束光，<br><em>再读暗下去的地方。</em></h2></div>
+      <p class="chapter-intro">温度调整宽阔的连续谱；速度把同一套谱线一起推向蓝端或红端；分辨率决定靠得很近的两条线能不能分开。它们留下的痕迹可以在同一张图里逐一比对。</p>
+    </div>
+
+    <div class="lab-layout">
+      <aside class="controls-panel" aria-label="恒星光谱实验控制台">
+        <div class="panel-heading"><span>观测条件</span><span>INPUT / STAR + INSTRUMENT</span></div>
+
+        <section class="preset-section" aria-labelledby="preset-title">
+          <div class="control-section-label"><span id="preset-title">先选一个样本</span><span>PRESETS</span></div>
+          <div class="preset-grid" role="group" aria-label="光谱实验预设">
+            <button class="preset-button" type="button" data-preset="solar"><span>太阳型</span><small>约 5,800 K · 慢速</small></button>
+            <button class="preset-button" type="button" data-preset="hot"><span>炽热恒星</span><small>蓝端更亮 · 快速远离</small></button>
+            <button class="preset-button" type="button" data-preset="cool"><span>冷恒星</span><small>红端更亮 · 低分辨率</small></button>
+            <button class="preset-button" type="button" data-preset="doublet"><span>拆开钠双线</span><small>固定温度 · 改变 R</small></button>
+          </div>
+        </section>
+
+        <label class="range-control" for="temperature">
+          <span class="control-title">连续谱温度 <output id="temperature-value" for="temperature">5,800 K</output></span>
+          <input id="temperature" type="range" min="3200" max="12000" step="100" value="5800" aria-describedby="temperature-help">
+          <span class="range-hint"><span>3,200 K</span><span>12,000 K</span></span>
+          <small class="control-help" id="temperature-help">只改宽阔的颜色底形；实际恒星并非完美黑体。</small>
+        </label>
+
+        <label class="range-control" for="velocity">
+          <span class="control-title">视向速度 <output id="velocity-value" for="velocity">+45 km/s</output></span>
+          <input id="velocity" type="range" min="-300" max="300" step="1" value="45" aria-describedby="velocity-help">
+          <span class="range-hint"><span>接近 −300</span><span>远离 +300 km/s</span></span>
+          <small class="control-help" id="velocity-help">正值远离，整套静止谱线向较长波长移动。</small>
+        </label>
+
+        <label class="range-control" for="resolution">
+          <span class="control-title">仪器分辨本领 R <output id="resolution-value" for="resolution">2,500</output></span>
+          <input id="resolution" type="range" min="300" max="20000" step="100" value="2500" aria-describedby="resolution-help">
+          <span class="range-hint"><span>300 / 较模糊</span><span>20,000 / 较精细</span></span>
+          <small class="control-help" id="resolution-help">近似线宽 Δλ = λ / R；数值越高，越能分辨相邻谱线。</small>
+        </label>
+
+        <label class="range-control" for="snr">
+          <span class="control-title">观测信噪比 <output id="snr-value" for="snr">45</output></span>
+          <input id="snr" type="range" min="8" max="100" step="1" value="45" aria-describedby="snr-help">
+          <span class="range-hint"><span>8 / 噪声较重</span><span>100 / 更清楚</span></span>
+          <small class="control-help" id="snr-help">信噪比越低，模拟读数的起伏越大。</small>
+        </label>
+
+        <label class="range-control" for="column">
+          <span class="control-title">吸收层厚薄 <output id="column-value" for="column">65%</output></span>
+          <input id="column" type="range" min="10" max="100" step="1" value="65" aria-describedby="column-help">
+          <span class="range-hint"><span>薄</span><span>厚</span></span>
+          <small class="control-help" id="column-help">只调整本模型中各条线的吸收强度，不等于真实丰度。</small>
+        </label>
+
+        <fieldset class="species-fieldset">
+          <legend>让哪些原子留下线索</legend>
+          <label class="species-option"><input type="checkbox" name="species" value="H" checked><span class="species-swatch swatch-h" aria-hidden="true"></span><span><strong>氢 H I</strong><small>巴耳末线 / Hα、Hβ、Hγ、Hδ</small></span></label>
+          <label class="species-option"><input type="checkbox" name="species" value="Na" checked><span class="species-swatch swatch-na" aria-hidden="true"></span><span><strong>钠 Na I</strong><small>D 双线 / 相距约 0.60 nm</small></span></label>
+          <label class="species-option"><input type="checkbox" name="species" value="Ca" checked><span class="species-swatch swatch-ca" aria-hidden="true"></span><span><strong>电离钙 Ca II</strong><small>H、K 线 / 蓝紫端</small></span></label>
+        </fieldset>
+
+        <div class="control-actions">
+          <button id="new-observation" class="button-secondary" type="button">再观测一次 <span aria-hidden="true">↻</span></button>
+          <button id="reset-lab" class="text-button" type="button">恢复起始状态</button>
+        </div>
+        <p class="control-footnote">噪声由固定种子的随机数生成；按“再观测一次”会换一组读数，其他旋钮可重复比较同一组噪声。</p>
+      </aside>
+
+      <div class="observatory-panel">
+        <div class="observatory-heading">
+          <div><span class="plate-index">01 / VISIBLE BAND</span><h3>恒星的可见光谱</h3></div>
+          <span class="offline-stamp"><i aria-hidden="true"></i>本地计算</span>
+        </div>
+        <div class="mode-switch" role="group" aria-label="光谱显示方式">
+          <button type="button" class="mode-button is-active" data-mode="shape" aria-pressed="true">连续谱形状</button>
+          <button type="button" class="mode-button" data-mode="lines" aria-pressed="false">校正后线谱</button>
+        </div>
+        <p id="mode-description" class="mode-description">按可见波段内的峰值归一；看温度如何改变蓝端和红端的相对亮度。</p>
+        <div class="main-chart-wrap">
+          <canvas id="spectrum-canvas" class="spectrum-canvas" tabindex="0" role="img" aria-label="可见光谱图。点击暗线附近或使用方向键切换要放大的谱线。">浏览器需要支持 Canvas 才能绘制光谱图。</canvas>
+        </div>
+        <div class="chart-caption"><span>相对亮度 / 归一化</span><span class="wavelength-key"><i aria-hidden="true"></i>380–700 nm / 可见光</span></div>
+
+        <div class="readout-strip" aria-label="当前谱线读数">
+          <div><span>黑体峰值位置</span><strong id="peak-readout">约 500 nm</strong></div>
+          <div><span>整体线移方向</span><strong id="shift-readout">红移 · 远离</strong></div>
+          <div><span>钠双线估计</span><strong id="doublet-readout">可分辨</strong></div>
+        </div>
+
+        <section class="detail-section" aria-labelledby="detail-title">
+          <div class="detail-heading"><div><span class="plate-index">02 / LINE DETAIL</span><h4 id="detail-title">把一条线放大看</h4></div><p id="selected-line-label">Na I D₂ · 589.00 nm</p></div>
+          <p id="detail-description" class="detail-description">灰色刻线是静止实验室位置；锈红刻线是移动后的位置。图中谱线还会被仪器展宽与观测噪声影响。</p>
+          <canvas id="detail-canvas" class="detail-canvas" tabindex="0" role="img" aria-label="选中谱线的放大图，灰色刻线表示静止位置，锈红刻线表示观测位置。">浏览器需要支持 Canvas 才能绘制放大谱线。</canvas>
+          <div class="detail-legend"><span><i class="legend-rest" aria-hidden="true"></i>实验室静止波长</span><span><i class="legend-observed" aria-hidden="true"></i>视向速度造成的观测位置</span></div>
+        </section>
+
+        <section class="line-roster" aria-labelledby="roster-title">
+          <div class="roster-heading"><div><span class="plate-index">03 / LINE ROSTER</span><h4 id="roster-title">这组原子线的标尺</h4></div><span class="roster-hint">选择一条查看放大图</span></div>
+          <ul id="line-list" class="line-list" aria-label="可见谱线及静止、观测波长">
+            <li data-species-row="H"><button class="line-chip" type="button" data-line-id="h-delta"><span class="line-family swatch-h">H I</span><strong>Hδ</strong><span>410.17 nm</span><output>410.23 nm</output></button></li>
+            <li data-species-row="Ca"><button class="line-chip" type="button" data-line-id="ca-k"><span class="line-family swatch-ca">Ca II</span><strong>K</strong><span>393.37 nm</span><output>393.43 nm</output></button></li>
+            <li data-species-row="Ca"><button class="line-chip" type="button" data-line-id="ca-h"><span class="line-family swatch-ca">Ca II</span><strong>H</strong><span>396.85 nm</span><output>396.91 nm</output></button></li>
+            <li data-species-row="H"><button class="line-chip" type="button" data-line-id="h-gamma"><span class="line-family swatch-h">H I</span><strong>Hγ</strong><span>434.05 nm</span><output>434.11 nm</output></button></li>
+            <li data-species-row="H"><button class="line-chip" type="button" data-line-id="h-beta"><span class="line-family swatch-h">H I</span><strong>Hβ</strong><span>486.13 nm</span><output>486.20 nm</output></button></li>
+            <li data-species-row="Na"><button class="line-chip" type="button" data-line-id="na-d2"><span class="line-family swatch-na">Na I</span><strong>D₂</strong><span>588.99 nm</span><output>589.08 nm</output></button></li>
+            <li data-species-row="Na"><button class="line-chip" type="button" data-line-id="na-d1"><span class="line-family swatch-na">Na I</span><strong>D₁</strong><span>589.59 nm</span><output>589.68 nm</output></button></li>
+            <li data-species-row="H"><button class="line-chip" type="button" data-line-id="h-alpha"><span class="line-family swatch-h">H I</span><strong>Hα</strong><span>656.28 nm</span><output>656.38 nm</output></button></li>
+          </ul>
+          <p id="no-lines-note" class="empty-lines-note" hidden>先勾选一种元素，才能在谱图中查看它的静止线与移动线。</p>
+        </section>
+
+        <p id="insight-text" class="insight-text" aria-live="polite">蓝端与红端的比例主要跟温度有关；谱线的整体位移主要跟视向速度有关。</p>
+      </div>
+    </div>
+    <p class="keyboard-note"><b>键盘操作：</b>使用控制台的滑块微调参数；聚焦主图后按左右方向键，在已启用的谱线间切换放大对象。</p>
+  </section>
+
+  <section id="principle" class="chapter principle-chapter" aria-labelledby="principle-title">
+    <div class="chapter-heading principle-heading">
+      <div><p class="eyebrow"><span class="section-number">02</span>读谱方法 / THREE CLUES</p><h2 id="principle-title">一束光里，<br><em>有三把不同的尺。</em></h2></div>
+      <p class="chapter-intro">不要让一种线索回答所有问题。宽阔的连续谱、成组出现的窄吸收线、以及它们整体的位置变化，分别在告诉我们不同的事情。</p>
+    </div>
+    <div class="principle-grid">
+      <article class="principle-card">
+        <span class="principle-number">01 / SHAPE</span><h3>看连续谱的形状</h3>
+        <p>近似黑体的曲线会随温度改变，峰值位置满足维恩位移关系 <code>λ<sub>max</sub>T ≈ 2.898 × 10<sup>6</sup> nm·K</code>。温度改变的是大尺度的颜色分布。</p>
+        <div class="mini-sketch sketch-curve" aria-hidden="true"><i></i><b></b><span></span></div>
+      </article>
+      <article class="principle-card">
+        <span class="principle-number">02 / PATTERN</span><h3>认一组吸收线</h3>
+        <p>气体原子只吸收特定波长附近的光。同一元素的多条线会组成可辨认的图案；辨认一组线通常比盯着单独一道暗线更有把握。</p>
+        <div class="mini-sketch sketch-lines" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      </article>
+      <article class="principle-card">
+        <span class="principle-number">03 / MOTION</span><h3>量整组线的位移</h3>
+        <p>光源远离时谱线红移，接近时蓝移。低速时可用 <code>Δλ / λ₀ ≈ v / c</code> 估算；本实验采用特殊相对论下的纵向多普勒关系。</p>
+        <div class="mini-sketch sketch-shift" aria-hidden="true"><i></i><b>λ₀</b><span>λ<sub>观测</sub></span></div>
+      </article>
+    </div>
+    <div class="equation-board" aria-label="本实验使用的三个关系式">
+      <div><span>连续谱峰值</span><strong>λ<sub>max</sub> T = b</strong><small>b ≈ 2.898 × 10⁶ nm·K</small></div>
+      <div><span>纵向多普勒因子</span><strong>λ<sub>观测</sub> = λ<sub>静止</sub> √((1+β)/(1−β))</strong><small>β = v/c；远离取正</small></div>
+      <div><span>分辨本领</span><strong>R = λ / Δλ</strong><small>Δλ 近似表示仪器的线宽</small></div>
+    </div>
+    <p class="air-note"><strong>波长约定</strong>本页的可见谱线采用标准空气波长近似值。页面只画 380–700 nm；黑体峰值落在这个区间外时，读数仍会显示区间外的大致位置。</p>
+  </section>
+
+  <section id="limits" class="chapter limits-chapter" aria-labelledby="limits-title">
+    <div class="chapter-heading limits-heading">
+      <div><p class="eyebrow"><span class="section-number">03</span>模型说明 / MODEL LIMITS</p><h2 id="limits-title">谱线是线索，<br><em>不是完整的恒星模型。</em></h2></div>
+      <p class="chapter-intro">为了把三种读谱线索拆开，本实验用一条理论连续谱、几组固定原子线和一个简化的仪器卷积来合成图像。真实恒星光谱还包含许多层次。</p>
+    </div>
+    <div class="limits-grid">
+      <div class="limits-main">
+        <span class="stamp-small">模型边界</span>
+        <h3>能说明机制，不能替代观测。</h3>
+        <p>连续谱按普朗克黑体形状计算，并在可见波段内归一。谱线来自一个简化吸收层：页面只使用氢巴耳末线、钠 D 双线和电离钙 H/K 线；线强是为教学而设的相对深度。</p>
+        <p>仪器分辨率用近似高斯展宽，观测误差是加在归一亮度上的随机噪声。按钮可换一组噪声样本；旋钮本身不修改任何真实恒星数据。</p>
+      </div>
+      <ul class="boundary-list">
+        <li><b>没有完整恒星大气</b><span>不计算电离平衡、压力展宽、旋转、自转温度梯度或真实元素丰度。</span></li>
+        <li><b>没有真实探测器</b><span>不含暗电流、像素响应、天空背景、望远镜光学与波长标定误差。</span></li>
+        <li><b>波长与速度是演示读数</b><span>窄线会被人为展宽与噪声改变；钠双线能否看清也取决于信噪比和线形。</span></li>
+        <li><b>不用于天体测量</b><span>本页的温度、速度与线宽只用于比较变量之间的关系，不是对任何恒星的测量结果。</span></li>
+      </ul>
+    </div>
+    <div class="source-note"><span class="source-mark" aria-hidden="true">文</span><p><strong>资料依据</strong>连续谱、吸收线与多普勒位移的解释参考 NASA Webb 的光谱说明；可见原子线的位置参考 NIST 原子光谱数据库与原子光谱手册。页面中的强度和线形仍是本实验自设的简化模型。</p></div>
+  </section>
+
+  <section class="closing-note" aria-labelledby="closing-title">
+    <p class="eyebrow">下一次读谱</p>
+    <h2 id="closing-title">先认出一组线，<br>再问它们<span>往哪儿去了。</span></h2>
+    <a href="#experiment">回到光谱台 <span aria-hidden="true">↑</span></a>
+  </section>
+</main>
+
+<footer class="site-footer"><span>星光留痕 · 恒星光谱实验札记</span><span>单文件 · 离线运行 · 计算留在本机</span></footer>
+<noscript><p class="noscript-note">光谱实验需要浏览器启用 JavaScript；所有模型计算都在本地页面中进行。</p></noscript>
+
+<script>
+'use strict';
+
+const StarSpectrumModel = (() => {
+  const MIN_NM = 380;
+  const MAX_NM = 700;
+  const STEP_NM = 0.25;
+  const C_M_S = 299792458;
+  const WIEN_NM_K = 2897771.955;
+  const FWHM_SIGMA = 2.354820045;
+  const SIZE = Math.round((MAX_NM - MIN_NM) / STEP_NM) + 1;
+
+  const SPECIES = Object.freeze({
+    H: Object.freeze({ label: '氢 H I', className: 'swatch-h' }),
+    Na: Object.freeze({ label: '钠 Na I', className: 'swatch-na' }),
+    Ca: Object.freeze({ label: '电离钙 Ca II', className: 'swatch-ca' })
+  });
+
+  const LINES = Object.freeze([
+    Object.freeze({ id: 'h-delta', species: 'H', label: 'Hδ', restNm: 410.173, tau: 0.47, sigmaNm: 0.66 }),
+    Object.freeze({ id: 'ca-k', species: 'Ca', label: 'K', restNm: 393.36614, tau: 0.58, sigmaNm: 0.12 }),
+    Object.freeze({ id: 'ca-h', species: 'Ca', label: 'H', restNm: 396.84673, tau: 0.47, sigmaNm: 0.12 }),
+    Object.freeze({ id: 'h-gamma', species: 'H', label: 'Hγ', restNm: 434.047, tau: 0.53, sigmaNm: 0.70 }),
+    Object.freeze({ id: 'h-beta', species: 'H', label: 'Hβ', restNm: 486.133, tau: 0.64, sigmaNm: 0.78 }),
+    Object.freeze({ id: 'na-d2', species: 'Na', label: 'D₂', restNm: 588.9950, tau: 0.83, sigmaNm: 0.12 }),
+    Object.freeze({ id: 'na-d1', species: 'Na', label: 'D₁', restNm: 589.5924, tau: 0.68, sigmaNm: 0.12 }),
+    Object.freeze({ id: 'h-alpha', species: 'H', label: 'Hα', restNm: 656.281, tau: 0.57, sigmaNm: 0.84 })
+  ]);
+
+  const PRESETS = Object.freeze({
+    solar: Object.freeze({ temperature: 5800, velocity: 0, resolution: 2500, snr: 45, column: 65, species: ['H', 'Na', 'Ca'] }),
+    hot: Object.freeze({ temperature: 9800, velocity: 145, resolution: 9000, snr: 64, column: 65, species: ['H', 'Ca'] }),
+    cool: Object.freeze({ temperature: 3800, velocity: -105, resolution: 750, snr: 18, column: 74, species: ['Na', 'Ca'] }),
+    doublet: Object.freeze({ temperature: 5800, velocity: 0, resolution: 700, snr: 70, column: 65, species: ['Na'] })
+  });
+
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+  function defaultParameters() {
+    return { ...PRESETS.solar, velocity: 45, species: ['H', 'Na', 'Ca'] };
+  }
+
+  function normalizeParameters(input = {}) {
+    const species = Array.isArray(input.species)
+      ? [...new Set(input.species.filter(key => Object.prototype.hasOwnProperty.call(SPECIES, key)))]
+      : [...PRESETS.solar.species];
+    return {
+      temperature: clamp(Number(input.temperature) || 5800, 3200, 12000),
+      velocity: clamp(Number(input.velocity) || 0, -300, 300),
+      resolution: clamp(Number(input.resolution) || 2500, 300, 20000),
+      snr: clamp(Number(input.snr) || 45, 8, 100),
+      column: clamp(Number(input.column) || 65, 10, 100),
+      species
+    };
+  }
+
+  function dopplerFactor(velocityKmS) {
+    const beta = clamp(Number(velocityKmS) * 1000 / C_M_S, -0.99, 0.99);
+    return Math.sqrt((1 + beta) / (1 - beta));
+  }
+
+  function inferredVelocityKmS(restNm, observedNm) {
+    const ratio = Number(observedNm) / Number(restNm);
+    const ratio2 = ratio * ratio;
+    return C_M_S * (ratio2 - 1) / (ratio2 + 1) / 1000;
+  }
+
+  function blackbodyRelative(lambdaNm, temperature) {
+    const lambdaM = lambdaNm * 1e-9;
+    const exponent = 1.438776877e-2 / (lambdaM * temperature);
+    if (exponent > 700) return 0;
+    return 1 / (Math.pow(lambdaM, 5) * Math.expm1(exponent));
+  }
+
+  function makeRandom(seed) {
+    let value = (Number(seed) >>> 0) || 1;
+    return () => {
+      value = (1664525 * value + 1013904223) >>> 0;
+      return value / 4294967296;
+    };
+  }
+
+  function makeNormalGenerator(seed) {
+    const random = makeRandom(seed);
+    let spare = null;
+    return () => {
+      if (spare !== null) {
+        const value = spare;
+        spare = null;
+        return value;
+      }
+      const u = Math.max(random(), 1e-12);
+      const v = random();
+      const radius = Math.sqrt(-2 * Math.log(u));
+      const angle = Math.PI * 2 * v;
+      spare = radius * Math.sin(angle);
+      return radius * Math.cos(angle);
+    };
+  }
+
+  function convolveInstrument(input, resolvingPower) {
+    const output = new Float64Array(input.length);
+    for (let i = 0; i < input.length; i++) {
+      const wavelength = MIN_NM + i * STEP_NM;
+      const sigma = wavelength / resolvingPower / FWHM_SIGMA;
+      const radius = Math.max(1, Math.ceil((3 * sigma) / STEP_NM));
+      let total = 0;
+      let weightSum = 0;
+      for (let offset = -radius; offset <= radius; offset++) {
+        const j = i + offset;
+        if (j < 0 || j >= input.length) continue;
+        const distance = offset * STEP_NM / sigma;
+        const weight = Math.exp(-0.5 * distance * distance);
+        total += input[j] * weight;
+        weightSum += weight;
+      }
+      output[i] = weightSum ? total / weightSum : input[i];
+    }
+    return output;
+  }
+
+  function generateSpectrum(inputParameters, seed = 1) {
+    const parameters = normalizeParameters(inputParameters);
+    const factor = dopplerFactor(parameters.velocity);
+    const activeLines = LINES.filter(line => parameters.species.includes(line.species));
+    const shiftedLines = activeLines.map(line => ({
+      ...line,
+      observedNm: line.restNm * factor,
+      inferredVelocityKmS: inferredVelocityKmS(line.restNm, line.restNm * factor)
+    }));
+
+    const wavelengths = new Float64Array(SIZE);
+    const continuumRaw = new Float64Array(SIZE);
+    let maximumContinuum = 0;
+    for (let i = 0; i < SIZE; i++) {
+      const wavelength = MIN_NM + i * STEP_NM;
+      wavelengths[i] = wavelength;
+      const value = blackbodyRelative(wavelength / factor, parameters.temperature);
+      continuumRaw[i] = value;
+      if (value > maximumContinuum) maximumContinuum = value;
+    }
+
+    const continuum = new Float64Array(SIZE);
+    const absorbed = new Float64Array(SIZE);
+    const columnScale = parameters.column / 65;
+    for (let i = 0; i < SIZE; i++) {
+      const wavelength = wavelengths[i];
+      const base = maximumContinuum ? continuumRaw[i] / maximumContinuum : 0;
+      let opticalDepth = 0;
+      for (const line of shiftedLines) {
+        const distance = (wavelength - line.observedNm) / line.sigmaNm;
+        opticalDepth += line.tau * columnScale * Math.exp(-0.5 * distance * distance);
+      }
+      continuum[i] = base;
+      absorbed[i] = base * Math.exp(-opticalDepth);
+    }
+
+    const instrumentContinuum = convolveInstrument(continuum, parameters.resolution);
+    const instrumentSpectrum = convolveInstrument(absorbed, parameters.resolution);
+    const normal = makeNormalGenerator(seed);
+    const noiseSigma = 0.72 / parameters.snr;
+    const observed = new Float64Array(SIZE);
+    const normalizedObserved = new Float64Array(SIZE);
+    for (let i = 0; i < SIZE; i++) {
+      observed[i] = instrumentSpectrum[i] + normal() * noiseSigma;
+      normalizedObserved[i] = instrumentContinuum[i] > 1e-7
+        ? observed[i] / instrumentContinuum[i]
+        : observed[i];
+    }
+
+    const naSeparationNm = 589.5924 - 588.9950;
+    const naCenterNm = (589.5924 + 588.9950) / 2;
+    const naInstrumentWidthNm = naCenterNm / parameters.resolution;
+    const naSeparationRatio = naSeparationNm / naInstrumentWidthNm;
+
+    return {
+      parameters,
+      wavelengths,
+      continuum: instrumentContinuum,
+      clean: instrumentSpectrum,
+      observed,
+      normalizedObserved,
+      lines: shiftedLines,
+      seed: Number(seed) >>> 0,
+      peakNm: WIEN_NM_K / parameters.temperature,
+      dopplerFactor: factor,
+      noiseSigma,
+      na: {
+        separationNm: naSeparationNm,
+        centerNm: naCenterNm,
+        instrumentWidthNm: naInstrumentWidthNm,
+        separationRatio: naSeparationRatio,
+        likelyResolved: naInstrumentWidthNm < naSeparationNm
+      }
+    };
+  }
+
+  function findLine(id) {
+    return LINES.find(line => line.id === id) || null;
+  }
+
+  function findObservedLine(model, id) {
+    return model.lines.find(line => line.id === id) || null;
+  }
+
+  function detailWindow(id, model) {
+    const line = findLine(id) || findLine('na-d2');
+    if (line.species === 'Na') return { min: 586.5, max: 592.1, label: 'Na I D 双线' };
+    if (line.species === 'Ca') return { min: 391.0, max: 399.3, label: 'Ca II H / K 双线' };
+    const shifted = findObservedLine(model, line.id);
+    const center = shifted ? shifted.observedNm : line.restNm;
+    return { min: center - 2.7, max: center + 2.7, label: `${line.label} · ${line.species}` };
+  }
+
+  function valueAt(model, wavelength, mode = 'lines') {
+    const position = (wavelength - MIN_NM) / STEP_NM;
+    if (position <= 0) return mode === 'lines'
+      ? model.normalizedObserved[0]
+      : model.observed[0];
+    if (position >= model.wavelengths.length - 1) return mode === 'lines'
+      ? model.normalizedObserved[model.normalizedObserved.length - 1]
+      : model.observed[model.observed.length - 1];
+    const left = Math.floor(position);
+    const part = position - left;
+    const data = mode === 'lines' ? model.normalizedObserved : model.observed;
+    return data[left] * (1 - part) + data[left + 1] * part;
+  }
+
+  return Object.freeze({
+    MIN_NM,
+    MAX_NM,
+    STEP_NM,
+    C_M_S,
+    WIEN_NM_K,
+    SPECIES,
+    LINES,
+    PRESETS,
+    defaultParameters,
+    normalizeParameters,
+    dopplerFactor,
+    inferredVelocityKmS,
+    blackbodyRelative,
+    generateSpectrum,
+    findLine,
+    findObservedLine,
+    detailWindow,
+    valueAt
+  });
+})();
+
+if (typeof module !== 'undefined' && module.exports) module.exports = StarSpectrumModel;
+if (typeof window !== 'undefined') window.StarSpectrumModel = StarSpectrumModel;
+
+</script>
+<script>
+'use strict';
+
+(() => {
+  const modelApi = window.StarSpectrumModel;
+  if (!modelApi) throw new Error('StarSpectrumModel must load before ui.js');
+
+  const $ = selector => document.querySelector(selector);
+  const $$ = selector => [...document.querySelectorAll(selector)];
+  const controls = {
+    temperature: $('#temperature'),
+    velocity: $('#velocity'),
+    resolution: $('#resolution'),
+    snr: $('#snr'),
+    column: $('#column'),
+    species: $$('input[name="species"]')
+  };
+  const canvas = $('#spectrum-canvas');
+  const detailCanvas = $('#detail-canvas');
+  const state = {
+    seed: 27,
+    mode: 'shape',
+    selectedLineId: 'na-d2',
+    parameters: modelApi.defaultParameters(),
+    spectrum: null
+  };
+
+  const COLORS = Object.freeze({
+    background: '#142f33',
+    backgroundTwo: '#193d3d',
+    grid: 'rgba(222, 229, 213, .13)',
+    ink: '#e8eadc',
+    muted: '#aebeb1',
+    continuum: '#7ea9a0',
+    curve: '#f0d98c',
+    observed: '#e98562',
+    rest: '#cbd4c1',
+    H: '#e18b65',
+    Na: '#e0c36e',
+    Ca: '#91b6ad'
+  });
+
+  const formatInteger = value => Math.round(value).toLocaleString('en-US');
+  const formatNm = value => `${Number(value).toFixed(2)} nm`;
+  const formatSignedVelocity = value => {
+    if (Math.abs(value) < .05) return '0 km/s';
+    return `${value > 0 ? '+' : '−'}${Math.abs(Math.round(value))} km/s`;
+  };
+
+  function readParameters() {
+    return modelApi.normalizeParameters({
+      temperature: Number(controls.temperature.value),
+      velocity: Number(controls.velocity.value),
+      resolution: Number(controls.resolution.value),
+      snr: Number(controls.snr.value),
+      column: Number(controls.column.value),
+      species: controls.species.filter(input => input.checked).map(input => input.value)
+    });
+  }
+
+  function setParameters(parameters) {
+    const normalized = modelApi.normalizeParameters(parameters);
+    controls.temperature.value = String(normalized.temperature);
+    controls.velocity.value = String(normalized.velocity);
+    controls.resolution.value = String(normalized.resolution);
+    controls.snr.value = String(normalized.snr);
+    controls.column.value = String(normalized.column);
+    for (const input of controls.species) input.checked = normalized.species.includes(input.value);
+    state.parameters = normalized;
+  }
+
+  function canvasContext(element) {
+    const bounds = element.getBoundingClientRect();
+    const width = Math.max(1, bounds.width);
+    const height = Math.max(1, bounds.height);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const pixelWidth = Math.round(width * dpr);
+    const pixelHeight = Math.round(height * dpr);
+    if (element.width !== pixelWidth || element.height !== pixelHeight) {
+      element.width = pixelWidth;
+      element.height = pixelHeight;
+    }
+    const ctx = element.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, width, height };
+  }
+
+  function wavelengthColor(lambdaNm) {
+    const stops = [
+      [380, '#7768b3'], [430, '#4e79ba'], [480, '#4da3b7'], [530, '#5cab81'],
+      [580, '#c2bc69'], [620, '#d99b50'], [660, '#cd6a42'], [700, '#a64735']
+    ];
+    const value = Math.max(380, Math.min(700, lambdaNm));
+    for (let i = 1; i < stops.length; i++) {
+      if (value > stops[i][0]) continue;
+      const left = stops[i - 1];
+      const right = stops[i];
+      const mix = (value - left[0]) / (right[0] - left[0]);
+      const a = left[1].slice(1).match(/.{2}/g).map(part => parseInt(part, 16));
+      const b = right[1].slice(1).match(/.{2}/g).map(part => parseInt(part, 16));
+      const rgb = a.map((channel, index) => Math.round(channel + (b[index] - channel) * mix));
+      return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+    }
+    return stops[stops.length - 1][1];
+  }
+
+  function drawWavelengthBand(ctx, left, top, width, height) {
+    const gradient = ctx.createLinearGradient(left, 0, left + width, 0);
+    gradient.addColorStop(0, '#7768b3');
+    gradient.addColorStop(.16, '#4e79ba');
+    gradient.addColorStop(.31, '#4da3b7');
+    gradient.addColorStop(.47, '#5cab81');
+    gradient.addColorStop(.63, '#c2bc69');
+    gradient.addColorStop(.78, '#d99b50');
+    gradient.addColorStop(.91, '#cd6a42');
+    gradient.addColorStop(1, '#a64735');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(left, top, width, height);
+    ctx.strokeStyle = 'rgba(237, 239, 220, .24)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(left + .5, top + .5, width - 1, height - 1);
+  }
+
+  function drawMainChart() {
+    const { ctx, width, height } = canvasContext(canvas);
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = COLORS.background;
+    ctx.fillRect(0, 0, width, height);
+
+    const left = 48;
+    const right = 17;
+    const top = 20;
+    const bottom = height - 57;
+    const plotWidth = Math.max(1, width - left - right);
+    const plotHeight = Math.max(1, bottom - top);
+    const yMin = state.mode === 'lines' ? 0 : 0;
+    const yMax = 1.12;
+    const xFor = wavelength => left + ((wavelength - modelApi.MIN_NM) / (modelApi.MAX_NM - modelApi.MIN_NM)) * plotWidth;
+    const yFor = value => bottom - ((value - yMin) / (yMax - yMin)) * plotHeight;
+
+    ctx.font = '9px Consolas, monospace';
+    ctx.lineWidth = 1;
+    for (let tick = 0; tick <= 1.0001; tick += .25) {
+      const y = yFor(tick);
+      ctx.strokeStyle = COLORS.grid;
+      ctx.beginPath();
+      ctx.moveTo(left, y);
+      ctx.lineTo(left + plotWidth, y);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.muted;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(tick.toFixed(2), left - 7, y);
+    }
+
+    for (let wavelength = 380; wavelength <= 700; wavelength += 40) {
+      const x = xFor(wavelength);
+      ctx.strokeStyle = COLORS.grid;
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.muted;
+      ctx.textAlign = wavelength === 380 ? 'left' : wavelength === 700 ? 'right' : 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(String(wavelength), x, bottom + 27);
+    }
+    ctx.fillStyle = COLORS.muted;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('nm', left + plotWidth, height - 4);
+
+    const bandY = bottom + 7;
+    drawWavelengthBand(ctx, left, bandY, plotWidth, 7);
+    const lineData = state.mode === 'lines' ? state.spectrum.normalizedObserved : state.spectrum.observed;
+    const continuumData = state.mode === 'lines'
+      ? new Float64Array(state.spectrum.continuum.length).fill(1)
+      : state.spectrum.continuum;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left, top, plotWidth, plotHeight);
+    ctx.clip();
+    ctx.beginPath();
+    for (let i = 0; i < continuumData.length; i++) {
+      const x = xFor(state.spectrum.wavelengths[i]);
+      const y = yFor(continuumData[i]);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = COLORS.continuum;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    for (let i = 0; i < lineData.length; i++) {
+      const x = xFor(state.spectrum.wavelengths[i]);
+      const y = yFor(lineData[i]);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = state.mode === 'lines' ? '#f1e0ad' : COLORS.curve;
+    ctx.lineWidth = 1.65;
+    ctx.shadowColor = 'rgba(240, 217, 140, .28)';
+    ctx.shadowBlur = 4;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.restore();
+
+    for (const line of state.spectrum.lines) {
+      if (line.observedNm < modelApi.MIN_NM || line.observedNm > modelApi.MAX_NM) continue;
+      const x = xFor(line.observedNm);
+      ctx.beginPath();
+      ctx.moveTo(x, bottom + 13);
+      ctx.lineTo(x, bottom + 23);
+      ctx.strokeStyle = COLORS[line.species];
+      ctx.lineWidth = line.id === state.selectedLineId ? 2 : 1;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(xFor(line.restNm), bottom + 8);
+      ctx.lineTo(xFor(line.restNm), bottom + 12);
+      ctx.setLineDash([1, 2]);
+      ctx.strokeStyle = COLORS.rest;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.fillStyle = COLORS.muted;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = '8px Consolas, monospace';
+    ctx.fillText(state.mode === 'lines' ? 'CONTINUUM NORMALIZED' : 'RELATIVE FLUX', left, 5);
+  }
+
+  function linesForDetail() {
+    const selected = modelApi.findLine(state.selectedLineId);
+    if (!selected) return [];
+    const familyIds = selected.species === 'Na'
+      ? new Set(['na-d2', 'na-d1'])
+      : selected.species === 'Ca'
+        ? new Set(['ca-k', 'ca-h'])
+        : new Set([selected.id]);
+    return state.spectrum.lines.filter(line => familyIds.has(line.id));
+  }
+
+  function drawDetailChart() {
+    const { ctx, width, height } = canvasContext(detailCanvas);
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = COLORS.backgroundTwo;
+    ctx.fillRect(0, 0, width, height);
+
+    const window = modelApi.detailWindow(state.selectedLineId, state.spectrum);
+    const active = linesForDetail();
+    const left = 47;
+    const right = 14;
+    const top = 17;
+    const bottom = height - 28;
+    const plotWidth = Math.max(1, width - left - right);
+    const plotHeight = Math.max(1, bottom - top);
+    const xFor = wavelength => left + ((wavelength - window.min) / (window.max - window.min)) * plotWidth;
+    const yFor = value => bottom - ((value - .05) / 1.05) * plotHeight;
+
+    ctx.font = '8px Consolas, monospace';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'right';
+    for (const tick of [.25, .5, .75, 1]) {
+      const y = yFor(tick);
+      ctx.strokeStyle = COLORS.grid;
+      ctx.beginPath();
+      ctx.moveTo(left, y);
+      ctx.lineTo(left + plotWidth, y);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.muted;
+      ctx.fillText(tick.toFixed(2), left - 7, y);
+    }
+
+    let tickStep = 1;
+    if (window.max - window.min > 7.5) tickStep = 2;
+    const firstTick = Math.ceil(window.min / tickStep) * tickStep;
+    ctx.textBaseline = 'top';
+    for (let wavelength = firstTick; wavelength < window.max; wavelength += tickStep) {
+      const x = xFor(wavelength);
+      ctx.strokeStyle = COLORS.grid;
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.muted;
+      ctx.textAlign = 'center';
+      ctx.fillText(wavelength.toFixed(0), x, bottom + 6);
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left, top, plotWidth, plotHeight);
+    ctx.clip();
+    ctx.beginPath();
+    const first = Math.max(0, Math.floor((window.min - modelApi.MIN_NM) / modelApi.STEP_NM));
+    const last = Math.min(state.spectrum.wavelengths.length - 1, Math.ceil((window.max - modelApi.MIN_NM) / modelApi.STEP_NM));
+    for (let i = first; i <= last; i++) {
+      const x = xFor(state.spectrum.wavelengths[i]);
+      const y = yFor(state.spectrum.normalizedObserved[i]);
+      if (i === first) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = '#f1e0ad';
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+
+    for (const line of active) {
+      for (const [wavelength, color, dash, lineWidth] of [
+        [line.restNm, COLORS.rest, [4, 4], 1],
+        [line.observedNm, COLORS.observed, [], 1.5]
+      ]) {
+        if (wavelength < window.min || wavelength > window.max) continue;
+        const x = xFor(wavelength);
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.setLineDash(dash);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+    ctx.restore();
+    ctx.fillStyle = COLORS.muted;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(window.label.toUpperCase(), left, 3);
+  }
+
+  function peakLabel(peakNm) {
+    const prefix = `约 ${peakNm.toFixed(0)} nm`;
+    if (peakNm < modelApi.MIN_NM) return `${prefix} · 紫外端`;
+    if (peakNm > modelApi.MAX_NM) return `${prefix} · 近红外`;
+    return prefix;
+  }
+
+  function updateControlsReadout(parameters) {
+    $('#temperature-value').textContent = `${formatInteger(parameters.temperature)} K`;
+    $('#velocity-value').textContent = formatSignedVelocity(parameters.velocity);
+    $('#resolution-value').textContent = formatInteger(parameters.resolution);
+    $('#snr-value').textContent = String(parameters.snr);
+    $('#column-value').textContent = `${parameters.column}%`;
+  }
+
+  function updateRoster() {
+    const activeSpecies = new Set(state.parameters.species);
+    for (const row of $$('#line-list [data-species-row]')) {
+      row.hidden = !activeSpecies.has(row.dataset.speciesRow);
+    }
+    const activeLines = state.spectrum.lines;
+    const selected = activeLines.find(line => line.id === state.selectedLineId) || activeLines[0] || null;
+    if (!selected) {
+      state.selectedLineId = '';
+      $('#selected-line-label').textContent = '尚未选择谱线';
+      $('#detail-description').textContent = '勾选一种元素后，实验室位置与观测位置会出现在这里。';
+      $('#no-lines-note').hidden = false;
+      for (const button of $$('.line-chip')) button.classList.remove('is-selected');
+      return;
+    }
+    state.selectedLineId = selected.id;
+    $('#no-lines-note').hidden = true;
+    for (const button of $$('.line-chip')) {
+      const isActive = activeSpecies.has(button.closest('[data-species-row]').dataset.speciesRow);
+      button.disabled = !isActive;
+      button.classList.toggle('is-selected', button.dataset.lineId === state.selectedLineId);
+      const line = activeLines.find(candidate => candidate.id === button.dataset.lineId);
+      if (line) button.querySelector('output').textContent = formatNm(line.observedNm);
+    }
+    $('#selected-line-label').textContent = `${modelApi.SPECIES[selected.species].label} ${selected.label} · ${formatNm(selected.restNm)}`;
+    const difference = selected.observedNm - selected.restNm;
+    const direction = difference > 0 ? '移向红端' : difference < 0 ? '移向蓝端' : '没有可见位移';
+    $('#detail-description').textContent = `静止位置 ${formatNm(selected.restNm)}；观测位置 ${formatNm(selected.observedNm)}，${direction} ${Math.abs(difference).toFixed(3)} nm。实线还会受展宽和噪声影响。`;
+  }
+
+  function updateInterpretation() {
+    const p = state.parameters;
+    const parts = [];
+    if (p.temperature <= 4300) parts.push('连续谱峰值落在红外端，可见光一侧会偏向红色。');
+    else if (p.temperature >= 9000) parts.push('连续谱峰值落在紫外端，可见光一侧会偏向蓝色。');
+    else parts.push('连续谱的峰值在可见光附近；升温会把峰值推向较短波长。');
+    if (p.velocity > 3) parts.push('正视向速度让整套线向红端移动。');
+    else if (p.velocity < -3) parts.push('负视向速度让整套线向蓝端移动。');
+    else parts.push('当前速度接近零，谱线停在实验室标尺附近。');
+    if (p.species.includes('Na')) {
+      parts.push(state.spectrum.na.likelyResolved
+        ? `钠双线的估计仪器宽度 ${state.spectrum.na.instrumentWidthNm.toFixed(2)} nm，小于约 0.60 nm 的线间距。`
+        : `钠双线间距约 0.60 nm，小于当前 ${state.spectrum.na.instrumentWidthNm.toFixed(2)} nm 的估计仪器宽度。`);
+    }
+    if (p.snr < 20) parts.push('较低信噪比使浅线容易被随机起伏遮住。');
+    $('#insight-text').textContent = parts.join(' ');
+  }
+
+  function updateReadouts() {
+    const spectrum = state.spectrum;
+    $('#peak-readout').textContent = peakLabel(spectrum.peakNm);
+    const velocity = state.parameters.velocity;
+    $('#shift-readout').textContent = velocity > 3 ? '红移 · 远离' : velocity < -3 ? '蓝移 · 接近' : '近似静止';
+    if (state.parameters.species.includes('Na')) {
+      $('#doublet-readout').textContent = spectrum.na.likelyResolved
+        ? `较可能分开 · R ${formatInteger(state.parameters.resolution)}`
+        : `趋于混合 · Δλ≈${spectrum.na.instrumentWidthNm.toFixed(2)} nm`;
+    } else {
+      $('#doublet-readout').textContent = '未显示钠线';
+    }
+  }
+
+  function updateCanvasLabel() {
+    const mode = state.mode === 'lines' ? '连续谱校正后的吸收线' : '在可见波段内归一的连续谱和吸收线';
+    const velocity = formatSignedVelocity(state.parameters.velocity);
+    canvas.setAttribute('aria-label', `${mode}，温度 ${formatInteger(state.parameters.temperature)} K，视向速度 ${velocity}，分辨本领 ${formatInteger(state.parameters.resolution)}。使用左右方向键切换放大谱线。`);
+    detailCanvas.setAttribute('aria-label', `放大谱线视图，${$('#selected-line-label').textContent}。灰色虚线表示静止位置，锈红实线表示观测位置。`);
+  }
+
+  function render() {
+    state.parameters = readParameters();
+    state.spectrum = modelApi.generateSpectrum(state.parameters, state.seed);
+    updateControlsReadout(state.parameters);
+    $('#mode-description').textContent = state.mode === 'lines'
+      ? '将观测曲线除以连续谱估计，淡化颜色形状，集中比较谱线深浅与位置。'
+      : '按可见波段内的峰值归一；看温度如何改变蓝端和红端的相对亮度。';
+    for (const button of $$('.mode-button')) {
+      const active = button.dataset.mode === state.mode;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    }
+    updateRoster();
+    updateReadouts();
+    updateInterpretation();
+    updateCanvasLabel();
+    drawMainChart();
+    drawDetailChart();
+  }
+
+  function applyPreset(key) {
+    const preset = modelApi.PRESETS[key];
+    if (!preset) return;
+    setParameters(preset);
+    state.selectedLineId = preset.species.includes('Na') ? 'na-d2' : preset.species.includes('H') ? 'h-beta' : 'ca-k';
+    render();
+  }
+
+  for (const control of [...Object.values(controls).filter(value => Array.isArray(value) === false), ...controls.species]) {
+    if (!control) continue;
+    control.addEventListener(control.type === 'checkbox' ? 'change' : 'input', render);
+  }
+
+  for (const button of $$('[data-preset]')) {
+    button.addEventListener('click', () => applyPreset(button.dataset.preset));
+  }
+
+  for (const button of $$('.mode-button')) {
+    button.addEventListener('click', () => {
+      state.mode = button.dataset.mode;
+      render();
+    });
+  }
+
+  $('#new-observation').addEventListener('click', () => {
+    state.seed = (state.seed + 1) >>> 0;
+    render();
+  });
+
+  $('#reset-lab').addEventListener('click', () => {
+    setParameters(modelApi.defaultParameters());
+    state.seed = 27;
+    state.mode = 'shape';
+    state.selectedLineId = 'na-d2';
+    render();
+  });
+
+  $('#line-list').addEventListener('click', event => {
+    const button = event.target.closest('.line-chip');
+    if (!button || button.disabled) return;
+    state.selectedLineId = button.dataset.lineId;
+    render();
+  });
+
+  canvas.addEventListener('click', event => {
+    if (!state.spectrum.lines.length) return;
+    const bounds = canvas.getBoundingClientRect();
+    const localX = event.clientX - bounds.left;
+    const left = 48;
+    const plotWidth = bounds.width - left - 17;
+    const wavelength = modelApi.MIN_NM + ((localX - left) / plotWidth) * (modelApi.MAX_NM - modelApi.MIN_NM);
+    const nearest = state.spectrum.lines
+      .map(line => ({ line, distance: Math.abs(line.observedNm - wavelength) }))
+      .sort((a, b) => a.distance - b.distance)[0];
+    if (nearest && nearest.distance < 2.4) {
+      state.selectedLineId = nearest.line.id;
+      render();
+      $('.detail-section').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  });
+
+  canvas.addEventListener('keydown', event => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    const activeLines = state.spectrum.lines;
+    if (!activeLines.length) return;
+    event.preventDefault();
+    const currentIndex = activeLines.findIndex(line => line.id === state.selectedLineId);
+    const direction = event.key === 'ArrowRight' ? 1 : -1;
+    const nextIndex = (currentIndex + direction + activeLines.length) % activeLines.length;
+    state.selectedLineId = activeLines[nextIndex].id;
+    render();
+  });
+
+  if ('ResizeObserver' in window) {
+    const observer = new ResizeObserver(() => {
+      drawMainChart();
+      drawDetailChart();
+    });
+    observer.observe(canvas);
+    observer.observe(detailCanvas);
+  } else {
+    window.addEventListener('resize', () => {
+      drawMainChart();
+      drawDetailChart();
+    });
+  }
+
+  render();
+})();
+
+</script>
+</body></html>

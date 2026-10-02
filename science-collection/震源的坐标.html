@@ -1,0 +1,1762 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#193d3d">
+<meta name="description" content="从地震记录中的 P、S 波到时出发，尝试定位震中、深度与发震时刻。">
+<title>震源的坐标 · 一次地震定位实验</title>
+<style>
+:root {
+  color-scheme: light;
+  --paper: #f3efe5;
+  --paper-deep: #e7e0d1;
+  --card: #fbf9f2;
+  --ink: #26332f;
+  --ink-soft: #536058;
+  --muted: #71766d;
+  --line: #d7d0c1;
+  --teal: #527b7c;
+  --teal-deep: #193d3d;
+  --teal-dark: #122d30;
+  --rust: #b64b31;
+  --rust-dark: #8d3928;
+  --rust-pale: #f0ded2;
+  --acid: #d8df6c;
+  --blue: #527b7c;
+  --serif: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", Georgia, serif;
+  --sans: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  --mono: "Cascadia Code", Consolas, "SFMono-Regular", monospace;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 20px; }
+body {
+  min-width: 320px;
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 77% 0%, rgba(255, 253, 247, .9), transparent 35rem),
+    linear-gradient(180deg, #f7f3ea 0%, var(--paper) 52%, #eee8dc 100%);
+  font: 14px/1.72 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
+button { color: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible, svg:focus-visible, [tabindex]:focus-visible {
+  outline: 3px solid var(--acid);
+  outline-offset: 3px;
+}
+::selection { color: var(--teal-dark); background: #e2e98a; }
+[hidden] { display: none !important; }
+
+.sheet { overflow: hidden; }
+.skip-link {
+  position: fixed;
+  z-index: 30;
+  top: 8px;
+  left: 8px;
+  padding: 8px 13px;
+  color: var(--teal-dark);
+  background: var(--acid);
+  transform: translateY(-150%);
+}
+.skip-link:focus { transform: translateY(0); }
+.mast {
+  max-width: 1420px;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin: auto;
+  padding: 12px clamp(20px, 4vw, 58px);
+  border-bottom: 1px solid rgba(41, 56, 49, .15);
+  color: var(--muted);
+  font: 9px var(--mono);
+  letter-spacing: .055em;
+}
+.mast > span { margin-left: auto; white-space: nowrap; }
+.mast > span b, footer b { color: var(--rust); padding: 0 4px; }
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font: 600 14px var(--serif);
+  letter-spacing: .04em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.brand-icon {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ink);
+  color: var(--rust);
+  font: 23px/1 var(--serif);
+}
+main { max-width: 1420px; margin: auto; padding: 0 clamp(20px, 4vw, 58px); }
+
+.hero {
+  min-height: 430px;
+  display: grid;
+  grid-template-columns: minmax(0, .87fr) minmax(360px, 1.13fr);
+  gap: clamp(32px, 6vw, 82px);
+  align-items: center;
+  padding: 48px 0 52px;
+  border-bottom: 1px solid var(--line);
+}
+.hero-copy { min-width: 0; }
+.eyebrow, .small-cap {
+  margin: 0;
+  color: var(--rust);
+  font: 9px/1.5 var(--mono);
+  letter-spacing: .095em;
+}
+.eyebrow { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+.eyebrow-mark { width: 7px; height: 7px; border: 1px solid var(--rust); transform: rotate(45deg); }
+.hero h1 {
+  margin: 0;
+  color: var(--ink);
+  font: 500 clamp(63px, 8vw, 94px)/.92 var(--serif);
+  letter-spacing: -.06em;
+}
+.hero h1 em, .section-head h2 em, .reading-heading h2 em { color: var(--rust); font-style: normal; }
+.hero h1 i { margin-left: 14px; color: var(--teal); font: normal 26px var(--serif); vertical-align: top; }
+.hero-lede {
+  margin: 18px 0 0;
+  color: var(--ink);
+  font: 500 clamp(18px, 2vw, 22px)/1.6 var(--serif);
+  letter-spacing: .01em;
+}
+.hero-description { max-width: 510px; margin: 12px 0 0; color: var(--ink-soft); font-size: 11px; line-height: 1.95; }
+.hero-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 17px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--ink);
+  color: var(--ink);
+  font-size: 10px;
+  text-decoration: none;
+}
+.hero-link span { color: var(--rust); font-size: 16px; }
+.hero-link:hover { border-color: var(--rust); color: var(--rust); }
+.hero-figure {
+  min-width: 0;
+  margin: 0;
+  padding: 12px 16px 11px;
+  border: 1px solid #d8d0c1;
+  background: rgba(251, 249, 242, .72);
+}
+.figure-top { display: flex; justify-content: space-between; color: var(--muted); font: 8px var(--mono); letter-spacing: .07em; }
+.hero-diagram { width: 100%; height: auto; display: block; margin-top: 4px; }
+.hero-diagram text { font-family: var(--mono); }
+.hero-figure figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; color: var(--muted); font-size: 8px; }
+.hero-figure figcaption > i { width: 3px; height: 3px; border-radius: 50%; background: #aaa38f; }
+.key-line { width: 17px; display: inline-block; margin-right: 4px; border-top: 2px solid; vertical-align: middle; }
+.key-line.p-key { border-color: var(--teal); }
+.key-line.s-key { border-color: var(--rust); border-top-style: dashed; }
+.key-dot { width: 6px; height: 6px; display: inline-block; margin: 0 4px 0 2px; border-radius: 50%; background: var(--rust); vertical-align: middle; }
+.folio {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font: 8px var(--mono);
+  letter-spacing: .045em;
+}
+
+.laboratory { padding: 48px 0 52px; }
+.section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 21px;
+}
+.section-head > div { min-width: 0; }
+.section-head .small-cap span { color: var(--ink); }
+.section-head h2 {
+  margin: 8px 0 0;
+  font: 500 clamp(29px, 4vw, 42px)/1.25 var(--serif);
+  letter-spacing: -.025em;
+}
+.section-intro { max-width: 450px; margin: 0 0 3px; color: var(--ink-soft); font-size: 10px; line-height: 1.9; }
+.status-banner {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  margin: 0 0 17px;
+  padding: 7px 12px;
+  border-left: 3px solid var(--teal);
+  color: #3d5d58;
+  background: rgba(223, 232, 222, .57);
+  font-size: 10px;
+}
+.status-banner.is-warning { border-left-color: var(--rust); color: #7f4333; background: rgba(240, 222, 210, .68); }
+.workflow-grid { display: grid; grid-template-columns: minmax(300px, .84fr) minmax(0, 1.16fr); gap: 18px; align-items: start; }
+.left-rail, .right-rail { min-width: 0; display: grid; gap: 17px; }
+.map-card, .controls-card, .records-card, .results-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: rgba(251, 249, 242, .88);
+}
+.map-card, .controls-card, .records-card, .results-card { padding: 16px; }
+.card-heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 10px; }
+.card-heading h3 { margin: 4px 0 0; font: 500 20px/1.35 var(--serif); }
+.card-heading .small-cap { font-size: 8px; }
+.map-unit, .record-duration { padding-top: 4px; color: var(--muted); font: 8px var(--mono); white-space: nowrap; }
+.map-wrap { width: 100%; overflow: hidden; border: 1px solid #e0d9cc; background: #f7f4ec; }
+#station-map { width: 100%; height: auto; display: block; touch-action: none; }
+.map-labels { fill: #73766d; font: 9px var(--mono); }
+.map-labels .axis-name { fill: #57665d; font: 9px var(--sans); }
+.map-labels .north-mark { fill: var(--rust); font: 9px var(--mono); }
+.station-node { cursor: grab; touch-action: none; }
+.station-node:active { cursor: grabbing; }
+.station-node .station-hit { fill: transparent; stroke: transparent; stroke-width: 15; }
+.station-node .station-halo { fill: rgba(25, 61, 61, .08); }
+.station-node .station-core { fill: var(--teal-deep); stroke: #fbf9f2; stroke-width: 2; }
+.station-node .station-label { fill: var(--teal-dark); font: 700 10px var(--mono); paint-order: stroke; stroke: #f7f4ec; stroke-width: 3px; stroke-linejoin: round; }
+.station-node:focus .station-core { stroke: var(--acid); stroke-width: 4; }
+.map-estimate, .map-truth { pointer-events: none; }
+.estimate-marker { fill: none; stroke: var(--teal); stroke-width: 2.4; }
+.estimate-marker .estimate-center { fill: var(--teal); stroke: var(--card); stroke-width: 1.5; }
+.truth-marker { fill: none; stroke: var(--rust); stroke-width: 2; stroke-dasharray: 3 2; }
+.truth-marker .truth-center { fill: var(--rust); stroke: var(--card); stroke-width: 1.5; }
+.estimate-label, .truth-label { fill: var(--teal-deep); stroke: #f7f4ec; stroke-width: 3px; paint-order: stroke; stroke-linejoin: round; font: 700 8px var(--mono); }
+.truth-label { fill: var(--rust-dark); }
+.truth-connector { stroke: var(--rust); stroke-width: 1; stroke-dasharray: 3 3; opacity: .8; pointer-events: none; }
+.geometry-readout strong[data-quality="limited"], .geometry-readout strong[data-quality="weak"] { color: var(--rust-dark); }
+.map-legend { display: flex; flex-wrap: wrap; gap: 10px 17px; margin-top: 9px; color: var(--muted); font-size: 8px; }
+.map-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend-station { width: 8px; height: 8px; border: 2px solid var(--teal-deep); border-radius: 50%; background: var(--card); }
+.legend-estimate { width: 10px; height: 10px; border: 2px solid var(--teal); border-radius: 50%; }
+.legend-truth { width: 10px; height: 10px; border: 1px dashed var(--rust); border-radius: 50%; background: var(--rust-pale); }
+.micro { margin: 8px 0 0; color: var(--muted); font-size: 8px; line-height: 1.75; }
+.geometry-readout { display: flex; align-items: start; gap: 10px; margin-top: 12px; padding: 9px 10px; border: 1px solid #d8e0d7; background: #eff3ec; }
+.geometry-icon { color: var(--teal); font: 22px/1 var(--serif); }
+.geometry-readout strong { display: block; color: #365954; font: 600 10px var(--serif); }
+.geometry-readout small { display: block; margin-top: 2px; color: var(--muted); font-size: 8px; }
+
+.controls-card .card-heading { margin-bottom: 13px; }
+.preset-block { margin-bottom: 13px; }
+.label-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 6px; color: var(--ink-soft); font-size: 9px; }
+.label-row .small-cap { color: var(--muted); font-size: 7px; }
+.preset-buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.preset-button {
+  min-height: 33px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--ink-soft);
+  background: #f7f4ec;
+  font-size: 9px;
+}
+.preset-button:hover { border-color: var(--teal); color: var(--teal-deep); }
+.preset-button.selected { border-color: var(--teal-deep); color: var(--teal-dark); background: #e3eae2; }
+.control-rule { display: flex; align-items: center; gap: 8px; margin: 12px 0 9px; color: var(--muted); font: 8px var(--mono); letter-spacing: .06em; }
+.control-rule::after { height: 1px; flex: 1; background: var(--line); content: ""; }
+.range-control { display: block; margin: 10px 0 12px; }
+.control-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--ink-soft); font-size: 9px; }
+.control-title output { color: var(--teal-deep); font: 9px var(--mono); white-space: nowrap; }
+input[type="range"] { width: 100%; height: 19px; display: block; margin: 4px 0 0; accent-color: var(--teal); cursor: pointer; }
+.range-hint { display: flex; justify-content: space-between; color: #85877e; font: 7px var(--mono); }
+.control-note { margin: -4px 0 8px; color: var(--muted); font-size: 8px; line-height: 1.7; }
+.control-note output { color: var(--ink); font: 8px var(--mono); }
+.button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 14px; }
+.button-row .clear-button { grid-column: 1 / -1; min-height: 30px; color: var(--muted); }
+.secondary-button {
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid #b9c3b9;
+  border-radius: 0;
+  color: var(--teal-deep);
+  background: transparent;
+  font-size: 9px;
+}
+.secondary-button:hover { border-color: var(--teal-deep); background: #eef1e8; }
+.truth-button {
+  width: 100%;
+  min-height: 51px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 8px 11px;
+  border: 1px solid #ddc3b4;
+  color: #84442f;
+  background: #f7eee5;
+  text-align: left;
+}
+.truth-button:hover, .truth-button[aria-pressed="true"] { border-color: var(--rust); background: var(--rust-pale); }
+.truth-button .truth-lock { font: 20px var(--serif); }
+.truth-button strong, .truth-button small { display: block; }
+.truth-button strong { font: 600 10px var(--serif); }
+.truth-button small { margin-top: 1px; color: #806758; font-size: 8px; }
+.truth-arrow { margin-left: auto; font: 16px var(--mono); }
+
+.records-card { padding-bottom: 11px; }
+.records-heading { margin-bottom: 5px; }
+.record-intro { margin: 5px 0 10px; color: var(--ink-soft); font-size: 9px; line-height: 1.75; }
+.phase-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid #e5dfd2; border-bottom: 1px solid #e5dfd2; }
+.phase-instruction { color: var(--muted); font-size: 8px; }
+.phase-switch { display: flex; gap: 4px; }
+.phase-button {
+  min-height: 29px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  background: #f7f4ec;
+  font: 9px var(--mono);
+}
+.phase-button.active { border-color: var(--teal-deep); color: var(--teal-dark); background: #e4ebe3; }
+.phase-mark { width: 7px; height: 7px; display: inline-block; border-radius: 50%; background: var(--teal); }
+.phase-button[data-phase="S"] .phase-mark { background: var(--rust); }
+.phase-hint { margin-left: auto; color: var(--muted); font-size: 8px; }
+.time-axis { display: grid; grid-template-columns: 112px 1fr; align-items: end; padding: 8px 5px 4px 0; color: var(--muted); font: 7px var(--mono); }
+.time-axis > span { padding-left: 3px; }
+.time-axis > div { display: flex; justify-content: space-between; padding: 0 13px 0 7px; }
+.trace-list { display: grid; }
+.station-record {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 4px;
+  align-items: stretch;
+  padding: 5px 0;
+  border-top: 1px solid #e9e3d8;
+}
+.record-station { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding-left: 3px; }
+.record-station strong { color: var(--teal-deep); font: 700 11px var(--mono); }
+.record-station small { color: var(--muted); font: 7px var(--mono); }
+.record-phases { min-width: 0; display: grid; gap: 1px; }
+.trace-lane { min-width: 0; display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: center; }
+.lane-name { color: var(--muted); font: 8px var(--mono); text-align: center; }
+.trace-plot { width: 100%; height: 27px; display: block; overflow: visible; touch-action: pan-y; cursor: crosshair; }
+.trace-plot:focus-visible { outline-offset: -1px; }
+.trace-back { fill: #f8f6ef; stroke: #e8e2d7; stroke-width: .7; }
+.trace-grid { stroke: #e2ddd2; stroke-width: .7; }
+.trace-baseline { stroke: #c9c4b8; stroke-width: .7; stroke-dasharray: 2 3; }
+.trace-path { fill: none; stroke: var(--teal); stroke-width: 1.25; vector-effect: non-scaling-stroke; }
+.trace-path.phase-s { stroke: var(--rust); }
+.pick-guide { stroke: var(--teal-deep); stroke-width: 1; stroke-dasharray: 2 2; opacity: .72; vector-effect: non-scaling-stroke; pointer-events: none; }
+.pick-guide.phase-s { stroke: var(--rust-dark); }
+.pick-handle { fill: #faf8f1; stroke: var(--teal-deep); stroke-width: 1.8; cursor: ew-resize; vector-effect: non-scaling-stroke; touch-action: none; }
+.pick-handle.phase-s { stroke: var(--rust-dark); }
+.pick-handle:hover, .pick-handle:focus { fill: var(--acid); stroke-width: 2.6; }
+.station-record:hover { background: rgba(228, 235, 227, .35); }
+.trace-note { margin: 7px 0 0; }
+
+.results-card { padding-bottom: 13px; }
+.results-card .card-heading { align-items: center; margin-bottom: 12px; }
+.fit-state { padding: 4px 7px; border: 1px solid #cdd7c9; color: #446059; background: #edf2e9; font: 8px var(--mono); white-space: nowrap; }
+.fit-state.is-failed { border-color: #e0c2b1; color: #8b4732; background: #f8ebe1; }
+.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin-bottom: 12px; }
+.metric-card { min-width: 0; min-height: 78px; padding: 8px 9px; border: 1px solid #e5ded1; background: #f7f4ec; }
+.metric-card > span, .metric-card > small { display: block; color: var(--muted); font-size: 7px; }
+.metric-card > strong { display: block; overflow-wrap: anywhere; margin: 5px 0 2px; color: var(--ink); font: 600 15px/1.2 var(--serif); }
+.metric-rms > strong { color: var(--rust-dark); }
+.table-wrap { overflow-x: auto; border: 1px solid #e4ded2; }
+.residual-table { width: 100%; min-width: 510px; border-collapse: collapse; font: 8px/1.4 var(--mono); text-align: right; }
+.residual-table caption { padding: 8px 9px; color: var(--ink-soft); background: #f5f1e8; font: 8px var(--sans); text-align: left; }
+.residual-table th { padding: 6px 6px; color: #59675e; background: #ece8dc; font: 7px var(--sans); white-space: nowrap; }
+.residual-table td { padding: 5px 6px; border-top: 1px solid #eae4d8; color: var(--ink-soft); white-space: nowrap; }
+.residual-table th:first-child, .residual-table td:first-child { text-align: left; }
+.residual-table td:first-child { color: var(--teal-deep); font-weight: 700; }
+.residual-table tbody tr:nth-child(even) { background: rgba(241, 237, 227, .55); }
+.empty-cell { padding: 12px !important; color: var(--muted) !important; text-align: center !important; }
+.residual-positive { color: var(--rust-dark) !important; }
+.residual-negative { color: var(--teal-deep) !important; }
+.truth-panel { margin-top: 11px; padding: 10px; border: 1px solid #d9bcae; background: #f8eee6; }
+.truth-panel-heading { display: flex; justify-content: space-between; gap: 10px; color: var(--rust-dark); font: 8px var(--mono); letter-spacing: .04em; }
+.truth-panel-heading span + span { color: #8a7063; font-family: var(--sans); }
+.truth-values { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin-top: 9px; }
+.truth-values span { color: #846957; font-size: 7px; }
+.truth-values strong { display: block; margin-top: 3px; color: #673c2e; font: 600 12px var(--serif); }
+
+.reading { padding: 41px 0 48px; border-top: 1px solid var(--line); }
+.reading-heading { max-width: 700px; }
+.reading-heading h2 { margin: 9px 0 10px; font: 500 clamp(31px, 4vw, 43px)/1.25 var(--serif); letter-spacing: -.025em; }
+.reading-heading > p:last-child { max-width: 590px; margin: 0; color: var(--ink-soft); font-size: 10px; line-height: 1.9; }
+.reading-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 22px 0 24px; }
+.reading-grid article { min-height: 135px; padding: 14px; border-top: 1px solid #b9b2a3; background: rgba(251, 249, 242, .48); }
+.reading-grid article > span { color: var(--rust); font: 8px var(--mono); letter-spacing: .06em; }
+.reading-grid h3 { margin: 6px 0 5px; font: 500 18px var(--serif); }
+.reading-grid p { margin: 0; color: var(--ink-soft); font-size: 9px; line-height: 1.8; }
+.model-details { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.model-details summary { padding: 10px 0; color: var(--teal-deep); font: 500 14px var(--serif); cursor: pointer; }
+.details-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 24px; padding: 1px 0 14px; }
+.details-grid p { margin: 0; color: var(--ink-soft); font-size: 9px; line-height: 1.85; }
+.references { display: grid; grid-template-columns: minmax(140px, .55fr) repeat(3, minmax(0, 1fr)); gap: 8px 20px; align-items: center; padding-top: 19px; }
+.references .small-cap { font-size: 8px; }
+.references a { color: var(--teal-deep); font: 500 10px var(--serif); text-decoration: none; }
+.references a:hover { color: var(--rust); }
+.references a span { color: var(--rust); }
+.references small { grid-column: 2 / -1; color: var(--muted); font-size: 8px; }
+footer {
+  max-width: 1420px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: auto;
+  padding: 13px clamp(20px, 4vw, 58px) 19px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font: 8px var(--mono);
+  letter-spacing: .04em;
+}
+
+@media (max-width: 1100px) {
+  .workflow-grid { grid-template-columns: minmax(285px, .78fr) minmax(0, 1.22fr); gap: 12px; }
+  .map-card, .controls-card, .records-card, .results-card { padding: 12px; }
+  .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 850px) {
+  .hero { grid-template-columns: minmax(0, .9fr) minmax(300px, 1.1fr); gap: 25px; }
+  .workflow-grid { grid-template-columns: 1fr; }
+  .left-rail { grid-template-columns: minmax(0, 1.08fr) minmax(270px, .92fr); align-items: start; }
+  .right-rail { grid-template-columns: 1fr; }
+  .map-card, .controls-card, .records-card, .results-card { padding: 15px; }
+}
+@media (max-width: 640px) {
+  body { font-size: 13px; }
+  .mast { min-height: 58px; padding-inline: 15px; font-size: 7px; }
+  .mast > span { max-width: 115px; overflow: hidden; text-overflow: ellipsis; }
+  .brand { font-size: 12px; gap: 7px; }
+  .brand-icon { width: 30px; height: 30px; font-size: 20px; }
+  main { padding-inline: 15px; }
+  .hero { min-height: auto; grid-template-columns: 1fr; gap: 22px; padding: 35px 0 31px; }
+  .hero h1 { font-size: clamp(61px, 17vw, 82px); }
+  .hero-lede { font-size: 18px; }
+  .hero-description { font-size: 10px; }
+  .hero-figure { padding: 10px 11px; }
+  .folio { flex-wrap: wrap; justify-content: flex-start; gap: 5px 14px; font-size: 7px; }
+  .laboratory { padding: 32px 0 37px; }
+  .section-head { display: block; }
+  .section-head h2 { font-size: 32px; }
+  .section-intro { margin-top: 9px; }
+  .workflow-grid { gap: 12px; }
+  .left-rail { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .right-rail { gap: 12px; }
+  .map-card, .controls-card, .records-card, .results-card { padding: 11px; }
+  .card-heading h3 { font-size: 18px; }
+  .map-legend { gap: 7px 12px; font-size: 7px; }
+  .status-banner { font-size: 9px; }
+  .records-heading { align-items: end; }
+  .phase-toolbar { gap: 6px; }
+  .phase-hint { width: 100%; margin-left: 0; }
+  .time-axis, .station-record { grid-template-columns: 59px minmax(0, 1fr); }
+  .time-axis { font-size: 6px; }
+  .time-axis > div { padding-inline: 5px; }
+  .station-record { gap: 1px; }
+  .record-station { padding-left: 1px; }
+  .record-station strong { font-size: 10px; }
+  .record-station small { font-size: 6px; }
+  .trace-lane { grid-template-columns: 15px minmax(0, 1fr); }
+  .trace-plot { height: 25px; }
+  .metric-grid { gap: 5px; }
+  .metric-card { min-height: 70px; padding: 7px; }
+  .metric-card > strong { font-size: 13px; }
+  .truth-values { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 10px; }
+  .reading { padding: 31px 0 35px; }
+  .reading-heading h2 { font-size: 32px; }
+  .reading-grid { grid-template-columns: 1fr; gap: 8px; margin: 18px 0; }
+  .reading-grid article { min-height: auto; padding: 11px; }
+  .details-grid { grid-template-columns: 1fr; gap: 7px; }
+  .references { grid-template-columns: 1fr; gap: 8px; }
+  .references small { grid-column: auto; }
+  footer { display: grid; padding-inline: 15px; font-size: 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+</style></head><body>
+<div class="sheet" id="top">
+  <a class="skip-link" href="#experiment">跳到地震定位实验</a>
+  <header class="mast">
+    <a class="brand" href="#top"><span class="brand-icon" aria-hidden="true">⌖</span>地球物理 · 现场札记</a>
+    <span>一件离线科学装置 <b>／</b> HYPOCENTER LAB</span>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span>地震学 / 到时与定位</p>
+        <h1 id="page-title">震源的<br><em>坐标</em><i aria-hidden="true">↗</i></h1>
+        <p class="hero-lede">六个台站听见同一场震动，<br>能把地下的震源找回来吗？</p>
+        <p class="hero-description">在合成的 P、S 波记录上挑出到时。定位器会用这些读数估计震中、深度和发震时刻；移动台站或改动速度假设，再看解与残差怎样变化。</p>
+        <a class="hero-link" href="#experiment">进入定位台 <span aria-hidden="true">↓</span></a>
+      </div>
+      <figure class="hero-figure" aria-label="地表台站接收地下震源传播的 P 波与 S 波示意图">
+        <div class="figure-top"><span>地表台网 / 直达波示意</span><span>FIG. 01</span></div>
+        <svg class="hero-diagram" viewBox="0 0 520 245" role="img" aria-label="六个地表台站记录来自地下震源的波">
+          <path d="M28 90H492M38 96C135 101 185 97 260 100S392 98 482 93" fill="none" stroke="#9f9a87" stroke-width="1"/>
+          <path d="M47 91V56m0 0-9 13m9-13 9 13M144 91V56m0 0-9 13m9-13 9 13M243 91V56m0 0-9 13m9-13 9 13M343 91V56m0 0-9 13m9-13 9 13M398 91V56m0 0-9 13m9-13 9 13M451 91V56m0 0-9 13m9-13 9 13" fill="none" stroke="#365958" stroke-width="2"/>
+          <path d="M260 192C217 179 194 154 185 111M260 192C234 161 231 130 243 101M260 192C303 178 335 147 343 98M260 192C311 169 387 136 451 95" fill="none" stroke="#b64b31" stroke-width="1.5" stroke-dasharray="4 5" opacity=".74"/>
+          <path d="M260 192C216 162 132 137 47 97M260 192C218 149 174 128 144 98M260 192C303 158 326 122 343 97" fill="none" stroke="#527b7c" stroke-width="1.2" stroke-dasharray="2 6" opacity=".84"/>
+          <path d="M32 134C99 129 166 139 226 133S353 128 488 136M32 154C111 147 171 162 249 153S388 146 488 157M32 176C101 169 161 183 228 174S383 169 488 179" fill="none" stroke="#cfc5b2" stroke-width="1"/>
+          <circle cx="260" cy="192" r="10" fill="#b64b31" opacity=".16"/>
+          <circle cx="260" cy="192" r="4.5" fill="#b64b31"/>
+          <text x="271" y="207" fill="#7e4331" font-size="11">震源</text>
+          <text x="37" y="45" fill="#5e6b62" font-size="10">A</text><text x="134" y="45" fill="#5e6b62" font-size="10">B</text>
+          <text x="233" y="45" fill="#5e6b62" font-size="10">C</text><text x="333" y="45" fill="#5e6b62" font-size="10">D</text><text x="395" y="45" fill="#5e6b62" font-size="10">E</text><text x="441" y="45" fill="#5e6b62" font-size="10">F</text>
+          <text x="34" y="229" fill="#69736a" font-size="9">P：先到，垂直分量</text><text x="287" y="229" fill="#69736a" font-size="9">S：后到，水平分量</text>
+        </svg>
+        <figcaption><span><i class="key-line p-key"></i>P 波 / 较快</span><i></i><span><i class="key-line s-key"></i>S 波 / 较慢</span><i></i><span><i class="key-dot"></i>震源</span></figcaption>
+      </figure>
+    </section>
+
+    <div class="folio" aria-label="模型摘要">
+      <span>六个可移动地表台站</span><span>均匀半空间 / 直达 P、S 波</span><span>到时差 → 位置、深度与发震时刻</span>
+    </div>
+
+    <section id="experiment" class="laboratory" aria-labelledby="lab-title">
+      <div class="section-head">
+        <div><p class="small-cap"><span>01</span> / 互动实验 · THE PICKING DESK</p><h2 id="lab-title">先挑出到时，<br><em>再问震源在哪里。</em></h2></div>
+        <p class="section-intro">每个台站的 P、S 记录都有一个可调整的拾取标记。定位器只读取这些标记；真值在你选择揭晓之前不会进入界面读数。</p>
+      </div>
+
+      <p id="status" class="status-banner" role="status" aria-live="polite">正在准备合成地震记录…</p>
+
+      <div class="workflow-grid">
+        <div class="left-rail">
+          <section class="map-card" aria-labelledby="map-title">
+            <div class="card-heading"><div><p class="small-cap">A / 台网几何</p><h3 id="map-title">震中在台站的哪一侧？</h3></div><span class="map-unit">局部平面 · km</span></div>
+            <div class="map-wrap">
+              <svg id="station-map" viewBox="0 0 680 460" role="group" aria-label="可拖动的台站地图。聚焦台站后可用方向键移动，按住 Shift 可加大步长。">
+                <defs>
+                  <pattern id="map-grid" width="94" height="61" patternUnits="userSpaceOnUse"><path d="M94 0H0V61" fill="none" stroke="#dcd5c7" stroke-width="1"/></pattern>
+                  <pattern id="map-minor" width="23.5" height="15.25" patternUnits="userSpaceOnUse"><path d="M23.5 0H0V15.25" fill="none" stroke="#e9e3d7" stroke-width=".7"/></pattern>
+                </defs>
+                <rect x="64" y="36" width="564" height="366" fill="#f7f4ec"/>
+                <rect x="64" y="36" width="564" height="366" fill="url(#map-grid)"/>
+                <rect x="64" y="36" width="564" height="366" fill="url(#map-minor)"/>
+                <path d="M64 402H628M64 36V402" fill="none" stroke="#8c8a7c" stroke-width="1.2"/>
+                <g class="map-labels" aria-hidden="true">
+                  <text x="64" y="425">0</text><text x="252" y="425">40</text><text x="440" y="425">80</text><text x="610" y="425">120</text>
+                  <text x="39" y="405">0</text><text x="31" y="283">30</text><text x="31" y="161">60</text><text x="31" y="43">90</text>
+                  <text x="332" y="449" class="axis-name">东西 x / km</text><text x="13" y="24" class="axis-name">南北 y / km</text>
+                  <text x="78" y="55" class="north-mark">N ↑</text>
+                </g>
+                <g id="map-data"></g>
+              </svg>
+            </div>
+            <div class="map-legend"><span><i class="legend-station"></i>地表台站（拖动）</span><span><i class="legend-estimate"></i>估计震中</span><span><i class="legend-truth"></i>真震中（揭晓后）</span></div>
+            <p class="micro map-help">鼠标或触屏拖动台站；键盘聚焦后按方向键移动，Shift 加快。移动台站会用同一震源重新生成到时与初始拾取。</p>
+            <div class="geometry-readout" aria-live="polite"><span class="geometry-icon" aria-hidden="true">⌁</span><div><strong id="geometry-label">正在读取方位覆盖</strong><small id="geometry-detail"></small></div></div>
+          </section>
+
+          <section class="controls-card" aria-labelledby="settings-title">
+            <div class="card-heading"><div><p class="small-cap">B / 实验条件</p><h3 id="settings-title">改变一项，再看解如何响应</h3></div><span class="small-cap">INPUT</span></div>
+            <div class="preset-block">
+              <div class="label-row"><span>台站布局</span><span class="small-cap">GEOMETRY</span></div>
+              <div class="preset-buttons" role="group" aria-label="台站几何预设">
+                <button type="button" class="preset-button selected" data-geometry="ring" aria-pressed="true">环绕</button>
+                <button type="button" class="preset-button" data-geometry="side" aria-pressed="false">偏侧</button>
+                <button type="button" class="preset-button" data-geometry="cluster" aria-pressed="false">聚集</button>
+              </div>
+            </div>
+            <div class="control-rule"><span>定位假设</span></div>
+            <label class="range-control" for="fit-vp">
+              <span class="control-title">假定 P 波速度 <output id="fit-vp-value" for="fit-vp">6.0 km/s</output></span>
+              <input id="fit-vp" type="range" min="4.0" max="8.0" step="0.1" value="6.0">
+              <span class="range-hint"><span>4.0</span><span>8.0 km/s</span></span>
+            </label>
+            <label class="range-control" for="fit-ratio">
+              <span class="control-title">假定速度比 Vp/Vs <output id="fit-ratio-value" for="fit-ratio">1.71</output></span>
+              <input id="fit-ratio" type="range" min="1.45" max="2.20" step="0.01" value="1.7143">
+              <span class="range-hint"><span>1.45</span><span>2.20</span></span>
+            </label>
+            <p class="control-note">当前假定 Vs = <output id="fit-vs-value">3.50 km/s</output>。改速度只重算定位，不改记录和拾取。</p>
+            <div class="control-rule"><span>初始到时拾取</span></div>
+            <label class="range-control" for="pick-jitter">
+              <span class="control-title">拾取误差上限 <output id="pick-jitter-value" for="pick-jitter">±0.18 s</output></span>
+              <input id="pick-jitter" type="range" min="0" max="0.50" step="0.01" value="0.18">
+              <span class="range-hint"><span>准确 0 s</span><span>较大 0.50 s</span></span>
+            </label>
+            <p class="control-note">误差由当前种子确定。改变误差上限会重建初始 picks，并清除手工改动。</p>
+              <div class="button-row">
+                <button id="restore-picks" type="button" class="secondary-button">恢复初始拾取</button>
+                <button id="new-event" type="button" class="secondary-button">重新生成事件 <span aria-hidden="true">↻</span></button>
+                <button id="clear-picks" type="button" class="secondary-button clear-button">清除全部拾取</button>
+            </div>
+            <button id="truth-toggle" type="button" class="truth-button" aria-pressed="false"><span class="truth-lock" aria-hidden="true">◌</span><span><strong>揭晓震源真值</strong><small>显示真震中与定位偏差</small></span><span class="truth-arrow" aria-hidden="true">＋</span></button>
+          </section>
+        </div>
+
+        <div class="right-rail">
+          <section class="records-card" aria-labelledby="records-title">
+            <div class="card-heading records-heading"><div><p class="small-cap">C / 合成地震记录</p><h3 id="records-title">在波形上挑一个到时</h3></div><span class="record-duration">0 — 50 s</span></div>
+            <p class="record-intro">先选 P 或 S，再点击对应记录改拾取；也可拖动标记。每行共用秒坐标，波形只用于辨认合成到时。</p>
+            <div class="phase-toolbar">
+              <span class="phase-instruction">正在拾取</span>
+              <div class="phase-switch" role="group" aria-label="选择要拾取的地震波相位">
+                <button type="button" data-phase="P" class="phase-button active" aria-pressed="true"><i class="phase-mark p-mark"></i>P / 垂直</button>
+                <button type="button" data-phase="S" class="phase-button" aria-pressed="false"><i class="phase-mark s-mark"></i>S / 水平</button>
+              </div>
+              <span id="phase-hint" class="phase-hint">点击任一 P 记录设置拾取</span>
+            </div>
+            <div class="time-axis" aria-hidden="true"><span>台站 / 相位</span><div><i>0</i><i>10</i><i>20</i><i>30</i><i>40</i><i>50 s</i></div></div>
+            <div id="trace-list" class="trace-list" aria-label="六个台站的 P、S 合成记录"></div>
+            <p class="micro trace-note">圆点是当前拾取，不是自动识别结果。聚焦圆点后用 ← / → 微调；Shift 加快，Home / End 移到记录两端。</p>
+          </section>
+
+          <section class="results-card" aria-labelledby="results-title">
+            <div class="card-heading"><div><p class="small-cap">D / 定位读数</p><h3 id="results-title">这些到时对应哪里？</h3></div><span id="fit-state" class="fit-state">等待拟合</span></div>
+            <div class="metric-grid">
+              <div class="metric-card"><span>震中坐标 x / y</span><strong id="estimate-xy">—</strong><small>局部平面 · km</small></div>
+              <div class="metric-card"><span>深度 z</span><strong id="estimate-depth">—</strong><small>向下为正 · km</small></div>
+              <div class="metric-card"><span>发震时刻 t₀</span><strong id="estimate-origin">—</strong><small>相对记录起点 · s</small></div>
+              <div class="metric-card metric-rms"><span>整体到时 RMS</span><strong id="estimate-rms">—</strong><small>等权残差 · ms</small></div>
+            </div>
+            <div class="table-wrap">
+              <table class="residual-table">
+                <caption>每站的拾取、模型预测与残差（观测 − 预测）</caption>
+                <thead><tr><th scope="col">站</th><th scope="col">P 拾取</th><th scope="col">P 预测</th><th scope="col">P 残差</th><th scope="col">S 拾取</th><th scope="col">S 预测</th><th scope="col">S 残差</th></tr></thead>
+                <tbody id="residual-rows"><tr><td colspan="7" class="empty-cell">等待合成记录</td></tr></tbody>
+              </table>
+            </div>
+            <div id="truth-panel" class="truth-panel" hidden>
+              <div class="truth-panel-heading"><span>揭晓 / SYNTHETIC TRUTH</span><span>仅用于本轮对照</span></div>
+              <div class="truth-values"><span>真值 x / y<strong id="truth-xy">—</strong></span><span>真值深度<strong id="truth-depth">—</strong></span><span>水平偏差<strong id="truth-offset">—</strong></span><span>深度 / 时间偏差<strong id="truth-delta">—</strong></span></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="reading" aria-labelledby="reading-title">
+      <div class="reading-heading"><p class="small-cap">02 / 读数应该怎样理解</p><h2 id="reading-title">位置来自差异，<br><em>也受限于台站怎么摆。</em></h2><p>当多站方位覆盖完整，传播时间差能从不同方向约束震源。台站都挤在一侧时，相似到时可能对应更大的位置或深度变化。</p></div>
+      <div class="reading-grid">
+        <article><span>Ⅰ / 先后</span><h3>P 波先到，S 波后到</h3><p>两类波速不同。S−P 间隔随传播距离增加；多个站点的到时共同约束震源位置、深度与发震时刻。</p></article>
+        <article><span>Ⅱ / 拾取</span><h3>一个小改动，会传到整个解</h3><p>这里的定位器对当前所有有效拾取做等权最小二乘。试着移动一枚标记，观察该站残差、整体 RMS 与解一起变化。</p></article>
+        <article><span>Ⅲ / 几何</span><h3>台站环绕，方向更完整</h3><p>切换“偏侧”或“聚集”，再与环绕布局对照。方位覆盖提示只描述几何条件，不是正式的定位误差区间。</p></article>
+      </div>
+      <details class="model-details">
+        <summary>模型假设与证据边界</summary>
+        <div class="details-grid">
+          <p>本实验使用局部平面上的均匀、各向同性半空间。P、S 波沿直线传播，速度固定；到时为发震时刻加上路径长度除以相速度。默认真值速度为 Vp = 6.0 km/s、Vs = 3.5 km/s。</p>
+          <p>屏幕上的衰减波列与噪声是合成信号，拾取误差由可复现的随机种子产生。将 P、S 分成垂直与水平示意道只是便于阅读，真实三分量极化还会随射线方向和构造改变。记录不是实际地震数据，也不模拟弹性波方程、复杂震相、震级、震源机制或仪器响应。</p>
+          <p>定位器使用当前手工拾取和所选速度假设估计位置；错误速度、有限台站几何与到时误差会改变解。页面显示数值残差与 RMS，不计算正式置信椭球，也不是实际定位软件。</p>
+          <p>拖动台站或更改拾取误差会在同一震源和种子下重新合成到时及初始拾取，并清除手工修改。真值仅在按下揭晓按钮后用于可视对照。</p>
+        </div>
+      </details>
+      <div class="references">
+        <span class="small-cap">延伸阅读 / USGS</span>
+        <a href="https://www.usgs.gov/faqs/how-do-seismologists-locate-earthquake" target="_blank" rel="noreferrer">地震学家如何定位地震？ <span>↗</span></a>
+        <a href="https://www.usgs.gov/programs/earthquake-hazards/seismographs-keeping-track-earthquakes" target="_blank" rel="noreferrer">地震仪、P 波与 S 波 <span>↗</span></a>
+        <a href="https://www.usgs.gov/observatories/yvo/news/everything-relative-precise-earthquake-location" target="_blank" rel="noreferrer">速度模型与定位误差 <span>↗</span></a>
+        <small>页面运行时不访问这些链接；它们仅供进一步阅读。</small>
+      </div>
+    </section>
+  </main>
+
+  <footer><span>震源的坐标 <b>／</b> 合成到时 · 直达波 · 等权定位</span><span>NO NETWORK · SYNTHETIC DATA</span></footer>
+</div>
+
+<script>
+(function attachSeismicCore(root, factory) {
+  "use strict";
+
+  if (root) root.SeismicCore = factory();
+})(typeof window !== "undefined" ? window : (typeof globalThis !== "undefined" ? globalThis : this), function createSeismicCore() {
+  "use strict";
+
+  const TRUTH_VP = 6.0;
+  const TRUTH_VS = 3.5;
+  const DEFAULT_BOUNDS = Object.freeze({
+    minX: 0,
+    maxX: 120,
+    minY: 0,
+    maxY: 90,
+    minDepth: 0,
+    maxDepth: 35,
+    minOrigin: -60,
+    maxOrigin: 10
+  });
+
+  const DEFAULT_STATIONS = Object.freeze([
+    Object.freeze({ id: "A", x: 8, y: 8 }),
+    Object.freeze({ id: "B", x: 60, y: 3 }),
+    Object.freeze({ id: "C", x: 112, y: 8 }),
+    Object.freeze({ id: "D", x: 110, y: 82 }),
+    Object.freeze({ id: "E", x: 60, y: 87 }),
+    Object.freeze({ id: "F", x: 8, y: 78 })
+  ]);
+
+  const TAU = Math.PI * 2;
+  const VALID_PHASES = new Set(["P", "S"]);
+  const PARAMETER_KEYS = ["x", "y", "z", "t0"];
+
+  function clamp(value, minimum, maximum) {
+    return Math.max(minimum, Math.min(maximum, value));
+  }
+
+  function finiteNumber(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function seedToken(seed) {
+    if (typeof seed === "number" && Number.isFinite(seed)) return "n:" + String(seed);
+    if (typeof seed === "string") return "s:" + seed;
+    if (typeof seed === "bigint") return "b:" + String(seed);
+    return "d:0";
+  }
+
+  function hash32(text) {
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 0x01000193);
+    }
+    hash ^= hash >>> 16;
+    hash = Math.imul(hash, 0x7feb352d);
+    hash ^= hash >>> 15;
+    hash = Math.imul(hash, 0x846ca68b);
+    hash ^= hash >>> 16;
+    return hash >>> 0;
+  }
+
+  function seededRandom(seed) {
+    let state = hash32(seedToken(seed));
+    return function random() {
+      state = (state + 0x6d2b79f5) >>> 0;
+      let value = state;
+      value = Math.imul(value ^ (value >>> 15), value | 1);
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function deriveSeed(seed, label) {
+    return seedToken(seed) + "|" + String(label);
+  }
+
+  function usableStations(stations) {
+    if (!Array.isArray(stations)) return [];
+    const ids = new Set();
+    const result = [];
+    for (const station of stations) {
+      if (!station || station.id == null) continue;
+      const id = String(station.id);
+      const x = Number(station.x);
+      const y = Number(station.y);
+      if (!id || ids.has(id) || !Number.isFinite(x) || !Number.isFinite(y)) continue;
+      ids.add(id);
+      result.push({ id, x, y });
+    }
+    return result;
+  }
+
+  function phaseName(phase) {
+    if (typeof phase !== "string") return "";
+    return phase.toUpperCase();
+  }
+
+  function velocityFor(phase, vp, vs) {
+    const name = phaseName(phase);
+    if (name === "P") return Number(vp);
+    if (name === "S") return Number(vs);
+    return NaN;
+  }
+
+  function predictArrival(source, station, phase, vp, vs) {
+    if (!source || !station) return NaN;
+    const x = Number(source.x);
+    const y = Number(source.y);
+    const z = Number(source.z);
+    const t0 = Number(source.t0);
+    const xs = Number(station.x);
+    const ys = Number(station.y);
+    const velocity = velocityFor(phase, vp, vs);
+    if (![x, y, z, t0, xs, ys, velocity].every(Number.isFinite) || velocity <= 0) return NaN;
+    const distance = Math.hypot(x - xs, y - ys, z);
+    return t0 + distance / velocity;
+  }
+
+  function deterministicSource(seed) {
+    const random = seededRandom(deriveSeed(seed, "source"));
+    return {
+      x: 12 + random() * 96,
+      y: 12 + random() * 66,
+      z: 4 + random() * 21,
+      t0: 1 + random() * 3
+    };
+  }
+
+  function createScenario(seed, stations, pickJitterSeconds) {
+    const stationList = usableStations(stations).length > 0
+      ? usableStations(stations)
+      : DEFAULT_STATIONS.map((station) => ({ id: station.id, x: station.x, y: station.y }));
+    const source = deterministicSource(seed);
+    const jitterLimit = Math.max(0, finiteNumber(pickJitterSeconds, 0));
+    const arrivals = [];
+    const picks = [];
+
+    for (const station of stationList) {
+      for (const phase of ["P", "S"]) {
+        const time = predictArrival(source, station, phase, TRUTH_VP, TRUTH_VS);
+        const arrival = { stationId: station.id, phase, time };
+        arrivals.push(arrival);
+
+        const random = seededRandom(deriveSeed(seed, "pick:" + station.id + ":" + phase));
+        const error = (random() * 2 - 1) * jitterLimit;
+        picks.push({ stationId: station.id, phase, time: time + error });
+      }
+    }
+
+    return {
+      source,
+      truthVp: TRUTH_VP,
+      truthVs: TRUTH_VS,
+      arrivals,
+      picks
+    };
+  }
+
+  function gaussianRandom(random) {
+    const first = Math.max(random(), Number.EPSILON);
+    const second = random();
+    return Math.sqrt(-2 * Math.log(first)) * Math.cos(TAU * second);
+  }
+
+  function makeTrace(seed, stationId, phase, sampleCount, durationSeconds, arrivalSeconds, noise) {
+    const count = Math.floor(Number(sampleCount));
+    const duration = Number(durationSeconds);
+    const arrival = Number(arrivalSeconds);
+    const phaseCode = phaseName(phase);
+    if (!Number.isFinite(count) || count < 0 || !Number.isFinite(duration) || duration < 0 || !Number.isFinite(arrival) || !VALID_PHASES.has(phaseCode)) return [];
+    if (count === 0) return [];
+
+    const random = seededRandom(deriveSeed(seed, "trace:" + String(stationId) + ":" + phaseCode));
+    const noiseScale = Math.max(0, finiteNumber(noise, 0));
+    const frequency = phaseCode === "P" ? 4.8 : 3.1;
+    const decaySeconds = phaseCode === "P" ? 1.05 : 1.8;
+    const amplitude = phaseCode === "P" ? 0.82 : 1.0;
+    const trace = new Array(count);
+
+    for (let index = 0; index < count; index += 1) {
+      const time = count === 1 ? 0 : (index * duration) / (count - 1);
+      const background = gaussianRandom(random) * noiseScale;
+      const elapsed = time - arrival;
+      let signal = 0;
+      if (elapsed >= 0) {
+        const envelope = Math.exp(-elapsed / decaySeconds);
+        const onset = Math.min(1, elapsed / 0.08);
+        const carrier = Math.sin(TAU * frequency * elapsed) + 0.24 * Math.sin(TAU * frequency * 2.15 * elapsed);
+        signal = amplitude * envelope * onset * carrier;
+      }
+      trace[index] = background + signal;
+    }
+
+    return trace;
+  }
+
+  function normalizedBounds(bounds) {
+    const supplied = bounds && typeof bounds === "object" ? bounds : DEFAULT_BOUNDS;
+    const result = {};
+    for (const key of Object.keys(DEFAULT_BOUNDS)) {
+      result[key] = finiteNumber(supplied[key], DEFAULT_BOUNDS[key]);
+    }
+    const pairs = [["minX", "maxX"], ["minY", "maxY"], ["minDepth", "maxDepth"], ["minOrigin", "maxOrigin"]];
+    for (const [minimum, maximum] of pairs) {
+      if (result[minimum] >= result[maximum]) return null;
+    }
+    return result;
+  }
+
+  function predictionAndRow(source, station, pick, vp, vs) {
+    const velocity = velocityFor(pick.phase, vp, vs);
+    const dx = source.x - station.x;
+    const dy = source.y - station.y;
+    const distance = Math.hypot(dx, dy, source.z);
+    if (!(distance > 0) || !(velocity > 0) || !Number.isFinite(distance) || !Number.isFinite(velocity)) return null;
+    const predicted = source.t0 + distance / velocity;
+    const residual = pick.time - predicted;
+    const scale = 1 / (velocity * distance);
+    return {
+      predicted,
+      residual,
+      row: [dx * scale, dy * scale, source.z * scale, 1]
+    };
+  }
+
+  function evaluate(source, observations, vp, vs) {
+    const rows = [];
+    let objective = 0;
+    for (const observation of observations) {
+      const item = predictionAndRow(source, observation.station, observation.pick, vp, vs);
+      if (!item || !Number.isFinite(item.residual)) return null;
+      rows.push({ observation, predicted: item.predicted, residual: item.residual, row: item.row });
+      objective += item.residual * item.residual;
+    }
+    return { rows, objective };
+  }
+
+  function normalEquations(evaluation) {
+    const matrix = Array.from({ length: 4 }, () => [0, 0, 0, 0]);
+    const vector = [0, 0, 0, 0];
+    for (const item of evaluation.rows) {
+      for (let row = 0; row < 4; row += 1) {
+        vector[row] += item.row[row] * item.residual;
+        for (let column = 0; column < 4; column += 1) {
+          matrix[row][column] += item.row[row] * item.row[column];
+        }
+      }
+    }
+    return { matrix, vector };
+  }
+
+  function solveLinearSystem(matrix, vector, relativeTolerance) {
+    const size = vector.length;
+    const augmented = matrix.map((row, index) => row.slice().concat(vector[index]));
+    let largestPivot = 0;
+    let smallestPivot = Infinity;
+
+    for (let column = 0; column < size; column += 1) {
+      let pivotRow = column;
+      for (let row = column + 1; row < size; row += 1) {
+        if (Math.abs(augmented[row][column]) > Math.abs(augmented[pivotRow][column])) pivotRow = row;
+      }
+      const pivotMagnitude = Math.abs(augmented[pivotRow][column]);
+      largestPivot = Math.max(largestPivot, pivotMagnitude);
+      if (!Number.isFinite(pivotMagnitude) || pivotMagnitude === 0) return { ok: false, reason: "矩阵秩不足" };
+      if (column === 0) smallestPivot = pivotMagnitude;
+      if (pivotMagnitude < Math.max(Number.MIN_VALUE, largestPivot * relativeTolerance)) return { ok: false, reason: "矩阵秩不足" };
+
+      if (pivotRow !== column) {
+        const temporary = augmented[column];
+        augmented[column] = augmented[pivotRow];
+        augmented[pivotRow] = temporary;
+      }
+
+      const pivot = augmented[column][column];
+      for (let entry = column; entry <= size; entry += 1) augmented[column][entry] /= pivot;
+      for (let row = 0; row < size; row += 1) {
+        if (row === column) continue;
+        const factor = augmented[row][column];
+        for (let entry = column; entry <= size; entry += 1) augmented[row][entry] -= factor * augmented[column][entry];
+      }
+      smallestPivot = Math.min(smallestPivot, pivotMagnitude);
+    }
+
+    const solution = augmented.map((row) => row[size]);
+    if (!solution.every(Number.isFinite)) return { ok: false, reason: "线性方程无有限解" };
+    return { ok: true, solution, pivotRatio: largestPivot / smallestPivot };
+  }
+
+  function parameterVector(source) {
+    return [source.x, source.y, source.z, source.t0];
+  }
+
+  function sourceFromVector(vector) {
+    return { x: vector[0], y: vector[1], z: vector[2], t0: vector[3] };
+  }
+
+  function clampVector(vector, bounds) {
+    return [
+      clamp(vector[0], bounds.minX, bounds.maxX),
+      clamp(vector[1], bounds.minY, bounds.maxY),
+      clamp(vector[2], bounds.minDepth, bounds.maxDepth),
+      clamp(vector[3], bounds.minOrigin, bounds.maxOrigin)
+    ];
+  }
+
+  function vectorAtBounds(vector, bounds, tolerance) {
+    const pairs = [
+      [vector[0], bounds.minX, bounds.maxX],
+      [vector[1], bounds.minY, bounds.maxY],
+      [vector[2], bounds.minDepth, bounds.maxDepth],
+      [vector[3], bounds.minOrigin, bounds.maxOrigin]
+    ];
+    return pairs.some(([value, minimum, maximum]) => Math.abs(value - minimum) <= tolerance || Math.abs(value - maximum) <= tolerance);
+  }
+
+  function isBoundedStationary(vector, gradient, bounds) {
+    const minima = [bounds.minX, bounds.minY, bounds.minDepth, bounds.minOrigin];
+    const maxima = [bounds.maxX, bounds.maxY, bounds.maxDepth, bounds.maxOrigin];
+    const scales = [120, 90, 35, 70];
+    let largestProjected = 0;
+    for (let index = 0; index < 4; index += 1) {
+      let component = gradient[index];
+      const nearMinimum = vector[index] <= minima[index] + 1e-7;
+      const nearMaximum = vector[index] >= maxima[index] - 1e-7;
+      // `gradient` is J^T residual, the negative half-gradient of SSE.
+      if ((nearMinimum && component <= 0) || (nearMaximum && component >= 0)) component = 0;
+      largestProjected = Math.max(largestProjected, Math.abs(component) * scales[index]);
+    }
+    return largestProjected < 1e-5;
+  }
+
+  function failed(reason, iterations) {
+    return {
+      ok: false,
+      source: null,
+      rmse: null,
+      residuals: [],
+      iterations: Number.isFinite(iterations) ? iterations : 0,
+      reason,
+      atBounds: false
+    };
+  }
+
+  function locate(stations, picks, fitVp, fitVs, boundsInput) {
+    const bounds = normalizedBounds(boundsInput);
+    const stationList = usableStations(stations);
+    const stationById = new Map(stationList.map((station) => [station.id, station]));
+    const vp = Number(fitVp);
+    const vs = Number(fitVs);
+    if (!bounds) return failed("定位边界无效", 0);
+    if (!Number.isFinite(vp) || !Number.isFinite(vs) || vp <= 0 || vs <= 0) return failed("P、S 波速度必须是正的有限数值", 0);
+    if (!Array.isArray(picks)) return failed("没有可用的到时拾取", 0);
+
+    const observations = [];
+    const seen = new Set();
+    for (const pick of picks) {
+      if (!pick || pick.stationId == null) continue;
+      const stationId = String(pick.stationId);
+      const station = stationById.get(stationId);
+      const phase = phaseName(pick.phase);
+      const time = Number(pick.time);
+      if (!station || !VALID_PHASES.has(phase) || !Number.isFinite(time)) continue;
+      const key = stationId + "\u0000" + phase;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      observations.push({ station, pick: { stationId, phase, time } });
+    }
+
+    const uniqueStationCount = new Set(observations.map((item) => item.station.id)).size;
+    const pCount = observations.filter((item) => item.pick.phase === "P").length;
+    const sCount = observations.filter((item) => item.pick.phase === "S").length;
+    if (observations.length < 6 || uniqueStationCount < 3 || pCount < 2 || sCount < 2) {
+      return failed("至少需要 6 个有效拾取、3 个台站，且 P 与 S 各至少 2 次", 0);
+    }
+
+    const initial = clampVector([60, 45, 17.5, Math.min(...observations.map((item) => item.pick.time)) - 10], bounds);
+    let vector = initial;
+    let current = evaluate(sourceFromVector(vector), observations, vp, vs);
+    if (!current) return failed("到时模型无法计算有限残差", 0);
+
+    let damping = 1e-3;
+    let iterations = 0;
+    let converged = false;
+    let lastReason = "阻尼最小二乘迭代未收敛";
+
+    for (let iteration = 0; iteration < 60; iteration += 1) {
+      iterations = iteration + 1;
+      const equations = normalEquations(current);
+      const undamped = solveLinearSystem(equations.matrix, equations.vector, 1e-12);
+      if (!undamped.ok) return failed("法方程秩不足，当前台网与拾取不能稳定确定四个未知量", iterations);
+
+      const fullStep = undamped.solution;
+      const fullPositionStep = Math.hypot(fullStep[0], fullStep[1], fullStep[2]);
+      if (fullPositionStep < 0.001 && Math.abs(fullStep[3]) < 0.001) {
+        converged = true;
+        break;
+      }
+
+      let accepted = false;
+      let acceptedStep = null;
+      let acceptedDecrease = 0;
+      for (let attempt = 0; attempt < 14; attempt += 1) {
+        const matrix = equations.matrix.map((row) => row.slice());
+        for (let index = 0; index < 4; index += 1) {
+          const diagonal = Math.max(equations.matrix[index][index], 1e-12);
+          matrix[index][index] += damping * diagonal;
+        }
+        const solved = solveLinearSystem(matrix, equations.vector, 1e-15);
+        if (!solved.ok) {
+          damping *= 10;
+          continue;
+        }
+
+        const candidate = clampVector(vector.map((value, index) => value + solved.solution[index]), bounds);
+        const step = candidate.map((value, index) => value - vector[index]);
+        const candidateEvaluation = evaluate(sourceFromVector(candidate), observations, vp, vs);
+        if (candidateEvaluation && candidateEvaluation.objective < current.objective) {
+          accepted = true;
+          acceptedStep = step;
+          acceptedDecrease = current.objective - candidateEvaluation.objective;
+          vector = candidate;
+          current = candidateEvaluation;
+          damping = Math.max(1e-12, damping * 0.3);
+          break;
+        }
+
+        damping = Math.min(1e15, damping * 10);
+      }
+
+      if (!accepted) {
+        const boundedAtCurrent = vectorAtBounds(vector, bounds, 1e-6);
+        if (boundedAtCurrent && isBoundedStationary(vector, equations.vector, bounds)) {
+          converged = true;
+          break;
+        }
+        lastReason = "目标不能继续下降";
+        return failed(lastReason, iterations);
+      }
+
+      const positionStep = Math.hypot(acceptedStep[0], acceptedStep[1], acceptedStep[2]);
+      if ((positionStep < 0.001 && Math.abs(acceptedStep[3]) < 0.001) || acceptedDecrease < 1e-8) {
+        converged = true;
+        break;
+      }
+    }
+
+    if (!converged) return failed(lastReason, iterations);
+
+    const source = sourceFromVector(vector);
+    const residuals = current.rows.map((item) => ({
+      stationId: item.observation.station.id,
+      phase: item.observation.pick.phase,
+      observed: item.observation.pick.time,
+      predicted: item.predicted,
+      residual: item.residual
+    }));
+    const rmse = Math.sqrt(current.objective / residuals.length);
+    if (!Number.isFinite(rmse)) return failed("最终残差不是有限数值", iterations);
+
+    return {
+      ok: true,
+      source,
+      rmse,
+      residuals,
+      iterations,
+      reason: "已收敛",
+      atBounds: vectorAtBounds(vector, bounds, 1e-5)
+    };
+  }
+
+  function geometry(stations, source) {
+    const sourceX = source && Number(source.x);
+    const sourceY = source && Number(source.y);
+    const points = usableStations(stations).filter((station) =>
+      Number.isFinite(sourceX) && Number.isFinite(sourceY) && Math.hypot(station.x - sourceX, station.y - sourceY) >= 0.01
+    );
+    const azimuths = points.map((station) => {
+      let angle = Math.atan2(station.y - sourceY, station.x - sourceX) * 180 / Math.PI;
+      if (angle < 0) angle += 360;
+      return angle;
+    }).sort((left, right) => left - right);
+
+    let maxAzimuthGapDeg = 360;
+    if (azimuths.length >= 2) {
+      maxAzimuthGapDeg = 0;
+      for (let index = 0; index < azimuths.length; index += 1) {
+        const next = index + 1 < azimuths.length ? azimuths[index + 1] : azimuths[0] + 360;
+        maxAzimuthGapDeg = Math.max(maxAzimuthGapDeg, next - azimuths[index]);
+      }
+    }
+
+    let quality = "weak";
+    if (points.length >= 3) {
+      quality = maxAzimuthGapDeg <= 180 ? "good" : (maxAzimuthGapDeg <= 240 ? "limited" : "weak");
+    }
+    return { maxAzimuthGapDeg, quality };
+  }
+
+  return Object.freeze({
+    DEFAULT_STATIONS,
+    createScenario,
+    predictArrival,
+    makeTrace,
+    locate,
+    geometry
+  });
+});
+
+</script>
+<script>
+(function () {
+  "use strict";
+
+  const Core = window.SeismicCore;
+  if (!Core) return;
+
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const BOUNDS = { minX: 0, maxX: 120, minY: 0, maxY: 90, minDepth: 0, maxDepth: 35, minOrigin: -60, maxOrigin: 10 };
+  const TRACE_SECONDS = 50;
+  const TRACE_SAMPLES = 1001;
+  const MAP = { left: 64, top: 36, width: 564, height: 366 };
+  const $ = (id) => document.getElementById(id);
+  const mapSvg = $("station-map");
+  const mapData = $("map-data");
+  const traceList = $("trace-list");
+
+  if (!mapSvg || !mapData || !traceList) return;
+
+  const layouts = {
+    ring: Core.DEFAULT_STATIONS.map((station) => ({ id: station.id, x: station.x, y: station.y })),
+    side: [
+      { id: "A", x: 8, y: 16 }, { id: "B", x: 23, y: 30 }, { id: "C", x: 40, y: 18 },
+      { id: "D", x: 58, y: 35 }, { id: "E", x: 30, y: 59 }, { id: "F", x: 55, y: 70 }
+    ],
+    cluster: [
+      { id: "A", x: 34, y: 27 }, { id: "B", x: 47, y: 31 }, { id: "C", x: 57, y: 28 },
+      { id: "D", x: 39, y: 43 }, { id: "E", x: 51, y: 47 }, { id: "F", x: 61, y: 42 }
+    ]
+  };
+
+  const state = {
+    seed: 20261002,
+    layout: "ring",
+    stations: layouts.ring.map((station) => ({ ...station })),
+    scenario: null,
+    picks: [],
+    activePhase: "P",
+    revealed: false,
+    fit: null,
+    mapDrag: null,
+    traceDrag: null,
+    manuallyEdited: false
+  };
+
+  function clamp(value, low, high) { return Math.max(low, Math.min(high, value)); }
+  function phaseLabel(phase) { return phase === "P" ? "P 垂直分量" : "S 水平分量"; }
+  function position(value) { return Number(value).toFixed(1); }
+  function signed(value, digits) {
+    const number = Number(value);
+    return (number > 0 ? "+" : "") + number.toFixed(digits);
+  }
+  function clonePicks(picks) { return picks.map((pick) => ({ stationId: pick.stationId, phase: pick.phase, time: pick.time })); }
+  function setStatus(message) {
+    const node = $("status");
+    if (node) node.textContent = message;
+  }
+  function fitSpeeds() {
+    const vp = Number($("fit-vp").value);
+    const ratio = Number($("fit-ratio").value);
+    return { vp, vs: vp / ratio, ratio };
+  }
+  function currentFit() {
+    const speed = fitSpeeds();
+    return Core.locate(state.stations, state.picks, speed.vp, speed.vs, BOUNDS);
+  }
+  function worldToMap(x, y) {
+    return { x: MAP.left + (x / 120) * MAP.width, y: MAP.top + (1 - y / 90) * MAP.height };
+  }
+  function mapToWorld(event) {
+    const point = mapSvg.createSVGPoint();
+    point.x = event.clientX;
+    point.y = event.clientY;
+    const local = point.matrixTransform(mapSvg.getScreenCTM().inverse());
+    return {
+      x: clamp(((local.x - MAP.left) / MAP.width) * 120, 0, 120),
+      y: clamp((1 - (local.y - MAP.top) / MAP.height) * 90, 0, 90)
+    };
+  }
+  function svgNode(name, attrs) {
+    const node = document.createElementNS(SVG_NS, name);
+    for (const [key, value] of Object.entries(attrs || {})) node.setAttribute(key, String(value));
+    return node;
+  }
+  function stationDescription(station) {
+    return `台站 ${station.id}，东向 ${position(station.x)} km，北向 ${position(station.y)} km。聚焦后可用方向键移动。`;
+  }
+  function fmtTime(value) { return Number.isFinite(Number(value)) ? Number(value).toFixed(3) : "—"; }
+  function fmtResidual(value) {
+    if (!Number.isFinite(Number(value))) return "—";
+    return signed(Number(value) * 1000, 1);
+  }
+
+  function updateMap() {
+    mapData.replaceChildren();
+    const fit = state.fit;
+
+    if (fit && fit.ok && fit.source) {
+      const at = worldToMap(fit.source.x, fit.source.y);
+      const estimate = svgNode("g", { class: "estimate-marker", transform: `translate(${at.x} ${at.y})`, "aria-label": `估计震中，${position(fit.source.x)}，${position(fit.source.y)} 公里` });
+      estimate.append(svgNode("circle", { cx: 0, cy: 0, r: 9 }));
+      estimate.append(svgNode("circle", { class: "estimate-center", cx: 0, cy: 0, r: 3.5 }));
+      const label = svgNode("text", { class: "estimate-label", x: 10, y: -9 });
+      label.textContent = "拟合震中";
+      estimate.append(label);
+      mapData.append(estimate);
+    }
+
+    if (state.revealed && state.scenario) {
+      const truth = worldToMap(state.scenario.source.x, state.scenario.source.y);
+      if (fit && fit.ok && fit.source) {
+        const estimate = worldToMap(fit.source.x, fit.source.y);
+        mapData.append(svgNode("line", { class: "truth-connector", x1: estimate.x, y1: estimate.y, x2: truth.x, y2: truth.y }));
+      }
+      const marker = svgNode("g", { class: "truth-marker", transform: `translate(${truth.x} ${truth.y})`, "aria-label": "合成事件的真实震中" });
+      marker.append(svgNode("circle", { class: "truth-center", cx: 0, cy: 0, r: 7 }));
+      marker.append(svgNode("path", { class: "truth-cross", d: "M-5 0H5M0-5V5" }));
+      const label = svgNode("text", { class: "truth-label", x: 10, y: 14 });
+      label.textContent = "真值";
+      marker.append(label);
+      mapData.append(marker);
+    }
+
+    for (const station of state.stations) {
+      const at = worldToMap(station.x, station.y);
+      const marker = svgNode("g", {
+        class: "station-node",
+        transform: `translate(${at.x} ${at.y})`,
+        tabindex: "0",
+        role: "button",
+        "data-station": station.id,
+        "aria-label": stationDescription(station)
+      });
+      marker.append(svgNode("circle", { class: "station-hit", cx: 0, cy: 0, r: 10 }));
+      marker.append(svgNode("circle", { class: "station-halo", cx: 0, cy: 0, r: 8 }));
+      marker.append(svgNode("circle", { class: "station-core", cx: 0, cy: 0, r: 4.2 }));
+      const label = svgNode("text", { class: "station-label", x: 8, y: -7 });
+      label.textContent = station.id;
+      marker.append(label);
+      mapData.append(marker);
+    }
+  }
+
+  function updateSpeedOutputs() {
+    const speed = fitSpeeds();
+    $("fit-vp-value").textContent = `${speed.vp.toFixed(1)} km/s`;
+    $("fit-ratio-value").textContent = speed.ratio.toFixed(2);
+    $("fit-vs-value").textContent = `${speed.vs.toFixed(2)} km/s`;
+    const jitter = Number($("pick-jitter").value);
+    $("pick-jitter-value").textContent = `±${jitter.toFixed(2)} s`;
+  }
+
+  function tracePath(trace) {
+    const maxAmplitude = 1.6;
+    const last = Math.max(1, trace.length - 1);
+    const commands = new Array(trace.length);
+    for (let index = 0; index < trace.length; index += 1) {
+      const x = (index / last) * 1000;
+      const y = 50 - clamp(Number(trace[index]) / maxAmplitude, -1, 1) * 39;
+      commands[index] = `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+    }
+    return commands.join("");
+  }
+
+  function makeTraceSvg(station, phase, arrival) {
+    const pick = state.picks.find((item) => item.stationId === station.id && item.phase === phase);
+    const svg = svgNode("svg", {
+      class: "trace-plot",
+      viewBox: "0 0 1000 100",
+      preserveAspectRatio: "none",
+      tabindex: "-1",
+      role: "group",
+      "data-station": station.id,
+      "data-phase": phase,
+      "aria-label": `${station.id} 台站 ${phaseLabel(phase)}记录。`
+    });
+    svg.append(svgNode("rect", { class: "trace-back", x: 0, y: 0, width: 1000, height: 100, rx: 2 }));
+    for (let tick = 0; tick <= TRACE_SECONDS; tick += 10) {
+      const x = (tick / TRACE_SECONDS) * 1000;
+      svg.append(svgNode("line", { class: "trace-grid", x1: x, y1: 0, x2: x, y2: 100 }));
+    }
+    svg.append(svgNode("line", { class: "trace-baseline", x1: 0, y1: 50, x2: 1000, y2: 50 }));
+    const signal = Core.makeTrace(state.seed, station.id, phase, TRACE_SAMPLES, TRACE_SECONDS, arrival, 0.045);
+    svg.append(svgNode("path", { class: `trace-path${phase === "S" ? " phase-s" : ""}`, d: tracePath(signal) }));
+    if (pick) {
+      const x = (clamp(pick.time, 0, TRACE_SECONDS) / TRACE_SECONDS) * 1000;
+      svg.append(svgNode("line", { class: `pick-guide${phase === "S" ? " phase-s" : ""}`, x1: x, y1: 2, x2: x, y2: 98 }));
+      svg.append(svgNode("circle", {
+        class: `pick-handle${phase === "S" ? " phase-s" : ""}`,
+        cx: x,
+        cy: 50,
+        r: 7,
+        tabindex: "0",
+        role: "slider",
+        "data-pick-handle": "true",
+        "aria-valuemin": "0",
+        "aria-valuemax": String(TRACE_SECONDS),
+        "aria-valuenow": Number(pick.time).toFixed(3),
+        "aria-label": `${station.id} 台站 ${phase} 波拾取 ${Number(pick.time).toFixed(3)} 秒。左右方向键微调。`
+      }));
+    }
+    return svg;
+  }
+
+  function renderTraces() {
+    traceList.replaceChildren();
+    const arrivals = new Map(state.scenario.arrivals.map((item) => [`${item.stationId}:${item.phase}`, item.time]));
+    for (const station of state.stations) {
+      const record = document.createElement("div");
+      record.className = "station-record";
+      record.dataset.stationRecord = station.id;
+
+      const stationLabel = document.createElement("div");
+      stationLabel.className = "record-station";
+      const name = document.createElement("strong");
+      name.textContent = station.id;
+      const coords = document.createElement("small");
+      coords.textContent = `${station.x.toFixed(0)}, ${station.y.toFixed(0)} km`;
+      stationLabel.append(name, coords);
+
+      const phases = document.createElement("div");
+      phases.className = "record-phases";
+      for (const phase of ["P", "S"]) {
+        const lane = document.createElement("div");
+        lane.className = "trace-lane";
+        const laneName = document.createElement("span");
+        laneName.className = "lane-name";
+        laneName.textContent = phase;
+        lane.append(laneName, makeTraceSvg(station, phase, arrivals.get(`${station.id}:${phase}`)));
+        phases.append(lane);
+      }
+      record.append(stationLabel, phases);
+      traceList.append(record);
+    }
+  }
+
+  function updatePickMarkers() {
+    for (const svg of traceList.querySelectorAll(".trace-plot")) {
+      const pick = state.picks.find((item) => item.stationId === svg.dataset.station && item.phase === svg.dataset.phase);
+      const oldGuide = svg.querySelector(".pick-guide");
+      const oldHandle = svg.querySelector(".pick-handle");
+      if (oldGuide) oldGuide.remove();
+      if (oldHandle) oldHandle.remove();
+      if (!pick) continue;
+      const x = (clamp(pick.time, 0, TRACE_SECONDS) / TRACE_SECONDS) * 1000;
+      const isS = svg.dataset.phase === "S";
+      svg.append(svgNode("line", { class: `pick-guide${isS ? " phase-s" : ""}`, x1: x, y1: 2, x2: x, y2: 98 }));
+      const handle = svgNode("circle", {
+        class: `pick-handle${isS ? " phase-s" : ""}`,
+        cx: x,
+        cy: 50,
+        r: 7,
+        tabindex: "0",
+        role: "slider",
+        "data-pick-handle": "true",
+        "aria-valuemin": "0",
+        "aria-valuemax": String(TRACE_SECONDS),
+        "aria-valuenow": Number(pick.time).toFixed(3),
+        "aria-label": `${svg.dataset.station} 台站 ${svg.dataset.phase} 波拾取 ${Number(pick.time).toFixed(3)} 秒。左右方向键微调。`
+      });
+      svg.append(handle);
+    }
+  }
+
+  function pickFor(stationId, phase) {
+    return state.picks.find((pick) => pick.stationId === stationId && pick.phase === phase);
+  }
+  function setPick(stationId, phase, time, notice) {
+    const normalized = clamp(Number(time), 0, TRACE_SECONDS);
+    if (!Number.isFinite(normalized)) return;
+    let pick = pickFor(stationId, phase);
+    if (pick) pick.time = normalized;
+    else {
+      pick = { stationId, phase, time: normalized };
+      state.picks.push(pick);
+    }
+    state.manuallyEdited = true;
+    updatePickMarkers();
+    updateResults();
+    const svg = traceList.querySelector(`.trace-plot[data-station="${stationId}"][data-phase="${phase}"]`);
+    const handle = svg && svg.querySelector(".pick-handle");
+    if (handle) handle.focus({ preventScroll: true });
+    if (notice) setStatus(notice);
+  }
+
+  function activePhase(phase) {
+    state.activePhase = phase;
+    for (const button of document.querySelectorAll(".phase-button")) {
+      const selected = button.dataset.phase === phase;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    }
+    const hint = $("phase-hint");
+    if (hint) hint.textContent = `点击任一 ${phase} 记录设置拾取`;
+  }
+
+  function updateResults() {
+    state.fit = currentFit();
+    const fit = state.fit;
+    const fitState = $("fit-state");
+    fitState.classList.toggle("is-failed", !fit.ok);
+    fitState.textContent = fit.ok ? `拟合完成 · ${fit.iterations} 轮` : (fit.reason || "尚不能定位");
+
+    $("estimate-xy").textContent = fit.ok ? `${position(fit.source.x)} / ${position(fit.source.y)}` : "—";
+    $("estimate-depth").textContent = fit.ok ? `${fit.source.z.toFixed(2)} km` : "—";
+    $("estimate-origin").textContent = fit.ok ? `${fit.source.t0.toFixed(3)} s` : "—";
+    $("estimate-rms").textContent = fit.ok ? `${(fit.rmse * 1000).toFixed(1)} ms` : "—";
+
+    const residuals = new Map();
+    if (fit.ok) for (const row of fit.residuals) residuals.set(`${row.stationId}:${row.phase}`, row);
+    const body = $("residual-rows");
+    body.replaceChildren();
+    for (const station of state.stations) {
+      const row = document.createElement("tr");
+      const stationCell = document.createElement("th");
+      stationCell.scope = "row";
+      stationCell.textContent = station.id;
+      row.append(stationCell);
+      for (const phase of ["P", "S"]) {
+        const pick = pickFor(station.id, phase);
+        const estimate = residuals.get(`${station.id}:${phase}`);
+        for (const value of [pick ? fmtTime(pick.time) : "—", estimate ? fmtTime(estimate.predicted) : "—", estimate ? `${fmtResidual(estimate.residual)} ms` : "—"]) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          if (estimate && value === `${fmtResidual(estimate.residual)} ms`) {
+            cell.className = estimate.residual >= 0 ? "residual-positive" : "residual-negative";
+          }
+          row.append(cell);
+        }
+      }
+      body.append(row);
+    }
+
+    const diagnosticSource = fit.ok ? fit.source : { x: 60, y: 45 };
+    const geometry = Core.geometry(state.stations, diagnosticSource);
+    const descriptions = {
+      good: "台站包围震中，方位覆盖较完整",
+      limited: "台站方位偏向一侧，定位可能变差",
+      weak: "台站主要在同一侧，深度与方向更难约束"
+    };
+    const geometryLabel = $("geometry-label");
+    geometryLabel.textContent = descriptions[geometry.quality] || descriptions.weak;
+    geometryLabel.dataset.quality = geometry.quality;
+    $("geometry-detail").textContent = `最大方位空档 ${geometry.maxAzimuthGapDeg.toFixed(0)}° · 定性提示，不是误差范围`;
+    updateTruthPanel(fit);
+    updateMap();
+  }
+
+  function updateTruthPanel(fit) {
+    const panel = $("truth-panel");
+    panel.hidden = !state.revealed;
+    const button = $("truth-toggle");
+    button.setAttribute("aria-pressed", String(state.revealed));
+    button.classList.toggle("is-revealed", state.revealed);
+    const title = button.querySelector("strong");
+    const small = button.querySelector("small");
+    if (title) title.textContent = state.revealed ? "隐藏震源真值" : "揭晓震源真值";
+    if (small) small.textContent = state.revealed ? "收起真震中与定位偏差" : "显示真震中与定位偏差";
+    if (!state.revealed || !state.scenario) return;
+
+    const truth = state.scenario.source;
+    $("truth-xy").textContent = `${position(truth.x)} / ${position(truth.y)} km`;
+    $("truth-depth").textContent = `${truth.z.toFixed(2)} km`;
+    if (!fit || !fit.ok) {
+      $("truth-offset").textContent = "尚无定位解";
+      $("truth-delta").textContent = "—";
+      return;
+    }
+    const horizontal = Math.hypot(fit.source.x - truth.x, fit.source.y - truth.y);
+    const depthError = fit.source.z - truth.z;
+    const timeError = fit.source.t0 - truth.t0;
+    $("truth-offset").textContent = `${horizontal.toFixed(2)} km`;
+    $("truth-delta").textContent = `${signed(depthError, 2)} km / ${signed(timeError, 3)} s`;
+  }
+
+  function renderAll(focusStationId) {
+    updateSpeedOutputs();
+    renderTraces();
+    updatePickMarkers();
+    updateResults();
+    if (focusStationId) {
+      const target = mapData.querySelector(`[data-station="${focusStationId}"]`);
+      if (target) target.focus();
+    }
+  }
+
+  function regenerate(message, focusStationId) {
+    const jitter = Number($("pick-jitter").value);
+    state.scenario = Core.createScenario(state.seed, state.stations, jitter);
+    state.picks = clonePicks(state.scenario.picks);
+    state.manuallyEdited = false;
+    renderAll(focusStationId);
+    setStatus(message || "合成到时已更新；当前拾取来自本轮种子。");
+  }
+
+  function setLayout(name) {
+    if (!layouts[name]) return;
+    state.layout = name;
+    state.stations = layouts[name].map((station) => ({ ...station }));
+    for (const button of document.querySelectorAll("[data-geometry]")) {
+      const selected = button.dataset.geometry === name;
+      button.classList.toggle("selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    }
+    regenerate(`台网改为“${name === "ring" ? "环绕" : name === "side" ? "偏侧" : "聚集"}”；震源不变，记录与初始拾取已按新站位重建。`);
+  }
+
+  function updateStationPosition(stationId, positionValue) {
+    const station = state.stations.find((item) => item.id === stationId);
+    if (!station) return;
+    station.x = positionValue.x;
+    station.y = positionValue.y;
+    const marker = mapData.querySelector(`[data-station="${stationId}"]`);
+    if (marker) {
+      const at = worldToMap(station.x, station.y);
+      marker.setAttribute("transform", `translate(${at.x} ${at.y})`);
+      marker.setAttribute("aria-label", stationDescription(station));
+    }
+    for (const button of document.querySelectorAll("[data-geometry]")) {
+      button.classList.remove("selected");
+      button.setAttribute("aria-pressed", "false");
+    }
+    state.layout = "custom";
+  }
+
+  function handleMapKeydown(event) {
+    const marker = event.target.closest && event.target.closest("[data-station]");
+    if (!marker || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+    event.preventDefault();
+    const station = state.stations.find((item) => item.id === marker.dataset.station);
+    if (!station) return;
+    const step = event.shiftKey ? 5 : 1;
+    const next = { x: station.x, y: station.y };
+    if (event.key === "ArrowLeft") next.x -= step;
+    if (event.key === "ArrowRight") next.x += step;
+    if (event.key === "ArrowUp") next.y += step;
+    if (event.key === "ArrowDown") next.y -= step;
+    next.x = clamp(next.x, 0, 120);
+    next.y = clamp(next.y, 0, 90);
+    updateStationPosition(station.id, next);
+    regenerate(`台站 ${station.id} 已移动；同一震源的记录和初始拾取已重建。`, station.id);
+  }
+
+  function handleMapPointerDown(event) {
+    const marker = event.target.closest && event.target.closest("[data-station]");
+    if (!marker) return;
+    event.preventDefault();
+    const stationId = marker.dataset.station;
+    const station = state.stations.find((item) => item.id === stationId);
+    if (!station) return;
+    marker.focus({ preventScroll: true });
+    state.mapDrag = { pointerId: event.pointerId, stationId, startX: station.x, startY: station.y, moved: false };
+    mapSvg.setPointerCapture(event.pointerId);
+  }
+
+  function handleMapPointerMove(event) {
+    if (!state.mapDrag || state.mapDrag.pointerId !== event.pointerId) return;
+    const next = mapToWorld(event);
+    const station = state.stations.find((item) => item.id === state.mapDrag.stationId);
+    if (!station) return;
+    if (Math.hypot(next.x - state.mapDrag.startX, next.y - state.mapDrag.startY) > 1e-6) state.mapDrag.moved = true;
+    updateStationPosition(station.id, next);
+  }
+
+  function finishMapPointer(event) {
+    if (!state.mapDrag || state.mapDrag.pointerId !== event.pointerId) return;
+    const drag = state.mapDrag;
+    state.mapDrag = null;
+    if (mapSvg.hasPointerCapture(event.pointerId)) mapSvg.releasePointerCapture(event.pointerId);
+    if (!drag.moved) {
+      renderAll(drag.stationId);
+      return;
+    }
+    regenerate(`台站 ${drag.stationId} 已移动；同一震源的记录和初始拾取已重建。`, drag.stationId);
+  }
+
+  function traceTimeFromEvent(svg, event) {
+    const box = svg.getBoundingClientRect();
+    if (!(box.width > 0)) return 0;
+    return clamp(((event.clientX - box.left) / box.width) * TRACE_SECONDS, 0, TRACE_SECONDS);
+  }
+
+  function beginTracePointer(event) {
+    const svg = event.target.closest && event.target.closest(".trace-plot");
+    if (!svg) return;
+    event.preventDefault();
+    const stationId = svg.dataset.station;
+    const phase = svg.dataset.phase;
+    activePhase(phase);
+    state.traceDrag = { pointerId: event.pointerId, svg, stationId, phase };
+    svg.setPointerCapture(event.pointerId);
+    setPick(stationId, phase, traceTimeFromEvent(svg, event), `${stationId} 站 ${phase} 波拾取已调整；定位器已重算。`);
+  }
+
+  function moveTracePointer(event) {
+    const drag = state.traceDrag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    setPick(drag.stationId, drag.phase, traceTimeFromEvent(drag.svg, event), `${drag.stationId} 站 ${drag.phase} 波拾取已调整；定位器已重算。`);
+  }
+
+  function endTracePointer(event) {
+    if (!state.traceDrag || state.traceDrag.pointerId !== event.pointerId) return;
+    const svg = state.traceDrag.svg;
+    state.traceDrag = null;
+    if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+  }
+
+  function handleTraceKeydown(event) {
+    const target = event.target.closest && event.target.closest(".trace-plot");
+    if (!target) return;
+    const phase = target.dataset.phase;
+    const stationId = target.dataset.station;
+    const pick = pickFor(stationId, phase);
+    if (!pick) return;
+    const step = event.shiftKey ? 0.25 : 0.05;
+    let next = pick.time;
+    if (event.key === "ArrowLeft") next -= step;
+    else if (event.key === "ArrowRight") next += step;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = TRACE_SECONDS;
+    else return;
+    event.preventDefault();
+    activePhase(phase);
+    setPick(stationId, phase, next, `${stationId} 站 ${phase} 波拾取已微调；定位器已重算。`);
+    const nextHandle = target.querySelector(".pick-handle");
+    if (nextHandle) nextHandle.focus({ preventScroll: true });
+  }
+
+  function init() {
+    state.scenario = Core.createScenario(state.seed, state.stations, Number($("pick-jitter").value));
+    state.picks = clonePicks(state.scenario.picks);
+    renderAll();
+
+    for (const button of document.querySelectorAll("[data-geometry]")) {
+      button.addEventListener("click", () => setLayout(button.dataset.geometry));
+    }
+    for (const button of document.querySelectorAll(".phase-button")) {
+      button.addEventListener("click", () => activePhase(button.dataset.phase));
+    }
+
+    $("fit-vp").addEventListener("input", () => { updateSpeedOutputs(); updateResults(); });
+    $("fit-ratio").addEventListener("input", () => { updateSpeedOutputs(); updateResults(); });
+    $("pick-jitter").addEventListener("input", () => updateSpeedOutputs());
+    $("pick-jitter").addEventListener("change", () => regenerate("拾取误差上限已改变；按当前种子重建初始拾取，手工修改已清除。"));
+
+    $("restore-picks").addEventListener("click", () => regenerate("已恢复本轮种子生成的初始拾取。"));
+    $("new-event").addEventListener("click", () => {
+      state.seed += 104729;
+      state.revealed = false;
+      regenerate("已生成新的可复现地震事件，真值仍保持隐藏。");
+    });
+    const clearButton = $("clear-picks");
+    if (clearButton) clearButton.addEventListener("click", () => {
+      state.picks = [];
+      state.manuallyEdited = true;
+      updatePickMarkers();
+      updateResults();
+      setStatus("所有到时拾取已清除；点击记录重新放置，或恢复初始拾取。");
+    });
+    $("truth-toggle").addEventListener("click", () => {
+      state.revealed = !state.revealed;
+      updateResults();
+      setStatus(state.revealed ? "已揭晓合成震源真值，可比较水平、深度与发震时刻偏差。" : "已隐藏真值；拟合只使用当前到时拾取。 ");
+    });
+
+    mapSvg.addEventListener("pointerdown", handleMapPointerDown);
+    mapSvg.addEventListener("pointermove", handleMapPointerMove);
+    mapSvg.addEventListener("pointerup", finishMapPointer);
+    mapSvg.addEventListener("pointercancel", finishMapPointer);
+    mapSvg.addEventListener("keydown", handleMapKeydown);
+
+    traceList.addEventListener("pointerdown", beginTracePointer);
+    traceList.addEventListener("pointermove", moveTracePointer);
+    traceList.addEventListener("pointerup", endTracePointer);
+    traceList.addEventListener("pointercancel", endTracePointer);
+    traceList.addEventListener("keydown", handleTraceKeydown);
+  }
+
+  init();
+})();
+
+</script>
+</body></html>

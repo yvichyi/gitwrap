@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>两处栖身 · Cuckoo Hashing 单文件科学装置</title>
+<style>
+:root{
+  --paper:#f4f0e8; --paper2:#ebe4d7; --ink:#171715; --muted:#6b665d;
+  --line:#cfc5b5; --hot:#b23a2f; --cool:#2d6674; --gold:#9b7228; --green:#3e7657;
+  --panel:rgba(255,255,255,.42); --shadow:0 12px 32px rgba(39,31,21,.07);
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+button,input,select{font:inherit} button{min-height:44px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:.65rem 1rem;border-radius:999px;cursor:pointer} button.secondary{background:transparent;color:var(--ink);border-color:var(--line)} button.hot{background:var(--hot);border-color:var(--hot)} button:disabled{opacity:.45;cursor:not-allowed}
+input,select{min-height:44px;border:1px solid var(--line);background:#fff9;padding:.45rem .65rem;border-radius:10px;color:var(--ink)}
+main{width:min(1180px,calc(100% - 28px));margin:auto;padding-bottom:96px}
+.hero{padding:78px 0 54px;border-bottom:1px solid var(--line)} .eyebrow{font:600 12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--hot)}
+h1{font-family:ui-serif,Georgia,"Noto Serif SC",serif;font-size:clamp(48px,8vw,104px);line-height:.92;margin:18px 0 20px;font-weight:700;letter-spacing:-.045em}.lede{font-family:ui-serif,Georgia,"Noto Serif SC",serif;font-size:clamp(20px,2.5vw,30px);line-height:1.45;max-width:850px}.hero-note{margin-top:28px;color:var(--muted);max-width:760px}
+.section{padding:70px 0;border-bottom:1px solid var(--line)} .section h2{font-family:ui-serif,Georgia,"Noto Serif SC",serif;font-size:clamp(32px,5vw,58px);margin:0 0 16px;letter-spacing:-.03em}.section .intro{max-width:820px;color:#3a3732;font-size:18px}
+.number{font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--hot);letter-spacing:.14em;margin-bottom:12px}.grid{display:grid;gap:18px}.grid>*{min-width:0}.two{grid-template-columns:1.1fr .9fr}.three{grid-template-columns:1fr 1fr 1fr}.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow)}.panel h3{margin:0 0 10px;font:700 14px ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.08em}.muted{color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}.kpi{border-top:2px solid var(--ink);padding:12px 0}.kpi strong{display:block;font:700 clamp(24px,3vw,38px) ui-monospace,SFMono-Regular,Menlo,monospace}.kpi span{color:var(--muted);font-size:13px}
+.bucket-row{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:18px}.bucket{min-height:86px;border:1px solid var(--line);border-radius:14px;padding:8px;background:#fff8;position:relative}.bucket .id{font:700 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}.resident{margin-top:10px;padding:7px;border-radius:9px;border:1px solid currentColor;font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;background:white}.empty{margin-top:14px;color:#aaa;font:12px ui-monospace,SFMono-Regular,Menlo,monospace}.bucket.flash{outline:3px solid rgba(178,58,47,.24)}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0}.controls label{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:14px}.status{padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#fff8}.status.ok{border-color:#8caf99;background:#eef7f1}.status.fail{border-color:#d89b95;background:#fff0ee}.status.warn{border-color:#ccb16b;background:#fff8df}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+svg{width:100%;height:auto;display:block}.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;color:var(--muted)}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}.trace{max-height:260px;overflow:auto;border-top:1px solid var(--line);margin-top:10px;padding-top:10px;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace}.trace div{padding:2px 0}
+.callout{border-left:4px solid var(--hot);padding:16px 18px;background:#fff6;border-radius:0 14px 14px 0;margin:24px 0;font-family:ui-serif,Georgia,"Noto Serif SC",serif;font-size:21px}.formula{font:700 22px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff8;overflow:auto}.small{font-size:13px;color:var(--muted)}
+.range-row{display:grid;grid-template-columns:110px 1fr 72px;gap:10px;align-items:center;margin:9px 0}.range-row input[type=range]{width:100%}
+.chart-wrap{overflow-x:auto}.chart{min-width:650px}.table{width:100%;border-collapse:collapse;font-size:14px}.table th,.table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}.table th{font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}
+footer{padding:44px 0;color:var(--muted);font-size:13px}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 8px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;margin:2px}.story-step{display:grid;grid-template-columns:48px 1fr;gap:14px;margin:14px 0}.story-step b{width:38px;height:38px;border:1px solid var(--ink);border-radius:50%;display:grid;place-items:center;font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace}.story-step p{margin:3px 0}.hidden{display:none!important}
+@media(max-width:900px){.two,.three{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.bucket-row{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:540px){main{width:min(100% - 20px,1180px)}.hero{padding-top:48px}.section{padding:48px 0}.bucket-row{grid-template-columns:repeat(2,1fr)}.kpis{grid-template-columns:1fr 1fr}.range-row{grid-template-columns:1fr 70px}.range-row label{grid-column:1/-1}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<header class="hero">
+  <div class="eyebrow">单文件科学装置 · 第十三件 · 随机结构 / 哈希 / 匹配</div>
+  <h1>两处栖身</h1>
+  <div class="lede">一张明明还有空位的表，为什么已经塞不进去了？</div>
+  <p class="hero-note">每把钥匙有两个家。每间屋一次只能住一把。最初这只是一次搬家游戏，直到一台算法说“没地方住了”。这句话到底是在描述世界，还是只是在描述它自己的无能？</p>
+</header>
+
+<section class="section" id="first">
+  <div class="number">01 / 先别学名词</div>
+  <h2>新钥匙来了，你把谁搬走？</h2>
+  <p class="intro">下面只有 8 间屋。每把钥匙只能住进自己标记的两间屋之一。按“下一把”让系统逐把插入。它只会做一件很局部的事：房间满了，就踢走里面那把钥匙，让旧钥匙去自己的另一个家。</p>
+  <div class="panel">
+    <div class="controls">
+      <button id="introNext">下一把钥匙</button>
+      <button class="secondary" id="introReset">重来</button>
+      <span id="introStatus" class="status">还没有失败。</span>
+    </div>
+    <div id="introBuckets" class="bucket-row"></div>
+    <div id="introTrace" class="trace"></div>
+  </div>
+  <div id="flipReveal" class="callout hidden">你刚才不只是整理了一张哈希表。把 bucket 当作顶点，把每把 key 当作连接两个候选 bucket 的边，你其实一直在给一张图的边选择方向。</div>
+</section>
+
+<section class="section" id="lab">
+  <div class="number">02 / 在线算法接受审判</div>
+  <h2>一次失败，不等于没有解。</h2>
+  <p class="intro">现在把同一个实例交给两台机器。左边是有预算的局部插入器，它最多踢 <span class="mono">K</span> 次就认输；右边是离线最大匹配 oracle，它不关心搬家过程，只问一个更冷酷的问题：是否存在任何合法摆法。</p>
+  <div class="controls">
+    <label>seed <input id="seedInput" value="TWO-HOMES-13" /></label>
+    <label>bucket 数 <input id="BInput" type="number" min="6" max="40" value="14" /></label>
+    <label>负载 α <input id="alphaInput" type="number" min="0.20" max="0.99" step="0.01" value="0.78" /></label>
+    <label>kick limit <input id="KInput" type="number" min="1" max="512" value="8" /></label>
+    <button id="buildBtn">生成并插入</button>
+    <button class="secondary" id="huntBtn">寻找“假失败”</button>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><strong id="kpiLoad">0</strong><span>load α</span></div>
+    <div class="kpi"><strong id="kpiBuild">-</strong><span>online build</span></div>
+    <div class="kpi"><strong id="kpiOracle">-</strong><span>exact oracle</span></div>
+    <div class="kpi"><strong id="kpiDef">0</strong><span>matching deficiency</span></div>
+  </div>
+  <div class="grid three">
+    <div class="panel"><h3>当前表</h3><div id="labBuckets" class="bucket-row" style="grid-template-columns:repeat(4,1fr)"></div></div>
+    <div class="panel"><h3>候选关系图</h3><svg id="graphSvg" viewBox="0 0 620 420" aria-label="候选 bucket 关系图"></svg><div class="legend"><span><i class="dot" style="background:var(--hot)"></i>当前失败链</span><span><i class="dot" style="background:var(--cool)"></i>oracle 摆法</span></div></div>
+    <div class="panel"><h3>真值 / 证书</h3><div id="oracleBox" class="status">尚未运行。</div><div id="witnessBox" class="small" style="margin-top:12px"></div></div>
+  </div>
+  <div class="panel" style="margin-top:18px"><h3>搬迁轨迹</h3><div id="labTrace" class="trace"></div></div>
+</section>
+
+<section class="section" id="structure">
+  <div class="number">03 / 把失败剥开</div>
+  <h2>空位并不稀缺，只是长在了错误的地方。</h2>
+  <p class="intro">真正的不可行不是“整张表太满”，而是存在一小片局部区域：钥匙太多，而它们共同能去的 bucket 太少。下面同时显示 2-core 和 Hall 缺陷证书。2-core 只是结构诊断，真正裁决仍由匹配给出。</p>
+  <div class="grid two">
+    <div class="panel"><h3>2-core peel</h3><div id="coreSummary" class="status">先生成一个实例。</div><button class="secondary" id="peelBtn" style="margin-top:12px">逐层剥离</button><div id="peelLog" class="trace"></div></div>
+    <div class="panel"><h3>缺陷证书</h3><div id="hallBox" class="formula">|N(K)| &lt; |K|</div><p class="small">若 oracle 判定不可行，这里会提取一个可直接核对的 key 集合 K 和其候选 bucket 集合 N(K)。</p></div>
+  </div>
+</section>
+
+<section class="section" id="phase">
+  <div class="number">04 / 批量实验</div>
+  <h2>把一次失败，变成一条曲线。</h2>
+  <p class="intro">随机实例越接近阈值，局部算法越容易先“认输”；再往后，连 exact oracle 也开始说无解。两条曲线之间，就是算法性失败和结构性失败之间的缝。</p>
+  <div class="panel">
+    <div class="grid two">
+      <div>
+        <div class="range-row"><label>bucket 数 B</label><input id="sweepB" type="range" min="40" max="400" step="20" value="120"><output id="sweepBOut">120</output></div>
+        <div class="range-row"><label>trials / 点</label><input id="sweepTrials" type="range" min="20" max="300" step="20" value="80"><output id="sweepTrialsOut">80</output></div>
+        <div class="range-row"><label>kick limit K</label><input id="sweepK" type="range" min="2" max="80" step="2" value="12"><output id="sweepKOut">12</output></div>
+      </div>
+      <div class="controls" style="align-content:flex-start"><button id="sweepBtn">运行 sweep</button><button class="secondary" id="exportBtn" disabled>导出 CSV</button><span id="sweepStatus" class="status">尚未运行。</span></div>
+    </div>
+    <div class="chart-wrap"><svg class="chart" id="phaseSvg" viewBox="0 0 900 420" aria-label="成功概率相变曲线"></svg></div>
+    <p class="small">注：此原型默认使用 d=2、bucket capacity=1 的经典两处栖身模型。有限规模曲线是 Monte Carlo 结果，不是渐近定理。</p>
+  </div>
+</section>
+
+<section class="section" id="limits">
+  <div class="number">05 / 这台机器回答不了什么</div>
+  <h2>最后，再怀疑一次我们自己的仪器。</h2>
+  <div class="grid two">
+    <div class="panel">
+      <div class="story-step"><b>1</b><p><strong>随机模型不是现实哈希族。</strong><br><span class="muted">这里直接均匀抽取候选 bucket，用于研究理想化随机结构。</span></p></div>
+      <div class="story-step"><b>2</b><p><strong>有限实验不是渐近证明。</strong><br><span class="muted">曲线可以与理论相符，但不能替代理论。</span></p></div>
+      <div class="story-step"><b>3</b><p><strong>2-core 不是通用不可行证书。</strong><br><span class="muted">core 可以早于真正的不可行出现。</span></p></div>
+      <div class="story-step"><b>4</b><p><strong>存在解，不等于局部算法容易找到解。</strong><br><span class="muted">这正是本文测量的“算法性缝隙”。</span></p></div>
+    </div>
+    <div class="panel">
+      <h3>核心命题</h3>
+      <div class="formula">online failure ≠ infeasibility</div>
+      <div class="formula" style="margin-top:12px">feasibility ≠ easy online construction</div>
+      <div class="formula" style="margin-top:12px">clever algorithm ≠ crossing a structural threshold</div>
+    </div>
+  </div>
+</section>
+<footer>《两处栖身》原型 · 单文件 HTML · 所有实验在浏览器本地运行 · 无外部依赖</footer>
+</main>
+<script>
+'use strict';
+
+function hash32(str){let h=2166136261>>>0;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
+function derive(seed,...parts){return mulberry32(hash32([seed,...parts].join('|')))}
+function randint(rng,n){return Math.floor(rng()*n)}
+function sample2(rng,B){let a=randint(rng,B),b=randint(rng,B-1);if(b>=a)b++;return [a,b]}
+function genInstance(B,alpha,seed){const n=Math.max(1,Math.min(B,Math.floor(B*alpha)));const rng=derive(seed,'instance',B,alpha);const choices=[];for(let k=0;k<n;k++)choices.push(sample2(rng,B));return {B,n,choices,seed,alpha}}
+
+function cloneState(s){return {B:s.B,occupant:Int32Array.from(s.occupant),where:Int32Array.from(s.where)}}
+function emptyState(inst){const occupant=new Int32Array(inst.B);occupant.fill(-1);const where=new Int32Array(inst.n);where.fill(-1);return {B:inst.B,occupant,where}}
+function altBucket(inst,key,current){const [a,b]=inst.choices[key];return current===a?b:a}
+
+function insertRandom(inst,state,key,K,rng){let cur=key, from=-1;const trace=[];for(let step=0;step<K;step++){
+  const [a,b]=inst.choices[cur]; let target;
+  const free=[]; if(state.occupant[a]===-1)free.push(a); if(state.occupant[b]===-1)free.push(b);
+  if(free.length){target=free[randint(rng,free.length)]; state.occupant[target]=cur;state.where[cur]=target;trace.push({key:cur,bucket:target,evicted:-1});return {ok:true,trace}}
+  if(from>=0) target=altBucket(inst,cur,from); else target=(rng()<.5?a:b);
+  const victim=state.occupant[target]; state.occupant[target]=cur;state.where[cur]=target;state.where[victim]=-1;trace.push({key:cur,bucket:target,evicted:victim});cur=victim;from=target;
+ }
+ return {ok:false,trace,stuck:cur}
+}
+function buildOnline(inst,K,seed){const state=emptyState(inst),all=[];const rng=derive(seed,'online',K);for(let k=0;k<inst.n;k++){const r=insertRandom(inst,state,k,K,rng);all.push(...r.trace);if(!r.ok)return {ok:false,failedKey:k,state,trace:all,localTrace:r.trace}}return {ok:true,state,trace:all}}
+
+function maxMatching(inst){const pairK=new Int32Array(inst.n);pairK.fill(-1);const pairB=new Int32Array(inst.B);pairB.fill(-1);let matching=0;
+  function dfs(k,seen){for(const b of inst.choices[k]){if(seen[b])continue;seen[b]=1;if(pairB[b]===-1||dfs(pairB[b],seen)){pairK[k]=b;pairB[b]=k;return true}}return false}
+  for(let k=0;k<inst.n;k++){const seen=new Uint8Array(inst.B);if(dfs(k,seen))matching++}
+  return {size:matching,feasible:matching===inst.n,pairK,pairB}
+}
+function hallWitness(inst,match){if(match.feasible)return null;const q=[],seenK=new Uint8Array(inst.n),seenB=new Uint8Array(inst.B);for(let k=0;k<inst.n;k++)if(match.pairK[k]===-1){seenK[k]=1;q.push(['k',k])}
+  while(q.length){const [t,id]=q.shift();if(t==='k'){for(const b of inst.choices[id]){if(match.pairK[id]===b)continue;if(!seenB[b]){seenB[b]=1;q.push(['b',b])}}}else{const k=match.pairB[id];if(k>=0&&!seenK[k]){seenK[k]=1;q.push(['k',k])}}}
+  const K=[],N=[];for(let i=0;i<seenK.length;i++)if(seenK[i])K.push(i);for(let i=0;i<seenB.length;i++)if(seenB[i])N.push(i);return {K,N}
+}
+function coreLayers(inst,q=2){const deg=new Int32Array(inst.B),inc=Array.from({length:inst.B},()=>[]);inst.choices.forEach((cs,k)=>cs.forEach(b=>{deg[b]++;inc[b].push(k)}));const activeK=new Uint8Array(inst.n);activeK.fill(1);const activeB=new Uint8Array(inst.B);activeB.fill(1);const layers=[];
+ while(true){const low=[];for(let b=0;b<inst.B;b++)if(activeB[b]&&deg[b]<q)low.push(b);if(!low.length)break;const removedK=[];for(const b of low){activeB[b]=0;for(const k of inc[b])if(activeK[k]){activeK[k]=0;removedK.push(k);for(const bb of inst.choices[k])if(activeB[bb])deg[bb]--}}layers.push({buckets:low,keys:removedK})}
+ const remainB=[],remainK=[];for(let b=0;b<inst.B;b++)if(activeB[b])remainB.push(b);for(let k=0;k<inst.n;k++)if(activeK[k])remainK.push(k);return {layers,remainB,remainK}
+}
+
+function colorFor(k){const hues=[8,198,42,315,145,265,28,178,350,90,225,55];return `hsl(${hues[k%hues.length]} 48% 42%)`}
+function renderBuckets(el,inst,state,maxCols){el.innerHTML='';for(let b=0;b<inst.B;b++){const d=document.createElement('div');d.className='bucket';d.innerHTML=`<div class="id">B${b}</div>`;const k=state.occupant[b];if(k>=0)d.innerHTML+=`<div class="resident" style="color:${colorFor(k)}">K${k}<br><span class="muted">${inst.choices[k].join(' / ')}</span></div>`;else d.innerHTML+='<div class="empty">empty</div>';el.appendChild(d)}}
+function renderTrace(el,trace){el.innerHTML=trace.length?trace.map((x,i)=>`<div>${String(i+1).padStart(2,'0')} · K${x.key} → B${x.bucket}${x.evicted>=0?`，踢出 K${x.evicted}`:''}</div>`).join(''):'<div class="muted">还没有搬迁。</div>'}
+function renderGraph(svg,inst,online,match,witness){svg.innerHTML='';const W=620,H=420,cx=W/2,cy=H/2,R=155;const pos=[];for(let b=0;b<inst.B;b++){const a=(Math.PI*2*b/inst.B)-Math.PI/2;pos.push([cx+Math.cos(a)*R,cy+Math.sin(a)*R])}
+ const ns='http://www.w3.org/2000/svg';const hot=new Set((online?.localTrace||[]).map(x=>x.key));const witK=new Set(witness?.K||[]),witB=new Set(witness?.N||[]);
+ inst.choices.forEach((cs,k)=>{const [x1,y1]=pos[cs[0]],[x2,y2]=pos[cs[1]];const ln=document.createElementNS(ns,'line');ln.setAttribute('x1',x1);ln.setAttribute('y1',y1);ln.setAttribute('x2',x2);ln.setAttribute('y2',y2);ln.setAttribute('stroke',witK.has(k)?'#b23a2f':hot.has(k)?'#b23a2f':'#bdb3a3');ln.setAttribute('stroke-width',witK.has(k)?5:hot.has(k)?3:1.4);ln.setAttribute('opacity',witK.has(k)?1:.78);svg.appendChild(ln)});
+ pos.forEach(([x,y],b)=>{const c=document.createElementNS(ns,'circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',witB.has(b)?17:13);c.setAttribute('fill',witB.has(b)?'#ffe1dd':'#f4f0e8');c.setAttribute('stroke',witB.has(b)?'#b23a2f':'#171715');c.setAttribute('stroke-width',witB.has(b)?3:1.5);svg.appendChild(c);const t=document.createElementNS(ns,'text');t.setAttribute('x',x);t.setAttribute('y',y+4);t.setAttribute('text-anchor','middle');t.setAttribute('font-size','11');t.setAttribute('font-family','monospace');t.textContent=b;svg.appendChild(t)})
+}
+
+// intro canonical sequence chosen to produce movement and eventual cycle under small K
+const introInst={B:8,n:8,choices:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[6,7],[0,2]],seed:'intro',alpha:1};let introState,introIndex,introTrace;
+function resetIntro(){introState=emptyState(introInst);introIndex=0;introTrace=[];renderBuckets(document.querySelector('#introBuckets'),introInst,introState);renderTrace(document.querySelector('#introTrace'),introTrace);document.querySelector('#introStatus').className='status';document.querySelector('#introStatus').textContent='还没有失败。';document.querySelector('#flipReveal').classList.add('hidden')}
+function introNext(){if(introIndex>=introInst.n)return;const r=insertRandom(introInst,introState,introIndex,5,derive('intro','k',introIndex));introTrace.push(...r.trace);renderBuckets(document.querySelector('#introBuckets'),introInst,introState);renderTrace(document.querySelector('#introTrace'),introTrace);introIndex++;if(!r.ok){const st=document.querySelector('#introStatus');st.className='status fail';st.textContent=`算法在 K${introIndex-1} 上认输了，但这句话还没有经过真值审判。`;document.querySelector('#flipReveal').classList.remove('hidden')}else if(introIndex>=5){document.querySelector('#flipReveal').classList.remove('hidden')}}
+
+let current={inst:null,online:null,match:null,witness:null,core:null,peelStep:0};
+function updateLab(inst,online,match){const witness=hallWitness(inst,match),core=coreLayers(inst,2);current={inst,online,match,witness,core,peelStep:0};document.querySelector('#kpiLoad').textContent=(inst.n/inst.B).toFixed(2);document.querySelector('#kpiBuild').textContent=online.ok?'PASS':'FAIL';document.querySelector('#kpiOracle').textContent=match.feasible?'YES':'NO';document.querySelector('#kpiDef').textContent=inst.n-match.size;renderBuckets(document.querySelector('#labBuckets'),inst,online.state);renderTrace(document.querySelector('#labTrace'),online.localTrace||online.trace);renderGraph(document.querySelector('#graphSvg'),inst,online,match,witness);
+ const ob=document.querySelector('#oracleBox');if(match.feasible){ob.className='status ok';ob.innerHTML=`<strong>ORACLE: 可行</strong><br>最大匹配 ${match.size}/${inst.n}。${online.ok?'在线算法也成功。':'在线算法失败，但存在合法全局摆法。'}`;document.querySelector('#witnessBox').innerHTML=!online.ok?'<strong>第一次翻转：</strong>这次失败属于算法，而不属于实例。':'当前没有出现假失败。'}else{ob.className='status fail';ob.innerHTML=`<strong>ORACLE: 不可行</strong><br>最大匹配 ${match.size}/${inst.n}。任何算法都无法把所有 key 同时安置。`;document.querySelector('#witnessBox').innerHTML=witness?`Hall 缺陷证书：${witness.K.length} 把 key 的候选集合只有 ${witness.N.length} 个 bucket。`:''}
+ document.querySelector('#coreSummary').className='status';document.querySelector('#coreSummary').innerHTML=`2-core 保留 <strong>${core.remainK.length}</strong> / ${inst.n} 把 key，<strong>${core.remainB.length}</strong> / ${inst.B} 个 bucket。`;document.querySelector('#peelLog').innerHTML='';document.querySelector('#hallBox').textContent=witness?`|K| = ${witness.K.length}  >  |N(K)| = ${witness.N.length}`:'当前实例可行，没有 Hall 缺陷证书。'}
+function buildFromInputs(){const seed=document.querySelector('#seedInput').value.trim()||'seed';const B=+document.querySelector('#BInput').value;const alpha=+document.querySelector('#alphaInput').value;const K=+document.querySelector('#KInput').value;const inst=genInstance(B,alpha,seed),online=buildOnline(inst,K,seed),match=maxMatching(inst);updateLab(inst,online,match)}
+function huntFalseFailure(){const base=document.querySelector('#seedInput').value.trim()||'hunt';const B=+document.querySelector('#BInput').value,alpha=+document.querySelector('#alphaInput').value,K=+document.querySelector('#KInput').value;for(let i=0;i<4000;i++){const seed=base+'#'+i,inst=genInstance(B,alpha,seed),online=buildOnline(inst,K,seed),match=maxMatching(inst);if(!online.ok&&match.feasible){document.querySelector('#seedInput').value=seed;updateLab(inst,online,match);return}}alert('在当前参数附近没有找到假失败。可以降低 kick limit 或提高 α 再试。')}
+function peelOne(){if(!current.core)return;const log=document.querySelector('#peelLog');if(current.peelStep>=current.core.layers.length){log.innerHTML+=`<div><strong>剥离结束。</strong> 剩余 ${current.core.remainK.length} 把 key。</div>`;return}const L=current.core.layers[current.peelStep++];log.innerHTML+=`<div>第 ${current.peelStep} 层：移除 bucket [${L.buckets.join(', ')}]，带走 key [${L.keys.join(', ')}]</div>`;log.scrollTop=log.scrollHeight}
+
+function wilson(k,n,z=1.96){if(!n)return [0,0];const p=k/n,d=1+z*z/n,c=(p+z*z/(2*n))/d,h=z*Math.sqrt(p*(1-p)/n+z*z/(4*n*n))/d;return [Math.max(0,c-h),Math.min(1,c+h)]}
+let sweepRows=[];
+function runSweep(){const B=+document.querySelector('#sweepB').value,trials=+document.querySelector('#sweepTrials').value,K=+document.querySelector('#sweepK').value,seed=document.querySelector('#seedInput').value||'sweep';const alphas=[];for(let a=.28;a<=.72+1e-9;a+=.02)alphas.push(+a.toFixed(2));sweepRows=[];let idx=0;const status=document.querySelector('#sweepStatus');status.className='status warn';status.textContent='运行中…';document.querySelector('#sweepBtn').disabled=true;
+ function batch(){const end=Math.min(idx+2,alphas.length);for(;idx<end;idx++){const alpha=alphas[idx];let feas=0,build=0;for(let t=0;t<trials;t++){const trialSeed=`${seed}|${B}|${alpha}|${t}`;const inst=genInstance(B,alpha,trialSeed);const m=maxMatching(inst);const o=buildOnline(inst,K,trialSeed);if(m.feasible)feas++;if(o.ok)build++}const fw=wilson(feas,trials),bw=wilson(build,trials);sweepRows.push({alpha,trials,feasible:feas/trials,build:build/trials,falseFailure:(feas-build)/trials,feasLo:fw[0],feasHi:fw[1],buildLo:bw[0],buildHi:bw[1]})}renderPhase();status.textContent=`${idx}/${alphas.length} 个负载点`;if(idx<alphas.length)setTimeout(batch,0);else{status.className='status ok';status.textContent=`完成 · ${alphas.length*trials} 个随机实例`;document.querySelector('#sweepBtn').disabled=false;document.querySelector('#exportBtn').disabled=false}}
+ batch()}
+function renderPhase(){const svg=document.querySelector('#phaseSvg');svg.innerHTML='';const ns='http://www.w3.org/2000/svg',W=900,H=420,m={l:62,r:22,t:28,b:52},iw=W-m.l-m.r,ih=H-m.t-m.b,x=a=>m.l+(a-.28)/(.72-.28)*iw,y=p=>m.t+(1-p)*ih;function E(tag,attrs){const el=document.createElementNS(ns,tag);for(const k in attrs)el.setAttribute(k,attrs[k]);svg.appendChild(el);return el}E('rect',{x:m.l,y:m.t,width:iw,height:ih,fill:'#fff8',stroke:'#cfc5b5'});[0,.25,.5,.75,1].forEach(p=>{E('line',{x1:m.l,y1:y(p),x2:W-m.r,y2:y(p),stroke:'#ddd4c7','stroke-width':1});const t=E('text',{x:m.l-10,y:y(p)+4,'text-anchor':'end','font-size':12,'font-family':'monospace',fill:'#6b665d'});t.textContent=p.toFixed(2)});[.3,.4,.5,.6,.7].forEach(a=>{const t=E('text',{x:x(a),y:H-20,'text-anchor':'middle','font-size':12,'font-family':'monospace',fill:'#6b665d'});t.textContent=a.toFixed(2)});if(!sweepRows.length)return;function pathFor(key){return sweepRows.map((r,i)=>(i?'L':'M')+x(r.alpha)+','+y(r[key])).join(' ')}E('path',{d:pathFor('feasible'),fill:'none',stroke:'#2d6674','stroke-width':4});E('path',{d:pathFor('build'),fill:'none',stroke:'#b23a2f','stroke-width':4});const area='M'+sweepRows.map(r=>x(r.alpha)+','+y(r.feasible)).join(' L')+' L'+sweepRows.slice().reverse().map(r=>x(r.alpha)+','+y(r.build)).join(' L')+' Z';E('path',{d:area,fill:'#b23a2f22',stroke:'none'});const line=E('line',{x1:x(.5),y1:m.t,x2:x(.5),y2:H-m.b,stroke:'#9b7228','stroke-width':2,'stroke-dasharray':'7 7'});const lab=E('text',{x:x(.5)+7,y:m.t+16,'font-size':12,'font-family':'monospace',fill:'#9b7228'});lab.textContent='经典 d=2 渐近阈值 ≈ 0.5';const lg1=E('text',{x:W-250,y:42,'font-size':13,'font-family':'monospace',fill:'#2d6674'});lg1.textContent='exact feasibility';const lg2=E('text',{x:W-250,y:62,'font-size':13,'font-family':'monospace',fill:'#b23a2f'});lg2.textContent='bounded random kick'}
+function exportCSV(){if(!sweepRows.length)return;const head='alpha,trials,oracle_feasible_rate,online_build_rate,false_failure_rate,oracle_ci_lo,oracle_ci_hi,online_ci_lo,online_ci_hi\n';const body=sweepRows.map(r=>[r.alpha,r.trials,r.feasible,r.build,r.falseFailure,r.feasLo,r.feasHi,r.buildLo,r.buildHi].join(',')).join('\n');const blob=new Blob([head+body],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='两处栖身-sweep.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+
+function bindRange(id,out){const el=document.querySelector(id),o=document.querySelector(out);const f=()=>o.textContent=el.value;el.addEventListener('input',f);f()}
+document.querySelector('#introNext').addEventListener('click',introNext);document.querySelector('#introReset').addEventListener('click',resetIntro);document.querySelector('#buildBtn').addEventListener('click',buildFromInputs);document.querySelector('#huntBtn').addEventListener('click',huntFalseFailure);document.querySelector('#peelBtn').addEventListener('click',peelOne);document.querySelector('#sweepBtn').addEventListener('click',runSweep);document.querySelector('#exportBtn').addEventListener('click',exportCSV);bindRange('#sweepB','#sweepBOut');bindRange('#sweepTrials','#sweepTrialsOut');bindRange('#sweepK','#sweepKOut');resetIntro();buildFromInputs();renderPhase();
+</script>
+</body>
+</html>

@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>共名 · 语言起源实验</title>
+<style>
+:root{
+  --paper:#f2efe8;
+  --paper2:#faf8f3;
+  --card:#fffdf9;
+  --ink:#1c1a17;
+  --ink2:#3b3730;
+  --dim:#7d766b;
+  --dim2:#a49c8f;
+  --line:rgba(28,26,23,.13);
+  --line2:rgba(28,26,23,.28);
+  --c0:#c8553d;   /* 陶红 */
+  --c1:#d9a441;   /* 芥黄 */
+  --c2:#4a7c59;   /* 松绿 */
+  --c3:#2f6f8f;   /* 靛蓝 */
+  --accent:#2f6f8f;
+  --hot:#c8553d;
+  --serif:"Songti SC","Noto Serif CJK SC","Source Han Serif SC","STSong","SimSun",serif;
+  --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:13.5px;
+  line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1100px 620px at 8% -12%, rgba(200,85,61,.055), transparent 68%),
+    radial-gradient(900px 620px at 96% 106%, rgba(47,111,143,.07), transparent 68%),
+    repeating-linear-gradient(0deg, rgba(28,26,23,.014) 0 1px, transparent 1px 3px);
+}
+.wrap{position:relative;z-index:1;max-width:1460px;margin:0 auto;padding:22px 24px 60px}
+
+/* ---------- 头部 ---------- */
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;
+  padding-bottom:14px;border-bottom:1.5px solid var(--line2);flex-wrap:wrap}
+.brand h1{font-family:var(--serif);font-size:40px;line-height:1;margin:0 0 8px;letter-spacing:.16em;font-weight:600}
+.brand p{margin:0;color:var(--dim);font-size:12.5px;letter-spacing:.04em}
+.hud{display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap}
+.hud .it{text-align:right;min-width:62px}
+.hud .it .k{display:block;font-size:10.5px;color:var(--dim2);letter-spacing:.22em;text-transform:uppercase}
+.hud .it b{font-family:var(--mono);font-size:20px;font-weight:600;letter-spacing:-.02em}
+.hud .it b.warn{color:var(--hot)}
+
+/* ---------- 布局 ---------- */
+main{display:grid;grid-template-columns:1.22fr 1fr;gap:16px;margin-top:16px;align-items:start}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+@media(max-width:1040px){main{grid-template-columns:1fr}}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:14px 16px 16px;
+  box-shadow:0 1px 0 rgba(28,26,23,.04), 0 8px 26px -22px rgba(28,26,23,.5)}
+.panel-hd{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+  border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:12px;flex-wrap:wrap}
+.panel-hd h2{font-family:var(--serif);font-size:14px;margin:0;letter-spacing:.18em;font-weight:600}
+.panel-hd .hint{font-size:11px;color:var(--dim2);letter-spacing:.02em}
+
+/* ---------- 语义场 ---------- */
+.field{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tile{position:relative;background:var(--paper2);border:1px solid var(--line);border-radius:2px;
+  padding:9px 8px 7px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  transition:background .35s ease, box-shadow .35s ease, border-color .35s ease}
+.tile .glyph{width:38px;height:38px;display:flex;align-items:center;justify-content:center}
+.tile .glyph svg{display:block}
+.tile .word{display:flex;gap:3px;height:20px;align-items:center}
+.chip{font-family:var(--mono);font-size:12px;line-height:1;padding:4px 4px 3px;min-width:17px;text-align:center;
+  background:rgba(28,26,23,.055);border:1px solid var(--line);border-radius:2px;color:var(--ink2);
+  transition:background .3s,color .3s,border-color .3s}
+.tile .agree{width:100%;height:2px;background:rgba(28,26,23,.08);border-radius:2px;overflow:hidden}
+.tile .agree i{display:block;height:100%;background:var(--dim2);transition:width .5s ease,background .4s}
+.tile.topic{background:#fdf6ef;border-color:rgba(200,85,61,.45);box-shadow:0 0 0 1px rgba(200,85,61,.16) inset}
+.tile.topic::after{content:"";position:absolute;top:-1px;left:-1px;right:-1px;height:2px;background:var(--hot)}
+.tile.flash{background:#fbf3e6;box-shadow:0 0 0 2px rgba(217,164,65,.5)}
+.tile.focus{outline:1.5px solid var(--accent);outline-offset:1px}
+.tile.dim{opacity:.42}
+
+.legend{display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;font-size:11px;color:var(--dim)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+/* ---------- 实验台 ---------- */
+.ctrls{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}
+@media(max-width:620px){.ctrls{grid-template-columns:1fr}}
+.ctl{display:block;font-size:11.5px;color:var(--dim)}
+.ctl>span{display:block;margin-bottom:3px;letter-spacing:.02em}
+.ctl>span b{font-family:var(--mono);color:var(--ink);font-size:12px}
+.ctl input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:16px;background:transparent;margin:0}
+.ctl input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--line2)}
+.ctl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+  background:var(--ink);margin-top:-5.5px;cursor:pointer;border:2px solid var(--card)}
+.ctl input[type=range]::-moz-range-track{height:2px;background:var(--line2)}
+.ctl input[type=range]::-moz-range-thumb{width:11px;height:11px;border:2px solid var(--card);background:var(--ink);border-radius:50%}
+.ctl.chk{display:flex;align-items:center;gap:7px;margin-top:2px}
+.ctl.chk span{margin:0}
+.ctl.chk input{accent-color:var(--accent);width:14px;height:14px}
+.btns{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+button{font-family:var(--sans);font-size:11.5px;letter-spacing:.04em;color:var(--ink2);
+  background:var(--paper2);border:1px solid var(--line2);border-radius:2px;padding:6px 11px;cursor:pointer;
+  transition:background .16s,border-color .16s,color .16s}
+button:hover{background:#fff;border-color:var(--ink);color:var(--ink)}
+button:active{transform:translateY(1px)}
+button.primary{background:var(--ink);color:var(--paper2);border-color:var(--ink)}
+button.primary:hover{background:var(--ink2)}
+
+/* ---------- 判决 ---------- */
+.verdict{background:linear-gradient(180deg,#fffdf9,#fdfaf4)}
+.verdict p{margin:0}
+#verdict-main{font-family:var(--serif);font-size:19px;line-height:1.55;letter-spacing:.02em}
+#verdict-sub{color:var(--dim);font-size:12px;margin-top:7px}
+.verdict .stamp{float:right;font-family:var(--mono);font-size:10.5px;color:var(--dim2);letter-spacing:.14em}
+
+/* ---------- 度量 ---------- */
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:9px 20px;margin-bottom:14px}
+.met{font-size:11px;color:var(--dim)}
+.met .lab{display:flex;justify-content:space-between;align-items:baseline}
+.met .lab b{font-family:var(--mono);font-size:14px;color:var(--ink)}
+.met .bar{height:4px;background:rgba(28,26,23,.075);border-radius:2px;margin-top:3px;overflow:hidden}
+.met .bar i{display:block;height:100%;transition:width .5s ease}
+#chart{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:2px;background:var(--paper2)}
+#phase{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:2px;background:var(--paper2)}
+.phase-note{font-size:11.5px;color:var(--dim);margin:9px 0 0;line-height:1.6}
+.chart-hd{display:flex;gap:14px;font-size:10.5px;color:var(--dim);margin:10px 0 6px}
+.chart-hd span{display:inline-flex;align-items:center;gap:5px}
+.chart-hd i{width:14px;height:2px;display:inline-block}
+
+/* ---------- 矩阵 ---------- */
+.matrix{font-size:10.5px}
+.mx-row{display:grid;grid-template-columns:46px repeat(8,1fr);gap:2px;align-items:center;margin-bottom:2px}
+.mx-head{color:var(--dim2);text-align:center;font-family:var(--mono);letter-spacing:.04em;padding-bottom:2px}
+.mx-head.g0{color:var(--c0)}.mx-head.g1{color:var(--c1)}.mx-head.g2{color:var(--c2)}.mx-head.g3{color:var(--c3)}
+.mx-lab{font-family:var(--mono);font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:4px}
+.mx-lab em{font-style:normal;font-size:9.5px;color:var(--dim2);min-width:18px;text-align:right}
+.mx-lab.off{color:var(--dim2);opacity:.5}
+.mx-cell{height:19px;border-radius:1px;background:rgba(28,26,23,.045);transition:background .45s ease}
+.mx-sep{grid-column:1/-1;height:1px;background:var(--line);margin:4px 0 5px}
+
+/* ---------- 交谈 ---------- */
+.talk{font-family:var(--mono);font-size:11px;line-height:1.95;max-height:186px;overflow-y:auto}
+.talk .ln{display:flex;gap:8px;align-items:baseline}
+.talk .who{color:var(--dim2);min-width:26px}
+.talk .wd{color:var(--ink);font-weight:600;letter-spacing:.06em}
+.talk .res{margin-left:auto;font-family:var(--sans);font-size:10.5px}
+.talk .ok{color:var(--c2)}
+.talk .no{color:var(--hot)}
+.talk .empty{color:var(--dim2);font-family:var(--sans);font-size:11.5px}
+
+footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);color:var(--dim2);font-size:11px;
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+footer b{color:var(--dim);font-weight:600}
+@media(max-width:620px){
+  .wrap{padding:16px 14px 44px}
+  .brand h1{font-size:31px}
+  .field{grid-template-columns:repeat(4,1fr);gap:6px}
+  .tile{padding:7px 4px 5px}
+  .tile .glyph{width:30px;height:30px}
+  .metrics{grid-template-columns:1fr 1fr}
+  .mx-row{grid-template-columns:38px repeat(8,1fr);gap:1px}
+  button{padding:8px 12px}
+}
+
+</style>
+</head>
+<body>
+<!--BUILD:MARKER-->
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <h1>共名</h1>
+      <p>一个语言起源实验 · 没有人设计这门语言，也没有人需要它</p>
+    </div>
+    <div class="hud">
+      <div class="it"><span class="k">世代</span><b id="hud-gen">0</b></div>
+      <div class="it"><span class="k">瓶颈</span><b id="hud-b">4</b></div>
+      <div class="it"><span class="k">人口</span><b id="hud-n">8</b></div>
+      <div class="it"><span class="k">状态</span><b id="hud-state">运行</b></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="col">
+
+      <section class="panel">
+        <div class="panel-hd">
+          <h2>语义场</h2>
+          <span class="hint">16 个意义（形 × 色）。每格下方是「他们现在管它叫什么」。格子底部的细线是共识度。</span>
+        </div>
+        <div class="field" id="field"></div>
+        <div class="legend">
+          <span><i style="background:var(--c0)"></i>色 0</span>
+          <span><i style="background:var(--c1)"></i>色 1</span>
+          <span><i style="background:var(--c2)"></i>色 2</span>
+          <span><i style="background:var(--c3)"></i>色 3</span>
+          <span style="color:var(--hot)">红框 = 这一代被说出口的意义</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <h2>实验台</h2>
+          <span class="hint">动任何一个参数都会重开世界</span>
+        </div>
+        <div class="ctrls">
+          <label class="ctl"><span>传代瓶颈 B <b id="v-b">4</b> / 16 个意义</span>
+            <input type="range" id="r-b" min="1" max="16" step="1" value="4"></label>
+          <label class="ctl"><span>人口 N <b id="v-n">8</b> 人</span>
+            <input type="range" id="r-n" min="4" max="40" step="1" value="8"></label>
+          <label class="ctl"><span>音节库存 V <b id="v-v">8</b> 个</span>
+            <input type="range" id="r-v" min="3" max="12" step="1" value="8"></label>
+          <label class="ctl"><span>代内交谈 <b id="v-a">600</b> 轮</span>
+            <input type="range" id="r-a" min="0" max="1500" step="50" value="600"></label>
+          <label class="ctl"><span>改口倾向 <b id="v-f">0.00</b></span>
+            <input type="range" id="r-f" min="0" max="0.4" step="0.02" value="0"></label>
+          <label class="ctl"><span>习得噪声 <b id="v-z">0.05</b></span>
+            <input type="range" id="r-z" min="0" max="0.3" step="0.01" value="0.05"></label>
+          <label class="ctl"><span>播放速度 <b id="v-s">1×</b></span>
+            <input type="range" id="r-s" min="1" max="8" step="1" value="1"></label>
+          <label class="ctl chk"><input type="checkbox" id="c-slot" checked><span>先天槽位偏置（关掉试试）</span></label>
+          <label class="ctl chk"><input type="checkbox" id="c-gate" checked><span>听懂了才模仿（关掉试试）</span></label>
+        </div>
+        <div class="btns">
+          <button id="btn-pause" class="primary">暂停</button>
+          <button id="btn-step">推一代</button>
+          <button id="btn-fast">快进 100 代</button>
+          <button id="btn-same">同种子重开</button>
+          <button id="btn-new">换种子重开</button>
+          <button id="btn-reset">恢复默认</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <h2>相位</h2>
+          <span class="hint">每一点是一代。右上角 = 又系统、又谈得拢；左下角 = 既没结构也没共识</span>
+        </div>
+        <canvas id="phase" width="760" height="330"></canvas>
+        <p class="phase-note" id="phase-note">—</p>
+      </section>
+
+    </div>
+
+    <div class="col">
+
+      <section class="panel verdict">
+        <div class="panel-hd">
+          <h2>判决</h2>
+          <span class="stamp" id="verdict-gen">第 0 代</span>
+        </div>
+        <p id="verdict-main">—</p>
+        <p id="verdict-sub">—</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <h2>度量</h2>
+          <span class="hint">组合度 = 音节能多准地预测特征（已扣除随机底噪）</span>
+        </div>
+        <div class="metrics" id="metrics"></div>
+        <div class="chart-hd">
+          <span><i style="background:var(--c3)"></i>组合度</span>
+          <span><i style="background:var(--hot)"></i>共识度</span>
+          <span><i style="background:var(--c2)"></i>沟通率</span>
+        </div>
+        <canvas id="chart" width="760" height="240"></canvas>
+      </section>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <h2>音节 × 特征</h2>
+          <span class="hint">越深 = 这个音节越专属于那个特征值</span>
+        </div>
+        <div class="matrix" id="matrix"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <h2>交谈</h2>
+          <span class="hint">他们刚刚说了什么 —— 听错，就是语言还没谈拢</span>
+        </div>
+        <div class="talk" id="talk"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer>
+    <span><b>怎么玩：</b>瓶颈拉到 16，语言变成一张谁都记得住的词汇表；拉到 3，语法从缝隙里长出来，代价是大家越来越说不到一块儿。再把「改口倾向」推上去，看共识回来、结构消失。</span>
+    <span id="seed-line">种子 —</span>
+  </footer>
+
+</div>
+
+<script>
+/* ============================================================
+ * 共名 · 语言起源模型核心  (v3)
+ * ------------------------------------------------------------
+ * 两段式演化：
+ *   【代际】传代瓶颈 —— 上一代只能说出口 B 个意义，下一代只听到这些。
+ *           剩下的靠「归纳 + 类推」自己补全。
+ *   【代内】命名博弈 —— 同代人两两交谈，听懂了才模仿，语言在一代内趋同。
+ *
+ * 学习者不是死记，是会归纳的：
+ *   ① 看已知词里只差一个特征的一对，就知道「这个特征住在第几个音节」
+ *   ② 统计某个特征值最常配哪个音节
+ *   ③ 两者都拿不到证据时，才临时造一个
+ * 于是「好学」的语言传得下去，整体死记的语言一过瓶颈就烂掉。
+ * 组合性不是设计出来的，是筛出来的。
+ *
+ * 纯逻辑，不碰 DOM，Node 与浏览器共用。
+ * ============================================================ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.NAMING = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  var DEFAULT_CFG = {
+    shapeN: 4, colorN: 4,   // 形 × 色 = 16 个意义
+    V: 8,                   // 音节库存
+    LMAX: 3,                // 信号最长几个音节
+    N: 24,                  // 每代人数
+    B: 6,                   // 传代瓶颈：每代只说出口几个意义
+    align: 80,              // 代内交谈轮数
+    adopt: 0.85,            // 采纳对方说法的概率
+    gate: 1,                // 1 = 听懂了才模仿（严）；0 = 不管懂不懂都跟（标准命名博弈）
+    adoptFail: 0,           // 听错了也改口（改口的概率）—— 收敛压力
+    trials: 6,              // 沟通测试每意义抽签次数
+    hearN: 1,               // 每个题目听几个人（>1 则取多数，即「规范学习」）
+    noise: 0.05,            // 习得噪声
+    slotBias: 1,            // 先天槽位偏置：特征 f 倾向于住在第 f 个槽
+    selFrac: 0.5            // 下一代老师只从沟通最好的这批里挑
+  };
+
+  function cfgWith(over) {
+    var c = {}, k;
+    for (k in DEFAULT_CFG) c[k] = DEFAULT_CFG[k];
+    for (k in (over || {})) if (over[k] !== undefined) c[k] = over[k];
+    c.M = c.shapeN * c.colorN;
+    return c;
+  }
+
+  var NFEAT = 2;
+
+  function buildMeanings(cfg) {
+    var out = [], i, j;
+    for (i = 0; i < cfg.shapeN; i++)
+      for (j = 0; j < cfg.colorN; j++) out.push([i, j]);
+    return out;
+  }
+
+  function featOf(cfg, m, f) {
+    return f === 0 ? Math.floor(m / cfg.colorN) : m % cfg.colorN;
+  }
+  function featValN(cfg, f) { return f === 0 ? cfg.shapeN : cfg.colorN; }
+
+  function overlap(a, b) {
+    var s = 0, i;
+    for (i = 0; i < a.length; i++) if (a[i] === b[i]) s++;
+    return s;
+  }
+
+  function randomSignal(rnd, cfg) {
+    var len = 1 + Math.floor(rnd() * cfg.LMAX);
+    var s = new Array(len), i;
+    for (i = 0; i < len; i++) s[i] = Math.floor(rnd() * cfg.V);
+    return s;
+  }
+
+  function signalSim(a, b) {
+    var n = Math.min(a.length, b.length), s = 0, i;
+    for (i = 0; i < n; i++) if (a[i] === b[i]) s++;
+    return s - 0.45 * Math.abs(a.length - b.length);
+  }
+
+  function sigKey(s) { return s.join('.'); }
+
+  function newAgent(cfg) {
+    return { lex: new Array(cfg.M).fill(null), gram: null };
+  }
+
+  function cloneAgent(a) {
+    return {
+      lex: a.lex.map(function (s) { return s ? s.slice() : null; }),
+      gram: a.gram ? { pos: a.gram.pos.slice(), syl: Object.assign({}, a.gram.syl) } : null
+    };
+  }
+
+  /* ---------- 归纳：从已知词里读出语法 ---------- */
+  function buildGrammar(agent, meanings, cfg, rnd) {
+    var known = [], m;
+    for (m = 0; m < agent.lex.length; m++) if (agent.lex[m]) known.push(m);
+    var pos = new Array(NFEAT).fill(0), syl = {};
+    var f, i, j, p, q;
+
+    // ① 槽位：找只差一个特征的一对词，看信号在第几个音节上分岔
+    for (f = 0; f < NFEAT; f++) {
+      var votes = new Array(cfg.LMAX).fill(0);
+      for (i = 0; i < known.length; i++) {
+        for (j = i + 1; j < known.length; j++) {
+          if (!differOnly(meanings, known[i], known[j], f)) continue;
+          var a = agent.lex[known[i]], b = agent.lex[known[j]];
+          var n = Math.min(a.length, b.length);
+          for (p = 0; p < n; p++) if (a[p] !== b[p]) votes[p]++;
+        }
+      }
+      var bp = 0;
+      for (p = 1; p < cfg.LMAX; p++) if (votes[p] > votes[bp]) bp = p;
+      pos[f] = votes[bp] > 0 ? bp
+        : (cfg.slotBias ? (f % cfg.LMAX) : Math.floor(rnd() * cfg.LMAX));
+    }
+
+    // ② 音节：某个特征值最常跟哪个音节同现（减掉均匀基线）
+    for (f = 0; f < NFEAT; f++) {
+      for (var v = 0; v < featValN(cfg, f); v++) {
+        var cnt = new Map(), nIn = 0, nOut = 0;
+        for (i = 0; i < known.length; i++) {
+          var mm = known[i], s = agent.lex[mm], seen = {}, isV = (featOf(cfg, mm, f) === v);
+          for (q = 0; q < s.length; q++) {
+            var y = s[q]; if (seen[y]) continue; seen[y] = 1;
+            if (isV) { cnt.set(y, (cnt.get(y) || 0) + 1); nIn++; } else nOut++;
+          }
+        }
+        var base = nOut / cfg.V, bestY = -1, bestS = 0;
+        cnt.forEach(function (c, y) { var sc = c - base; if (sc > bestS) { bestS = sc; bestY = y; } });
+        syl[f + '.' + v] = bestY >= 0 ? bestY : Math.floor(rnd() * cfg.V);
+      }
+    }
+    agent.gram = { pos: pos, syl: syl };
+    return agent.gram;
+  }
+
+  function differOnly(meanings, i, j, f) {
+    var a = meanings[i], b = meanings[j], k;
+    for (k = 0; k < a.length; k++) {
+      if (k === f) { if (a[k] === b[k]) return false; }
+      else if (a[k] !== b[k]) return false;
+    }
+    return true;
+  }
+
+  // 类推：借最像的已知词，把对不上的特征对应的槽位换掉
+  function analogize(agent, m, meanings, cfg, rnd) {
+    var best = -1, bestScore = -1, i;
+    for (i = 0; i < agent.lex.length; i++) {
+      if (!agent.lex[i]) continue;
+      var sc = overlap(meanings[m], meanings[i]);
+      if (sc > bestScore || (sc === bestScore && rnd() < 0.5)) { bestScore = sc; best = i; }
+    }
+    if (best < 0) return randomSignal(rnd, cfg);
+    var s = agent.lex[best].slice();
+    if (!s.length) return randomSignal(rnd, cfg);
+    if (!agent.gram) buildGrammar(agent, meanings, cfg, rnd);
+    for (var f = 0; f < NFEAT; f++) {
+      if (meanings[m][f] === meanings[best][f]) continue;
+      var p = agent.gram.pos[f];
+      if (p < 0) p = 0;
+      if (p >= cfg.LMAX) p = cfg.LMAX - 1;
+      // 词太短、装不下要改的那个槽 —— 就加长，别把两个特征挤进同一个音节
+      while (s.length <= p) s.push(Math.floor(rnd() * cfg.V));
+      s[p] = agent.gram.syl[f + '.' + meanings[m][f]];
+    }
+    return s;
+  }
+
+  function generalize(agent, meanings, cfg, rnd) {
+    if (!agent.gram) buildGrammar(agent, meanings, cfg, rnd);
+    for (var m = 0; m < agent.lex.length; m++) {
+      if (!agent.lex[m]) agent.lex[m] = analogize(agent, m, meanings, cfg, rnd);
+    }
+  }
+
+  function speak(agent, m) { return agent.lex[m]; }
+
+  // 按语法逐槽还原：第 p 个音节如果正好是「特征 f 的值 v」的专用音节，就把 f 定成 v
+  function decodeByGrammar(agent, s, cfg) {
+    if (!agent.gram) return -1;
+    var vals = [null, null], p, f, v;
+    for (p = 0; p < s.length; p++) {
+      var y = s[p];
+      for (f = 0; f < NFEAT; f++) {
+        if (agent.gram.pos[f] !== p) continue;
+        for (v = 0; v < featValN(cfg, f); v++) {
+          if (agent.gram.syl[f + '.' + v] === y) { if (vals[f] === null) vals[f] = v; break; }
+        }
+      }
+    }
+    if (vals[0] !== null && vals[1] !== null) return vals[0] * cfg.colorN + vals[1];
+    return -1;
+  }
+
+  // 听懂 = 整词比对 + 结构解码。会归纳的人，听得懂没听过的词。
+  function hear(agent, s, cfg) {
+    var best = -1, bestScore = -1e9;
+    for (var m = 0; m < agent.lex.length; m++) {
+      if (!agent.lex[m]) continue;
+      var sc = signalSim(s, agent.lex[m]);
+      if (sc > bestScore) { bestScore = sc; best = m; }
+    }
+    var g = decodeByGrammar(agent, s, cfg);
+    if (g >= 0 && g < agent.lex.length && agent.lex[g]) {
+      var gs = signalSim(s, agent.lex[g]) + 1.2;
+      if (gs > bestScore) best = g;
+    }
+    return best;
+  }
+
+  /* ---------- 世界 ---------- */
+  function createState(cfg, seed) {
+    var rnd = mulberry32(seed >>> 0);
+    var st = {
+      cfg: cfg, seed: seed >>> 0, rnd: rnd,
+      meanings: buildMeanings(cfg),
+      gen: 0, teachers: [], history: [],
+      lastSuccess: 0, lastData: [], lastTalk: [], lastAdopt: 0
+    };
+    for (var i = 0; i < cfg.N; i++) {
+      var a = newAgent(cfg);
+      for (var m = 0; m < cfg.M; m++) a.lex[m] = randomSignal(rnd, cfg);
+      st.teachers.push(a);
+    }
+    st.history.push(measure(st));
+    return st;
+  }
+
+  /* ---------- 一代 ---------- */
+  function stepGeneration(st) {
+    var cfg = st.cfg, rnd = st.rnd, i, m, t, x;
+    var M = cfg.M, N = cfg.N;
+
+    /* 1. 传代瓶颈 */
+    var pool = [];
+    for (i = 0; i < M; i++) pool.push(i);
+    for (i = pool.length - 1; i > 0; i--) {
+      var j = Math.floor(rnd() * (i + 1)); x = pool[i]; pool[i] = pool[j]; pool[j] = x;
+    }
+    var topics = pool.slice(0, Math.min(cfg.B, M));
+    var board = topics.map(function (mm) {
+      var u = [];
+      for (t = 0; t < st.teachers.length; t++) u.push(speak(st.teachers[t], mm).slice());
+      return { m: mm, utter: u };
+    });
+
+    /* 2. 习得 + 类推 */
+    var pop = [];
+    for (i = 0; i < N; i++) {
+      var a = newAgent(cfg);
+      for (t = 0; t < board.length; t++) {
+        a.lex[board[t].m] = corrupt(sampleUtter(board[t].utter, cfg, rnd), cfg, rnd);
+      }
+      generalize(a, st.meanings, cfg, rnd);
+      pop.push(a);
+    }
+
+    /* 3. 代内命名博弈：听懂了才模仿 */
+    var adopted = 0;
+    for (i = 0; i < cfg.align; i++) {
+      var si = Math.floor(rnd() * N), li = Math.floor(rnd() * N);
+      if (li === si) li = (li + 1) % N;
+      m = Math.floor(rnd() * M);
+      var s = speak(pop[si], m);
+      var got = hear(pop[li], s, cfg);
+      var pAdopt = (cfg.gate ? got === m : true) ? cfg.adopt : cfg.adoptFail;
+      if (rnd() < pAdopt) {
+        if (sigKey(speak(pop[li], m)) !== sigKey(s)) { pop[li].lex[m] = s.slice(); pop[li].gram = null; adopted++; }
+      }
+    }
+    st.lastAdopt = adopted;
+
+    /* 4. 沟通测试 */
+    var ok = 0, tot = 0, perAgent = [];
+    for (i = 0; i < N; i++) perAgent.push({ ok: 0, n: 0 });
+    var talk = [];
+    for (m = 0; m < M; m++) {
+      for (t = 0; t < cfg.trials; t++) {
+        var s2 = Math.floor(rnd() * N), l2 = Math.floor(rnd() * N);
+        if (l2 === s2) l2 = (l2 + 1) % N;
+        var u2 = speak(pop[s2], m);
+        var g2 = hear(pop[l2], u2, cfg);
+        var hit = (g2 === m);
+        tot++; if (hit) ok++;
+        perAgent[s2].n++; if (hit) perAgent[s2].ok++;
+        if (talk.length < 12) talk.push({ sp: s2, li: l2, m: m, s: u2.slice(), got: g2, hit: hit });
+      }
+    }
+    st.lastSuccess = tot ? ok / tot : 0;
+    st.lastData = board;
+    st.lastTalk = talk;
+
+    /* 5. 选老师 */
+    var scored = pop.map(function (p, idx) {
+      return { a: p, s: perAgent[idx].n ? perAgent[idx].ok / perAgent[idx].n : 0 };
+    });
+    scored.sort(function (p, q) { return q.s - p.s; });
+    var keep = Math.max(2, Math.round(N * cfg.selFrac));
+    var w = [], wsum = 0;
+    for (i = 0; i < keep; i++) { w.push(scored[i].s + 0.02); wsum += w[i]; }
+    var next = [];
+    for (i = 0; i < N; i++) {
+      var r = rnd() * wsum, acc = 0, pick = 0;
+      for (t = 0; t < keep; t++) { acc += w[t]; if (r <= acc) { pick = t; break; } }
+      next.push(rnd() < 0.2 ? cloneAgent(scored[pick].a) : scored[pick].a);
+    }
+    st.teachers = next;
+    st.gen++;
+    var mt = measure(st);
+    st.history.push(mt);
+    return mt;
+  }
+
+  // 听到的是「大家怎么说」，不只是一个老师怎么说
+  function sampleUtter(utter, cfg, rnd) {
+    var k = Math.max(1, Math.min(cfg.hearN | 0, utter.length));
+    if (k <= 1) return utter[Math.floor(rnd() * utter.length)];
+    var tally = new Map(), best = null, bestN = -1;
+    for (var i = 0; i < k; i++) {
+      var s = utter[Math.floor(rnd() * utter.length)];
+      var key = sigKey(s), e = tally.get(key);
+      if (e) e.n++; else tally.set(key, { s: s, n: 1 });
+    }
+    tally.forEach(function (e) { if (e.n > bestN) { bestN = e.n; best = e.s; } });
+    return best;
+  }
+
+  function corrupt(s, cfg, rnd) {
+    var o = s.slice();
+    if (o.length && rnd() < cfg.noise) o[Math.floor(rnd() * o.length)] = Math.floor(rnd() * cfg.V);
+    return o;
+  }
+
+  /* ---------- 共识语言 ---------- */
+  function consensus(st) {
+    var cfg = st.cfg, out = [], m, i;
+    for (m = 0; m < cfg.M; m++) {
+      var tally = new Map(), bestK = null, bestN = -1;
+      for (i = 0; i < st.teachers.length; i++) {
+        var s = speak(st.teachers[i], m);
+        if (!s) continue;
+        var k = sigKey(s), e = tally.get(k);
+        if (e) e.n++; else tally.set(k, { s: s, n: 1 });
+      }
+      tally.forEach(function (e, k) { if (e.n > bestN) { bestN = e.n; bestK = k; } });
+      out.push(bestK === null ? null : tally.get(bestK).s.slice());
+    }
+    return out;
+  }
+
+  /* ---------- 组合度（带置换零模型校正） ---------- */
+  function compositionality(cons, cfg, rnd) {
+    var raw = rawComp(cons, cfg);
+    var idx = [], i;
+    for (i = 0; i < cons.length; i++) if (cons[i]) idx.push(i);
+    if (idx.length < 4) return 0;
+    var K = 6, acc = 0, shuffled = new Array(cons.length).fill(null);
+    for (var k = 0; k < K; k++) {
+      var order = idx.slice();
+      for (var a = order.length - 1; a > 0; a--) {
+        var b = Math.floor(rnd() * (a + 1)), tmp = order[a]; order[a] = order[b]; order[b] = tmp;
+      }
+      for (var j = 0; j < idx.length; j++) shuffled[idx[j]] = cons[order[j]];
+      acc += rawComp(shuffled, cfg);
+    }
+    var nul = acc / K;
+    if (raw <= nul) return 0;
+    return (raw - nul) / Math.max(1e-6, 1 - nul);
+  }
+
+  function rawComp(cons, cfg) {
+    var cntY = new Map(), i, m, y, f;
+    for (m = 0; m < cons.length; m++) {
+      if (!cons[m]) continue;
+      var seen = {};
+      for (i = 0; i < cons[m].length; i++) {
+        y = cons[m][i];
+        if (seen[y]) continue; seen[y] = 1;
+        var e = cntY.get(y);
+        if (e) e.push(m); else cntY.set(y, [m]);
+      }
+    }
+    if (cntY.size === 0) return 0;
+    var Hf = [];
+    for (f = 0; f < NFEAT; f++) {
+      var vc = {}, n = 0;
+      for (m = 0; m < cons.length; m++) {
+        if (!cons[m]) continue;
+        var k = featOf(cfg, m, f); vc[k] = (vc[k] || 0) + 1; n++;
+      }
+      Hf.push(entropyOf(vc, n));
+    }
+    var total = 0, wsum = 0;
+    cntY.forEach(function (ms) {
+      var bestU = 0;
+      for (f = 0; f < NFEAT; f++) {
+        var vc2 = {}, n2 = 0;
+        for (i = 0; i < ms.length; i++) {
+          var kk = featOf(cfg, ms[i], f); vc2[kk] = (vc2[kk] || 0) + 1; n2++;
+        }
+        var base = Hf[f];
+        var u = base > 1e-9 ? (1 - entropyOf(vc2, n2) / base) : 0;
+        if (u > bestU) bestU = u;
+      }
+      total += bestU * ms.length; wsum += ms.length;
+    });
+    return wsum > 0 ? total / wsum : 0;
+  }
+
+  function entropyOf(counts, n) {
+    var H = 0, k;
+    for (k in counts) { var p = counts[k] / n; if (p > 0) H -= p * Math.log(p); }
+    return H;
+  }
+
+  /* ---------- 音节 × 特征 提升度矩阵 ---------- */
+  function assocMatrix(cons, cfg) {
+    var vals = [cfg.shapeN, cfg.colorN], V = cfg.V;
+    var mat = [], tot = new Array(V).fill(0);
+    var y, f, v, i, m;
+    for (y = 0; y < V; y++) {
+      var row = [];
+      for (f = 0; f < NFEAT; f++) for (v = 0; v < vals[f]; v++) row.push(0);
+      mat.push(row);
+    }
+    var nMean = 0;
+    for (m = 0; m < cons.length; m++) {
+      if (!cons[m]) continue;
+      nMean++;
+      var seen = {};
+      for (i = 0; i < cons[m].length; i++) {
+        y = cons[m][i];
+        if (seen[y]) continue; seen[y] = 1;
+        tot[y]++;
+        var off = 0;
+        for (f = 0; f < NFEAT; f++) { mat[y][off + featOf(cfg, m, f)]++; off += vals[f]; }
+      }
+    }
+    if (!nMean) return { mat: mat, tot: tot, vals: vals, max: 1 };
+    var marg = {};
+    for (f = 0; f < NFEAT; f++) {
+      marg[f] = [];
+      for (v = 0; v < vals[f]; v++) {
+        var c = 0;
+        for (m = 0; m < cons.length; m++) if (cons[m] && featOf(cfg, m, f) === v) c++;
+        marg[f].push(c / nMean);
+      }
+    }
+    var max = 0;
+    for (y = 0; y < V; y++) {
+      if (!tot[y]) continue;
+      var off2 = 0;
+      for (f = 0; f < NFEAT; f++) {
+        for (v = 0; v < vals[f]; v++) {
+          var pCond = mat[y][off2 + v] / tot[y];
+          var lift = marg[f][v] > 1e-9 ? pCond / marg[f][v] : 0;
+          mat[y][off2 + v] = lift;
+          if (lift > max) max = lift;
+        }
+        off2 += vals[f];
+      }
+    }
+    return { mat: mat, tot: tot, vals: vals, max: max };
+  }
+
+  /* ---------- 度量 ---------- */
+  function measure(st) {
+    var cfg = st.cfg, cons = consensus(st);
+    // 零模型置换用独立的随机流，免得「看一眼」就改变世界的走向
+    var mrnd = mulberry32(((st.seed ^ 0x9E3779B9) + st.gen * 40503) >>> 0);
+    var used = new Set(), distinct = new Set(), m, i;
+    for (m = 0; m < cons.length; m++) {
+      if (!cons[m]) continue;
+      distinct.add(sigKey(cons[m]));
+      for (i = 0; i < cons[m].length; i++) used.add(cons[m][i]);
+    }
+    var agree = 0;
+    for (var mm = 0; mm < cfg.M; mm++) {
+      var tally = new Map(), best = 0;
+      for (i = 0; i < st.teachers.length; i++) {
+        var s = speak(st.teachers[i], mm);
+        if (!s) continue;
+        var k = sigKey(s), e = (tally.get(k) || 0) + 1;
+        tally.set(k, e); if (e > best) best = e;
+      }
+      agree += st.teachers.length ? best / st.teachers.length : 0;
+    }
+    agree = cfg.M ? agree / cfg.M : 0;
+    return {
+      gen: st.gen,
+      comp: compositionality(cons, cfg, mrnd),
+      agree: agree,
+      vocab: used.size,
+      distinct: distinct.size,
+      len: avgLen(cons),
+      success: st.lastSuccess
+    };
+  }
+
+  function avgLen(cons) {
+    var t = 0, n = 0, i;
+    for (i = 0; i < cons.length; i++) if (cons[i]) { t += cons[i].length; n++; }
+    return n ? t / n : 0;
+  }
+
+  function runGenerations(st, n, onGen) {
+    var last = null;
+    for (var i = 0; i < n; i++) { last = stepGeneration(st); if (onGen) onGen(last); }
+    return last;
+  }
+
+  return {
+    DEFAULT_CFG: DEFAULT_CFG, cfgWith: cfgWith, mulberry32: mulberry32, NFEAT: NFEAT,
+    buildMeanings: buildMeanings, featOf: featOf, featValN: featValN,
+    newAgent: newAgent, cloneAgent: cloneAgent, randomSignal: randomSignal,
+    buildGrammar: buildGrammar, analogize: analogize, generalize: generalize,
+    speak: speak, hear: hear, decodeByGrammar: decodeByGrammar, signalSim: signalSim, sigKey: sigKey,
+    createState: createState, stepGeneration: stepGeneration,
+    runGenerations: runGenerations, consensus: consensus,
+    compositionality: compositionality, assocMatrix: assocMatrix, measure: measure
+  };
+});
+
+</script>
+<script>
+/* ============================================================
+ * 共名 · 界面层
+ * ============================================================ */
+(function () {
+  'use strict';
+  var N = window.NAMING;
+
+  var SYL = ['k', 'm', 't', 'n', 's', 'r', 'p', 'x', 'l', 'v', 'd', 'g'];
+  var HUE = ['#c8553d', '#d9a441', '#4a7c59', '#2f6f8f'];
+  var SHAPE = [
+    '<circle cx="12" cy="12" r="8.6"/>',
+    '<rect x="3.8" y="3.8" width="16.4" height="16.4" rx="1.4"/>',
+    '<path d="M12 3.4 L21.2 20.2 L2.8 20.2 Z"/>',
+    '<path d="M12 2.8 L21.2 12 L12 21.2 L2.8 12 Z"/>'
+  ];
+
+  var UIDEF = {
+    shapeN: 4, colorN: 4, V: 8, LMAX: 3,
+    N: 8, B: 6, align: 600, adopt: 0.85, gate: 1, adoptFail: 0, hearN: 1,
+    trials: 12, noise: 0.05, slotBias: 1, selFrac: 0.5
+  };
+
+  var GEN_MS = 1500;
+
+  var S = {
+    cfg: null, st: null, seed: 295853050,
+    running: true, speed: 1, acc: 0, phase: 1,
+    pending: null, hasPending: false, shown: null,
+    prevTalk: null, talkKey: '',
+    tileEls: [], tileKey: [], tileAgree: [], tileWord: [],
+    mxRows: [], mxKey: [],
+    focusM: -1, focusY: -1,
+    chartGen: -1
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var elField, elMatrix, elTalk, elMetrics, elChart, ctx, elPhase, pctx;
+
+  /* ---------------- 构建 ---------------- */
+  function buildField() {
+    elField.innerHTML = '';
+    S.tileEls = []; S.tileKey = []; S.tileAgree = []; S.tileWord = [];
+    for (var m = 0; m < S.cfg.M; m++) {
+      var sh = Math.floor(m / S.cfg.colorN), co = m % S.cfg.colorN;
+      var d = document.createElement('div');
+      d.className = 'tile';
+      d.setAttribute('data-m', m);
+      d.innerHTML =
+        '<div class="glyph"><svg width="100%" height="100%" viewBox="0 0 24 24" fill="' +
+        HUE[co] + '" fill-opacity="0.88" stroke="' + HUE[co] + '" stroke-width="1.2">' +
+        SHAPE[sh] + '</svg></div>' +
+        '<div class="word"></div>' +
+        '<div class="agree"><i></i></div>';
+      (function (mm) {
+        d.addEventListener('click', function () {
+          S.focusM = (S.focusM === mm) ? -1 : mm;
+          render();
+        });
+      })(m);
+      elField.appendChild(d);
+      S.tileEls.push(d);
+      S.tileKey.push(''); S.tileAgree.push(-1); S.tileWord.push('');
+      d.wordEl = d.querySelector('.word');
+      d.agreeEl = d.querySelector('.agree i');
+    }
+  }
+
+  function buildMatrix() {
+    var V = S.cfg.V, i, y;
+    elMatrix.innerHTML = '';
+    S.mxRows = []; S.mxKey = [];
+    var head = '<div class="mx-row"><div></div>';
+    for (i = 0; i < S.cfg.shapeN; i++) head += '<div class="mx-head g' + i + '">形' + i + '</div>';
+    for (i = 0; i < S.cfg.colorN; i++) head += '<div class="mx-head g' + i + '">色' + i + '</div>';
+    head += '</div>';
+    elMatrix.insertAdjacentHTML('beforeend', head);
+    for (y = 0; y < V; y++) {
+      var row = document.createElement('div');
+      row.className = 'mx-row';
+      var lab = document.createElement('div');
+      lab.className = 'mx-lab';
+      lab.innerHTML = '<span>' + SYL[y] + '</span><em>0</em>';
+      lab.style.cursor = 'pointer';
+      (function (yy) {
+        lab.addEventListener('click', function () {
+          S.focusY = (S.focusY === yy) ? -1 : yy; render();
+        });
+      })(y);
+      row.appendChild(lab);
+      var cells = [];
+      for (i = 0; i < S.cfg.shapeN + S.cfg.colorN; i++) {
+        var c = document.createElement('div');
+        c.className = 'mx-cell';
+        row.appendChild(c); cells.push(c);
+      }
+      elMatrix.appendChild(row);
+      S.mxRows.push({ lab: lab, cells: cells, n: lab.querySelector('em') });
+      S.mxKey.push('');
+    }
+  }
+
+  /* ---------------- 快照 ---------------- */
+  function snapshot() {
+    var st = S.st, cfg = S.cfg;
+    var cons = N.consensus(st);
+    var am = N.assocMatrix(cons, cfg);
+    var met = st.history[st.history.length - 1];
+    var share = [], m, i;
+    for (m = 0; m < cfg.M; m++) {
+      var t = new Map(), best = 0;
+      for (i = 0; i < st.teachers.length; i++) {
+        var s = st.teachers[i].lex[m];
+        if (!s) continue;
+        var k = N.sigKey(s), c = (t.get(k) || 0) + 1;
+        t.set(k, c); if (c > best) best = c;
+      }
+      share.push(st.teachers.length ? best / st.teachers.length : 0);
+    }
+    var topics = (st.lastData || []).map(function (d) { return d.m; });
+    return { gen: st.gen, cons: cons, am: am, met: met, share: share,
+      talk: st.lastTalk || [], topics: topics };
+  }
+
+  function advance() {
+    N.stepGeneration(S.st);
+    S.pending = snapshot();
+    S.hasPending = true;
+  }
+
+  function reveal() {
+    if (!S.hasPending) return;
+    var old = S.shown;
+    S.shown = S.pending;
+    S.hasPending = false;
+    if (old) {
+      S.prevTalk = old.talk;
+      if (old.gen !== S.shown.gen) flashChanged(old.cons, S.shown.cons);
+    }
+  }
+
+  function flashChanged(a, b) {
+    for (var m = 0; m < b.length; m++) {
+      var ka = a[m] ? a[m].join('') : '-', kb = b[m] ? b[m].join('') : '-';
+      if (ka === kb) continue;
+      var t = S.tileEls[m];
+      if (!t) continue;
+      t.classList.add('flash');
+      (function (tt) { setTimeout(function () { tt.classList.remove('flash'); }, 900); })(t);
+    }
+  }
+
+  /* ---------------- 渲染 ---------------- */
+  function render() {
+    var sh = S.shown;
+    if (!sh) return;
+    renderField(sh);
+    renderMatrix(sh);
+    renderMetrics(sh);
+    renderTalk(sh);
+    renderVerdict(sh);
+    renderHud(sh);
+    renderPhaseNote(sh);
+    if (S.chartGen !== sh.gen) { S.chartGen = sh.gen; drawChart(); drawPhase(); }
+  }
+
+  function renderField(sh) {
+    var cfg = S.cfg, m;
+    for (m = 0; m < cfg.M; m++) {
+      var t = S.tileEls[m];
+      var s = sh.cons[m];
+      var key = s ? s.join('') : '-';
+      if (S.tileKey[m] !== key) {
+        var html = '', i;
+        if (s) { for (i = 0; i < s.length; i++) html += '<span class="chip">' + SYL[s[i]] + '</span>'; }
+        else html = '<span class="chip">·</span>';
+        t.wordEl.innerHTML = html;
+        S.tileKey[m] = key;
+      }
+      var pct = Math.round(sh.share[m] * 100);
+      if (S.tileAgree[m] !== pct) {
+        t.agreeEl.style.width = pct + '%';
+        t.agreeEl.style.background = pct >= 80 ? '#4a7c59' : (pct >= 50 ? '#a49c8f' : '#c8553d');
+        S.tileAgree[m] = pct;
+      }
+      var isTopic = sh.topics.indexOf(m) >= 0;
+      t.classList.toggle('topic', isTopic);
+      t.classList.toggle('focus', S.focusM === m);
+      t.classList.toggle('dim', (S.focusM >= 0 && S.focusM !== m) || (S.focusY >= 0 && !hasSyl(s, S.focusY)));
+    }
+  }
+
+  function hasSyl(s, y) {
+    if (!s) return false;
+    for (var i = 0; i < s.length; i++) if (s[i] === y) return true;
+    return false;
+  }
+
+  function renderMatrix(sh) {
+    var cfg = S.cfg, am = sh.am, y, i;
+    for (y = 0; y < cfg.V; y++) {
+      var row = S.mxRows[y];
+      if (!row) continue;
+      var tot = am.tot[y];
+      row.lab.classList.toggle('off', tot === 0);
+      row.lab.style.opacity = S.focusY < 0 || S.focusY === y ? 1 : 0.45;
+      var nk = String(tot);
+      if (S.mxKey[y] !== nk) { row.n.textContent = tot; S.mxKey[y] = nk; }
+      for (i = 0; i < row.cells.length; i++) {
+        var lift = am.mat[y][i];
+        var a = Math.min(1, lift / 2.6);
+        var bg = a <= 0.015 ? 'rgba(28,26,23,.045)'
+          : 'rgba(47,111,143,' + (0.07 + a * 0.86).toFixed(3) + ')';
+        if (row.cells[i]._bg !== bg) { row.cells[i].style.background = bg; row.cells[i]._bg = bg; }
+      }
+    }
+  }
+
+  function renderMetrics(sh) {
+    var m = sh.met, cfg = S.cfg;
+    var items = [
+      ['组合度', m.comp, (m.comp * 100).toFixed(0) + '%', '#2f6f8f', m.comp],
+      ['共识度', m.agree, (m.agree * 100).toFixed(0) + '%', '#c8553d', m.agree],
+      ['沟通率', m.success, (m.success * 100).toFixed(0) + '%', '#4a7c59', m.success],
+      ['在用音节', m.vocab / cfg.V, m.vocab + ' / ' + cfg.V, '#a49c8f', m.vocab / cfg.V],
+      ['不同词数', m.distinct / cfg.M, m.distinct + ' / ' + cfg.M, '#a49c8f', m.distinct / cfg.M],
+      ['平均词长', m.len / cfg.LMAX, m.len.toFixed(2), '#a49c8f', m.len / cfg.LMAX]
+    ];
+    if (elMetrics.children.length !== items.length) {
+      var h = '';
+      for (var i = 0; i < items.length; i++) {
+        h += '<div class="met"><div class="lab"><span>' + items[i][0] +
+          '</span><b></b></div><div class="bar"><i></i></div></div>';
+      }
+      elMetrics.innerHTML = h;
+    }
+    for (var k = 0; k < items.length; k++) {
+      var box = elMetrics.children[k];
+      var b = box.querySelector('b'), bar = box.querySelector('.bar i');
+      if (b.textContent !== items[k][2]) b.textContent = items[k][2];
+      bar.style.background = items[k][3];
+      bar.style.width = Math.max(0, Math.min(100, items[k][4] * 100)) + '%';
+    }
+  }
+
+  function renderTalk(sh) {
+    var all = sh.talk, n;
+    if (S.running) {
+      n = Math.max(0, Math.min(all.length, Math.floor((S.phase - 0.40) / 0.46 * all.length)));
+    } else n = all.length;
+    var list = all, stale = false;
+    if (n === 0 && S.prevTalk && S.prevTalk.length) { list = S.prevTalk; n = list.length; stale = true; }
+    var key = sh.gen + '|' + n + '|' + (stale ? 'p' : 'c');
+    if (S.talkKey === key) return;
+    S.talkKey = key;
+    if (!list.length) { elTalk.innerHTML = '<div class="empty">还没有发生对话。</div>'; return; }
+    var h = '';
+    for (var i = 0; i < n; i++) {
+      var t = list[i];
+      h += '<div class="ln">' +
+        '<span class="who">A' + t.sp + '</span>' +
+        '<span>说「<span class="wd">' + wordStr(t.s) + '</span>」</span>' +
+        '<span class="who">B' + t.li + '</span>' +
+        '<span>听成 ' + meanStr(t.got) + '</span>' +
+        '<span class="res ' + (t.hit ? 'ok' : 'no') + '">' + (t.hit ? '✓ 对了' : '✗ 错了') + '</span>' +
+        '</div>';
+    }
+    elTalk.innerHTML = h;
+    elTalk.scrollTop = elTalk.scrollHeight;
+  }
+
+  function wordStr(s) { var o = [], i; for (i = 0; i < s.length; i++) o.push(SYL[s[i]]); return o.join('·'); }
+  function meanStr(m) {
+    if (m < 0 || m === null || m === undefined) return '？';
+    return '形' + Math.floor(m / S.cfg.colorN) + '色' + (m % S.cfg.colorN);
+  }
+
+  function renderVerdict(sh) {
+    var v = verdictOf(sh);
+    var a = $('verdict-main'), b = $('verdict-sub');
+    if (a.textContent !== v[0]) a.textContent = v[0];
+    if (b.textContent !== v[1]) b.textContent = v[1];
+    var g = '第 ' + sh.gen + ' 代';
+    if ($('verdict-gen').textContent !== g) $('verdict-gen').textContent = g;
+  }
+
+  function verdictOf(sh) {
+    var m = sh.met, comp = m.comp, agree = m.agree, gen = sh.gen;
+    if (gen < 6) return ['语言还没有名字。', '第一代的词是随机的。让它先跑几十代，什么都还没发生。'];
+    if (comp >= 0.12 && agree >= 0.80)
+      return ['一门真正的语言：既系统，又谈得拢。', '音节对应到了特征上，而且大家认的是同一套对应。这是两个压力难得同时满足的一格。'];
+    if (comp >= 0.12)
+      return ['语法长出来了，可他们还没谈拢。', '音节确实开始指向特征——只是每个人指得不太一样。结构有了，社会还没成。'];
+    if (agree >= 0.80)
+      return ['大家说得一模一样，可那只是一张词汇表。', '16 个意义、16 个毫不相干的词。没有语法，只有死记——瓶颈太宽，没人需要省力。'];
+    if (agree < 0.45)
+      return ['一盘散沙。', '谁也听不懂谁。传代还没把语言捏成形。'];
+    return ['一门靠死记维持的语言，而且谁也没说服谁。', '音节和特征之间没有关系。把「传代瓶颈」调小、或者把「改口倾向」推上去，各试一半。'];
+  }
+
+  function renderHud(sh) {
+    var g = String(sh.gen);
+    if ($('hud-gen').textContent !== g) $('hud-gen').textContent = g;
+    var st = S.running ? '运行' : '暂停';
+    if ($('hud-state').textContent !== st) $('hud-state').textContent = st;
+  }
+
+  /* ---------------- 折线图 ---------------- */
+  var CW = 760, CH = 240;
+  function sizeCanvas() {
+    var c = elChart;
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var w = c.clientWidth || 760, h = 240;
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    c.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    CW = w; CH = h;
+    S.chartGen = -1;
+  }
+
+  function drawChart() {
+    if (!ctx) return;
+    var hist = S.st.history;
+    var W = CW, H = CH, padL = 30, padR = 8, padT = 10, padB = 18;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#faf8f3'; ctx.fillRect(0, 0, W, H);
+
+    var N0 = hist.length;
+    var win = Math.min(N0, 420);
+    var i0 = N0 - win;
+    var x = function (i) { return padL + (win <= 1 ? 0 : (i - i0) / (win - 1)) * (W - padL - padR); };
+    var y = function (v) { return padT + (1 - Math.max(0, Math.min(1, v))) * (H - padT - padB); };
+
+    ctx.strokeStyle = 'rgba(28,26,23,.09)'; ctx.lineWidth = 1;
+    ctx.fillStyle = '#a49c8f'; ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'right';
+    [0, 0.25, 0.5, 0.75, 1].forEach(function (v) {
+      var yy = Math.round(y(v)) + 0.5;
+      ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(W - padR, yy); ctx.stroke();
+      ctx.fillText(v.toFixed(2), padL - 5, yy + 3);
+    });
+    ctx.textAlign = 'left';
+    ctx.fillText('第 ' + i0 + ' 代', padL, H - 5);
+    ctx.textAlign = 'right';
+    ctx.fillText('第 ' + (N0 - 1) + ' 代', W - padR, H - 5);
+
+    var series = [
+      ['comp', '#2f6f8f'], ['agree', '#c8553d'], ['success', '#4a7c59']
+    ];
+    series.forEach(function (s) {
+      ctx.beginPath();
+      ctx.strokeStyle = s[1]; ctx.lineWidth = 1.5;
+      for (var i = i0; i < N0; i++) {
+        var v = hist[i][s[0]];
+        var px = x(i), py = y(v);
+        if (i === i0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    });
+  }
+
+  /* ---------------- 相位图：语言在「结构 × 共识」平面上的轨迹 ---------------- */
+  var PW = 760, PH = 330;
+  function sizePhase() {
+    var c = elPhase;
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var w = c.clientWidth || 760, h = 330;
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    c.style.height = h + 'px';
+    pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    PW = w; PH = h;
+  }
+
+  function drawPhase() {
+    if (!pctx) return;
+    var W = PW, H = PH, padL = 34, padR = 14, padT = 14, padB = 26;
+    pctx.clearRect(0, 0, W, H);
+    pctx.fillStyle = '#faf8f3'; pctx.fillRect(0, 0, W, H);
+    var X = function (v) { return padL + Math.max(0, Math.min(1, v)) * (W - padL - padR); };
+    var Y = function (v) { return padT + (1 - Math.max(0, Math.min(1, v))) * (H - padT - padB); };
+
+    // 「真正的语言」那一格：结构 >= 0.12 且 共识 >= 0.80
+    pctx.fillStyle = 'rgba(74,124,89,.075)';
+    pctx.fillRect(X(0.80), Y(1), X(1) - X(0.80), Y(0.12) - Y(1));
+    pctx.strokeStyle = 'rgba(74,124,89,.35)'; pctx.lineWidth = 1;
+    pctx.setLineDash([3, 3]);
+    pctx.beginPath(); pctx.moveTo(X(0.80), Y(1)); pctx.lineTo(X(0.80), Y(0)); pctx.stroke();
+    pctx.beginPath(); pctx.moveTo(X(0), Y(0.12)); pctx.lineTo(X(1), Y(0.12)); pctx.stroke();
+    pctx.setLineDash([]);
+
+    // 网格
+    pctx.strokeStyle = 'rgba(28,26,23,.08)'; pctx.lineWidth = 1;
+    [0, 0.25, 0.5, 0.75, 1].forEach(function (v) {
+      var yy = Math.round(Y(v)) + 0.5, xx = Math.round(X(v)) + 0.5;
+      pctx.beginPath(); pctx.moveTo(padL, yy); pctx.lineTo(W - padR, yy); pctx.stroke();
+      pctx.beginPath(); pctx.moveTo(xx, padT); pctx.lineTo(xx, H - padB); pctx.stroke();
+    });
+    pctx.fillStyle = '#a49c8f'; pctx.font = '10px ui-monospace,monospace';
+    pctx.textAlign = 'right';
+    [0, 0.5, 1].forEach(function (v) { pctx.fillText(v.toFixed(1), padL - 5, Y(v) + 3); });
+    pctx.textAlign = 'left';
+    [0, 0.5, 1].forEach(function (v) { pctx.fillText(v.toFixed(1), X(v) - 8, H - padB + 13); });
+    pctx.fillStyle = '#7d766b'; pctx.font = '11px "PingFang SC","Microsoft YaHei",sans-serif';
+    pctx.fillText('共识度 →', W - padR - 54, H - 5);
+    pctx.save(); pctx.translate(11, padT + 46); pctx.rotate(-Math.PI / 2);
+    pctx.fillText('组合度 →', 0, 0); pctx.restore();
+    pctx.fillStyle = 'rgba(74,124,89,.85)'; pctx.font = '11px "PingFang SC","Microsoft YaHei",sans-serif';
+    pctx.textAlign = 'right';
+    pctx.fillText('真正的语言', W - padR - 6, Y(1) + 14);
+    pctx.textAlign = 'left';
+
+    // 轨迹：5 代滑动平均，越新越深
+    var hist = S.st.history, n = hist.length;
+    var start = Math.max(0, n - 170);
+    var pts = [], i, j, a, c, k;
+    for (i = start; i < n; i++) {
+      a = 0; c = 0; k = 0;
+      for (j = Math.max(0, i - 4); j <= i; j++) { a += hist[j].agree; c += hist[j].comp; k++; }
+      pts.push([a / k, c / k]);
+    }
+    for (i = 1; i < pts.length; i++) {
+      var t = i / pts.length;
+      pctx.strokeStyle = 'rgba(47,111,143,' + (0.07 + 0.55 * t).toFixed(3) + ')';
+      pctx.lineWidth = 0.9 + 1.3 * t;
+      pctx.beginPath();
+      pctx.moveTo(X(pts[i - 1][0]), Y(pts[i - 1][1]));
+      pctx.lineTo(X(pts[i][0]), Y(pts[i][1]));
+      pctx.stroke();
+    }
+    if (pts.length) {
+      var last = pts[pts.length - 1];
+      pctx.strokeStyle = 'rgba(200,85,61,.28)'; pctx.lineWidth = 1;
+      pctx.beginPath(); pctx.moveTo(padL, Y(last[1])); pctx.lineTo(X(last[0]), Y(last[1])); pctx.stroke();
+      pctx.beginPath(); pctx.moveTo(X(last[0]), H - padB); pctx.lineTo(X(last[0]), Y(last[1])); pctx.stroke();
+      pctx.fillStyle = '#c8553d';
+      pctx.beginPath(); pctx.arc(X(last[0]), Y(last[1]), 4.2, 0, 6.2832); pctx.fill();
+      pctx.strokeStyle = '#fffdf9'; pctx.lineWidth = 1.5; pctx.stroke();
+    }
+  }
+
+  function renderPhaseNote(sh) {
+    var m = sh.met, el = $('phase-note');
+    var where = (m.comp >= 0.12)
+      ? (m.agree >= 0.80 ? '右上：又系统又谈得拢' : '左上：有语法，但还没谈拢')
+      : (m.agree >= 0.80 ? '右下：谈得拢，但只是一张词汇表' : '左下：既没结构，也没共识');
+    var t = '当前落在【' + where + '】——组合度 ' + (m.comp * 100).toFixed(0)
+      + '%，共识度 ' + (m.agree * 100).toFixed(0) + '%，沟通率 ' + (m.success * 100).toFixed(0) + '%。';
+    if (el.textContent !== t) el.textContent = t;
+  }
+
+  /* ---------------- 主循环 ---------------- */
+  function tick(dt) {
+    if (!S.running) { S.phase = 1; return; }
+    S.acc += dt * S.speed;
+    var guard = 0;
+    while (S.acc >= GEN_MS && guard++ < 30) { S.acc -= GEN_MS; advance(); }
+    S.phase = Math.min(1, S.acc / GEN_MS);
+    if (S.phase >= 0.86 && S.hasPending) reveal();
+  }
+
+  var _last = 0, _sized = -1;
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    if (_sized !== elChart.clientWidth) {
+      _sized = elChart.clientWidth;
+      sizeCanvas(); drawChart(); sizePhase(); drawPhase();
+    }
+    var dt = _last ? Math.min(90, ts - _last) : 16;
+    _last = ts;
+    tick(dt);
+    render();
+  }
+
+  /* ---------------- 控制 ---------------- */
+  function reset(keepSeed) {
+    if (!keepSeed) S.seed = (Math.random() * 2147483647) | 0;
+    S.cfg = N.cfgWith(UIDEF);
+    S.st = N.createState(S.cfg, S.seed);
+    S.acc = 0; S.phase = 1;
+    S.pending = null; S.hasPending = false;
+    S.shown = snapshot();
+    S.focusM = -1; S.focusY = -1;
+    S.tileKey = []; S.mxKey = []; S.tileAgree = []; S.chartGen = -1;
+    S.talkKey = ''; S.prevTalk = null;
+    buildField(); buildMatrix(); sizeCanvas(); sizePhase();
+    $('seed-line').textContent = '种子 ' + S.seed;
+    $('hud-b').textContent = S.cfg.B;
+    $('hud-n').textContent = S.cfg.N;
+    syncControls();
+    render();
+  }
+
+  function syncControls() {
+    $('r-b').value = S.cfg.B; $('v-b').textContent = S.cfg.B;
+    $('r-n').value = S.cfg.N; $('v-n').textContent = S.cfg.N;
+    $('r-v').value = S.cfg.V; $('v-v').textContent = S.cfg.V;
+    $('r-a').value = S.cfg.align; $('v-a').textContent = S.cfg.align;
+    $('r-f').value = S.cfg.adoptFail; $('v-f').textContent = S.cfg.adoptFail.toFixed(2);
+    $('r-z').value = S.cfg.noise; $('v-z').textContent = S.cfg.noise.toFixed(2);
+    $('r-s').value = S.speed; $('v-s').textContent = S.speed + '×';
+    $('c-slot').checked = !!S.cfg.slotBias;
+    $('c-gate').checked = !!S.cfg.gate;
+  }
+
+  function fast(n) {
+    for (var i = 0; i < n; i++) { advance(); S.shown = S.pending; S.hasPending = false; }
+    S.acc = 0; S.phase = 1; S.chartGen = -1;
+    // 相位早期的回落目标：这一代的对话
+    S.prevTalk = S.shown.talk;
+    S.talkKey = '';
+    render();
+  }
+
+  function bind() {
+    function onRange(id, vid, key, fmt, integer) {
+      $(id).addEventListener('input', function () {
+        var v = parseFloat(this.value);
+        UIDEF[key] = v;
+        $(vid).textContent = fmt ? fmt(v) : v;
+        if (key === 'V') { reset(true); return; }
+        if (key === 'B' || key === 'N') {
+          S.cfg = N.cfgWith(UIDEF);
+          S.st = N.createState(S.cfg, S.seed);
+          S.pending = null; S.hasPending = false; S.shown = snapshot();
+          S.tileKey = []; S.mxKey = []; S.tileAgree = []; S.chartGen = -1; S.talkKey = ''; S.prevTalk = null;
+          $('hud-b').textContent = S.cfg.B; $('hud-n').textContent = S.cfg.N;
+          render(); return;
+        }
+        reset(true);
+      });
+    }
+    onRange('r-b', 'v-b', 'B', null, true);
+    onRange('r-n', 'v-n', 'N', null, true);
+    onRange('r-v', 'v-v', 'V', null, true);
+    onRange('r-a', 'v-a', 'align', null, true);
+    onRange('r-z', 'v-z', 'noise', function (v) { return v.toFixed(2); }, false);
+    onRange('r-f', 'v-f', 'adoptFail', function (v) { return v.toFixed(2); }, false);
+    $('r-s').addEventListener('input', function () {
+      S.speed = parseInt(this.value, 10); $('v-s').textContent = S.speed + '×';
+    });
+    $('c-slot').addEventListener('change', function () { UIDEF.slotBias = this.checked ? 1 : 0; reset(true); });
+    $('c-gate').addEventListener('change', function () { UIDEF.gate = this.checked ? 1 : 0; reset(true); });
+
+    $('btn-pause').addEventListener('click', function () {
+      S.running = !S.running;
+      this.textContent = S.running ? '暂停' : '继续';
+      this.className = S.running ? 'primary' : '';
+      if (!S.running) { reveal(); render(); }
+    });
+    $('btn-step').addEventListener('click', function () {
+      S.running = false; $('btn-pause').textContent = '继续'; $('btn-pause').className = '';
+      fast(1);
+    });
+    $('btn-fast').addEventListener('click', function () { fast(100); });
+    $('btn-same').addEventListener('click', function () { reset(true); });
+    $('btn-new').addEventListener('click', function () { reset(false); });
+    $('btn-reset').addEventListener('click', function () {
+      UIDEF.B = 6; UIDEF.N = 8; UIDEF.V = 8; UIDEF.align = 600;
+      UIDEF.noise = 0.05; UIDEF.slotBias = 1; UIDEF.gate = 1; UIDEF.adoptFail = 0;
+      S.speed = 1; S.running = true;
+      $('btn-pause').textContent = '暂停'; $('btn-pause').className = 'primary';
+      reset(true);
+    });
+    window.addEventListener('keydown', function (e) {
+      if (e.code === 'Space') { e.preventDefault(); $('btn-pause').click(); }
+      else if (e.key === 's' || e.key === 'S') $('btn-step').click();
+      else if (e.key === 'n' || e.key === 'N') $('btn-new').click();
+    });
+    window.addEventListener('resize', function () { sizeCanvas(); sizePhase(); drawChart(); drawPhase(); });
+  }
+
+  /* ---------------- 启动 ---------------- */
+  function boot() {
+    elField = $('field'); elMatrix = $('matrix'); elTalk = $('talk');
+    elMetrics = $('metrics'); elChart = $('chart'); elPhase = $('phase');
+    ctx = elChart.getContext('2d');
+    pctx = elPhase.getContext('2d');
+    reset(true);
+    bind();
+    // 先跑 200 代，让页面打开时语言已经长到平台期
+    fast(200);
+    requestAnimationFrame(frame);
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(boot, 0);
+  else document.addEventListener('DOMContentLoaded', boot);
+
+  /* ---------------- 测试探针 ---------------- */
+  window.__probe = {
+    tick: tick, render: render, advance: advance, reveal: reveal, fast: fast,
+    reset: function (keepSeed) { reset(!!keepSeed); },
+    get state() { return S; },
+    get engine() { return N; },
+    runGens: function (n) { fast(n); },
+    setCfg: function (o) { for (var k in o) UIDEF[k] = o[k]; reset(true); },
+    get verdict() { return $('verdict-main').textContent; },
+    get verdictSub() { return $('verdict-sub').textContent; },
+    snapshot: function () { return snapshot(); },
+    metrics: function () {
+      var s = snapshot();
+      return { gen: s.gen, comp: s.met.comp, agree: s.met.agree,
+        success: s.met.success, vocab: s.met.vocab, distinct: s.met.distinct,
+        len: s.met.len, cons: s.cons.map(function (x) { return x ? x.join('') : '-'; }) };
+    },
+    matrix: function () {
+      var out = [];
+      for (var y = 0; y < S.mxRows.length; y++) {
+        var row = S.mxRows[y].cells, r = [];
+        for (var i = 0; i < row.length; i++) r.push(+(row[i]._bg ? (row[i]._bg.match(/,([\d.]+)\)$/) || [0, 0])[1] : 0));
+        out.push(r);
+      }
+      return out;
+    },
+    talkLines: function () {
+      var ls = elTalk.querySelectorAll('.ln'), n = 0;
+      for (var i = 0; i < ls.length; i++) {
+        if (getComputedStyle(ls[i]).opacity !== '0') n++;
+      }
+      return { total: ls.length, visible: n };
+    },
+    counts: function () {
+      return {
+        tiles: elField.querySelectorAll('.tile').length,
+        chips: elField.querySelectorAll('.chip').length,
+        mxRows: elMatrix.querySelectorAll('.mx-row').length - 1,
+        mxCells: elMatrix.querySelectorAll('.mx-cell').length,
+        metrics: elMetrics.querySelectorAll('.met').length,
+        talks: elTalk.querySelectorAll('.ln').length,
+        canvasW: elChart.width,
+        phaseW: elPhase.width
+      };
+    }
+  };
+})();
+
+</script>
+
+</body>
+</html>

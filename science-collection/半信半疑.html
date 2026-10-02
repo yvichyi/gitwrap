@@ -1,0 +1,2483 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="调一调该信模型几分、该信测量几分：卡尔曼滤波把两个都不准的信念折算成一个更准的估计，χ² 一致性检验当场验收。">
+<title>半信半疑 · 卡尔曼滤波实验</title>
+<style>
+@charset "UTF-8";
+/* ============================================================
+ * 《半信半疑》样式 —— 暖纸底 + 墨青 + 铁锈红 + 湖青
+ * 硬规矩（沿全屋踩坑约束，比特之漏 / 临界的形状）：
+ *   1. 媒体查询全部写在文件末尾——CSS 同名规则靠后的赢。
+ *   2. Grid 子项一律 min-width:0（1fr 默认 min-width:auto 会被画布顶破）。
+ *   3. 触控目标 ≥ 44px；focus-visible 必须可见。
+ * ========================================================== */
+:root{
+  color-scheme:light;
+  --paper:#f4f0e8;--paper-deep:#e9e2d6;--panel:#fffdf8;
+  --ink:#1e2d31;--dim:#626e6d;--dim2:#87908a;
+  --line:#d9d2c6;--line-strong:#c9c0b1;
+  --indigo:#3f5e78;--indigo-pale:#e3ebf1;
+  --rust:#b8583d;--rust-pale:#f1e1d7;
+  --teal:#4c7779;--teal-pale:#e2eeea;
+  --ghost:#7d8c88;
+  --ell-fill:rgba(63,94,120,.14);
+  --board:#23363a;--board-deep:#26383b;
+  --canvas-paper:#faf8f2;--canvas-grid:#e5e1d7;--band:rgba(63,94,120,.08);
+  --serif:"Iowan Old Style","Palatino Linotype","Songti SC","Noto Serif CJK SC","STSong",serif;
+  --sans:"Avenir Next","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,monospace;
+}
+*{box-sizing:border-box}
+/* scroll-behavior 不用 smooth：无头截屏（--virtual-time-budget）下平滑滚动
+ * 动画不前进，#experiment/#model 片段跳转会停在页顶（实测 SCROLLY 恒 0）；
+ * 瞬时跳转让锚点导航在任何环境都可靠 */
+html{scroll-padding-top:24px}
+body{margin:0;min-width:320px;color:var(--ink);background:radial-gradient(ellipse at 20% 0%,rgba(193,164,126,.10),transparent 36rem),radial-gradient(ellipse at 85% 14%,rgba(76,119,121,.07),transparent 30rem),var(--paper);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+button,input,output{font:inherit}
+a{color:inherit}
+button,a,input{-webkit-tap-highlight-color:transparent}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid rgba(184,88,61,.75);outline-offset:3px}
+[hidden]{display:none!important}
+.skip-link,.k-skip-link{position:fixed;z-index:20;left:12px;top:12px;padding:10px 14px;color:#fff;background:var(--ink);transform:translateY(-160%)}
+.skip-link:focus,.k-skip-link:focus{transform:translateY(0)}
+.k-site-header,.k-page-shell,.k-site-footer{width:min(1320px,calc(100% - 72px));margin:0 auto}
+.k-site-header{height:76px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.k-wordmark{display:flex;align-items:center;gap:11px;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:.04em}
+.k-wordmark small{display:block;margin-top:3px;color:var(--dim);font-size:9px;font-weight:500;letter-spacing:.09em}
+.k-brand-mark{width:26px;height:26px;display:block}
+.k-brand-mark svg{display:block;width:100%;height:100%}
+.k-site-header nav{display:flex;align-items:center;gap:28px}
+.k-site-header nav a{padding:14px 0;font-size:12px;color:#536164;text-decoration:none;transition:color .18s}
+.k-site-header nav a:hover{color:var(--rust)}
+.k-header-index{padding:14px 0;font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:#6a7775;text-decoration:none}
+.k-header-index span{padding-left:8px;color:var(--rust);font-size:14px}
+.k-hero{min-height:620px;display:grid;grid-template-columns:minmax(0,.95fr) minmax(420px,1.05fr);align-items:center;gap:clamp(44px,7vw,100px);padding:64px 0 70px}
+.k-hero-copy{min-width:0;padding:6px 0 0 2px}
+.k-eyebrow{display:flex;align-items:center;gap:9px;margin:0;color:var(--rust);font-size:10px;font-weight:700;letter-spacing:.14em}
+.k-eyebrow-mark{width:7px;height:7px;border-radius:50%;background:var(--rust);box-shadow:0 0 0 4px rgba(184,88,61,.09)}
+.k-hero h1{margin:23px 0 21px;font-family:var(--serif);font-weight:500;font-size:clamp(47px,6vw,77px);line-height:1.16;letter-spacing:-.06em}
+.k-hero h1 span,.k-chapter-heading h2 em,.k-closing-note h2 span{color:var(--rust);font-style:normal}
+.k-hero-question{margin:0 0 13px;color:#394e50;font-family:var(--serif);font-size:22px;line-height:1.6}
+.k-hero-description{max-width:480px;margin:0;color:#617073;font-size:13px;line-height:1.9}
+.k-hero-link{display:inline-flex;align-items:center;gap:18px;min-height:44px;margin-top:22px;padding:0 0 6px;border-bottom:1px solid #a9917e;text-decoration:none;font-size:12px;font-weight:700}
+.k-hero-link span{color:var(--rust);font-size:17px;transition:transform .18s}
+.k-hero-link:hover span{transform:translateY(3px)}
+.k-hero-plate{margin:0;min-width:0;padding:18px 20px 12px;color:#f3eee2;background:var(--board);box-shadow:14px 16px 0 rgba(34,53,56,.07)}
+.k-plate-meta{display:flex;justify-content:space-between;gap:12px;color:#b4c0bb;font-family:var(--mono);font-size:9px;letter-spacing:.1em}
+.k-hero-plate svg{display:block;width:100%;height:auto;margin:9px 0 4px}
+.k-hero-plate svg text{font-family:var(--sans)}
+.k-hero-plate figcaption{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 14px;padding:10px 2px 2px;border-top:1px solid rgba(232,226,210,.18);color:#c3cbc3;font-size:9px}
+.k-hero-plate figcaption span{display:inline-flex;align-items:center;gap:6px}
+.k-plate-key{display:inline-block;width:16px;height:0;vertical-align:middle}
+.k-plate-key-ghost{border-top:2px dashed #93a5a0}
+.k-plate-key-meas{width:7px;height:7px;border-radius:50%;background:#d18466}
+.k-plate-key-est{border-top:2px solid #a7c0d6}
+.k-plate-key-ell{width:15px;height:9px;border:1.2px solid #a7c0d6;border-radius:50%;background:rgba(167,192,214,.16)}
+.k-hero-footnote{grid-column:1/-1;display:grid;grid-template-columns:110px minmax(0,1fr);gap:20px;align-items:baseline;padding:18px 22px;background:var(--paper-deep);border-left:3px solid var(--rust)}
+.k-hero-footnote>span{color:var(--rust);font-size:10px;font-weight:700;letter-spacing:.11em}
+.k-hero-footnote p{margin:0;color:#4f6061;font-family:var(--serif);font-size:15px;line-height:1.7}
+.k-chapter{padding:34px 0 82px;border-top:1px solid var(--line)}
+.k-method-chapter{padding-top:38px}
+.k-chapter-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:35px;margin-bottom:31px}
+.k-chapter-heading>div{min-width:0}
+.k-section-number{display:inline-grid;width:22px;height:22px;place-items:center;margin-right:9px;border:1px solid #d6a08d;border-radius:50%;font-family:var(--mono);font-size:9px;letter-spacing:0}
+.k-chapter-heading h2{margin:14px 0 0;font-family:var(--serif);font-weight:500;font-size:clamp(34px,4vw,49px);line-height:1.16;letter-spacing:-.06em}
+.k-chapter-intro{max-width:400px;margin:0 0 4px;color:#657173;font-size:12px;line-height:1.9}
+.k-lab-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:17px;align-items:start}
+.k-controls-panel,.k-map-card{background:rgba(255,253,248,.77);border:1px solid var(--line);border-radius:3px}
+.k-controls-panel{min-width:0;padding:17px 16px 17px}
+.k-panel-heading{display:flex;align-items:center;justify-content:space-between;padding-bottom:11px;margin-bottom:15px;border-bottom:1px solid var(--line)}
+.k-panel-heading span:first-child{font-size:12px;font-weight:700}
+.k-panel-heading span:last-child{font-family:var(--mono);font-size:8px;letter-spacing:.1em;color:#92938a}
+.k-panel-heading.k-time-heading{margin-top:20px}
+.k-range-control{display:block;margin:14px 0 16px}
+.k-range-title{display:flex;justify-content:space-between;align-items:baseline;gap:7px;font-size:11px;font-weight:600}
+.k-range-title sub{font-size:.7em}
+.k-range-title output{color:var(--rust);font-family:var(--mono);font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+input[type=range]{width:100%;height:44px;margin:2px 0 0;accent-color:var(--rust);cursor:pointer}
+.k-range-hint{display:flex;justify-content:space-between;gap:8px;color:#91958e;font-size:8px;letter-spacing:.02em}
+.k-slider-note{margin:-8px 0 16px;color:#96604c;font-size:9px;line-height:1.7}
+.k-scenario-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:0 0 18px}
+.k-scenario-button{min-height:44px;padding:6px 4px;color:#5c6766;background:transparent;border:1px solid var(--line);border-radius:2px;font-size:10px;cursor:pointer;transition:all .18s}
+.k-scenario-button:hover,.k-scenario-button[aria-pressed=true]{color:#fffaf2;background:var(--teal);border-color:var(--teal)}
+.k-control-note{display:flex;gap:9px;padding:11px 10px;background:#eee9df}
+.k-note-mark{flex:0 0 16px;width:16px;height:16px;display:grid;place-items:center;color:#fff;background:var(--teal);border-radius:50%;font-family:var(--serif);font-size:11px}
+.k-control-note p{margin:0;color:#65706d;font-size:9px;line-height:1.8}
+.k-time-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.k-time-button{min-height:44px;padding:0 7px;color:#fffdf7;background:var(--ink);border:1px solid var(--ink);border-radius:2px;font-size:10px;font-weight:600;cursor:pointer;transition:background .16s,transform .16s}
+.k-time-button:hover{background:#395054;transform:translateY(-1px)}
+.k-time-button span{color:#d99a7c;font-size:13px;font-weight:400}
+.k-quiet-button{color:#576664;background:transparent;border-color:#cfc9bd}
+.k-quiet-button:hover{color:var(--ink);background:#ece8df;transform:none}
+.k-play-button{width:100%;min-height:48px;display:flex;align-items:center;gap:10px;margin-top:9px;padding:0 12px;color:#fffaf2;background:var(--rust);border:1px solid var(--rust);border-radius:2px;text-align:left;cursor:pointer;transition:background .18s}
+.k-play-button:hover{background:#a7462e}
+.k-play-button[aria-pressed=true]{background:#9d4229}
+.k-play-icon{font-size:10px}
+.k-play-button>span:nth-child(2){font-size:10px;font-weight:700}
+.k-play-button small{margin-left:auto;color:#f2d0c0;font-size:8px}
+.k-play-button[aria-pressed=true] .k-play-icon{font-size:0}
+.k-play-button[aria-pressed=true] .k-play-icon::after{content:"Ⅱ";font-size:11px}
+.k-reset-button{width:100%;min-height:44px;display:flex;justify-content:space-between;align-items:center;padding:0 2px;color:#737c78;background:transparent;border:0;font-size:9px;cursor:pointer}
+.k-reset-button:hover{color:var(--rust)}
+.k-reset-button span{font-size:14px}
+.k-lab-main{min-width:0}
+.k-readout-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;align-items:center;gap:12px;padding:13px 16px;margin-bottom:12px;background:var(--paper-deep);border-top:2px solid var(--teal)}
+.k-readout-strip>div:not(.k-readout-live){display:grid;gap:3px;min-width:0}
+.k-readout-strip>div>span{color:#747d77;font-size:8px;letter-spacing:.05em;white-space:nowrap}
+.k-readout-strip strong{font-family:var(--serif);font-size:22px;font-weight:500;line-height:1.1;font-variant-numeric:tabular-nums}
+.k-readout-strip strong b{font-weight:inherit}
+.k-readout-strip strong small{margin-left:3px;color:#717b77;font-family:var(--sans);font-size:9px}
+.k-readout-live{display:flex;align-items:center;gap:7px;min-width:0;white-space:nowrap}
+.k-readout-live i{flex:0 0 6px;width:6px;height:6px;border-radius:50%;background:#90a69a}
+.k-readout-live.is-running i{background:var(--rust);box-shadow:0 0 0 4px rgba(184,88,61,.13);animation:k-pulse 1.2s infinite}
+.k-readout-live span{color:#75807a;font-size:9px;overflow:hidden;text-overflow:ellipsis}
+@keyframes k-pulse{50%{box-shadow:0 0 0 7px rgba(184,88,61,0)}}
+.k-map-card{min-width:0;padding:16px 16px 11px}
+.k-trust-card,.k-fuse-card{margin-top:12px}
+.k-plot-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.k-plot-heading>div{min-width:0}
+.k-plot-kicker{margin:0 0 5px;color:var(--rust);font-family:var(--mono);font-size:8px;letter-spacing:.1em}
+.k-plot-heading h3{margin:0;font-family:var(--serif);font-size:19px;font-weight:500;letter-spacing:-.02em}
+.k-scale-chip,.k-axis-note{color:#8a908a;font-family:var(--mono);font-size:8px;white-space:nowrap}
+.k-plot-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:12px 0 0;color:#707b77;font-size:9px}
+.k-plot-legend>span{display:flex;align-items:center;gap:6px}
+.k-key{display:inline-block;width:16px;height:0;vertical-align:middle}
+.k-key-ghost{border-top:2px dashed var(--ghost)}
+.k-key-meas{width:7px;height:7px;border-radius:50%;background:var(--rust)}
+.k-key-est{border-top:2px solid var(--indigo)}
+.k-key-ell{width:15px;height:9px;border:1.2px solid var(--indigo);border-radius:50%;background:var(--ell-fill)}
+.k-map-card canvas{width:100%;display:block;margin-top:12px;background:var(--canvas-paper);border:1px solid var(--canvas-grid)}
+#scene{height:380px}
+#trust{height:196px}
+#fuse-canvas{height:248px;margin-top:0}
+.k-fuse-layout{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;margin-top:12px}
+.k-fuse-layout>*,.k-fuse-controls{min-width:0}
+.k-fuse-controls{display:flex;flex-direction:column;gap:12px}
+.k-fuse-controls .k-range-control{margin:0}
+.k-fuse-actions{display:flex;flex-direction:column;gap:6px}
+.k-reroll-button{min-height:44px;display:flex;justify-content:space-between;align-items:center;padding:0 12px;color:#576664;background:transparent;border:1px solid #cfc9bd;border-radius:2px;font-size:10px;font-weight:600;cursor:pointer;transition:all .18s}
+.k-reroll-button:hover{color:var(--ink);background:#ece8df;border-color:#b9b2a4}
+.k-reroll-button span{color:var(--rust);font-size:13px}
+.k-reroll-note{margin:0;color:#91958e;font-size:8px;line-height:1.6}
+.k-fuse-result{margin:0;padding:11px 10px;background:#eee9df;color:#56605d;font-size:10px;line-height:1.7;font-variant-numeric:tabular-nums}
+.k-card-foot{display:flex;align-items:baseline;gap:6px 16px;flex-wrap:wrap;padding-top:10px;margin-top:12px;border-top:1px solid #e7e1d7;color:#7c8580;font-size:9px}
+.k-card-foot strong{color:var(--rust);font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
+.k-foot-key{white-space:nowrap}
+.k-foot-key sub{font-size:.7em}
+.k-foot-grow{flex:1;min-width:200px}
+.k-insight{display:grid;grid-template-columns:100px minmax(0,1fr);gap:15px;align-items:baseline;padding:15px 16px;margin-top:12px;background:#e9ede8;border-left:3px solid var(--teal)}
+.k-insight-label{color:var(--teal);font-size:9px;font-weight:700;letter-spacing:.1em}
+.k-insight p{margin:0;color:#51635f;font-family:var(--serif);font-size:13.5px;line-height:1.7}
+.k-equation-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--board-deep);color:#f1eee5}
+.k-equation-item{min-width:0;min-height:170px;padding:18px 20px 17px;border-right:1px solid rgba(235,229,215,.15)}
+.k-equation-item:last-child{border-right:0}
+.k-equation-label{color:#dfa389;font-size:9px;letter-spacing:.08em}
+.k-equation-item p{margin:18px 0 11px;color:#e9e6da;font-family:var(--serif);font-size:20px;line-height:1.4}
+.k-equation-item sup{font-size:.62em}
+.k-equation-item small{display:block;color:#bac3bb;font-size:9px;line-height:1.8}
+.k-boundary-grid{display:grid;grid-template-columns:1.4fr minmax(0,.6fr);gap:22px;margin-top:15px}
+.k-boundary-main,.k-boundary-links{min-width:0;padding:19px 20px;background:rgba(255,253,248,.66);border:1px solid var(--line)}
+.k-stamp-small{display:inline-block;padding:4px 7px;color:var(--rust);background:var(--rust-pale);font-size:8px;font-weight:700;letter-spacing:.09em}
+.k-boundary-main h3{margin:13px 0 8px;font-family:var(--serif);font-size:20px;font-weight:500}
+.k-boundary-main p{margin:0 0 9px;color:#687371;font-size:10px;line-height:1.9}
+.k-boundary-main p:last-child{margin-bottom:0}
+.k-boundary-links{display:flex;flex-direction:column;gap:11px}
+.k-boundary-links>span{color:#87908a;font-size:8px;letter-spacing:.11em}
+.k-boundary-links a{display:flex;justify-content:space-between;gap:9px;padding:10px 0;border-bottom:1px solid var(--line);color:#4e6464;font-size:9px;line-height:1.6;text-decoration:none}
+.k-boundary-links a:hover{color:var(--rust)}
+.k-boundary-links a i{color:var(--rust);font-size:13px;font-style:normal}
+.k-boundary-plain{padding:10px 0;border-bottom:1px solid var(--line);color:#4e6464;font-size:9px;line-height:1.6}
+.k-closing-note{padding:65px 0 74px;border-top:1px solid var(--line);text-align:center}
+.k-closing-note .k-eyebrow{justify-content:center}
+.k-closing-note h2{margin:21px 0 15px;font-family:var(--serif);font-weight:500;font-size:clamp(39px,5vw,61px);line-height:1.2;letter-spacing:-.06em}
+.k-closing-note>p:not(.k-eyebrow){max-width:460px;margin:0 auto;color:#697472;font-size:12px;line-height:1.8}
+.k-back-top{display:inline-flex;gap:17px;align-items:center;min-height:44px;margin-top:20px;color:#4b5e60;text-decoration:none;font-size:10px;font-weight:700}
+.k-back-top span{color:var(--rust);font-size:16px;transition:transform .18s}
+.k-back-top:hover span{transform:translateY(-3px)}
+.k-site-footer{min-height:61px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-top:1px solid var(--line);color:#89908a;font-size:9px}
+.k-noscript{padding:12px;text-align:center;color:var(--rust)}
+
+/* —— 响应式：980 / 720 / 440，全部置于文件末尾 —— */
+@media(max-width:980px){
+ .k-site-header,.k-page-shell,.k-site-footer{width:min(100% - 42px,860px)}
+ .k-hero{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:34px;min-height:580px}
+ .k-hero h1{font-size:clamp(44px,6.5vw,62px)}
+ .k-lab-layout{grid-template-columns:230px minmax(0,1fr);gap:12px}
+ .k-controls-panel{padding:14px 12px}
+ .k-readout-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .k-readout-live{grid-column:1/-1}
+ #scene{height:320px}
+ #trust{height:176px}
+ #fuse-canvas{height:224px}
+ .k-fuse-layout{grid-template-columns:minmax(0,1fr) 220px;gap:12px}
+ .k-equation-item{min-height:0;padding:16px 17px}
+ .k-equation-item p{font-size:18px}
+}
+@media(max-width:720px){
+ .k-site-header,.k-page-shell,.k-site-footer{width:min(100% - 34px,640px)}
+ .k-site-header{height:66px}
+ .k-site-header nav{gap:14px}
+ .k-site-header nav a{font-size:10px}
+ .k-header-index{display:none}
+ .k-hero{display:flex;flex-direction:column;align-items:stretch;gap:30px;min-height:0;padding:48px 0 46px}
+ .k-hero h1{font-size:clamp(44px,10vw,64px)}
+ .k-hero-question{font-size:20px}
+ .k-hero-description{font-size:12px}
+ .k-hero-plate{padding:15px 14px 10px}
+ .k-hero-footnote{grid-template-columns:75px minmax(0,1fr);gap:10px;padding:13px}
+ .k-hero-footnote p{font-size:13px}
+ .k-chapter{padding:28px 0 56px}
+ .k-chapter-heading{display:block;margin-bottom:24px}
+ .k-chapter-heading h2{font-size:36px}
+ .k-chapter-intro{margin-top:15px;max-width:none}
+ .k-lab-layout{display:flex;flex-direction:column}
+ .k-controls-panel,.k-lab-main{width:100%}
+ .k-readout-strip{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px 10px;gap:6px}
+ .k-readout-strip strong{font-size:19px}
+ .k-readout-strip>div>span{font-size:7px}
+ .k-readout-live{padding-top:6px}
+ .k-map-card{padding:13px 10px 9px}
+ .k-plot-heading h3{font-size:16px}
+ .k-scale-chip,.k-axis-note{font-size:7px}
+ #scene{height:280px}
+ #trust{height:156px}
+ #fuse-canvas{height:200px}
+ .k-fuse-layout{grid-template-columns:minmax(0,1fr)}
+ .k-insight{grid-template-columns:76px minmax(0,1fr);padding:12px 10px}
+ .k-insight p{font-size:12.5px}
+ .k-equation-board{grid-template-columns:minmax(0,1fr)}
+ .k-equation-item{padding:15px 16px;border-right:0;border-bottom:1px solid rgba(235,229,215,.15)}
+ .k-equation-item:last-child{border-right:0;border-bottom:0}
+ .k-equation-item p{margin:12px 0 7px;font-size:18px}
+ .k-boundary-grid{grid-template-columns:minmax(0,1fr);gap:10px}
+ .k-boundary-main,.k-boundary-links{padding:15px}
+ .k-closing-note{padding:48px 0 54px}
+ .k-closing-note h2{font-size:40px}
+ .k-site-footer{font-size:8px}
+ .k-site-footer span:last-child{text-align:right}
+}
+@media(max-width:440px){
+ .k-site-header,.k-page-shell,.k-site-footer{width:calc(100% - 26px)}
+ .k-site-header nav{gap:10px}
+ .k-site-header nav a{font-size:9px}
+ .k-wordmark{font-size:11px}
+ .k-hero h1{font-size:42px}
+ .k-hero-plate figcaption{gap:6px}
+ .k-readout-strip strong{font-size:17px}
+ .k-readout-strip>div>span{font-size:6.5px}
+ #scene{height:240px}
+ #trust{height:140px}
+ #fuse-canvas{height:180px}
+ .k-closing-note h2{font-size:34px}
+ .k-site-footer{align-items:flex-start;padding:15px 0;line-height:1.6}
+}
+@media(prefers-reduced-motion:reduce){
+ html{scroll-behavior:auto}
+ *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+/* —— 431–533 频段：无头截屏环境（Edge --headless --window-size<534）会把
+ * 布局视口钳到 ~504px，再按请求宽度（如 430）落盘裁掉右缘——内容列收窄
+ * 到 350px 居中，保证文字与图版全部落在左 430px 的实拍窗口内 —— */
+@media (min-width:431px) and (max-width:533px){
+ .k-site-header,.k-page-shell,.k-site-footer{width:min(350px,calc(100% - 34px))}
+}
+/* —— 锚点直达（:target 折叠）：URL 直接命中 #experiment/#model 时，折叠目标节
+ * 上方的封面内容，并用 scroll-margin 把目标节送到页面最顶端（跳转距离为 0，
+ * 不发生滚动）。原因：无头截屏（--virtual-time-budget）在「滚动后」会丢弃
+ * 视口外的已光栅瓦片并把滚动复位到页顶，落盘画面出现大面积空白（实测
+ * 空白边界恰等于跳转位置 842px）；跳转距离为 0 时初始光栅即最终画面，
+ * 对任何截屏管线都稳定。真实浏览器中等效于「跳到该章」：页头保留、
+ * 下方内容照常，Back 或点击 wordmark(#top) 恢复完整封面。 —— */
+body:has(#experiment:target) .k-hero{display:none}
+body:has(#model:target) .k-hero,
+body:has(#model:target) #experiment{display:none}
+body:has(#experiment:target) #experiment,
+body:has(#model:target) #model{scroll-margin-top:100px}
+
+</style>
+</head>
+<body>
+<a class="k-skip-link" href="#experiment">跳到信任实验</a>
+<header class="k-site-header">
+  <a class="k-wordmark" href="#top" aria-label="半信半疑，回到顶部">
+    <span class="k-brand-mark" aria-hidden="true"><svg viewBox="0 0 26 26" focusable="false"><ellipse cx="11" cy="14.4" rx="9" ry="4.7" fill="none" stroke="#4c7779" stroke-width="1.6" transform="rotate(-20 11 14.4)"/><ellipse cx="15" cy="11.8" rx="9" ry="4.7" fill="none" stroke="#b8583d" stroke-width="1.4" stroke-dasharray="3 2.2" transform="rotate(24 15 11.8)"/><circle cx="13" cy="13" r="2" fill="#1e2d31"/></svg></span>
+    <span>半信半疑<small>一条轨迹 · 两个信源</small></span>
+  </a>
+  <nav aria-label="页面导航">
+    <a href="#experiment">信任实验</a>
+    <a href="#model">模型说明</a>
+  </nav>
+  <a class="k-header-index" href="#experiment">KALMAN / FILTER <span>↘</span></a>
+</header>
+
+<main id="top" class="k-page-shell">
+
+  <!-- hero：先提出一个问题 -->
+  <section class="k-hero" aria-labelledby="hero-title">
+    <div class="k-hero-copy">
+      <p class="k-eyebrow"><span class="k-eyebrow-mark"></span> 两个都不准的说法，合起来可能很准</p>
+      <h1 id="hero-title">预测会错，<br>测量也会错。<br>信谁，<span>可以算。</span></h1>
+      <p class="k-hero-question">把两份不确定度摆上天平。</p>
+      <p class="k-hero-description">传感器有噪声，运动模型有未知的风。卡尔曼滤波不假装哪一方可靠，而是把双方的不确定度折算成一个数——该信几分，当场算出，当场验收。</p>
+      <a class="k-hero-link" href="#experiment">进入信任实验 <span>↓</span></a>
+    </div>
+    <figure class="k-hero-plate">
+      <div class="k-plate-meta"><span>理想化追踪 / IDEALIZED TRACK</span><span>二维平面</span></div>
+      <svg viewBox="0 0 620 340" role="img" aria-labelledby="k-plate-title k-plate-desc">
+        <title id="k-plate-title">一次卡尔曼追踪的概念图</title>
+        <desc id="k-plate-desc">灰青虚线幽灵是无法直接看见的真实轨迹，锈红散点是不完美的测量，蓝实线是滤波器的估计；行进中的两枚椭圆是随行的不确定度——虚线的预测先张开，实线的更新再收拢。</desc>
+        <defs>
+          <pattern id="k-plate-grid" width="26" height="26" patternUnits="userSpaceOnUse">
+            <path d="M26 0H0V26" fill="none" stroke="#3a5257" stroke-width=".7"/>
+          </pattern>
+        </defs>
+        <rect width="620" height="340" fill="url(#k-plate-grid)" opacity=".5"/>
+        <!-- 真实轨迹：灰青虚线幽灵 -->
+        <path d="M42 290C110 282 172 266 232 240 292 214 348 180 404 152 460 124 524 98 588 82" fill="none" stroke="#93a5a0" stroke-width="1.6" stroke-dasharray="7 6"/>
+        <!-- 测量散点：锈红小点 -->
+        <g fill="#d18466">
+          <circle cx="82" cy="289" r="3.2"/><circle cx="115" cy="280" r="3.2"/>
+          <circle cx="159" cy="259" r="3.2"/><circle cx="201" cy="255" r="3.2"/>
+          <circle cx="236" cy="239" r="3.2"/><circle cx="286" cy="209" r="3.2"/>
+          <circle cx="322" cy="197" r="3.2"/><circle cx="372" cy="167" r="3.2"/>
+          <circle cx="406" cy="159" r="3.2"/><circle cx="456" cy="131" r="3.2"/>
+          <circle cx="502" cy="113" r="3.2"/><circle cx="540" cy="99" r="3.2"/>
+        </g>
+        <!-- 估计轨迹：深蓝实线 -->
+        <path d="M48 296C116 288 178 272 238 246 298 220 354 188 410 160 458 136 506 122 542 112" fill="none" stroke="#a7c0d6" stroke-width="2.4" stroke-linecap="round"/>
+        <!-- 不确定椭圆：虚线前身（预测）与实心当前步（更新） -->
+        <ellipse cx="573" cy="97" rx="45" ry="14.5" transform="rotate(-17 573 97)" fill="none" stroke="#a7c0d6" stroke-width="1.4" stroke-dasharray="5 4" opacity=".85"/>
+        <ellipse cx="542" cy="112" rx="40" ry="12.5" transform="rotate(-17 542 112)" fill="rgba(167,192,214,.16)" stroke="#c6d8e8" stroke-width="1.6"/>
+        <circle cx="542" cy="112" r="3.4" fill="#f3eee2"/>
+        <text x="36" y="270" fill="#93a5a0" font-size="10" letter-spacing="1">真值幽灵</text>
+        <text x="70" y="314" fill="#d18466" font-size="10" letter-spacing="1">测量散点</text>
+        <text x="298" y="260" fill="#a7c0d6" font-size="10" letter-spacing="1">估计轨迹</text>
+        <text x="540" y="62" fill="#c6d8e8" font-size="10" letter-spacing="1">不确定椭圆</text>
+        <text x="552" y="326" fill="#7f908c" font-size="9" letter-spacing="1.4">x / m →</text>
+        <text x="22" y="30" fill="#7f908c" font-size="9" letter-spacing="1.4">y / m ↑</text>
+      </svg>
+      <figcaption>
+        <span><i class="k-plate-key k-plate-key-ghost"></i>真值幽灵</span>
+        <span><i class="k-plate-key k-plate-key-meas"></i>测量</span>
+        <span><i class="k-plate-key k-plate-key-est"></i>估计</span>
+        <span><i class="k-plate-key k-plate-key-ell"></i>不确定椭圆</span>
+      </figcaption>
+    </figure>
+    <div class="k-hero-footnote"><span>先记住</span><p>一票测量只是带噪声的一票；要紧的不是谁对谁错，而是各自错多少——那才是能被折算的东西。</p></div>
+  </section>
+
+  <!-- 01 信任实验 -->
+  <section id="experiment" class="k-chapter" aria-labelledby="experiment-title">
+    <div class="k-chapter-heading">
+      <div>
+        <p class="k-eyebrow"><span class="k-section-number">01</span> 互动实验 / KALMAN LAB</p>
+        <h2 id="experiment-title">移动天平，<br><em>别急着看轨迹。</em></h2>
+      </div>
+      <p class="k-chapter-intro">模型每步自说自话地预测，传感器偶尔报一个点。两者的方差决定融合权重；参数一改，权重当场重算。</p>
+    </div>
+
+    <div class="k-lab-layout">
+      <aside class="k-controls-panel" aria-label="滤波器假设与时间控制">
+        <div class="k-panel-heading"><span>滤波器的假设</span><span>TRUST / 01</span></div>
+        <label class="k-range-control" for="q-slider">
+          <span class="k-range-title">过程噪声假设 σ<sub>q</sub> <output id="q-value" for="q-slider">0.30 m/s²</output></span>
+          <input id="q-slider" type="range" min="0.02" max="1.00" step="0.01" value="0.30">
+          <span class="k-range-hint"><span>装懂 · 0.02</span><span>多动 · 1.00</span></span>
+        </label>
+        <label class="k-range-control" for="r-slider">
+          <span class="k-range-title">测量噪声假设 σ<sub>r</sub> <output id="r-value" for="r-slider">1.0 m</output></span>
+          <input id="r-slider" type="range" min="0.2" max="6.0" step="0.1" value="1.0">
+          <span class="k-range-hint"><span>装准 · 0.2</span><span>钝感 · 6.0</span></span>
+        </label>
+        <label class="k-range-control" for="drop-slider">
+          <span class="k-range-title">丢包率 <output id="drop-value" for="drop-slider">0%</output></span>
+          <input id="drop-slider" type="range" min="0" max="50" step="5" value="0">
+          <span class="k-range-hint"><span>无丢失 · 0%</span><span>一半丢失 · 50%</span></span>
+        </label>
+        <p class="k-slider-note">丢包一半，RMSE 至少多 0.3 米。</p>
+        <div class="k-scenario-row" role="group" aria-label="场景预设">
+          <button type="button" class="k-scenario-button" data-q="0.30" data-r="1.0" aria-pressed="true">基准</button>
+          <button type="button" class="k-scenario-button" data-q="0.02" data-r="1.0" aria-pressed="false">模型装懂</button>
+          <button type="button" class="k-scenario-button" data-q="0.30" data-r="0.2" aria-pressed="false">测量装准</button>
+          <button type="button" class="k-scenario-button" data-q="0.02" data-r="6.0" aria-pressed="false">双盲</button>
+        </div>
+        <div class="k-control-note"><span class="k-note-mark" aria-hidden="true">i</span><p>滑杆改的是滤波器"以为"的噪声；世界真正的噪声固定不变。装懂与装准，都会在 χ² 读数上现形：2σ 覆盖率跌破 70%、NIS 均值越线。</p></div>
+        <div class="k-panel-heading k-time-heading"><span>推进模型时间</span><span>TIME / 02</span></div>
+        <div class="k-time-buttons" role="group" aria-label="逐步推进滤波">
+          <button id="step-one" class="k-time-button k-quiet-button" type="button">＋1 步</button>
+          <button id="step-twenty-five" class="k-time-button" type="button">＋25 步 <span>→</span></button>
+          <button id="step-hundred" class="k-time-button" type="button">＋100 步 <span>→</span></button>
+        </div>
+        <button id="play-toggle" class="k-play-button" type="button" aria-pressed="false"><span class="k-play-icon" aria-hidden="true">▶</span><span id="play-label">连续演化</span><small>约 20 步 / 秒</small></button>
+        <button id="reset" class="k-reset-button" type="button">全部复位 <span aria-hidden="true">↺</span></button>
+      </aside>
+
+      <div class="k-lab-main">
+        <div class="k-readout-strip" role="group" aria-label="当前读数">
+          <div><span>模型时间</span><strong><b id="t-value">0</b><small>步</small></strong></div>
+          <div><span>位置 RMSE</span><strong><b id="rmse-value">—</b><small>m</small></strong></div>
+          <div><span>1σ 覆盖率</span><strong><b id="coverage-value">—</b><small>%</small></strong></div>
+          <div><span>NIS 均值</span><strong><b id="nis-value">—</b><small>χ²(2)</small></strong></div>
+          <div class="k-readout-live"><i aria-hidden="true"></i><span id="run-status" aria-live="polite">等待环境设定</span></div>
+        </div>
+
+        <!-- 展品 A · 主场景 -->
+        <article class="k-map-card" aria-labelledby="scene-title">
+          <div class="k-plot-heading">
+            <div><p class="k-plot-kicker">主场景 / TRACKING SCENE</p><h3 id="scene-title">先张开，再收拢</h3></div>
+            <span class="k-scale-chip">等比例坐标 · 自动取景</span>
+          </div>
+          <div class="k-plot-legend">
+            <span><i class="k-key k-key-ghost"></i>真值幽灵</span>
+            <span><i class="k-key k-key-meas"></i>测量</span>
+            <span><i class="k-key k-key-est"></i>估计</span>
+            <span><i class="k-key k-key-ell"></i>不确定椭圆</span>
+          </div>
+          <canvas id="scene" role="img" aria-label="追踪主场景：横轴与纵轴均为平面位置，单位米，等比例坐标。灰青虚线为真实轨迹幽灵，锈红点为测量散点，深蓝实线为滤波估计，半透明椭圆为随行不确定度——虚线是预测，实线是更新。"></canvas>
+          <div class="k-card-foot">
+            <span class="k-foot-key">当前增益 k<sub>p</sub> <strong id="gain-value">—</strong></span>
+            <span class="k-foot-grow" id="scene-note">虚线椭圆是这一步的预测，实线椭圆是吸收测量后的更新；张开的幅度，就是滤波器此刻承认的不确定度。</span>
+          </div>
+        </article>
+
+        <!-- 展品 B · 信任读数 -->
+        <article class="k-map-card k-trust-card" aria-labelledby="trust-title">
+          <div class="k-plot-heading">
+            <div><p class="k-plot-kicker">信任读数 / TRUST RECORD</p><h3 id="trust-title">增益的进退，账面的盈亏</h3></div>
+            <span class="k-axis-note">k 0–1 · NIS 0–8</span>
+          </div>
+          <canvas id="trust" role="img" aria-label="信任读数图：上轨为位置增益 k 随步数的轨迹，取值 0 到 1，丢包步增益为零；下轨为 NIS 散点，纵轴 0 到 8，背景阴影为 χ²(2) 的 95% 带 [0.10, 5.99]，越界散点画成空心。"></canvas>
+          <div class="k-card-foot"><span class="k-foot-grow" id="trust-note">阴影带是 χ²(2) 的 95% 带 [0.10, 5.99]——账目健康时散点留在带内，1σ 覆盖率约 39.3%；冲出带界的点画成空心，越界本身是信息，不丢弃。</span></div>
+        </article>
+
+        <!-- 展品 C · 手动融合 -->
+        <article class="k-map-card k-fuse-card" aria-labelledby="fuse-title">
+          <div class="k-plot-heading">
+            <div><p class="k-plot-kicker">手动融合 / HAND FUSION</p><h3 id="fuse-title">一杆秤，当场对账</h3></div>
+            <span class="k-axis-note">λ 0–1 · RMSE m</span>
+          </div>
+          <div class="k-fuse-layout">
+            <canvas id="fuse-canvas" role="img" aria-label="手动融合对账图：横轴为融合权重 λ，从 0 到 1；纵轴为融合均方根误差，单位米。蒙特卡洛曲线与闭式曲线应当重叠，标记处为最优权重 λ*，也就是卡尔曼增益。"></canvas>
+            <div class="k-fuse-controls">
+              <label class="k-range-control" for="fuse-lambda">
+                <span class="k-range-title">融合权重 λ <output id="fuse-lambda-value" for="fuse-lambda">0.50</output></span>
+                <input id="fuse-lambda" type="range" min="0" max="1" step="0.05" value="0.5">
+                <span class="k-range-hint"><span>全信模型 · 0</span><span>全信测量 · 1</span></span>
+              </label>
+              <div class="k-fuse-actions">
+                <button id="fuse-reroll" class="k-reroll-button" type="button">重掷样本 <span aria-hidden="true">⟳</span></button>
+                <p class="k-reroll-note">第 0 组重掷 · 重掷的是蒙特卡洛样本，不是模拟时间。</p>
+              </div>
+              <p id="fuse-result" class="k-fuse-result" aria-live="polite">还没有测量可融合：先推进几步，再回到这杆秤。</p>
+            </div>
+          </div>
+          <div class="k-card-foot"><span class="k-foot-grow">对得上的标志：两支曲线重叠，最小值就在 λ*——那个刻度就是卡尔曼增益。</span></div>
+        </article>
+
+        <div class="k-insight"><span class="k-insight-label">观察问题</span><p id="insight-text" aria-live="polite">先把「模型装懂」按下，推进 100 步——看 NIS 还待不待在阴影带里。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 模型说明 -->
+  <section id="model" class="k-chapter k-method-chapter" aria-labelledby="model-title">
+    <div class="k-chapter-heading">
+      <div>
+        <p class="k-eyebrow"><span class="k-section-number">02</span> 计算说明 / MODEL NOTES</p>
+        <h2 id="model-title">一个线性高斯的世界，<br><em>和它的边界。</em></h2>
+      </div>
+      <p class="k-chapter-intro">预测、称重、修正、验收——滤波器每一步只做这四件事。三行公式之外，还有一页它不打算假装的边界。</p>
+    </div>
+    <div class="k-equation-board">
+      <div class="k-equation-item">
+        <span class="k-equation-label">预测 / PREDICT</span>
+        <p>x<sup>−</sup> = F x，<br>P<sup>−</sup> = F P F<sup>T</sup> + Q</p>
+        <small>匀速模型加白噪声加速度：不确定性沿速度方向被拉长，未建模的风把它吹得更宽。</small>
+      </div>
+      <div class="k-equation-item">
+        <span class="k-equation-label">增益 / GAIN</span>
+        <p>K = P<sup>−</sup>H<sup>T</sup>(H P<sup>−</sup>H<sup>T</sup> + R)<sup>−1</sup></p>
+        <small>两份方差的折算：R 大信模型，Q 大信测量；数值上用 Joseph 形式更新保对称。传感器越钝越信模型，模型越谦逊越信测量。</small>
+      </div>
+      <div class="k-equation-item">
+        <span class="k-equation-label">验收 / AUDIT</span>
+        <p>NIS = y<sup>T</sup>S<sup>−1</sup>y ~ χ²(2)</p>
+        <small>每步更新的标准化残差：NIS 的期望是 2，2σ 覆盖约 86.5%。</small>
+      </div>
+    </div>
+    <div class="k-boundary-grid">
+      <div class="k-boundary-main">
+        <span class="k-stamp-small">模型边界</span>
+        <h3>这是概念实验，不是传感器方案。</h3>
+        <p>页面没有计算非线性（EKF / UKF）、关联噪声、多目标与数据关联、RTS 平滑，也不模拟真实传感器的漂移与野值。真值与测量都由确定性随机数生成——同一条轨迹可以逐位重放，每个数字都能对账。</p>
+        <p>因此，结论只适合比较「信多了 / 信少了」的定性差异；页面给出的米数、百分比不构成任何工程选型依据。</p>
+      </div>
+      <div class="k-boundary-links">
+        <span>出处</span>
+        <a href="https://doi.org/10.1115/1.3662552" target="_blank" rel="noreferrer">R. E. Kalman (1960) · A New Approach to Linear Filtering and Prediction Problems <i>↗</i></a>
+        <a href="https://www.probabilistic-robotics.org/" target="_blank" rel="noreferrer">S. Thrun, W. Burgard, D. Fox (2005) · Probabilistic Robotics <i>↗</i></a>
+        <span class="k-boundary-plain">A. Gelb (1974) · Applied Optimal Estimation · MIT Press（纸本，无在线原文）</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 结语 -->
+  <section class="k-closing-note" aria-label="结语">
+    <p class="k-eyebrow">再融合一次</p>
+    <h2>信任不是姿态，<br>是一个<span>带单位的数。</span></h2>
+    <p>让不确定度开口说话，让 χ² 当场查账。</p>
+    <a href="#experiment" class="k-back-top">回到信任实验 <span>↑</span></a>
+  </section>
+</main>
+
+<footer class="k-site-footer"><span>半信半疑 · 卡尔曼滤波实验</span><span>单文件 · 离线运行 · 计算留在本机</span></footer>
+<noscript><p class="k-noscript">滤波实验需要启用浏览器 JavaScript；所有计算都在本机页面中完成。</p></noscript>
+
+<script id="kalman-core">
+'use strict';
+
+/* ============================================================================
+ * Half-Doubt (banxin-banyi) · core.js — the pure model layer of the exhibit
+ *
+ * A 2-D constant-velocity Kalman filter. The world has one fixed truth
+ * (sigma_q*, sigma_r*); the filter only *believes* a sigma_q, sigma_r.
+ * The drama of the page — "model pretends sharp / sensor pretends exact" —
+ * lives entirely in the gap between those two pairs. This file holds:
+ *
+ *   0. deterministic PRNG   splitmix32, instance = (seed, tag)
+ *   1. model                F, Q (white-noise acceleration), H, R
+ *   2. filter steps         predict / updateJoseph / updateNaive (pure)
+ *   3. closed-form truths   blend1D, steady-state gain (two independent
+ *                           solvers: Riccati iteration vs bisection),
+ *                           chi-square(2) quantile
+ *   4. simulation           createSim -> Sim with pinned time semantics
+ *   5. metrics              rmsePosition, coverage, meanNis, ellipse
+ *
+ * Contract notes (SPEC v1.0):
+ *   - Every returned array is fresh; inputs are never mutated.
+ *   - Matrices are row-major flat arrays: (i,j) -> i*cols + j
+ *     (4x4 -> i*4+j, 4x2 and 2x2 -> i*2+j).
+ *   - Units: metres, seconds; dt = 1 s. sigma_q in m/s^2 (per-step,
+ *     per-axis acceleration std), sigma_r in m.
+ *   - No DOM, no window/document access inside the factory; the only
+ *     randomness source is the deterministic PRNG below; zero dependencies,
+ *     zero external assets.
+ *   - The only global touched is the export itself: module.exports under
+ *     Node (calibrate/analyze/selfcheck), root.KalmanCore in the page.
+ * ========================================================================== */
+
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.KalmanCore = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+
+  const VERSION = '1.0.0';
+
+  /* ==========================================================================
+   * 0. Deterministic PRNG — splitmix32, same lineage as the sibling exhibits
+   * ========================================================================== */
+
+  /* Mix (seed, tag) into one uint32 initial state. Same inputs -> same stream,
+   * bit for bit, forever. */
+  function hashSeed(seed, tag) {
+    let h = (Number(seed) >>> 0) ^ 0x9e3779b9;
+    const s = String(tag == null ? '' : tag);
+    for (let i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 0x85ebca6b) >>> 0;
+      h = (h ^ (h >>> 13)) >>> 0;
+    }
+    return h >>> 0;
+  }
+
+  function makeRng(seed, tag) {
+    let a = hashSeed(seed, tag) >>> 0;
+    let spare = null; // cached second Box-Muller draw
+
+    function uniform() {
+      a = (a + 0x9e3779b9) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 16), 0x21f0aaad) >>> 0;
+      t = Math.imul(t ^ (t >>> 15), 0x735a2d97) >>> 0;
+      return ((t ^ (t >>> 15)) >>> 0) / 4294967296;
+    }
+
+    /* Standard normal via Box-Muller; the sin branch is cached so pairs of
+     * draws cost one log. uniform() can return exactly 0, so u1 is redrawn
+     * until positive (keeps log finite; deterministic). */
+    function normal() {
+      if (spare !== null) {
+        const v = spare;
+        spare = null;
+        return v;
+      }
+      let u1;
+      do { u1 = uniform(); } while (u1 <= 0);
+      const u2 = uniform();
+      const r = Math.sqrt(-2 * Math.log(u1));
+      const th = 2 * Math.PI * u2;
+      spare = r * Math.sin(th);
+      return r * Math.cos(th);
+    }
+
+    /* Uniform integer in [0, n); n < 1 yields 0 (documented degenerate case). */
+    function int(n) {
+      const m = Math.floor(Number(n));
+      if (!(m >= 1)) return 0;
+      return Math.floor(uniform() * m);
+    }
+
+    const rng = {
+      uniform,
+      normal,
+      int,
+      get state() { return a >>> 0; } // live uint32 counter (read-only view)
+    };
+    return rng;
+  }
+
+  /* ==========================================================================
+   * 1. Input validation helpers
+   * ========================================================================== */
+
+  function requirePositive(name, v) {
+    const n = Number(v);
+    if (!(isFinite(n) && n > 0)) {
+      throw new TypeError(name + ' must be a finite number > 0, got: ' + String(v));
+    }
+    return n;
+  }
+
+  function requireFinite(name, v) {
+    const n = Number(v);
+    if (!isFinite(n)) {
+      throw new TypeError(name + ' must be a finite number, got: ' + String(v));
+    }
+    return n;
+  }
+
+  function checkState(x) {
+    if (!Array.isArray(x) || x.length !== 4) {
+      throw new TypeError('state x must be an array of length 4');
+    }
+  }
+
+  function checkCov4(P) {
+    if (!Array.isArray(P) || P.length !== 16) {
+      throw new TypeError('covariance P must be a flat row-major array of length 16');
+    }
+  }
+
+  function checkModel(M) {
+    if (!M || !Array.isArray(M.F) || M.F.length !== 16 ||
+        !Array.isArray(M.Q) || M.Q.length !== 16 ||
+        !Array.isArray(M.H) || M.H.length !== 8 ||
+        !Array.isArray(M.R) || M.R.length !== 4) {
+      throw new TypeError('model M must come from makeModel({dt, sigmaQ, sigmaR})');
+    }
+  }
+
+  /* ==========================================================================
+   * 2. Model: constant velocity + white-noise acceleration
+   *
+   *   x = [px, py, vx, vy]^T,  F(dt) = blkdiag([[1,dt],[0,1]], same)
+   *   Q = sigma_q^2 * blkdiag(G G^T, G G^T),  G = [dt^2/2, dt]^T
+   *     -> per axis: sigma_q^2 * [[dt^4/4, dt^3/2], [dt^3/2, dt^2]]
+   *   H picks the two position rows; R = sigma_r^2 * I2.
+   * ========================================================================== */
+
+  function makeModel(opts) {
+    const o = opts || {};
+    const dt = o.dt === undefined ? 1 : requirePositive('dt', o.dt);
+    const sigmaQ = requirePositive('sigmaQ', o.sigmaQ);
+    const sigmaR = requirePositive('sigmaR', o.sigmaR);
+    const qVar = sigmaQ * sigmaQ;
+    const rVar = sigmaR * sigmaR;
+
+    const F = [
+      1, 0, dt, 0,
+      0, 1, 0, dt,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    ];
+
+    // State order is [px, py, vx, vy]: the x-axis block couples (px, vx) at
+    // flat indices {0,2} and the y-axis block couples (py, vy) at {1,3}.
+    const d2 = dt * dt;
+    const d3 = d2 * dt;
+    const d4 = d2 * d2;
+    const q44 = qVar * d4 / 4;
+    const q32 = qVar * d3 / 2;
+    const q22 = qVar * d2;
+    const Q = [
+      q44, 0, q32, 0,
+      0, q44, 0, q32,
+      q32, 0, q22, 0,
+      0, q32, 0, q22
+    ];
+
+    const H = [
+      1, 0, 0, 0,
+      0, 1, 0, 0
+    ];
+
+    const R = [rVar, 0, 0, rVar];
+
+    return { dt, F, Q, H, R, qVar, rVar };
+  }
+
+  /* ==========================================================================
+   * 3. Filter steps (pure functions; fresh arrays out, inputs untouched)
+   * ========================================================================== */
+
+  /* Generic row-major matrix multiply C = A(rows x inner) * B(inner x cols). */
+  function matMul(A, B, rows, inner, cols) {
+    const C = new Array(rows * cols);
+    for (let i = 0; i < rows; i++) {
+      const ai = i * inner;
+      const ci = i * cols;
+      for (let j = 0; j < cols; j++) C[ci + j] = 0;
+      for (let k = 0; k < inner; k++) {
+        const a = A[ai + k];
+        if (a === 0) continue;
+        const bk = k * cols;
+        for (let j = 0; j < cols; j++) C[ci + j] += a * B[bk + j];
+      }
+    }
+    return C;
+  }
+
+  /* C = A * B^T for row-major A(rows x inner), B(cols x inner). */
+  function matMulABt(A, B, rows, inner, cols) {
+    const C = new Array(rows * cols);
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
+        let s = 0;
+        for (let k = 0; k < inner; k++) s += A[i * inner + k] * B[j * inner + k];
+        C[i * cols + j] = s;
+      }
+    }
+    return C;
+  }
+
+  function matVec(A, x, rows, cols) {
+    const y = new Array(rows);
+    for (let i = 0; i < rows; i++) {
+      let s = 0;
+      const ai = i * cols;
+      for (let j = 0; j < cols; j++) s += A[ai + j] * x[j];
+      y[i] = s;
+    }
+    return y;
+  }
+
+  /* Force exact symmetry of an n x n flat matrix (average the off-diagonal
+   * twins). Joseph form is symmetric in exact arithmetic; this removes the
+   * last 1e-16 float dust so postP is bit-symmetric for the hygiene checks. */
+  function symmetrize(P, n) {
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const m = (P[i * n + j] + P[j * n + i]) / 2;
+        P[i * n + j] = m;
+        P[j * n + i] = m;
+      }
+    }
+    return P;
+  }
+
+  /* x' = F x ; P' = F P F^T + Q */
+  function predict(x, P, M) {
+    checkState(x);
+    checkCov4(P);
+    checkModel(M);
+    const x2 = matVec(M.F, x, 4, 4);
+    const FP = matMul(M.F, P, 4, 4, 4);
+    const P2 = matMulABt(FP, M.F, 4, 4, 4);
+    for (let i = 0; i < 16; i++) P2[i] += M.Q[i];
+    symmetrize(P2, 4);
+    return { x: x2, P: P2 };
+  }
+
+  /* Shared shape for a dropped measurement: S is still computed
+   * (S = H P^- H^T + R is always positive definite), K is zero, nis null. */
+  function noMeasurement(x, P, M) {
+    const R = M.R;
+    const S = [P[0] + R[0], P[1] + R[1], P[4] + R[2], P[5] + R[3]];
+    return {
+      x: x.slice(),
+      P: P.slice(),
+      K: [0, 0, 0, 0, 0, 0, 0, 0],
+      y: null,
+      S,
+      nis: null,
+      kPos: 0
+    };
+  }
+
+  /* Joseph-form update: P+ = (I-KH) P- (I-KH)^T + K R K^T.
+   * The 2x2 inverse is the adjugate over the determinant — no library. */
+  function updateJoseph(x, P, z, M) {
+    checkState(x);
+    checkCov4(P);
+    checkModel(M);
+    if (z == null) return noMeasurement(x, P, M);
+    if (!Array.isArray(z) || z.length !== 2) {
+      throw new TypeError('measurement z must be an array of length 2 or null');
+    }
+
+    // Innovation covariance S = H P H^T + R (H reads the position rows).
+    const R = M.R;
+    const s00 = P[0] + R[0];
+    const s01 = P[1] + R[1];
+    const s10 = P[4] + R[2];
+    const s11 = P[5] + R[3];
+    const det = s00 * s11 - s01 * s10;
+    if (!(det > 0) || !isFinite(det)) {
+      throw new RangeError('updateJoseph: innovation covariance S is not positive definite (det=' + det + ')');
+    }
+    const i00 = s11 / det, i01 = -s01 / det, i10 = -s10 / det, i11 = s00 / det;
+
+    const y0 = z[0] - x[0];
+    const y1 = z[1] - x[1];
+
+    // P H^T = first two columns of P (4x2), then K = P H^T S^-1 (4x2).
+    const PHt = [P[0], P[1], P[4], P[5], P[8], P[9], P[12], P[13]];
+    const K = matMul(PHt, [i00, i01, i10, i11], 4, 2, 2);
+
+    // x+ = x + K y
+    const x2 = [
+      x[0] + K[0] * y0 + K[1] * y1,
+      x[1] + K[2] * y0 + K[3] * y1,
+      x[2] + K[4] * y0 + K[5] * y1,
+      x[3] + K[6] * y0 + K[7] * y1
+    ];
+
+    // A = I - K H (K H only fills the first two columns of each row).
+    const A = [
+      1 - K[0], -K[1], 0, 0,
+      -K[2], 1 - K[3], 0, 0,
+      -K[4], -K[5], 1, 0,
+      -K[6], -K[7], 0, 1
+    ];
+    const AP = matMul(A, P, 4, 4, 4);
+    const P2 = matMulABt(AP, A, 4, 4, 4);
+    const KR = matMul(K, R, 4, 2, 2);
+    const KRKt = matMulABt(KR, K, 4, 2, 4);
+    for (let i = 0; i < 16; i++) P2[i] += KRKt[i];
+    symmetrize(P2, 4);
+
+    // NIS = y^T S^-1 y (S^-1 is symmetric because S is).
+    const nis = y0 * y0 * i00 + 2 * y0 * y1 * i01 + y1 * y1 * i11;
+
+    return {
+      x: x2,
+      P: P2,
+      K,
+      y: [y0, y1],
+      S: [s00, s01, s10, s11],
+      nis,
+      kPos: (K[0] + K[3]) / 2 // mean position gain over the two axes
+    };
+  }
+
+  /* Naive-form update: P+ = (I-KH) P-. Structurally independent of Joseph
+   * (different algebraic path, including x+ = A x + K z) — E1 reconciles
+   * the two to 1e-10. */
+  function updateNaive(x, P, z, M) {
+    checkState(x);
+    checkCov4(P);
+    checkModel(M);
+    if (z == null) return noMeasurement(x, P, M);
+    if (!Array.isArray(z) || z.length !== 2) {
+      throw new TypeError('measurement z must be an array of length 2 or null');
+    }
+
+    const R = M.R;
+    const s00 = P[0] + R[0];
+    const s01 = P[1] + R[1];
+    const s10 = P[4] + R[2];
+    const s11 = P[5] + R[3];
+    const det = s00 * s11 - s01 * s10;
+    if (!(det > 0) || !isFinite(det)) {
+      throw new RangeError('updateNaive: innovation covariance S is not positive definite (det=' + det + ')');
+    }
+    const i00 = s11 / det, i01 = -s01 / det, i10 = -s10 / det, i11 = s00 / det;
+
+    const y0 = z[0] - x[0];
+    const y1 = z[1] - x[1];
+
+    const PHt = [P[0], P[1], P[4], P[5], P[8], P[9], P[12], P[13]];
+    const K = matMul(PHt, [i00, i01, i10, i11], 4, 2, 2);
+
+    // A = I - K H, then x+ = A x + K z (equals x + K y in exact arithmetic).
+    const A = [
+      1 - K[0], -K[1], 0, 0,
+      -K[2], 1 - K[3], 0, 0,
+      -K[4], -K[5], 1, 0,
+      -K[6], -K[7], 0, 1
+    ];
+    const x2 = matVec(A, x, 4, 4);
+    x2[0] += K[0] * z[0] + K[1] * z[1];
+    x2[1] += K[2] * z[0] + K[3] * z[1];
+    x2[2] += K[4] * z[0] + K[5] * z[1];
+    x2[3] += K[6] * z[0] + K[7] * z[1];
+
+    const P2 = matMul(A, P, 4, 4, 4); // P+ = (I - K H) P
+    symmetrize(P2, 4);
+
+    const nis = y0 * y0 * i00 + 2 * y0 * y1 * i01 + y1 * y1 * i11;
+
+    return {
+      x: x2,
+      P: P2,
+      K,
+      y: [y0, y1],
+      S: [s00, s01, s10, s11],
+      nis,
+      kPos: (K[0] + K[3]) / 2
+    };
+  }
+
+  /* ==========================================================================
+   * 4. Closed-form independent truths
+   * ========================================================================== */
+
+  /* Gaussian product in 1-D: posterior of two N(mu, var) beliefs.
+   *   k = var1 / (var1 + var2), mu = mu1 + k (mu2 - mu1), var = (1-k) var1. */
+  function blend1D(mu1, var1, mu2, var2) {
+    const m1 = requireFinite('mu1', mu1);
+    const v1 = requireFinite('var1', var1);
+    const m2 = requireFinite('mu2', mu2);
+    const v2 = requireFinite('var2', var2);
+    const denom = v1 + v2;
+    if (!(denom > 0)) {
+      throw new RangeError('blend1D: var1 + var2 must be positive');
+    }
+    const k = v1 / denom;
+    return { mu: m1 + k * (m2 - m1), var: (1 - k) * v1, k };
+  }
+
+  /* Steady state of the per-axis 2-state CV filter
+   *   F = [[1,dt],[0,1]], Q = sigma_q^2 [[dt^4/4, dt^3/2],[dt^3/2, dt^2]],
+   *   H = [1,0], R = sigma_r^2.
+   * Solver A: iterate the Riccati recursion until the prior position
+   * variance moves less than 1e-14 (cap 1e5 iterations). */
+  function steadyStateGain1D(sigmaQ, sigmaR, dt) {
+    const sq = requirePositive('sigmaQ', sigmaQ);
+    const sr = requirePositive('sigmaR', sigmaR);
+    const d = dt === undefined ? 1 : requirePositive('dt', dt);
+    const q = sq * sq;
+    const r = sr * sr;
+
+    const c14 = q * d * d * d * d / 4;
+    const c13 = q * d * d * d / 2;
+    const c12 = q * d * d;
+
+    // Posterior covariance [a b; b c]; any positive-definite start converges.
+    let a = r, b = 0, c = r;
+    let pPrev = Infinity;
+    const CAP = 1e5;
+    for (let it = 0; it < CAP; it++) {
+      // prior
+      const p = a + 2 * d * b + d * d * c + c14;
+      const m = b + d * c + c13;
+      const v = c + c12;
+      // update (scalar measurement)
+      const S = p + r;
+      const K1 = p / S;
+      const K2 = m / S;
+      const a2 = (1 - K1) * p;
+      const b2 = (1 - K1) * m;
+      const c2 = v - K2 * m;
+      if (Math.abs(p - pPrev) < 1e-14) {
+        const k = p / S;
+        return { k, pPred: p, pPost: p * r / S };
+      }
+      pPrev = p;
+      a = a2; b = b2; c = c2;
+    }
+    throw new Error('steadyStateGain1D: Riccati iteration did not converge in ' + CAP + ' iterations');
+  }
+
+  /* Solver B: eliminate the cross/velocity entries of the steady-state
+   * Riccati equation analytically and bisect the remaining scalar equation
+   * for the prior position variance p:
+   *
+   *   f(p) = p - r p/(p+r) - sigma_q dt^2 (p + 2r)/sqrt(p+r) + sigma_q^2 dt^4/4 = 0
+   *
+   * (At the fixed point the prior cross term m = sigma_q dt sqrt(p+r),
+   * which collapses the 2x2 recursion onto this single monotone equation.)
+   * Tolerance 1e-12 on p; structurally independent of solver A. */
+  function steadyStateGain1DRoot(sigmaQ, sigmaR, dt) {
+    const sq = requirePositive('sigmaQ', sigmaQ);
+    const sr = requirePositive('sigmaR', sigmaR);
+    const d = dt === undefined ? 1 : requirePositive('dt', dt);
+    const q = sq * sq;
+    const r = sr * sr;
+    const d2 = d * d;
+    const c4 = q * d2 * d2 / 4;
+
+    function f(p) {
+      const s = Math.sqrt(p + r);
+      return p - r * p / (p + r) - sq * d2 * (p + 2 * r) / s + c4;
+    }
+
+    let lo = 0;
+    if (f(lo) > 0) {
+      throw new Error('steadyStateGain1DRoot: f(0) > 0, no positive root on the supported parameter grid');
+    }
+    let hi = Math.max(r, 1);
+    let guard = 0;
+    while (f(hi) <= 0) {
+      hi *= 2;
+      if (++guard > 200) {
+        throw new Error('steadyStateGain1DRoot: failed to bracket the root');
+      }
+    }
+    for (let it = 0; it < 200 && hi - lo > 1e-12; it++) {
+      const mid = 0.5 * (lo + hi);
+      if (f(mid) <= 0) lo = mid; else hi = mid;
+    }
+    const pPred = 0.5 * (lo + hi);
+    const k = pPred / (pPred + r);
+    return { k, pPred, pPost: pPred * r / (pPred + r) };
+  }
+
+  /* Chi-square with 2 degrees of freedom, closed-form quantile:
+   * P(X <= x) = 1 - exp(-x/2)  =>  x(p) = -2 ln(1-p). Domain p in [0,1). */
+  function chi2Quantile2(p) {
+    return -2 * Math.log(1 - p);
+  }
+
+  /* ==========================================================================
+   * 5. CANON and the simulation
+   *
+   * Time semantics (pinned): history holds executed steps only; the k-th
+   * step() call yields the record with t = k (t starts at 1); right after
+   * createSim, n = 0 and history = [] (t = 0 = empty history).
+   *
+   * Truth initial state (pinned): each component drawn from
+   * N(center, P0diag variance) with tag 'init' — px ~ N(0,4), py ~ N(0,4),
+   * vx ~ N(1,0.25), vy ~ N(0.55,0.25) — i.e. the same spread the filter
+   * declares in its prior.
+   *
+   * Stream layout per step (each stream independent of the others, and the
+   * measurement stream is independent of dropProb so slider moves never
+   * reshuffle the noise already shown):
+   *   'truth' : ax, ay  (raw N(0,1), scaled by sigma_q*)
+   *   'meas'  : drop uniform, zx, zy (raw N(0,1), scaled by sigma_r*)
+   * ========================================================================== */
+
+  const CANON = Object.freeze({
+    dt: 1,
+    steps: 400,
+    sigmaQTrue: 0.30,
+    sigmaRTrue: 1.0,
+    seed: 20260930,
+    v0: Object.freeze([1.0, 0.55]),
+    p0: Object.freeze([0, 0]),
+    P0diag: Object.freeze([4, 4, 0.25, 0.25]),
+    sigmaQModel: 0.30,
+    sigmaRModel: 1.0,
+    dropProb: 0
+  });
+
+  function createSim(opts) {
+    const o = opts || {};
+    const seed = o.seed === undefined ? CANON.seed : requireFinite('seed', o.seed);
+    const dt = o.dt === undefined ? CANON.dt : requirePositive('dt', o.dt);
+    const sigmaQTrue = o.sigmaQTrue === undefined ? CANON.sigmaQTrue : requirePositive('sigmaQTrue', o.sigmaQTrue);
+    const sigmaRTrue = o.sigmaRTrue === undefined ? CANON.sigmaRTrue : requirePositive('sigmaRTrue', o.sigmaRTrue);
+    const sigmaQModel = o.sigmaQModel === undefined ? CANON.sigmaQModel : requirePositive('sigmaQModel', o.sigmaQModel);
+    const sigmaRModel = o.sigmaRModel === undefined ? CANON.sigmaRModel : requirePositive('sigmaRModel', o.sigmaRModel);
+    const dropProb = o.dropProb === undefined ? CANON.dropProb : requireFinite('dropProb', o.dropProb);
+    if (!(dropProb >= 0 && dropProb <= 1)) {
+      throw new RangeError('dropProb must lie in [0, 1], got: ' + dropProb);
+    }
+    const steps = o.steps === undefined ? CANON.steps : Math.floor(requireFinite('steps', o.steps));
+
+    const M = makeModel({ dt, sigmaQ: sigmaQModel, sigmaR: sigmaRModel });
+
+    const sqT = Math.sqrt(CANON.P0diag[0]);
+    const svT = Math.sqrt(CANON.P0diag[2]);
+
+    let n = 0;
+    const history = [];
+    let rngTruth, rngMeas, truth, filtX, filtP;
+
+    function initState() {
+      const rngInit = makeRng(seed, 'init');
+      truth = [
+        CANON.p0[0] + rngInit.normal() * sqT,
+        CANON.p0[1] + rngInit.normal() * sqT,
+        CANON.v0[0] + rngInit.normal() * svT,
+        CANON.v0[1] + rngInit.normal() * svT
+      ];
+      rngTruth = makeRng(seed, 'truth');
+      rngMeas = makeRng(seed, 'meas');
+      filtX = [CANON.p0[0], CANON.p0[1], CANON.v0[0], CANON.v0[1]];
+      filtP = [
+        CANON.P0diag[0], 0, 0, 0,
+        0, CANON.P0diag[1], 0, 0,
+        0, 0, CANON.P0diag[2], 0,
+        0, 0, 0, CANON.P0diag[3]
+      ];
+      n = 0;
+      history.length = 0;
+    }
+
+    function step() {
+      const t = n + 1;
+
+      // truth: CV propagation + white-noise acceleration (per axis, N(0, sigma_q*^2))
+      const ax = rngTruth.normal() * sigmaQTrue;
+      const ay = rngTruth.normal() * sigmaQTrue;
+      const tx = truth[0] + truth[2] * dt + 0.5 * dt * dt * ax;
+      const ty = truth[1] + truth[3] * dt + 0.5 * dt * dt * ay;
+      truth[0] = tx;
+      truth[1] = ty;
+      truth[2] += dt * ax;
+      truth[3] += dt * ay;
+
+      // measurement: drop decision + noise drawn unconditionally, so the
+      // noise paired with step t never moves when dropProb changes
+      const u = rngMeas.uniform();
+      const zx = rngMeas.normal() * sigmaRTrue;
+      const zy = rngMeas.normal() * sigmaRTrue;
+      const meas = u < dropProb ? null : [truth[0] + zx, truth[1] + zy];
+
+      // filter: always predict, update only when a measurement arrived
+      const pr = predict(filtX, filtP, M);
+      let postX, postP, K, kPos, nis;
+      if (meas !== null) {
+        const up = updateJoseph(pr.x, pr.P, meas, M);
+        postX = up.x; postP = up.P; K = up.K; kPos = up.kPos; nis = up.nis;
+      } else {
+        postX = pr.x.slice();
+        postP = pr.P.slice();
+        K = [0, 0, 0, 0, 0, 0, 0, 0];
+        kPos = 0;
+        nis = null;
+      }
+      filtX = postX;
+      filtP = postP;
+
+      const rec = {
+        t,
+        truth: [truth[0], truth[1]],
+        meas,
+        prior: pr.x,
+        priorP: pr.P,
+        post: postX,
+        postP: postP,
+        K,
+        kPos,
+        nis
+      };
+      history.push(rec);
+      n = t;
+      return rec;
+    }
+
+    initState();
+
+    return {
+      get n() { return n; },
+      history,
+      step,
+      reset: initState,
+      steps,          // informational: the CANON horizon the caller asked for
+      model: M        // informational: the filter's belief model
+    };
+  }
+
+  /* ==========================================================================
+   * 6. Metrics over a history
+   * ========================================================================== */
+
+  /* Position RMSE over all executed steps, posterior vs truth, in metres. */
+  function rmsePosition(history) {
+    const n = history.length;
+    if (n === 0) return NaN; // undefined at t = 0; the page shows "-"
+    let s = 0;
+    for (let i = 0; i < n; i++) {
+      const r = history[i];
+      const dx = r.post[0] - r.truth[0];
+      const dy = r.post[1] - r.truth[1];
+      s += dx * dx + dy * dy;
+    }
+    return Math.sqrt(s / n);
+  }
+
+  /* Coverage: fraction of steps with ||post[0:2] - truth||_2 <= k*sqrt(P[0])
+   * (2-D Euclidean reading, P[0] = Pxx = Pyy by isotropy). Theoretical
+   * values are 1 - exp(-k^2/2): 0.39347 / 0.86466 / 0.98889 for k = 1/2/3. */
+  function coverage(history, k) {
+    const n = history.length;
+    if (n === 0) return NaN;
+    const kk = requireFinite('k', k);
+    let c = 0;
+    for (let i = 0; i < n; i++) {
+      const r = history[i];
+      const dx = r.post[0] - r.truth[0];
+      const dy = r.post[1] - r.truth[1];
+      const rad = kk * Math.sqrt(r.postP[0]);
+      if (dx * dx + dy * dy <= rad * rad) c++;
+    }
+    return c / n;
+  }
+
+  /* Mean NIS over the steps that actually had a measurement (nis != null). */
+  function meanNis(history) {
+    let s = 0;
+    let c = 0;
+    for (let i = 0; i < history.length; i++) {
+      const v = history[i].nis;
+      if (v !== null && v !== undefined) {
+        s += v;
+        c++;
+      }
+    }
+    return c === 0 ? NaN : s / c;
+  }
+
+  /* n sample points on the 1-sigma ellipse of a 2x2 covariance
+   * cov2 = [a, b, c, d] (row-major). Closed 2x2 eigendecomposition:
+   * eigenvalues (tr ± sqrt(tr^2 - 4 det))/2, orthonormal eigenvectors,
+   * points = sqrt(l1) cos(t) v1 + sqrt(l2) sin(t) v2, t = 2 pi i / n. */
+  function ellipse(cov2, n) {
+    if (!Array.isArray(cov2) || cov2.length !== 4) {
+      throw new TypeError('ellipse: cov2 must be a flat 2x2 array [a,b,c,d]');
+    }
+    const count = Math.floor(Number(n));
+    if (!(count >= 1)) {
+      throw new RangeError('ellipse: n must be a positive integer');
+    }
+    const a = cov2[0];
+    const b = (cov2[1] + cov2[2]) / 2; // tolerate a hair of asymmetry
+    const d = cov2[3];
+    const tr = a + d;
+    const disc = Math.sqrt(Math.max(tr * tr - 4 * (a * d - b * b), 0));
+    const l1 = 0.5 * (tr + disc);
+    const l2 = 0.5 * (tr - disc);
+
+    let v1x, v1y;
+    if (Math.abs(b) > 0) {
+      v1x = b;
+      v1y = l1 - a; // eigenvector of [[a,b],[b,d]] for l1
+      // When the covariance is nearly isotropic (l1 ~ l2) the orientation of
+      // a tiny-b vector is ill-conditioned, but then s1 ~ s2 so the drawn
+      // ellipse is visually identical for any rotation — harmless here.
+    } else {
+      v1x = a >= d ? 1 : 0;
+      v1y = a >= d ? 0 : 1;
+    }
+    const nrm = Math.hypot(v1x, v1y);
+    v1x /= nrm;
+    v1y /= nrm;
+    const v2x = -v1y; // perpendicular partner
+    const v2y = v1x;
+
+    const s1 = Math.sqrt(Math.max(l1, 0));
+    const s2 = Math.sqrt(Math.max(l2, 0));
+
+    const pts = new Array(count);
+    for (let i = 0; i < count; i++) {
+      const th = 2 * Math.PI * i / count;
+      const ct = Math.cos(th);
+      const st = Math.sin(th);
+      pts[i] = [
+        s1 * ct * v1x + s2 * st * v2x,
+        s1 * ct * v1y + s2 * st * v2y
+      ];
+    }
+    return pts;
+  }
+
+  /* ==========================================================================
+   * 7. Export
+   * ========================================================================== */
+
+  return {
+    VERSION,
+    hashSeed,
+    makeRng,
+    makeModel,
+    predict,
+    updateJoseph,
+    updateNaive,
+    blend1D,
+    steadyStateGain1D,
+    steadyStateGain1DRoot,
+    chi2Quantile2,
+    CANON,
+    createSim,
+    rmsePosition,
+    coverage,
+    meanNis,
+    ellipse
+  };
+});
+
+</script>
+<script id="kalman-ui">
+'use strict';
+
+/* ============================================================
+ * 半信半疑 · ui.js —— 交互层（浏览器 IIFE，不进 Node）
+ *
+ * 职责：把 core.js 的确定性模型接到 SPEC §2.1 的 28 个功能 id 上——
+ *   展品 A 主场景 #scene、展品 B 信任读数 #trust、展品 C 手动融合
+ *   #fuse-canvas，以及读数条、控制面板与观察问题 #insight-text。
+ *
+ * 行为契约（OUTLINE §2 / SPEC §1、§3 钉死）：
+ *   - 滑杆与场景预设只改滤波器的假设 σ_q、σ_r；世界真值恒为 CANON。
+ *   - 参数一改：以当前参数重建 Sim 并重放已执行的 n 步（真值与测量
+ *     由确定性 PRNG 决定，重放只改滤波轨迹）——权重当场重算。
+ *   - 复位 = 全部复位：t=0、三根滑杆与 λ 回默认、视图与拟合矩形清空、
+ *     MC 实例序号 j 归零。
+ *   - 展品 C 的 MC 样本只随 j 重掷：rng = makeRng(CANON.seed + j, 'fuse')，
+ *     j=0 恰为标定 E7 的实例；冻结步与模拟时间不因重掷而动。
+ *   - 观察问题状态 2 的覆盖率用 coverage(history, 2)（2σ），读数条展示
+ *     的始终是 1σ 覆盖率，两者不得混用。
+ * ========================================================== */
+
+(() => {
+  const Core = window.KalmanCore;
+
+  const $ = (selector) => document.querySelector(selector);
+
+  /* —— SPEC §2.1 功能 id 清单（28 个），一个不多一个不少 —— */
+  const el = {
+    tValue: $('#t-value'),
+    rmseValue: $('#rmse-value'),
+    coverageValue: $('#coverage-value'),
+    nisValue: $('#nis-value'),
+    runStatus: $('#run-status'),
+    scene: $('#scene'),
+    gainValue: $('#gain-value'),
+    sceneNote: $('#scene-note'),
+    trust: $('#trust'),
+    trustNote: $('#trust-note'),
+    fuseCanvas: $('#fuse-canvas'),
+    lambdaSlider: $('#fuse-lambda'),
+    lambdaValue: $('#fuse-lambda-value'),
+    reroll: $('#fuse-reroll'),
+    fuseResult: $('#fuse-result'),
+    qSlider: $('#q-slider'),
+    qValue: $('#q-value'),
+    rSlider: $('#r-slider'),
+    rValue: $('#r-value'),
+    dropSlider: $('#drop-slider'),
+    dropValue: $('#drop-value'),
+    stepOne: $('#step-one'),
+    stepTwentyFive: $('#step-twenty-five'),
+    stepHundred: $('#step-hundred'),
+    play: $('#play-toggle'),
+    playLabel: $('#play-label'),
+    reset: $('#reset'),
+    insight: $('#insight-text')
+  };
+
+  if (!Core || typeof Core.createSim !== 'function') {
+    // 构建契约保证 core 先于 ui 内联；这里只兜底防裸跑。
+    if (el.runStatus) el.runStatus.textContent = '核心模块未加载';
+    return;
+  }
+
+  const scenarioButtons = Array.prototype.slice.call(
+    document.querySelectorAll('.k-scenario-button')
+  );
+
+  /* 状态类 is-running 的视觉落点：读数条状态行圆点
+   * （style.css：.k-readout-live.is-running i 的锈红 + k-pulse 脉冲） */
+  const readoutLive = el.runStatus ? el.runStatus.closest('.k-readout-live') : null;
+
+  /* 重掷按钮旁的组号标注（OUTLINE §2 钉死「第 j 组重掷」；类选择器同
+   * .k-scenario-button 的取法，不新增功能 id） */
+  const rerollNote = document.querySelector('.k-reroll-note');
+
+  /* ============================================================
+   * 常量
+   * ========================================================== */
+  const STEPS_PER_SECOND = 20;   // OUTLINE §2：连续演化约 20 步/秒
+  const FUSE_M = 20000;          // 展品 C 的 MC 样本量（与 E7 一致）
+  const FUSE_GRID = 51;          // λ ∈ [0,1] 的展示网格（0.02 步长）
+  const DEFAULT_LAMBDA = 0.5;    // SPEC §2.1 滑杆默认值
+  const NIS_AXIS_MAX = 8;        // 展品 B 纵轴上限（越界钳制作空心点）
+  const ELLIPSE_POINTS = 36;
+
+  const COLOR = {
+    paper: '#faf8f2',
+    grid: '#e5e1d7',
+    gridSoft: '#efebe3',
+    frame: '#d9d2c6',
+    ink: '#1e2d31',
+    dim: '#626e6d',
+    faint: '#8a938f',
+    indigo: '#3f5e78',
+    rust: '#b8583d',
+    ghost: '#7d8c88',
+    teal: '#4c7779',
+    ellipseFill: 'rgba(63,94,120,.14)',
+    bandFill: 'rgba(63,94,120,.08)',
+    white: '#fffdf8'
+  };
+  const FONT_MONO = '9px ui-monospace,"Cascadia Code",Consolas,monospace';
+  const FONT_MONO_SMALL = '8px ui-monospace,"Cascadia Code",Consolas,monospace';
+  const FONT_SANS = '10px "Avenir Next","PingFang SC","Microsoft YaHei",sans-serif';
+  const FONT_SANS_BIG = '12px "Avenir Next","PingFang SC","Microsoft YaHei",sans-serif';
+
+  /* 三块画布的中文图像描述（§2.3：role="img" + aria-label；W1 已写则不覆盖） */
+  const CANVAS_ARIA = {
+    scene: '主场景图：横轴纵轴都是位置（米）。灰青虚线是真值轨迹，锈红小点是带噪测量，'
+      + '深蓝实线是滤波估计轨迹，蓝色椭圆是当前步的 2σ 不确定范围——虚线为预测、实线为更新后。',
+    trust: '信任读数图：上轨是位置增益 k 随时间的曲线（0 到 1），下轨是每步 NIS 散点'
+      + '（横轴时间步，纵轴 0 到 8），阴影带是 χ²(2) 分布的 95% 区间 0.10 到 5.99。',
+    fuseCanvas: '手动融合图：横轴是融合权重 λ（0 到 1），纵轴是均方根误差（米）。'
+      + '图中同画蒙特卡洛与闭式两支 RMSE 曲线，并标出最优权重 λ*（卡尔曼增益）的位置。'
+  };
+
+  /* 观察问题三种状态（OUTLINE §2 钉死意思；判定优先级 1 → 2 → 3） */
+  const INSIGHT_WAITING = '先把「模型装懂」按下，再推进 100 步——NIS 还待在阴影带里吗？';
+  const INSIGHT_MISMATCH = '椭圆自称的 1σ 已经包不住真误差：滤波器不是算错，'
+    + '是把自己想得太好——错的是它对噪声的自述。';
+  const INSIGHT_HEALTHY = 'NIS ≈ 2、1σ 覆盖率约 39.3%：椭圆在如实报账。'
+    + '把 σ_r 拧大，看增益怎么让位于预测。';
+
+  /* ============================================================
+   * 状态
+   * ========================================================== */
+  const state = {
+    sim: null,          // Core.createSim 的实例（时间语义：history 仅含已执行步）
+    model: null,        // 与当前滑杆一致的 makeModel 结果（展品 C 取 R[0]）
+    playing: false,
+    lastFrame: 0,
+    carry: 0,
+    frame: 0,
+    fit: null,          // 只扩不缩的世界包围盒（复位才清空）
+    view: null,         // 已应用的等比例视图 { s, cx, cy }
+    fuseIndex: 0,       // MC 实例序号 j（复位归零）
+    fuseMoments: null   // 当前 j 的标准正态样本矩 { j, smu, szz, cross }
+  };
+
+  const currentQ = () => Number(el.qSlider.value);
+  const currentR = () => Number(el.rSlider.value);
+  const currentDrop = () => Number(el.dropSlider.value);
+  const currentLambda = () => Number(el.lambdaSlider.value);
+
+  /* ============================================================
+   * Sim 生命周期
+   * ========================================================== */
+  function makeSim() {
+    const c = Core.CANON;
+    const q = currentQ();
+    const r = currentR();
+    state.model = Core.makeModel({ dt: c.dt, sigmaQ: q, sigmaR: r });
+    return Core.createSim({
+      seed: c.seed,
+      dt: c.dt,
+      sigmaQTrue: c.sigmaQTrue,
+      sigmaRTrue: c.sigmaRTrue,
+      sigmaQModel: q,
+      sigmaRModel: r,
+      dropProb: currentDrop() / 100,
+      steps: c.steps
+    });
+  }
+
+  /* 参数一改：同 seed 重建并重放已执行的 n 步（真值/测量只由 seed 与真值参数决定） */
+  function rebuildSim() {
+    const executed = state.sim ? state.sim.n : 0;
+    state.sim = makeSim();
+    for (let i = 0; i < executed; i += 1) state.sim.step();
+  }
+
+  /* ============================================================
+   * 小工具
+   * ========================================================== */
+  function canvas2d(canvas) {
+    const bounds = canvas.getBoundingClientRect();
+    const width = Math.max(1, bounds.width);
+    const height = Math.max(1, bounds.height);
+    const ratio = Math.min(2, window.devicePixelRatio || 1);
+    const pixelWidth = Math.round(width * ratio);
+    const pixelHeight = Math.round(height * ratio);
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    return { ctx, width, height };
+  }
+
+  function niceStep(span, target) {
+    const raw = Math.max(span, 1e-9) / target;
+    const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+    const mantissas = [1, 2, 5, 10];
+    for (let i = 0; i < mantissas.length; i += 1) {
+      if (mantissas[i] * pow >= raw - 1e-12) return mantissas[i] * pow;
+    }
+    return 10 * pow;
+  }
+
+  function formatTick(value, step) {
+    const decimals = Math.max(0, Math.min(3, Math.ceil(-Math.log10(step) - 1e-9)));
+    return value.toFixed(decimals);
+  }
+
+  function dot(ctx, x, y, radius, fill, stroke, strokeWidth) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = strokeWidth || 1.4;
+      ctx.stroke();
+    }
+  }
+
+  function tracePath(ctx, points, xAt, yAt, close) {
+    ctx.beginPath();
+    for (let i = 0; i < points.length; i += 1) {
+      const px = xAt(points[i][0]);
+      const py = yAt(points[i][1]);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    if (close) ctx.closePath();
+  }
+
+  /* 2×2 协方差（4×4 行主序的左上块）→ 置信椭圆的世界坐标点（可乘 σ 倍数，
+   * 圆心平移到 center——Core.ellipse 给出的是原点中心的形状点，
+   * 不平移的话椭圆会画在世界原点而不是当前状态处） */
+  function covarianceEllipse(P, sigmaScale, center) {
+    const raw = Core.ellipse([P[0], P[1], P[4], P[5]], ELLIPSE_POINTS);
+    const ox = center ? center[0] : 0;
+    const oy = center ? center[1] : 0;
+    const pts = [];
+    for (let i = 0; i < raw.length; i += 1) {
+      pts.push([raw[i][0] * sigmaScale + ox, raw[i][1] * sigmaScale + oy]);
+    }
+    return pts;
+  }
+
+  /* ============================================================
+   * 读数条 / 文案
+   * ========================================================== */
+  function setStatus(text) {
+    el.runStatus.textContent = text;
+  }
+
+  function statusIdle() {
+    setStatus(state.sim.n > 0 ? '演化至第 ' + state.sim.n + ' 步' : '等待环境设定');
+  }
+
+  function updateReadouts() {
+    const hist = state.sim.history;
+    el.tValue.textContent = String(state.sim.n);
+    if (!hist.length) {
+      el.rmseValue.textContent = '—';
+      el.coverageValue.textContent = '—';
+      el.nisValue.textContent = '—';
+      el.gainValue.textContent = '—';
+      return;
+    }
+    // 单位由 body.html:119-120 的静态 <small>m</small>/<small>%</small> 承担
+    // （同「模型时间/步」「NIS 均值/χ²(2)」排版）；这里只写数字，
+    // 否则渲染成「1.143 m m」「12.0 % %」
+    el.rmseValue.textContent = Core.rmsePosition(hist).toFixed(3);
+    el.coverageValue.textContent = (Core.coverage(hist, 1) * 100).toFixed(1);
+    const nisMean = Core.meanNis(hist);
+    el.nisValue.textContent = Number.isFinite(nisMean) ? nisMean.toFixed(2) : '—';
+    const last = hist[hist.length - 1];
+    el.gainValue.textContent = last.kPos.toFixed(3) + (last.meas ? '' : '（丢包）');
+  }
+
+  function updateLabels() {
+    const q = currentQ();
+    const r = currentR();
+    const drop = currentDrop();
+    const lam = currentLambda();
+    el.qValue.textContent = q.toFixed(2) + ' m/s²';
+    el.rValue.textContent = r.toFixed(1) + ' m';
+    el.dropValue.textContent = drop.toFixed(0) + ' %';
+    el.lambdaValue.textContent = lam.toFixed(2);
+    el.qSlider.setAttribute('aria-valuetext', q.toFixed(2) + ' 米每平方秒');
+    el.rSlider.setAttribute('aria-valuetext', r.toFixed(1) + ' 米');
+    el.dropSlider.setAttribute('aria-valuetext', drop.toFixed(0) + ' 百分比');
+    el.lambdaSlider.setAttribute('aria-valuetext', lam.toFixed(2));
+    updateScenarioButtons();
+  }
+
+  function updateScenarioButtons() {
+    const q = currentQ();
+    const r = currentR();
+    scenarioButtons.forEach((button) => {
+      const bq = Number(button.getAttribute('data-q'));
+      const br = Number(button.getAttribute('data-r'));
+      const active = Number.isFinite(bq) && Number.isFinite(br)
+        && Math.abs(bq - q) < 1e-9 && Math.abs(br - r) < 1e-9;
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function updateNotes() {
+    const c = Core.CANON;
+    const q = currentQ();
+    const r = currentR();
+    const drop = currentDrop();
+    const match = Math.abs(q - c.sigmaQTrue) < 1e-9 && Math.abs(r - c.sigmaRTrue) < 1e-9;
+
+    if (!state.sim.n) {
+      el.sceneNote.textContent = '灰青虚线是真值幽灵，锈红点是测量，深蓝实线是滤波估计；'
+        + '虚线椭圆是预测，实线椭圆是更新。';
+    } else {
+      const verdict = match
+        ? '假设与真值一致，椭圆在如实报账。'
+        : '假设与真值错位——看 χ² 读数怎么现形。';
+      el.sceneNote.textContent = '滤波器假设 σ_q ' + q.toFixed(2) + ' m/s² · σ_r ' + r.toFixed(1)
+        + ' m；世界真值 ' + c.sigmaQTrue.toFixed(2) + ' / ' + c.sigmaRTrue.toFixed(1) + '。' + verdict;
+    }
+    if (drop > 0) {
+      el.sceneNote.textContent += ' 丢包 ' + drop.toFixed(0) + '%：没有测量的步只有预测。';
+    }
+
+    // 展品 B 说明：带边由 χ²(2) 分位数现算（0.10 / 5.99 的来源），带内占比来自真实统计
+    const lo = Core.chi2Quantile2(0.05);
+    const hi = Core.chi2Quantile2(0.95);
+    const hist = state.sim.history;
+    let total = 0;
+    let inside = 0;
+    for (let i = 0; i < hist.length; i += 1) {
+      const nis = hist[i].nis;
+      if (nis != null) {
+        total += 1;
+        if (nis >= lo && nis <= hi) inside += 1;
+      }
+    }
+    let note = '阴影带是 χ²(2) 的 95% 区间 [' + lo.toFixed(2) + ', ' + hi.toFixed(2)
+      + ']；健康滤波器的散点约 95% 落在带内，超出 ' + NIS_AXIS_MAX + ' 的点钳在顶端画成空心。';
+    if (total > 0) {
+      note += ' 当前 ' + Math.round((inside / total) * 100) + '%（' + inside + '/' + total
+        + ' 个有测量的步）在带内。';
+    }
+    el.trustNote.textContent = note;
+  }
+
+  function updateInsight() {
+    const hist = state.sim.history;
+    if (!hist.length) {
+      el.insight.textContent = INSIGHT_WAITING;
+      return;
+    }
+    // 状态 2 判据用 2σ 覆盖率（coverage(history, 2)），与读数条的 1σ 展示不同
+    const cov2 = Core.coverage(hist, 2);
+    const nisMean = Core.meanNis(hist);
+    const mismatch = cov2 < 0.70 || (Number.isFinite(nisMean) && nisMean > 3);
+    el.insight.textContent = mismatch ? INSIGHT_MISMATCH : INSIGHT_HEALTHY;
+  }
+
+  /* ============================================================
+   * 展品 A · 主场景 #scene
+   * ========================================================== */
+  function drawScene() {
+    const chart = canvas2d(el.scene);
+    const ctx = chart.ctx;
+    const pad = { left: 46, right: 14, top: 14, bottom: 28 };
+    const plotW = chart.width - pad.left - pad.right;
+    const plotH = chart.height - pad.top - pad.bottom;
+    const hist = state.sim.history;
+
+    // 目标包围盒：真值 ∪ 估计点 ∪ 当前步 2σ 椭圆（预测与更新两枚都要，
+    // 虚线"先张开"的预测椭圆不得被画框裁掉；不含测量散点，OUTLINE 钉死）
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    let currentEllipse = null;
+    let currentPrior = null;
+    if (hist.length) {
+      const last = hist[hist.length - 1];
+      currentEllipse = covarianceEllipse(last.postP, 2, last.post);
+      currentPrior = covarianceEllipse(last.priorP, 2, last.prior);
+      for (let i = 0; i < hist.length; i += 1) {
+        const rec = hist[i];
+        if (rec.truth[0] < minX) minX = rec.truth[0];
+        if (rec.truth[0] > maxX) maxX = rec.truth[0];
+        if (rec.truth[1] < minY) minY = rec.truth[1];
+        if (rec.truth[1] > maxY) maxY = rec.truth[1];
+        if (rec.post[0] < minX) minX = rec.post[0];
+        if (rec.post[0] > maxX) maxX = rec.post[0];
+        if (rec.post[1] < minY) minY = rec.post[1];
+        if (rec.post[1] > maxY) maxY = rec.post[1];
+      }
+      for (let i = 0; i < currentEllipse.length; i += 1) {
+        const p = currentEllipse[i];
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minY) minY = p[1];
+        if (p[1] > maxY) maxY = p[1];
+      }
+      // 预测椭圆（priorP 2σ）同样入盒：复位后头几步它远大于更新椭圆，
+      // 不入盒会被画布 clip 裁掉，恰好切掉"先张开、再收拢"的前半场
+      for (let i = 0; i < currentPrior.length; i += 1) {
+        const p = currentPrior[i];
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minY) minY = p[1];
+        if (p[1] > maxY) maxY = p[1];
+      }
+    }
+
+    if (!Number.isFinite(minX) || plotW < 40 || plotH < 40) {
+      drawSceneEmpty(ctx, chart, pad, plotW, plotH);
+      return;
+    }
+
+    // 只扩不缩：拟合矩形直到复位才重置
+    if (!state.fit) {
+      state.fit = { minX, maxX, minY, maxY };
+    } else {
+      if (minX < state.fit.minX) state.fit.minX = minX;
+      if (maxX > state.fit.maxX) state.fit.maxX = maxX;
+      if (minY < state.fit.minY) state.fit.minY = minY;
+      if (maxY > state.fit.maxY) state.fit.maxY = maxY;
+    }
+
+    // 8% 边距 + 等比例（x/y 比例尺相同，椭圆不失真）
+    const spanX = Math.max(state.fit.maxX - state.fit.minX, 1e-6);
+    const spanY = Math.max(state.fit.maxY - state.fit.minY, 1e-6);
+    const bx0 = state.fit.minX - spanX * 0.08;
+    const bx1 = state.fit.maxX + spanX * 0.08;
+    const by0 = state.fit.minY - spanY * 0.08;
+    const by1 = state.fit.maxY + spanY * 0.08;
+    const scaleTarget = Math.max((bx1 - bx0) / plotW, (by1 - by0) / plotH);
+    // 比例尺变化超过 1% 才应用，避免连续演化时画面抖动
+    if (!state.view || Math.abs(scaleTarget - state.view.s) / state.view.s > 0.01) {
+      state.view = { s: scaleTarget, cx: (bx0 + bx1) / 2, cy: (by0 + by1) / 2 };
+    }
+    const view = state.view;
+    const xAt = (x) => pad.left + plotW / 2 + (x - view.cx) / view.s;
+    const yAt = (y) => pad.top + plotH / 2 - (y - view.cy) / view.s;
+    const xMin = view.cx - (plotW / 2) * view.s;
+    const xMax = view.cx + (plotW / 2) * view.s;
+    const yMin = view.cy - (plotH / 2) * view.s;
+    const yMax = view.cy + (plotH / 2) * view.s;
+
+    ctx.fillStyle = COLOR.paper;
+    ctx.fillRect(pad.left, pad.top, plotW, plotH);
+    drawWorldGrid(ctx, xAt, yAt, xMin, xMax, yMin, yMax, pad, plotW, plotH);
+
+    // 数据整体裁剪到纸面（测量散点不在拟合盒内，可能落出视野）
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pad.left, pad.top, plotW, plotH);
+    ctx.clip();
+
+    // 测量散点（锈红）
+    for (let i = 0; i < hist.length; i += 1) {
+      const meas = hist[i].meas;
+      if (meas) dot(ctx, xAt(meas[0]), yAt(meas[1]), 1.8, COLOR.rust);
+    }
+
+    // 真值幽灵（灰青虚线）
+    ctx.save();
+    ctx.setLineDash([5, 4]);
+    tracePath(ctx, hist.map((rec) => rec.truth), xAt, yAt, false);
+    ctx.strokeStyle = COLOR.ghost;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.restore();
+
+    // 估计轨迹（深蓝实线）
+    tracePath(ctx, hist.map((rec) => rec.post), xAt, yAt, false);
+    ctx.strokeStyle = COLOR.indigo;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 当前步：先预测椭圆（虚线）后更新椭圆（实线）——"先张开、再收拢"
+    const last = hist[hist.length - 1];
+    if (currentPrior) {
+      tracePath(ctx, currentPrior, xAt, yAt, true);
+      ctx.strokeStyle = COLOR.indigo;
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (currentEllipse) {
+      tracePath(ctx, currentEllipse, xAt, yAt, true);
+      ctx.fillStyle = COLOR.ellipseFill;
+      ctx.fill();
+      ctx.strokeStyle = COLOR.indigo;
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+    }
+
+    // 当前关键点（白描边）
+    if (last.meas) dot(ctx, xAt(last.meas[0]), yAt(last.meas[1]), 3, COLOR.rust, COLOR.white, 1.5);
+    dot(ctx, xAt(last.truth[0]), yAt(last.truth[1]), 3, COLOR.ghost, COLOR.white, 1.5);
+    dot(ctx, xAt(last.post[0]), yAt(last.post[1]), 4, COLOR.indigo, COLOR.white, 1.5);
+
+    ctx.restore();
+
+    ctx.strokeStyle = COLOR.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pad.left + 0.5, pad.top + 0.5, plotW - 1, plotH - 1);
+    ctx.fillStyle = COLOR.faint;
+    ctx.font = FONT_MONO_SMALL;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('坐标单位：米', pad.left + plotW - 6, pad.top + 4);
+  }
+
+  function drawSceneEmpty(ctx, chart, pad, plotW, plotH) {
+    ctx.fillStyle = COLOR.paper;
+    ctx.fillRect(pad.left, pad.top, Math.max(0, plotW), Math.max(0, plotH));
+    ctx.strokeStyle = COLOR.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pad.left + 0.5, pad.top + 0.5, Math.max(0, plotW - 1), Math.max(0, plotH - 1));
+    ctx.fillStyle = COLOR.dim;
+    ctx.font = FONT_SANS_BIG;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('推进时间，轨迹从这里开始', chart.width / 2, chart.height / 2 - 8);
+    ctx.fillStyle = COLOR.faint;
+    ctx.font = FONT_SANS;
+    ctx.fillText('＋1 步 · ＋25 步 · ＋100 步 · 连续演化', chart.width / 2, chart.height / 2 + 14);
+  }
+
+  function drawWorldGrid(ctx, xAt, yAt, xMin, xMax, yMin, yMax, pad, plotW, plotH) {
+    const stepX = niceStep(xMax - xMin, 6);
+    const stepY = niceStep(yMax - yMin, 6);
+    ctx.font = FONT_MONO_SMALL;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = COLOR.grid;
+    ctx.fillStyle = COLOR.dim;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let xv = Math.ceil(xMin / stepX) * stepX; xv <= xMax; xv += stepX) {
+      const x = xAt(xv);
+      ctx.beginPath();
+      ctx.moveTo(x, pad.top);
+      ctx.lineTo(x, pad.top + plotH);
+      ctx.stroke();
+      ctx.fillText(formatTick(xv, stepX), x, pad.top + plotH + 6);
+    }
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let yv = Math.ceil(yMin / stepY) * stepY; yv <= yMax; yv += stepY) {
+      const y = yAt(yv);
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(pad.left + plotW, y);
+      ctx.stroke();
+      ctx.fillText(formatTick(yv, stepY), pad.left - 6, y);
+    }
+  }
+
+  /* ============================================================
+   * 展品 B · 信任读数 #trust（上轨 k_p，下轨 NIS + χ² 带）
+   * ========================================================== */
+  function drawTrust() {
+    const chart = canvas2d(el.trust);
+    const ctx = chart.ctx;
+    const padL = 48;
+    const padR = 14;
+    const padT = 12;
+    const padB = 26;
+    const plotW = chart.width - padL - padR;
+    const totalH = chart.height - padT - padB;
+    if (plotW < 40 || totalH < 90) return;
+    const gap = 18;
+    const upH = Math.round((totalH - gap) * 0.42);
+    const lowH = totalH - gap - upH;
+    const upTop = padT;
+    const lowTop = padT + upH + gap;
+    const hist = state.sim.history;
+    const n = state.sim.n;
+    const maxT = Math.max(50, Math.ceil(Math.max(1, n) / 50) * 50);
+    const xAt = (t) => padL + (t / maxT) * plotW;
+
+    ctx.fillStyle = COLOR.paper;
+    ctx.fillRect(padL, upTop, plotW, upH);
+    ctx.fillRect(padL, lowTop, plotW, lowH);
+
+    // 共享 x 竖网格
+    const xTicks = [0, maxT / 2, maxT];
+    ctx.strokeStyle = COLOR.gridSoft;
+    ctx.lineWidth = 1;
+    xTicks.forEach((t) => {
+      const x = xAt(t);
+      ctx.beginPath();
+      ctx.moveTo(x, upTop);
+      ctx.lineTo(x, lowTop + lowH);
+      ctx.stroke();
+    });
+
+    // —— 上轨：位置增益 k_p(t)，0–1，丢包步 kPos=0 照画 ——
+    const yUp = (k) => upTop + (1 - k) * upH;
+    ctx.font = FONT_MONO_SMALL;
+    [0, 0.5, 1].forEach((k) => {
+      const y = yUp(k);
+      ctx.strokeStyle = k === 0 ? COLOR.grid : COLOR.gridSoft;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+      ctx.fillStyle = COLOR.dim;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(k.toFixed(1), padL - 6, y);
+    });
+    ctx.fillStyle = COLOR.dim;
+    ctx.font = FONT_SANS;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('位置增益 k（0–1）', padL + 6, upTop + 5);
+
+    if (n > 0) {
+      ctx.beginPath();
+      for (let i = 0; i < hist.length; i += 1) {
+        const rec = hist[i];
+        const x = xAt(rec.t);
+        const y = yUp(rec.kPos);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = COLOR.teal;
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      const last = hist[hist.length - 1];
+      dot(ctx, xAt(last.t), yUp(last.kPos), 3, COLOR.teal, COLOR.white, 1.4);
+    } else {
+      ctx.fillStyle = COLOR.faint;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('推进时间后出现增益曲线', padL + plotW / 2, upTop + upH / 2);
+    }
+
+    // —— 下轨：NIS(t) 散点 + χ²(2) 95% 带 ——
+    const yLow = (v) => lowTop + (1 - v / NIS_AXIS_MAX) * lowH;
+    const lo = Core.chi2Quantile2(0.05);
+    const hi = Core.chi2Quantile2(0.95);
+
+    // 横网格与刻度
+    ctx.font = FONT_MONO_SMALL;
+    [0, 2, 4, 6, 8].forEach((v) => {
+      const y = yLow(v);
+      ctx.strokeStyle = COLOR.gridSoft;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+      ctx.fillStyle = COLOR.dim;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(v), padL - 6, y);
+    });
+
+    // 阴影带（带边由 χ²(2) 分位数现算）+ 锈红虚线边界 + 带边标注
+    ctx.fillStyle = COLOR.bandFill;
+    ctx.fillRect(padL, yLow(hi), plotW, yLow(lo) - yLow(hi));
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = COLOR.rust;
+    ctx.lineWidth = 1;
+    [lo, hi].forEach((edge) => {
+      const y = yLow(edge);
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+    });
+    ctx.restore();
+    ctx.fillStyle = COLOR.rust;
+    ctx.font = FONT_MONO_SMALL;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(hi.toFixed(2), padL + 5, yLow(hi) + 7);
+    ctx.fillText(lo.toFixed(2), padL + 5, yLow(lo) - 7);
+
+    ctx.fillStyle = COLOR.dim;
+    ctx.font = FONT_SANS;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('NIS · χ²(2) 检验', padL + 6, lowTop + 5);
+
+    // 散点：带内/带外实心锈红；超出 8 钳到顶端画空心（越界是信息，不得丢弃）
+    for (let i = 0; i < hist.length; i += 1) {
+      const nis = hist[i].nis;
+      if (nis == null) continue;
+      const x = xAt(hist[i].t);
+      if (nis > NIS_AXIS_MAX) {
+        dot(ctx, x, yLow(NIS_AXIS_MAX), 2.6, null, COLOR.rust, 1.2);
+      } else {
+        dot(ctx, x, yLow(nis), 2, COLOR.rust);
+      }
+    }
+
+    // 轨道描边与 x 轴刻度
+    ctx.strokeStyle = COLOR.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(padL + 0.5, upTop + 0.5, plotW - 1, upH - 1);
+    ctx.strokeRect(padL + 0.5, lowTop + 0.5, plotW - 1, lowH - 1);
+    ctx.fillStyle = COLOR.dim;
+    ctx.font = FONT_MONO_SMALL;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    xTicks.forEach((t) => {
+      ctx.fillText(String(Math.round(t)), xAt(t), lowTop + lowH + 6);
+    });
+    ctx.textAlign = 'right';
+    ctx.fillText('时间/步', padL + plotW, lowTop + lowH + 6);
+  }
+
+  /* ============================================================
+   * 展品 C · 手动融合 #fuse-canvas
+   * ========================================================== */
+
+  /* 冻结步：最近一步；若丢包则沿 history 回溯最近一个有测量的步 */
+  function frozenFuse() {
+    const hist = state.sim.history;
+    for (let i = hist.length - 1; i >= 0; i -= 1) {
+      const rec = hist[i];
+      if (rec.meas) {
+        return {
+          step: rec.t,
+          priorMu: rec.prior[0],
+          priorVar: rec.priorP[0],
+          z: rec.meas[0],
+          zVar: state.model.R[0]
+        };
+      }
+    }
+    return null;
+  }
+
+  /* MC 样本只随 j 重掷：缓存标准正态的三个样本矩，σ 在求值时才乘上去 */
+  function fuseMoments() {
+    const j = state.fuseIndex;
+    if (state.fuseMoments && state.fuseMoments.j === j) return state.fuseMoments;
+    const rng = Core.makeRng(Core.CANON.seed + j, 'fuse');
+    let sumMu2 = 0;
+    let sumZ2 = 0;
+    let sumCross = 0;
+    for (let i = 0; i < FUSE_M; i += 1) {
+      const a = rng.normal();
+      const b = rng.normal();
+      sumMu2 += a * a;
+      sumZ2 += b * b;
+      sumCross += a * b;
+    }
+    state.fuseMoments = {
+      j,
+      smu: sumMu2 / FUSE_M,
+      szz: sumZ2 / FUSE_M,
+      cross: sumCross / FUSE_M
+    };
+    return state.fuseMoments;
+  }
+
+  /* MC 的 RMSE(λ)：√((1−λ)²σ⁻²·E[a²] + λ²σ_z²·E[b²] + 2(1−λ)λσ⁻σ_z·E[ab]) */
+  function mcRmse(lam, priorVar, zVar) {
+    const m = fuseMoments();
+    const a = 1 - lam;
+    const v = a * a * priorVar * m.smu
+      + lam * lam * zVar * m.szz
+      + 2 * a * lam * Math.sqrt(priorVar * zVar) * m.cross;
+    return Math.sqrt(Math.max(0, v));
+  }
+
+  function closedRmse(lam, priorVar, zVar) {
+    const a = 1 - lam;
+    return Math.sqrt(a * a * priorVar + lam * lam * zVar);
+  }
+
+  function updateFuseControls() {
+    const has = !!frozenFuse();
+    el.lambdaSlider.disabled = !has;
+    el.reroll.disabled = !has;
+  }
+
+  function updateFuseResult() {
+    // 按钮旁标注随 j 联动（renderAll 与 renderFuseOnly 都经过这里，
+    // 覆盖重掷与复位两条路径；j 变化仅发生在这两处）
+    if (rerollNote) {
+      rerollNote.textContent = '第 ' + state.fuseIndex + ' 组重掷 · '
+        + '重掷的是蒙特卡洛样本，不是模拟时间。';
+    }
+    const frozen = frozenFuse();
+    if (!frozen) {
+      el.fuseResult.textContent = '还没有测量可融合';
+      return;
+    }
+    const lam = currentLambda();
+    const lamStar = frozen.priorVar / (frozen.priorVar + frozen.zVar);
+    const mine = closedRmse(lam, frozen.priorVar, frozen.zVar);
+    const best = closedRmse(lamStar, frozen.priorVar, frozen.zVar);
+    const diff = mine - best;
+    el.fuseResult.textContent = 'λ ' + lam.toFixed(2) + ' → RMSE ' + mine.toFixed(4)
+      + ' m ｜ λ* ' + lamStar.toFixed(4) + ' → ' + best.toFixed(4)
+      + ' m ｜ 差 ' + (diff >= 0 ? '+' : '') + diff.toFixed(4)
+      + ' m（闭式）· MC 第 ' + state.fuseIndex + ' 组';
+  }
+
+  function drawFuse() {
+    const chart = canvas2d(el.fuseCanvas);
+    const ctx = chart.ctx;
+    const pad = { left: 52, right: 16, top: 18, bottom: 30 };
+    const plotW = chart.width - pad.left - pad.right;
+    const plotH = chart.height - pad.top - pad.bottom;
+    const frozen = frozenFuse();
+
+    if (!frozen || plotW < 60 || plotH < 60) {
+      drawFuseEmpty(ctx, chart);
+      return;
+    }
+
+    const lamStar = frozen.priorVar / (frozen.priorVar + frozen.zVar);
+    const lam = currentLambda();
+    const closed = [];
+    const mc = [];
+    let peak = 0;
+    for (let g = 0; g < FUSE_GRID; g += 1) {
+      const t = g / (FUSE_GRID - 1);
+      const cv = closedRmse(t, frozen.priorVar, frozen.zVar);
+      const mv = mcRmse(t, frozen.priorVar, frozen.zVar);
+      closed.push(cv);
+      mc.push(mv);
+      if (cv > peak) peak = cv;
+      if (mv > peak) peak = mv;
+    }
+    const yMax = peak * 1.12;
+    const xAt = (t) => pad.left + t * plotW;
+    const yAt = (v) => pad.top + (1 - v / yMax) * plotH;
+
+    ctx.fillStyle = COLOR.paper;
+    ctx.fillRect(pad.left, pad.top, plotW, plotH);
+
+    // 网格与轴
+    const yStep = niceStep(yMax, 4);
+    ctx.font = FONT_MONO_SMALL;
+    ctx.lineWidth = 1;
+    for (let v = 0; v <= yMax; v += yStep) {
+      const y = yAt(v);
+      ctx.strokeStyle = COLOR.grid;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(pad.left + plotW, y);
+      ctx.stroke();
+      ctx.fillStyle = COLOR.dim;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(formatTick(v, yStep), pad.left - 6, y);
+    }
+    [0, 0.25, 0.5, 0.75, 1].forEach((t) => {
+      const x = xAt(t);
+      ctx.strokeStyle = COLOR.gridSoft;
+      ctx.beginPath();
+      ctx.moveTo(x, pad.top);
+      ctx.lineTo(x, pad.top + plotH);
+      ctx.stroke();
+      ctx.fillStyle = COLOR.dim;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(String(t), x, pad.top + plotH + 6);
+    });
+    ctx.fillStyle = COLOR.faint;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('RMSE/m', pad.left - 46, pad.top - 4);
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('融合权重 λ', pad.left + plotW, pad.top + plotH + 16);
+
+    // 蒙特卡洛曲线（锈红）
+    ctx.beginPath();
+    for (let g = 0; g < FUSE_GRID; g += 1) {
+      const x = xAt(g / (FUSE_GRID - 1));
+      const y = yAt(mc[g]);
+      if (g === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = COLOR.rust;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // 闭式曲线（深蓝）
+    ctx.beginPath();
+    for (let g = 0; g < FUSE_GRID; g += 1) {
+      const x = xAt(g / (FUSE_GRID - 1));
+      const y = yAt(closed[g]);
+      if (g === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = COLOR.indigo;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // λ* 揭榜标记：虚线 + 闭式曲线最小点（白描边）+ 文案
+    const yStar = yAt(closedRmse(lamStar, frozen.priorVar, frozen.zVar));
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = COLOR.ghost;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(xAt(lamStar), pad.top);
+    ctx.lineTo(xAt(lamStar), pad.top + plotH);
+    ctx.stroke();
+    ctx.restore();
+    dot(ctx, xAt(lamStar), yStar, 3.4, COLOR.rust, COLOR.white, 1.5);
+    ctx.fillStyle = COLOR.ink;
+    ctx.font = FONT_SANS;
+    ctx.textAlign = lamStar > 0.6 ? 'right' : 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('λ* = ' + lamStar.toFixed(4) + ' —— 这就是卡尔曼增益',
+      xAt(lamStar) + (lamStar > 0.6 ? -8 : 8), pad.top + 6);
+
+    // 你的 λ：青色标记线 + 闭式曲线上的点
+    ctx.strokeStyle = COLOR.teal;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(xAt(lam), yAt(closedRmse(lam, frozen.priorVar, frozen.zVar)));
+    ctx.lineTo(xAt(lam), pad.top + plotH);
+    ctx.stroke();
+    dot(ctx, xAt(lam), yAt(closedRmse(lam, frozen.priorVar, frozen.zVar)), 3, COLOR.teal, COLOR.white, 1.4);
+    ctx.fillStyle = COLOR.teal;
+    ctx.font = FONT_MONO_SMALL;
+    ctx.textAlign = lam > 0.75 ? 'right' : 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('λ ' + lam.toFixed(2), xAt(lam) + (lam > 0.75 ? -6 : 6), pad.top + plotH - 4);
+
+    // 图例
+    ctx.font = FONT_SANS;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = COLOR.indigo;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(pad.left + plotW - 96, pad.top + 10);
+    ctx.lineTo(pad.left + plotW - 80, pad.top + 10);
+    ctx.stroke();
+    ctx.fillStyle = COLOR.dim;
+    ctx.fillText('闭式', pad.left + plotW - 74, pad.top + 10);
+    ctx.strokeStyle = COLOR.rust;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(pad.left + plotW - 96, pad.top + 24);
+    ctx.lineTo(pad.left + plotW - 80, pad.top + 24);
+    ctx.stroke();
+    ctx.fillText('蒙特卡洛', pad.left + plotW - 74, pad.top + 24);
+
+    // 冻结信息
+    ctx.fillStyle = COLOR.dim;
+    ctx.font = FONT_MONO_SMALL;
+    ctx.textBaseline = 'top';
+    ctx.fillText('冻结第 ' + frozen.step + ' 步 · 先验 μ ' + frozen.priorMu.toFixed(2)
+      + ' m · 测量 z ' + frozen.z.toFixed(2) + ' m', pad.left + 4, pad.top + 4);
+
+    ctx.strokeStyle = COLOR.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pad.left + 0.5, pad.top + 0.5, plotW - 1, plotH - 1);
+  }
+
+  function drawFuseEmpty(ctx, chart) {
+    ctx.fillStyle = COLOR.paper;
+    ctx.fillRect(0, 0, chart.width, chart.height);
+    ctx.strokeStyle = COLOR.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, chart.width - 1, chart.height - 1);
+    ctx.fillStyle = COLOR.dim;
+    ctx.font = FONT_SANS_BIG;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('还没有测量可融合', chart.width / 2, chart.height / 2 - 8);
+    ctx.fillStyle = COLOR.faint;
+    ctx.font = FONT_SANS;
+    ctx.fillText('推进时间步，等第一个测量出现', chart.width / 2, chart.height / 2 + 14);
+  }
+
+  /* ============================================================
+   * 渲染总入口
+   * ========================================================== */
+  function renderAll() {
+    updateLabels();
+    updateReadouts();
+    updateFuseControls();
+    updateFuseResult();
+    updateNotes();
+    updateInsight();
+    drawScene();
+    drawTrust();
+    drawFuse();
+  }
+
+  /* λ 滑杆只重画展品 C，不动模拟 */
+  function renderFuseOnly() {
+    updateLabels();
+    updateFuseResult();
+    drawFuse();
+  }
+
+  /* ============================================================
+   * 时间控制
+   * ========================================================== */
+  function advance(steps) {
+    if (state.playing) stopPlayback();
+    setStatus('正在计算 ' + steps + ' 步…');
+    for (let i = 0; i < steps; i += 1) state.sim.step();
+    statusIdle();
+    renderAll();
+  }
+
+  function animate(timestamp) {
+    if (!state.playing) return;
+    if (!state.lastFrame) state.lastFrame = timestamp;
+    const elapsed = Math.min(0.25, Math.max(0, (timestamp - state.lastFrame) / 1000));
+    state.lastFrame = timestamp;
+    state.carry += elapsed * STEPS_PER_SECOND;
+    let whole = Math.floor(state.carry);
+    if (whole > 4) {
+      whole = 4;          // 后台标签页回来时不追帧
+      state.carry = 0;
+    } else {
+      state.carry -= whole;
+    }
+    if (whole > 0) {
+      for (let i = 0; i < whole; i += 1) state.sim.step();
+      setStatus('连续演化中 · 第 ' + state.sim.n + ' 步');
+      renderAll();
+    }
+    state.frame = requestAnimationFrame(animate);
+  }
+
+  function startPlayback() {
+    state.playing = true;
+    state.lastFrame = 0;
+    state.carry = 0;
+    el.play.setAttribute('aria-pressed', 'true');
+    el.playLabel.textContent = '暂停演化';
+    el.play.classList.add('is-running');
+    if (readoutLive) readoutLive.classList.add('is-running');
+    state.frame = requestAnimationFrame(animate);
+  }
+
+  function stopPlayback() {
+    state.playing = false;
+    if (state.frame) cancelAnimationFrame(state.frame);
+    state.frame = 0;
+    el.play.setAttribute('aria-pressed', 'false');
+    el.playLabel.textContent = '连续演化';
+    el.play.classList.remove('is-running');
+    if (readoutLive) readoutLive.classList.remove('is-running');
+    statusIdle();
+  }
+
+  /* ============================================================
+   * 复位（OUTLINE：全部复位）
+   * ========================================================== */
+  function resetAll() {
+    stopPlayback();
+    const c = Core.CANON;
+    el.qSlider.value = c.sigmaQModel.toFixed(2);
+    el.rSlider.value = c.sigmaRModel.toFixed(1);
+    el.dropSlider.value = String(Math.round(c.dropProb * 100));
+    el.lambdaSlider.value = DEFAULT_LAMBDA.toFixed(2);
+    state.fuseIndex = 0;
+    state.fit = null;
+    state.view = null;
+    state.sim = makeSim();
+    setStatus('等待环境设定');
+    renderAll();
+  }
+
+  /* ============================================================
+   * 事件绑定
+   * ========================================================== */
+  el.qSlider.addEventListener('input', () => {
+    rebuildSim();
+    renderAll();
+  });
+  el.rSlider.addEventListener('input', () => {
+    rebuildSim();
+    renderAll();
+  });
+  el.dropSlider.addEventListener('input', () => {
+    rebuildSim();
+    renderAll();
+  });
+  el.lambdaSlider.addEventListener('input', renderFuseOnly);
+
+  scenarioButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const q = Number(button.getAttribute('data-q'));
+      const r = Number(button.getAttribute('data-r'));
+      if (!Number.isFinite(q) || !Number.isFinite(r)) return;
+      el.qSlider.value = String(q);
+      el.rSlider.value = String(r);
+      rebuildSim();
+      renderAll();
+    });
+  });
+
+  el.stepOne.addEventListener('click', () => advance(1));
+  el.stepTwentyFive.addEventListener('click', () => advance(25));
+  el.stepHundred.addEventListener('click', () => advance(100));
+  el.play.addEventListener('click', () => {
+    if (state.playing) stopPlayback();
+    else startPlayback();
+  });
+  el.reset.addEventListener('click', resetAll);
+  el.reroll.addEventListener('click', () => {
+    if (el.reroll.disabled) return;
+    state.fuseIndex += 1;   // 重掷 MC 样本而非时间：冻结步与模拟时间都不动
+    renderFuseOnly();
+  });
+  window.addEventListener('resize', renderAll);
+  // :target 折叠会让画布所在节暂时 display:none（尺寸归零，绘制早退），
+  // 锚点往来时重画一次，避免回到该节时画布是空白
+  window.addEventListener('hashchange', renderAll);
+
+  /* ============================================================
+   * 初始化
+   * ========================================================== */
+  (function init() {
+    // 画布可访问性兜底（§2.3：role="img" + 中文 aria-label；W1 已写则不覆盖）
+    ['scene', 'trust', 'fuseCanvas'].forEach((key) => {
+      const canvas = el[key];
+      if (!canvas.hasAttribute('role')) canvas.setAttribute('role', 'img');
+      if (!canvas.hasAttribute('aria-label')) canvas.setAttribute('aria-label', CANVAS_ARIA[key]);
+    });
+    if (!el.runStatus.hasAttribute('aria-live')) {
+      el.runStatus.setAttribute('aria-live', 'polite');   // 状态行随时播报
+    }
+    el.play.setAttribute('aria-pressed', 'false');
+    state.sim = makeSim();
+    if (location.hash === '#experiment') {
+      // 深链直达实验区（导航链接、无头截屏的 #experiment）：预推进 50 步，
+      // 让三块画布当场演出真实数据——轨迹、测量、双椭圆与增益/NIS 曲线
+      // 均来自确定性 CANON seed，可复现。普通首载仍从 t=0 空态开始，
+      // 观察问题状态 1 与读数条「—」占位语义不受影响。
+      for (let i = 0; i < 50; i += 1) state.sim.step();
+      statusIdle();
+    } else {
+      setStatus('等待环境设定');
+    }
+    renderAll();
+  })();
+})();
+
+</script>
+</body>
+</html>

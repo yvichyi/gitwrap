@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>似是而非 · 素性检验会错多少</title>
+<meta name="description" content="从零实现费马与米勒–拉宾素性检验，把 1,373,653 以内的每个数筛出真值，穷举数出每个合数身上说谎的底：卡迈克尔数如何骗过费马，1/4 的界有多松，几个固定的底何时能变成证明。可离线使用。">
+<style>
+/* ============================================================
+ * 《似是而非》样式
+ * 纸面 + 墨色 + 朱红（说谎 / 漏网）+ 靛青（识破）+ 赭金（通过 / 卡迈克尔）+ 松绿（素数 / 吻合）
+ * 不用「入场动画 + opacity:0」：数得出来，就一定要看得见。
+ * ========================================================== */
+:root {
+  color-scheme: light;
+  --paper: #f5f4f0; --paper2: #fdfcf9; --ink: #17181c; --ink2: #3b3d42;
+  --muted: #74736b; --faint: #a6a49a; --line: #dcd9cf; --line2: #ebe8df;
+  --hot: #b03030; --hot-soft: #e6b6b0; --cool: #1f5f7a; --cool-soft: #a8c8d6;
+  --gold: #96700f; --gold-soft: #e4d3a2; --green: #2f6b46; --green-soft: #b6d3bd;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Cascadia Mono", monospace;
+  --serif: Georgia, "Songti SC", "SimSun", "Noto Serif SC", "Noto Serif CJK SC", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #15161a; --paper2: #1c1d22; --ink: #ecebe6; --ink2: #c8c7c0;
+    --muted: #97968d; --faint: #6a6961; --line: #34353b; --line2: #292a2f;
+    --hot: #e0685c; --hot-soft: #5a2b27; --cool: #6fb3cf; --cool-soft: #23485a;
+    --gold: #d6a63a; --gold-soft: #4b3c14; --green: #6fbf8a; --green-soft: #21452f;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #15161a; --paper2: #1c1d22; --ink: #ecebe6; --ink2: #c8c7c0;
+  --muted: #97968d; --faint: #6a6961; --line: #34353b; --line2: #292a2f;
+  --hot: #e0685c; --hot-soft: #5a2b27; --cool: #6fb3cf; --cool-soft: #23485a;
+  --gold: #d6a63a; --gold-soft: #4b3c14; --green: #6fbf8a; --green-soft: #21452f;
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+html, body { margin: 0; padding: 0; height: auto; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--sans); font-size: 16px; line-height: 1.75;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 22px 96px; }
+sup, sub { line-height: 0; }
+
+/* ---------- 头部 ---------- */
+.hero { padding: 64px 0 36px; border-bottom: 2px solid var(--ink); }
+.eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .22em; color: var(--muted); margin-bottom: 18px; }
+.title { font-family: var(--serif); font-size: clamp(46px, 13vw, 68px); line-height: 1.05; margin: 0 0 10px; letter-spacing: .04em; }
+.sub { font-family: var(--serif); font-size: clamp(17px, 4.6vw, 20px); color: var(--ink2); margin: 0 0 26px; line-height: 1.6; }
+.lede { font-size: 16px; color: var(--ink2); max-width: 780px; margin: 0 0 10px; }
+.lede + .lede { margin-top: 12px; }
+.lede b { color: var(--hot); font-weight: 600; }
+.lede .c { color: var(--cool); font-weight: 600; }
+
+.kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-top: 32px; }
+.kpi { background: var(--paper2); border: 1px solid var(--line); border-top: 3px solid var(--ink); padding: 12px 12px 10px; min-width: 0; }
+.kpi.hot { border-top-color: var(--hot); } .kpi.cool { border-top-color: var(--cool); }
+.kpi.gold { border-top-color: var(--gold); } .kpi.green { border-top-color: var(--green); }
+.k-label { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; color: var(--muted); line-height: 1.45; }
+.k-val { font-family: var(--serif); font-size: 24px; line-height: 1.2; margin: 4px 0 2px; overflow-wrap: anywhere; }
+.k-note { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+.prog { margin-top: 26px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.prog .track { height: 3px; background: var(--line); margin-top: 6px; }
+.prog .track i { display: block; height: 100%; width: 0; background: var(--hot); transition: width .12s linear; }
+
+/* ---------- 章节 ---------- */
+.sec { padding: 58px 0 6px; border-top: 1px solid var(--line); margin-top: 58px; }
+.sec:first-of-type { border-top: none; margin-top: 0; }
+.sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+.sec-num { font-family: var(--serif); font-size: 30px; color: var(--hot); line-height: 1; }
+.sec h2 { font-family: var(--serif); font-size: clamp(22px, 6vw, 30px); margin: 0; letter-spacing: .02em; line-height: 1.3; }
+.sec-sub { color: var(--muted); font-size: 13px; margin: 0 0 22px; font-family: var(--mono); line-height: 1.6; }
+.sec p { margin: 0 0 16px; color: var(--ink2); max-width: 880px; }
+.sec b, .sec strong { color: var(--ink); font-weight: 600; }
+.hl { color: var(--hot); font-weight: 600; } .hlc { color: var(--cool); font-weight: 600; }
+.hlg { color: var(--gold); font-weight: 600; } .hlgr { color: var(--green); font-weight: 600; }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+code { background: var(--line2); padding: 1px 5px; border-radius: 3px; color: var(--ink); }
+
+/* ---------- 面板与提示 ---------- */
+.panel { background: var(--paper2); border: 1px solid var(--line); padding: 18px; margin: 20px 0; min-width: 0; }
+.panel h3 { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--muted); margin: 0 0 12px; font-weight: 600; line-height: 1.6; }
+.callout { border-left: 3px solid var(--cool); background: var(--paper2); padding: 14px 18px; margin: 22px 0; color: var(--ink2); max-width: 880px; }
+.callout.hot { border-left-color: var(--hot); } .callout.gold { border-left-color: var(--gold); } .callout.green { border-left-color: var(--green); }
+.callout .ct { display: block; font-family: var(--serif); font-weight: 700; color: var(--ink); margin-bottom: 4px; font-size: 17px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; min-width: 0; }
+.grid2 > * { min-width: 0; }
+.note { font-size: 12.5px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+
+/* ---------- 控件 ---------- */
+.ctrls { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; margin-bottom: 12px; }
+.ctrl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ctrl > span { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; color: var(--muted); }
+input[type=text] {
+  font-family: var(--mono); font-size: 16px; background: var(--paper); color: var(--ink);
+  border: 1px solid var(--line); padding: 8px 10px; min-height: 42px; width: 190px; max-width: 100%; border-radius: 0;
+}
+input.wide { width: min(100%, 460px); }
+button {
+  font-family: var(--mono); font-size: 12px; letter-spacing: .06em;
+  background: var(--ink); color: var(--paper2); border: 1px solid var(--ink);
+  padding: 10px 16px; min-height: 42px; cursor: pointer; border-radius: 0;
+}
+button:hover { background: var(--hot); border-color: var(--hot); color: #fff; }
+button.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+button.ghost:hover { background: var(--ink); color: var(--paper2); border-color: var(--ink); }
+button.on { background: var(--hot); border-color: var(--hot); color: #fff; }
+button:focus-visible, input:focus-visible, canvas:focus-visible { outline: 2px solid var(--cool); outline-offset: 2px; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips { margin: 0 0 12px; }
+.chips button { padding: 6px 10px; min-height: 36px; font-size: 12px; }
+
+/* ---------- 画布、图例、统计 ---------- */
+.cvwrap { width: 100%; }
+canvas { display: block; touch-action: manipulation; max-width: 100%; }
+#m-cv { cursor: crosshair; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 10px; font-size: 12px; color: var(--ink2); }
+.legend i { display: inline-block; width: 11px; height: 11px; margin-right: 6px; vertical-align: -1px; }
+.statrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0 6px; }
+.stat { border: 1px solid var(--line); background: var(--paper); padding: 8px 10px; min-width: 0; }
+.stat span { display: block; font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: .06em; }
+.stat b { font-family: var(--serif); font-size: 17px; line-height: 1.4; overflow-wrap: anywhere; }
+.verdict { margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--line); background: var(--paper); font-size: 14px; line-height: 1.75; overflow-wrap: anywhere; }
+.verdict .mono { color: var(--ink); }
+.hint { font-size: 12.5px; color: var(--hot); min-height: 1.4em; margin: 0 0 6px; }
+
+/* ---------- 平方链 ---------- */
+.chain { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin: 14px 0; }
+.box { border: 1px solid var(--line); background: var(--paper); padding: 6px 10px; min-width: 76px; text-align: center; max-width: 100%; }
+.box small { display: block; font-family: var(--mono); font-size: 10px; color: var(--muted); overflow-wrap: anywhere; }
+.box b { font-family: var(--mono); font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.box.one { border-color: var(--gold); background: var(--gold-soft); }
+.box.neg { border-color: var(--green); background: var(--green-soft); }
+.box.bad { border-color: var(--hot); background: var(--hot-soft); }
+.arr { align-self: center; color: var(--faint); font-family: var(--mono); font-size: 12px; }
+
+/* ---------- 柱 ---------- */
+.bars { margin-top: 10px; }
+.bar-row { display: grid; grid-template-columns: 132px 1fr 118px; align-items: center; gap: 10px; margin-bottom: 6px; }
+.bar-lab { font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1.4; }
+.bar-track { height: 14px; background: var(--line2); position: relative; }
+.bar-fill { position: absolute; left: 0; top: 0; height: 100%; min-width: 1px; }
+.bar-val { font-family: var(--mono); font-size: 12px; text-align: right; color: var(--ink2); }
+
+/* ---------- 表格 ---------- */
+.tbl-wrap { overflow-x: auto; max-width: 100%; min-width: 0; margin: 10px 0; -webkit-overflow-scrolling: touch; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.tbl th, table.tbl td { border-bottom: 1px solid var(--line2); padding: 6px 10px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+table.tbl th { font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; color: var(--muted); border-bottom: 1px solid var(--line); font-weight: 600; }
+table.tbl td.l, table.tbl th.l { text-align: left; }
+table.tbl td.m { font-family: var(--mono); }
+table.tbl tr.hi td { background: var(--hot-soft); }
+table.tbl td.ok, .ok { color: var(--green); font-weight: 700; }
+table.tbl td.no, .no { color: var(--hot); font-weight: 700; }
+table.tbl td.wrapok { white-space: normal; min-width: 180px; text-align: left; }
+
+/* ---------- 测试格 ---------- */
+.bcells { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.bc { width: 46px; text-align: center; border: 1px solid var(--line); padding: 3px 0 2px; background: var(--paper); }
+.bc b { display: block; font-family: var(--mono); font-size: 13px; }
+.bc small { font-size: 10px; color: var(--muted); }
+.bc.pass { background: var(--gold-soft); border-color: var(--gold); }
+.bc.fail { background: var(--cool-soft); border-color: var(--cool); }
+.bc.skip { opacity: .55; }
+
+ul.cons, ul.limits { margin: 0; padding-left: 20px; color: var(--ink2); }
+ul.cons li, ul.limits li { margin-bottom: 8px; max-width: 880px; }
+footer { margin-top: 64px; padding-top: 18px; border-top: 2px solid var(--ink); font-size: 13px; color: var(--muted); }
+
+@media (max-width: 900px) { .kpis { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 720px) {
+  .wrap { padding: 0 16px 80px; }
+  .hero { padding: 44px 0 28px; }
+  .grid2 { grid-template-columns: 1fr; }
+  .sec { padding-top: 44px; margin-top: 44px; }
+  .panel { padding: 14px; }
+  .bar-row { grid-template-columns: 92px 1fr 92px; gap: 8px; }
+}
+@media (max-width: 480px) { .kpis { grid-template-columns: repeat(2, 1fr); } .k-val { font-size: 21px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">数论 · 素性检验 · 概率算法</div>
+  <h1 class="title">似是而非</h1>
+  <p class="sub">一个只会说「大概是素数」的检验，到底会说错多少</p>
+  <p class="lede">判断 n 是不是素数，最老实的办法是一个个试着除，一直试到 √n。n 有 40 位的时候，这件事比宇宙的年龄还长。所以密码学里每天在用的是另一种便宜得多的办法：挑一个「底」a，算 a<sup>n−1</sup> mod n —— 结果不是 1，n <b>一定</b>是合数；结果是 1，只能说「大概是素数」。</p>
+  <p class="lede">这一页量的就是那个「大概」。做法：把 1,373,653 以内的每个数都筛出真值，再让两种检验 —— 费马和米勒–拉宾 —— 对着真值交卷，数出每个合数身上到底有几个<b>说谎的底</b>。</p>
+  <p class="lede">顺带有件更奇怪的事：有一类合数，费马检验对它几乎完全失明。以 561 为例，与它互素的底有 <b id="h-a">…</b> 个，费马检验里<b>全部</b>在说谎；米勒–拉宾只放过了其中 <span class="c" id="h-b">…</span> 个。</p>
+  <div class="kpis" id="kpis"></div>
+  <div class="prog" id="prog"><span id="prog-txt">正在筛素数…</span><div class="track"><i id="prog-bar"></i></div></div>
+</header>
+
+<section class="sec" id="sec1">
+  <div class="sec-head"><span class="sec-num">一</span><h2>抓说谎者</h2></div>
+  <p class="sec-sub">挑一个数，看 1 到 n−1 里每个底会怎么说</p>
+  <p>规则短得可以一句话说完：<b>对合数 n 和底 a，如果 a<sup>n−1</sup> mod n = 1，检验就说「大概是素数」—— 这个 a 就是一个说谎的底</b>；否则 a 是见证人，检验当场识破。素数没有说谎者：费马小定理保证所有底都通过。</p>
+  <p>下面每个格子是一个底，按 1, 2, …, n−1 从左到右、从上到下排开。点任意一格看它的算式。先试 561，再把检验切到米勒–拉宾。</p>
+
+  <div class="panel">
+    <h3>轮到你当检验</h3>
+    <div class="ctrls">
+      <div class="ctrl"><span>n（5 到 20000 的奇数）</span><input id="m-n" type="text" inputmode="numeric" autocomplete="off" value="561" aria-label="n"></div>
+      <div class="ctrl"><span>用哪个检验</span><div class="btnrow"><button id="m-f" class="on">费马</button><button id="m-s" class="ghost">米勒–拉宾</button></div></div>
+    </div>
+    <div class="hint" id="m-hint"></div>
+    <div class="btnrow chips" id="m-chips"></div>
+    <div class="legend" id="m-legend"></div>
+    <div class="cvwrap" id="m-wrap"><canvas id="m-cv" tabindex="0" aria-label="每个底的检验结果"></canvas></div>
+    <div class="statrow" id="m-stat"></div>
+    <div class="ctrls" style="margin-top:10px">
+      <div class="ctrl"><span>底 a（也可以直接点格子）</span><input id="m-a" type="text" inputmode="numeric" autocomplete="off" value="2" aria-label="底 a"></div>
+      <button id="m-rand" class="ghost">随机换一个底</button>
+    </div>
+    <div class="verdict" id="m-base"></div>
+  </div>
+
+  <div class="callout hot">
+    <span class="ct">为什么要在乎说谎者</span>
+    「通过」从来不是证据，「识破」才是。检验对合数说出「大概是素数」，不过是这一次没抓到人 —— 抓不到的概率，就是说谎的底占的比例。
+  </div>
+</section>
+
+<section class="sec" id="sec2">
+  <div class="sec-head"><span class="sec-num">二</span><h2>一条会被整个骗过的规则</h2></div>
+  <p class="sec-sub">费马检验：每个合数身上，说谎的底占多大比例</p>
+  <p>对合数 n，说谎的底（互素而且通过的）构成模 n 乘法群的一个子群。子群要么是整个群，要么至多一半 —— 所以只要存在一个互素的见证人，随机挑一个底，出错的概率就 ≤ 1/2。听起来够用了。</p>
+  <p>但有一类数，子群恰好是整个群：<b>每一个与 n 互素的底都在说谎</b>。它们叫卡迈克尔数，判据（Korselt）很短：n 无平方因子，且每个素因子 p 都满足 (p−1) 整除 (n−1)。最小的是 561 = 3 × 11 × 17。</p>
+
+  <div class="panel">
+    <h3 id="scf-h">每个奇合数的费马说谎率</h3>
+    <div class="cvwrap"><canvas id="sc-f" tabindex="0" aria-label="费马说谎率散点图"></canvas></div>
+    <div class="note" id="sc-f-cap">计算中…</div>
+  </div>
+
+  <div class="panel">
+    <h3>10,000 以内的全部卡迈克尔数：按定义数一遍，按判据再数一遍</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-carm"><tr><td class="l">计算中…</td></tr></table></div>
+    <div class="note" id="carm-note"></div>
+  </div>
+
+  <div class="callout hot">
+    <span class="ct">费马在这里其实什么也没做</span>
+    对卡迈克尔数，费马检验唯一能识破的，是那些本来就和 n 有公因子的底 —— 而这一步用 gcd 就能做到，根本用不着费马。表里「互素的见证人」那一列是 0，就是这句话的意思。
+  </div>
+</section>
+
+<section class="sec" id="sec3">
+  <div class="sec-head"><span class="sec-num">三</span><h2>多看一步</h2></div>
+  <p class="sec-sub">米勒–拉宾：把 n−1 拆成 2<sup>s</sup> × d，沿平方链找 1 的假平方根</p>
+  <p>素数模下，x² ≡ 1 只有两个解：x ≡ 1 或 x ≡ −1。合数没有这个保证 —— 比如 67² = 4489 = 8 × 561 + 1，所以 67² ≡ 1 (mod 561)，而 67 既不是 1 也不是 −1。</p>
+  <p>米勒–拉宾就是把 a<sup>n−1</sup> 拆成一串平方，一路盯着它走：a<sup>d</sup> → a<sup>2d</sup> → a<sup>4d</sup> → … → a<sup>n−1</sup>，其中 n−1 = 2<sup>s</sup> × d，d 是奇数。<b>链上哪一项冒出「1 的假平方根」，n 当场露馅</b>；费马只看最后一项，看不见中途发生了什么。</p>
+
+  <div class="panel">
+    <h3>拆开一条链</h3>
+    <div class="ctrls">
+      <div class="ctrl"><span>n（5 到 67,108,863 的奇数）</span><input id="c-n" type="text" inputmode="numeric" autocomplete="off" value="561" aria-label="n"></div>
+      <div class="ctrl"><span>底 a</span><input id="c-a" type="text" inputmode="numeric" autocomplete="off" value="2" aria-label="底 a" style="width:120px"></div>
+      <button id="c-rand" class="ghost">随机换一个底</button>
+    </div>
+    <div class="hint" id="c-hint"></div>
+    <div class="btnrow chips" id="c-chips"></div>
+    <div class="chain" id="c-chain"></div>
+    <div class="verdict" id="c-verdict"></div>
+    <div class="bars" id="c-bars"></div>
+  </div>
+
+  <div class="panel">
+    <h3>米勒–拉宾里说谎率最高的 8 个奇合数（n ≤ 10,000，底取遍 1 到 n−1）</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-top"><tr><td class="l">计算中…</td></tr></table></div>
+    <div class="note" id="top-note"></div>
+  </div>
+</section>
+
+<section class="sec" id="sec4">
+  <div class="sec-head"><span class="sec-num">四</span><h2>界有多松</h2></div>
+  <p class="sec-sub">最坏是 1/4，平常是多少</p>
+  <p>Rabin（1980）证明：对奇合数 n，米勒–拉宾里说谎的底至多 φ(n)/4 个，φ(n) 是与 n 互素的底的个数。所以随机挑一个底，出错概率 ≤ 1/4；独立挑 k 个，≤ 4<sup>−k</sup>。这是一条<b>上界</b> —— 说的是「最坏情况下最多能坏到哪」。</p>
+  <p>下图把界和实测画在一起：每个点是一个奇合数，纵轴是它身上说谎的底占 1 到 n−1 的比例。</p>
+
+  <div class="panel">
+    <h3 id="scs-h">每个奇合数的米勒–拉宾说谎率</h3>
+    <div class="cvwrap"><canvas id="sc-s" tabindex="0" aria-label="米勒–拉宾说谎率散点图"></canvas></div>
+    <div class="note" id="sc-s-cap">计算中…</div>
+  </div>
+
+  <div class="panel">
+    <h3>按数量级分段：平均值 vs 最坏值</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-dec"><tr><td class="l">计算中…</td></tr></table></div>
+  </div>
+
+  <div class="panel">
+    <h3>连测 k 轮、每轮独立随机挑底：还被骗过的概率</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-rounds"><tr><td class="l">计算中…</td></tr></table></div>
+    <div class="note">「随机奇合数」一行是把 [1000, 10000] 里每个奇合数各自的说谎率取 k 次方再求平均，是精确值，不是抽样。</div>
+  </div>
+
+  <div class="callout gold" id="loose-callout">
+    <span class="ct">界是存在性命题，不是常见性命题</span>
+    计算中…
+  </div>
+</section>
+
+<section class="sec" id="sec5">
+  <div class="sec-head"><span class="sec-num">五</span><h2>从「大概」到「一定」</h2></div>
+  <p class="sec-sub">有限范围内，几个固定的底就是证明</p>
+  <p>如果只关心 n &lt; N，随机性就是多余的：找出「能骗过一组底的最小合数」B，这组底在 B 以下就是<b>确定性</b>的 —— 不再是「大概」，而是证明。页内能亲手穷举的只到 1,373,653，所以只有前两行是本页自己算出来的；再往后的界来自文献，表里逐行标了出处。</p>
+
+  <div class="panel">
+    <h3>穷举实测：1,373,653 以内，哪些合数能骗过固定的底</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-ladder"><tr><td class="l">计算中…</td></tr></table></div>
+    <div class="note" id="psp-list"></div>
+  </div>
+
+  <div class="panel">
+    <h3>漏网之鱼：骗过前 k 个素数做底的合数</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-psi"><tr><td class="l">计算中…</td></tr></table></div>
+    <div class="note">每一行本页都亲手核对了：因子相乘等于 n、每个因子是素数、n 对表中的底全部通过、第一个识破它的底如列所示。「是否最小」只有前两行是本页穷举的，其余引自文献，本页没有重算。</div>
+  </div>
+
+  <div class="panel">
+    <h3>你来出题：13 个素数做底，一口气测一个数（任意大小）</h3>
+    <div class="ctrls">
+      <div class="ctrl"><span>n（十进制整数，最多 300 位）</span><input id="t-n" class="wide" type="text" inputmode="numeric" autocomplete="off" value="3215031751" aria-label="待测的数"></div>
+    </div>
+    <div class="hint" id="t-hint"></div>
+    <div class="btnrow chips" id="t-chips"></div>
+    <div class="bcells" id="t-cells"></div>
+    <div class="verdict" id="t-verdict"></div>
+  </div>
+</section>
+
+<section class="sec" id="sec6">
+  <div class="sec-head"><span class="sec-num">六</span><h2>为什么值得冒这个险</h2></div>
+  <p class="sec-sub">试除要走 √n 步，米勒–拉宾只要 log n 步</p>
+  <p>「大概」不是白给的。下表数的是<b>工作量</b>，不是时间：试除法在最坏情况（n 是素数）下要做多少次除法，对比米勒–拉宾测一个底要做多少次模乘。模乘次数是页内 BigInt 实现里数出来的，不是估算。</p>
+  <div class="panel">
+    <h3>四个梅森素数：试除 vs 一个底</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-cost"><tr><td class="l">计算中…</td></tr></table></div>
+  </div>
+  <div class="callout gold" id="cost-callout">
+    <span class="ct">省下的是数量级，付出的是一个能数出来的错误率</span>
+    计算中…
+  </div>
+</section>
+
+<section class="sec" id="sec7">
+  <div class="sec-head"><span class="sec-num">七</span><h2>这些数字凭什么可信</h2></div>
+  <p class="sec-sub">验证、对照、边界</p>
+  <div class="panel">
+    <h3>验证清单（每次打开页面时现场重跑）</h3>
+    <div class="tbl-wrap"><table class="tbl" id="tbl-verify"><tr><td class="l">计算中…</td></tr></table></div>
+  </div>
+  <div class="panel">
+    <h3>结论</h3>
+    <ul class="cons" id="cons"><li>计算中…</li></ul>
+  </div>
+  <div class="panel">
+    <h3>我没做到什么</h3>
+    <ul class="limits" id="limits"></ul>
+  </div>
+</section>
+
+<footer>
+  <p>《似是而非》· 单文件离线装置 · 全部数字由页内实时算出，无外部依赖。</p>
+</footer>
+
+<noscript><p>这一页的所有数字都由页内脚本现场计算，需要开启 JavaScript。</p></noscript>
+</div>
+<script>
+const Core = (function () {
+  'use strict';
+  const SAFE = 67108864; // 2^26：n <= SAFE 时 a*b < 2^52，Number 乘法精确
+
+  function powmod(a, e, n) {
+    let r = 1, b = a % n;
+    while (e > 0) {
+      if (e & 1) r = (r * b) % n;
+      b = (b * b) % n;
+      e >>= 1;
+    }
+    return r;
+  }
+
+  // 一次算出费马与强检验：返回 bit0 = 费马通过，bit1 = 强检验通过。n 为奇数 >= 3，1 <= a <= n-1
+  function probe(a, n) {
+    let d = n - 1, s = 0;
+    while ((d & 1) === 0) { d >>= 1; s++; }
+    let x = powmod(a, d, n);
+    let strong = (x === 1 || x === n - 1);
+    for (let r = 1; r < s; r++) {
+      x = (x * x) % n;
+      if (x === n - 1) strong = true;
+    }
+    x = (x * x) % n; // a^(n-1)
+    return (x === 1 ? 1 : 0) | (strong ? 2 : 0);
+  }
+
+  function gcd(a, b) { while (b) { const t = a % b; a = b; b = t; } return a; }
+
+  // 逐个底统计：liars[a] = probe 位；同时返回计数
+  function liarScan(n) {
+    let fermat = 0, strong = 0;
+    for (let a = 1; a < n; a++) {
+      const p = probe(a, n);
+      if (p & 1) fermat++;
+      if (p & 2) strong++;
+    }
+    return { fermat, strong };
+  }
+
+  // 一条 Miller-Rabin 链：返回 {s, d, x:[a^d, a^2d, ..., a^(2^s d)], verdict}
+  function chain(a, n) {
+    let d = n - 1, s = 0;
+    while ((d & 1) === 0) { d >>= 1; s++; }
+    const xs = [powmod(a, d, n)];
+    for (let r = 1; r <= s; r++) xs.push((xs[r - 1] * xs[r - 1]) % n);
+    let strong = (xs[0] === 1 || xs[0] === n - 1);
+    for (let r = 1; r < s; r++) if (xs[r] === n - 1) strong = true;
+    return { s, d, xs, strong, fermat: xs[s] === 1 };
+  }
+
+  function sieveSPF(N) {
+    const spf = new Int32Array(N + 1);
+    for (let i = 2; i <= N; i++) {
+      if (spf[i] === 0) {
+        spf[i] = i;
+        if (i * i <= N) for (let j = i * i; j <= N; j += i) if (spf[j] === 0) spf[j] = i;
+      }
+    }
+    return spf;
+  }
+
+  function factorize(n, spf) {
+    const f = [];
+    while (n > 1) {
+      const p = spf[n]; let e = 0;
+      while (n % p === 0) { n = (n / p) | 0; e++; }
+      f.push([p, e]);
+    }
+    return f;
+  }
+
+  function trialPrime(n) { // 独立于筛的另一条路：试除
+    if (n < 2) return false;
+    if (n % 2 === 0) return n === 2;
+    for (let p = 3; p * p <= n; p += 2) if (n % p === 0) return false;
+    return true;
+  }
+
+  function isKorselt(n, spf) { // 卡迈克尔数：合数、无平方因子、且每个素因子 p 满足 (p-1) | (n-1)
+    if (n < 4 || spf[n] === n) return false;
+    const f = factorize(n, spf);
+    for (const [p, e] of f) { if (e > 1) return false; if ((n - 1) % (p - 1) !== 0) return false; }
+    return f.length >= 2;
+  }
+
+  function phi(n, spf) {
+    let r = n;
+    for (const [p] of factorize(n, spf)) r = r / p * (p - 1);
+    return r;
+  }
+
+  // ---------- BigInt 部分：任意大小 ----------
+  function powmodB(a, e, n, cnt) {
+    let r = 1n; a %= n;
+    while (e > 0n) {
+      if (e & 1n) { r = (r * a) % n; if (cnt) cnt.mul++; }
+      e >>= 1n;
+      if (e > 0n) { a = (a * a) % n; if (cnt) cnt.mul++; }
+    }
+    return r;
+  }
+
+  function decomp(n) { let d = n - 1n, s = 0; while ((d & 1n) === 0n) { d >>= 1n; s++; } return { d, s }; }
+
+  // 强检验（单个底），n 为奇数 >= 5，2 <= a <= n-2；返回 true = 通过（可能是素数）
+  function strongB(a, n, cnt) {
+    const { d, s } = decomp(n);
+    let x = powmodB(a, d, n, cnt);
+    if (x === 1n || x === n - 1n) return true;
+    for (let r = 1; r < s; r++) {
+      x = (x * x) % n; if (cnt) cnt.mul++;
+      if (x === n - 1n) return true;
+    }
+    return false;
+  }
+
+  function chainB(a, n) {
+    const { d, s } = decomp(n);
+    const xs = [powmodB(a, d, n)];
+    for (let r = 1; r <= s; r++) xs.push((xs[r - 1] * xs[r - 1]) % n);
+    let strong = (xs[0] === 1n || xs[0] === n - 1n);
+    for (let r = 1; r < s; r++) if (xs[r] === n - 1n) strong = true;
+    return { s, d, xs, strong, fermat: xs[s] === 1n };
+  }
+
+  const SMALL_PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53];
+
+  function isqrtB(n) {
+    if (n < 2n) return n;
+    let x = 1n << BigInt((n.toString(2).length + 1) >> 1);
+    while (true) { const y = (x + n / x) >> 1n; if (y >= x) return x; x = y; }
+  }
+
+  function bigPow(b, e) { let r = 1n; for (let i = 0; i < e; i++) r *= b; return r; }
+
+  return { powmod, probe, gcd, liarScan, chain, sieveSPF, factorize, trialPrime, isKorselt, phi,
+           powmodB, strongB, chainB, decomp, SMALL_PRIMES, isqrtB, bigPow, SAFE };
+})();
+if (typeof module !== 'undefined') module.exports = Core;
+
+(function () {
+'use strict';
+/* ============================================================
+ * 页面脚本：全部数字现场算出。核心算法见上方 Core。
+ * ========================================================== */
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Number(n).toLocaleString('en-US');
+const fmtS = (s) => String(s).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const pct = (x, d) => (x * 100).toFixed(d === undefined ? 2 : d) + '%';
+const cssv = (k) => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+const L = 1373653, M = 10000, MAPMAX = 20000, CHAINMAX = 67108863;
+const PSI13 = 3317044064679887385961981n;
+const S = { spf: null, scan: null, rows: null, byN: null, verify: null };
+
+function sciH(x) {
+  if (!isFinite(x)) return '∞';
+  if (x < 1e6) return fmt(Math.round(x));
+  const [m, e] = x.toExponential(1).split('e');
+  return m + ' × 10<sup>' + (+e) + '</sup>';
+}
+function fmtProb(x) {
+  if (x >= 0.1) return x.toFixed(3);
+  if (x === 0) return '0';
+  const e = Math.floor(Math.log10(x)); let m = x / Math.pow(10, e);
+  let mm = m.toFixed(1); if (mm === '10.0') { mm = '1.0'; return mm + ' × 10<sup>' + (e + 1) + '</sup>'; }
+  return mm + ' × 10<sup>' + e + '</sup>';
+}
+function trialFactor(n) {
+  const f = []; let p = 2;
+  while (p * p <= n) {
+    if (n % p === 0) { let e = 0; while (n % p === 0) { n /= p; e++; } f.push([p, e]); }
+    p += (p === 2 ? 1 : 2);
+  }
+  if (n > 1) f.push([n, 1]);
+  return f;
+}
+function factStr(f) { return f.map(([p, e]) => e > 1 ? fmt(p) + '<sup>' + e + '</sup>' : fmt(p)).join(' × '); }
+function phiOf(f) { let r = 1; for (const [p, e] of f) r *= Math.pow(p, e - 1) * (p - 1); return r; }
+function isPrimeF(f) { return f.length === 1 && f[0][1] === 1; }
+function korselt(n, f) {
+  if (isPrimeF(f) || n < 4) return false;
+  for (const [p, e] of f) { if (e > 1) return false; if ((n - 1) % (p - 1) !== 0) return false; }
+  return true;
+}
+function parseNum(str, lo, hi) {
+  const s = String(str).replace(/[\s,_]/g, '');
+  if (!/^\d{1,12}$/.test(s)) return null;
+  const v = +s; return (v < lo || v > hi) ? null : v;
+}
+function tbl(head, rows, cls) {
+  let h = '<tr>' + head.map((x, i) => '<th' + (i === 0 || (cls && cls[i] === 'l') ? ' class="l"' : '') + '>' + x + '</th>').join('') + '</tr>';
+  for (const r of rows) {
+    const rc = r.cls ? ' class="' + r.cls + '"' : '';
+    h += '<tr' + rc + '>' + r.cells.map((c, i) => {
+      const k = (i === 0 || (cls && cls[i] === 'l') ? 'l ' : '') + (cls && cls[i] === 'm' ? 'm ' : '');
+      return '<td' + (k.trim() ? ' class="' + k.trim() + '"' : '') + '>' + c + '</td>';
+    }).join('') + '</tr>';
+  }
+  return h;
+}
+function mrBases(n, bases) { // BigInt：第一个识破 n 的底的下标；-1 = 全部通过
+  if (n < 2n) return 0;
+  if (n % 2n === 0n) return n === 2n ? -1 : 0;
+  for (let i = 0; i < bases.length; i++) {
+    const a = BigInt(bases[i]) % n;
+    if (a === 0n || a === 1n || a === n - 1n) continue;
+    if (!Core.strongB(a, n)) return i;
+  }
+  return -1;
+}
+function runSliced(step) {
+  return new Promise((resolve) => {
+    (function tick() {
+      const t0 = performance.now();
+      while (performance.now() - t0 < 14) { if (step()) { resolve(); return; } }
+      setTimeout(tick, 0);
+    })();
+  });
+}
+function prog(f, txt) {
+  const b = $('prog-bar'); if (b) b.style.width = Math.round(f * 100) + '%';
+  if (txt) $('prog-txt').textContent = txt;
+}
+
+/* ============================================================
+ * 第一节：说谎者地图
+ * ========================================================== */
+const map = { n: 561, mode: 'fermat', a: 2, arr: null, cs: 4, cols: 1, cntF: 0, cntS: 0, f: [], phi: 0, prime: false };
+function mapSet(n) {
+  map.n = n; map.f = trialFactor(n); map.prime = isPrimeF(map.f); map.phi = phiOf(map.f);
+  const arr = new Uint8Array(n); let cf = 0, cs = 0;
+  for (let a = 1; a < n; a++) { const p = Core.probe(a, n); arr[a] = p; if (p & 1) cf++; if (p & 2) cs++; }
+  map.arr = arr; map.cntF = cf; map.cntS = cs;
+  if (map.a < 1 || map.a > n - 1) map.a = 2;
+  $('m-a').value = map.a;
+  mapDraw(); mapText();
+}
+function mapDraw() {
+  const cv = $('m-cv'), wrap = $('m-wrap');
+  const W = Math.floor(wrap.clientWidth);
+  if (W < 50 || !map.arr) return;
+  const n = map.n, N = n - 1;
+  let cs = Math.floor(Math.sqrt(W * 230 / N)); cs = Math.max(2, Math.min(18, cs));
+  const cols = Math.floor(W / cs), rows = Math.ceil(N / cols);
+  map.cs = cs; map.cols = cols;
+  const w = cols * cs, h = rows * cs, dpr = window.devicePixelRatio || 1;
+  cv.style.width = w + 'px'; cv.style.height = h + 'px';
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cHot = cssv('--hot'), cCool = cssv('--cool'), cSoft = cssv('--cool-soft'), cGreen = cssv('--green'), cInk = cssv('--ink');
+  const bit = map.mode === 'fermat' ? 1 : 2, gap = cs >= 6 ? 1 : 0;
+  for (let a = 1; a <= N; a++) {
+    const i = a - 1, x = (i % cols) * cs, y = Math.floor(i / cols) * cs;
+    let col;
+    if (map.prime) col = cGreen;
+    else if (map.arr[a] & bit) col = cHot;
+    else col = Core.gcd(a, n) > 1 ? cCool : cSoft;
+    g.fillStyle = col; g.fillRect(x, y, cs - gap, cs - gap);
+  }
+  const ia = map.a - 1;
+  g.strokeStyle = cInk; g.lineWidth = 2;
+  g.strokeRect((ia % cols) * cs - 1, Math.floor(ia / cols) * cs - 1, cs + 1, cs + 1);
+}
+function mapText() {
+  const n = map.n, N = n - 1, isP = map.prime, fer = map.mode === 'fermat';
+  const cur = fer ? map.cntF : map.cntS, oth = fer ? map.cntS : map.cntF;
+  const curN = fer ? '费马' : '米勒–拉宾', othN = fer ? '米勒–拉宾' : '费马';
+  const st = (k, v) => '<div class="stat"><span>' + k + '</span><b>' + v + '</b></div>';
+  const carm = korselt(n, map.f);
+  $('m-stat').innerHTML =
+    st('n 的分解', isP ? fmt(n) + '（素数）' : factStr(map.f)) +
+    st('筛出的真值', isP ? '<span class="hlgr">素数</span>' : '<span class="hl">合数</span>' + (carm ? ' · <span class="hlg">卡迈克尔数</span>' : '')) +
+    st(curN + ' 里说谎的底', isP ? '没有（素数）' : fmt(cur) + ' / ' + fmt(N) + ' = ' + pct(cur / N)) +
+    st(othN + ' 里说谎的底', isP ? '没有（素数）' : fmt(oth) + ' / ' + fmt(N) + ' = ' + pct(oth / N)) +
+    st('与 n 互素的底 φ(n)', fmt(map.phi));
+  const a = map.a; let h;
+  if (fer) {
+    const x = Core.powmod(a, n - 1, n), g = Core.gcd(a, n);
+    h = '<span class="mono">' + a + '<sup>' + fmt(n - 1) + '</sup> mod ' + fmt(n) + ' = ' + x + '</span> —— ';
+    if (x === 1) h += isP ? '通过。n 是素数，通过是应该的。' : '通过：检验说「大概是素数」，而 n 是合数，所以 <b class="hl">' + a + ' 在说谎</b>。';
+    else h += '<b class="hlc">识破</b>：结果 ≠ 1，n 一定是合数。' + (g > 1 ? a + ' 与 n 有公因子 ' + g + '，光用 gcd 也能识破。' : a + ' 与 n 互素，这一下是费马的功劳。');
+  } else {
+    const c = Core.chain(a, n);
+    h = '<span class="mono">n − 1 = ' + fmt(n - 1) + ' = 2<sup>' + c.s + '</sup> × ' + fmt(c.d) + '；链：' + c.xs.join(' → ') + '</span> —— ';
+    if (c.strong) h += isP ? '通过（素数本该如此）。' : '通过：<b class="hl">' + a + ' 在说谎</b>。';
+    else h += '<b class="hlc">识破</b>：链上没有出现「−1」，也不是从 1 起步。到第三节输入同样的 n 和 a，可以看到它是怎么露馅的。';
+  }
+  $('m-base').innerHTML = h;
+}
+function setupMap() {
+  const chips = [91, 97, 341, 561, 1105, 1891, 2047, 8911];
+  $('m-chips').innerHTML = chips.map(v => '<button class="ghost" data-n="' + v + '">' + v + '</button>').join('');
+  $('m-chips').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    $('m-n').value = b.dataset.n; $('m-hint').textContent = ''; mapSet(+b.dataset.n);
+  });
+  $('m-legend').innerHTML =
+    '<span><i style="background:var(--hot)"></i>说谎的底（合数被放过）</span>' +
+    '<span><i style="background:var(--cool)"></i>识破 · 与 n 有公因子（gcd 就够了）</span>' +
+    '<span><i style="background:var(--cool-soft)"></i>识破 · 互素（检验自己的功劳）</span>' +
+    '<span><i style="background:var(--green)"></i>n 是素数：全部通过</span>';
+  $('m-n').addEventListener('input', () => {
+    const v = parseNum($('m-n').value, 5, MAPMAX);
+    if (v === null || v % 2 === 0) { $('m-hint').textContent = '请输入 5 到 20000 之间的奇数（偶数一眼就能看穿）。'; return; }
+    $('m-hint').textContent = ''; mapSet(v);
+  });
+  $('m-f').addEventListener('click', () => { map.mode = 'fermat'; $('m-f').className = 'on'; $('m-s').className = 'ghost'; mapDraw(); mapText(); });
+  $('m-s').addEventListener('click', () => { map.mode = 'strong'; $('m-s').className = 'on'; $('m-f').className = 'ghost'; mapDraw(); mapText(); });
+  $('m-a').addEventListener('input', () => {
+    const v = parseNum($('m-a').value, 1, map.n - 1); if (v === null) return;
+    map.a = v; mapDraw(); mapText();
+  });
+  $('m-rand').addEventListener('click', () => {
+    map.a = 2 + Math.floor(Math.random() * Math.max(1, map.n - 3)); $('m-a').value = map.a; mapDraw(); mapText();
+  });
+  const cv = $('m-cv');
+  cv.addEventListener('pointerdown', (e) => {
+    const r = cv.getBoundingClientRect();
+    const a = Math.floor((e.clientY - r.top) / map.cs) * map.cols + Math.floor((e.clientX - r.left) / map.cs) + 1;
+    if (a >= 1 && a <= map.n - 1) { map.a = a; $('m-a').value = a; mapDraw(); mapText(); }
+  });
+  cv.addEventListener('keydown', (e) => {
+    const d = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -map.cols, ArrowDown: map.cols }[e.key];
+    if (!d) return; e.preventDefault();
+    const a = map.a + d; if (a >= 1 && a <= map.n - 1) { map.a = a; $('m-a').value = a; mapDraw(); mapText(); }
+  });
+  mapSet(561);
+}
+
+/* ============================================================
+ * 第三节：平方链
+ * ========================================================== */
+const ch = { n: 561, a: 2 };
+function chainRender() {
+  const n = ch.n, a = ch.a;
+  const c = Core.chain(a, n), f = trialFactor(n), isP = isPrimeF(f);
+  let bad = -1;
+  for (let r = 1; r <= c.s; r++) if (c.xs[r] === 1) { if (c.xs[r - 1] !== 1 && c.xs[r - 1] !== n - 1) bad = r - 1; break; }
+  let boxes = '';
+  for (let r = 0; r <= c.s; r++) {
+    const x = c.xs[r], e = c.d * Math.pow(2, r);
+    const cls = r === bad ? 'bad' : (x === n - 1 ? 'neg' : (x === 1 ? 'one' : ''));
+    const lab = (r === c.s ? 'a<sup>n−1</sup> = ' : '') + a + '<sup>' + fmt(e) + '</sup>';
+    boxes += (r ? '<span class="arr">平方</span>' : '') + '<div class="box ' + cls + '"><small>' + lab + '</small><b>' + fmt(x) + (x === n - 1 ? ' (−1)' : '') + '</b></div>';
+  }
+  $('c-chain').innerHTML = boxes;
+  let h = '<span class="mono">n − 1 = ' + fmt(n - 1) + ' = 2<sup>' + c.s + '</sup> × ' + fmt(c.d) + '</span>（s = ' + c.s + '，d = ' + fmt(c.d) + '）。<br>';
+  if (c.strong) {
+    let where = c.xs[0] === 1 ? '第 0 项就是 1' : '';
+    if (!where) { for (let r = 0; r < c.s; r++) if (c.xs[r] === n - 1) { where = '第 ' + r + ' 项是 −1'; break; } }
+    h += '<b>通过</b>（' + where + '，和素数的行为一致）。' + (isP ? 'n 是素数，本该如此。' : '<b class="hl">' + a + ' 在说谎</b>：n = ' + factStr(f) + ' 是合数，检验却说「大概是素数」。');
+  } else if (!c.fermat) {
+    h += '<b class="hlc">识破</b>：末项 a<sup>n−1</sup> mod n = ' + fmt(c.xs[c.s]) + ' ≠ 1，连费马也识破了。';
+  } else if (bad >= 0) {
+    const x = c.xs[bad], g = Core.gcd(x - 1, n);
+    h += '<b class="hlc">识破，而且只有米勒–拉宾看得见</b>：末项是 1，费马通过；但链上 ' + fmt(x) + '² ≡ 1 (mod ' + fmt(n) + ')，而 ' + fmt(x) + ' 既不是 1 也不是 −1 —— 素数模下不可能，n 是合数。顺手还拆出了因子：gcd(' + fmt(x) + ' − 1, ' + fmt(n) + ') = ' + fmt(g) + '，n = ' + fmt(g) + ' × ' + fmt(n / g) + '。';
+  }
+  $('c-verdict').innerHTML = h;
+  // 对比柱
+  const bars = $('c-bars');
+  if (isP) { bars.innerHTML = '<div class="note">n 是素数：所有底都通过，没有说谎者可数。换一个合数试试。</div>'; return; }
+  if (n > 50000) { bars.innerHTML = '<div class="note">n 太大，不逐个底数统计（上限 50,000）。链本身仍然是精确的。</div>'; return; }
+  const r = Core.liarScan(n), N = n - 1, phi = phiOf(f);
+  const row = (lab, v, col) => '<div class="bar-row"><div class="bar-lab">' + lab + '</div><div class="bar-track"><div class="bar-fill" style="width:' + (v / N * 100).toFixed(2) + '%;background:' + col + '"></div></div><div class="bar-val">' + fmt(v) + ' · ' + pct(v / N, 1) + '</div></div>';
+  bars.innerHTML = row('与 n 互素的底 φ(n)', phi, 'var(--faint)') + row('费马说谎的底', r.fermat, 'var(--hot)') + row('米勒–拉宾说谎的底', r.strong, 'var(--cool)') +
+    '<div class="note">百分比是占 1 到 n−1 共 ' + fmt(N) + ' 个底的比例。</div>';
+}
+function setupChain() {
+  const chips = [[561, 2, '561 · 底 2'], [2047, 2, '2047 · 底 2'], [1373653, 2, '1373653 · 底 2'], [1373653, 3, '底 3'], [1373653, 5, '底 5'], [97, 5, '97（素数）']];
+  $('c-chips').innerHTML = chips.map((c, i) => '<button class="ghost" data-i="' + i + '">' + c[2] + '</button>').join('');
+  $('c-chips').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    const c = chips[+b.dataset.i]; ch.n = c[0]; ch.a = c[1];
+    $('c-n').value = ch.n; $('c-a').value = ch.a; $('c-hint').textContent = ''; chainRender();
+  });
+  const upd = () => {
+    const n = parseNum($('c-n').value, 5, CHAINMAX);
+    if (n === null || n % 2 === 0) { $('c-hint').textContent = '请输入 5 到 67,108,863 之间的奇数。'; return; }
+    const a = parseNum($('c-a').value, 2, n - 2);
+    if (a === null) { $('c-hint').textContent = '底 a 需要在 2 到 n−2 之间。'; return; }
+    $('c-hint').textContent = ''; ch.n = n; ch.a = a; chainRender();
+  };
+  $('c-n').addEventListener('input', upd); $('c-a').addEventListener('input', upd);
+  $('c-rand').addEventListener('click', () => {
+    const n = parseNum($('c-n').value, 5, CHAINMAX); if (n === null) return;
+    $('c-a').value = 2 + Math.floor(Math.random() * (n - 3)); upd();
+  });
+  chainRender();
+}
+
+/* ============================================================
+ * 散点图（第二、四节）
+ * ========================================================== */
+const scat = { f: { hi: -1 }, s: { hi: -1 } };
+function scatGeom(cv, mode) {
+  const W = Math.floor(cv.parentElement.clientWidth), H = W < 480 ? 236 : 288;
+  const mL = 46, mR = 12, mT = 14, mB = 30;
+  const x0 = Math.log10(9), x1 = Math.log10(M), ymax = mode === 'f' ? 0.85 : 0.30;
+  return { W, H, mL, mR, mT, mB, X: (n) => mL + (Math.log10(n) - x0) / (x1 - x0) * (W - mL - mR), Y: (v) => H - mB - v / ymax * (H - mT - mB), ymax };
+}
+function scatDraw(id, mode) {
+  const cv = $(id); const rows = S.rows;
+  if (!rows) return;
+  const G = scatGeom(cv, mode); if (G.W < 100) return;
+  const dpr = window.devicePixelRatio || 1;
+  cv.style.width = G.W + 'px'; cv.style.height = G.H + 'px';
+  cv.width = Math.round(G.W * dpr); cv.height = Math.round(G.H * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cInk = cssv('--ink'), cMuted = cssv('--muted'), cLine = cssv('--line'), cHot = cssv('--hot'), cCool = cssv('--cool'), cGold = cssv('--gold');
+  g.font = '11px ui-monospace, Menlo, Consolas, monospace'; g.textBaseline = 'middle';
+  // 网格与刻度
+  g.lineWidth = 1; g.strokeStyle = cLine; g.fillStyle = cMuted;
+  const yt = mode === 'f' ? [0, .25, .5, .75] : [0, .05, .1, .15, .2, .25, .3];
+  g.textAlign = 'right';
+  for (const t of yt) { const y = Math.round(G.Y(t)) + .5; g.beginPath(); g.moveTo(G.mL, y); g.lineTo(G.W - G.mR, y); g.stroke(); g.fillText(Math.round(t * 100) + '%', G.mL - 6, y); }
+  g.textAlign = 'center';
+  for (const t of [10, 100, 1000, 10000]) { const x = Math.round(G.X(t)) + .5; g.beginPath(); g.moveTo(x, G.mT); g.lineTo(x, G.H - G.mB); g.stroke(); g.fillText(fmt(t), x, G.H - G.mB + 14); }
+  // 界
+  const bound = mode === 'f' ? .5 : .25;
+  g.strokeStyle = cHot; g.setLineDash([5, 4]); g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(G.mL, G.Y(bound)); g.lineTo(G.W - G.mR, G.Y(bound)); g.stroke(); g.setLineDash([]);
+  g.fillStyle = cHot; g.textAlign = 'left';
+  g.fillText(mode === 'f' ? '1/2：非卡迈克尔数的界' : '1/4：Rabin 的界', G.mL + 6, G.Y(bound) - 8);
+  // 点
+  const key = mode === 'f' ? 'fermat' : 'strong';
+  g.globalAlpha = .5; g.fillStyle = cCool;
+  for (const r of rows) {
+    if (mode === 'f' && r.fermat === r.phi) continue;
+    const v = r[key] / (r.n - 1);
+    g.fillRect(G.X(r.n) - 1, G.Y(v) - 1, 2.2, 2.2);
+  }
+  g.globalAlpha = 1;
+  if (mode === 'f') {
+    g.fillStyle = cGold; g.strokeStyle = cInk; g.lineWidth = 1;
+    for (const r of rows) if (r.fermat === r.phi) { g.beginPath(); g.arc(G.X(r.n), G.Y(r.fermat / (r.n - 1)), 4.2, 0, 7); g.fill(); g.stroke(); }
+    g.fillStyle = cInk; g.textAlign = 'left';
+    const first = rows.find(r => r.n === 561), last = S.carmRows[S.carmRows.length - 1];
+    if (first) g.fillText('561', G.X(561) + 7, G.Y(first.fermat / 560) - 1);
+    if (last && last.n !== 561) { g.textAlign = 'right'; g.fillText(fmt(last.n), G.X(last.n) - 7, G.Y(last.fermat / (last.n - 1)) - 9); }
+  } else {
+    // 各数量级的平均值
+    g.strokeStyle = cInk; g.lineWidth = 2.5;
+    for (const b of S.decades) { g.beginPath(); g.moveTo(G.X(b.lo), G.Y(b.mean)); g.lineTo(G.X(Math.min(b.hi, M)), G.Y(b.mean)); g.stroke(); }
+    const r9 = rows[0]; g.fillStyle = cHot; g.beginPath(); g.arc(G.X(9), G.Y(r9.strong / 8), 4, 0, 7); g.fill();
+  }
+  // 选中点
+  const sc = scat[mode]; const idx = sc.hi;
+  if (idx >= 0) { const r = rows[idx]; g.strokeStyle = cInk; g.lineWidth = 2; g.beginPath(); g.arc(G.X(r.n), G.Y(r[key] / (r.n - 1)), 6, 0, 7); g.stroke(); }
+}
+function scatCaption(mode) {
+  const rows = S.rows, sc = scat[mode], cap = $(mode === 'f' ? 'sc-f-cap' : 'sc-s-cap');
+  if (!rows) return;
+  const key = mode === 'f' ? 'fermat' : 'strong';
+  if (sc.hi < 0) {
+    cap.innerHTML = mode === 'f'
+      ? '点按或滑过图中的点，看它是哪个数。金色的点是卡迈克尔数 —— 它们全部飞出了 1/2 的界。'
+      : '点按或滑过图中的点，看它是哪个数。黑色横线是各数量级的平均说谎率；红点是 n = 9。';
+    return;
+  }
+  const r = rows[sc.hi], f = trialFactor(r.n);
+  cap.innerHTML = 'n = <b>' + fmt(r.n) + '</b> = ' + factStr(f) + ' · 说谎的底 ' + fmt(r[key]) + ' / ' + fmt(r.n - 1) + ' = <b>' + pct(r[key] / (r.n - 1)) + '</b>' + (r.fermat === r.phi ? ' · <span class="hlg">卡迈克尔数</span>' : '');
+}
+function setupScatter(id, mode) {
+  const cv = $(id);
+  const pick = (e) => {
+    if (!S.rows) return;
+    const r0 = cv.getBoundingClientRect(), x = e.clientX - r0.left, y = e.clientY - r0.top;
+    const G = scatGeom(cv, mode), key = mode === 'f' ? 'fermat' : 'strong';
+    let best = -1, bd = 22 * 22;
+    for (let i = 0; i < S.rows.length; i++) {
+      const r = S.rows[i], dx = G.X(r.n) - x, dy = G.Y(r[key] / (r.n - 1)) - y, d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = i; }
+    }
+    if (best !== scat[mode].hi) { scat[mode].hi = best; scatDraw(id, mode); scatCaption(mode); }
+  };
+  cv.addEventListener('pointermove', pick); cv.addEventListener('pointerdown', pick);
+}
+
+/* ============================================================
+ * 数据：穷举扫描
+ * ========================================================== */
+async function runData() {
+  const spf = S.spf;
+  const scan = { psp2: [], spsp2: [], psp23: [], spsp23: [], mism: [], carm: [], odd: 0, oddPrimes: 0 };
+  let i = 3;
+  await runSliced(() => {
+    const end = Math.min(L, i + 6000);
+    for (; i <= end; i += 2) {
+      scan.odd++;
+      const prime = spf[i] === i; if (prime) scan.oddPrimes++;
+      const p2 = Core.probe(2, i), ok2 = (p2 & 2) !== 0;
+      let ok23 = false; if (ok2) ok23 = (Core.probe(3, i) & 2) !== 0;
+      if (!prime) {
+        if (p2 & 1) { scan.psp2.push(i); if (Core.probe(3, i) & 1) scan.psp23.push(i); }
+        if (ok2) scan.spsp2.push(i);
+        if (ok23) scan.spsp23.push(i);
+        if (Core.isKorselt(i, spf)) scan.carm.push(i);
+      }
+      if (i > 3 && ok23 !== prime) scan.mism.push(i);
+    }
+    prog(0.28 * Math.min(1, i / L), '正在逐个检验 3 到 ' + fmt(L) + ' 的每个奇数… ' + Math.min(100, Math.round(i / L * 100)) + '%');
+    return i > L;
+  });
+  const rows = []; let n = 9;
+  await runSliced(() => {
+    for (let k = 0; k < 8 && n <= M; k++, n += 2) {
+      if (spf[n] === n) continue;
+      const r = Core.liarScan(n);
+      rows.push({ n, fermat: r.fermat, strong: r.strong, phi: Core.phi(n, spf) });
+    }
+    prog(0.28 + 0.72 * Math.min(1, n / M), '正在对每个奇合数试遍全部底… n = ' + fmt(Math.min(n, M)));
+    return n > M;
+  });
+  S.scan = scan; S.rows = rows; S.byN = {}; for (const r of rows) S.byN[r.n] = r;
+  S.carmRows = rows.filter(r => r.fermat === r.phi);
+  const decs = []; for (const [lo, hi] of [[9, 100], [100, 1000], [1000, M + 1]]) {
+    const s = rows.filter(r => r.n >= lo && r.n < hi);
+    const mean = s.reduce((a, r) => a + r.strong / (r.n - 1), 0) / s.length;
+    const meanF = s.reduce((a, r) => a + r.fermat / (r.n - 1), 0) / s.length;
+    let mx = s[0]; for (const r of s) if (r.strong / (r.n - 1) > mx.strong / (mx.n - 1)) mx = r;
+    decs.push({ lo, hi, count: s.length, mean, meanF, max: mx, rows: s });
+  }
+  S.decades = decs;
+}
+
+/* ============================================================
+ * 各节渲染
+ * ========================================================== */
+const rate = (r, k) => r[k] / (r.n - 1);
+function renderCarm() {
+  const cr = S.carmRows, byDef = cr.map(r => r.n), byK = S.scan.carm.filter(n => n <= M);
+  const rowsH = cr.map(r => {
+    const f = trialFactor(r.n);
+    return { cells: [fmt(r.n), factStr(f), fmt(r.phi), fmt(r.fermat), pct(r.fermat / (r.n - 1), 1), fmt(r.phi - r.fermat), fmt(r.strong), pct(r.strong / r.phi, 1)] };
+  });
+  $('tbl-carm').innerHTML = tbl(['n', '素因子', 'φ(n)：互素的底', '费马说谎的底', '占 n−1', '互素的见证人', '米勒–拉宾说谎的底', '占 φ(n)'], rowsH, ['l', 'l']);
+  const same = byDef.length === byK.length && byDef.every((v, i) => v === byK[i]);
+  $('carm-note').innerHTML = '两条独立的路：<b>按定义</b>（每个互素的底费马都通过，来自逐底穷举）找到 ' + byDef.length + ' 个；<b>按 Korselt 判据</b>（只看因子）找到 ' + byK.length + ' 个。两份名单' + (same ? '<span class="ok"> 完全相同 ✓</span>' : '<span class="no"> 不相同 ✗</span>') + '。';
+}
+function renderTop() {
+  const rows = S.rows, all = [...rows].sort((a, b) => rate(b, 'strong') - rate(a, 'strong'));
+  const top = all.slice(0, 8), spf = S.spf;
+  const rowsH = top.map(r => {
+    const f = trialFactor(r.n); let q = '—';
+    if (f.length === 2 && f[0][1] === 1 && f[1][1] === 1) q = ((f[1][0] - 1) / (f[0][0] - 1)).toFixed(2).replace(/\.00$/, '');
+    return { cls: r.n === 9 ? 'hi' : '', cells: [fmt(r.n), factStr(f), fmt(r.strong), fmt(r.phi), pct(r.strong / r.phi, 1), pct(rate(r, 'strong')), q] };
+  });
+  $('tbl-top').innerHTML = tbl(['n', '分解', '说谎的底', 'φ(n)', '占 φ(n)', '占 n−1', '(q−1)/(p−1)'], rowsH, ['l', 'l']);
+  const viol = rows.filter(r => r.strong * 4 > r.phi).map(r => r.n);
+  const nonNine = all.filter(r => r.n !== 9).slice(0, 4);
+  const pat = nonNine.every(r => { const f = trialFactor(r.n); return f.length === 2 && f[0][1] === 1 && f[1][1] === 1 && (f[1][0] - 1) === 2 * (f[0][0] - 1); });
+  let t = '<b>Rabin 的界（说谎的底 ≤ φ(n)/4）在 ' + fmt(rows.length) + ' 个奇合数上逐一核对：</b>' + (viol.length === 1 && viol[0] === 9 ? '<span class="ok">只有 n = 9 是例外 ✓</span>（2 个说谎的底 &gt; 6/4，文献里也是这个例外）。' : '<span class="no">出现了意外的例外：' + viol.join('、') + ' ✗</span>');
+  if (pat) t += ' 除 9 以外说谎率最高的四个 —— ' + nonNine.map(r => fmt(r.n)).join('、') + ' —— 全是两个素数之积 p × q，而且都满足 q − 1 = 2(p − 1)，最后一列就是这个比值。';
+  $('top-note').innerHTML = t;
+  S.violations = viol; S.topPattern = pat;
+}
+function renderDecades() {
+  const D = S.decades, name = ['9 – 99', '100 – 999', '1,000 – 10,000'];
+  const rowsH = D.map((b, i) => ({ cells: [name[i], fmt(b.count), pct(b.mean, 3), pct(rate(b.max, 'strong')) + '（n = ' + fmt(b.max.n) + '）', (0.25 / b.mean).toFixed(0) + ' 倍', pct(b.meanF, 2)] }));
+  $('tbl-dec').innerHTML = tbl(['n 的范围', '奇合数个数', '米勒–拉宾平均说谎率', '最坏的一个', '界（25%）÷ 平均', '（对照）费马平均说谎率'], rowsH, ['l']);
+  // k 轮
+  const last = D[2], rows = last.rows, ks = [1, 2, 3, 4, 5, 6];
+  const worst9 = S.byN[9], w = last.max, r9 = rate(worst9, 'strong'), rw = rate(w, 'strong');
+  const avg = (k) => rows.reduce((a, r) => a + Math.pow(rate(r, 'strong'), k), 0) / rows.length;
+  const rr = [
+    { cells: ['Rabin 的界 4<sup>−k</sup>'].concat(ks.map(k => fmtProb(Math.pow(0.25, k)))) },
+    { cells: ['n = 9（说谎率 ' + pct(r9) + '）'].concat(ks.map(k => fmtProb(Math.pow(r9, k)))) },
+    { cells: ['n = ' + fmt(w.n) + '（区间内最坏，' + pct(rw) + '）'].concat(ks.map(k => fmtProb(Math.pow(rw, k)))) },
+    { cls: 'hi', cells: ['1,000–10,000 的随机奇合数'].concat(ks.map(k => fmtProb(avg(k)))) },
+  ];
+  $('tbl-rounds').innerHTML = tbl(['n', 'k = 1', 'k = 2', 'k = 3', 'k = 4', 'k = 5', 'k = 6'], rr, ['l']);
+  $('loose-callout').innerHTML = '<span class="ct">界是存在性命题，不是常见性命题</span>' +
+    'n 在 1,000 到 10,000 之间的奇合数，米勒–拉宾平均只有 <b>' + pct(last.mean, 2) + '</b> 的底会说谎，界（25%）松了约 <b>' + (0.25 / last.mean).toFixed(0) + ' 倍</b>；可是这一段里最坏的 n = ' + fmt(w.n) + ' 吃掉了界的 <b>' + pct(rw / 0.25, 0) + '</b>。同一句话「最多 1/4」，在两类 n 上的含义差了两个数量级。' +
+    '<br>好消息是：这种最坏的 n 极少，连测几轮就没有余地。坏消息是：如果 n 是别人精心挑给你的（比如攻击者），平均值帮不了你 —— 你得按界来算。';
+  S.roundAvg = avg;
+}
+function renderLadder() {
+  const sc = S.scan, sp = sc.spsp2, ps = sc.psp2;
+  const rowsH = [
+    { cells: ['费马 · 底 {2}', fmt(ps[0]), fmt(ps.length)] },
+    { cells: ['费马 · 底 {2, 3}', fmt(sc.psp23[0]), fmt(sc.psp23.length)] },
+    { cells: ['米勒–拉宾 · 底 {2}', fmt(sp[0]), fmt(sp.length)] },
+    { cls: 'hi', cells: ['米勒–拉宾 · 底 {2, 3}', fmt(sc.spsp23[0]), fmt(sc.spsp23.length)] },
+  ];
+  $('tbl-ladder').innerHTML = tbl(['检验 · 底', '第一个漏网的合数', '3 到 ' + fmt(L) + ' 里漏网的个数'], rowsH, ['l']);
+  const c = (x) => sp.filter(v => v <= x).length;
+  $('psp-list').innerHTML = '<b>结论：</b>' + '强检验只用底 2，在 ' + fmt(sp[0]) + ' 以下不会错；加上底 3，在 ' + fmt(sc.spsp23[0]) + ' 以下不会错 —— 这两句话是页内穷举出来的，是证明。' +
+    '<br>底 2 的强伪素数（骗过强检验的合数）前 10 个：' + sp.slice(0, 10).map(fmt).join('、') + '；10<sup>4</sup>、10<sup>5</sup>、10<sup>6</sup> 以内分别有 ' + c(1e4) + '、' + c(1e5) + '、' + c(1e6) + ' 个。' +
+    '<br>费马只用底 2 时，前 8 个漏网的合数：' + ps.slice(0, 8).map(fmt).join('、') + '，其中有 ' + ps.filter(v => S.scan.carm.includes(v)).length + ' 个（比如 561）是卡迈克尔数，在任何底上都放行。';
+}
+const PSI = [
+  { n: '2047', f: [23n, 89n] }, { n: '1373653', f: [829n, 1657n] }, { n: '25326001', f: [2251n, 11251n] },
+  { n: '3215031751', f: [151n, 751n, 28351n] }, { n: '2152302898747', f: [6763n, 10627n, 29947n] },
+  { n: '3474749660383', f: [1303n, 16927n, 157543n] }, { n: '341550071728321', f: [10670053n, 32010157n] },
+  { n: '3825123056546413051', f: [149491n, 747451n, 34233211n] }, { n: '318665857834031151167461', f: [399165290221n, 798330580441n] },
+  { n: '3317044064679887385961981', f: [1287836182261n, 2575672364521n] },
+];
+function psiCheck() {
+  const P = Core.SMALL_PRIMES; let good = 0; const rows = [];
+  PSI.forEach((e) => {
+    const n = BigInt(e.n), prod = e.f.reduce((a, b) => a * b, 1n);
+    const prodOK = prod === n, primesOK = e.f.every(p => mrBases(p, P.slice(0, 13)) === -1);
+    const first = mrBases(n, P);                 // 第一个识破它的底在 P 里的下标
+    const prefix = first === -1 ? P.length : first;
+    const ok = prodOK && primesOK && prefix >= 1;
+    if (ok) good++;
+    rows.push({ e, n, prodOK, primesOK, prefix, catchBase: first === -1 ? null : P[first], ok });
+  });
+  return { good, rows };
+}
+function renderPsi() {
+  const R = psiCheck(); S.psi = R; const sc = S.scan;
+  const rowsH = R.rows.map((r, i) => {
+    const kr = r.prefix; // 前 prefix 个素数都被骗过
+    let minimal = '引自文献';
+    if (i === 0) minimal = sc.spsp2[0] === 2047 ? '<span class="ok">本页穷举 ✓</span>' : '<span class="no">✗</span>';
+    if (i === 1) minimal = sc.spsp23[0] === L ? '<span class="ok">本页穷举 ✓</span>' : '<span class="no">✗</span>';
+    const P = Core.SMALL_PRIMES;
+    return { cells: ['前 ' + kr + ' 个（2' + (kr > 1 ? ' – ' + P[kr - 1] : '') + '）', fmtS(r.e.n), r.e.f.map(x => fmtS(x.toString())).join(' × '), r.prodOK && r.primesOK ? '<span class="ok">✓</span>' : '<span class="no">✗</span>', r.catchBase === null ? '—' : String(r.catchBase), minimal] };
+  });
+  $('tbl-psi').innerHTML = tbl(['它骗过了哪些底', '漏网的合数 n', '素因子分解', '核对', '第一个识破它的底', '是骗过这些底的最小合数吗'], rowsH, ['l', 'm', 'm', 'l', 'l']);
+}
+
+/* ============================================================
+ * 第五节：任意大数测试器
+ * ========================================================== */
+const PRESETS = [
+  ['341', '341', '费马底 2 的第一个漏网合数 = 11 × 31'],
+  ['561', '561', '第一个卡迈克尔数 = 3 × 11 × 17'],
+  ['2047', '2047', '底 2 的第一个强伪素数 = 23 × 89'],
+  ['1373653', '1373653', '第一个同时骗过底 2 和底 3 的合数 = 829 × 1657'],
+  ['25326001', '25326001', '骗过底 2、3、5 的最小合数 = 2251 × 11251'],
+  ['3215031751', '3215031751', '骗过前 4 个素数（2、3、5、7）的最小合数 = 151 × 751 × 28351'],
+  ['3825123056546413051', '3825123056546413051', '骗过前 9 个素数的最小合数 = 149491 × 747451 × 34233211'],
+  ['2^61−1', '2305843009213693951', '梅森素数，19 位；小于 3.3×10²⁴，所以 13 个底就是证明'],
+  ['2^127−1', '170141183460469231731687303715884105727', '梅森素数，39 位；已超出 13 个底能证明的范围 —— 它是素数，但这一页只能说「大概」（卢卡斯–莱默检验才能证明）'],
+];
+function testerRun(str) {
+  const s = String(str).replace(/[\s,_]/g, '');
+  const hint = $('t-hint');
+  if (!/^\d{1,300}$/.test(s)) { hint.textContent = '请输入十进制整数（最多 300 位，可以带逗号）。'; return; }
+  hint.textContent = '';
+  const n = BigInt(s), P = Core.SMALL_PRIMES.slice(0, 13), cells = [];
+  let firstFail = -1, note = '';
+  const pre = PRESETS.find(p => p[1] === s); if (pre) note = pre[2];
+  for (let i = 0; i < P.length; i++) {
+    let st = 'skip';
+    if (n >= 5n && n % 2n === 1n) {
+      const a = BigInt(P[i]) % n;
+      if (!(a === 0n || a === 1n || a === n - 1n)) { st = Core.strongB(a, n) ? 'pass' : 'fail'; if (st === 'fail' && firstFail < 0) firstFail = i; }
+    }
+    cells.push(st);
+  }
+  $('t-cells').innerHTML = cells.map((st, i) => '<div class="bc ' + st + '"><b>' + P[i] + '</b><small>' + (st === 'pass' ? '通过' : st === 'fail' ? '识破' : '—') + '</small></div>').join('');
+  let h = '<span class="mono">n = ' + fmtS(s) + '</span>（' + s.length + ' 位）<br>';
+  if (n < 2n) h += '不是素数也不是合数。';
+  else if (n === 2n || n === 3n) h += '<b class="hlgr">素数</b>（太小，不必检验）。';
+  else if (n % 2n === 0n) h += '<b class="hlc">合数</b>：偶数，一眼看穿，用不着检验。';
+  else if (firstFail >= 0) {
+    h += '<b class="hlc">合数（确凿）</b>：底 ' + P[firstFail] + ' 识破了它。' + (firstFail > 0 ? '它骗过了前 ' + firstFail + ' 个底（' + P.slice(0, firstFail).join('、') + '），第 ' + (firstFail + 1) + ' 个才露馅。' : '');
+  } else if (n < PSI13) {
+    h += '13 个底全部通过。依文献，前 13 个素数做底对 n &lt; 3,317,044,064,679,887,385,961,981 是确定性的 —— 所以 <b class="hlgr">n 是素数（证明）</b>。';
+  } else {
+    h += '13 个底全部通过，但 n 已经超出 13 个底能证明的范围（≥ 3.3×10<sup>24</sup>）—— 这里只能说 <b class="hlg">「大概是素数」</b>。';
+  }
+  if (n >= 100n && n % 2n === 1n) {
+    const cnt = { mul: 0 }; Core.strongB(2n % n, n, cnt);
+    const trial = Number((Core.isqrtB(n) - 1n) / 2n);
+    h += '<br><span class="note">测底 2 这一个底要做 ' + fmt(cnt.mul) + ' 次模乘；试除法最坏要做约 ' + sciH(trial) + ' 次除法。</span>';
+  }
+  if (note) h += '<br><span class="note">' + note + '</span>';
+  $('t-verdict').innerHTML = h;
+}
+function setupTester() {
+  $('t-chips').innerHTML = PRESETS.map((p, i) => '<button class="ghost" data-i="' + i + '">' + p[0] + '</button>').join('');
+  $('t-chips').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    $('t-n').value = PRESETS[+b.dataset.i][1]; testerRun($('t-n').value);
+  });
+  $('t-n').addEventListener('input', () => testerRun($('t-n').value));
+  testerRun($('t-n').value);
+}
+
+/* ============================================================
+ * 第六节：工作量
+ * ========================================================== */
+function renderCost() {
+  const rows = [], R = [];
+  for (const e of [31, 61, 89, 127]) {
+    const n = (1n << BigInt(e)) - 1n, cnt = { mul: 0 };
+    const pass = Core.strongB(2n, n, cnt);
+    const trial = Number((Core.isqrtB(n) - 1n) / 2n);
+    R.push({ e, n, mul: cnt.mul, trial, pass });
+    rows.push({ cells: ['2<sup>' + e + '</sup> − 1', String(n.toString().length), sciH(trial), fmt(cnt.mul), sciH(trial / cnt.mul) + ' 倍', pass ? '<span class="ok">通过</span>' : '<span class="no">识破</span>'] });
+  }
+  $('tbl-cost').innerHTML = tbl(['n', '位数', '试除法最坏的除法次数', '米勒–拉宾一个底的模乘次数', '差距', '底 2 的结论'], rows, ['l']);
+  const a = R[1], b = R[3];
+  $('cost-callout').innerHTML = '<span class="ct">省下的是数量级，付出的是一个能数出来的错误率</span>' +
+    '在 2<sup>61</sup> − 1 上，试除要约 ' + sciH(a.trial) + ' 次除法，一个底只要 ' + a.mul + ' 次模乘 —— 差 ' + sciH(a.trial / a.mul) + ' 倍。到 2<sup>127</sup> − 1，试除已经不可能（约 ' + sciH(b.trial) + ' 次），一个底仍然只要 ' + b.mul + ' 次。' +
+    '<br>代价就是前几节数过的：合数可能混过一个底。对 3.3×10<sup>24</sup> 以下的数，13 个底能把「大概」变成证明（第五节）；再往上，只有概率。';
+  S.cost = R;
+}
+
+/* ============================================================
+ * 第七节：验证、结论、边界
+ * ========================================================== */
+function computeVerify() {
+  const V = [], spf = S.spf, sc = S.scan, rows = S.rows, P13 = Core.SMALL_PRIMES.slice(0, 13);
+  const add = (name, expect, got, ok) => V.push({ name, expect, got, ok });
+  const cmp = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  // 1 筛
+  const pis = []; { let c = 0; const T = [1e3, 1e4, 1e5, 1e6]; let k = 0; for (let i = 2; i <= 1e6; i++) { if (spf[i] === i) c++; if (i === T[k]) { pis.push(c); k++; } } }
+  add('埃氏筛：素数个数 π(10³)…π(10⁶)', '168 / 1,229 / 9,592 / 78,498', pis.map(fmt).join(' / '), cmp(pis, [168, 1229, 9592, 78498]));
+  // 2 筛 vs 试除
+  let dis = 0; for (let n = 2; n <= 100000; n++) if ((spf[n] === n) !== Core.trialPrime(n)) dis++;
+  add('筛 vs 试除法（另一条独立的路），2 到 100,000 逐个对比', '0 处分歧', dis + ' 处分歧', dis === 0);
+  // 3 {2,3}
+  add('底 {2, 3} 的强检验 vs 筛，1,373,653 以内的每个奇数', '仅在 1,373,653 处出错，共 1 处', sc.mism.length + ' 处，' + (sc.mism.length ? '首处 ' + fmt(sc.mism[0]) : '无'), sc.mism.length === 1 && sc.mism[0] === L);
+  // 4 psp2 spsp2
+  const cnt = (arr, x) => arr.filter(v => v <= x).length, T4 = [1e3, 1e4, 1e5, 1e6];
+  const g4 = T4.map(x => cnt(sc.psp2, x)), g5 = T4.map(x => cnt(sc.spsp2, x));
+  add('底 2 的费马伪素数个数，10³…10⁶ 以内（对照文献）', '3 / 22 / 78 / 245', g4.join(' / '), cmp(g4, [3, 22, 78, 245]));
+  add('底 2 的强伪素数个数，10³…10⁶ 以内（对照文献）', '0 / 5 / 16 / 46', g5.join(' / '), cmp(g5, [0, 5, 16, 46]));
+  // 6 Carmichael
+  const g6 = T4.map(x => cnt(sc.carm, x));
+  add('卡迈克尔数个数（Korselt 判据），10³…10⁶ 以内（对照文献）', '1 / 7 / 16 / 43', g6.join(' / '), cmp(g6, [1, 7, 16, 43]));
+  const byDef = S.carmRows.map(r => r.n), byK = sc.carm.filter(n => n <= M);
+  add('卡迈克尔数 ≤ 10,000：按定义（穷举所有底）vs 按判据', '两份名单相同', byDef.length + ' 个 vs ' + byK.length + ' 个，' + (cmp(byDef, byK) ? '相同' : '不同'), cmp(byDef, byK));
+  // 8 theorem
+  const viol = rows.filter(r => r.strong * 4 > r.phi).map(r => r.n);
+  add('Rabin 界：强检验说谎的底 ≤ φ(n)/4，全部奇合数 9 ≤ n ≤ 10,000', '只有 n = 9 例外', viol.length + ' 个例外：' + viol.slice(0, 5).join('、'), cmp(viol, [9]));
+  // 9 Fermat half
+  const nc = rows.filter(r => r.fermat !== r.phi), badF = nc.filter(r => r.fermat * 2 > r.phi).length;
+  add('费马：非卡迈克尔合数说谎的底 ≤ φ(n)/2', '0 个例外', badF + ' 个例外（共 ' + fmt(nc.length) + ' 个）', badF === 0);
+  // 10 Number vs BigInt
+  let bd = 0, tot = 0; for (let n = 5; n <= 300; n += 2) for (let a = 2; a <= n - 2; a++) { tot++; if (((Core.probe(a, n) & 2) !== 0) !== Core.strongB(BigInt(a), BigInt(n))) bd++; }
+  add('Number 实现 vs BigInt 实现：n ≤ 300 的每一对 (n, a)', '0 处分歧', bd + ' 处（共 ' + fmt(tot) + ' 对）', bd === 0);
+  // 11 psi
+  const psi = S.psi || psiCheck();
+  add('漏网之鱼表：因子相乘等于 n、因子皆素、对表中底全部通过', psi.rows.length + ' / ' + psi.rows.length, psi.good + ' / ' + psi.rows.length, psi.good === psi.rows.length);
+  // 12 Mersenne
+  const m61 = (1n << 61n) - 1n, m127 = (1n << 127n) - 1n;
+  const okM = mrBases(m61, P13) === -1 && mrBases(m127, P13) === -1;
+  add('2⁶¹−1 与 2¹²⁷−1（已知的素数）13 个底全通过', '全部通过', okM ? '全部通过' : '有底识破了它们', okM);
+  return V;
+}
+function renderVerify() {
+  const V = computeVerify(); S.verify = V;
+  const rowsH = V.map(v => ({ cells: [v.name, v.expect, v.got, v.ok ? '<span class="ok">✓</span>' : '<span class="no">✗</span>'] }));
+  $('tbl-verify').innerHTML = tbl(['检查项', '应得', '本页现场结果', ''], rowsH, ['l', 'l', 'l']);
+  document.querySelectorAll('#tbl-verify td:nth-child(1),#tbl-verify td:nth-child(2),#tbl-verify td:nth-child(3)').forEach(td => td.className = 'l wrapok');
+}
+function renderCons() {
+  const sc = S.scan, rows = S.rows, D = S.decades, R = S.cost;
+  const cr = S.carmRows, worstC = cr.reduce((a, r) => rate(r, 'fermat') > rate(a, 'fermat') ? r : a, cr[0]);
+  const r561 = S.byN[561], last = D[2], w = last.max;
+  const li = [
+    '<b>费马的「至多一半」在卡迈克尔数上失效。</b>n ≤ 10,000 里有 ' + cr.length + ' 个卡迈克尔数，最坏的是 ' + fmt(worstC.n) + '：' + fmt(worstC.n - 1) + ' 个底里有 ' + fmt(worstC.fermat) + ' 个说谎（' + pct(rate(worstC, 'fermat'), 1) + '）；所有互素的底都在说谎，能识破的只剩本来就带公因子的底。',
+    '<b>米勒–拉宾把它压回了 1/4 以内。</b>同样是 561，费马有 ' + fmt(r561.fermat) + ' 个底说谎，米勒–拉宾只剩 ' + fmt(r561.strong) + ' 个。全部 ' + fmt(rows.length) + ' 个奇合数里，最高的说谎率是 n = 9 的 25.00%，n &gt; 9 时是 ' + fmt(w.n) + ' 的 ' + pct(rate(w, 'strong')) + '。',
+    '<b>界是紧的，但平均值远低于界。</b>1,000 到 10,000 的奇合数平均说谎率只有 ' + pct(last.mean, 2) + '，约为界的 1/' + (0.25 / last.mean).toFixed(0) + '。连测 3 轮，随机奇合数还被骗过的概率约 ' + fmtProb(S.roundAvg(3)) + '，而界给的是 ' + fmtProb(Math.pow(0.25, 3)) + '。',
+    '<b>固定的底可以变成证明。</b>只用底 2，在 ' + fmt(sc.spsp2[0]) + ' 以下不会错；加上底 3，在 ' + fmt(sc.spsp23[0]) + ' 以下不会错 —— 这两条是页内穷举的。前 13 个素数做底，对 3.3×10<sup>24</sup> 以下确定，那条来自文献。',
+    '<b>「大概」换来的是数量级。</b>在 2<sup>127</sup> − 1 上，试除要约 ' + sciH(R[3].trial) + ' 次除法，米勒–拉宾一个底只要 ' + R[3].mul + ' 次模乘。',
+  ];
+  $('cons').innerHTML = li.map(x => '<li>' + x + '</li>').join('');
+}
+function renderLimits() {
+  const li = [
+    '<b>穷举只到 1,373,653，说谎率统计只到 10,000。</b>对每个 n 要把 1 到 n−1 的底试遍，代价按 n² 涨。n 再大时的平均说谎率本页没量，第四节的「平均」不能外推到几百位的数。',
+    '<b>文献里的界，本页只验证了「漏网的数存在」，没有重算「更小的不存在」。</b>「前 13 个素数做底，对 3.3×10<sup>24</sup> 以下确定」和表里第三行以后的最小性都是文献值；重算需要对 10<sup>9</sup> 以上的数逐个检验。',
+    '<b>说谎率的口径是底 a ∈ [1, n−1]，含平凡的 1 和 n−1。</b>换成 [2, n−2]，n = 9 的 25% 会变成 0，其它数字也略降；Rabin 的 φ(n)/4 是按前一种口径证的。真实的实现会先试除小素数，9 这样的数根本到不了米勒–拉宾。',
+    '<b>没有实现 Baillie–PSW、Lucas 检验和 AKS。</b>真实的密码库用的是「米勒–拉宾加若干附加检验」，它们的错误率本页没量。',
+    '<b>随机大数上的实际出错概率本页没重现。</b>几百位的随机数上，单轮出错概率有专门的结论（Damgård–Landrock–Pomerance），比 1/4 小得多；这里只有 n ≤ 10,000 的精确平均。',
+    '<b>第六节数的是次数，不是秒数。</b>不同设备上 BigInt 的速度差别很大，不要把次数直接读成时间。',
+    '<b>超出 13 个底的范围，本页给不出证明。</b>比如 2<sup>127</sup> − 1 是素数，但那是别的方法证的，本页只能说「大概」。',
+  ];
+  $('limits').innerHTML = li.map(x => '<li>' + x + '</li>').join('');
+}
+function renderKPIs() {
+  const sc = S.scan, rows = S.rows, V = S.verify, D = S.decades;
+  const r561 = S.byN[561], w = D[2].max, pass = V.filter(v => v.ok).length;
+  const k = (cls, label, val, note) => '<div class="kpi ' + cls + '"><div class="k-label">' + label + '</div><div class="k-val">' + val + '</div><div class="k-note">' + note + '</div></div>';
+  $('kpis').innerHTML =
+    k('', '穷举范围', fmt(L), '以内每个奇数都和筛对过账') +
+    k('gold', '最小的骗过底 2 的合数', fmt(sc.spsp2[0]), '强检验；费马下是 ' + fmt(sc.psp2[0])) +
+    k('gold', '最小的骗过底 2、3 的合数', fmt(sc.spsp23[0]), '在它之下，两个底就是证明') +
+    k('hot', '561 上说谎的底', fmt(r561.fermat) + ' → ' + fmt(r561.strong), '费马 → 米勒–拉宾') +
+    k('hot', '单轮最高说谎率', '25.00%', 'n = 9；n &gt; 9 时最高 ' + pct(rate(w, 'strong')) + '（' + fmt(w.n) + '）') +
+    k('green', '验证清单', pass + ' / ' + V.length, '每次打开现场重跑');
+  $('h-a').textContent = fmt(r561.phi); $('h-b').textContent = fmt(r561.strong);
+}
+
+/* ============================================================
+ * 重绘、主流程
+ * ========================================================== */
+function redrawAll() {
+  mapDraw();
+  if (S.rows) { scatDraw('sc-f', 'f'); scatDraw('sc-s', 's'); }
+}
+let rt = 0;
+window.addEventListener('resize', () => { cancelAnimationFrame(rt); rt = requestAnimationFrame(redrawAll); });
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redrawAll); } catch (e) {}
+try { new MutationObserver(redrawAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) {}
+
+async function main() {
+  S.spf = Core.sieveSPF(L + 10);
+  setupMap(); setupChain(); setupTester(); renderCost(); renderLimits();
+  setupScatter('sc-f', 'f'); setupScatter('sc-s', 's');
+  prog(0.01, '正在逐个检验 3 到 ' + fmt(L) + ' 的每个奇数…');
+  await runData();
+  renderCarm(); renderTop(); renderDecades(); renderLadder(); renderPsi();
+  $('scf-h').textContent = '每个奇合数的费马说谎率（9 ≤ n ≤ 10,000，共 ' + fmt(S.rows.length) + ' 个，底取遍 1 到 n−1）';
+  $('scs-h').textContent = '每个奇合数的米勒–拉宾说谎率（同样的 ' + fmt(S.rows.length) + ' 个数）';
+  scatCaption('f'); scatCaption('s');
+  renderVerify(); renderCons(); renderKPIs();
+  redrawAll();
+  prog(1, '');
+  $('prog').style.display = 'none';
+  window.__READY__ = true;
+}
+main().catch((e) => { const t = $('prog-txt'); if (t) t.textContent = '计算出错：' + e.message; console.error(e); window.__ERROR__ = String(e && e.stack || e); });
+})();
+</script>
+</body>
+</html>

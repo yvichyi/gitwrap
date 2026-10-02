@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="给计算机专业新生的缓存替换入门：先亲手踢掉一个页面，再理解缺页、LRU 和最优策略。">
+  <title>先踢掉谁？·《马后炮》新生入口</title>
+  <style>
+    :root {
+      --paper: #f5f4f0;
+      --white: #fdfcf9;
+      --ink: #17181c;
+      --muted: #61636a;
+      --line: #d8d6ce;
+      --red: #b03030;
+      --blue: #1f5f7a;
+      --gold: #80600c;
+      --serif: Georgia, "Songti SC", "SimSun", "Noto Serif SC", serif;
+      --sans: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      --mono: "Cascadia Mono", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.75 var(--sans); }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    a { color: var(--blue); text-underline-offset: 3px; }
+    a:focus-visible, button:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+    .wrap { max-width: 1080px; margin: auto; padding: 0 28px 80px; }
+    .topline { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 20px 0; border-bottom: 1px solid var(--line); font: 12px/1.5 var(--mono); letter-spacing: .08em; }
+    .topline a { color: var(--ink); }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(270px, .75fr); gap: 48px; align-items: end; padding: 72px 0 56px; border-bottom: 2px solid var(--ink); }
+    .eyebrow, .label { color: var(--red); font: 700 12px/1.5 var(--mono); letter-spacing: .16em; }
+    h1, h2, h3 { font-family: var(--serif); font-weight: 600; }
+    h1 { font-size: clamp(56px, 8vw, 94px); line-height: 1.12; letter-spacing: -.055em; margin: 12px 0 22px; }
+    .hero p { max-width: 650px; font-size: 18px; margin: 0; color: #373941; }
+    .hero p strong { color: var(--ink); }
+    .hero-note { padding: 25px 26px; border-left: 4px solid var(--red); background: var(--white); box-shadow: 8px 8px 0 #e8e5dc; }
+    .hero-note .label { display: block; margin-bottom: 12px; }
+    .hero-note p { font-size: 15px; line-height: 1.8; }
+    .hero-note b { color: var(--red); }
+    .section { padding: 58px 0 0; }
+    .section-head { display: flex; align-items: baseline; gap: 18px; }
+    .section-head .num { color: var(--red); font: 28px/1 var(--serif); }
+    h2 { font-size: clamp(30px, 4vw, 42px); line-height: 1.25; margin: 0 0 12px; }
+    .intro { color: #44464c; max-width: 720px; margin: 0 0 28px 46px; }
+    .game { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(240px, .7fr); border: 1px solid var(--ink); background: var(--white); }
+    .game-main { padding: 30px; min-width: 0; }
+    .game-side { padding: 30px; border-left: 1px solid var(--line); background: #eeede7; }
+    .step { font: 700 12px/1.5 var(--mono); color: var(--muted); letter-spacing: .1em; }
+    .request { display: flex; align-items: center; gap: 20px; margin: 18px 0 25px; }
+    .request .arrow { font-size: 28px; color: var(--muted); }
+    .request .page { display: grid; place-items: center; width: 72px; height: 82px; background: var(--red); color: #fff; font: 48px/1 var(--serif); box-shadow: 6px 6px 0 #eac9c3; }
+    .question { font: 24px/1.4 var(--serif); margin: 0 0 18px; }
+    .slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .slot { width: 100%; min-height: 118px; padding: 12px; border: 1px solid var(--ink); background: #fff; color: var(--ink); cursor: pointer; text-align: left; transition: transform .15s, box-shadow .15s, border-color .15s; }
+    .slot:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 5px 0 var(--ink); }
+    .slot:disabled { cursor: default; }
+    .slot.selected { border: 2px solid var(--red); background: #fbf0ee; }
+    .slot .slot-index { display: block; font: 11px/1.4 var(--mono); color: var(--muted); }
+    .slot .slot-page { display: block; font: 42px/1.15 var(--serif); }
+    .slot .slot-action { display: block; color: var(--red); font-size: 12px; }
+    .hint { color: var(--muted); font-size: 13px; margin: 14px 0 0; }
+    .history { padding: 0; list-style: none; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 14px 0 24px; }
+    .history li { display: flex; align-items: center; gap: 6px; }
+    .history li:not(:last-child)::after { content: "→"; color: var(--muted); }
+    .history span { display: grid; place-items: center; width: 31px; height: 34px; border: 1px solid var(--line); background: var(--white); font: 21px/1 var(--serif); }
+    .rule { font-size: 14px; margin: 0; }
+    .rule + .rule { margin-top: 13px; }
+    .result { margin-top: 22px; padding: 24px 28px; border: 1px solid var(--line); background: #fff; }
+    .result[hidden], .future[hidden] { display: none; }
+    .result h3 { font-size: 26px; line-height: 1.3; margin: 0 0 10px; }
+    .result p { margin: 8px 0; }
+    .future { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 19px 0; }
+    .future-card { min-width: 100px; padding: 10px 13px; border: 1px solid var(--line); background: var(--paper); }
+    .future-card b { font: 28px/1.1 var(--serif); display: block; }
+    .future-card small { display: block; font-size: 12px; color: var(--muted); }
+    .future-card.miss { border-color: var(--red); color: var(--red); background: #fbf0ee; }
+    .future-card.hit { border-color: var(--blue); color: var(--blue); background: #edf4f6; }
+    .future-card.stop { opacity: .58; }
+    .plain-button { min-height: 44px; border: 1px solid var(--ink); background: var(--white); padding: 8px 15px; color: var(--ink); cursor: pointer; font: 14px var(--sans); }
+    .plain-button:hover { background: var(--ink); color: #fff; }
+    .ideas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 28px 0 0; }
+    .idea { padding: 23px; border-top: 3px solid var(--ink); background: var(--white); }
+    .idea:nth-child(2) { border-color: var(--blue); }
+    .idea:nth-child(3) { border-color: var(--gold); }
+    .idea .tiny { color: var(--muted); font: 11px var(--mono); letter-spacing: .12em; }
+    .idea h3 { font-size: 23px; margin: 8px 0; }
+    .idea p { margin: 0; font-size: 14px; color: #44464c; }
+    .next { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; padding: 32px; margin-top: 34px; background: var(--ink); color: #fff; }
+    .next h2 { font-size: 30px; margin: 0 0 8px; }
+    .next p { margin: 0; color: #d9d9d4; font-size: 14px; }
+    .next a { display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 10px 20px; border: 1px solid #fff; color: #fff; text-decoration: none; white-space: nowrap; }
+    .next a:hover { color: var(--ink); background: #fff; }
+    footer { border-top: 1px solid var(--line); margin-top: 58px; padding-top: 18px; color: var(--muted); font-size: 12px; }
+    @media (max-width: 760px) {
+      .wrap { padding: 0 16px 50px; }
+      .hero, .game, .next { grid-template-columns: 1fr; }
+      .hero { gap: 30px; padding: 48px 0 42px; }
+      .game-side { border-left: 0; border-top: 1px solid var(--line); }
+      .game-main, .game-side { padding: 22px; }
+      .intro { margin-left: 0; }
+      .ideas { grid-template-columns: 1fr; }
+      .next { padding: 24px; }
+      .next a { justify-self: start; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .slot { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="topline" aria-label="页面导航">
+      <span>计算机科学 · 零基础实验 01</span>
+      <a href="马后炮.html">直接读完整版 ↗</a>
+    </nav>
+
+    <header class="hero">
+      <div>
+        <div class="eyebrow">先做一个选择，再认识一个算法</div>
+        <h1>先踢掉谁？</h1>
+        <p>你的机器只有 <strong>3 个位置</strong>，新页面 D 又来了。你必须踢掉旧页面中的一个；如果它很快又被需要，机器就得多花一次工夫把它找回来。</p>
+      </div>
+      <aside class="hero-note">
+        <span class="label">开始前只需知道</span>
+        <p>这里的“页面”可以先想成一张要用的资料卡。<b>放在手边，拿起来就能用；不在手边，就要重新去取。</b>这就是缓存。</p>
+      </aside>
+    </header>
+
+    <main>
+      <section class="section" aria-labelledby="game-title">
+        <div class="section-head"><span class="num">一</span><h2 id="game-title">轮到你做决定</h2></div>
+        <p class="intro">你只看得到过去和眼前的请求。点一下你想踢掉的卡片，接下来两次请求才会揭晓。没有唯一“聪明”的直觉，先按自己的判断选。</p>
+        <div class="game">
+          <div class="game-main">
+            <div class="step">现在：手边已经放满了 3 张卡</div>
+            <div class="request"><span class="arrow" aria-hidden="true">→</span><div class="page" aria-label="新请求页面 D">D</div><span>新来的页面</span></div>
+            <p class="question">选一张踢掉，给 D 腾位置。</p>
+            <div class="slots" id="slots" role="group" aria-label="选择要踢掉的页面">
+              <button class="slot" type="button" data-page="A" aria-label="踢掉页面 A"><span class="slot-index">位置 01</span><span class="slot-page">A</span><span class="slot-action">踢掉这张 ↗</span></button>
+              <button class="slot" type="button" data-page="B" aria-label="踢掉页面 B"><span class="slot-index">位置 02</span><span class="slot-page">B</span><span class="slot-action">踢掉这张 ↗</span></button>
+              <button class="slot" type="button" data-page="C" aria-label="踢掉页面 C"><span class="slot-index">位置 03</span><span class="slot-page">C</span><span class="slot-action">踢掉这张 ↗</span></button>
+            </div>
+            <p class="hint">小提示：刚才 A 最后一次出现，B 最久没出现。</p>
+          </div>
+          <aside class="game-side" aria-label="已知信息">
+            <div class="step">你知道的过去</div>
+            <ol class="history" aria-label="过去的请求依次为 A、B、C、A"><li><span>A</span></li><li><span>B</span></li><li><span>C</span></li><li><span>A</span></li></ol>
+            <p class="rule"><b>拿到手边已有的卡：</b>马上用，不多花工夫。</p>
+            <p class="rule"><b>要用不在手边的卡：</b>重新去取，记一次“缺页”。</p>
+            <p class="rule"><b>现在：</b>手边有 A、B、C，但 D 不在；这次缺页已经不可避免。</p>
+          </aside>
+        </div>
+
+        <div class="result" id="result" hidden aria-live="polite">
+          <div class="label">未来揭晓</div>
+          <h3 id="result-title"></h3>
+          <p>接下来的两次请求是：</p>
+          <div class="future" id="future"></div>
+          <p id="result-copy"></p>
+          <p id="result-lesson"></p>
+          <button class="plain-button" id="again" type="button">换个选择再看一次</button>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="ideas-title">
+        <div class="section-head"><span class="num">二</span><h2 id="ideas-title">刚才碰到的三个概念</h2></div>
+        <p class="intro">现在给你刚才做过的事取名字。记住意思就够了，暂时不需要公式。</p>
+        <div class="ideas">
+          <article class="idea"><div class="tiny">01 · CACHE MISS</div><h3>缺页</h3><p>要用的卡不在手边，就得重新取。缓存算法想尽量减少这样的次数。</p></article>
+          <article class="idea"><div class="tiny">02 · LRU</div><h3>最近最少使用</h3><p>只看过去，踢掉最久没用过的卡。刚才它会踢 B；这是合理的规则，但不能保证每次猜中未来。</p></article>
+          <article class="idea"><div class="tiny">03 · OPT</div><h3>能偷看未来</h3><p>如果提前知道未来两次要 B、A，就会踢暂时用不到的 C。它是比较其他策略的标尺。</p></article>
+        </div>
+        <div class="next">
+          <div><h2>带着这个问题读原文</h2><p>先读第一节的完整游戏，再看第二节“马后炮”如何利用未来。后面的图表可以留到学过算法分析后再读。</p></div>
+          <a href="马后炮.html#sec1">进入《马后炮》第一节 →</a>
+        </div>
+      </section>
+    </main>
+    <footer>《马后炮》新生入口 · 单文件，可离线打开。这个小游戏只比较一次驱逐决定，以及随后的两次请求。</footer>
+  </div>
+  <script>
+    (function () {
+      'use strict';
+      var buttons = Array.prototype.slice.call(document.querySelectorAll('.slot'));
+      var result = document.getElementById('result');
+      var title = document.getElementById('result-title');
+      var future = document.getElementById('future');
+      var copy = document.getElementById('result-copy');
+      var lesson = document.getElementById('result-lesson');
+      var requests = ['B', 'A'];
+
+      function choose(page) {
+        buttons.forEach(function (button) {
+          button.disabled = true;
+          button.classList.toggle('selected', button.dataset.page === page);
+        });
+        var cache = ['A', 'B', 'C', 'D'].filter(function (item) { return item !== page; });
+        var firstMiss = requests.indexOf(page);
+        future.replaceChildren();
+        requests.forEach(function (request, index) {
+          var card = document.createElement('div');
+          var state = firstMiss < 0 ? 'hit' : index < firstMiss ? 'hit' : index === firstMiss ? 'miss' : 'stop';
+          card.className = 'future-card ' + state;
+          var letter = document.createElement('b');
+          letter.textContent = request;
+          var note = document.createElement('small');
+          note.textContent = state === 'hit' ? '手边有 · 命中' : state === 'miss' ? '已踢掉 · 再缺页' : '比较到首次额外缺页为止';
+          card.appendChild(letter);
+          card.appendChild(note);
+          future.appendChild(card);
+        });
+        title.textContent = '你踢掉了 ' + page + '，D 进来了。';
+        copy.textContent = '此时手边有 ' + cache.join('、') + '。' + (firstMiss < 0 ? '后面两次请求都能直接拿到，没增加缺页。' : '第 ' + (firstMiss + 1) + ' 次后续请求又要找回 ' + page + '，多了一次缺页。');
+        lesson.textContent = page === 'C'
+          ? '事后看，C 是好选择：未来先用 B、A，暂时用不到 C。但做决定时，你还不知道这一点。'
+          : page === 'B'
+            ? 'B 最久没出现。只看过去的 LRU 也会踢 B；它无法预知 B 下一步就回来。'
+            : 'A 虽然刚用过，但如果踢掉它，第二次后续请求仍会多一次缺页。';
+        result.hidden = false;
+        result.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
+      }
+
+      buttons.forEach(function (button) {
+        button.addEventListener('click', function () { choose(button.dataset.page); });
+      });
+      document.getElementById('again').addEventListener('click', function () {
+        result.hidden = true;
+        buttons.forEach(function (button) { button.disabled = false; button.classList.remove('selected'); });
+        buttons[0].focus();
+      });
+    })();
+  </script>
+</body>
+</html>

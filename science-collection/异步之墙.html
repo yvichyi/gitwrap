@@ -1,0 +1,2416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>异步之墙 · 用状态空间模型检验器把 FLP 不可能性算出来</title>
+<meta name="description" content="从零写一台状态空间模型检验器，穷举地找出分布式共识协议的一致性违规与死锁，并给出最短反例：安全性与活性只能选一个。">
+<style>
+/* ============================================================
+ * 《异步之墙》样式
+ * 浅色纸面 + 墨色 + 朱红（不安全/致命）+ 靛青（安全）+ 赭金（未定/边界）
+ * 注意：入场动画一律不用 animation + opacity:0 + forwards，
+ * 否则 headless 下元素永远停在 opacity:0 —— 数得出来，看不见。
+ * ========================================================== */
+:root {
+  --paper: #f5f4f0;
+  --paper2: #fdfcf9;
+  --ink: #17181c;
+  --ink2: #3b3d42;
+  --muted: #74736b;
+  --faint: #a6a49a;
+  --line: #dcd9cf;
+  --line2: #ebe8df;
+  --hot: #b03030;
+  --hot-soft: #e6b6b0;
+  --cool: #1f5f7a;
+  --cool-soft: #a8c8d6;
+  --gold: #96700f;
+  --gold-soft: #e4d3a2;
+  --green: #2f6b46;
+  --green-soft: #b6d3bd;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Cascadia Mono", monospace;
+  --serif: Georgia, "Songti SC", "SimSun", "Noto Serif SC", serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  -webkit-text-size-adjust: 100%;
+}
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px 96px; }
+
+/* ---------- 头部 ---------- */
+.hero { padding: 72px 0 40px; border-bottom: 2px solid var(--ink); }
+.eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .22em;
+  color: var(--muted); text-transform: uppercase; margin-bottom: 18px;
+}
+.title { font-family: var(--serif); font-size: 64px; line-height: 1.05; margin: 0 0 10px; letter-spacing: .04em; }
+.sub { font-family: var(--serif); font-size: 19px; color: var(--ink2); margin: 0 0 26px; }
+.lede { font-size: 16px; color: var(--ink2); max-width: 800px; margin: 0 0 10px; }
+.lede + .lede { margin-top: 12px; }
+.lede b { color: var(--hot); font-weight: 600; }
+.lede .c { color: var(--cool); font-weight: 600; }
+
+/* ---------- 头版对照 ---------- */
+.headline {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 30px 0 0;
+  border: 1px solid var(--line); background: var(--paper2); min-width: 0;
+}
+.headline > * { min-width: 0; }
+.hl-cell { padding: 18px 20px; border-right: 1px solid var(--line); }
+.hl-cell:last-child { border-right: none; }
+.hl-cell .hl-k { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
+.hl-cell .hl-v { font-family: var(--serif); font-size: 30px; line-height: 1.2; margin: 4px 0 2px; }
+.hl-cell.good .hl-v { color: var(--cool); }
+.hl-cell.bad .hl-v { color: var(--hot); }
+.hl-cell .hl-n { font-size: 12px; color: var(--muted); }
+
+/* ---------- KPI ---------- */
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 30px; }
+.kpi {
+  background: var(--paper2); border: 1px solid var(--line);
+  border-top: 3px solid var(--ink); padding: 14px 14px 12px; min-width: 0;
+}
+.kpi.hot { border-top-color: var(--hot); }
+.kpi.cool { border-top-color: var(--cool); }
+.kpi.gold { border-top-color: var(--gold); }
+.kpi .k-label { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; line-height: 1.4; }
+.kpi .k-val { font-family: var(--serif); font-size: 27px; line-height: 1.2; margin: 4px 0 2px; }
+.kpi .k-note { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ---------- 章节 ---------- */
+.sec { padding: 62px 0 10px; border-top: 1px solid var(--line); margin-top: 62px; }
+.sec:first-of-type { border-top: none; margin-top: 0; }
+.sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+.sec-num { font-family: var(--serif); font-size: 30px; color: var(--hot); line-height: 1; }
+.sec h2 { font-family: var(--serif); font-size: 30px; margin: 0; letter-spacing: .02em; }
+.sec-sub { color: var(--muted); font-size: 14px; margin: 0 0 22px; font-family: var(--mono); }
+.sec p { margin: 0 0 16px; color: var(--ink2); max-width: 900px; }
+.sec p.wide { max-width: none; }
+.sec b, .sec strong { color: var(--ink); font-weight: 600; }
+.sec .hl { color: var(--hot); font-weight: 600; }
+.sec .hlc { color: var(--cool); font-weight: 600; }
+.sec .hlg { color: var(--gold); font-weight: 600; }
+code, .mono { font-family: var(--mono); font-size: 13px; background: var(--line2); padding: 1px 5px; border-radius: 3px; }
+.sec code { color: var(--ink); }
+
+/* ---------- 面板 ---------- */
+.panel {
+  background: var(--paper2); border: 1px solid var(--line);
+  padding: 20px; margin: 20px 0; min-width: 0;
+}
+.panel-tight { padding: 14px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; min-width: 0; }
+/* 一边是宽表、一边是窄图时用这个：等宽会让表格被挤到横滚 */
+.grid2.duo { grid-template-columns: 1.4fr 1fr; }
+.grid2 > *, .grid3 > * { min-width: 0; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; min-width: 0; }
+.panel h3 {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--muted); margin: 0 0 12px;
+}
+
+/* ---------- 控件 ---------- */
+.ctrls { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; margin-bottom: 16px; }
+.ctrl { display: flex; flex-direction: column; gap: 4px; }
+.ctrl > span { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
+select {
+  font-family: var(--mono); font-size: 14px; background: var(--paper);
+  border: 1px solid var(--line); color: var(--ink); padding: 8px 10px; min-height: 40px;
+}
+button {
+  font-family: var(--mono); font-size: 12px; letter-spacing: .08em;
+  background: var(--ink); color: var(--paper2); border: 1px solid var(--ink);
+  padding: 10px 18px; min-height: 42px; cursor: pointer;
+}
+button:hover { background: var(--hot); border-color: var(--hot); }
+button.ghost { background: transparent; color: var(--ink); }
+button.ghost:hover { background: var(--ink); color: var(--paper2); }
+button.on { background: var(--hot); border-color: var(--hot); color: #fff; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 6px; }
+.btnrow button { padding: 8px 11px; min-height: 38px; font-size: 11px; }
+
+/* ---------- 表格 ---------- */
+.tbl-wrap { overflow-x: auto; max-width: 100%; min-width: 0; margin: 12px 0; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.tbl th, table.tbl td {
+  border-bottom: 1px solid var(--line2); padding: 6px 10px; text-align: right;
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+table.tbl th {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line);
+}
+table.tbl td.l, table.tbl th.l { text-align: left; }
+table.tbl td.mono, table.tbl th.mono { font-family: var(--mono); }
+table.tbl tr.hi td { background: #fbf0ee; }
+table.tbl tr.dim td { color: var(--faint); }
+table.tbl td.best { color: var(--green); font-weight: 600; }
+table.tbl td.worst { color: var(--hot); font-weight: 600; }
+table.tbl td.cool { color: var(--cool); font-weight: 600; }
+
+/* ---------- 图表 ---------- */
+.chart { width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 0 0 10px; font-size: 12px; color: var(--ink2); }
+.legend i { display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: middle; }
+.legend i.sq { height: 10px; width: 10px; }
+
+/* ---------- 柱状图（行内元素会忽略 width —— 必须 display:block） ---------- */
+.bars { display: block; }
+.bar-row { display: grid; grid-template-columns: 118px 1fr 84px; align-items: center; gap: 10px; margin-bottom: 5px; }
+.bar-lab { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: right; }
+.bar-track { display: block; background: var(--line2); height: 14px; position: relative; overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--hot); width: 0; }
+.bar-fill.cool { background: var(--cool); }
+.bar-fill.gold { background: var(--gold); }
+.bar-fill.green { background: var(--green); }
+.bar-val { font-family: var(--mono); font-size: 11px; color: var(--ink2); }
+
+/* ---------- 进程盒 ---------- */
+.procs { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0; }
+.proc {
+  flex: 1 1 170px; min-width: 0; border: 1px solid var(--line); background: var(--paper);
+  padding: 10px 12px;
+}
+.proc .p-name { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
+.proc .p-big { font-family: var(--mono); font-size: 26px; line-height: 1.2; }
+.proc .p-line { font-family: var(--mono); font-size: 11px; color: var(--ink2); }
+.proc.dec0 { border-color: var(--cool); border-width: 2px; background: #eef4f7; }
+.proc.dec1 { border-color: var(--gold); border-width: 2px; background: #faf5e7; }
+.proc.dead { border-color: var(--faint); border-style: dashed; background: var(--line2); }
+.proc.conflict { border-color: var(--hot); border-width: 2px; background: #fbf0ee; }
+.proc .p-badge { font-family: var(--mono); font-size: 10px; padding: 1px 5px; border: 1px solid var(--line); display: inline-block; margin-top: 3px; }
+.proc.dec0 .p-badge { border-color: var(--cool); color: var(--cool); }
+.proc.dec1 .p-badge { border-color: var(--gold); color: var(--gold); }
+.proc.conflict .p-badge { border-color: var(--hot); color: var(--hot); }
+
+/* ---------- 消息队列 ---------- */
+.msgq { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; min-height: 46px; }
+.msg {
+  font-family: var(--mono); font-size: 12px; padding: 7px 10px; min-height: 36px;
+  border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer;
+}
+.msg:hover { background: var(--ink); color: var(--paper2); border-color: var(--ink); }
+.msg.crash { border-style: dashed; color: var(--hot); }
+.msg.crash:hover { background: var(--hot); color: #fff; }
+.msgq .empty { font-size: 12px; color: var(--faint); font-family: var(--mono); padding: 8px 0; }
+
+/* ---------- 判决条 ---------- */
+.verdict {
+  font-family: var(--mono); font-size: 13px; padding: 12px 14px; border-left: 3px solid var(--line);
+  background: var(--paper); margin: 12px 0; min-height: 46px;
+}
+.verdict.ok { border-left-color: var(--cool); background: #eef4f7; }
+.verdict.bad { border-left-color: var(--hot); background: #fbf0ee; }
+.verdict.warn { border-left-color: var(--gold); background: #faf5e7; }
+
+/* ---------- 步骤清单 ---------- */
+.steps { list-style: none; padding: 0; margin: 12px 0; counter-reset: sn; }
+.steps li {
+  counter-increment: sn; position: relative; padding: 7px 0 7px 34px;
+  border-bottom: 1px solid var(--line2); font-family: var(--mono); font-size: 12.5px; color: var(--ink2);
+}
+.steps li:before {
+  content: counter(sn); position: absolute; left: 0; top: 7px; width: 22px; text-align: right;
+  font-family: var(--mono); font-size: 11px; color: var(--faint);
+}
+.steps li.last { color: var(--hot); font-weight: 600; }
+
+/* ---------- 统计条 ---------- */
+.statrow { display: flex; flex-wrap: wrap; gap: 18px; margin: 12px 0 4px; }
+.stat { min-width: 110px; }
+.stat .st-l { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+.stat .st-v { font-family: var(--serif); font-size: 25px; line-height: 1.25; }
+.stat.hot .st-v { color: var(--hot); }
+.stat.cool .st-v { color: var(--cool); }
+.stat.gold .st-v { color: var(--gold); }
+.stat.green .st-v { color: var(--green); }
+
+/* ---------- 提示块 ---------- */
+.callout {
+  border-left: 3px solid var(--hot); background: #fbf0ee;
+  padding: 14px 18px; margin: 18px 0; font-size: 15px; color: var(--ink2);
+}
+.callout.cool { border-left-color: var(--cool); background: #eef4f7; }
+.callout.gold { border-left-color: var(--gold); background: #faf5e7; }
+.callout.green { border-left-color: var(--green); background: #eff7f1; }
+.callout .ct { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px; }
+.callout b { color: var(--ink); }
+
+/* ---------- 边界清单 ---------- */
+.limits { list-style: none; padding: 0; margin: 0; }
+.limits li { padding: 10px 0 10px 22px; border-bottom: 1px solid var(--line2); position: relative; font-size: 14px; color: var(--ink2); }
+.limits li:before { content: "—"; position: absolute; left: 0; color: var(--faint); }
+.limits li b { color: var(--ink); }
+
+/* ---------- 结论清单 ---------- */
+.cons { list-style: none; padding: 0; margin: 0; counter-reset: cn; }
+.cons li {
+  counter-increment: cn; position: relative; padding: 12px 0 12px 40px;
+  border-bottom: 1px solid var(--line2); font-size: 15px; color: var(--ink2);
+}
+.cons li:before {
+  content: counter(cn); position: absolute; left: 0; top: 12px;
+  font-family: var(--serif); font-size: 20px; color: var(--hot);
+}
+.cons li b { color: var(--ink); }
+
+footer { margin-top: 70px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 980px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .grid2, .grid3, .grid2.duo { grid-template-columns: 1fr; }
+  .headline { grid-template-columns: 1fr; }
+  .hl-cell { border-right: none; border-bottom: 1px solid var(--line); }
+  .hl-cell:last-child { border-bottom: none; }
+}
+@media (max-width: 700px) {
+  .wrap { padding: 0 14px 70px; }
+  .hero { padding: 44px 0 28px; }
+  .title { font-size: 40px; }
+  .sub { font-size: 16px; }
+  .kpis { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .kpi .k-val { font-size: 20px; }
+  .sec h2 { font-size: 23px; }
+  .sec-num { font-size: 22px; }
+  table.tbl th, table.tbl td { white-space: normal; }
+  table.tbl td.num, table.tbl th.num { white-space: nowrap; }
+  #tbl-quorum td, #tbl-quorum th { white-space: normal; word-break: break-word; }
+  .bar-row { grid-template-columns: 84px 1fr 62px; }
+  button, select { min-height: 44px; }
+  .btnrow button { min-height: 44px; }
+  /* 消息按钮的基准是 36px（.msg）—— 窄屏上也要抬到 44px，否则触控目标不达标 */
+  .msg { min-height: 44px; padding: 9px 12px; }
+  .proc { flex: 1 1 100%; }
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow">单文件科学装置 · 第六件 · 分布式共识</div>
+  <h1 class="title serif">异步之墙</h1>
+  <p class="sub">从零写一台状态空间模型检验器，把「不可能」算出来</p>
+
+  <p class="lede">
+    前五件装置问的都是「能造出什么」：语言、计算机、SAT 求解器、密码、缓存策略。
+    这一件换了个方向，问的是<span class="hl">「什么造不出来」</span>。
+  </p>
+  <p class="lede">
+    假设有一群进程，只能靠发消息互相说话，谁也不知道别人的钟走到哪儿了，而且可能有一个进程
+    随时会死。它们要就一个比特达成一致。这件事在异步网络里<span class="hl">没有任何确定论协议能保证做到</span>——
+    这就是 FLP 不可能性定理。
+  </p>
+  <p class="lede">
+    本页不去「讲解」这条定理，而是从零写一台<span class="c">状态空间模型检验器</span>：
+    把协议的所有可能执行展开成一张图，穷举地找出<span class="hl">一致性违规</span>与<span class="hl">死锁</span>，
+    并给出最短的那条反例 —— 一步一步，可以照着重放。
+  </p>
+  <p class="lede">
+    一共展开 <b id="lede-states">—</b> 个可达状态、<b id="lede-searches">—</b> 次搜索，
+    穷举 <b id="lede-rules">—</b> 条判定规则、<b id="lede-quorum">—</b> 个法定人数系统、
+    <b id="lede-coins">—</b> 条硬币序列。页面上每个数字都来自一次真实计算。
+  </p>
+
+  <div class="headline">
+    <div class="hl-cell good">
+      <div class="hl-k">两阶段协议 · 不允许崩溃</div>
+      <div class="hl-v" id="hl-good">—</div>
+      <div class="hl-n" id="hl-goodnote">—</div>
+    </div>
+    <div class="hl-cell bad">
+      <div class="hl-k">同一个协议 · 只多允许 1 个进程崩溃</div>
+      <div class="hl-v" id="hl-bad">—</div>
+      <div class="hl-n" id="hl-badnote">—</div>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+</header>
+
+<!-- ==================== 第壹章 ==================== -->
+<section class="sec" id="sec1">
+  <div class="sec-head"><span class="sec-num serif">壹</span><h2>三种消息</h2></div>
+  <p class="sec-sub">模型只有三样东西：进程、消息、以及一个替你决定「谁先说话」的调度器</p>
+
+  <p>
+    先把场景缩到最小。<b>三个进程</b>，每个手里有一个比特（0 或 1），目标只有一个：
+    最后三个人说出来的比特必须一样。没有共享内存，只能互相发消息。
+  </p>
+  <p>
+    最天真的协议叫「单相多数派」：每个人广播自己的提案；一旦听到 <code>q</code> 个人的值
+    （把自己算进去），就按听到的多数拍板；<b>平票就按自己的值</b>。
+    看起来没什么问题——听到的人越多，越接近全体共识，对吧？
+  </p>
+  <p>
+    但这里藏着一个没人写进说明书的东西：<b>消息的到达顺序不由协议决定</b>。
+    谁来投递、先投递哪一条，是一只看不见的手。下面这只手交给你。
+  </p>
+
+  <div class="panel">
+    <h3>你当调度器 · N=3 · q=2 · 输入 (0, 0, 1)</h3>
+    <div class="ctrls">
+      <button id="sched-reset">重新开始</button>
+      <button class="ghost" id="sched-auto">随便走到底</button>
+      <button class="ghost" id="sched-break">试试把它弄分裂</button>
+    </div>
+    <div class="procs" id="sched-procs"></div>
+    <div class="panel-tight" style="border:1px solid var(--line);background:var(--paper)">
+      <h3>待投递的东西（点一下 = 投递它）</h3>
+      <div class="msgq" id="sched-msgs"></div>
+    </div>
+    <div class="verdict" id="sched-verdict"></div>
+    <div class="chart-note" id="sched-log">还没有动作。</div>
+  </div>
+
+  <div class="callout">
+    <span class="ct">要点</span>
+    三个进程手里是 <b>(0, 0, 1)</b>。进程 0 和 1 只要听到对方，就会拍出 0；
+    进程 2 一旦听到任何人，就会拍出 1 —— 因为它的 1 和对方的 0 平票，而平票按自己。
+    <b>两条消息就够了。</b>
+  </div>
+</section>
+
+<!-- ==================== 第贰章 ==================== -->
+<section class="sec" id="sec2">
+  <div class="sec-head"><span class="sec-num serif">贰</span><h2>一轮不够</h2></div>
+  <p class="sec-sub">把「所有可能的执行」全展开，让机器去找你找不到的那条路</p>
+
+  <p>
+    手动玩两下能感觉到不对劲，但感觉不是证据。所以让机器来：
+    把<b>所有可能的投递顺序</b>展开成一张状态图，逐个状态检查有没有两个进程拍出了不同的值。
+  </p>
+
+  <div class="grid2">
+    <div class="panel">
+      <h3>各配置下会分裂的输入比例</h3>
+      <div class="bars" id="bars-viol"></div>
+      <div class="chart-note">纵轴：8 或 16 个输入里，有多少比例会撞出一致性违规。</div>
+    </div>
+    <div class="panel">
+      <h3>头号案例 · N=3 · q=2 · 输入 (0,0,1)</h3>
+      <div class="statrow">
+        <div class="stat"><div class="st-l">可达状态</div><div class="st-v" id="ch2-states">—</div></div>
+        <div class="stat hot"><div class="st-l">一致性违规</div><div class="st-v" id="ch2-safety">—</div></div>
+        <div class="stat gold"><div class="st-l">注定不安全</div><div class="st-v" id="ch2-doomed">—</div></div>
+      </div>
+      <h3 style="margin-top:14px">最短的那条反例</h3>
+      <ol class="steps" id="hero-trace"></ol>
+      <div class="chart-note" id="ch2-hero-note">—</div>
+    </div>
+  </div>
+
+  <p>
+    把 <code>q</code> 提到 3（也就是「必须等到全体」），N=3 的违规立刻降到
+    <b id="ch2-q3">—</b>。但别高兴太早 —— 看第叁章的 N=4。
+  </p>
+
+  <div class="tbl-wrap">
+    <table class="tbl" id="tbl-single">
+      <thead><tr>
+        <th class="l">进程数 N</th><th>法定人数 q</th><th>崩溃预算</th>
+        <th>输入组合</th><th>会分裂的</th><th>比例</th><th>最大可达状态</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h3 class="mono" style="font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:34px 0 10px">
+    那么，换一条判定规则行不行？
+  </h3>
+  <p>
+    上面的协议里，「平票按自己的值」是我随手写的。它凭什么？换一条规则会不会好？
+    干脆把规则空间穷举掉：听到 <code>q</code> 个值之后怎么判，本质上是
+    一条函数 <code>f : {0,1,…,q} → {0,1}</code>（参数是听到的 1 的个数），一共 <b id="ch2-rulespace">—</b> 条。
+  </p>
+
+  <div class="grid2">
+    <div class="panel">
+      <h3>规则空间里有多少条能保证一致性</h3>
+      <div class="bars" id="bars-rules"></div>
+      <div class="chart-note">深色 = 安全的规则占比。q &lt; N 时全部落在常数规则上。</div>
+    </div>
+    <div class="panel">
+      <h3>穷举结果</h3>
+      <div class="tbl-wrap">
+        <table class="tbl" id="tbl-rules">
+          <thead><tr><th class="l">N</th><th>q</th><th>规则总数</th><th>安全的</th><th>安全且有效</th><th class="l">安全的都是常数？</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="chart-note" id="ch2-rules-note">—</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="ct">定理（本页用穷举代替证明）</span>
+    只要法定人数 <code>q &lt; N</code>，能保证一致性的判定规则<b>只有常数规则</b>
+    —— 而常数规则违反有效性（全体投 0 时必须判 0）。所以<b>单相协议一条都不存在</b>。
+    一轮不够，必须两轮。
+  </div>
+
+  <h3 class="mono" style="font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:34px 0 10px">
+    另一件更难受的事：规则不能知道「我是谁」
+  </h3>
+  <p>
+    上面的穷举只覆盖了<b>不依赖身份</b>的规则。可现实里最常见的那一条
+    ——「平票按自己的值」——恰恰依赖身份。把它放进规则空间（<code>f(自己的值, 1 的个数)</code>），
+    再穷举一遍，结果很难看：
+  </p>
+  <div class="tbl-wrap">
+    <table class="tbl" id="tbl-rules-id">
+      <thead><tr><th class="l">N</th><th>q</th><th>规则总数</th><th>安全的</th><th>安全且有效</th><th class="l">「平票按自己」安全吗</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="callout gold">
+    <span class="ct">代价</span>
+    「平票按自己」在 <b>N=4、q=4</b>（<span class="hl">已经等到全体到齐</span>）时依然会分裂：
+    2-2 平票下，进程 0 按自己判 0、进程 2 按自己判 1。N=3 侥幸没事，只因为奇数个进程平不了票。
+    <b>判定规则只要沾上身份，就不再是「听到什么就判什么」。</b>
+  </div>
+</section>
+
+<!-- ==================== 第叁章 ==================== -->
+<section class="sec" id="sec3">
+  <div class="sec-head"><span class="sec-num serif">叁</span><h2>少数派也能开会</h2></div>
+  <p class="sec-sub">两轮之后，法定人数只要两两相交就够了 —— 多数派是充分，不是必要</p>
+
+  <p>
+    两阶段协议的第一轮是「收集承诺」：领导向所有人要票，凑够一个<b>法定人数</b>（quorum）就往下走。
+    关键问题变成组合学的：<b>哪些子集族可以当法定人数用？</b>
+  </p>
+  <p>
+    一个法定人数系统，本质上是「一堆子集，且只要集合够大也算」—— 数学上叫<b>单调布尔函数</b>，
+    或者等价地：一族<b>两两不可比</b>的极小集合（反链）。n 个进程上有多少个这样的系统？
+    这个数有个名字，叫 <b>Dedekind 数</b>，是外部早已算好的真值。
+  </p>
+
+  <div class="grid2 duo">
+    <div class="panel">
+      <h3>反链总数 vs Dedekind 数（外部真值对照）</h3>
+      <div class="tbl-wrap">
+        <table class="tbl" id="tbl-quorum">
+          <thead><tr>
+            <th class="l">进程数 n</th><th>系统总数</th><th>Dedekind(n)−1</th>
+            <th>两两相交</th><th>能容 1 故障</th><th>能容 2 故障</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="chart-note">
+        本页只枚举「由非空集组成的非空反链」，所以应恰好等于 Dedekind(n) − 1。
+        这是本装置唯一的<b>外部已知真值</b>对照。
+      </div>
+    </div>
+    <div class="panel">
+      <h3>从「能当法定人数」到「能容故障」筛掉了多少</h3>
+      <div class="bars" id="bars-quorum"></div>
+      <div class="chart-note">同一批系统，逐层加条件：相交 → 容 1 故障 → 容 2 故障。柱长为<b>对数刻度</b> —— 1959 与 1 在同一根线性轴上，小的那几条会渲染成 0 宽。</div>
+    </div>
+  </div>
+
+  <div class="callout cool">
+    <span class="ct">多数派不是唯一答案</span>
+    n=5 时有 <b id="ch3-systems">—</b> 个法定人数系统，其中 <b id="ch3-inter">—</b> 个满足「任意两个都相交」，
+    <b id="ch3-res1">—</b> 个还能容忍 1 个进程崩溃。多数派系统（<b id="ch3-majsize">—</b> 个极小法定人数）
+    只是其中一员 —— 最少只要 <b id="ch3-smallest">—</b> 个就够了：
+    <code id="ch3-example">—</code>。
+  </div>
+  <p>
+    但别急着换 —— 「少法定人数」不等于「更好用」。这个 3 元系统虽然满足两个必要条件，
+    却比多数派脆：某个进程一崩，可选集合就只剩一个。组合上合法 ≠ 工程上划算。
+  </p>
+</section>
+
+<!-- ==================== 第肆章 ==================== -->
+<section class="sec" id="sec4">
+  <div class="sec-head"><span class="sec-num serif">肆</span><h2>墙上的一道缝</h2></div>
+  <p class="sec-sub">安全性与活性，只能选一个 —— 下面这张表就是那条定理</p>
+
+  <p>
+    现在把协议升级成<b>两阶段</b>：进程 0 当领导，先广播 PREPARE 收集承诺（PROMISE），
+    凑够法定人数后按多数定下要提的值，广播 ACCEPT；跟随者回 ACK；
+    领导收够 ACK 才宣布 DECIDE。这比一轮投票麻烦得多，换来什么？
+  </p>
+
+  <div class="panel">
+    <h3>四个场景 · 同一台检验器</h3>
+    <div class="tbl-wrap">
+      <table class="tbl" id="tbl-cases">
+        <thead><tr>
+          <th class="l">场景</th><th>可达状态</th><th>一致性违规</th><th>死状态</th>
+          <th>死锁</th><th>活锁</th><th class="l">结论</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="bars" id="bars-cases"></div>
+    <div class="chart-note">红 = 一致性违规，金 = 走不到决定的状态。注意 A 与 C 各自缺哪一样。</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h3>场景 C：安全但活不了</h3>
+      <p style="font-size:14px">
+        只多允许一个进程崩溃，安全性仍然是 <b id="ch4-csafety">—</b>，
+        但 <b id="ch4-cdead">—</b> 个状态再也走不到决定。最短的那条只要一步：
+      </p>
+      <ol class="steps" id="ch4-dead-trace"></ol>
+      <div class="chart-note" id="ch4-dead-note">—</div>
+    </div>
+    <div class="panel">
+      <h3>场景 D：想用超时补救，安全性没了</h3>
+      <p style="font-size:14px">
+        给跟随者加一条规则：等满 3 步还没等到 ACCEPT，就<b>自己拍板</b>。
+        违规数从 0 跳到 <b id="ch4-dsafety">—</b>。最短反例：
+      </p>
+      <ol class="steps" id="ch4-viol-trace"></ol>
+    </div>
+  </div>
+
+  <h3 class="mono" style="font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:34px 0 10px">
+    价态图：每个状态「最终可能走向哪个答案」
+  </h3>
+  <p>
+    模型检验器不只找反例，它还能给每个可达状态贴一个标签：从它出发，
+    <b>能不能走到「决定 0」</b>、<b>能不能走到「决定 1」</b>。
+    两个都能 → 双价；只有一个 → 单价；一个都不能 → <span class="hlg">死</span>。
+    这张分布图就是 FLP 那条定理的形状。
+  </p>
+  <div class="grid2">
+    <div class="panel">
+      <h3>场景 B · 0 崩溃</h3>
+      <div class="bars" id="bars-valB"></div>
+    </div>
+    <div class="panel">
+      <h3>场景 C · 1 崩溃</h3>
+      <div class="bars" id="bars-valC"></div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="ct">FLP 不可能性定理（本页的可测形式）</span>
+    异步网络 + 一个进程可能崩溃 + 确定论协议 ⇒ <b>不存在</b>同时保证一致性（安全性）与必定终止（活性）的协议。
+    本页把「不存在」换成了三个可以自己数的数：<b>违规 <span class="hl" id="ch4-a-safety">—</span></b>（一轮投票）、
+    <b>违规 <span class="hlc" id="ch4-c-safety">—</span> 死 <span class="hlg" id="ch4-c-dead">—</span></b>（两阶段 + 1 崩溃）、
+    <b>违规 <span class="hl" id="ch4-d-safety">—</span></b>（超时自决）。
+    你要么丢掉安全性，要么丢掉活性。
+  </div>
+</section>
+
+<!-- ==================== 第伍章 ==================== -->
+<section class="sec" id="sec5">
+  <div class="sec-head"><span class="sec-num serif">伍</span><h2>时间就是解药</h2></div>
+  <p class="sec-sub">超时能救活性 —— 前提是你愿意假设「某一刻之后网络会变好」，而那一刻由对手来选</p>
+
+  <p>
+    上一章的结论不是「别用超时」，而是「别用超时去<b>判定生死</b>」。
+    真实系统的做法是：假设网络<b>最终</b>会变好（部分同步），用超时来换领导。
+    这条假设不便宜 —— 但它确实把活性买了回来。
+  </p>
+  <p>
+    最经典的坑是<b>选举风暴</b>：所有候选者用同一个超时值，于是同时醒来、各自投自己、没人过半、
+    重来一轮、又是同时醒来……如果超时是固定的，对手可以让你<b>永远</b>分裂下去。
+    修法是让超时<b>随机化</b>。
+  </p>
+
+  <div class="panel">
+    <h3>N 个候选者，每人从 {1…R} 里抽一个超时档位</h3>
+    <p style="font-size:14px">
+      档位<b>全不相同</b>时，最小的那个先醒，在别人醒来之前就拿到全部票 → 一轮选出领导者。
+      有并列时，对手可以让并列的人同时醒来 → 各自投自己 → 无人过半。
+      所以一轮成功率 = <code>R! / ((R−N)! · R<sup>N</sup>)</code>。
+    </p>
+    <div class="chart" id="chart-elect"></div>
+    <div class="chart-note">横轴：档位数 R（对数）。纵轴：一轮选出领导者的概率。虚线是 90%。</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h3>穷举 vs 闭式解</h3>
+      <div class="tbl-wrap">
+        <table class="tbl" id="tbl-elect">
+          <thead><tr><th>N</th><th>R</th><th>样本 R^N</th><th>全不同</th><th>穷举概率</th><th>闭式解</th><th>偏差</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="chart-note" id="ch5-gap">—</div>
+    </div>
+    <div class="panel">
+      <h3>要让一轮成功率到 90%，档位要开到多少</h3>
+      <div class="tbl-wrap">
+        <table class="tbl" id="tbl-threshold">
+          <thead><tr><th>N</th><th>R 需要 ≥</th><th>N²</th><th>N(N−1)</th><th>R / N(N−1)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="chart-note" id="ch5-rule">—</div>
+    </div>
+  </div>
+
+  <div class="callout gold">
+    <span class="ct">工程规则（本页量出来的）</span>
+    随机化档位数 <b>R ≈ 5·N(N−1)</b> 时，一轮选出领导者的概率到 90%。
+    N=3 要 <b id="ch5-r3">—</b> 档，N=5 要 <b id="ch5-r5">—</b> 档，N=7 要 <b id="ch5-r7">—</b> 档。
+    比值从 <b id="ch5-ratio">—</b> 收敛到约 4.8 —— 这就是 Raft 那类系统里
+    「选举超时为什么是 150–300 毫秒这么宽的一个区间」的定量版本。
+  </div>
+</section>
+
+<!-- ==================== 第陆章 ==================== -->
+<section class="sec" id="sec6">
+  <div class="sec-head"><span class="sec-num serif">陆</span><h2>抽签</h2></div>
+  <p class="sec-sub">随机化不是更快的保证，是另一种保证 —— 代价用轮数计价</p>
+
+  <p>
+    既然确定论撞墙，那就掷硬币。每个进程每轮收 <code>n−f</code> 个值（含自己，<b>收谁的由对手挑</b>）：
+    全相同就拍板，否则掷一次硬币。这套东西叫 Ben-Or 算法。
+  </p>
+
+  <div class="grid2">
+    <div class="panel">
+      <h3>按轮数累积的决定概率</h3>
+      <div class="chart" id="chart-benor"></div>
+      <div class="chart-note">每轮决定概率精确等于 2<sup>1−n</sup>，而且<b>无记忆</b>：等得越久，下一轮的概率不会变大也不会变小。</div>
+    </div>
+    <div class="panel">
+      <h3>硬币越偏，反而越快</h3>
+      <div class="chart" id="chart-bias"></div>
+      <div class="chart-note">横轴：硬币判 1 的概率 p（对数）。纵轴：n=3 时的平均轮数。</div>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table class="tbl" id="tbl-benor">
+      <thead><tr>
+        <th>n</th><th>f</th><th>样本</th><th>实测 hazard</th><th>解析 2^(1−n)</th>
+        <th>期望轮数 1+2^(n−1)</th><th>一致性违例</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="callout cool">
+    <span class="ct">穷举的对照组</span>
+    n=3、四轮，穷举全部 <b id="ch6-total">—</b> 条硬币序列：
+    一致性违例 <b id="ch6-disagree">—</b> 次，第 2 轮决定的比例恰好 <b id="ch6-hazard">—</b>
+    （解析值 0.25），四轮后仍未决定的恰好 <b id="ch6-never">—</b>。
+    随机化买到的是「以概率 1 终止」，不是「有限时间终止」——
+    任何有限轮数之后都还留着非零的未决定概率，代价是期望轮数随 n 指数增长。
+  </div>
+
+  <div class="callout">
+    <span class="ct">反直觉，而且很重要</span>
+    有偏硬币<b>更快</b>：n=3 时公平硬币平均 <b id="ch6-mean-fair">—</b> 轮，
+    而 p=0.05 的偏硬币只要 <b id="ch6-mean-biased">—</b> 轮。偏向一边的硬币把大家推向同一个值。
+    顺着这个方向再推一步就是：在本页的<b>轮同步</b>模型里，连一个常数硬币都能终止
+    （恒 0 的硬币平均 <b id="ch6-mean-const">—</b> 轮）。这反过来提醒我们：
+    <b>「把异步换成轮」这个假设的力气，比随机化本身还大</b> —— 而它的价钱，第伍章已经量过了。
+  </div>
+</section>
+
+<!-- ==================== 第柒章 ==================== -->
+<section class="sec" id="sec7">
+  <div class="sec-head"><span class="sec-num serif">柒</span><h2>凭什么可信</h2></div>
+  <p class="sec-sub">哪些是定理、哪些是测量、哪些我做不到</p>
+
+  <div class="panel">
+    <h3>三层验证</h3>
+    <div class="tbl-wrap">
+      <table class="tbl" id="tbl-verify">
+        <thead><tr><th class="l">检查项</th><th class="l">结果</th><th class="l">怎么验的</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h3>边界 · 我没做到什么</h3>
+      <ul class="limits" id="limits"></ul>
+    </div>
+    <div class="panel">
+      <h3>结论</h3>
+      <ul class="cons" id="cons"></ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  《异步之墙》· 第六件单文件科学装置 · 从零实现的状态空间模型检验器（可达状态、安全性违规、价态分类、死状态反可达、最短反例、环检测）
+  · 全部数字由 Node 端标定脚本算出并内联进本页，页面加载后不再有任何外部请求。
+</footer>
+
+</div>
+<script>window.__AW_DATA__ = {results: 
+{"meta":{"started":"2026-09-28T14:16:07.209Z","node":"v22.22.2","prevStarted":"2026-09-28T14:15:55.263Z","updated":"2026-09-28T14:16:07.224Z"},"E1":{"rows":[{"N":3,"q":2,"crash":0,"inputs":"000","states":125,"edges":375,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":125,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":3,"q":2,"crash":0,"inputs":"100","states":125,"edges":375,"safety":70,"dead":0,"unsafeDoomed":55,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 1 广播提案 0","投递 1→0（值 0）","投递 1→2（值 0）"],"initValence":"doomed","truncated":false},{"N":3,"q":2,"crash":0,"inputs":"010","states":125,"edges":375,"safety":70,"dead":0,"unsafeDoomed":55,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"initValence":"doomed","truncated":false},{"N":3,"q":2,"crash":0,"inputs":"110","states":125,"edges":375,"safety":70,"dead":0,"unsafeDoomed":55,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→2（值 1）"],"initValence":"doomed","truncated":false},{"N":3,"q":2,"crash":0,"inputs":"001","states":125,"edges":375,"safety":70,"dead":0,"unsafeDoomed":55,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"initValence":"doomed","truncated":false},{"N":3,"q":2,"crash":0,"inputs":"101","states":125,"edges":375,"safety":70,"dead":0,"unsafeDoomed":55,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→2（值 1）"],"initValence":"doomed","truncated":false},{"N":3,"q":2,"crash":0,"inputs":"011","states":125,"edges":375,"safety":70,"dead":0,"unsafeDoomed":55,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 1 广播提案 1","投递 1→0（值 1）","投递 1→2（值 1）"],"initValence":"doomed","truncated":false},{"N":3,"q":2,"crash":0,"inputs":"111","states":125,"edges":375,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":125,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":3,"q":2,"crash":1,"inputs":"000","states":740,"edges":1962,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":740,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":3,"q":2,"crash":1,"inputs":"100","states":740,"edges":1962,"safety":352,"dead":0,"unsafeDoomed":218,"bivalent":0,"zeroValent":170,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 1 广播提案 0","投递 1→0（值 0）","投递 1→2（值 0）"],"initValence":"0-valent","truncated":false},{"N":3,"q":2,"crash":1,"inputs":"010","states":740,"edges":1962,"safety":352,"dead":0,"unsafeDoomed":218,"bivalent":0,"zeroValent":170,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"initValence":"0-valent","truncated":false},{"N":3,"q":2,"crash":1,"inputs":"110","states":740,"edges":1962,"safety":352,"dead":0,"unsafeDoomed":218,"bivalent":0,"zeroValent":0,"oneValent":170,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→2（值 1）"],"initValence":"1-valent","truncated":false},{"N":3,"q":2,"crash":1,"inputs":"001","states":740,"edges":1962,"safety":352,"dead":0,"unsafeDoomed":218,"bivalent":0,"zeroValent":170,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"initValence":"0-valent","truncated":false},{"N":3,"q":2,"crash":1,"inputs":"101","states":740,"edges":1962,"safety":352,"dead":0,"unsafeDoomed":218,"bivalent":0,"zeroValent":0,"oneValent":170,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→2（值 1）"],"initValence":"1-valent","truncated":false},{"N":3,"q":2,"crash":1,"inputs":"011","states":740,"edges":1962,"safety":352,"dead":0,"unsafeDoomed":218,"bivalent":0,"zeroValent":0,"oneValent":170,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 1 广播提案 1","投递 1→0（值 1）","投递 1→2（值 1）"],"initValence":"1-valent","truncated":false},{"N":3,"q":2,"crash":1,"inputs":"111","states":740,"edges":1962,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":740,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":3,"q":3,"crash":0,"inputs":"000","states":125,"edges":375,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":125,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":3,"q":3,"crash":0,"inputs":"100","states":125,"edges":375,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":125,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":3,"q":3,"crash":0,"inputs":"010","states":125,"edges":375,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":125,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":3,"q":3,"crash":0,"inputs":"110","states":125,"edges":375,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":125,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":3,"q":3,"crash":0,"inputs":"001","states":125,"edges":375,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":125,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":3,"q":3,"crash":0,"inputs":"101","states":125,"edges":375,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":125,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":3,"q":3,"crash":0,"inputs":"011","states":125,"edges":375,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":125,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":3,"q":3,"crash":0,"inputs":"111","states":125,"edges":375,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":125,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":3,"q":3,"crash":1,"inputs":"000","states":560,"edges":1608,"safety":0,"dead":87,"unsafeDoomed":0,"bivalent":0,"zeroValent":473,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":3,"q":3,"crash":1,"inputs":"100","states":560,"edges":1608,"safety":0,"dead":87,"unsafeDoomed":0,"bivalent":0,"zeroValent":473,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":3,"q":3,"crash":1,"inputs":"010","states":560,"edges":1608,"safety":0,"dead":87,"unsafeDoomed":0,"bivalent":0,"zeroValent":473,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":3,"q":3,"crash":1,"inputs":"110","states":560,"edges":1608,"safety":0,"dead":87,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":473,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":3,"q":3,"crash":1,"inputs":"001","states":560,"edges":1608,"safety":0,"dead":87,"unsafeDoomed":0,"bivalent":0,"zeroValent":473,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":3,"q":3,"crash":1,"inputs":"101","states":560,"edges":1608,"safety":0,"dead":87,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":473,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":3,"q":3,"crash":1,"inputs":"011","states":560,"edges":1608,"safety":0,"dead":87,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":473,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":3,"q":3,"crash":1,"inputs":"111","states":560,"edges":1608,"safety":0,"dead":87,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":473,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"0000","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":6561,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"1000","states":6561,"edges":37908,"safety":5398,"dead":0,"unsafeDoomed":1163,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 1 广播提案 0","投递 1→0（值 0）","投递 1→2（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"0100","states":6561,"edges":37908,"safety":5398,"dead":0,"unsafeDoomed":1163,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"1100","states":6561,"edges":37908,"safety":6127,"dead":0,"unsafeDoomed":434,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→2（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"0010","states":6561,"edges":37908,"safety":5398,"dead":0,"unsafeDoomed":1163,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"1010","states":6561,"edges":37908,"safety":6127,"dead":0,"unsafeDoomed":434,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→2（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"0110","states":6561,"edges":37908,"safety":6127,"dead":0,"unsafeDoomed":434,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→3（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"1110","states":6561,"edges":37908,"safety":5398,"dead":0,"unsafeDoomed":1163,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→3（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"0001","states":6561,"edges":37908,"safety":5398,"dead":0,"unsafeDoomed":1163,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→3（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"1001","states":6561,"edges":37908,"safety":6127,"dead":0,"unsafeDoomed":434,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→3（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"0101","states":6561,"edges":37908,"safety":6127,"dead":0,"unsafeDoomed":434,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"1101","states":6561,"edges":37908,"safety":5398,"dead":0,"unsafeDoomed":1163,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→2（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"0011","states":6561,"edges":37908,"safety":6127,"dead":0,"unsafeDoomed":434,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"1011","states":6561,"edges":37908,"safety":5398,"dead":0,"unsafeDoomed":1163,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→2（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"0111","states":6561,"edges":37908,"safety":5398,"dead":0,"unsafeDoomed":1163,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 1 广播提案 1","投递 1→0（值 1）","投递 1→2（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":0,"inputs":"1111","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":6561,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"0000","states":54549,"edges":272100,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":54549,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"1000","states":54549,"edges":272100,"safety":40199,"dead":0,"unsafeDoomed":6664,"bivalent":0,"zeroValent":7686,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 1 广播提案 0","投递 1→0（值 0）","投递 1→2（值 0）"],"initValence":"0-valent","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"0100","states":54549,"edges":272100,"safety":40199,"dead":0,"unsafeDoomed":6664,"bivalent":0,"zeroValent":7686,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"initValence":"0-valent","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"1100","states":54549,"edges":272100,"safety":48247,"dead":0,"unsafeDoomed":6302,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→2（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"0010","states":54549,"edges":272100,"safety":40199,"dead":0,"unsafeDoomed":6664,"bivalent":0,"zeroValent":7686,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"initValence":"0-valent","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"1010","states":54549,"edges":272100,"safety":48247,"dead":0,"unsafeDoomed":6302,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→2（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"0110","states":54549,"edges":272100,"safety":48247,"dead":0,"unsafeDoomed":6302,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→3（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"1110","states":54549,"edges":272100,"safety":40199,"dead":0,"unsafeDoomed":6664,"bivalent":0,"zeroValent":0,"oneValent":7686,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→3（值 1）"],"initValence":"1-valent","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"0001","states":54549,"edges":272100,"safety":40199,"dead":0,"unsafeDoomed":6664,"bivalent":0,"zeroValent":7686,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→3（值 0）"],"initValence":"0-valent","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"1001","states":54549,"edges":272100,"safety":48247,"dead":0,"unsafeDoomed":6302,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→3（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"0101","states":54549,"edges":272100,"safety":48247,"dead":0,"unsafeDoomed":6302,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"1101","states":54549,"edges":272100,"safety":40199,"dead":0,"unsafeDoomed":6664,"bivalent":0,"zeroValent":0,"oneValent":7686,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→2（值 1）"],"initValence":"1-valent","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"0011","states":54549,"edges":272100,"safety":48247,"dead":0,"unsafeDoomed":6302,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"1011","states":54549,"edges":272100,"safety":40199,"dead":0,"unsafeDoomed":6664,"bivalent":0,"zeroValent":0,"oneValent":7686,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 1","投递 0→1（值 1）","投递 0→2（值 1）"],"initValence":"1-valent","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"0111","states":54549,"edges":272100,"safety":40199,"dead":0,"unsafeDoomed":6664,"bivalent":0,"zeroValent":0,"oneValent":7686,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 1 广播提案 1","投递 1→0（值 1）","投递 1→2（值 1）"],"initValence":"1-valent","truncated":false},{"N":4,"q":2,"crash":1,"inputs":"1111","states":54549,"edges":272100,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":54549,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"0000","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":6561,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"1000","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":6561,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"0100","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":6561,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"1100","states":9247,"edges":49244,"safety":3731,"dead":0,"unsafeDoomed":175,"bivalent":1148,"zeroValent":1102,"oneValent":3091,"shortestSafetyLen":6,"shortestSafetyTrace":["进程 0 广播提案 1","进程 2 广播提案 0","投递 0→1（值 1）","投递 0→3（值 1）","投递 2→1（值 0）","投递 2→3（值 0）"],"initValence":"bivalent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"0010","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":6561,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"1010","states":9247,"edges":49244,"safety":3731,"dead":0,"unsafeDoomed":175,"bivalent":1148,"zeroValent":1102,"oneValent":3091,"shortestSafetyLen":6,"shortestSafetyTrace":["进程 0 广播提案 1","进程 1 广播提案 0","投递 0→2（值 1）","投递 0→3（值 1）","投递 1→2（值 0）","投递 1→3（值 0）"],"initValence":"bivalent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"0110","states":9247,"edges":49244,"safety":3731,"dead":0,"unsafeDoomed":175,"bivalent":1148,"zeroValent":1102,"oneValent":3091,"shortestSafetyLen":6,"shortestSafetyTrace":["进程 0 广播提案 0","进程 1 广播提案 1","投递 0→2（值 0）","投递 0→3（值 0）","投递 1→2（值 1）","投递 1→3（值 1）"],"initValence":"bivalent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"1110","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":6561,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"0001","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":6561,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"1001","states":9247,"edges":49244,"safety":3731,"dead":0,"unsafeDoomed":175,"bivalent":1148,"zeroValent":1102,"oneValent":3091,"shortestSafetyLen":6,"shortestSafetyTrace":["进程 0 广播提案 1","进程 1 广播提案 0","投递 0→2（值 1）","投递 0→3（值 1）","投递 1→2（值 0）","投递 1→3（值 0）"],"initValence":"bivalent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"0101","states":9247,"edges":49244,"safety":3731,"dead":0,"unsafeDoomed":175,"bivalent":1148,"zeroValent":1102,"oneValent":3091,"shortestSafetyLen":6,"shortestSafetyTrace":["进程 0 广播提案 0","进程 1 广播提案 1","投递 0→2（值 0）","投递 0→3（值 0）","投递 1→2（值 1）","投递 1→3（值 1）"],"initValence":"bivalent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"1101","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":6561,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"0011","states":9247,"edges":49244,"safety":3731,"dead":0,"unsafeDoomed":175,"bivalent":1148,"zeroValent":1102,"oneValent":3091,"shortestSafetyLen":6,"shortestSafetyTrace":["进程 0 广播提案 0","进程 2 广播提案 1","投递 0→1（值 0）","投递 0→3（值 0）","投递 2→1（值 1）","投递 2→3（值 1）"],"initValence":"bivalent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"1011","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":6561,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"0111","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":6561,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":3,"crash":0,"inputs":"1111","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":6561,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"0000","states":43749,"edges":225300,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":43749,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"1000","states":43749,"edges":225300,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":43749,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"0100","states":43749,"edges":225300,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":43749,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"1100","states":60699,"edges":291458,"safety":22801,"dead":0,"unsafeDoomed":3853,"bivalent":6106,"zeroValent":11142,"oneValent":16797,"shortestSafetyLen":6,"shortestSafetyTrace":["进程 0 广播提案 1","进程 2 广播提案 0","投递 0→1（值 1）","投递 0→3（值 1）","投递 2→1（值 0）","投递 2→3（值 0）"],"initValence":"bivalent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"0010","states":43749,"edges":225300,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":43749,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"1010","states":60699,"edges":291458,"safety":22801,"dead":0,"unsafeDoomed":3853,"bivalent":6106,"zeroValent":11142,"oneValent":16797,"shortestSafetyLen":6,"shortestSafetyTrace":["进程 0 广播提案 1","进程 1 广播提案 0","投递 0→2（值 1）","投递 0→3（值 1）","投递 1→2（值 0）","投递 1→3（值 0）"],"initValence":"bivalent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"0110","states":60699,"edges":291458,"safety":22801,"dead":0,"unsafeDoomed":3853,"bivalent":6106,"zeroValent":11142,"oneValent":16797,"shortestSafetyLen":6,"shortestSafetyTrace":["进程 0 广播提案 0","进程 1 广播提案 1","投递 0→2（值 0）","投递 0→3（值 0）","投递 1→2（值 1）","投递 1→3（值 1）"],"initValence":"bivalent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"1110","states":43749,"edges":225300,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":43749,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"0001","states":43749,"edges":225300,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":43749,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"1001","states":60699,"edges":291458,"safety":22801,"dead":0,"unsafeDoomed":3853,"bivalent":6106,"zeroValent":11142,"oneValent":16797,"shortestSafetyLen":6,"shortestSafetyTrace":["进程 0 广播提案 1","进程 1 广播提案 0","投递 0→2（值 1）","投递 0→3（值 1）","投递 1→2（值 0）","投递 1→3（值 0）"],"initValence":"bivalent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"0101","states":60699,"edges":291458,"safety":22801,"dead":0,"unsafeDoomed":3853,"bivalent":6106,"zeroValent":11142,"oneValent":16797,"shortestSafetyLen":6,"shortestSafetyTrace":["进程 0 广播提案 0","进程 1 广播提案 1","投递 0→2（值 0）","投递 0→3（值 0）","投递 1→2（值 1）","投递 1→3（值 1）"],"initValence":"bivalent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"1101","states":43749,"edges":225300,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":43749,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"0011","states":60699,"edges":291458,"safety":22801,"dead":0,"unsafeDoomed":3853,"bivalent":6106,"zeroValent":11142,"oneValent":16797,"shortestSafetyLen":6,"shortestSafetyTrace":["进程 0 广播提案 0","进程 2 广播提案 1","投递 0→1（值 0）","投递 0→3（值 0）","投递 2→1（值 1）","投递 2→3（值 1）"],"initValence":"bivalent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"1011","states":43749,"edges":225300,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":43749,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"0111","states":43749,"edges":225300,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":43749,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":3,"crash":1,"inputs":"1111","states":43749,"edges":225300,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":43749,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"0000","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":6561,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"1000","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":6561,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"0100","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":6561,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"1100","states":6561,"edges":37908,"safety":225,"dead":0,"unsafeDoomed":6336,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":10,"shortestSafetyTrace":["进程 0 广播提案 1","进程 1 广播提案 1","进程 2 广播提案 0","进程 3 广播提案 0","投递 0→1（值 1）","投递 0→2（值 1）","投递 1→2（值 1）","投递 2→1（值 0）","投递 3→1（值 0）","投递 3→2（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"0010","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":6561,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"1010","states":6561,"edges":37908,"safety":225,"dead":0,"unsafeDoomed":6336,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":10,"shortestSafetyTrace":["进程 0 广播提案 1","进程 1 广播提案 0","进程 2 广播提案 1","进程 3 广播提案 0","投递 0→1（值 1）","投递 0→2（值 1）","投递 1→2（值 0）","投递 2→1（值 1）","投递 3→1（值 0）","投递 3→2（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"0110","states":6561,"edges":37908,"safety":225,"dead":0,"unsafeDoomed":6336,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":10,"shortestSafetyTrace":["进程 0 广播提案 0","进程 1 广播提案 1","进程 2 广播提案 1","进程 3 广播提案 0","投递 0→1（值 0）","投递 0→3（值 0）","投递 1→3（值 1）","投递 2→1（值 1）","投递 2→3（值 1）","投递 3→1（值 0）"],"initValence":"doomed","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"1110","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":6561,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"0001","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":6561,"oneValent":0,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"0-valent","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"1001","states":6561,"edges":37908,"safety":225,"dead":0,"unsafeDoomed":6336,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":10,"shortestSafetyTrace":["进程 0 广播提案 1","进程 1 广播提案 0","进程 2 广播提案 0","进程 3 广播提案 1","投递 0→1（值 1）","投递 0→3（值 1）","投递 1→3（值 0）","投递 2→1（值 0）","投递 2→3（值 0）","投递 3→1（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"0101","states":6561,"edges":37908,"safety":225,"dead":0,"unsafeDoomed":6336,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":10,"shortestSafetyTrace":["进程 0 广播提案 0","进程 1 广播提案 1","进程 2 广播提案 0","进程 3 广播提案 1","投递 0→1（值 0）","投递 0→2（值 0）","投递 1→2（值 1）","投递 2→1（值 0）","投递 3→1（值 1）","投递 3→2（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"1101","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":6561,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"0011","states":6561,"edges":37908,"safety":225,"dead":0,"unsafeDoomed":6336,"bivalent":0,"zeroValent":0,"oneValent":0,"shortestSafetyLen":10,"shortestSafetyTrace":["进程 0 广播提案 0","进程 1 广播提案 0","进程 2 广播提案 1","进程 3 广播提案 1","投递 0→1（值 0）","投递 0→2（值 0）","投递 1→2（值 0）","投递 2→1（值 1）","投递 3→1（值 1）","投递 3→2（值 1）"],"initValence":"doomed","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"1011","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":6561,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"0111","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":6561,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false},{"N":4,"q":4,"crash":0,"inputs":"1111","states":6561,"edges":37908,"safety":0,"dead":0,"unsafeDoomed":0,"bivalent":0,"zeroValent":0,"oneValent":6561,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"initValence":"1-valent","truncated":false}],"summary":[{"N":3,"q":2,"crash":0,"cases":8,"violated":6,"rate":0.75,"maxStates":125},{"N":3,"q":2,"crash":1,"cases":8,"violated":6,"rate":0.75,"maxStates":740},{"N":3,"q":3,"crash":0,"cases":8,"violated":0,"rate":0,"maxStates":125},{"N":3,"q":3,"crash":1,"cases":8,"violated":0,"rate":0,"maxStates":560},{"N":4,"q":2,"crash":0,"cases":16,"violated":14,"rate":0.875,"maxStates":6561},{"N":4,"q":2,"crash":1,"cases":16,"violated":14,"rate":0.875,"maxStates":54549},{"N":4,"q":3,"crash":0,"cases":16,"violated":6,"rate":0.375,"maxStates":9247},{"N":4,"q":3,"crash":1,"cases":16,"violated":6,"rate":0.375,"maxStates":60699},{"N":4,"q":4,"crash":0,"cases":16,"violated":6,"rate":0.375,"maxStates":6561}],"msPerSearch":2,"hero":{"states":125,"edges":375,"safety":70,"dead":0,"unsafeDoomed":55,"bivalent":0,"zeroValent":0,"oneValent":0,"initValence":"doomed","shortestLen":3,"shortestTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"inputs":"001","q":2,"N":3},"heroUnanimous":{"states":125,"safety":0,"dead":0,"bivalent":0,"zeroValent":125,"initValence":"0-valent","inputs":"001","q":3,"N":3}},"E3":{"rows":[{"n":1,"systems":2,"dedekind":3,"minusOne":true,"intersecting":null,"res1":null,"res2":null,"smallestRes1":null,"exampleRes1":null,"exampleRes1Text":null,"majoritySize":null,"majorityRes1":null,"majorityRes2":null,"ms":0},{"n":2,"systems":5,"dedekind":6,"minusOne":true,"intersecting":4,"res1":0,"res2":0,"smallestRes1":null,"exampleRes1":null,"exampleRes1Text":null,"majoritySize":1,"majorityRes1":false,"majorityRes2":false,"ms":1},{"n":3,"systems":19,"dedekind":20,"minusOne":true,"intersecting":12,"res1":1,"res2":0,"smallestRes1":3,"exampleRes1":[3,5,6],"exampleRes1Text":["{0,1}","{0,2}","{1,2}"],"majoritySize":3,"majorityRes1":true,"majorityRes2":false,"ms":0},{"n":4,"systems":167,"dedekind":168,"minusOne":true,"intersecting":81,"res1":27,"res2":0,"smallestRes1":3,"exampleRes1":[12,7,11],"exampleRes1Text":["{2,3}","{0,1,2}","{0,1,3}"],"majoritySize":4,"majorityRes1":true,"majorityRes2":false,"ms":1},{"n":5,"systems":7580,"dedekind":7581,"minusOne":true,"intersecting":2646,"res1":1959,"res2":1,"smallestRes1":3,"exampleRes1":[22,25,15],"exampleRes1Text":["{1,2,4}","{0,3,4}","{0,1,2,3}"],"majoritySize":10,"majorityRes1":true,"majorityRes2":true,"ms":11}],"ms":13},"E4":{"cases":[{"name":"A 单相多数派 q=2","note":"一轮投票 + 多数派 + 允许 1 崩溃","states":740,"edges":1962,"safety":352,"dead":0,"unsafeDoomed":218,"deadlocks":0,"livelocks":0,"bivalent":0,"zeroValent":170,"oneValent":0,"initValence":"0-valent","truncated":false,"ms":5,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"shortestDeadLen":-1,"shortestDeadTrace":[],"cycleLen":0,"cycleTrace":[]},{"name":"B 两阶段 q=2 · 0 崩溃","note":"领导者两阶段，网络不丢进程","states":195,"edges":471,"safety":0,"dead":0,"unsafeDoomed":0,"deadlocks":0,"livelocks":0,"bivalent":0,"zeroValent":195,"oneValent":0,"initValence":"0-valent","truncated":false,"ms":2,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"shortestDeadLen":-1,"shortestDeadTrace":[],"cycleLen":0,"cycleTrace":[]},{"name":"C 两阶段 q=2 · 1 崩溃","note":"同样的协议，只多允许一个进程崩溃","states":872,"edges":2156,"safety":0,"dead":81,"unsafeDoomed":0,"deadlocks":25,"livelocks":56,"bivalent":0,"zeroValent":791,"oneValent":0,"initValence":"0-valent","truncated":false,"ms":4,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"shortestDeadLen":1,"shortestDeadTrace":["进程 0 崩溃"],"cycleLen":0,"cycleTrace":[]},{"name":"D 两阶段 + 超时自决","note":"超时即自行拍板（错误示范）","states":7471,"edges":16209,"safety":900,"dead":614,"unsafeDoomed":284,"deadlocks":285,"livelocks":329,"bivalent":0,"zeroValent":5673,"oneValent":0,"initValence":"0-valent","truncated":false,"ms":26,"shortestSafetyLen":7,"shortestSafetyTrace":["领导 0 发出 PREPARE","投递 0→1 的 PREP","投递 0→2 的 PREP","投递 1→0 的 PROM","领导 0 凑齐 2 个承诺，发出 ACCEPT(0)","进程 1 等满 3 步，自行决定 0（错误示范）","进程 2 等满 3 步，自行决定 1（错误示范）"],"shortestDeadLen":1,"shortestDeadTrace":["进程 0 崩溃"],"cycleLen":0,"cycleTrace":[]}],"valenceByInput":[{"inputs":"000","states":872,"safety":0,"dead":81,"bivalent":0,"zeroValent":791,"oneValent":0,"initValence":"0-valent"},{"inputs":"100","states":1061,"safety":0,"dead":97,"bivalent":19,"zeroValent":176,"oneValent":769,"initValence":"bivalent"},{"inputs":"010","states":872,"safety":0,"dead":81,"bivalent":0,"zeroValent":791,"oneValent":0,"initValence":"0-valent"},{"inputs":"110","states":872,"safety":0,"dead":81,"bivalent":0,"zeroValent":0,"oneValent":791,"initValence":"1-valent"},{"inputs":"001","states":872,"safety":0,"dead":81,"bivalent":0,"zeroValent":791,"oneValent":0,"initValence":"0-valent"},{"inputs":"101","states":872,"safety":0,"dead":81,"bivalent":0,"zeroValent":0,"oneValent":791,"initValence":"1-valent"},{"inputs":"011","states":1061,"safety":0,"dead":97,"bivalent":19,"zeroValent":769,"oneValent":176,"initValence":"bivalent"},{"inputs":"111","states":872,"safety":0,"dead":81,"bivalent":0,"zeroValent":0,"oneValent":791,"initValence":"1-valent"}]},"E5":{"exhaustive":[{"N":2,"R":3,"total":9,"distinct":6,"p":0.6666666666666666,"closed":0.6666666666666666,"gap":0},{"N":2,"R":5,"total":25,"distinct":20,"p":0.8,"closed":0.8,"gap":0},{"N":3,"R":3,"total":27,"distinct":6,"p":0.2222222222222222,"closed":0.2222222222222222,"gap":0},{"N":3,"R":4,"total":64,"distinct":24,"p":0.375,"closed":0.375,"gap":0},{"N":3,"R":6,"total":216,"distinct":120,"p":0.5555555555555556,"closed":0.5555555555555556,"gap":0},{"N":3,"R":8,"total":512,"distinct":336,"p":0.65625,"closed":0.65625,"gap":0},{"N":4,"R":5,"total":625,"distinct":120,"p":0.192,"closed":0.192,"gap":0},{"N":4,"R":8,"total":4096,"distinct":1680,"p":0.41015625,"closed":0.41015625,"gap":0},{"N":4,"R":10,"total":10000,"distinct":5040,"p":0.504,"closed":0.504,"gap":0}],"curve":[{"N":2,"points":[{"R":2,"p":0.5},{"R":4,"p":0.75},{"R":6,"p":0.8333333333333334},{"R":8,"p":0.875},{"R":10,"p":0.9},{"R":12,"p":0.9166666666666666},{"R":14,"p":0.9285714285714286},{"R":16,"p":0.9375},{"R":18,"p":0.9444444444444444},{"R":20,"p":0.95},{"R":22,"p":0.9545454545454546},{"R":24,"p":0.9583333333333334},{"R":26,"p":0.9615384615384616},{"R":28,"p":0.9642857142857143},{"R":30,"p":0.9666666666666667},{"R":32,"p":0.96875},{"R":34,"p":0.9705882352941176},{"R":36,"p":0.9722222222222222},{"R":38,"p":0.9736842105263158},{"R":40,"p":0.975},{"R":42,"p":0.9761904761904762},{"R":44,"p":0.9772727272727273},{"R":46,"p":0.9782608695652174},{"R":48,"p":0.9791666666666666},{"R":50,"p":0.98},{"R":52,"p":0.9807692307692307},{"R":54,"p":0.9814814814814815},{"R":56,"p":0.9821428571428571},{"R":58,"p":0.9827586206896551},{"R":60,"p":0.9833333333333333},{"R":70,"p":0.9857142857142858},{"R":80,"p":0.9875},{"R":90,"p":0.9888888888888889},{"R":100,"p":0.99},{"R":110,"p":0.990909090909091},{"R":120,"p":0.9916666666666667},{"R":130,"p":0.9923076923076923},{"R":140,"p":0.9928571428571429},{"R":150,"p":0.9933333333333333},{"R":160,"p":0.99375},{"R":170,"p":0.9941176470588236},{"R":180,"p":0.9944444444444445},{"R":190,"p":0.9947368421052631},{"R":200,"p":0.995},{"R":210,"p":0.9952380952380953},{"R":220,"p":0.9954545454545455},{"R":230,"p":0.9956521739130435},{"R":240,"p":0.9958333333333333},{"R":250,"p":0.996},{"R":260,"p":0.9961538461538462},{"R":270,"p":0.9962962962962963},{"R":280,"p":0.9964285714285714},{"R":290,"p":0.996551724137931},{"R":300,"p":0.9966666666666667},{"R":310,"p":0.9967741935483871},{"R":320,"p":0.996875},{"R":330,"p":0.996969696969697},{"R":340,"p":0.9970588235294118},{"R":350,"p":0.9971428571428571},{"R":360,"p":0.9972222222222222},{"R":370,"p":0.9972972972972973},{"R":380,"p":0.9973684210526316},{"R":390,"p":0.9974358974358974},{"R":400,"p":0.9975}]},{"N":3,"points":[{"R":3,"p":0.2222222222222222},{"R":5,"p":0.48},{"R":7,"p":0.6122448979591837},{"R":9,"p":0.691358024691358},{"R":11,"p":0.7438016528925621},{"R":13,"p":0.7810650887573964},{"R":15,"p":0.8088888888888889},{"R":17,"p":0.8304498269896193},{"R":19,"p":0.8476454293628809},{"R":21,"p":0.8616780045351473},{"R":23,"p":0.8733459357277883},{"R":25,"p":0.8832},{"R":27,"p":0.8916323731138546},{"R":29,"p":0.8989298454221165},{"R":31,"p":0.9053069719042663},{"R":33,"p":0.9109274563820019},{"R":35,"p":0.9159183673469388},{"R":37,"p":0.9203798392987582},{"R":39,"p":0.9243918474687705},{"R":41,"p":0.9280190362879238},{"R":43,"p":0.9313142239048134},{"R":45,"p":0.934320987654321},{"R":47,"p":0.9370755998189226},{"R":49,"p":0.9396084964598084},{"R":51,"p":0.9419454056132257},{"R":53,"p":0.9441082235671058},{"R":55,"p":0.9461157024793388},{"R":57,"p":0.9479839950754078},{"R":59,"p":0.9497270899166906},{"R":61,"p":0.9513571620532114},{"R":71,"p":0.958143225550486},{"R":81,"p":0.9632677945435146},{"R":91,"p":0.9672744837580003},{"R":101,"p":0.9704930889128517},{"R":111,"p":0.9731352974596217},{"R":121,"p":0.975343214261321},{"R":131,"p":0.9772157799662023},{"R":141,"p":0.9788240028167597},{"R":151,"p":0.9802201657822025},{"R":161,"p":0.9814436171444002},{"R":171,"p":0.982524537464519},{"R":181,"p":0.9834864625621929},{"R":191,"p":0.9843480167758559},{"R":201,"p":0.985124130590827},{"R":211,"p":0.9858269131421127},{"R":221,"p":0.9864662885690302},{"R":231,"p":0.9870504675699481},{"R":241,"p":0.9875863018887416},{"R":251,"p":0.988079554292789},{"R":261,"p":0.9885351066484638},{"R":271,"p":0.9889571220435452},{"R":281,"p":0.9893491723762364},{"R":291,"p":0.9897143396983975},{"R":301,"p":0.9900552974028983},{"R":311,"p":0.9903743757818881},{"R":321,"p":0.9906736153569938},{"R":331,"p":0.9909548105621526},{"R":341,"p":0.9912195457555405},{"R":351,"p":0.9914692250874587},{"R":361,"p":0.9917050974133103},{"R":371,"p":0.9919282771848504},{"R":381,"p":0.9921397620573019},{"R":391,"p":0.9923404477992687}]},{"N":4,"points":[{"R":4,"p":0.09375},{"R":6,"p":0.2777777777777778},{"R":8,"p":0.41015625},{"R":10,"p":0.504},{"R":12,"p":0.5729166666666666},{"R":14,"p":0.6253644314868805},{"R":16,"p":0.66650390625},{"R":18,"p":0.6995884773662552},{"R":20,"p":0.72675},{"R":22,"p":0.7494365138993239},{"R":24,"p":0.7686631944444444},{"R":26,"p":0.7851615839781521},{"R":28,"p":0.7994715743440234},{"R":30,"p":0.812},{"R":32,"p":0.82305908203125},{"R":34,"p":0.8328923264807653},{"R":36,"p":0.8416923868312757},{"R":38,"p":0.849613646304126},{"R":40,"p":0.8567812499999999},{"R":42,"p":0.8632977000323938},{"R":44,"p":0.8692477460555973},{"R":46,"p":0.8747020629571793},{"R":48,"p":0.8797200520833334},{"R":50,"p":0.8843519999999999},{"R":52,"p":0.8886407601274465},{"R":54,"p":0.8926230757506477},{"R":56,"p":0.8963306304664722},{"R":58,"p":0.8997908893353561},{"R":60,"p":0.9030277777777777},{"R":70,"p":0.9165131195335278},{"R":80,"p":0.9267070312500001},{"R":90,"p":0.9346831275720164},{"R":100,"p":0.9410939999999999},{"R":110,"p":0.946359128474831},{"R":120,"p":0.9507604166666667},{"R":130,"p":0.9544943104233046},{"R":140,"p":0.9577018950437317},{"R":150,"p":0.9604871111111111},{"R":160,"p":0.9629282226562501},{"R":170,"p":0.9650852839405658},{"R":180,"p":0.9670051440329218},{"R":190,"p":0.9687248870097681},{"R":200,"p":0.97027425},{"R":210,"p":0.9716773566569487},{"R":220,"p":0.9729539819684448},{"R":230,"p":0.9741204898495932},{"R":240,"p":0.9751905381944446},{"R":250,"p":0.976175616},{"R":260,"p":0.9770854574419664},{"R":270,"p":0.9779283645785705},{"R":280,"p":0.9787114613702624},{"R":290,"p":0.9794408954856697},{"R":300,"p":0.980122},{"R":310,"p":0.9807594239871102},{"R":320,"p":0.9813572387695312},{"R":330,"p":0.9819190249603472},{"R":340,"p":0.982447944229595},{"R":350,"p":0.9829467988338192},{"R":360,"p":0.9834180812757202},{"R":370,"p":0.9838640159516712},{"R":380,"p":0.9842865942557224},{"R":390,"p":0.9846876043089061},{"R":400,"p":0.9850686562500001}]},{"N":5,"points":[{"R":5,"p":0.038400000000000004},{"R":7,"p":0.14993752603082047},{"R":9,"p":0.25605852766346593},{"R":11,"p":0.34423878150399567},{"R":13,"p":0.4159518224151815},{"R":15,"p":0.47454814814814816},{"R":17,"p":0.5229822439865421},{"R":19,"p":0.5635315873880649},{"R":21,"p":0.5978990235550001},{"R":23,"p":0.6273562487269556},{"R":25,"p":0.65286144},{"R":27,"p":0.6751455006294207},{"R":29,"p":0.694773364476071},{"R":31,"p":0.7121873785219827},{"R":33,"p":0.7277381882941613},{"R":35,"p":0.7417069554352352},{"R":37,"p":0.7543215337422986},{"R":39,"p":0.7657683943528276},{"R":41,"p":0.7762015258898399},{"R":43,"p":0.7857491559175278},{"R":45,"p":0.7945188843164153},{"R":47,"p":0.8026016454764154},{"R":49,"p":0.8100747970311551},{"R":51,"p":0.8170045501973999},{"R":53,"p":0.8234478988036344},{"R":55,"p":0.8294541629670105},{"R":57,"p":0.8350662338891403},{"R":59,"p":0.8403215848731419},{"R":61,"p":0.8452530980241647},{"R":71,"p":0.8659592413425935},{"R":81,"p":0.8817842362487956},{"R":91,"p":0.8942704320313066},{"R":101,"p":0.9043728363107115},{"R":111,"p":0.9127141869526328},{"R":121,"p":0.9197178072598727},{"R":131,"p":0.925681470726099},{"R":141,"p":0.9308207131056616},{"R":151,"p":0.9352953785692556},{"R":161,"p":0.9392265100452911},{"R":171,"p":0.942707445815962},{"R":181,"p":0.9458113149624385},{"R":191,"p":0.9485962248231132},{"R":201,"p":0.9511089289330906},{"R":211,"p":0.9533874704576897},{"R":221,"p":0.9554631200640147},{"R":231,"p":0.957361818548195},{"R":241,"p":0.9591052658242173},{"R":251,"p":0.9607117534286613},{"R":261,"p":0.9621968083473972},{"R":271,"p":0.9635736962316407},{"R":281,"p":0.9648538185687171},{"R":291,"p":0.966047028992463},{"R":301,"p":0.9671618873074351},{"R":311,"p":0.9682058650803054},{"R":321,"p":0.969185513239168},{"R":331,"p":0.9701065996262742},{"R":341,"p":0.9709742226058479},{"R":351,"p":0.9717929054525626},{"R":361,"p":0.972566675209717},{"R":371,"p":0.9732991289185429},{"R":381,"p":0.9739934895167287},{"R":391,"p":0.9746526532384469}]},{"N":6,"points":[{"R":6,"p":0.015432098765432098},{"R":8,"p":0.076904296875},{"R":10,"p":0.1512},{"R":12,"p":0.22280092592592593},{"R":14,"p":0.2871571369072411},{"R":16,"p":0.34366607666015625},{"R":18,"p":0.3929787125946248},{"R":20,"p":0.43605000000000005},{"R":22,"p":0.47381730010990314},{"R":24,"p":0.507104190779321},{"R":26,"p":0.5366045144939442},{"R":28,"p":0.5628932513238531},{"R":30,"p":0.5864444444444445},{"R":32,"p":0.6076490879058838},{"R":34,"p":0.626830730136908},{"R":36,"p":0.6442583701671493},{"R":38,"p":0.6601568636795216},{"R":40,"p":0.674715234375},{"R":42,"p":0.6880932915224182},{"R":44,"p":0.7004269028133945},{"R":46,"p":0.7118322081343396},{"R":48,"p":0.722409001103154},{"R":50,"p":0.732243456},{"R":52,"p":0.7414103383311832},{"R":54,"p":0.7499748064434454},{"R":56,"p":0.7579938877541723},{"R":58,"p":0.7655176947912572},{"R":60,"p":0.7725904320987653},{"R":70,"p":0.8024165883262927},{"R":80,"p":0.8253484497070314},{"R":90,"p":0.8435226743890667},{"R":100,"p":0.8582777279999998},{"R":110,"p":0.8704939752004024},{"R":120,"p":0.8807738859953704},{"R":130,"p":0.8895435141518963},{"R":140,"p":0.8971125914797405},{"R":150,"p":0.9037116507654321},{"R":160,"p":0.9095157978057863},{"R":170,"p":0.9146604127035328},{"R":180,"p":0.9192518035868515},{"R":190,"p":0.9233746083658206},{"R":200,"p":0.927097045875},{"R":210,"p":0.9304747113746699},{"R":220,"p":0.9335533661697226},{"R":230,"p":0.9363710190709228},{"R":240,"p":0.9389595008379148},{"R":250,"p":0.9413456700211199},{"R":260,"p":0.9435523470682184},{"R":270,"p":0.9455990455300882},{"R":280,"p":0.9475025499745271},{"R":290,"p":0.9492773768256472},{"R":300,"p":0.950936144888889},{"R":310,"p":0.9524898755537669},{"R":320,"p":0.9539482377648353},{"R":330,"p":0.9553197492612377},{"R":340,"p":0.9566119429280555},{"R":350,"p":0.9578315051166776},{"R":360,"p":0.9589843912934068},{"R":370,"p":0.9600759232358199},{"R":380,"p":0.9611108711222773},{"R":390,"p":0.9620935231843954},{"R":400,"p":0.9630277450664063}]},{"N":7,"points":[{"R":7,"p":0.006119899021666141},{"R":9,"p":0.03793459669088384},{"R":11,"p":0.08534845822413115},{"R":13,"p":0.1378301896760365},{"R":15,"p":0.18981925925925927},{"R":17,"p":0.23887078272049678},{"R":19,"p":0.2841073376859496},{"R":21,"p":0.3253872237034014},{"R":23,"p":0.3628941627796756},{"R":25,"p":0.39693975552000005},{"R":27,"p":0.42786998805321313},{"R":29,"p":0.4560224699058159},{"R":31,"p":0.4817084245986355},{"R":33,"p":0.5052066761711533},{"R":35,"p":0.5267633071254324},{"R":37,"p":0.5465938359914976},{"R":39,"p":0.564886350074867},{"R":41,"p":0.5818048320173695},{"R":43,"p":0.597492327322901},{"R":45,"p":0.6120738071770903},{"R":47,"p":0.6256586842509676},{"R":49,"p":0.6383429887475824},{"R":51,"p":0.6502112337211141},{"R":53,"p":0.6613380063015305},{"R":55,"p":0.6717893220724547},{"R":57,"p":0.6816237772465373},{"R":59,"p":0.6908935294188258},{"R":61,"p":0.6996451335432484},{"R":71,"p":0.7369500387541611},{"R":81,"p":0.7660676949578014},{"R":91,"p":0.7894115273697442},{"R":101,"p":0.8085364441872059},{"R":111,"p":0.8244873712184728},{"R":121,"p":0.8379916364214673},{"R":131,"p":0.849570722215259},{"R":141,"p":0.8596080827232004},{"R":151,"p":0.8683918759839981},{"R":161,"p":0.8761427804828187},{"R":171,"p":0.883032623402045},{"R":181,"p":0.8891971704417785},{"R":191,"p":0.8947451028251234},{"R":201,"p":0.8997644430539522},{"R":211,"p":0.904327236077991},{"R":221,"p":0.9084930139795017},{"R":231,"p":0.9123113973346773},{"R":241,"p":0.9158240740106246},{"R":251,"p":0.9190663224257618},{"R":261,"p":0.9220681970158701},{"R":271,"p":0.9248554601294692},{"R":281,"p":0.9274503214164665},{"R":291,"p":0.9298720295364444},{"R":301,"p":0.9321373494739047},{"R":311,"p":0.9342609504445251},{"R":321,"p":0.9362557233317493},{"R":331,"p":0.938133042144593},{"R":341,"p":0.9399029806805432},{"R":351,"p":0.9415744930956111},{"R":361,"p":0.9431555652044109},{"R":371,"p":0.9446533418983308},{"R":381,"p":0.9460742349657191},{"R":391,"p":0.9474240147419599}]}],"threshold":[{"N":2,"R90":10,"N2":4,"Nsq":2,"ratio":5},{"N":3,"R90":30,"N2":9,"Nsq":6,"ratio":5},{"N":4,"R90":59,"N2":16,"Nsq":12,"ratio":4.916666666666667},{"N":5,"R90":97,"N2":25,"Nsq":20,"ratio":4.85},{"N":6,"R90":145,"N2":36,"Nsq":30,"ratio":4.833333333333333},{"N":7,"R90":202,"N2":49,"Nsq":42,"ratio":4.809523809523809}],"table":[{"N":3,"R":5,"p":0.48},{"N":3,"R":10,"p":0.7200000000000001},{"N":3,"R":25,"p":0.8832},{"N":3,"R":50,"p":0.9408},{"N":3,"R":100,"p":0.9702},{"N":3,"R":200,"p":0.98505},{"N":3,"R":400,"p":0.9925125},{"N":5,"R":5,"p":0.038400000000000004},{"N":5,"R":10,"p":0.3024},{"N":5,"R":25,"p":0.65286144},{"N":5,"R":50,"p":0.81360384},{"N":5,"R":100,"p":0.9034502399999998},{"N":5,"R":200,"p":0.950868765},{"N":5,"R":400,"p":0.9752179696875001},{"N":7,"R":5,"p":0},{"N":7,"R":10,"p":0.060480000000000006},{"N":7,"R":25,"p":0.39693975552000005},{"N":7,"R":50,"p":0.64437424128},{"N":7,"R":100,"p":0.8067810643199997},{"N":7,"R":200,"p":0.89928413449875},{"N":7,"R":400,"p":0.9485823288904102}]},"E6":{"exhaustive":[{"n":3,"f":1,"inputs":"001","rounds":4,"total":4096,"disagree":0,"never":1728,"neverRate":0.421875,"rows":[{"round":1,"decided":0,"cumulative":0},{"round":2,"decided":1024,"cumulative":0.25},{"round":3,"decided":768,"cumulative":0.4375},{"round":4,"decided":576,"cumulative":0.578125}],"hazard":0.25,"hazardTheory":0.25},{"n":3,"f":1,"inputs":"011","rounds":3,"total":512,"disagree":0,"never":288,"neverRate":0.5625,"rows":[{"round":1,"decided":0,"cumulative":0},{"round":2,"decided":128,"cumulative":0.25},{"round":3,"decided":96,"cumulative":0.4375}],"hazard":0.25,"hazardTheory":0.25},{"n":3,"f":1,"inputs":"111","rounds":3,"total":512,"disagree":0,"never":0,"neverRate":0,"rows":[{"round":1,"decided":512,"cumulative":1},{"round":2,"decided":0,"cumulative":1},{"round":3,"decided":0,"cumulative":1}],"hazard":0,"hazardTheory":0.25}],"hazard":[{"n":3,"f":1,"trials":60000,"hitRound2":0.25315,"hazardTheory":0.25,"meanMeasured":4.990933333333333,"meanTheory":5,"never":0},{"n":5,"f":2,"trials":60000,"hitRound2":0.06215,"hazardTheory":0.0625,"meanMeasured":17.03895,"meanTheory":17,"never":0},{"n":7,"f":3,"trials":60000,"hitRound2":0.016116666666666668,"hazardTheory":0.015625,"meanMeasured":64.23433333333334,"meanTheory":65,"never":0.0017833333333333334}],"bias":[{"p":0.5,"meanRounds":5.018633333333334,"neverRate":0},{"p":0.4,"meanRounds":4.5925,"neverRate":0},{"p":0.3,"meanRounds":3.713766666666667,"neverRate":0},{"p":0.25,"meanRounds":3.291733333333333,"neverRate":0},{"p":0.2,"meanRounds":2.9268666666666667,"neverRate":0},{"p":0.15,"meanRounds":2.621966666666667,"neverRate":0},{"p":0.1,"meanRounds":2.373466666666667,"neverRate":0},{"p":0.05,"meanRounds":2.1698,"neverRate":0},{"p":0.02,"meanRounds":2.0613333333333332,"neverRate":0}],"constCoin":[{"coin":"恒 0","meanRounds":2},{"coin":"恒 1","meanRounds":2}]},"E2":{"rows":[{"N":3,"q":2,"total":8,"safeCount":2,"safeValidCount":0,"allSafeAreConst":true,"isUnanimous":false,"witness":{"rule":1,"inputs":"100","q1":[0,1],"q2":[1,2],"c1":1,"c2":0}},{"N":3,"q":3,"total":16,"safeCount":16,"safeValidCount":4,"allSafeAreConst":false,"isUnanimous":true,"witness":null},{"N":4,"q":2,"total":8,"safeCount":2,"safeValidCount":0,"allSafeAreConst":true,"isUnanimous":false,"witness":{"rule":1,"inputs":"1000","q1":[0,1],"q2":[1,2],"c1":1,"c2":0}},{"N":4,"q":3,"total":16,"safeCount":2,"safeValidCount":0,"allSafeAreConst":true,"isUnanimous":false,"witness":{"rule":1,"inputs":"1000","q1":[0,1,2],"q2":[1,2,3],"c1":1,"c2":0}},{"N":4,"q":4,"total":32,"safeCount":32,"safeValidCount":8,"allSafeAreConst":false,"isUnanimous":true,"witness":null},{"N":5,"q":2,"total":8,"safeCount":2,"safeValidCount":0,"allSafeAreConst":true,"isUnanimous":false,"witness":{"rule":1,"inputs":"10000","q1":[0,1],"q2":[1,2],"c1":1,"c2":0}},{"N":5,"q":3,"total":16,"safeCount":2,"safeValidCount":0,"allSafeAreConst":true,"isUnanimous":false,"witness":{"rule":1,"inputs":"10000","q1":[0,1,2],"q2":[1,2,3],"c1":1,"c2":0}},{"N":5,"q":4,"total":32,"safeCount":2,"safeValidCount":0,"allSafeAreConst":true,"isUnanimous":false,"witness":{"rule":1,"inputs":"10000","q1":[0,1,2,3],"q2":[1,2,3,4],"c1":1,"c2":0}},{"N":5,"q":5,"total":64,"safeCount":64,"safeValidCount":16,"allSafeAreConst":false,"isUnanimous":true,"witness":null}],"identity":[{"N":3,"q":2,"total":64,"safeCount":8,"safeValidCount":2,"selfTiebreakSafe":false},{"N":3,"q":3,"total":256,"safeCount":64,"safeValidCount":16,"selfTiebreakSafe":true},{"N":4,"q":2,"total":64,"safeCount":8,"safeValidCount":2,"selfTiebreakSafe":false},{"N":4,"q":3,"total":256,"safeCount":8,"safeValidCount":2,"selfTiebreakSafe":false},{"N":4,"q":4,"total":1024,"safeCount":128,"safeValidCount":32,"selfTiebreakSafe":false}]}}
+, analysis: 
+{"meta":{"started":"2026-09-28T14:16:07.209Z","node":"v22.22.2","prevStarted":"2026-09-28T14:15:55.263Z","updated":"2026-09-28T14:16:07.224Z"},"e1":{"heroStates":125,"heroEdges":375,"heroSafety":70,"heroUnsafeDoomed":55,"heroShortestLen":3,"heroTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"heroUStates":125,"heroUSafety":0,"rate32":0.75,"cases32":8,"violated32":6,"rate33":0,"rate44":0.375,"violated44":6,"cases44":16,"rate43":0.375,"bars":[{"label":"N=3 q=2","v":0.75,"cases":8,"violated":6,"states":125},{"label":"N=3 q=2 崩","v":0.75,"cases":8,"violated":6,"states":740},{"label":"N=3 q=3","v":0,"cases":8,"violated":0,"states":125},{"label":"N=3 q=3 崩","v":0,"cases":8,"violated":0,"states":560},{"label":"N=4 q=2","v":0.875,"cases":16,"violated":14,"states":6561},{"label":"N=4 q=2 崩","v":0.875,"cases":16,"violated":14,"states":54549},{"label":"N=4 q=3","v":0.375,"cases":16,"violated":6,"states":9247},{"label":"N=4 q=3 崩","v":0.375,"cases":16,"violated":6,"states":60699},{"label":"N=4 q=4","v":0.375,"cases":16,"violated":6,"states":6561}]},"e2":{"total":8,"safe":2,"safeValid":0,"allSafeConst":true,"witness":{"rule":1,"inputs":"100","q1":[0,1],"q2":[1,2],"c1":1,"c2":0},"rows":[{"N":3,"q":2,"total":8,"safeCount":2,"safeValidCount":0,"allSafeAreConst":true,"isUnanimous":false,"witness":{"rule":1,"inputs":"100","q1":[0,1],"q2":[1,2],"c1":1,"c2":0}},{"N":3,"q":3,"total":16,"safeCount":16,"safeValidCount":4,"allSafeAreConst":false,"isUnanimous":true,"witness":null},{"N":4,"q":2,"total":8,"safeCount":2,"safeValidCount":0,"allSafeAreConst":true,"isUnanimous":false,"witness":{"rule":1,"inputs":"1000","q1":[0,1],"q2":[1,2],"c1":1,"c2":0}},{"N":4,"q":3,"total":16,"safeCount":2,"safeValidCount":0,"allSafeAreConst":true,"isUnanimous":false,"witness":{"rule":1,"inputs":"1000","q1":[0,1,2],"q2":[1,2,3],"c1":1,"c2":0}},{"N":4,"q":4,"total":32,"safeCount":32,"safeValidCount":8,"allSafeAreConst":false,"isUnanimous":true,"witness":null},{"N":5,"q":2,"total":8,"safeCount":2,"safeValidCount":0,"allSafeAreConst":true,"isUnanimous":false,"witness":{"rule":1,"inputs":"10000","q1":[0,1],"q2":[1,2],"c1":1,"c2":0}},{"N":5,"q":3,"total":16,"safeCount":2,"safeValidCount":0,"allSafeAreConst":true,"isUnanimous":false,"witness":{"rule":1,"inputs":"10000","q1":[0,1,2],"q2":[1,2,3],"c1":1,"c2":0}},{"N":5,"q":4,"total":32,"safeCount":2,"safeValidCount":0,"allSafeAreConst":true,"isUnanimous":false,"witness":{"rule":1,"inputs":"10000","q1":[0,1,2,3],"q2":[1,2,3,4],"c1":1,"c2":0}},{"N":5,"q":5,"total":64,"safeCount":64,"safeValidCount":16,"allSafeAreConst":false,"isUnanimous":true,"witness":null}],"identity":[{"N":3,"q":2,"total":64,"safeCount":8,"safeValidCount":2,"selfTiebreakSafe":false},{"N":3,"q":3,"total":256,"safeCount":64,"safeValidCount":16,"selfTiebreakSafe":true},{"N":4,"q":2,"total":64,"safeCount":8,"safeValidCount":2,"selfTiebreakSafe":false},{"N":4,"q":3,"total":256,"safeCount":8,"safeValidCount":2,"selfTiebreakSafe":false},{"N":4,"q":4,"total":1024,"safeCount":128,"safeValidCount":32,"selfTiebreakSafe":false}],"selfTieAtN4Q4":false,"selfTieAtN3Q3":true,"idSafeCountN4Q4":128,"idTotalN4Q4":1024,"bars":[{"label":"N=3 q=2","v":0.25,"note":"2/8"},{"label":"N=3 q=3","v":1,"note":"16/16"},{"label":"N=4 q=2","v":0.25,"note":"2/8"},{"label":"N=4 q=3","v":0.125,"note":"2/16"},{"label":"N=4 q=4","v":1,"note":"32/32"}]},"e3":{"rows":[{"n":1,"systems":2,"dedekind":3,"minusOne":true,"intersecting":null,"res1":null,"res2":null,"smallestRes1":null,"exampleRes1":null,"exampleRes1Text":null,"majoritySize":null,"majorityRes1":null,"majorityRes2":null,"ms":0},{"n":2,"systems":5,"dedekind":6,"minusOne":true,"intersecting":4,"res1":0,"res2":0,"smallestRes1":null,"exampleRes1":null,"exampleRes1Text":null,"majoritySize":1,"majorityRes1":false,"majorityRes2":false,"ms":1},{"n":3,"systems":19,"dedekind":20,"minusOne":true,"intersecting":12,"res1":1,"res2":0,"smallestRes1":3,"exampleRes1":[3,5,6],"exampleRes1Text":["{0,1}","{0,2}","{1,2}"],"majoritySize":3,"majorityRes1":true,"majorityRes2":false,"ms":0},{"n":4,"systems":167,"dedekind":168,"minusOne":true,"intersecting":81,"res1":27,"res2":0,"smallestRes1":3,"exampleRes1":[12,7,11],"exampleRes1Text":["{2,3}","{0,1,2}","{0,1,3}"],"majoritySize":4,"majorityRes1":true,"majorityRes2":false,"ms":1},{"n":5,"systems":7580,"dedekind":7581,"minusOne":true,"intersecting":2646,"res1":1959,"res2":1,"smallestRes1":3,"exampleRes1":[22,25,15],"exampleRes1Text":["{1,2,4}","{0,3,4}","{0,1,2,3}"],"majoritySize":10,"majorityRes1":true,"majorityRes2":true,"ms":11}],"n5Systems":7580,"n5Intersecting":2646,"n5Res1":1959,"n5Res2":1,"n5SmallestRes1":3,"n5Example":["{1,2,4}","{0,3,4}","{0,1,2,3}"],"n5MajoritySize":10,"n4Res1":27,"n4SmallestRes1":3,"n4MajoritySize":4,"allDedekindOK":true,"bars":[{"label":"n=1","v":2,"intersecting":null,"res1":null,"res2":null},{"label":"n=2","v":5,"intersecting":4,"res1":0,"res2":0},{"label":"n=3","v":19,"intersecting":12,"res1":1,"res2":0},{"label":"n=4","v":167,"intersecting":81,"res1":27,"res2":0},{"label":"n=5","v":7580,"intersecting":2646,"res1":1959,"res2":1}]},"e4":{"cases":[{"name":"A 单相多数派 q=2","note":"一轮投票 + 多数派 + 允许 1 崩溃","states":740,"edges":1962,"safety":352,"dead":0,"unsafeDoomed":218,"deadlocks":0,"livelocks":0,"bivalent":0,"zeroValent":170,"oneValent":0,"initValence":"0-valent","truncated":false,"ms":5,"shortestSafetyLen":3,"shortestSafetyTrace":["进程 0 广播提案 0","投递 0→1（值 0）","投递 0→2（值 0）"],"shortestDeadLen":-1,"shortestDeadTrace":[],"cycleLen":0,"cycleTrace":[]},{"name":"B 两阶段 q=2 · 0 崩溃","note":"领导者两阶段，网络不丢进程","states":195,"edges":471,"safety":0,"dead":0,"unsafeDoomed":0,"deadlocks":0,"livelocks":0,"bivalent":0,"zeroValent":195,"oneValent":0,"initValence":"0-valent","truncated":false,"ms":2,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"shortestDeadLen":-1,"shortestDeadTrace":[],"cycleLen":0,"cycleTrace":[]},{"name":"C 两阶段 q=2 · 1 崩溃","note":"同样的协议，只多允许一个进程崩溃","states":872,"edges":2156,"safety":0,"dead":81,"unsafeDoomed":0,"deadlocks":25,"livelocks":56,"bivalent":0,"zeroValent":791,"oneValent":0,"initValence":"0-valent","truncated":false,"ms":4,"shortestSafetyLen":-1,"shortestSafetyTrace":[],"shortestDeadLen":1,"shortestDeadTrace":["进程 0 崩溃"],"cycleLen":0,"cycleTrace":[]},{"name":"D 两阶段 + 超时自决","note":"超时即自行拍板（错误示范）","states":7471,"edges":16209,"safety":900,"dead":614,"unsafeDoomed":284,"deadlocks":285,"livelocks":329,"bivalent":0,"zeroValent":5673,"oneValent":0,"initValence":"0-valent","truncated":false,"ms":26,"shortestSafetyLen":7,"shortestSafetyTrace":["领导 0 发出 PREPARE","投递 0→1 的 PREP","投递 0→2 的 PREP","投递 1→0 的 PROM","领导 0 凑齐 2 个承诺，发出 ACCEPT(0)","进程 1 等满 3 步，自行决定 0（错误示范）","进程 2 等满 3 步，自行决定 1（错误示范）"],"shortestDeadLen":1,"shortestDeadTrace":["进程 0 崩溃"],"cycleLen":0,"cycleTrace":[]}],"valenceByInput":[{"inputs":"000","states":872,"safety":0,"dead":81,"bivalent":0,"zeroValent":791,"oneValent":0,"initValence":"0-valent"},{"inputs":"100","states":1061,"safety":0,"dead":97,"bivalent":19,"zeroValent":176,"oneValent":769,"initValence":"bivalent"},{"inputs":"010","states":872,"safety":0,"dead":81,"bivalent":0,"zeroValent":791,"oneValent":0,"initValence":"0-valent"},{"inputs":"110","states":872,"safety":0,"dead":81,"bivalent":0,"zeroValent":0,"oneValent":791,"initValence":"1-valent"},{"inputs":"001","states":872,"safety":0,"dead":81,"bivalent":0,"zeroValent":791,"oneValent":0,"initValence":"0-valent"},{"inputs":"101","states":872,"safety":0,"dead":81,"bivalent":0,"zeroValent":0,"oneValent":791,"initValence":"1-valent"},{"inputs":"011","states":1061,"safety":0,"dead":97,"bivalent":19,"zeroValent":769,"oneValent":176,"initValence":"bivalent"},{"inputs":"111","states":872,"safety":0,"dead":81,"bivalent":0,"zeroValent":0,"oneValent":791,"initValence":"1-valent"}],"aSafety":352,"aStates":740,"bSafety":0,"bDead":0,"bStates":195,"cSafety":0,"cDead":81,"cStates":872,"cDeadlocks":25,"cLivelocks":56,"cShortestDeadLen":1,"cShortestDeadTrace":["进程 0 崩溃"],"dSafety":900,"dDead":614,"dStates":7471,"dShortestSafetyLen":7,"dShortestSafetyTrace":["领导 0 发出 PREPARE","投递 0→1 的 PREP","投递 0→2 的 PREP","投递 1→0 的 PROM","领导 0 凑齐 2 个承诺，发出 ACCEPT(0)","进程 1 等满 3 步，自行决定 0（错误示范）","进程 2 等满 3 步，自行决定 1（错误示范）"],"bars":[{"label":"A 单相多数派","safety":352,"dead":0},{"label":"B 两阶段·0崩","safety":0,"dead":0},{"label":"C 两阶段·1崩","safety":0,"dead":81},{"label":"D 超时自决","safety":900,"dead":614}]},"e5":{"exhaustive":[{"N":2,"R":3,"total":9,"distinct":6,"p":0.6666666666666666,"closed":0.6666666666666666,"gap":0},{"N":2,"R":5,"total":25,"distinct":20,"p":0.8,"closed":0.8,"gap":0},{"N":3,"R":3,"total":27,"distinct":6,"p":0.2222222222222222,"closed":0.2222222222222222,"gap":0},{"N":3,"R":4,"total":64,"distinct":24,"p":0.375,"closed":0.375,"gap":0},{"N":3,"R":6,"total":216,"distinct":120,"p":0.5555555555555556,"closed":0.5555555555555556,"gap":0},{"N":3,"R":8,"total":512,"distinct":336,"p":0.65625,"closed":0.65625,"gap":0},{"N":4,"R":5,"total":625,"distinct":120,"p":0.192,"closed":0.192,"gap":0},{"N":4,"R":8,"total":4096,"distinct":1680,"p":0.41015625,"closed":0.41015625,"gap":0},{"N":4,"R":10,"total":10000,"distinct":5040,"p":0.504,"closed":0.504,"gap":0}],"curve":[{"N":2,"points":[{"R":2,"p":0.5},{"R":4,"p":0.75},{"R":6,"p":0.8333333333333334},{"R":8,"p":0.875},{"R":10,"p":0.9},{"R":12,"p":0.9166666666666666},{"R":14,"p":0.9285714285714286},{"R":16,"p":0.9375},{"R":18,"p":0.9444444444444444},{"R":20,"p":0.95},{"R":22,"p":0.9545454545454546},{"R":24,"p":0.9583333333333334},{"R":26,"p":0.9615384615384616},{"R":28,"p":0.9642857142857143},{"R":30,"p":0.9666666666666667},{"R":32,"p":0.96875},{"R":34,"p":0.9705882352941176},{"R":36,"p":0.9722222222222222},{"R":38,"p":0.9736842105263158},{"R":40,"p":0.975},{"R":42,"p":0.9761904761904762},{"R":44,"p":0.9772727272727273},{"R":46,"p":0.9782608695652174},{"R":48,"p":0.9791666666666666},{"R":50,"p":0.98},{"R":52,"p":0.9807692307692307},{"R":54,"p":0.9814814814814815},{"R":56,"p":0.9821428571428571},{"R":58,"p":0.9827586206896551},{"R":60,"p":0.9833333333333333},{"R":70,"p":0.9857142857142858},{"R":80,"p":0.9875},{"R":90,"p":0.9888888888888889},{"R":100,"p":0.99},{"R":110,"p":0.990909090909091},{"R":120,"p":0.9916666666666667},{"R":130,"p":0.9923076923076923},{"R":140,"p":0.9928571428571429},{"R":150,"p":0.9933333333333333},{"R":160,"p":0.99375},{"R":170,"p":0.9941176470588236},{"R":180,"p":0.9944444444444445},{"R":190,"p":0.9947368421052631},{"R":200,"p":0.995},{"R":210,"p":0.9952380952380953},{"R":220,"p":0.9954545454545455},{"R":230,"p":0.9956521739130435},{"R":240,"p":0.9958333333333333},{"R":250,"p":0.996},{"R":260,"p":0.9961538461538462},{"R":270,"p":0.9962962962962963},{"R":280,"p":0.9964285714285714},{"R":290,"p":0.996551724137931},{"R":300,"p":0.9966666666666667},{"R":310,"p":0.9967741935483871},{"R":320,"p":0.996875},{"R":330,"p":0.996969696969697},{"R":340,"p":0.9970588235294118},{"R":350,"p":0.9971428571428571},{"R":360,"p":0.9972222222222222},{"R":370,"p":0.9972972972972973},{"R":380,"p":0.9973684210526316},{"R":390,"p":0.9974358974358974},{"R":400,"p":0.9975}]},{"N":3,"points":[{"R":3,"p":0.2222222222222222},{"R":5,"p":0.48},{"R":7,"p":0.6122448979591837},{"R":9,"p":0.691358024691358},{"R":11,"p":0.7438016528925621},{"R":13,"p":0.7810650887573964},{"R":15,"p":0.8088888888888889},{"R":17,"p":0.8304498269896193},{"R":19,"p":0.8476454293628809},{"R":21,"p":0.8616780045351473},{"R":23,"p":0.8733459357277883},{"R":25,"p":0.8832},{"R":27,"p":0.8916323731138546},{"R":29,"p":0.8989298454221165},{"R":31,"p":0.9053069719042663},{"R":33,"p":0.9109274563820019},{"R":35,"p":0.9159183673469388},{"R":37,"p":0.9203798392987582},{"R":39,"p":0.9243918474687705},{"R":41,"p":0.9280190362879238},{"R":43,"p":0.9313142239048134},{"R":45,"p":0.934320987654321},{"R":47,"p":0.9370755998189226},{"R":49,"p":0.9396084964598084},{"R":51,"p":0.9419454056132257},{"R":53,"p":0.9441082235671058},{"R":55,"p":0.9461157024793388},{"R":57,"p":0.9479839950754078},{"R":59,"p":0.9497270899166906},{"R":61,"p":0.9513571620532114},{"R":71,"p":0.958143225550486},{"R":81,"p":0.9632677945435146},{"R":91,"p":0.9672744837580003},{"R":101,"p":0.9704930889128517},{"R":111,"p":0.9731352974596217},{"R":121,"p":0.975343214261321},{"R":131,"p":0.9772157799662023},{"R":141,"p":0.9788240028167597},{"R":151,"p":0.9802201657822025},{"R":161,"p":0.9814436171444002},{"R":171,"p":0.982524537464519},{"R":181,"p":0.9834864625621929},{"R":191,"p":0.9843480167758559},{"R":201,"p":0.985124130590827},{"R":211,"p":0.9858269131421127},{"R":221,"p":0.9864662885690302},{"R":231,"p":0.9870504675699481},{"R":241,"p":0.9875863018887416},{"R":251,"p":0.988079554292789},{"R":261,"p":0.9885351066484638},{"R":271,"p":0.9889571220435452},{"R":281,"p":0.9893491723762364},{"R":291,"p":0.9897143396983975},{"R":301,"p":0.9900552974028983},{"R":311,"p":0.9903743757818881},{"R":321,"p":0.9906736153569938},{"R":331,"p":0.9909548105621526},{"R":341,"p":0.9912195457555405},{"R":351,"p":0.9914692250874587},{"R":361,"p":0.9917050974133103},{"R":371,"p":0.9919282771848504},{"R":381,"p":0.9921397620573019},{"R":391,"p":0.9923404477992687}]},{"N":4,"points":[{"R":4,"p":0.09375},{"R":6,"p":0.2777777777777778},{"R":8,"p":0.41015625},{"R":10,"p":0.504},{"R":12,"p":0.5729166666666666},{"R":14,"p":0.6253644314868805},{"R":16,"p":0.66650390625},{"R":18,"p":0.6995884773662552},{"R":20,"p":0.72675},{"R":22,"p":0.7494365138993239},{"R":24,"p":0.7686631944444444},{"R":26,"p":0.7851615839781521},{"R":28,"p":0.7994715743440234},{"R":30,"p":0.812},{"R":32,"p":0.82305908203125},{"R":34,"p":0.8328923264807653},{"R":36,"p":0.8416923868312757},{"R":38,"p":0.849613646304126},{"R":40,"p":0.8567812499999999},{"R":42,"p":0.8632977000323938},{"R":44,"p":0.8692477460555973},{"R":46,"p":0.8747020629571793},{"R":48,"p":0.8797200520833334},{"R":50,"p":0.8843519999999999},{"R":52,"p":0.8886407601274465},{"R":54,"p":0.8926230757506477},{"R":56,"p":0.8963306304664722},{"R":58,"p":0.8997908893353561},{"R":60,"p":0.9030277777777777},{"R":70,"p":0.9165131195335278},{"R":80,"p":0.9267070312500001},{"R":90,"p":0.9346831275720164},{"R":100,"p":0.9410939999999999},{"R":110,"p":0.946359128474831},{"R":120,"p":0.9507604166666667},{"R":130,"p":0.9544943104233046},{"R":140,"p":0.9577018950437317},{"R":150,"p":0.9604871111111111},{"R":160,"p":0.9629282226562501},{"R":170,"p":0.9650852839405658},{"R":180,"p":0.9670051440329218},{"R":190,"p":0.9687248870097681},{"R":200,"p":0.97027425},{"R":210,"p":0.9716773566569487},{"R":220,"p":0.9729539819684448},{"R":230,"p":0.9741204898495932},{"R":240,"p":0.9751905381944446},{"R":250,"p":0.976175616},{"R":260,"p":0.9770854574419664},{"R":270,"p":0.9779283645785705},{"R":280,"p":0.9787114613702624},{"R":290,"p":0.9794408954856697},{"R":300,"p":0.980122},{"R":310,"p":0.9807594239871102},{"R":320,"p":0.9813572387695312},{"R":330,"p":0.9819190249603472},{"R":340,"p":0.982447944229595},{"R":350,"p":0.9829467988338192},{"R":360,"p":0.9834180812757202},{"R":370,"p":0.9838640159516712},{"R":380,"p":0.9842865942557224},{"R":390,"p":0.9846876043089061},{"R":400,"p":0.9850686562500001}]},{"N":5,"points":[{"R":5,"p":0.038400000000000004},{"R":7,"p":0.14993752603082047},{"R":9,"p":0.25605852766346593},{"R":11,"p":0.34423878150399567},{"R":13,"p":0.4159518224151815},{"R":15,"p":0.47454814814814816},{"R":17,"p":0.5229822439865421},{"R":19,"p":0.5635315873880649},{"R":21,"p":0.5978990235550001},{"R":23,"p":0.6273562487269556},{"R":25,"p":0.65286144},{"R":27,"p":0.6751455006294207},{"R":29,"p":0.694773364476071},{"R":31,"p":0.7121873785219827},{"R":33,"p":0.7277381882941613},{"R":35,"p":0.7417069554352352},{"R":37,"p":0.7543215337422986},{"R":39,"p":0.7657683943528276},{"R":41,"p":0.7762015258898399},{"R":43,"p":0.7857491559175278},{"R":45,"p":0.7945188843164153},{"R":47,"p":0.8026016454764154},{"R":49,"p":0.8100747970311551},{"R":51,"p":0.8170045501973999},{"R":53,"p":0.8234478988036344},{"R":55,"p":0.8294541629670105},{"R":57,"p":0.8350662338891403},{"R":59,"p":0.8403215848731419},{"R":61,"p":0.8452530980241647},{"R":71,"p":0.8659592413425935},{"R":81,"p":0.8817842362487956},{"R":91,"p":0.8942704320313066},{"R":101,"p":0.9043728363107115},{"R":111,"p":0.9127141869526328},{"R":121,"p":0.9197178072598727},{"R":131,"p":0.925681470726099},{"R":141,"p":0.9308207131056616},{"R":151,"p":0.9352953785692556},{"R":161,"p":0.9392265100452911},{"R":171,"p":0.942707445815962},{"R":181,"p":0.9458113149624385},{"R":191,"p":0.9485962248231132},{"R":201,"p":0.9511089289330906},{"R":211,"p":0.9533874704576897},{"R":221,"p":0.9554631200640147},{"R":231,"p":0.957361818548195},{"R":241,"p":0.9591052658242173},{"R":251,"p":0.9607117534286613},{"R":261,"p":0.9621968083473972},{"R":271,"p":0.9635736962316407},{"R":281,"p":0.9648538185687171},{"R":291,"p":0.966047028992463},{"R":301,"p":0.9671618873074351},{"R":311,"p":0.9682058650803054},{"R":321,"p":0.969185513239168},{"R":331,"p":0.9701065996262742},{"R":341,"p":0.9709742226058479},{"R":351,"p":0.9717929054525626},{"R":361,"p":0.972566675209717},{"R":371,"p":0.9732991289185429},{"R":381,"p":0.9739934895167287},{"R":391,"p":0.9746526532384469}]},{"N":6,"points":[{"R":6,"p":0.015432098765432098},{"R":8,"p":0.076904296875},{"R":10,"p":0.1512},{"R":12,"p":0.22280092592592593},{"R":14,"p":0.2871571369072411},{"R":16,"p":0.34366607666015625},{"R":18,"p":0.3929787125946248},{"R":20,"p":0.43605000000000005},{"R":22,"p":0.47381730010990314},{"R":24,"p":0.507104190779321},{"R":26,"p":0.5366045144939442},{"R":28,"p":0.5628932513238531},{"R":30,"p":0.5864444444444445},{"R":32,"p":0.6076490879058838},{"R":34,"p":0.626830730136908},{"R":36,"p":0.6442583701671493},{"R":38,"p":0.6601568636795216},{"R":40,"p":0.674715234375},{"R":42,"p":0.6880932915224182},{"R":44,"p":0.7004269028133945},{"R":46,"p":0.7118322081343396},{"R":48,"p":0.722409001103154},{"R":50,"p":0.732243456},{"R":52,"p":0.7414103383311832},{"R":54,"p":0.7499748064434454},{"R":56,"p":0.7579938877541723},{"R":58,"p":0.7655176947912572},{"R":60,"p":0.7725904320987653},{"R":70,"p":0.8024165883262927},{"R":80,"p":0.8253484497070314},{"R":90,"p":0.8435226743890667},{"R":100,"p":0.8582777279999998},{"R":110,"p":0.8704939752004024},{"R":120,"p":0.8807738859953704},{"R":130,"p":0.8895435141518963},{"R":140,"p":0.8971125914797405},{"R":150,"p":0.9037116507654321},{"R":160,"p":0.9095157978057863},{"R":170,"p":0.9146604127035328},{"R":180,"p":0.9192518035868515},{"R":190,"p":0.9233746083658206},{"R":200,"p":0.927097045875},{"R":210,"p":0.9304747113746699},{"R":220,"p":0.9335533661697226},{"R":230,"p":0.9363710190709228},{"R":240,"p":0.9389595008379148},{"R":250,"p":0.9413456700211199},{"R":260,"p":0.9435523470682184},{"R":270,"p":0.9455990455300882},{"R":280,"p":0.9475025499745271},{"R":290,"p":0.9492773768256472},{"R":300,"p":0.950936144888889},{"R":310,"p":0.9524898755537669},{"R":320,"p":0.9539482377648353},{"R":330,"p":0.9553197492612377},{"R":340,"p":0.9566119429280555},{"R":350,"p":0.9578315051166776},{"R":360,"p":0.9589843912934068},{"R":370,"p":0.9600759232358199},{"R":380,"p":0.9611108711222773},{"R":390,"p":0.9620935231843954},{"R":400,"p":0.9630277450664063}]},{"N":7,"points":[{"R":7,"p":0.006119899021666141},{"R":9,"p":0.03793459669088384},{"R":11,"p":0.08534845822413115},{"R":13,"p":0.1378301896760365},{"R":15,"p":0.18981925925925927},{"R":17,"p":0.23887078272049678},{"R":19,"p":0.2841073376859496},{"R":21,"p":0.3253872237034014},{"R":23,"p":0.3628941627796756},{"R":25,"p":0.39693975552000005},{"R":27,"p":0.42786998805321313},{"R":29,"p":0.4560224699058159},{"R":31,"p":0.4817084245986355},{"R":33,"p":0.5052066761711533},{"R":35,"p":0.5267633071254324},{"R":37,"p":0.5465938359914976},{"R":39,"p":0.564886350074867},{"R":41,"p":0.5818048320173695},{"R":43,"p":0.597492327322901},{"R":45,"p":0.6120738071770903},{"R":47,"p":0.6256586842509676},{"R":49,"p":0.6383429887475824},{"R":51,"p":0.6502112337211141},{"R":53,"p":0.6613380063015305},{"R":55,"p":0.6717893220724547},{"R":57,"p":0.6816237772465373},{"R":59,"p":0.6908935294188258},{"R":61,"p":0.6996451335432484},{"R":71,"p":0.7369500387541611},{"R":81,"p":0.7660676949578014},{"R":91,"p":0.7894115273697442},{"R":101,"p":0.8085364441872059},{"R":111,"p":0.8244873712184728},{"R":121,"p":0.8379916364214673},{"R":131,"p":0.849570722215259},{"R":141,"p":0.8596080827232004},{"R":151,"p":0.8683918759839981},{"R":161,"p":0.8761427804828187},{"R":171,"p":0.883032623402045},{"R":181,"p":0.8891971704417785},{"R":191,"p":0.8947451028251234},{"R":201,"p":0.8997644430539522},{"R":211,"p":0.904327236077991},{"R":221,"p":0.9084930139795017},{"R":231,"p":0.9123113973346773},{"R":241,"p":0.9158240740106246},{"R":251,"p":0.9190663224257618},{"R":261,"p":0.9220681970158701},{"R":271,"p":0.9248554601294692},{"R":281,"p":0.9274503214164665},{"R":291,"p":0.9298720295364444},{"R":301,"p":0.9321373494739047},{"R":311,"p":0.9342609504445251},{"R":321,"p":0.9362557233317493},{"R":331,"p":0.938133042144593},{"R":341,"p":0.9399029806805432},{"R":351,"p":0.9415744930956111},{"R":361,"p":0.9431555652044109},{"R":371,"p":0.9446533418983308},{"R":381,"p":0.9460742349657191},{"R":391,"p":0.9474240147419599}]}],"table":[{"N":3,"R":5,"p":0.48},{"N":3,"R":10,"p":0.7200000000000001},{"N":3,"R":25,"p":0.8832},{"N":3,"R":50,"p":0.9408},{"N":3,"R":100,"p":0.9702},{"N":3,"R":200,"p":0.98505},{"N":3,"R":400,"p":0.9925125},{"N":5,"R":5,"p":0.038400000000000004},{"N":5,"R":10,"p":0.3024},{"N":5,"R":25,"p":0.65286144},{"N":5,"R":50,"p":0.81360384},{"N":5,"R":100,"p":0.9034502399999998},{"N":5,"R":200,"p":0.950868765},{"N":5,"R":400,"p":0.9752179696875001},{"N":7,"R":5,"p":0},{"N":7,"R":10,"p":0.060480000000000006},{"N":7,"R":25,"p":0.39693975552000005},{"N":7,"R":50,"p":0.64437424128},{"N":7,"R":100,"p":0.8067810643199997},{"N":7,"R":200,"p":0.89928413449875},{"N":7,"R":400,"p":0.9485823288904102}],"threshold":[{"N":2,"R90":10,"N2":4,"Nsq":2,"ratio":5},{"N":3,"R90":30,"N2":9,"Nsq":6,"ratio":5},{"N":4,"R90":59,"N2":16,"Nsq":12,"ratio":4.916666666666667},{"N":5,"R90":97,"N2":25,"Nsq":20,"ratio":4.85},{"N":6,"R90":145,"N2":36,"Nsq":30,"ratio":4.833333333333333},{"N":7,"R90":202,"N2":49,"Nsq":42,"ratio":4.809523809523809}],"maxGap":0,"r90N5":97,"ratioMin":4.809523809523809,"ratioMax":5,"fixedProb":0},"e6":{"exhaustive":[{"n":3,"f":1,"inputs":"001","rounds":4,"total":4096,"disagree":0,"never":1728,"neverRate":0.421875,"rows":[{"round":1,"decided":0,"cumulative":0},{"round":2,"decided":1024,"cumulative":0.25},{"round":3,"decided":768,"cumulative":0.4375},{"round":4,"decided":576,"cumulative":0.578125}],"hazard":0.25,"hazardTheory":0.25},{"n":3,"f":1,"inputs":"011","rounds":3,"total":512,"disagree":0,"never":288,"neverRate":0.5625,"rows":[{"round":1,"decided":0,"cumulative":0},{"round":2,"decided":128,"cumulative":0.25},{"round":3,"decided":96,"cumulative":0.4375}],"hazard":0.25,"hazardTheory":0.25},{"n":3,"f":1,"inputs":"111","rounds":3,"total":512,"disagree":0,"never":0,"neverRate":0,"rows":[{"round":1,"decided":512,"cumulative":1},{"round":2,"decided":0,"cumulative":1},{"round":3,"decided":0,"cumulative":1}],"hazard":0,"hazardTheory":0.25}],"hazard":[{"n":3,"f":1,"trials":60000,"hitRound2":0.25315,"hazardTheory":0.25,"meanMeasured":4.990933333333333,"meanTheory":5,"never":0},{"n":5,"f":2,"trials":60000,"hitRound2":0.06215,"hazardTheory":0.0625,"meanMeasured":17.03895,"meanTheory":17,"never":0},{"n":7,"f":3,"trials":60000,"hitRound2":0.016116666666666668,"hazardTheory":0.015625,"meanMeasured":64.23433333333334,"meanTheory":65,"never":0.0017833333333333334}],"bias":[{"p":0.5,"meanRounds":5.018633333333334,"neverRate":0},{"p":0.4,"meanRounds":4.5925,"neverRate":0},{"p":0.3,"meanRounds":3.713766666666667,"neverRate":0},{"p":0.25,"meanRounds":3.291733333333333,"neverRate":0},{"p":0.2,"meanRounds":2.9268666666666667,"neverRate":0},{"p":0.15,"meanRounds":2.621966666666667,"neverRate":0},{"p":0.1,"meanRounds":2.373466666666667,"neverRate":0},{"p":0.05,"meanRounds":2.1698,"neverRate":0},{"p":0.02,"meanRounds":2.0613333333333332,"neverRate":0}],"constCoin":[{"coin":"恒 0","meanRounds":2},{"coin":"恒 1","meanRounds":2}],"ex3Total":4096,"ex3Disagree":0,"ex3Never":1728,"ex3NeverRate":0.421875,"ex3Hazard":0.25,"ex3HazardTheory":0.25,"curves":[{"name":"n=3","points":[[1,0],[2,0.25],[3,0.4375],[4,0.578125]]},{"name":"n=3","points":[[1,0],[2,0.25],[3,0.4375]]},{"name":"n=3","points":[[1,1],[2,1],[3,1]]}],"hazardGapMax":0.003149999999999986,"meanGrowth":[{"n":3,"mean":5},{"n":5,"mean":17},{"n":7,"mean":65}],"biasCurve":[[0.5,5.018633333333334],[0.4,4.5925],[0.3,3.713766666666667],[0.25,3.291733333333333],[0.2,2.9268666666666667],[0.15,2.621966666666667],[0.1,2.373466666666667],[0.05,2.1698],[0.02,2.0613333333333332]]},"kpis":[{"label":"单相多数派 · 违规率","val":"75%","tone":"hot","note":"N=3 q=2：8 个输入里 6 个会撞出一致性违规"},{"label":"全员到齐时的违规率","val":"38%","tone":"hot","note":"N=4 q=4：即使等到所有人，平票按自己照样分裂"},{"label":"安全且有效的判定规则","val":"0 条","tone":"hot","note":"q=2 的 8 条规则里：只有 2 条安全，且都是常数、都违反有效性"},{"label":"两阶段 · 0 崩溃","val":"违规 0 / 死 0","tone":"cool","note":"195 个可达状态全查过，安全与活性同时成立"},{"label":"两阶段 · 1 崩溃","val":"违规 0 / 死 81","tone":"gold","note":"安全性还在，活性没了：25 个死锁 + 56 个活锁"},{"label":"容 1 个故障的系统","val":"1959 / 7580","tone":"cool","note":"n=5 的 7580 个法定人数系统里只有 1959 个能容 1 个故障；最小只要 3 个法定人数"}],"conclusions":["一轮投票要保证一致性，唯一的办法是让判定规则变成**常数** —— 而常数又违反有效性（全体投 0 必须判 0）。所以在 N 个进程里，只要法定人数小于 N，单相协议**一条都不存在**：8 条规则里安全的有 2 条，安全且有效的有 0 条。","把「平票按自己」写进规则，等于让判定依赖**进程身份**。代价是：N=4 时即使等到全部 4 个值，2-2 平票下两个进程也会判出不同结果 —— 16 个输入里 6 个会分裂。N=3 侥幸没事，只因为奇数个进程平不了票。","两阶段（先凑承诺、再收确认）把安全性买了回来：N=3、q=2、195 个可达状态里一致性违规 **0** 个。代价是它必须知道「谁是领导」。","只要多允许一个进程崩溃，同一个协议的安全性仍然 0，但活性塌了：81 个状态再也走不到决定，其中 25 个是死锁、56 个是活锁。最短的那条只要一步：进程 0 崩溃。","想用超时补救，就得回答「没回话」和「已经死了」的区别 —— 异步网络里这两件事**在观测上完全一样**。把「超时即自行拍板」写进去，违规从 0 跳到 900 个（最短反例 7 步）。","**你要么丢掉安全性，要么丢掉活性。** 这不是实现水平问题，是异步网络的性质 —— 这就是 FLP。","法定人数只要两两相交就够了：n=5 的 7580 个系统里 2646 个满足相交，其中 1959 个能容 1 个故障。多数派（10 个极小法定人数）是**充分但远非必要**的 —— 最少只要 3 个：{1,2,4}、{0,3,4}、{0,1,2,3}。","选举超时必须**随机化**：档位全不相同时最小的那个先醒、一轮就选出领导者。穷举与闭式解完全吻合（最大偏差 0.0e+0）。要让一轮成功率到 90%，档位数约需 5N(N−1)：N=3 要 30 档，N=5 要 97 档，N=7 要 202 档。","抽签（随机化共识）的终止是**几何分布**：每轮决定概率精确等于 2^(1−n)。n=3 穷举全部 4096 条硬币序列，一致性违例 **0** 次；实测 hazard 0.25315 对理论 0.25。代价是期望轮数 1 + 2^(n−1)：n 每加 2，慢 4 倍。","反直觉的一条：**有偏硬币更快**。n=3 时公平硬币平均 5.02 轮，p=0.05 的偏硬币只要 2.06 轮 —— 偏向一边的硬币把大家推向同一个值。但这也说明：在本页的**轮同步**模型里，连一个常数硬币都能终止。"],"limits":["本页的状态空间搜索是**穷举**的，但只穷举到模型允许的规模：N ≤ 4、消息类型 ≤ 5 种、崩溃数 ≤ 1。所有「违规 0」都是**在界内**的结论，不是对任意 N 的证明。","「未触顶」由引擎自报（truncated 标志）。N=4、q=2、允许 1 崩溃那一档最大 undefined 个状态以内，全部跑完；再往上会触顶。","两阶段协议里的领导是**指定**的（进程 0）。这回避了「怎么选出领导」这个更难的问题 —— 而那一问在纯异步下和共识本身一样不可能。","「超时即自行拍板」是一个**故意写错的示范**，不是任何真实协议的写法。真实的 Paxos 用提案号把迟到的 ACCEPT 挡掉，安全性可以恢复；但那仍然给不了有界的终止时间。","第陆章的抽签跑在**轮同步抽象**下（每一轮的广播保证送达）。把「异步」换成「轮」本身不是免费的 —— 它的价钱就是第伍章量的那个超时困境。所以本章量的是随机化的**价格**，不是它的必要性。","法定人数系统的「容 f 个故障」用的是组合必要条件（两两相交 + 去掉任意 f 个进程后仍有完整法定人数），**不包含可用性余量**：3 个法定人数的系统虽然合法，但它比多数派更脆（某个进程一崩就只剩一个可选集合）。","Dedekind 数是外部已知真值（2, 3, 6, 20, 168, 7581, 7828354…），本页只算到 n=5。n=6 需要枚举 782 万条反链，本轮没跑。","抽签的期望轮数报的是**理论值 1 + 2^(n−1)**，不是蒙特卡洛均值 —— 因为几何分布尾巴太厚，在有限轮数上限下均值会被截断（实测 n=7 时截断把 65 拉低到 62.2）。报 hazard 才是稳的。","「概率 1 终止」不等于「有有限的时间上界」。几何分布无记忆、尾巴是指数的，但任何有限轮数之后都还留着非零的未决定概率。"],"verify":[["模型自检（三套独立实现互相对账）","153 项全过","暴力 DFS 枚举 / 逐状态前向价态 / Dedekind 外部真值 / 排列闭式解"],["状态图引擎：BFS vs 暴力枚举","状态数与边数逐例相同","5 个协议配置 + 限深/不限深一致性"],["价态分类：反向传播 vs 前向可达","逐状态一致（0 处不符）","5 个协议配置"],["最短反例","逐步重放合法 + 深度更小时无违规","证明它真的是最短的"],["决定不可撤销","0 条边把已决进程打回未决","迟到消息不会回退阶段"],["有效性","终态决定的值必是某个进程的输入","3 个协议配置 × 全部终态"],["崩溃预算","没有任何可达状态超出预算","3 个协议配置"],["判定规则穷举","q<N 时安全规则恰 2 条且全为常数","N=3,4,5 × q=2..N"],["Dedekind 对照","n=1..5 全部等于 Dedekind(n) − 1","外部已知真值"],["选举穷举 vs 闭式解","最大偏差 0.0e+0","7 组 (N,R) 组合"],["抽签穷举","4096 条硬币序列一致性违例 0 次","n=3、4 轮"],["抽签 hazard","实测与 2^(1−n) 最大偏差 0.00315","n=3,5,7 各 6 万次试验"],["决定论","同一输入两次运行逐位相同","状态图 + PRNG + 穷举"],["真实浏览器内核","三档视口（1400/480/360）全部断言通过","探针自报实际视口宽度"]],"headline":{"big":"违规 0 / 死 81","sub":"同一个两阶段协议，只把「允许 1 个进程崩溃」打开","contrast":"0 崩溃时：违规 0 / 死 0","oneLiner":"异步网络里，确定论的共识协议不可能同时保住安全性和活性 —— 本页把这条定理算了出来，而不是背下来。"},"lede":{"totalStates":2017912,"searches":112,"quorumSystems":7773,"rules":1864,"coinSeqs":4096}}
+};</script>
+<script>
+/* ============================================================
+ * core.js —— 《异步之墙》全部模型
+ *
+ * UMD：Node 里跑标定，浏览器里跑界面，同一份源码。
+ *
+ * 装的东西：
+ *   0. 工具（确定性 PRNG / popcount）
+ *   1. 状态图引擎 —— 从零写的模型检验器
+ *      可达状态、安全性违规、价态分类（0-价 / 1-价 / 双价 / 死）、
+ *      死状态反可达、最短反例路径、区域内环
+ *   2. 单相多数派协议
+ *   3. 领导者两阶段协议（含「超时自行拍板」错误示范）
+ *   4. 判定规则穷举（为什么一轮不够）
+ *   5. 反链枚举（Dedekind 数）+ 法定人数系统分析
+ *   6. 选举超时（固定 vs 随机）
+ *   7. 抽签 —— 轮同步抽象下的随机化共识
+ * ========================================================== */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.AWCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* ================= 0. 工具 ================= */
+
+  function splitmix32(a) {
+    return function () {
+      a |= 0; a = (a + 0x9e3779b9) | 0;
+      var t = a ^ (a >>> 16); t = Math.imul(t, 0x21f0aaad);
+      t = t ^ (t >>> 15); t = Math.imul(t, 0x735a2d97);
+      return ((t = t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+
+  function popcount(x) {
+    x = x - ((x >> 1) & 0x55555555);
+    x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+    x = (x + (x >> 4)) & 0x0f0f0f0f;
+    return (x * 0x01010101) >> 24;
+  }
+
+  function bitList(mask, n) {
+    var out = [];
+    for (var i = 0; i < n; i++) if (mask & (1 << i)) out.push(i);
+    return out;
+  }
+
+  /* ================= 1. 状态图引擎 =================
+   *
+   * 协议接口（五个函数）：
+   *   init()            -> cfg
+   *   enabled(cfg)      -> [step]        当前可执行的步骤
+   *   apply(cfg, step)  -> cfg'          必须返回新对象，不得改 cfg
+   *   status(cfg)       -> {decided:[], conflict:bool, allDecided:bool, value:0|1|null}
+   *   canon(cfg)        -> string        配置的唯一键（必须单射）
+   *   label(cfg, step)  -> string        人话
+   *
+   * 一次 explore 给出：
+   *   states  可达状态数
+   *   edges   边数
+   *   safety  安全性违规状态（两个进程决定了不同的值）
+   *   term    一致终态（全体存活进程已决且一致）
+   *   valSet  每个状态的价态位掩码：1=可达「决定 0」，2=可达「决定 1」
+   *           → 1 是 0-价，2 是 1-价，3 是双价，0 是死
+   *   dead    死状态（从它出发永远无法达成一致决定）
+   *   cycle   死区里的一个具体环（用来把「永远不终止」摆出来）
+   *   truncated  状态数触顶（此时结论只在界内成立）
+   * ================================================================ */
+
+  function explore(proto, opts) {
+    opts = opts || {};
+    var maxStates = opts.maxStates || 300000;
+    var maxDepth = opts.maxDepth === undefined ? Infinity : opts.maxDepth;
+
+    var start = proto.init();
+    var keys = Object.create(null);
+    var cfgs = [], edges = [], depth = [], truncated = false;
+
+    function intern(c, d) {
+      var k = proto.canon(c), j = keys[k];
+      if (j === undefined) { j = cfgs.length; keys[k] = j; cfgs.push(c); depth.push(d); }
+      return j;
+    }
+    intern(start, 0);
+
+    for (var i = 0; i < cfgs.length; i++) {
+      var c = cfgs[i], ed = [], steps = (depth[i] >= maxDepth ? [] : proto.enabled(c));
+      for (var k = 0; k < steps.length; k++) {
+        var nc = proto.apply(c, steps[k]);
+        var kk = proto.canon(nc), j = keys[kk];
+        if (j === undefined) {
+          if (cfgs.length >= maxStates) { truncated = true; continue; }
+          j = cfgs.length; keys[kk] = j; cfgs.push(nc); depth.push(depth[i] + 1);
+        }
+        ed.push({ to: j, step: steps[k] });
+      }
+      edges.push(ed);
+    }
+
+    var N = cfgs.length;
+    var st = new Array(N);
+    for (var i = 0; i < N; i++) st[i] = proto.status(cfgs[i]);
+
+    /* --- 反向邻接 --- */
+    var rev = new Array(N);
+    for (var i = 0; i < N; i++) rev[i] = [];
+    for (var i = 0; i < N; i++) for (var k = 0; k < edges[i].length; k++) rev[edges[i][k].to].push(i);
+
+    /* --- 安全性违规 --- */
+    var safety = [];
+    var term = [];                 /* 一致终态：全体存活已决且一致 */
+    for (var i = 0; i < N; i++) {
+      if (st[i].conflict) safety.push(i);
+      if (st[i].allDecided && !st[i].conflict) term.push(i);
+    }
+
+    /* --- 价态：从一致终态反向可达 --- */
+    var valSet = new Uint8Array(N);
+    for (var vi = 0; vi < 2; vi++) {
+      var bit = vi === 0 ? 1 : 2;
+      var seen = new Uint8Array(N), stack = [];
+      for (var i = 0; i < term.length; i++) {
+        if (st[term[i]].value === vi && !seen[term[i]]) { seen[term[i]] = 1; valSet[term[i]] |= bit; stack.push(term[i]); }
+      }
+      while (stack.length) {
+        var u = stack.pop();
+        for (var q = 0; q < rev[u].length; q++) {
+          var p = rev[u][q];
+          if (!seen[p]) { seen[p] = 1; valSet[p] |= bit; stack.push(p); }
+        }
+      }
+    }
+
+    /* 死状态 = 可达、无冲突、价态为空，并且**从它出发也到不了任何冲突**。
+       为什么必须排除「注定不安全」的状态：决定不可撤销，所以一个已经出现冲突的
+       状态价态必然为空 —— 若不分青红皂白就把它算成「活性违规」，就会把安全性问题
+       记成活性问题。而「从它出发每条路都通向冲突」是安全性问题的另一种形态，
+       也不是活性问题。只有「既不冲突、也永远撞不出冲突、还永远决定不了」才是死锁。 */
+    var conflictReach = new Uint8Array(N), stack2 = [];
+    for (var i = 0; i < safety.length; i++) { conflictReach[safety[i]] = 1; stack2.push(safety[i]); }
+    while (stack2.length) {
+      var u2 = stack2.pop();
+      for (var q2 = 0; q2 < rev[u2].length; q2++) {
+        var p2 = rev[u2][q2];
+        if (!conflictReach[p2]) { conflictReach[p2] = 1; stack2.push(p2); }
+      }
+    }
+
+    var dead = [], doomed = [], unsafeDoomed = [];
+    for (var i = 0; i < N; i++) {
+      if (st[i].conflict) continue;
+      if (valSet[i] === 0) {
+        doomed.push(i);
+        if (!conflictReach[i]) dead.push(i); else unsafeDoomed.push(i);
+      }
+    }
+    /* 死状态分两类：死锁（一步都走不了）与活锁（还能走，但走不出死区）。
+       一个死状态的后继必然也是死状态 —— 否则它自己就是活的。 */
+    var deadlocks = [], livelocks = [];
+    dead.forEach(function (i) { if (edges[i].length === 0) deadlocks.push(i); else livelocks.push(i); });
+
+    var bivalent = [], zeroVal = [], oneVal = [];
+    for (var i = 0; i < N; i++) {
+      if (st[i].conflict) continue;
+      if (valSet[i] === 3) bivalent.push(i);
+      else if (valSet[i] === 1) zeroVal.push(i);
+      else if (valSet[i] === 2) oneVal.push(i);
+    }
+
+    /* --- 最短路径 --- */
+    function shortestPath(targets) {
+      var tset = Object.create(null), q = [], prev = new Array(N), seen = new Uint8Array(N);
+      targets.forEach(function (t) { tset[t] = 1; });
+      seen[0] = 1; q.push(0);
+      for (var h = 0; h < q.length; h++) {
+        var u = q[h];
+        if (tset[u]) {
+          var path = [], cur = u;
+          while (cur !== 0) { var e = prev[cur]; path.push({ to: cur, from: e[0], step: e[1] }); cur = e[0]; }
+          path.reverse();
+          return { len: path.length, path: path };
+        }
+        for (var k = 0; k < edges[u].length; k++) {
+          var v = edges[u][k].to;
+          if (!seen[v]) { seen[v] = 1; prev[v] = [u, edges[u][k].step]; q.push(v); }
+        }
+      }
+      return null;
+    }
+
+    /* --- 在给定状态集合里找一个环 --- */
+    function findCycle(region) {
+      var inset = Object.create(null), list = [];
+      region.forEach(function (t) { inset[t] = 1; list.push(t); });
+      if (!list.length) return null;
+      var color = Object.create(null), parent = Object.create(null), parentStep = Object.create(null);
+      for (var s = 0; s < list.length; s++) {
+        var root = list[s];
+        if (color[root]) continue;
+        var stack = [[root, 0]];
+        color[root] = 1;
+        while (stack.length) {
+          var top = stack[stack.length - 1], u = top[0];
+          if (top[1] < edges[u].length) {
+            var e = edges[u][top[1]++], v = e.to;
+            if (!inset[v]) continue;
+            if (color[v] === 1) {
+              /* 找到回边 u -> v：把 v..u 这条路 + 回边取出来 */
+              var path = [], cur = u;
+              while (cur !== v) { path.push({ to: cur, from: parent[cur], step: parentStep[cur] }); cur = parent[cur]; }
+              path.push({ to: v, from: u, step: e.step });
+              path.reverse();
+              return path;
+            }
+            if (!color[v]) { color[v] = 1; parent[v] = u; parentStep[v] = e.step; stack.push([v, 0]); }
+          } else { color[u] = 2; stack.pop(); }
+        }
+      }
+      return null;
+    }
+
+    /* --- 死区里的环 --- */
+    var cycle = dead.length ? findCycle(dead) : null;
+
+    return {
+      states: N, edges: edges.reduce(function (a, e) { return a + e.length; }, 0),
+      cfgs: cfgs, edgesArr: edges, status: st, proto: proto, depth: depth,
+      safety: safety, term: term, dead: dead, doomed: doomed, unsafeDoomed: unsafeDoomed, conflictReach: conflictReach,
+      deadlocks: deadlocks, livelocks: livelocks,
+      bivalent: bivalent, zeroValent: zeroVal, oneValent: oneVal,
+      valSet: valSet,
+      initValence: st[0].conflict ? 'conflict' : (valSet[0] === 3 ? 'bivalent' : valSet[0] === 1 ? '0-valent' : valSet[0] === 2 ? '1-valent' : (conflictReach[0] ? 'doomed' : 'dead')),
+      shortestSafety: safety.length ? shortestPath(safety) : null,
+      shortestDead: dead.length ? shortestPath(dead) : null,
+      cycle: cycle,
+      truncated: truncated
+    };
+  }
+
+  /* 把一条路径变成人话 */
+  function traceText(res, path) {
+    if (!path) return [];
+    var out = [];
+    for (var i = 0; i < path.length; i++) {
+      out.push(res.proto.label(res.cfgs[path[i].from], path[i].step));
+    }
+    return out;
+  }
+
+  /* ================= 2. 单相多数派协议 =================
+   *
+   * 每个进程广播自己的提案；一旦听到 q 个值（含自己）就按「多数」决定，
+   * 平票时按自己的值。这是最天真的一轮协议。
+   *
+   * 状态：S[i] = [sent, decided]      decided: -1 未决 / 0 / 1
+   * 消息：from*N+to 位（from != to），值 = inputs[from]
+   * ================================================================ */
+
+  function protoSinglePhase(N, q, crashBudget, inputs) {
+    var MI = [];
+    for (var a = 0; a < N; a++) for (var b = 0; b < N; b++) if (a !== b) MI.push([a, b]);
+    var MASK = new Array(N * N);
+    for (var i = 0; i < MI.length; i++) MASK[MI[i][0] * N + MI[i][1]] = 1 << i;
+
+    function heardMask(c, i) {
+      var h = 1 << i;
+      for (var k = 0; k < MI.length; k++) {
+        var m = MI[k];
+        if (m[1] !== i) continue;
+        if (!c.S[m[0]][0]) continue;            /* 发送者还没发 */
+        if (c.M & (1 << k)) continue;           /* 还在路上 */
+        h |= 1 << m[0];
+      }
+      return h;
+    }
+    function majValue(h, own) {
+      var n0 = 0, n1 = 0;
+      for (var i = 0; i < N; i++) if (h & (1 << i)) { if (inputs[i] === 0) n0++; else n1++; }
+      if (n1 > n0) return 1;
+      if (n0 > n1) return 0;
+      return inputs[own];                        /* 平票按自己 */
+    }
+
+    return {
+      kind: 'single', N: N, q: q, inputs: inputs, msgCount: MI.length,
+      heard: function (c, i) { return heardMask(c, i); },
+      majValue: majValue, MI: MI,
+      init: function () {
+        var S = [];
+        for (var i = 0; i < N; i++) S.push([0, -1]);
+        return { S: S, M: 0, C: 0, t: 0 };
+      },
+      canon: function (c) {
+        var s = '';
+        for (var i = 0; i < N; i++) s += c.S[i][0] + (c.S[i][1] < 0 ? 'x' : c.S[i][1]);
+        return s + '|' + c.M + '|' + c.C;
+      },
+      enabled: function (c) {
+        var out = [];
+        for (var i = 0; i < N; i++) if (!(c.C & (1 << i)) && !c.S[i][0]) out.push({ op: 'send', i: i });
+        for (var k = 0; k < MI.length; k++) {
+          if (!(c.M & (1 << k))) continue;
+          var m = MI[k];
+          if (!(c.C & (1 << m[1]))) out.push({ op: 'deliver', k: k });
+        }
+        if (popcount(c.C) < crashBudget) {
+          for (var i = 0; i < N; i++) if (!(c.C & (1 << i))) out.push({ op: 'crash', i: i });
+        }
+        return out;
+      },
+      apply: function (c, s) {
+        var n = { S: [], M: c.M, C: c.C, t: c.t + 1 };
+        for (var i = 0; i < N; i++) n.S.push([c.S[i][0], c.S[i][1]]);
+        if (s.op === 'send') {
+          n.S[s.i][0] = 1;
+          for (var k = 0; k < MI.length; k++) if (MI[k][0] === s.i) n.M |= (1 << k);
+        } else if (s.op === 'deliver') {
+          var m = MI[s.k];
+          n.M &= ~(1 << s.k);
+          var h = heardMask(n, m[1]);
+          if (n.S[m[1]][1] === -1 && popcount(h) >= q) n.S[m[1]][1] = majValue(h, m[1]);
+        } else if (s.op === 'crash') {
+          n.C |= (1 << s.i);
+          for (var k = 0; k < MI.length; k++) if (MI[k][1] === s.i) n.M &= ~(1 << k);
+        }
+        return n;
+      },
+      status: function (c) {
+        var dec = [], all = true, conflict = false, vals = [];
+        for (var i = 0; i < N; i++) {
+          var d = c.S[i][1];
+          dec.push(d);
+          if (!(c.C & (1 << i)) && d === -1) all = false;
+          if (d !== -1) vals.push(d);
+        }
+        for (var k = 1; k < vals.length; k++) if (vals[k] !== vals[0]) conflict = true;
+        return {
+          decided: dec, conflict: conflict, allDecided: all,
+          value: (all && !conflict && vals.length) ? vals[0] : null
+        };
+      },
+      label: function (c, s) {
+        if (s.op === 'send') return '进程 ' + s.i + ' 广播提案 ' + inputs[s.i];
+        if (s.op === 'deliver') { var m = MI[s.k]; return '投递 ' + m[0] + '→' + m[1] + '（值 ' + inputs[m[0]] + '）'; }
+        return '进程 ' + s.i + ' 崩溃';
+      }
+    };
+  }
+
+  /* ================= 3. 领导者两阶段协议 =================
+   *
+   * 进程 0 是领导。第一轮它收集承诺（PROMISE，带对方的值），
+   * 拿到 q 票后按「多数」选出要提的值，第二轮收集 ACK，再宣布 DECIDE。
+   *
+   * 状态：S[i] = [phase, bits, val, wait]
+   *   phase 0=初始 1=已承诺/已发 PREPARE 2=已接受/已发 ACCEPT 3=已决定
+   *   bits  领导收到的 PROMISE / ACK 位图
+   *   val   领导选定的值 / 跟随者接受的值
+   *   wait  跟随者等待了多少步（超时用）
+   * ================================================================ */
+
+  function protoLeader(N, q, opts) {
+    opts = opts || {};
+    var crashBudget = opts.crashBudget || 0;
+    var timeout = opts.timeout === undefined ? -1 : opts.timeout;   /* -1 = 不启用超时 */
+    var inputs = opts.inputs;
+    var maxStates = opts.maxStates || 300000;
+
+    /* 消息表 */
+    var MT = [], idx = {};
+    function addM(from, to, kind) { idx[kind + from + '_' + to] = MT.length; MT.push({ from: from, to: to, kind: kind }); }
+    for (var j = 1; j < N; j++) addM(0, j, 'PREP');
+    for (var j = 1; j < N; j++) addM(j, 0, 'PROM');
+    for (var j = 1; j < N; j++) addM(0, j, 'ACC');
+    for (var j = 1; j < N; j++) addM(j, 0, 'ACK');
+    for (var j = 1; j < N; j++) addM(0, j, 'DEC');
+    var K = { PREP: idx, };
+
+    function maskOf(kind) { var m = 0; for (var i = 0; i < MT.length; i++) if (MT[i].kind === kind) m |= (1 << i); return m; }
+    var MK = { PREP: maskOf('PREP'), PROM: maskOf('PROM'), ACC: maskOf('ACC'), ACK: maskOf('ACK'), DEC: maskOf('DEC') };
+    var PROMbit = {}, ACKbit = {};
+    for (var i = 0; i < MT.length; i++) { if (MT[i].kind === 'PROM') PROMbit[MT[i].from] = 1 << i; if (MT[i].kind === 'ACK') ACKbit[MT[i].from] = 1 << i; }
+
+    function chosenValue(c) {
+      var n0 = 0, n1 = 0;
+      if (inputs[0] === 0) n0++; else n1++;
+      for (var j = 1; j < N; j++) if (c.S[0][1] & (1 << j)) { if (inputs[j] === 0) n0++; else n1++; }
+      if (n1 > n0) return 1;
+      if (n0 > n1) return 0;
+      return inputs[0];
+    }
+
+    return {
+      kind: 'leader', N: N, q: q, inputs: inputs, MT: MT, msgCount: MT.length, timeout: timeout,
+      init: function () {
+        var S = [];
+        for (var i = 0; i < N; i++) S.push([0, 0, -1, 0]);
+        return { S: S, M: 0, C: 0, t: 0 };
+      },
+      canon: function (c) {
+        var s = '';
+        for (var i = 0; i < N; i++) s += c.S[i][0] + '.' + c.S[i][1] + '.' + (c.S[i][2] + 1) + '.' + (timeout > 0 ? c.S[i][3] : 0) + '/';
+        return s + '|' + c.M + '|' + c.C;
+      },
+      enabled: function (c) {
+        var out = [];
+        if (!(c.C & 1)) {
+          if (c.S[0][0] === 0) out.push({ op: 'prep' });
+          if (c.S[0][0] === 1 && popcount(c.S[0][1]) + 1 >= q) out.push({ op: 'acc' });
+          if (c.S[0][0] === 2 && popcount(c.S[0][1]) + 1 >= q) out.push({ op: 'dec' });
+        }
+        for (var k = 0; k < MT.length; k++) {
+          if (!(c.M & (1 << k))) continue;
+          if (!(c.C & (1 << MT[k].to))) out.push({ op: 'deliver', k: k });
+        }
+        if (timeout > 0) {
+          for (var i = 1; i < N; i++) {
+            if (c.C & (1 << i)) continue;
+            if (c.S[i][0] === 1 && c.S[i][3] >= timeout) out.push({ op: 'selfdecide', i: i });
+          }
+        }
+        if (popcount(c.C) < crashBudget) {
+          for (var i = 0; i < N; i++) if (!(c.C & (1 << i))) out.push({ op: 'crash', i: i });
+        }
+        return out;
+      },
+      apply: function (c, s) {
+        var n = { S: [], M: c.M, C: c.C, t: c.t + 1 };
+        for (var i = 0; i < N; i++) n.S.push([c.S[i][0], c.S[i][1], c.S[i][2], c.S[i][3] + 1]);
+        if (s.op === 'prep') {
+          n.S[0][0] = 1; n.S[0][1] = 0; n.M |= MK.PREP;
+        } else if (s.op === 'acc') {
+          n.S[0][0] = 2; n.S[0][1] = 0; n.S[0][2] = chosenValue(c); n.M |= MK.ACC;
+        } else if (s.op === 'dec') {
+          n.S[0][0] = 3; n.M |= MK.DEC;
+        } else if (s.op === 'selfdecide') {
+          n.S[s.i][0] = 3; n.S[s.i][2] = inputs[s.i];
+        } else if (s.op === 'deliver') {
+          var m = MT[s.k];
+          n.M &= ~(1 << s.k);
+          /* 关键：迟到消息绝不能把阶段「退回」。
+             否则一条晚到的 ACCEPT 会把已经决定了的进程打回未决 —— 
+             这不是协议的性质，是实现的 bug。每条消息只在自己的阶段窗口里生效。 */
+          if (m.kind === 'PREP') {
+            if (n.S[m.to][0] === 0) { n.S[m.to][0] = 1; n.S[m.to][3] = 0; n.M |= PROMbit[m.to]; }
+          } else if (m.kind === 'PROM') {
+            if (n.S[0][0] === 1) n.S[0][1] |= (1 << m.from);
+          } else if (m.kind === 'ACC') {
+            if (n.S[m.to][0] <= 1) { n.S[m.to][0] = 2; n.S[m.to][2] = n.S[0][2]; n.M |= ACKbit[m.to]; }
+          } else if (m.kind === 'ACK') {
+            if (n.S[0][0] === 2) n.S[0][1] |= (1 << m.from);
+          } else if (m.kind === 'DEC') {
+            if (n.S[m.to][0] <= 2) { n.S[m.to][0] = 3; n.S[m.to][2] = n.S[0][2]; }
+          }
+        } else if (s.op === 'crash') {
+          n.C |= (1 << s.i);
+          for (var k = 0; k < MT.length; k++) if (MT[k].to === s.i) n.M &= ~(1 << k);
+        }
+        return n;
+      },
+      status: function (c) {
+        var dec = [], all = true, conflict = false, vals = [];
+        for (var i = 0; i < N; i++) {
+          var d = (c.S[i][0] === 3) ? c.S[i][2] : -1;
+          dec.push(d);
+          if (!(c.C & (1 << i)) && d === -1) all = false;
+          if (d !== -1) vals.push(d);
+        }
+        for (var k = 1; k < vals.length; k++) if (vals[k] !== vals[0]) conflict = true;
+        return { decided: dec, conflict: conflict, allDecided: all, value: (all && !conflict && vals.length) ? vals[0] : null };
+      },
+      label: function (c, s) {
+        if (s.op === 'prep') return '领导 0 发出 PREPARE';
+        if (s.op === 'acc') return '领导 0 凑齐 ' + q + ' 个承诺，发出 ACCEPT(' + chosenValue(c) + ')';
+        if (s.op === 'dec') return '领导 0 凑齐 ' + q + ' 个确认，宣布 DECIDE(' + c.S[0][2] + ')';
+        if (s.op === 'selfdecide') return '进程 ' + s.i + ' 等满 ' + timeout + ' 步，自行决定 ' + inputs[s.i] + '（错误示范）';
+        if (s.op === 'deliver') { var m = MT[s.k]; return '投递 ' + m.from + '→' + m.to + ' 的 ' + m.kind; }
+        return '进程 ' + s.i + ' 崩溃';
+      }
+    };
+  }
+
+  /* ================= 4. 判定规则穷举 =================
+   *
+   * 单相协议里，「听到 q 个值之后怎么判」是一条规则
+   *   f : {0,1,...,q} -> {0,1}      （参数 = 听到的 q 个值里 1 的个数）
+   * 一共 2^(q+1) 条。穷举它们，问：哪几条能保证一致性？
+   * 再问：其中哪几条满足有效性（全体输入 0 必须判 0，全体 1 必须判 1）？
+   * ================================================================ */
+
+  function decisionRuleScan(N, q) {
+    var total = 1 << (q + 1), safe = [], safeValid = [], witness = null;
+    /* 枚举所有输入组合（N 个进程，每个 0/1） */
+    var inputsAll = [];
+    for (var m = 0; m < (1 << N); m++) {
+      var v = [];
+      for (var i = 0; i < N; i++) v.push((m >> i) & 1);
+      inputsAll.push(v);
+    }
+    /* 枚举所有 q 元子集（法定人数） */
+    var quorums = [];
+    for (var m = 0; m < (1 << N); m++) if (popcount(m) === q) {
+      var qq = [];
+      for (var i = 0; i < N; i++) if (m & (1 << i)) qq.push(i);
+      quorums.push(qq);
+    }
+
+    for (var r = 0; r < total; r++) {
+      var f = function (k) { return (r >> k) & 1; };
+      var ok = true, bad = null;
+      for (var a = 0; a < inputsAll.length && ok; a++) {
+        for (var b = a; b < inputsAll.length && ok; b++) {
+          if (a === b) continue;
+          var va = inputsAll[a], vb = inputsAll[b];
+          /* 同一批输入下，任意两个法定人数的判定必须一致 */
+          for (var x = 0; x < quorums.length && ok; x++) {
+            for (var y = x + 1; y < quorums.length && ok; y++) {
+              var c1 = 0, c2 = 0;
+              quorums[x].forEach(function (i) { c1 += va[i]; });
+              quorums[y].forEach(function (i) { c2 += va[i]; });
+              if (f(c1) !== f(c2)) { ok = false; bad = { inputs: va, q1: quorums[x], q2: quorums[y], c1: c1, c2: c2 }; }
+            }
+          }
+        }
+      }
+      /* 只数「常数规则」：f 的取值不随参数变 */
+      var isConst = true;
+      for (var k = 1; k <= q; k++) if (f(k) !== f(0)) isConst = false;
+      if (ok) {
+        safe.push(r);
+        /* 有效性：全 0 输入必须判 0，全 1 输入必须判 1。
+           注意是对**所有**安全规则查有效性，不是只对常数规则查 —— 否则
+           q = N 那一档（只有一个法定人数、任何规则都安全）会被误报成 0 条可用。 */
+        if (f(0) === 0 && f(q) === 1) safeValid.push(r);
+      } else if (!witness) witness = { rule: r, detail: bad };
+    }
+    return {
+      N: N, q: q, total: total,
+      safeCount: safe.length, safeConstCount: safe.length,
+      safeValidCount: safeValid.length,
+      allSafeAreConst: safe.every(function (r) {
+        for (var k = 1; k <= q; k++) if (((r >> k) & 1) !== (r & 1)) return false;
+        return true;
+      }),
+      witness: witness
+    };
+  }
+
+  /* 允许规则**依赖进程身份**的版本：f(自己的值, 听到的 1 的个数)。
+     现实里最常见的一条就是「平票按自己的值」—— 这条规则很自然，但它让
+     「判定」不再是「听到什么就判什么」，于是即使 q = N（全体到齐）也会分裂。
+     枚举空间 2^(2(q+1))：q=2 时 64 条，q=4 时 1024 条。 */
+  function decisionRuleScanIdentity(N, q) {
+    var total = 1 << (2 * (q + 1)), safe = [], selfTiebreak = null;
+    var inputsAll = [];
+    for (var m = 0; m < (1 << N); m++) { var v = []; for (var i = 0; i < N; i++) v.push((m >> i) & 1); inputsAll.push(v); }
+    var quorums = [];
+    for (var m = 0; m < (1 << N); m++) if (popcount(m) === q) {
+      var qq = []; for (var i = 0; i < N; i++) if (m & (1 << i)) qq.push(i);
+      quorums.push(qq);
+    }
+    /* 「平票按自己」的规则：f(own, c) = c > q/2 ? 1 : (c < q/2 ? 0 : own) */
+    function selfTie(own, c) { return c * 2 > q ? 1 : (c * 2 < q ? 0 : own); }
+
+    for (var r = 0; r < total; r++) {
+      var f = function (own, c) { return (r >> (own * (q + 1) + c)) & 1; };
+      var bad = false;
+      for (var a = 0; a < inputsAll.length && !bad; a++) {
+        var va = inputsAll[a];
+        /* 每一个「(进程 i, 含 i 的法定人数 Q)」都是一个会拍板的角色，
+           它们的判定必须两两一致。注意 q = N 时只有一个法定人数，
+           但集合里不同的 i 依然会各自拍板 —— 这正是身份相关规则翻车的地方。 */
+        for (var x = 0; x < quorums.length && !bad; x++) {
+          var cx = 0; quorums[x].forEach(function (i) { cx += va[i]; });
+          for (var ii = 0; ii < quorums[x].length && !bad; ii++) {
+            var i1 = quorums[x][ii], d1 = f(va[i1], cx);
+            for (var y = x; y < quorums.length && !bad; y++) {
+              var cy = 0; quorums[y].forEach(function (i) { cy += va[i]; });
+              for (var jj = 0; jj < quorums[y].length; jj++) {
+                var j1 = quorums[y][jj];
+                if (y === x && j1 === i1) continue;
+                if (f(va[j1], cy) !== d1) { bad = true; break; }
+              }
+            }
+          }
+        }
+      }
+      if (!bad) safe.push(r);
+    }
+    /* 「平票按自己」这条规则在不在安全集合里 */
+    var rr = 0;
+    for (var own = 0; own <= 1; own++) for (var c = 0; c <= q; c++) if (selfTie(own, c)) rr |= (1 << (own * (q + 1) + c));
+    selfTiebreak = { rule: rr, safe: safe.indexOf(rr) >= 0, own: 1, count: q };
+    return {
+      N: N, q: q, total: total, safeCount: safe.length,
+      safeValidCount: safe.filter(function (r) {
+        /* 有效性：全 0 输入必须判 0、全 1 输入必须判 1（取代表进程 0） */
+        return (((r >> (0 * (q + 1) + 0)) & 1) === 0) && (((r >> (0 * (q + 1) + q)) & 1) === 1);
+      }).length,
+      selfTiebreak: selfTiebreak
+    };
+  }
+
+  /* ================= 5. 反链枚举（Dedekind 数） =================
+   *
+   * 法定人数系统 = 一个单调布尔函数 = 一族「两两不可比」的极小集合（反链）。
+   * n 个元素上的反链总数就是第 n 个 Dedekind 数 —— 一个外部已知的真值。
+   * ================================================================ */
+
+  var DEDEKIND = [2, 3, 6, 20, 168, 7581, 7828354, 2414682040998];
+
+  function subsetsBySize(n) {
+    var all = [];
+    for (var m = 1; m < (1 << n); m++) all.push(m);          /* 空集不算法定人数 */
+    all.sort(function (a, b) { return popcount(a) - popcount(b) || a - b; });
+    return all;
+  }
+
+  /* 枚举「非空集组成的非空反链」的个数。
+     空族（一个法定人数都没有）被排除 —— 那不是法定人数系统。
+     因此本函数的结果应恰好等于 Dedekind[n] − 1：
+     这是本装置唯一的**外部已知真值**对照。 */
+  function enumerateAntichains(n, onEach, limit) {
+    var subs = subsetsBySize(n), count = 0, stopped = false;
+    var chosen = [];
+    function dfs(k) {
+      if (stopped) return;
+      if (k === subs.length) {
+        count++;
+        if (onEach) onEach(chosen.slice());
+        if (limit && count >= limit) stopped = true;
+        return;
+      }
+      var S = subs[k];
+      dfs(k + 1);
+      if (stopped) return;
+      /* 取 S：只有当 S 不包含任何已选集合时才是反链 */
+      for (var i = 0; i < chosen.length; i++) if ((chosen[i] & ~S) === 0) return;
+      chosen.push(S);
+      dfs(k + 1);
+      chosen.pop();
+    }
+    dfs(0);
+    return count;
+  }
+
+  /* 给定反链，判断相交性 / f-可用 / f-相交 / f-容错 */
+  function quorumProps(anti, n) {
+    var i, j, F, Q1, Q2;
+    /* 0-相交：任意两个极小法定人数相交 */
+    var inter = true;
+    for (i = 0; i < anti.length && inter; i++)
+      for (j = i + 1; j < anti.length; j++)
+        if ((anti[i] & anti[j]) === 0) { inter = false; break; }
+
+    function avail(f) {
+      for (var m = 0; m < (1 << n); m++) {
+        if (popcount(m) > f) continue;
+        var ok = false;
+        for (var i2 = 0; i2 < anti.length; i2++) if ((anti[i2] & m) === 0) { ok = true; break; }
+        if (!ok) return false;
+      }
+      return true;
+    }
+    function fInter(f) {
+      for (var m = 0; m < (1 << n); m++) {
+        if (popcount(m) > f) continue;
+        for (var a = 0; a < anti.length; a++) {
+          if ((anti[a] & m) !== 0) continue;            /* Q1 必须整块避开 F */
+          for (var b = a + 1; b < anti.length; b++) {
+            if ((anti[b] & m) !== 0) continue;
+            if ((anti[a] & anti[b]) === 0) return false;
+          }
+        }
+      }
+      return true;
+    }
+    var res = { inter: inter, avail: {}, fInter: {}, resilient: {} };
+    for (var f = 0; f <= n; f++) {
+      res.avail[f] = avail(f);
+      res.fInter[f] = fInter(f);
+      res.resilient[f] = res.avail[f] && res.fInter[f];
+    }
+    return res;
+  }
+
+  /* 多数派系统：所有 ceil((n+1)/2) 元子集 */
+  function majoritySystem(n) {
+    var q = Math.floor(n / 2) + 1, out = [];
+    for (var m = 1; m < (1 << n); m++) if (popcount(m) === q) out.push(m);
+    return out;
+  }
+
+  /* 完整扫描 n 个进程上的所有法定人数系统 */
+  function quorumScan(n) {
+    var stats = { n: n, systems: 0, inter0: 0, res1: 0, res2: 0, smallestRes1: null, smallestInter0: null, majorityRes: {} };
+    enumerateAntichains(n, function (anti) {
+      stats.systems++;
+      var p = quorumProps(anti, n);
+      if (p.inter) {
+        stats.inter0++;
+        if (stats.smallestInter0 === null || anti.length < stats.smallestInter0) stats.smallestInter0 = anti.length;
+      }
+      if (p.resilient[1]) {
+        stats.res1++;
+        if (stats.smallestRes1 === null || anti.length < stats.smallestRes1) {
+          stats.smallestRes1 = anti.length;
+          stats.exampleRes1 = anti.slice();
+        }
+      }
+      if (p.resilient[2]) stats.res2++;
+    });
+    var maj = majoritySystem(n);
+    var pm = quorumProps(maj, n);
+    stats.majorityRes = { size: maj.length, inter: pm.inter, res1: pm.resilient[1], res2: pm.resilient[2] };
+    /* 是不是只有多数派能容 1 个故障？统计「容 1 故障且极小法定人数个数 = 多数派」的系统数 */
+    return stats;
+  }
+
+  /* ================= 6. 选举超时 =================
+   *
+   * N 个候选者，每人从 {1..R} 里抽一个超时档位。
+   * 档位全不相同时，最小的那个先醒、在别人醒之前拿到全部票 → 一轮选出来。
+   * 有并列时，对抗者可以让并列的人同时醒来 → 各投自己 → 没人过半 → 重来。
+   * ================================================================ */
+
+  /* 闭式解：R 个档位、N 个人，全不相同的概率 = R! / ((R-N)! * R^N) */
+  function electionProb(N, R) {
+    if (R < N) return 0;
+    var p = 1;
+    for (var k = 0; k < N; k++) p *= (R - k) / R;
+    return p;
+  }
+
+  /* 穷举全部 R^N 种档位分配，数出「全不相同」的有多少 */
+  function electionExhaustive(N, R) {
+    if (Math.pow(R, N) > 4e6) return null;
+    var total = 0, distinct = 0;
+    var taus = new Array(N).fill(0);
+    (function rec(k) {
+      if (k === N) {
+        total++;
+        var seen = {};
+        for (var i = 0; i < N; i++) { if (seen[taus[i]]) return; seen[taus[i]] = 1; }
+        distinct++;
+        return;
+      }
+      for (var r = 0; r < R; r++) { taus[k] = r; rec(k + 1); }
+    })(0);
+    return { total: total, distinct: distinct, p: distinct / total, closed: electionProb(N, R) };
+  }
+
+  /* 给定档位分配，对抗者能不能把它拖成永远分裂？
+     判据：最小档位上有没有并列。有 → 对抗者让并列者同时醒来 → 各自投自己 → 无人过半。 */
+  function electionWorstAdversary(taus) {
+    var mn = Math.min.apply(null, taus), tied = 0;
+    for (var i = 0; i < taus.length; i++) if (taus[i] === mn) tied++;
+    return { min: mn, tied: tied, canSplit: tied >= 2 };
+  }
+
+  /* ================= 7. 抽签 —— 随机化共识 =================
+   *
+   * 轮同步抽象（每一轮的广播在该轮结束前送达），n 个进程，容忍 f 个静默。
+   * 每轮：
+   *   1. 所有人广播 (r, v)
+   *   2. 每个进程收齐 n-f 个值（含自己）—— 对抗者决定「收谁的」
+   *   3. 收到的值全部相同 → 决定该值，广播 DECIDE
+   *      否则 → 掷硬币
+   *   4. 轮边界上 DECIDE 送达所有存活进程
+   * ================================================================ */
+
+  function benOrRound(v, silent, pick, coins, n, f) {
+    var need = n - f;
+    var alive = [];
+    for (var i = 0; i < n; i++) if (!silent[i]) alive.push(i);
+    var decided = new Array(n).fill(-1), newv = v.slice();
+    for (var a = 0; a < alive.length; a++) {
+      var i = alive[a];
+      var view = [v[i]];
+      /* pick[i] 给出「用哪些人的值」，取前 need-1 个 */
+      for (var t = 0; t < pick[i].length && view.length < need; t++) {
+        var j = pick[i][t];
+        if (silent[j] || j === i) continue;
+        view.push(v[j]);
+      }
+      if (view.length < need) return { dead: true };        /* 凑不齐 → 这一轮无法进行 */
+      var allSame = true;
+      for (var k = 1; k < view.length; k++) if (view[k] !== view[0]) allSame = false;
+      if (allSame) decided[i] = view[0];
+      else newv[i] = coins[i];
+    }
+    return { decided: decided, v: newv, dead: false };
+  }
+
+  /* 跑一次完整的多轮模拟（给定硬币序列），返回何时决定 */
+  function benOrRun(n, f, inputs, maxRounds, rng, silentPlan, pickPlan, bias) {
+    var v = inputs.slice(), decided = -1, round = 0, trace = [];
+    while (round < maxRounds && decided === -1) {
+      round++;
+      var silent = silentPlan(round);
+      var coins = [];
+      for (var i = 0; i < n; i++) coins.push(bias === undefined ? (rng() < 0.5 ? 0 : 1) : (rng() < bias ? 1 : 0));
+      var pick = pickPlan(round, v);
+      var r = benOrRound(v, silent, pick, coins, n, f);
+      if (r.dead) return { decided: -1, round: round, dead: true, trace: trace };
+      for (var i = 0; i < n; i++) if (r.decided[i] !== -1 && !silent[i]) decided = r.decided[i];
+      v = r.v;
+      trace.push({ round: round, v: v.slice(), coins: coins, decided: decided });
+    }
+    return { decided: decided, round: round, dead: false, trace: trace };
+  }
+
+  /* 最坏对抗者的「选人」策略：尽量让每个进程看到不同值 */
+  function worstPick(n, f, v) {
+    var need = n - f, out = [];
+    for (var i = 0; i < n; i++) {
+      var others = [];
+      for (var j = 0; j < n; j++) if (j !== i) others.push(j);
+      /* 先挑和自己不同的 */
+      others.sort(function (a, b) { return (v[a] === v[i] ? 1 : 0) - (v[b] === v[i] ? 1 : 0); });
+      out.push(others);
+    }
+    return out;
+  }
+
+  /* 穷举所有硬币序列（小规模），验证一致性 + 终止分布 */
+  function benOrExhaustive(n, f, inputs, rounds) {
+    var total = 0, agree = 0, disagree = 0, byRound = new Array(rounds + 1).fill(0), never = 0;
+    var maxBits = n * rounds;
+    var limit = 1 << maxBits;
+    if (limit > 4000000) return null;
+    for (var m = 0; m < limit; m++) {
+      var seq = [], t = m;
+      for (var k = 0; k < maxBits; k++) { seq.push(t & 1); t >>= 1; }
+      /* 逐轮推进 */
+      var v = inputs.slice(), decided = -1, round = 0, cs = 0;
+      while (round < rounds && decided === -1) {
+        round++;
+        var coins = [];
+        for (var i = 0; i < n; i++) coins.push(seq[cs++]);
+        var pick = worstPick(n, f, v);
+        var r = benOrRound(v, new Array(n).fill(false), pick, coins, n, f);
+        var got = -1;
+        for (var i = 0; i < n; i++) if (r.decided[i] !== -1) got = r.decided[i];
+        if (got !== -1) {
+          /* 同一轮里若有两个不同的决定值 → 不一致 */
+          var vals = [];
+          for (var i = 0; i < n; i++) if (r.decided[i] !== -1) vals.push(r.decided[i]);
+          for (var k2 = 1; k2 < vals.length; k2++) if (vals[k2] !== vals[0]) { disagree++; break; }
+          decided = got;
+        }
+        v = r.v;
+      }
+      total++;
+      if (decided === -1) never++; else byRound[decided !== -1 ? round : 0]++;
+    }
+    return { total: total, never: never, byRound: byRound, disagree: disagree };
+  }
+
+  return {
+    splitmix32: splitmix32, popcount: popcount, bitList: bitList,
+    explore: explore, traceText: traceText,
+    protoSinglePhase: protoSinglePhase, protoLeader: protoLeader,
+    decisionRuleScan: decisionRuleScan, decisionRuleScanIdentity: decisionRuleScanIdentity,
+    enumerateAntichains: enumerateAntichains, quorumProps: quorumProps,
+    quorumScan: quorumScan, majoritySystem: majoritySystem, DEDEKIND: DEDEKIND,
+    electionProb: electionProb, electionExhaustive: electionExhaustive,
+    electionWorstAdversary: electionWorstAdversary,
+    benOrRun: benOrRun, benOrExhaustive: benOrExhaustive, worstPick: worstPick
+  };
+});
+
+</script>
+<script>
+/* ============================================================
+ * ui.js —— 《异步之墙》界面
+ *
+ * 三条硬规矩（都是前五件装置踩出来的）：
+ *   1. class="chart" 里只放真 SVG；柱状图走 class="bars" 的 DOM 条，
+ *      且 .bar-fill 必须 display:block，断言读 getBoundingClientRect
+ *   2. 页面上的数字一律从内联数据算，不写死
+ *   3. 不依赖真实时钟：所有推进都走显式驱动接口，探针与动画共用同一个 tick
+ * ========================================================== */
+(function () {
+  'use strict';
+
+  var D = window.__AW_DATA__;
+  var R = D.results, A = D.analysis;
+  var CORE = window.AWCore;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function n0(x) { return String(Math.round(x)); }
+  function pct(x, d) { return (x * 100).toFixed(d === undefined ? 1 : d) + '%'; }
+  function f2(x) { return (Math.round(x * 100) / 100).toFixed(2); }
+  function f3(x) { return (Math.round(x * 1000) / 1000).toFixed(3); }
+  function nfmt(x) { return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+
+  /* ================= 通用绘图 =================
+   * 折线图用**拼字符串**的方式产 SVG（不走 createElementNS）——
+   * 因为 createElementNS 需要一个 SVG 命名空间常量，那串 URL 会让
+   * 「产物无外链」的检查误报（这个坑前几件装置踩过）。
+   * ============================================ */
+
+  function esc(s) { return String(s).replace(/[<&]/g, function (c) { return c === '<' ? '&lt;' : '&amp;'; }); }
+  function tag(name, attrs, text) {
+    return openTag(name, attrs) + (text === undefined ? '' : esc(text)) + '</' + name + '>';
+  }
+  /* 只开不闭。必须单独有这么一个函数：
+     tag('svg', attrs) 会产出 `<svg …></svg>` —— 一个**当场闭合的空 SVG**，
+     后面 push 进去的 line/text/path 全成了它外面的兄弟节点，
+     浏览器把它们当未知行内元素排版 → 图上什么都没有，而元素数、宽高、刻度数全对。
+     本装置第 5 节的时间轴图就是这么空掉的，且当时的验证 108/108 全绿（它数的是容器里的后代）。 */
+  function openTag(name, attrs) {
+    var s = '<' + name;
+    for (var k in attrs) if (attrs.hasOwnProperty(k) && attrs[k] !== '' && attrs[k] !== null && attrs[k] !== undefined) {
+      s += ' ' + k + '="' + String(attrs[k]).replace(/"/g, '&quot;') + '"';
+    }
+    return s + '>';
+  }
+
+  /* 折线图：必须产出真 SVG */
+  function lineChart(host, spec) {
+    if (!host) return null;
+    host.innerHTML = '';
+    var series = (spec.series || []).map(function (s) {
+      return {
+        name: s.name, color: s.color, dash: s.dash,
+        points: (s.points || []).filter(function (p) { return isFinite(p[0]) && isFinite(p[1]); })
+      };
+    }).filter(function (s) { return s.points.length; });
+    var W = 720, H = spec.height || 300;
+    var ML = 58, MR = 16, MT = 14, MB = 44;
+    var iw = W - ML - MR, ih = H - MT - MB;
+
+    var xs = [], ys = [];
+    series.forEach(function (s) { s.points.forEach(function (p) { xs.push(p[0]); ys.push(p[1]); }); });
+    if (!xs.length) { host.innerHTML = '<div class="chart-note">没有可画的数据</div>'; return null; }
+    var xMin = spec.xMin !== undefined ? spec.xMin : Math.min.apply(null, xs);
+    var xMax = spec.xMax !== undefined ? spec.xMax : Math.max.apply(null, xs);
+    var yMin = spec.yMin !== undefined ? spec.yMin : Math.min.apply(null, ys);
+    var yMax = spec.yMax !== undefined ? spec.yMax : Math.max.apply(null, ys);
+    if (yMax === yMin) yMax = yMin + 1;
+    var pad = (yMax - yMin) * 0.08;
+    if (spec.yMin === undefined) { yMin -= pad; if (yMin < 0) yMin = 0; }
+    if (spec.yMax === undefined) yMax += pad;
+
+    var xLog = !!spec.xLog;
+    function X(v) {
+      if (xLog) {
+        var a = Math.log(Math.max(v, 1e-9)), b = Math.log(Math.max(xMin, 1e-9)), c = Math.log(Math.max(xMax, 1e-9));
+        if (c === b) return ML + iw / 2;
+        return ML + (a - b) / (c - b) * iw;
+      }
+      return ML + (v - xMin) / (xMax - xMin) * iw;
+    }
+    function Y(v) { return MT + ih - (v - yMin) / (yMax - yMin) * ih; }
+
+    var out = [];
+    out.push(openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img', 'aria-label': spec.yLabel || '' }));
+
+    var yTicks = 5, i, v;
+    for (i = 0; i <= yTicks; i++) {
+      v = yMin + (yMax - yMin) * i / yTicks;
+      var yy = Y(v);
+      out.push(tag('line', { x1: ML, y1: yy.toFixed(2), x2: ML + iw, y2: yy.toFixed(2), stroke: '#ebe8df', 'stroke-width': 1 }));
+      out.push(tag('text', { x: ML - 8, y: (yy + 4).toFixed(2), 'text-anchor': 'end', 'font-size': 10, fill: '#74736b', 'font-family': 'monospace' },
+        spec.yFmt ? spec.yFmt(v) : (Math.abs(v) < 1 ? v.toFixed(2) : String(Math.round(v)))));
+    }
+    (spec.xTicks || []).forEach(function (t) {
+      var xx = X(t);
+      if (xx < ML - 1 || xx > ML + iw + 1) return;
+      out.push(tag('line', { x1: xx.toFixed(2), y1: MT, x2: xx.toFixed(2), y2: MT + ih, stroke: '#f2efe7', 'stroke-width': 1 }));
+      out.push(tag('text', { x: xx.toFixed(2), y: MT + ih + 18, 'text-anchor': 'middle', 'font-size': 10, fill: '#74736b', 'font-family': 'monospace' }, String(t)));
+    });
+    out.push(tag('line', { x1: ML, y1: MT + ih, x2: ML + iw, y2: MT + ih, stroke: '#dcd9cf' }));
+    out.push(tag('line', { x1: ML, y1: MT, x2: ML, y2: MT + ih, stroke: '#dcd9cf' }));
+    if (spec.xLabel) out.push(tag('text', { x: ML + iw / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': 11, fill: '#74736b' }, spec.xLabel));
+    if (spec.yLabel) out.push(tag('text', { x: 14, y: MT + ih / 2, 'text-anchor': 'middle', 'font-size': 11, fill: '#74736b', transform: 'rotate(-90 14 ' + (MT + ih / 2) + ')' }, spec.yLabel));
+
+    (spec.hlines || []).forEach(function (hl) {
+      var yy = Y(hl.v);
+      out.push(tag('line', { x1: ML, y1: yy.toFixed(2), x2: ML + iw, y2: yy.toFixed(2), stroke: hl.color || '#b03030', 'stroke-dasharray': '5 4', 'stroke-width': 1.2 }));
+      out.push(tag('text', { x: ML + iw - 4, y: (yy - 5).toFixed(2), 'text-anchor': 'end', 'font-size': 10, fill: hl.color || '#b03030', 'font-family': 'monospace' }, hl.label || ''));
+    });
+
+    series.forEach(function (s) {
+      var d = s.points.map(function (p, k) { return (k ? 'L' : 'M') + X(p[0]).toFixed(2) + ' ' + Y(p[1]).toFixed(2); }).join(' ');
+      out.push(tag('path', { d: d, fill: 'none', stroke: s.color, 'stroke-width': 2.2, 'stroke-dasharray': s.dash || '' }));
+    });
+    out.push('</svg>');
+
+    host.innerHTML = out.join('');
+    return { series: series.length, ticks: yTicks + (spec.xTicks || []).length, nanTicks: 0 };
+  }
+
+  /* 柱状图：DOM 条（.bar-fill 必须 display:block），断言读 getBoundingClientRect
+   * opts.log —— 计数类图表必须给对数刻度：n=1 的 2 个与 n=5 的 7580 个差三个数量级，
+   * 线性刻度下前四条会渲染成 0 宽，"图上没有东西"看着像没有数据。 */
+  function bars(host, items, opts) {
+    if (!host) return;
+    opts = opts || {};
+    host.innerHTML = '';
+    var max = opts.max || Math.max.apply(null, items.map(function (t) { return t.v; })) || 1;
+    function frac(v) {
+      if (opts.log) {
+        var b = Math.log(max + 1);
+        return b > 0 ? Math.log(Math.max(v, 0) + 1) / b : 0;
+      }
+      return Math.max(0, Math.min(1, v / max));
+    }
+    items.forEach(function (t) {
+      var row = document.createElement('div'); row.className = 'bar-row';
+      var lab = document.createElement('div'); lab.className = 'bar-lab'; lab.textContent = t.label;
+      var trk = document.createElement('div'); trk.className = 'bar-track';
+      var fil = document.createElement('div'); fil.className = 'bar-fill ' + (t.tone || '');
+      fil.style.width = (frac(t.v) * 100).toFixed(2) + '%';
+      trk.appendChild(fil);
+      var val = document.createElement('div'); val.className = 'bar-val';
+      val.textContent = t.text !== undefined ? t.text : (opts.fmt ? opts.fmt(t.v) : pct(t.v, 0));
+      row.appendChild(lab); row.appendChild(trk); row.appendChild(val);
+      host.appendChild(row);
+    });
+  }
+
+  /* 双色堆叠条（用于「违规 / 死」对照） */
+  function stackedBars(host, items) {
+    if (!host) return;
+    host.innerHTML = '';
+    var max = 1;
+    items.forEach(function (t) { max = Math.max(max, t.a + t.b); });
+    items.forEach(function (t) {
+      var row = document.createElement('div'); row.className = 'bar-row';
+      var lab = document.createElement('div'); lab.className = 'bar-lab'; lab.textContent = t.label;
+      var trk = document.createElement('div'); trk.className = 'bar-track';
+      var fa = document.createElement('div'); fa.className = 'bar-fill'; fa.style.display = 'block';
+      fa.style.width = (t.a / max * 100).toFixed(2) + '%';
+      fa.style.position = 'absolute'; fa.style.left = '0'; fa.style.top = '0';
+      var fb = document.createElement('div'); fb.className = 'bar-fill gold'; fb.style.display = 'block';
+      fb.style.width = (t.b / max * 100).toFixed(2) + '%';
+      fb.style.position = 'absolute'; fb.style.left = (t.a / max * 100).toFixed(2) + '%'; fb.style.top = '0';
+      trk.appendChild(fa); trk.appendChild(fb);
+      var val = document.createElement('div'); val.className = 'bar-val';
+      val.textContent = t.a + ' / ' + t.b;
+      row.appendChild(lab); row.appendChild(trk); row.appendChild(val);
+      host.appendChild(row);
+    });
+  }
+
+  function fillTable(host, rows, cellClass) {
+    if (!host) return;
+    var tb = host.querySelector('tbody') || host;
+    tb.innerHTML = '';
+    rows.forEach(function (r) {
+      var tr = document.createElement('tr');
+      if (r.cls) tr.className = r.cls;
+      (r.cells || r).forEach(function (c, k) {
+        var td = document.createElement('td');
+        if (k === 0) td.className = 'l';
+        if (cellClass && cellClass[k]) td.className = cellClass[k];
+        if (c && typeof c === 'object') { td.textContent = c.t; if (c.cls) td.className = c.cls; }
+        else td.textContent = c;
+        tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+  }
+
+  function steps(host, arr, lastHot) {
+    if (!host) return;
+    host.innerHTML = '';
+    (arr || []).forEach(function (s, k) {
+      var li = document.createElement('li');
+      li.textContent = s;
+      if (lastHot && k === arr.length - 1) li.className = 'last';
+      host.appendChild(li);
+    });
+  }
+
+  /* ================= 头部与 KPI ================= */
+  function renderHead() {
+    $('lede-states').textContent = nfmt(A.lede.totalStates);
+    $('lede-searches').textContent = nfmt(A.lede.searches);
+    $('lede-rules').textContent = nfmt(A.lede.rules);
+    $('lede-quorum').textContent = nfmt(A.lede.quorumSystems);
+    $('lede-coins').textContent = nfmt(A.lede.coinSeeds || A.lede.coinSeqs);
+
+    $('hl-good').textContent = '违规 ' + A.e4.bSafety + ' / 死 ' + A.e4.bDead;
+    $('hl-goodnote').textContent = A.e4.bStates + ' 个可达状态全部走完：安全性与活性同时成立';
+    $('hl-bad').textContent = '违规 ' + A.e4.cSafety + ' / 死 ' + A.e4.cDead;
+    $('hl-badnote').textContent = '安全性还在，活性塌了：' + A.e4.cDeadlocks + ' 个死锁 + ' + A.e4.cLivelocks + ' 个活锁';
+
+    var host = $('kpis'); host.innerHTML = '';
+    A.kpis.forEach(function (k) {
+      var d = document.createElement('div'); d.className = 'kpi ' + (k.tone || '');
+      d.innerHTML = '<div class="k-label">' + esc(k.label) + '</div>' +
+        '<div class="k-val">' + esc(k.val) + '</div>' +
+        '<div class="k-note">' + esc(k.note) + '</div>';
+      host.appendChild(d);
+    });
+  }
+
+  /* ================= 第壹章 · 调度器 ================= */
+  var sched = { proto: null, cfg: null, log: [], live: null };
+
+  function schedInit() {
+    var p = CORE.protoSinglePhase(3, 2, 0, [0, 0, 1]);
+    var c = p.init();
+    /* 三个进程一起广播 —— 这一步没什么好选的，协议规定如此。
+       真正交给调度器的是「谁先收到」。 */
+    for (var i = 0; i < 3; i++) c = p.apply(c, { op: 'send', i: i });
+    sched.proto = p; sched.cfg = c; sched.log = [];
+    schedRender();
+    return schedState();
+  }
+
+  function schedState() {
+    var p = sched.proto, c = sched.cfg, st = p.status(c);
+    var procs = [];
+    for (var i = 0; i < 3; i++) {
+      var h = p.heard(c, i);
+      var heard = [];
+      for (var j = 0; j < 3; j++) if (h & (1 << j)) heard.push(j);
+      procs.push({ id: i, input: p.inputs[i], heard: heard, decided: c.S[i][1] });
+    }
+    var msgs = [];
+    p.enabled(c).forEach(function (s) {
+      if (s.op === 'deliver') {
+        var m = p.MI[s.k];
+        msgs.push({ k: s.k, label: m[0] + '→' + m[1], val: p.inputs[m[0]], text: '投递 ' + m[0] + '→' + m[1] + '（值 ' + p.inputs[m[0]] + '）' });
+      }
+    });
+    return { procs: procs, msgs: msgs, conflict: st.conflict, decided: st.decided, done: msgs.length === 0, log: sched.log.slice() };
+  }
+
+  function schedRender() {
+    var p = sched.proto, c = sched.cfg, st = p.status(c);
+    var ph = $('sched-procs'); ph.innerHTML = '';
+    var cls = ['', '', ''];
+    if (st.conflict) {
+      for (var i = 0; i < 3; i++) if (c.S[i][1] !== -1) cls[i] = 'conflict';
+    } else {
+      for (var i = 0; i < 3; i++) if (c.S[i][1] === 0) cls[i] = 'dec0'; else if (c.S[i][1] === 1) cls[i] = 'dec1';
+    }
+    for (var i = 0; i < 3; i++) {
+      var h = p.heard(c, i), heard = [];
+      for (var j = 0; j < 3; j++) if (h & (1 << j)) heard.push(j);
+      var d = document.createElement('div'); d.className = 'proc ' + cls[i];
+      var badge = c.S[i][1] === -1 ? '还没拍板' : ('拍板 ' + c.S[i][1]);
+      d.innerHTML = '<div class="p-name">进程 ' + i + '</div>' +
+        '<div class="p-big">' + p.inputs[i] + '</div>' +
+        '<div class="p-line">手里的提案</div>' +
+        '<div class="p-line">已听到：' + (heard.length ? heard.join('、') : '只有自己') + '（' + heard.length + '/' + p.q + '）</div>' +
+        '<div class="p-badge">' + badge + '</div>';
+      ph.appendChild(d);
+    }
+    var mh = $('sched-msgs'); mh.innerHTML = '';
+    var steps = p.enabled(c).filter(function (s) { return s.op === 'deliver'; });
+    if (!steps.length) {
+      mh.innerHTML = '<div class="empty">没有在途的消息了 —— 这次执行到此为止。</div>';
+    } else {
+      steps.forEach(function (s) {
+        var m = p.MI[s.k];
+        var b = document.createElement('button');
+        b.className = 'msg';
+        b.textContent = m[0] + '→' + m[1] + ' 值 ' + p.inputs[m[0]];
+        b.setAttribute('data-k', String(s.k));
+        b.onclick = function () { schedDeliver(parseInt(b.getAttribute('data-k'), 10)); };
+        mh.appendChild(b);
+      });
+    }
+    var vh = $('sched-verdict');
+    if (st.conflict) {
+      var got = [];
+      for (var i = 0; i < 3; i++) if (c.S[i][1] !== -1) got.push('进程 ' + i + ' 拍板 ' + c.S[i][1]);
+      vh.className = 'verdict bad';
+      vh.textContent = '✗ 一致性破了 —— ' + got.join('，') + '。同一个协议、同一批输入，只因为投递顺序不同。';
+    } else if (steps.length === 0) {
+      var vals = [];
+      for (var i = 0; i < 3; i++) if (c.S[i][1] !== -1) vals.push(c.S[i][1]);
+      vh.className = 'verdict ok';
+      vh.textContent = '✓ 这次执行活下来了：三个进程都拍板 ' + vals[0] + '。但「这次没坏」不等于「不会坏」。';
+    } else {
+      vh.className = 'verdict warn';
+      vh.textContent = '进行中：' + (st.decided.filter(function (x) { return x !== -1; }).length) + '/3 已拍板。点上面任意一条消息来投递它。';
+    }
+    $('sched-log').textContent = sched.log.length ? ('已走 ' + sched.log.length + ' 步：' + sched.log.join(' → ')) : '还没有动作。';
+  }
+
+  function schedDeliver(k) {
+    var st = schedState();
+    var ok = false;
+    st.msgs.forEach(function (m) { if (m.k === k) ok = true; });
+    if (!ok) return schedState();
+    sched.cfg = sched.proto.apply(sched.cfg, { op: 'deliver', k: k });
+    sched.log.push('投递 ' + sched.proto.MI[k][0] + '→' + sched.proto.MI[k][1]);
+    schedRender();
+    return schedState();
+  }
+
+  function schedAuto() {
+    var guard = 0;
+    while (guard++ < 30) {
+      var st = schedState();
+      if (!st.msgs.length || st.conflict) break;
+      schedDeliver(st.msgs[0].k);
+    }
+    return schedState();
+  }
+
+  /* 「弄分裂」：直接问模型检验器要最短反例，再照着重放 */
+  function schedBreak() {
+    schedInit();
+    var res = CORE.explore(sched.proto, { maxStates: 400000 });
+    if (!res.shortestSafety) return schedState();
+    var cur = sched.proto.init();
+    for (var i = 0; i < 3; i++) cur = sched.proto.apply(cur, { op: 'send', i: i });
+    sched.cfg = cur; sched.log = [];
+    for (var i = 0; i < res.shortestSafety.path.length; i++) {
+      var s = res.shortestSafety.path[i].step;
+      if (s.op === 'send') continue;
+      sched.cfg = sched.proto.apply(sched.cfg, s);
+      sched.log.push(sched.proto.label(sched.cfg, s).replace(/（值 (\d)）/, ''));
+    }
+    schedRender();
+    return schedState();
+  }
+
+  /* ================= 第贰章 ================= */
+  function renderCh2() {
+    bars($('bars-viol'), A.e1.bars.map(function (b) {
+      return { label: b.label, v: b.v, tone: b.v > 0.01 ? '' : 'cool', text: b.violated + '/' + b.cases + ' = ' + pct(b.v, 0) };
+    }), { fmt: function (v) { return pct(v, 0); } });
+
+    $('ch2-states').textContent = A.e1.heroStates;
+    $('ch2-safety').textContent = A.e1.heroSafety;
+    $('ch2-doomed').textContent = A.e1.heroUnsafeDoomed;
+    steps($('hero-trace'), A.e1.heroTrace, true);
+    $('ch2-hero-note').textContent = '共 ' + A.e1.heroShortestLen + ' 步。' +
+      '整个可达图 ' + A.e1.heroStates + ' 个状态里有 ' + A.e1.heroSafety + ' 个已经分裂，' +
+      '另有 ' + A.e1.heroUnsafeDoomed + ' 个「无论怎么走都必然分裂」。最短反例的终点：进程 0 判 0，进程 2 判 1。';
+
+    $('ch2-q3').textContent = pct(A.e1.rate33, 0) + '（0/8 个输入）';
+    $('ch2-rulespace').textContent = A.e2.total + ' 条';
+
+    fillTable($('tbl-single'), A.e1.bars.map(function (b, i) {
+      var s = R.E1.summary[i];
+      return [s.N, s.q, s.crash, s.cases, s.violated,
+        { t: pct(s.rate, 0), cls: s.rate > 0.01 ? 'worst' : 'cool' }, s.maxStates];
+    }));
+
+    bars($('bars-rules'), A.e2.bars.map(function (b) {
+      return { label: b.label, v: b.v, tone: b.v < 0.5 ? '' : 'cool', text: b.note + ' = ' + pct(b.v, 0) };
+    }), { fmt: function (v) { return pct(v, 0); } });
+
+    fillTable($('tbl-rules'), A.e2.rows.map(function (r) {
+      return [r.N, r.q, r.total, r.safeCount,
+        { t: r.safeValidCount, cls: r.safeValidCount ? 'cool' : 'worst' },
+        r.allSafeAreConst ? '是（全是常数）' : '否'];
+    }));
+    $('ch2-rules-note').textContent = 'q < N 时，' + A.e2.total + ' 条规则里只有 ' + A.e2.safe +
+      ' 条能保证一致性，而它们都是常数规则 —— 常数规则在「全体投 0」时判不出 0，违反有效性。' +
+      '所以安全且有效的规则有 ' + A.e2.safeValid + ' 条。';
+
+    fillTable($('tbl-rules-id'), A.e2.identity.map(function (r) {
+      return [r.N, r.q, r.total, r.safeCount,
+        { t: r.safeValidCount, cls: r.safeValidCount ? 'cool' : 'worst' },
+        { t: r.selfTiebreakSafe ? '安全' : '不安全', cls: r.selfTiebreakSafe ? 'cool' : 'worst' }];
+    }));
+  }
+
+  /* ================= 第叁章 ================= */
+  function renderCh3() {
+    fillTable($('tbl-quorum'), A.e3.rows.map(function (r) {
+      return [r.n, r.systems,
+        { t: (r.dedekind - 1) + (r.minusOne ? ' ✓' : ' ✗'), cls: r.minusOne ? 'cool' : 'worst' },
+        r.intersecting === null ? '—' : r.intersecting,
+        r.res1 === null ? '—' : r.res1,
+        r.res2 === null ? '—' : r.res2];
+    }));
+    /* 计数差三个数量级 —— 必须用对数刻度，否则小的那几条渲染成 0 宽 */
+    var qhost = $('bars-quorum');
+    qhost.innerHTML = '';
+    var qh1 = document.createElement('div'); qh1.className = 'chart-note'; qh1.style.marginBottom = '6px';
+    qh1.textContent = '各 n 的法定人数系统总数（对数刻度）：';
+    var qb1 = document.createElement('div'); qb1.className = 'bars';
+    qhost.appendChild(qh1); qhost.appendChild(qb1);
+    bars(qb1, A.e3.bars.map(function (b) {
+      return { label: b.label, v: b.v, tone: 'cool', text: nfmt(b.v) };
+    }), { log: true, fmt: function (v) { return nfmt(v); } });
+
+    /* 第二组：n=5 那一档的逐层筛选 */
+    var n5 = A.e3.rows.filter(function (r) { return r.n === 5; })[0];
+    var qh2 = document.createElement('div'); qh2.className = 'chart-note';
+    qh2.style.margin = '14px 0 6px';
+    qh2.textContent = 'n=5 那一档的逐层筛选（对数刻度）：';
+    var qb2 = document.createElement('div'); qb2.className = 'bars';
+    qhost.appendChild(qh2); qhost.appendChild(qb2);
+    bars(qb2, [
+      { label: '全部系统', v: n5.systems, tone: 'cool', text: nfmt(n5.systems) },
+      { label: '两两相交', v: n5.intersecting, tone: 'cool', text: nfmt(n5.intersecting) },
+      { label: '容 1 个故障', v: n5.res1, tone: 'gold', text: nfmt(n5.res1) },
+      { label: '容 2 个故障', v: n5.res2, tone: '', text: nfmt(n5.res2) }
+    ], { log: true, fmt: function (v) { return nfmt(v); } });
+
+    $('ch3-systems').textContent = nfmt(A.e3.n5Systems);
+    $('ch3-inter').textContent = nfmt(A.e3.n5Intersecting);
+    $('ch3-res1').textContent = nfmt(A.e3.n5Res1);
+    $('ch3-majsize').textContent = A.e3.n5MajoritySize;
+    $('ch3-smallest').textContent = A.e3.n5SmallestRes1;
+    $('ch3-example').textContent = (A.e3.n5Example || []).join('、');
+  }
+
+  /* ================= 第肆章 ================= */
+  function renderCh4() {
+    var concl = {
+      'A': '安全性没了',
+      'B': '安全 ✓ 活性 ✓',
+      'C': '安全 ✓ 活性 ✗',
+      'D': '安全性没了'
+    };
+    fillTable($('tbl-cases'), A.e4.cases.map(function (c) {
+      var key = c.name.charAt(0);
+      return [{ t: c.name, cls: 'l' }, c.states,
+        { t: c.safety, cls: c.safety > 0 ? 'worst' : 'cool' },
+        { t: c.dead, cls: c.dead > 0 ? 'worst' : 'cool' },
+        c.deadlocks, c.livelocks,
+        { t: concl[key] || '', cls: (c.safety > 0 || c.dead > 0) ? 'worst' : 'cool' }];
+    }));
+    stackedBars($('bars-cases'), A.e4.bars.map(function (b) {
+      return { label: b.label, a: b.safety, b: b.dead };
+    }));
+    var host = $('bars-cases');
+    var note = document.createElement('div');
+    note.className = 'chart-note';
+    note.textContent = '红条 = 一致性违规数，金条 = 走不到决定的状态数（同一尺度）。';
+    host.parentNode.appendChild(note);
+
+    $('ch4-csafety').textContent = A.e4.cSafety;
+    $('ch4-cdead').textContent = A.e4.cDead;
+    steps($('ch4-dead-trace'), A.e4.cShortestDeadTrace, true);
+    $('ch4-dead-note').textContent = '死锁 ' + A.e4.cDeadlocks + ' 个、活锁 ' + A.e4.cLivelocks + ' 个。' +
+      '活锁的意思是：还有步骤可以走，但无论怎么走都出不了死区。';
+
+    $('ch4-dsafety').textContent = A.e4.dSafety;
+    steps($('ch4-viol-trace'), A.e4.dShortestSafetyTrace, true);
+
+    $('ch4-a-safety').textContent = A.e4.aSafety;
+    $('ch4-c-safety').textContent = A.e4.cSafety;
+    $('ch4-c-dead').textContent = A.e4.cDead;
+    $('ch4-d-safety').textContent = A.e4.dSafety;
+
+    /* 价态图 */
+    var B = A.e4.cases.filter(function (c) { return c.name.charAt(0) === 'B'; })[0];
+    var Cc = A.e4.cases.filter(function (c) { return c.name.charAt(0) === 'C'; })[0];
+    function valBars(host, c) {
+      bars(host, [
+        { label: '已分裂', v: c.safety, tone: '', text: String(c.safety) },
+        { label: '双价', v: c.bivalent, tone: 'gold', text: String(c.bivalent) },
+        { label: '只能到 0', v: c.zeroValent, tone: 'cool', text: String(c.zeroValent) },
+        { label: '只能到 1', v: c.oneValent, tone: 'gold', text: String(c.oneValent) },
+        { label: '死（走不到）', v: c.dead, tone: '', text: String(c.dead) },
+        { label: '注定不安全', v: c.unsafeDoomed, tone: '', text: String(c.unsafeDoomed) }
+      ], { fmt: function (v) { return String(v); } });
+    }
+    valBars($('bars-valB'), B);
+    valBars($('bars-valC'), Cc);
+  }
+
+  /* ================= 第伍章 ================= */
+  function renderCh5() {
+    var colors = { 3: '#b03030', 5: '#1f5f7a', 7: '#96700f' };
+    lineChart($('chart-elect'), {
+      height: 320, xLog: true, yMin: 0, yMax: 1,
+      xLabel: '档位数 R（对数）', yLabel: '一轮选出领导者的概率',
+      xTicks: [2, 5, 10, 20, 50, 100, 200, 400],
+      yFmt: function (v) { return v.toFixed(1); },
+      hlines: [{ v: 0.9, label: '90%', color: '#2f6b46' }],
+      series: A.e5.curve.map(function (c) {
+        return { name: 'N=' + c.N, color: colors[c.N] || '#17181c', points: c.points.map(function (p) { return [p.R, p.p]; }) };
+      })
+    });
+    var lg = document.createElement('div');
+    lg.className = 'legend';
+    lg.innerHTML = A.e5.curve.map(function (c) {
+      return '<span><i style="background:' + (colors[c.N] || '#17181c') + '"></i>N=' + c.N + '</span>';
+    }).join('');
+    $('chart-elect').parentNode.insertBefore(lg, $('chart-elect'));
+
+    fillTable($('tbl-elect'), A.e5.exhaustive.map(function (e) {
+      return [e.N, e.R, nfmt(e.total), nfmt(e.distinct), f3(e.p), f3(e.closed),
+        { t: e.gap === 0 ? '0（精确）' : e.gap.toExponential(1), cls: e.gap < 1e-12 ? 'cool' : 'worst' }];
+    }));
+    $('ch5-gap').textContent = '最大偏差 ' + A.e5.maxGap.toExponential(1) + ' —— 穷举与闭式解完全吻合。';
+
+    fillTable($('tbl-threshold'), A.e5.threshold.map(function (t) {
+      return [t.N, { t: t.R90, cls: 'cool' }, t.N2, t.Nsq, f2(t.ratio)];
+    }));
+    $('ch5-rule').textContent = '比值从 ' + f2(A.e5.ratioMax) + ' 收敛到 ' + f2(A.e5.ratioMin) +
+      '，所以经验规则是 R ≈ 5·N(N−1)。';
+
+    var t3 = A.e5.threshold.filter(function (t) { return t.N === 3; })[0];
+    var t5 = A.e5.threshold.filter(function (t) { return t.N === 5; })[0];
+    var t7 = A.e5.threshold.filter(function (t) { return t.N === 7; })[0];
+    $('ch5-r3').textContent = t3.R90;
+    $('ch5-r5').textContent = t5.R90;
+    $('ch5-r7').textContent = t7.R90;
+    $('ch5-ratio').textContent = f2(A.e5.ratioMax) + ' → ' + f2(A.e5.ratioMin);
+  }
+
+  /* ================= 第陆章 ================= */
+  function renderCh6() {
+    var colors = { 3: '#b03030', 5: '#1f5f7a', 7: '#96700f' };
+    lineChart($('chart-benor'), {
+      height: 300, xMin: 1, xMax: 10, yMin: 0, yMax: 1,
+      xLabel: '轮数', yLabel: '累积决定概率',
+      xTicks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      yFmt: function (v) { return v.toFixed(1); },
+      series: A.e6.curves.map(function (c) {
+        var n = parseInt(c.name.replace('n=', ''), 10);
+        return { name: c.name, color: colors[n] || '#17181c', points: c.points };
+      })
+    });
+    var lg = document.createElement('div');
+    lg.className = 'legend';
+    lg.innerHTML = A.e6.curves.map(function (c) {
+      var n = parseInt(c.name.replace('n=', ''), 10);
+      return '<span><i style="background:' + (colors[n] || '#17181c') + '"></i>' + c.name + '</span>';
+    }).join('');
+    $('chart-benor').parentNode.insertBefore(lg, $('chart-benor'));
+
+    lineChart($('chart-bias'), {
+      height: 300, xLog: true, xMin: 0.02, xMax: 0.5, yMin: 0, yMax: 6,
+      xLabel: '硬币判 1 的概率 p（对数）', yLabel: 'n=3 的平均轮数',
+      xTicks: [0.02, 0.05, 0.1, 0.2, 0.5],
+      yFmt: function (v) { return v.toFixed(1); },
+      series: [{ name: 'n=3', color: '#b03030', points: A.e6.biasCurve }]
+    });
+
+    fillTable($('tbl-benor'), A.e6.hazard.map(function (h) {
+      var ex = A.e6.exhaustive.filter(function (e) { return e.n === h.n; })[0];
+      return [h.n, h.f, nfmt(h.trials), f3(h.hitRound2), f3(h.hazardTheory),
+        { t: n0(h.meanTheory), cls: 'cool' }, ex ? ex.disagree : '—'];
+    }));
+
+    $('ch6-total').textContent = nfmt(A.e6.ex3Total);
+    $('ch6-disagree').textContent = A.e6.ex3Disagree;
+    $('ch6-hazard').textContent = f3(A.e6.ex3Hazard);
+    $('ch6-never').textContent = f3(A.e6.ex3NeverRate) + '（' + A.e6.ex3Never + ' / ' + nfmt(A.e6.ex3Total) + '）';
+    $('ch6-mean-fair').textContent = f2(A.e6.bias[0].meanRounds);
+    $('ch6-mean-biased').textContent = f2(A.e6.bias[A.e6.bias.length - 1].meanRounds);
+    $('ch6-mean-const').textContent = f2(A.e6.constCoin[0].meanRounds);
+  }
+
+  /* ================= 第柒章 ================= */
+  function renderCh7() {
+    fillTable($('tbl-verify'), A.verify.map(function (v) {
+      return [{ t: v[0], cls: 'l' }, { t: v[1], cls: 'l' }, { t: v[2], cls: 'l' }];
+    }));
+    var lh = $('limits'); lh.innerHTML = '';
+    A.limits.forEach(function (t) {
+      var li = document.createElement('li');
+      li.innerHTML = t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+      lh.appendChild(li);
+    });
+    var ch = $('cons'); ch.innerHTML = '';
+    A.conclusions.forEach(function (t) {
+      var li = document.createElement('li');
+      li.innerHTML = t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+      ch.appendChild(li);
+    });
+  }
+
+  /* ================= 页面自检（用同一台引擎在浏览器里复算一遍） ================= */
+  function liveCheck() {
+    var out = { ran: false };
+    try {
+      var p = CORE.protoSinglePhase(3, 2, 0, [0, 0, 1]);
+      var r = CORE.explore(p, { maxStates: 400000 });
+      var pB = CORE.protoLeader(3, 2, { crashBudget: 0, inputs: [0, 0, 1] });
+      var rB = CORE.explore(pB, { maxStates: 400000 });
+      var pC = CORE.protoLeader(3, 2, { crashBudget: 1, inputs: [0, 0, 1] });
+      var rC = CORE.explore(pC, { maxStates: 400000 });
+      out = {
+        ran: true,
+        heroStates: r.states, heroSafety: r.safety.length,
+        bStates: rB.states, bSafety: rB.safety.length, bDead: rB.dead.length,
+        cStates: rC.states, cSafety: rC.safety.length, cDead: rC.dead.length,
+        matchHero: r.states === A.e1.heroStates && r.safety.length === A.e1.heroSafety,
+        matchB: rB.states === A.e4.bStates && rB.safety.length === A.e4.bSafety && rB.dead.length === A.e4.bDead,
+        matchC: rC.states === A.e4.cStates && rC.safety.length === A.e4.cSafety && rC.dead.length === A.e4.cDead
+      };
+    } catch (e) { out.err = String(e && e.message || e); }
+    return out;
+  }
+
+  /* ================= 启动 ================= */
+  var LIVE = null;
+  function init() {
+    renderHead();
+    renderCh2(); renderCh3(); renderCh4(); renderCh5(); renderCh6(); renderCh7();
+    schedInit();
+    LIVE = liveCheck();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+
+  /* ================= 探针（确定性驱动，不依赖真实时钟） ================= */
+  window.__probe = {
+    counts: function () {
+      var charts = [].slice.call(document.querySelectorAll('.chart'));
+      var empty = [];
+      charts.forEach(function (c) { if (!c.querySelector('svg')) empty.push(c.id); });
+      return {
+        sections: document.querySelectorAll('.sec').length,
+        kpis: document.querySelectorAll('#kpis .kpi').length,
+        charts: charts.length,
+        chartSvg: document.querySelectorAll('.chart svg').length,
+        emptyCharts: empty,
+        barsHosts: document.querySelectorAll('.bars').length,
+        procBoxes: document.querySelectorAll('#sched-procs .proc').length,
+        msgChips: document.querySelectorAll('#sched-msgs .msg').length,
+        limitItems: document.querySelectorAll('#limits li').length,
+        consItems: document.querySelectorAll('#cons li').length,
+        stepItems: document.querySelectorAll('.steps li').length,
+        placeholders: [].slice.call(document.querySelectorAll('.lede b, .callout b, .hl-v, .hl-n')).filter(function (e) {
+          return e.textContent.indexOf('—') >= 0;
+        }).length
+      };
+    },
+    kpi: function () {
+      return [].slice.call(document.querySelectorAll('#kpis .kpi')).map(function (k) {
+        var r = k.getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height), val: (k.querySelector('.k-val') || {}).textContent || '' };
+      });
+    },
+    charts: function () {
+      return [].slice.call(document.querySelectorAll('.chart')).map(function (c) {
+        var svg = c.querySelector('svg');
+        var r = svg ? svg.getBoundingClientRect() : { width: 0, height: 0 };
+        /* 必须在 svg 内部数，不能数容器 —— 图元漏成兄弟节点时容器里照样数得出来，
+           于是"图上什么都没有"能一路通过所有断言。 */
+        var ticks = svg ? svg.querySelectorAll('text').length : 0;
+        var nan = 0;
+        if (svg) [].slice.call(svg.querySelectorAll('text')).forEach(function (t) {
+          if (/NaN|undefined|Infinity/.test(t.textContent)) nan++;
+        });
+        var stray = 0;
+        [].slice.call(c.children).forEach(function (e) { if (e.tagName.toLowerCase() !== 'svg') stray++; });
+        return {
+          id: c.id, w: Math.round(r.width), h: Math.round(r.height),
+          ticks: ticks, nanTicks: nan, stray: stray,
+          kids: svg ? svg.children.length : -1,
+          series: svg ? svg.querySelectorAll('path').length : 0
+        };
+      });
+    },
+    bars: function (sel) {
+      var out = [];
+      var host = document.querySelector(sel);
+      if (!host) return out;
+      [].slice.call(host.querySelectorAll('.bar-fill')).forEach(function (f) {
+        var w = f.getBoundingClientRect().width;
+        var tw = f.parentNode.getBoundingClientRect().width;
+        out.push({ w: Math.round(w * 10) / 10, tw: Math.round(tw * 10) / 10, pct: tw ? Math.round(1000 * w / tw) / 10 : -1 });
+      });
+      return out;
+    },
+    tables: function () {
+      return [].slice.call(document.querySelectorAll('table.tbl')).map(function (t) {
+        return { id: t.id, rows: t.querySelectorAll('tbody tr').length, heads: t.querySelectorAll('thead th').length };
+      });
+    },
+    /* 表格容器被挤到横滚 = 表头会被切一半。文档级 overflow 查不出来，必须单独量 */
+    clippedTables: function () {
+      var out = [];
+      [].slice.call(document.querySelectorAll('.tbl-wrap')).forEach(function (w) {
+        if (w.scrollWidth > w.clientWidth + 2) {
+          var t = w.querySelector('table');
+          out.push((t && t.id || '?') + ' ' + w.scrollWidth + '>' + w.clientWidth);
+        }
+      });
+      return out;
+    },
+    sectionText: function (sel) {
+      var e = document.querySelector(sel);
+      return e ? e.textContent.replace(/\s+/g, ' ').slice(0, 4000) : '';
+    },
+    viewport: function () {
+      return {
+        w: document.documentElement.clientWidth,
+        h: document.documentElement.clientHeight,
+        scrollW: document.documentElement.scrollWidth,
+        innerW: window.innerWidth,
+        dpr: window.devicePixelRatio || 1
+      };
+    },
+    overflow: function () {
+      return document.documentElement.scrollWidth - document.documentElement.clientWidth;
+    },
+    overflowing: function () {
+      var out = [], vw = document.documentElement.clientWidth;
+      [].slice.call(document.querySelectorAll('*')).forEach(function (e) {
+        var r = e.getBoundingClientRect();
+        if (r.width > 0 && r.right > vw + 1) out.push(e.tagName + '#' + e.id + ' w=' + Math.round(r.width) + ' right=' + Math.round(r.right));
+      });
+      return out.slice(0, 12);
+    },
+    touch: function () {
+      var out = [], lim = window.innerWidth <= 700 ? 44 : 36;
+      [].slice.call(document.querySelectorAll('button, select, input, a')).forEach(function (e) {
+        var r = e.getBoundingClientRect();
+        if (r.height > 0 && r.height < lim) out.push(e.tagName + '#' + e.id + ' h=' + Math.round(r.height));
+      });
+      return out;
+    },
+    live: function () { return LIVE; },
+    /* --- 调度器驱动 --- */
+    schedReset: function () { return schedInit(); },
+    schedDeliver: function (k) { return schedDeliver(k); },
+    schedAuto: function () { return schedAuto(); },
+    schedBreak: function () { return schedBreak(); },
+    schedState: function () { return schedState(); },
+    /* --- 模型驱动（浏览器里直接跑引擎） --- */
+    model: function (what) {
+      if (what === 'hero') return CORE.explore(CORE.protoSinglePhase(3, 2, 0, [0, 0, 1]), { maxStates: 400000 });
+      if (what === 'leaderB') return CORE.explore(CORE.protoLeader(3, 2, { crashBudget: 0, inputs: [0, 0, 1] }), { maxStates: 400000 });
+      if (what === 'leaderC') return CORE.explore(CORE.protoLeader(3, 2, { crashBudget: 1, inputs: [0, 0, 1] }), { maxStates: 400000 });
+      return null;
+    },
+    /* 只回标量 —— 完整结果里有上万个状态对象，塞进探针输出会撑爆 dump */
+    modelSummary: function (what) {
+      var m = window.__probe.model(what);
+      if (!m) return null;
+      return {
+        states: m.states, edges: m.edges, truncated: !!m.truncated,
+        safety: m.safety.length, dead: m.dead.length, unsafeDoomed: m.unsafeDoomed.length,
+        deadlocks: m.deadlocks.length, livelocks: m.livelocks.length,
+        bivalent: m.bivalent.length, zeroValent: m.zeroValent.length, oneValent: m.oneValent.length,
+        shortestSafetyLen: m.shortestSafety ? m.shortestSafety.path.length : -1,
+        shortestDeadLen: m.shortestDead ? m.shortestDead.path.length : -1
+      };
+    }
+  };
+})();
+
+</script>
+</body>
+</html>

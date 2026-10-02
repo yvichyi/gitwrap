@@ -1,0 +1,2424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>链之宿命</title>
+<meta name="description" content="HP 晶格蛋白质折叠模型：序列里没有写形状，只写了谁该躲开谁。">
+<style>
+/* ============================================================
+   链之宿命 —— 样式（浅色主题）
+   约定：
+     · .chart 里只允许放真 SVG（条形图统一走 hbars()）
+     · 数字表 td 不折行，只有表头允许折行
+     · 媒体查询写在基准规则之后；窄屏标签栏换行，不横滚
+   ============================================================ */
+:root{
+  --bg:#f6f5f2;
+  --panel:#ffffff;
+  --ink:#1c1b19;
+  --ink2:#4a4844;
+  --ink3:#7d7a74;
+  --line:#e0ded8;
+  --line2:#cbc8c0;
+  --h:#1f4e5f;          /* 疏水 H */
+  --p:#c9a227;          /* 亲水 P */
+  --acc:#8c2f39;        /* 强调 / 基态 */
+  --ok:#2f6b4f;
+  --soft:#f0eee9;
+  --mono:"Cascadia Mono","JetBrains Mono",Consolas,"DejaVu Sans Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--sans);
+  font-size:15px; line-height:1.72; -webkit-text-size-adjust:100%;
+  padding:0 0 64px;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+
+/* ---------- 头版 ---------- */
+.hero{padding-top:40px;padding-bottom:8px}
+.kicker{font-size:12.5px;letter-spacing:.16em;color:var(--ink3);margin:0 0 6px;text-transform:uppercase}
+.hero h1{font-size:40px;line-height:1.15;margin:0 0 14px;letter-spacing:.02em}
+.lead{font-size:16px;color:var(--ink2);margin:0 0 18px;max-width:78ch}
+.lead b{color:var(--ink)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:20px 0 8px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 13px;min-width:0}
+.kpi .kl{font-size:12px;color:var(--ink3);line-height:1.45;display:block;margin-bottom:4px}
+.kpi .kv{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.01em;display:block}
+.kpi .kn{font-size:11.5px;color:var(--ink3);line-height:1.5;display:block;margin-top:4px}
+
+/* ---------- 标签栏 ---------- */
+.tabs{
+  display:flex;flex-wrap:wrap;gap:6px;padding-top:14px;padding-bottom:6px;
+  border-bottom:1px solid var(--line);margin-bottom:22px;
+}
+.tabs button{
+  font:inherit;font-size:14px;background:transparent;border:1px solid transparent;
+  color:var(--ink2);padding:8px 12px;border-radius:7px;cursor:pointer;min-height:40px;
+}
+.tabs button:hover{background:var(--soft)}
+.tabs button[aria-selected="true"]{background:var(--panel);border-color:var(--line2);color:var(--ink);font-weight:600}
+
+/* ---------- 面板 ---------- */
+.panel{display:none;padding-bottom:8px}
+.panel.on{display:block}
+.panel h2{font-size:25px;margin:0 0 12px;letter-spacing:.01em}
+.panel h3{font-size:16px;margin:26px 0 10px;color:var(--ink);border-left:3px solid var(--line2);padding-left:9px}
+.hint{font-size:12.5px;color:var(--ink3);margin:6px 0 0;line-height:1.6}
+.hint b{color:var(--ink2)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;min-width:0}
+.grid2>div{min-width:0}
+
+/* ---------- 折叠台 ---------- */
+.bench{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;min-width:0}
+.bench-left,.bench-right{min-width:0}
+.bench-right{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+.btnrow button{
+  font:inherit;font-size:13.5px;background:var(--panel);border:1px solid var(--line2);
+  color:var(--ink);padding:8px 12px;border-radius:7px;cursor:pointer;min-height:40px;
+}
+.btnrow button:hover{background:var(--soft)}
+.btnrow button.primary{background:var(--h);color:#fff;border-color:var(--h)}
+.slider{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink2);margin:12px 0 0;flex-wrap:wrap}
+.slider input[type=range]{flex:1 1 140px;min-width:120px;min-height:40px;accent-color:var(--h)}
+.seqbar{display:flex;flex-wrap:wrap;gap:3px;margin:10px 0 0}
+.seqbar span{
+  font-family:var(--mono);font-size:11.5px;width:22px;height:22px;line-height:22px;
+  text-align:center;border-radius:4px;cursor:pointer;user-select:none;border:1px solid var(--line2);
+}
+.seqbar span.h{background:var(--h);color:#fff;border-color:var(--h)}
+.seqbar span.p{background:#fdf6e3;color:#7a5c00}
+
+/* ---------- 读数行 ---------- */
+.ro{
+  background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--h);
+  border-radius:6px;padding:9px 13px;margin:9px 0;font-size:13.5px;color:var(--ink2);line-height:1.65;
+}
+.ro b{color:var(--ink);font-weight:600}
+.ro code,.ro .mono{font-family:var(--mono);font-size:12.5px;background:var(--soft);padding:1px 4px;border-radius:3px}
+.bench-right .ro{background:transparent;border:none;border-left:2px solid var(--line2);border-radius:0;padding:4px 0 4px 10px;margin:8px 0}
+
+/* ---------- 图表 ---------- */
+.chart{margin:6px 0 0;min-width:0}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .gridline{stroke:var(--line);stroke-width:1}
+.chart .axisline{stroke:var(--line2);stroke-width:1}
+.chart .tick{fill:var(--ink3);font-family:var(--mono);font-size:10.5px}
+.chart .axname{fill:var(--ink3);font-size:11px}
+.chart .legend{font-size:11.5px;fill:var(--ink2);font-family:var(--sans)}
+.chart .zero{stroke:var(--line2);stroke-width:1;stroke-dasharray:3 3}
+.chart .empty{fill:var(--ink3);font-size:12.5px;font-family:var(--sans)}
+
+/* ---------- 表格 ---------- */
+.tbl-wrap{overflow-x:auto;max-width:100%;min-width:0;margin:8px 0 4px;
+  border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+table.dt{border-collapse:collapse;width:100%;font-size:13px}
+table.dt th,table.dt td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+table.dt th{background:var(--soft);font-weight:600;color:var(--ink2);font-size:12px;
+  position:sticky;top:0;white-space:normal;overflow-wrap:anywhere;line-height:1.4}
+table.dt td:first-child,table.dt th:first-child{text-align:left}
+table.dt tbody tr:last-child td{border-bottom:none}
+table.dt td.mono,table.dt th.mono{font-family:var(--mono);font-size:12px}
+table.dt td.ok{color:var(--ok);font-weight:600}
+table.dt td.bad{color:var(--acc);font-weight:600}
+table.dt.wrapok td{white-space:normal;overflow-wrap:break-word}
+table.dt.wrapok td:first-child{min-width:88px}
+table.dt tr.hi td{background:#fbf7ee}
+
+/* ---------- 结论 / 边界 ---------- */
+ol.concl,ul.bound{margin:0;padding-left:0;list-style:none}
+ol.concl li,ul.bound li{
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:12px 15px;margin:0 0 9px;font-size:14px;color:var(--ink2);line-height:1.72;
+}
+ol.concl li{counter-increment:c}
+ol.concl li::before{
+  content:counter(c);font-family:var(--mono);font-size:12px;color:var(--acc);
+  font-weight:600;margin-right:9px;
+}
+ol.concl{counter-reset:c}
+ul.bound li{border-left:3px solid var(--line2)}
+ol.concl li b,ul.bound li b{color:var(--ink)}
+
+/* ---------- 页脚 ---------- */
+.foot{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink3);font-size:13px}
+.foot p{margin:0 0 6px}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width:820px){
+  .grid2{grid-template-columns:1fr}
+  .bench{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  body{font-size:14.5px}
+  .hero{padding-top:24px}
+  .hero h1{font-size:30px}
+  .lead{font-size:15px}
+  .kpis{grid-template-columns:1fr 1fr;gap:8px}
+  .kpi{padding:10px 11px}
+  .kpi .kv{font-size:18px}
+  .kpi .kn{font-size:11px}
+  .panel h2{font-size:21px}
+  table.dt th,table.dt td{padding:5px 8px;font-size:12px}
+  .btnrow button{font-size:13px;padding:9px 11px;min-height:44px}
+  .tabs button{min-height:44px;padding:9px 10px;font-size:13.5px}
+  .slider input[type=range]{min-height:44px}
+  .seqbar span{width:24px;height:24px;line-height:24px;font-size:12px}
+}
+@media (max-width:400px){
+  .kpis{grid-template-columns:1fr}
+  .hero h1{font-size:26px}
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <p class="kicker">单文件科学装置 · 第 15 件 · 计算生物物理</p>
+  <h1>链之宿命</h1>
+  <p class="lead">
+    一条只由两种字母组成的链，能不能「知道」自己该折成什么形状？
+    序列里其实<b>没有写形状</b> —— 它只写了<b>谁该躲开谁</b>。
+    形状是这句话在一张按 μ<sup>n</sup> 膨胀的自回避构型表里最省的那一个，
+    而「最省」是<b>穷举出来的事实</b>，不是链自己找到的。
+  </p>
+  <div id="kpis" class="kpis"></div>
+</header>
+
+<nav class="tabs" id="tabs"></nav>
+
+<main id="panels">
+
+<!-- ============================================================ 壹 -->
+<section class="panel" id="p-one">
+  <h2>壹 · 一条链</h2>
+  <p class="lead">
+    HP 模型只有两种单体：<b>H</b>（疏水）与 <b>P</b>（亲水）。链在方格子上折叠，
+    要求不能重复经过任何一个格点（自回避）。能量只数一件事：
+    <b>在格子上挨着、但在链上不相邻的两个 H</b>，每形成一对算 −1。
+    下面这台折叠台里跑的，和标定脚本里跑的是<b>同一份源码</b>。
+  </p>
+
+  <div class="bench">
+    <div class="bench-left">
+      <div class="chart" id="c-chain"></div>
+      <p class="hint">深色 = H（疏水）· 浅色 = P（亲水）· 红线 = H–H 接触（每对 −1）。
+        点下面的方块可以切换 H / P；方块里的数字是单体在链上的序号。</p>
+      <div class="seqbar" id="seqbar"></div>
+      <div class="btnrow">
+        <button type="button" data-act="rand">随机序列</button>
+        <button type="button" data-act="allH">全 H</button>
+        <button type="button" data-act="allP">全 P</button>
+        <button type="button" data-act="alt">交替</button>
+        <button type="button" data-act="rev">反转</button>
+      </div>
+      <div class="btnrow">
+        <button type="button" data-act="exact">穷举基态</button>
+        <button type="button" data-act="anneal">退火折叠</button>
+        <button type="button" data-act="greedy">贪心下降</button>
+        <button type="button" data-act="reset">换一个随机构型</button>
+      </div>
+      <label class="slider">链长
+        <input type="range" id="m-range" min="6" max="20" step="1" value="14">
+        <span class="mono" id="m-out">14</span> 个单体
+      </label>
+    </div>
+    <div class="bench-right">
+      <p class="ro" id="ro-bench-seq"></p>
+      <p class="ro" id="ro-bench-now"></p>
+      <p class="ro" id="ro-bench-exact"></p>
+      <p class="ro" id="ro-bench-mc"></p>
+      <p class="ro" id="ro-bench-note"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 贰 -->
+<section class="panel" id="p-two">
+  <h2>贰 · 有多少种走法</h2>
+  <p class="lead">
+    要问「最省的那一个」有多难找，先得知道一共有多少个构型。
+    n 步自回避行走的条数 c<sub>n</sub> 是一个<b>答案已知</b>的数列（OEIS A001411），
+    这是本页第一把尺子：我的实现必须和它对上，才有资格往下说。
+  </p>
+
+  <div class="grid2">
+    <div>
+      <h3>构型数按 μ<sup>n</sup> 增长</h3>
+      <div class="chart" id="c-growth"></div>
+    </div>
+    <div>
+      <h3>比值收敛得有多慢</h3>
+      <div class="chart" id="c-mu"></div>
+    </div>
+  </div>
+  <p class="ro" id="ro-mu"></p>
+  <p class="ro" id="ro-mu2"></p>
+
+  <h3>实测的 c<sub>n</sub> 与外部真值</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-counts"></table></div>
+
+  <h3>取哪一段窗口，μ 就变一次</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-fits"></table></div>
+</section>
+
+<!-- ============================================================ 叁 -->
+<section class="panel" id="p-three">
+  <h2>叁 · 最省的那一个</h2>
+  <p class="lead">
+    给定序列，穷举全部构型，找能量最低的那一个 —— 这不是近似，是<b>证明</b>。
+    但「最省」常常不是「唯一」：同一个序列可能有好几个形状并列最省。
+    简并度不是细节，它是这个模型最要紧的性质之一。
+  </p>
+
+  <h3>多种序列 × 多档链长</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-ground"></table></div>
+
+  <div class="grid2">
+    <div>
+      <h3>简并度分布（14 个单体，80 个随机序列）</h3>
+      <div class="chart" id="c-deg"></div>
+    </div>
+    <div>
+      <h3>全 H 序列能达到的最大接触数</h3>
+      <div class="chart" id="c-maxc"></div>
+    </div>
+  </div>
+  <p class="ro" id="ro-deg"></p>
+</section>
+
+<!-- ============================================================ 肆 -->
+<section class="panel" id="p-four">
+  <h2>肆 · 找不找得到</h2>
+  <p class="lead">
+    穷举能证明，但代价是指数。那就换一条路：不穷举，让链在能量地形上「往下走」。
+    三种办法同台：<b>均匀采样</b>（随便抽构型）、<b>贪心下降</b>（只走能改善的一步）、
+    <b>退火</b>（Metropolis + 降温）。判据只有一个：能不能触到穷举给出的那个 E<sub>min</sub>。
+  </p>
+
+  <div class="grid2">
+    <div>
+      <h3>命中率随链长下降</h3>
+      <div class="chart" id="c-rate"></div>
+    </div>
+    <div>
+      <h3>退火相对穷举的优势</h3>
+      <div class="chart" id="c-adv"></div>
+    </div>
+  </div>
+  <p class="ro" id="ro-rate"></p>
+  <p class="ro" id="ro-adv"></p>
+
+  <h3>命中率 vs 基态有几个形状</h3>
+  <div class="chart" id="c-shapes"></div>
+  <p class="ro" id="ro-shapes"></p>
+
+  <h3>逐序列明细（每格 8 次独立重跑）</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-heur"></table></div>
+</section>
+
+<!-- ============================================================ 伍 -->
+<section class="panel" id="p-five">
+  <h2>伍 · 形状比序列稀少</h2>
+  <p class="lead">
+    把全部 2<sup>m</sup> 个序列穷举一遍，问两件事：<b>有多少序列有唯一的基态？</b>
+    反过来，<b>有多少形状能被某个序列唯一地编码？</b>
+    这两个问题的答案都很反直觉 —— 而且答案全挤在接触数最高的那一小撮形状里。
+  </p>
+
+  <div class="tbl-wrap"><table class="dt" id="t-design"></table></div>
+  <p class="ro" id="ro-design"></p>
+
+  <div class="grid2">
+    <div>
+      <h3>可设计形状的占比随链长单调下降</h3>
+      <div class="chart" id="c-desig-frac"></div>
+    </div>
+    <div>
+      <h3>可设计的形状全在接触数最高的那一档</h3>
+      <div class="chart" id="c-desig-contact"></div>
+    </div>
+  </div>
+  <p class="ro" id="ro-desig-contact"></p>
+
+  <h3>每个形状被多少个序列唯一编码（13 个单体）</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-desig-hist"></table></div>
+</section>
+
+<!-- ============================================================ 陆 -->
+<section class="panel" id="p-six">
+  <h2>陆 · 疏水核</h2>
+  <p class="lead">
+    「最省」在几何上意味着什么？如果 H–H 接触是唯一的能量来源，那基态就应该
+    <b>更紧凑</b>、H 就应该<b>抱团</b>。这两件事都可以直接量。
+  </p>
+
+  <div class="grid2">
+    <div>
+      <h3>基态接触数 vs 序列里 H 的个数</h3>
+      <div class="chart" id="c-byh"></div>
+    </div>
+    <div>
+      <h3>基态的回转半径 / 全体构型的平均回转半径</h3>
+      <div class="chart" id="c-rg"></div>
+    </div>
+  </div>
+  <p class="ro" id="ro-rg"></p>
+
+  <h3>最大接触数（全 H 序列的基态）</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-maxc"></table></div>
+</section>
+
+<!-- ============================================================ 柒 -->
+<section class="panel" id="p-seven">
+  <h2>柒 · 把尺子拉到 100 个单体</h2>
+  <p class="lead">
+    Levinthal 佯谬：一条 100 个残基的链，构型数是一个 42 位数，而真实的小蛋白在毫秒里折好。
+    下面这张表把「本机穷举一遍」需要多久一路算到 400 个单体。
+    时间一律用本机<b>实测吞吐</b>换算 —— 换一台机器，这一列全变。
+  </p>
+
+  <div class="chart" id="c-lev"></div>
+  <p class="ro" id="ro-lev"></p>
+  <p class="ro" id="ro-lev2"></p>
+
+  <h3>穷举的代价（实测 + 外推）</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-lev"></table></div>
+  <p class="hint">「来源」一栏里，<b>实测</b>是本次真数出来的构型数，<b>外推</b>是按 μ<sup>m−1</sup> 算的。</p>
+
+  <h3>均匀采样那一侧的墙</h3>
+  <div class="tbl-wrap"><table class="dt" id="t-sample"></table></div>
+</section>
+
+<!-- ============================================================ 捌 -->
+<section class="panel" id="p-eight">
+  <h2>捌 · 可信与边界</h2>
+  <p class="lead">
+    上面每一条结论旁边，都应该能看到「它有多可信」。这一节放四样东西：
+    <b>答案已知的对照组</b>、<b>结论</b>、<b>边界段</b>、<b>验证表</b>。
+  </p>
+
+  <h3>对照组：答案已知的那些刻度</h3>
+  <div class="tbl-wrap"><table class="dt wrapok" id="t-controls"></table></div>
+
+  <h3>结论</h3>
+  <ol class="concl" id="l-concl"></ol>
+
+  <h3>边界：我没做到什么</h3>
+  <ul class="bound" id="l-bound"></ul>
+
+  <h3>验证表</h3>
+  <div class="tbl-wrap"><table class="dt wrapok" id="t-verify"></table></div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <p id="foot-line"></p>
+  <p class="hint">本页不联网、不加载任何外部资源。所有数字来自本机一次真实计算。</p>
+</footer>
+
+</div>
+<script>/* ============================================================================
+ * fold/core.js —— HP 晶格蛋白质折叠模型（全部模型，UMD）
+ *
+ * 对象：一条由 H（疏水）/ P（亲水）两种单体组成的链，在方格子上折叠。
+ *   · 构型 = 自回避行走（SAW）：不重复经过任何格点
+ *   · 能量 = −（非相邻 H–H 接触数）
+ *   · 基态 = 能量最低的构型；简并度 = 达到最低能量的构型数
+ *
+ * 本文件里的每个函数都能在 Node 里单独跑，也能被浏览器里的同一份源码调用。
+ * 铁律：期望值一律来自独立实现（暴力 4^n 枚举 / 朴素重算 / 外部文献），
+ *       绝不从被测对象反推。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.FoldCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* ---------------------------------------------------------------- 常量 */
+
+  // 方向编码：0=E(+x) 1=N(+y) 2=W(−x) 3=S(−y)
+  var DX = [1, 0, -1, 0];
+  var DY = [0, 1, 0, -1];
+  var DIRNAME = ['E', 'N', 'W', 'S'];
+
+  // 反射（关于 x 轴）：E→E, N→S, W→W, S→N
+  var REFL = [0, 3, 2, 1];
+
+  // 二面体群 D4 的 8 个元素：先反射（可选）再旋转 k×90°
+  var GROUP = (function () {
+    var g = [], s, k, i, d, t;
+    for (s = 0; s < 2; s++) {
+      for (k = 0; k < 4; k++) {
+        t = [0, 0, 0, 0];
+        for (i = 0; i < 4; i++) { d = s ? REFL[i] : i; t[i] = (d + k) % 4; }
+        g.push(t);
+      }
+    }
+    return g;
+  })();
+
+  var CAP_SHAPES = 400000;   // 形状枚举上限（超过就标记截断，绝不假装完整）
+
+  /* ---------------------------------------------------------------- PRNG */
+  // splitmix32：确定性、可派生实例。同一 (种子, 标签) 唯一确定一条流。
+  function splitmix32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 16), 0x21f0aaad) >>> 0;
+      t = Math.imul(t ^ (t >>> 15), 0x735a2d97) >>> 0;
+      return ((t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+  function hashStr(s) {
+    var h = 2166136261 >>> 0, i;
+    for (i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return h >>> 0;
+  }
+  function makeRng(seed, tag) {
+    return splitmix32(((seed >>> 0) ^ hashStr(String(tag || ''))) >>> 0);
+  }
+
+  /* ------------------------------------------------------------ 序列工具 */
+
+  // seq：长度 m 的 0/1 数组（1 = H 疏水，0 = P 亲水）
+  function seqFromString(s) {
+    var out = new Uint8Array(s.length), i;
+    for (i = 0; i < s.length; i++) out[i] = (s[i] === 'H' || s[i] === '1') ? 1 : 0;
+    return out;
+  }
+  function seqToString(q) {
+    var out = '', i;
+    for (i = 0; i < q.length; i++) out += q[i] ? 'H' : 'P';
+    return out;
+  }
+  // kind: 'random' | 'blocky' | 'allH' | 'allP' | 'alt'
+  function makeSeq(kind, m, rng) {
+    var q = new Uint8Array(m), i, blk = 0;
+    for (i = 0; i < m; i++) {
+      if (kind === 'allH') q[i] = 1;
+      else if (kind === 'allP') q[i] = 0;
+      else if (kind === 'alt') q[i] = i % 2;
+      else if (kind === 'blocky') {
+        if (i % 4 === 0) blk = rng() < 0.5 ? 1 : 0;
+        q[i] = blk;
+      } else q[i] = rng() < 0.5 ? 1 : 0;
+    }
+    return q;
+  }
+  function countH(q) { var c = 0, i; for (i = 0; i < q.length; i++) c += q[i]; return c; }
+
+  /* --------------------------------------------------- 构型：方向 ↔ 坐标 */
+
+  function positionsFromDirs(dirs, n) {
+    var px = new Int16Array(n + 1), py = new Int16Array(n + 1), x = 0, y = 0, i;
+    for (i = 0; i < n; i++) { x += DX[dirs[i]]; y += DY[dirs[i]]; px[i + 1] = x; py[i + 1] = y; }
+    return { px: px, py: py };
+  }
+
+  function keyOf(x, y) { return (x + 96) * 512 + (y + 96); }
+
+  // 接触对（非键合的格点相邻对），返回扁平数组 [i0,j0, i1,j1, ...]，i<j
+  function contactsOf(px, py, m) {
+    var map = new Map(), out = [], i, d, k, j;
+    for (i = 0; i < m; i++) map.set(keyOf(px[i], py[i]), i);
+    for (i = 0; i < m; i++) {
+      for (d = 0; d < 4; d++) {
+        k = map.get(keyOf(px[i] + DX[d], py[i] + DY[d]));
+        if (k !== undefined && k > i + 1) out.push(i, k);
+      }
+    }
+    return out;
+  }
+
+  function isSelfAvoiding(px, py, m) {
+    var seen = new Set(), i;
+    for (i = 0; i < m; i++) {
+      var k = keyOf(px[i], py[i]);
+      if (seen.has(k)) return false;
+      seen.add(k);
+    }
+    return true;
+  }
+
+  // 独立实现之一：从坐标直接数接触（不看任何增量账本）
+  function energyOfPositions(seq, px, py) {
+    var m = seq.length, E = 0, map = new Map(), i, d, k;
+    for (i = 0; i < m; i++) map.set(keyOf(px[i], py[i]), i);
+    for (i = 0; i < m; i++) {
+      for (d = 0; d < 4; d++) {
+        k = map.get(keyOf(px[i] + DX[d], py[i] + DY[d]));
+        if (k !== undefined && k > i + 1 && seq[i] && seq[k]) E -= 1;
+      }
+    }
+    return E;
+  }
+
+  function energyOfDirs(seq, dirs, n) {
+    var p = positionsFromDirs(dirs, n);
+    return energyOfPositions(seq, p.px, p.py);
+  }
+
+  /* --------------------------------------------------------- 形状规范化 */
+  // 形状 = 方向串在 D4 作用下的等价类（平移已被方向串本身消掉）。
+  function canonicalKey(dirs, n) {
+    var best = null, g, i, t, s;
+    for (g = 0; g < 8; g++) {
+      t = GROUP[g];
+      s = '';
+      for (i = 0; i < n; i++) s += String.fromCharCode(48 + t[dirs[i]]);
+      if (best === null || s < best) best = s;
+    }
+    return best;
+  }
+  // 独立实现之二：直接拿坐标做 8 次变换再取最小字符串（不复用方向串变换）
+  function canonicalKeyFromPositions(px, py, m) {
+    var best = null, g, i, x, y, nx, ny, pts;
+    for (g = 0; g < 8; g++) {
+      pts = [];
+      for (i = 0; i < m; i++) {
+        x = px[i]; y = py[i];
+        if (g & 4) { var tmp = x; x = y; y = tmp; }   // 转置（= 反射×旋转的组合之一）
+        switch (g & 3) {
+          case 0: nx = x; ny = y; break;
+          case 1: nx = -y; ny = x; break;
+          case 2: nx = -x; ny = -y; break;
+          default: nx = y; ny = -x; break;
+        }
+        pts.push(nx + 96, ny + 96);
+      }
+      var s = pts.join(',');
+      if (best === null || s < best) best = s;
+    }
+    return best;
+  }
+
+  /* ------------------------------------------------- ① 自回避行走的计数 */
+
+  // 精确计数。旋转群 C4 在 SAW 上自由作用 ⇒ c_n = 4 ×（首步向东的条数）。
+  function countSaws(n) {
+    if (n <= 0) return { n: n, east: 1, total: 1 };
+    var W = n + 2, S = 2 * W + 1, base = W * S + W;
+    var occ = new Uint8Array(S * S);
+    var east = 0;
+    occ[base] = 1; occ[base + S] = 1;
+    (function rec(idx, step) {
+      if (step === n) { east++; return; }
+      var d, ni;
+      for (d = 0; d < 4; d++) {
+        ni = idx + DX[d] * S + DY[d];
+        if (occ[ni]) continue;
+        occ[ni] = 1;
+        rec(ni, step + 1);
+        occ[ni] = 0;
+      }
+    })(base + S, 1);
+    return { n: n, east: east, total: east * 4 };
+  }
+
+  // 独立实现之三：枚举全部 4^n 条方向串，逐条判自回避。只在小 n 上用。
+  // 【事故】第一版写成 isSelfAvoiding(..., step+1)，而放完 dirs[step] 之后
+  // 单体数是 step+2 —— 差一，于是 n=2 报出 16（真值 12）。
+  // 症状：每一档都偏大且偏得没规律；判据是「暴力 ≥ 精确」恒成立这一条。
+  function countSawsBrute(n) {
+    if (n <= 0) return 1;
+    var total = 0, dirs = new Int8Array(n);
+    (function rec(step) {
+      if (step === n) { total++; return; }
+      for (var d = 0; d < 4; d++) {
+        dirs[step] = d;
+        var p = positionsFromDirs(dirs, step + 1);
+        if (isSelfAvoiding(p.px, p.py, step + 2)) rec(step + 1);
+      }
+    })(0);
+    return total;
+  }
+
+  // 枚举首步向东的全部 SAW；visitor(dirs) 被调用，dirs 会被复用（需要留存请自己 slice）
+  function eachSawEast(n, visitor) {
+    if (n <= 0) { visitor(new Int8Array(0)); return 0; }
+    var W = n + 2, S = 2 * W + 1, base = W * S + W;
+    var occ = new Uint8Array(S * S);
+    var dirs = new Int8Array(n);
+    var cnt = 0;
+    occ[base] = 1; occ[base + S] = 1;
+    (function rec(idx, step) {
+      if (step === n) { cnt++; visitor(dirs); return; }
+      for (var d = 0; d < 4; d++) {
+        var ni = idx + DX[d] * S + DY[d];
+        if (occ[ni]) continue;
+        occ[ni] = 1; dirs[step] = d;
+        rec(ni, step + 1);
+        occ[ni] = 0;
+      }
+    })(base + S, 1);
+    return cnt;
+  }
+
+  // 全部互不相同的「形状」（模 D4）与「构型」（模平移）的数量
+  function shapeCensus(n) {
+    if (n <= 0) return { n: n, conformations: 1, shapes: 1, orbitSizes: { 1: 1 } };
+    var keys = new Set(), orbit = { 1: 0, 2: 0, 4: 0, 8: 0 };
+    var east = eachSawEast(n, function (dirs) {
+      keys.add(canonicalKey(dirs, n));
+    });
+    // 每个形状在「向东扇区」里出现 1 次（非手性）或 2 次（手性）
+    // 单独再统计一次真实轨道大小分布（用完整方向串的 8 个像）
+    var allKeys = new Map();
+    eachSawEast(n, function (dirs) {
+      var k = canonicalKey(dirs, n);
+      allKeys.set(k, (allKeys.get(k) || 0) + 1);
+    });
+    var chiral = 0, achiral = 0;
+    allKeys.forEach(function (v) { if (v === 2) chiral++; else achiral++; });
+    return {
+      n: n,
+      conformations: east * 4,
+      shapes: keys.size,
+      chiral: chiral, achiral: achiral,
+      orbitSizes: orbit
+    };
+  }
+
+  /* ------------------------------------------------------- ② 精确基态 */
+
+  /**
+   * 穷举全部自回避构型，求最低能量与简并度。
+   * 返回：
+   *   Emin            最低能量（负数或 0）
+   *   nOptimalConf    达到最低能量的构型数（模平移；= 4 × 向东扇区条数）
+   *   nOptimalShapes  达到最低能量的「形状」数（模 D4）；超过上限则为 null
+   *   shapesAtLeast   截断时的下界
+   *   shapesTruncated 是否截断
+   *   sample          一个最优构型的方向串
+   *   nodes           访问过的搜索树节点数（代价账本）
+   *   sawsEast        向东扇区里被完整走过的构型数（= c_n/4，用于核对照）
+   */
+  function solveExact(seq, opts) {
+    opts = opts || {};
+    var m = seq.length, n = m - 1;
+    var cap = opts.shapeCap || CAP_SHAPES;
+    if (n <= 0) {
+      return { Emin: 0, nOptimalConf: 1, nOptimalShapes: 1, shapesAtLeast: 1,
+        shapesTruncated: false, sample: new Int8Array(0), nodes: 1, sawsEast: 1, n: n };
+    }
+    var W = n + 2, S = 2 * W + 1, base = W * S + W;
+    var occ = new Int16Array(S * S);      // 0 = 空；否则 = 单体序号 + 1
+    var dirs = new Int8Array(n);
+    var Emin = 1e9, cntEast = 0, sample = null, nodes = 0, sawsEast = 0;
+    var keys = new Set(), trunc = false;
+
+    occ[base] = 1; occ[base + S] = 2;
+    dirs[0] = 0;
+
+    function rec(idx, k, E) {
+      nodes++;
+      if (k === n) {
+        sawsEast++;
+        if (E < Emin) {
+          Emin = E; cntEast = 1; sample = dirs.slice();
+          keys = new Set(); keys.add(canonicalKey(dirs, n)); trunc = false;
+        } else if (E === Emin) {
+          cntEast++;
+          if (!trunc) {
+            keys.add(canonicalKey(dirs, n));
+            if (keys.size > cap) { trunc = true; keys = null; }
+          }
+        }
+        return;
+      }
+      var d, q, ni, oi, dE, nx, ny, hnew = seq[k + 1];
+      for (d = 0; d < 4; d++) {
+        ni = idx + DX[d] * S + DY[d];
+        if (occ[ni]) continue;
+        dE = 0;
+        if (hnew) {
+          for (q = 0; q < 4; q++) {
+            oi = occ[ni + DX[q] * S + DY[q]];
+            if (oi && oi <= k && seq[oi - 1]) dE -= 1;
+          }
+        }
+        occ[ni] = k + 2;
+        dirs[k] = d;
+        rec(ni, k + 1, E + dE);
+        occ[ni] = 0;
+      }
+    }
+    rec(base + S, 1, 0);
+
+    return {
+      n: n, Emin: Emin,
+      nOptimalConf: cntEast * 4,
+      nOptimalShapes: trunc ? null : keys.size,
+      shapesAtLeast: trunc ? cap : keys.size,
+      shapesTruncated: trunc,
+      sample: sample,
+      nodes: nodes,
+      sawsEast: sawsEast
+    };
+  }
+
+  /* ------------------------------------------- ③ 独立实现：暴力全枚举 */
+  // 与 solveExact 零共享代码：枚举 4^n 条方向串，逐条用坐标法算能量。
+  // 只用于 n ≤ 12 的对账。
+  function solveBrute(seq, opts) {
+    opts = opts || {};
+    var m = seq.length, n = m - 1;
+    var dirs = new Int8Array(Math.max(n, 1));
+    var Emin = 1e9, count = 0, best = null, nodes = 0;
+    if (n <= 0) return { Emin: 0, nOptimalConf: 1, nodes: 1 };
+    (function rec(step) {
+      if (step === n) {
+        var p = positionsFromDirs(dirs, n);
+        if (!isSelfAvoiding(p.px, p.py, m)) return;
+        nodes++;
+        var E = energyOfPositions(seq, p.px, p.py);
+        if (E < Emin) { Emin = E; count = 1; best = dirs.slice(); }
+        else if (E === Emin) count++;
+        return;
+      }
+      for (var d = 0; d < 4; d++) { dirs[step] = d; rec(step + 1); }
+    })(0);
+    return { Emin: Emin, nOptimalConf: count, sample: best, nodes: nodes };
+  }
+
+  /* --------------------------------- ④ 设计性：一次枚举，评估全部序列 */
+  // 枚举 n 步的全部形状一次，存下每个形状的接触对；之后任意序列的基态
+  // 都可以用「−Σ_{接触对} s_i·s_j」直接算。
+  function buildShapeTable(n) {
+    var rows = [], keys = new Set();
+    eachSawEast(n, function (dirs) {
+      var k = canonicalKey(dirs, n);
+      if (keys.has(k)) return;
+      keys.add(k);
+      var p = positionsFromDirs(dirs, n);
+      var c = contactsOf(p.px, p.py, n + 1);
+      rows.push({ key: k, dirs: dirs.slice(), contacts: Int32Array.from(c) });
+    });
+    return { n: n, rows: rows, nShapes: rows.length, nConformations: 0 };
+  }
+
+  function energyOfShape(row, seq) {
+    var E = 0, c = row.contacts, i;
+    for (i = 0; i < c.length; i += 2) if (seq[c[i]] && seq[c[i + 1]]) E -= 1;
+    return E;
+  }
+
+  /**
+   * 穷举全部 2^m 个序列，逐个求基态（用形状表，精确）。
+   * 返回简并度分布、可设计序列数、可被设计的形状数等。
+   */
+  function designability(n, opts) {
+    opts = opts || {};
+    var m = n + 1;
+    var tbl = buildShapeTable(n);
+    var R = tbl.rows, nR = R.length, nSeq = 1 << m;
+    var seq = new Uint8Array(m);
+    var degHist = {}, uniqueSeqs = 0, shapeCount = new Int32Array(nR);
+    var i, j, best, bestE, cnt, s;
+    var Earr = new Int32Array(nR);
+    for (s = 0; s < nSeq; s++) {
+      for (i = 0; i < m; i++) seq[i] = (s >> i) & 1;
+      bestE = 1e9; cnt = 0; best = -1;
+      for (j = 0; j < nR; j++) {
+        Earr[j] = energyOfShape(R[j], seq);
+        if (Earr[j] < bestE) { bestE = Earr[j]; cnt = 1; best = j; }
+        else if (Earr[j] === bestE) cnt++;
+      }
+      degHist[cnt] = (degHist[cnt] || 0) + 1;
+      if (cnt === 1) { uniqueSeqs++; shapeCount[best]++; }
+    }
+    var designableShapes = 0, maxDesign = 0, designHist = {}, designByContact = {};
+    for (j = 0; j < nR; j++) {
+      var nc = R[j].contacts.length / 2;
+      if (!designByContact[nc]) designByContact[nc] = { shapes: 0, designable: 0, designs: 0 };
+      designByContact[nc].shapes++;
+      if (shapeCount[j] > 0) {
+        designableShapes++;
+        designByContact[nc].designable++;
+        designByContact[nc].designs += shapeCount[j];
+      }
+      if (shapeCount[j] > maxDesign) maxDesign = shapeCount[j];
+      if (shapeCount[j] > 0) designHist[shapeCount[j]] = (designHist[shapeCount[j]] || 0) + 1;
+    }
+    var byContact = Object.keys(designByContact).map(function (k) {
+      var o = designByContact[k];
+      return { contacts: +k, shapes: o.shapes, designable: o.designable,
+        designs: o.designs, frac: o.designable / o.shapes };
+    }).sort(function (a, b) { return a.contacts - b.contacts; });
+    // 序列→形状 的多对一程度：有唯一基态的序列把「票」投给了多少不同形状
+    return {
+      n: n, m: m,
+      nShapes: nR, nSequences: nSeq,
+      degHist: degHist,
+      uniqueSeqs: uniqueSeqs,
+      uniqueFrac: uniqueSeqs / nSeq,
+      designableShapes: designableShapes,
+      designableFrac: designableShapes / nR,
+      maxDesign: maxDesign,
+      designHist: designHist,
+      byContact: byContact,
+      shapeCount: Array.prototype.slice.call(shapeCount)
+    };
+  }
+
+  /* ------------------------------------------------- ⑤ 启发式折叠 */
+  //
+  // 移动集（都在格点上就地做，用一张占用表维护自回避）：
+  //   · 角翻转 corner  —— 单个单体在 2×2 方格的另一个角之间跳（最局部）
+  //   · 末端滑移 end   —— 首/尾单体挪到相邻空位（蛇行）
+  //   · pivot          —— 以某个单体为轴，把尾巴整体做一次 D4 变换（可证遍历）
+  // 角翻转与末端滑移**不是**遍历的（边界段里明说），pivot 是。
+  // 能量求值：每次 O(4m) 扫一遍占用表，不用 Map、不分配对象。
+
+  function randomSaw(m, rng) {
+    var n = m - 1, dirs = new Int8Array(n);
+    var W = m + 2, S = 2 * W + 1, base = W * S + W;
+    var occ = new Uint8Array(S * S), idx = base, step, order, d, ni;
+    occ[base] = 1;
+    for (step = 0; step < n; step++) {
+      order = [0, 1, 2, 3];
+      for (var a = 3; a > 0; a--) { var b = Math.floor(rng() * (a + 1)); var t = order[a]; order[a] = order[b]; order[b] = t; }
+      var moved = false;
+      for (d = 0; d < 4; d++) {
+        ni = idx + DX[order[d]] * S + DY[order[d]];
+        if (!occ[ni]) { occ[ni] = 1; dirs[step] = order[d]; idx = ni; moved = true; break; }
+      }
+      if (!moved) return null;    // 死胡同（极罕见），调用方重抽
+    }
+    return dirs;
+  }
+
+  function randInt(rng, k) { return Math.floor(rng() * k) % k; }
+
+  // ---- 走子状态：坐标 + 占用表 ----
+  function makeWalker(m) {
+    var GW = m + 3, S = 2 * GW + 1;
+    return {
+      m: m, S: S, base: GW * S + GW,
+      occ: new Int16Array(S * S),
+      px: new Int16Array(m), py: new Int16Array(m),
+      sx: new Int16Array(m), sy: new Int16Array(m),      // 快照（回滚用）
+      tx: new Int16Array(m), ty: new Int16Array(m)       // tryPivot 的临时区（不能与快照共用！）
+    };
+  }
+  function gi(w, x, y) { return w.base + x * w.S + y; }
+  function put(w, i) { w.occ[gi(w, w.px[i], w.py[i])] = i + 1; }
+  function lift(w, i) { w.occ[gi(w, w.px[i], w.py[i])] = 0; }
+  function snapshot(w) { for (var i = 0; i < w.m; i++) { w.sx[i] = w.px[i]; w.sy[i] = w.py[i]; } }
+  function restore(w) {
+    var i;
+    for (i = 0; i < w.m; i++) w.occ[gi(w, w.px[i], w.py[i])] = 0;
+    for (i = 0; i < w.m; i++) { w.px[i] = w.sx[i]; w.py[i] = w.sy[i]; }
+    for (i = 0; i < w.m; i++) w.occ[gi(w, w.px[i], w.py[i])] = i + 1;
+  }
+
+  function loadDirs(w, dirs) {
+    var m = w.m, i;
+    for (i = 0; i < m; i++) w.occ[gi(w, w.px[i], w.py[i])] = 0;
+    w.px[0] = 0; w.py[0] = 0;
+    for (i = 0; i < m - 1; i++) {
+      w.px[i + 1] = w.px[i] + DX[dirs[i]];
+      w.py[i + 1] = w.py[i] + DY[dirs[i]];
+    }
+    for (i = 0; i < m; i++) put(w, i);
+  }
+
+  // E = −（非键合 H–H 接触数）。每对只数一次：从下标小的一端看 4 个方向，
+  // 要求另一端下标 > i+1。
+  function energyFast(w, seq) {
+    var m = w.m, S = w.S, base = w.base, occ = w.occ, px = w.px, py = w.py;
+    var E = 0, i, idx, q, oi, j;
+    for (i = 0; i < m; i++) {
+      if (!seq[i]) continue;
+      idx = base + px[i] * S + py[i];
+      for (q = 0; q < 4; q++) {
+        oi = occ[idx + DX[q] * S + DY[q]];
+        if (oi) { j = oi - 1; if (j > i + 1 && seq[j]) E--; }
+      }
+    }
+    return E;
+  }
+
+  function tryCornerAt(w, i) {
+    var px = w.px, py = w.py;
+    if (i < 1 || i > w.m - 2) return false;
+    var ax = px[i - 1], ay = py[i - 1], bx = px[i + 1], by = py[i + 1];
+    var dx = bx - ax, dy = by - ay, cx, cy;
+    if (!(Math.abs(dx) === 1 && Math.abs(dy) === 1)) return false;
+    if (px[i] === ax + dx && py[i] === ay) { cx = ax; cy = ay + dy; }
+    else if (px[i] === ax && py[i] === ay + dy) { cx = ax + dx; cy = ay; }
+    else return false;
+    if (w.occ[gi(w, cx, cy)]) return false;
+    lift(w, i); px[i] = cx; py[i] = cy; put(w, i);
+    return true;
+  }
+
+  // crankshaft：p[i−1] 与 p[i+2] 对角相邻时，把中间两个单体换到 2×2 的另两个角
+  function tryCrankAt(w, i) {
+    var px = w.px, py = w.py;
+    if (i < 1 || i > w.m - 3) return false;
+    var ax = px[i - 1], ay = py[i - 1], bx = px[i + 2], by = py[i + 2];
+    var dx = bx - ax, dy = by - ay, c1x, c1y, c2x, c2y;
+    if (!(Math.abs(dx) === 1 && Math.abs(dy) === 1)) return false;
+    if (px[i] === ax + dx && py[i] === ay && px[i + 1] === ax && py[i + 1] === ay + dy) {
+      c1x = ax; c1y = ay + dy; c2x = ax + dx; c2y = ay;
+    } else if (px[i] === ax && py[i] === ay + dy && px[i + 1] === ax + dx && py[i + 1] === ay) {
+      c1x = ax + dx; c1y = ay; c2x = ax; c2y = ay + dy;
+    } else return false;
+    if (w.occ[gi(w, c1x, c1y)] || w.occ[gi(w, c2x, c2y)]) return false;
+    lift(w, i); lift(w, i + 1);
+    px[i] = c1x; py[i] = c1y; px[i + 1] = c2x; py[i + 1] = c2y;
+    put(w, i); put(w, i + 1);
+    return true;
+  }
+
+  function tryEndAt(w, j) {
+    var m = w.m, a = j === 0 ? 1 : m - 2, d, x, y;
+    var cand = [];
+    for (d = 0; d < 4; d++) {
+      x = w.px[a] + DX[d]; y = w.py[a] + DY[d];
+      if (!w.occ[gi(w, x, y)]) cand.push(x, y);
+    }
+    if (!cand.length) return false;
+    var k = randInt(w.rng, cand.length / 2) * 2;
+    lift(w, j); w.px[j] = cand[k]; w.py[j] = cand[k + 1]; put(w, j);
+    return true;
+  }
+
+  function tryPivot(w, i, g) {
+    var m = w.m, j, x, y, nx, ny, t, a = w.px[i - 1], b = w.py[i - 1];
+    for (j = i; j < m; j++) lift(w, j);
+    var ok = true, done = i, k;
+    for (j = i; j < m; j++) {
+      x = w.px[j] - a; y = w.py[j] - b;
+      switch (g & 3) {
+        case 0: nx = x; ny = y; break;
+        case 1: nx = -y; ny = x; break;
+        case 2: nx = -x; ny = -y; break;
+        default: nx = y; ny = -x; break;
+      }
+      if (g & 4) { t = nx; nx = ny; ny = t; }
+      nx += a; ny += b;
+      k = gi(w, nx, ny);
+      if (w.occ[k]) { ok = false; break; }
+      w.tx[j] = nx; w.ty[j] = ny; w.occ[k] = j + 1; done = j + 1;
+    }
+    if (!ok) {
+      for (j = i; j < done; j++) w.occ[gi(w, w.tx[j], w.ty[j])] = 0;
+      for (j = i; j < m; j++) put(w, j);
+      return false;
+    }
+    for (j = i; j < m; j++) { w.px[j] = w.tx[j]; w.py[j] = w.ty[j]; }
+    return true;
+  }
+
+  function dirsFromWalker(w) {
+    var m = w.m, d = new Int8Array(m - 1), i, q;
+    for (i = 0; i < m - 1; i++) {
+      for (q = 0; q < 4; q++) {
+        if (w.px[i + 1] - w.px[i] === DX[q] && w.py[i + 1] - w.py[i] === DY[q]) { d[i] = q; break; }
+      }
+    }
+    return d;
+  }
+
+  /**
+   * 蒙特卡洛折叠：Metropolis + 几何降温。
+   * 返回 { E, bestE, evals, hit, hitEval, accepted, steps }
+   *   evals    = 能量求值次数（与穷举的节点数是同一口径的代价账本）
+   *   hit      = 是否触到给定的 Emin
+   *   hitEval  = 第一次触到 Emin 时的求值次数（没触到为 null）
+   */
+  function foldMC(seq, opts) {
+    opts = opts || {};
+    var m = seq.length, rng = opts.rng || makeRng(1, 'mc');
+    var budget = opts.steps || 20000;
+    var restarts = Math.max(1, opts.restarts || 1);
+    var per = Math.max(4, Math.floor(budget / restarts));
+    var T0 = opts.T0 === undefined ? 0.9 : opts.T0;
+    var T1 = opts.T1 === undefined ? 0.08 : opts.T1;
+    var Emin = opts.Emin === undefined ? null : opts.Emin;
+    var pPivot = opts.pPivot === undefined ? 0.12 : opts.pPivot;
+    var w = makeWalker(m);
+    w.rng = rng;
+    var evals = 0, bestE = 1e9, curE = 0, accepted = 0;
+    var hit = false, hitEval = null, guard, dirs, k, u, kind, okm, nE, T, r;
+    for (r = 0; r < restarts && !hit; r++) {
+      dirs = null; guard = 0;
+      do { dirs = randomSaw(m, rng); guard++; } while (!dirs && guard < 500);
+      if (!dirs) continue;
+      loadDirs(w, dirs);
+      curE = energyFast(w, seq); evals++;
+      if (curE < bestE) bestE = curE;
+      if (Emin !== null && curE === Emin && !hit) { hit = true; hitEval = evals; break; }
+      for (k = 0; k < per; k++) {
+        T = T0 * Math.pow(T1 / T0, k / Math.max(1, per - 1));
+        kind = rng();
+        snapshot(w);
+        if (kind < pPivot && m > 3) okm = tryPivot(w, 1 + randInt(rng, m - 1), randInt(rng, 8));
+        else if (kind < pPivot + 0.16 && m > 3) okm = tryCrankAt(w, 1 + randInt(rng, m - 3));
+        else if (kind < pPivot + 0.60) okm = tryCornerAt(w, 1 + randInt(rng, Math.max(1, m - 2)));
+        else okm = tryEndAt(w, rng() < 0.5 ? 0 : m - 1);
+        if (!okm) { restore(w); continue; }
+        nE = energyFast(w, seq); evals++;
+        u = rng();
+        if (nE <= curE || u < Math.exp(-(nE - curE) / Math.max(T, 1e-9))) {
+          curE = nE; accepted++;
+          if (curE < bestE) bestE = curE;
+          if (Emin !== null && curE === Emin && !hit) { hit = true; hitEval = evals; break; }
+        } else {
+          restore(w);
+        }
+      }
+    }
+    return { E: curE, bestE: bestE, evals: evals, hit: hit, hitEval: hitEval,
+      accepted: accepted, steps: budget, restarts: restarts, failed: false, dirs: dirsFromWalker(w) };
+  }
+
+  /** 最陡下降（单步最优改善），直到局部极小。 */
+  function foldGreedy(seq, opts) {
+    opts = opts || {};
+    var m = seq.length, rng = opts.rng || makeRng(1, 'greedy');
+    var maxPass = opts.maxPass || 60;
+    var w = makeWalker(m), dirs = null, guard = 0;
+    w.rng = rng;
+    do { dirs = randomSaw(m, rng); guard++; } while (!dirs && guard < 500);
+    if (!dirs) return { E: 0, evals: 0, passes: 0, failed: true };
+    loadDirs(w, dirs);
+    var E = energyFast(w, seq), evals = 1, pass = 0;
+    var bestPx = new Int16Array(m), bestPy = new Int16Array(m);
+    for (pass = 0; pass < maxPass; pass++) {
+      var startE = E, improved = false, i, g;
+      for (i = 0; i < m; i++) { bestPx[i] = w.px[i]; bestPy[i] = w.py[i]; }
+      var cands = [];
+      for (i = 1; i <= m - 2; i++) cands.push([0, i]);   // 角翻转
+      if (m > 2) { cands.push([1, 0]); cands.push([1, m - 1]); }   // 末端滑移：只有首尾合法
+      for (i = 1; i <= m - 3; i++) cands.push([3, i]);   // crankshaft
+      for (i = 1; i < m; i++) for (g = 0; g < 8; g++) cands.push([2, i, g]);
+      for (var ci = 0; ci < cands.length; ci++) {
+        var c = cands[ci], moved;
+        snapshot(w);
+        if (c[0] === 0) moved = tryCornerAt(w, c[1]);
+        else if (c[0] === 1) moved = tryEndAt(w, c[1]);
+        else if (c[0] === 3) moved = tryCrankAt(w, c[1]);
+        else moved = tryPivot(w, c[1], c[2]);
+        if (!moved) { restore(w); continue; }
+        var nE = energyFast(w, seq); evals++;
+        if (nE < E) {
+          E = nE; improved = true;
+          for (i = 0; i < m; i++) { bestPx[i] = w.px[i]; bestPy[i] = w.py[i]; }
+        }
+        restore(w);
+      }
+      if (!improved) break;
+      for (i = 0; i < m; i++) w.occ[gi(w, w.px[i], w.py[i])] = 0;
+      for (i = 0; i < m; i++) { w.px[i] = bestPx[i]; w.py[i] = bestPy[i]; }
+      for (i = 0; i < m; i++) w.occ[gi(w, w.px[i], w.py[i])] = i + 1;
+    }
+    return { E: E, evals: evals, passes: pass, failed: false, dirs: dirsFromWalker(w) };
+  }
+
+  /* ------------------------------------------------- ⑥ 尺子与代价表 */
+
+  // 连接常数 μ 的估计：连续比值的几何平均（尾部窗口）
+  function muFromCounts(counts, fromIdx) {
+    var i, sum = 0, k = 0;
+    for (i = fromIdx; i < counts.length; i++) {
+      if (!counts[i - 1]) continue;
+      sum += Math.log(counts[i] / counts[i - 1]); k++;
+    }
+    return k ? Math.exp(sum / k) : null;
+  }
+
+  /* ---- μ 的三种估计量 ---------------------------------------------------
+   * 二维方格子自回避行走的渐近式是 c_n ~ A·μ^n·n^(γ−1)，γ = 43/32（Nienhuis）。
+   * 于是连续比值 r_n = c_n/c_{n−1} = μ·(n/(n−1))^(γ−1) ≈ μ(1 + (γ−1)/n)。
+   *   muRatio     直接取 r_n（会高估，因为修正项是正的、且衰减只有 1/n）
+   *   muCorrected 把 (γ−1)/n 这一项除掉
+   * 实测：修正后的值在奇偶之间来回摆（差约 0.3%），奇偶各自单调收敛，
+   * 而真值正好夹在两条序列中间 —— 所以奇偶平均能再压一个量级。
+   * --------------------------------------------------------------------- */
+  var GAMMA2D = 43 / 32;
+
+  function muRatio(counts, n) { return counts[n] / counts[n - 1]; }
+
+  function muCorrected(counts, n) {
+    return muRatio(counts, n) / (1 + (GAMMA2D - 1) / n);
+  }
+
+  // 奇偶平均：把相邻两个 n 的修正估计平均（一个偶数档、一个奇数档）
+  function muParityAverage(counts, n) {
+    return 0.5 * (muCorrected(counts, n - 1) + muCorrected(counts, n));
+  }
+
+  // 最小二乘外推：把 r_n 对 1/n 做直线拟合，取截距
+  function muFitWindow(counts, from, to) {
+    var sx = 0, sy = 0, sxx = 0, sxy = 0, k = 0, n, x, y;
+    for (n = from; n <= to; n++) {
+      if (!counts[n] || !counts[n - 1]) continue;
+      x = 1 / n; y = counts[n] / counts[n - 1];
+      sx += x; sy += y; sxx += x * x; sxy += x * y; k++;
+    }
+    if (k < 3) return null;
+    var slope = (k * sxy - sx * sy) / (k * sxx - sx * sx);
+    return { mu: sy / k - slope * (sx / k), slope: slope, k: k };
+  }
+
+  // 形状的几何：端到端距离、回转半径、最大跨度（曼哈顿）
+  function shapeStats(px, py, m) {
+    var i, j, cx = 0, cy = 0, rg2 = 0, mx = 0;
+    for (i = 0; i < m; i++) { cx += px[i]; cy += py[i]; }
+    cx /= m; cy /= m;
+    for (i = 0; i < m; i++) { var dx = px[i] - cx, dy = py[i] - cy; rg2 += dx * dx + dy * dy; }
+    for (i = 0; i < m; i++) for (j = i + 1; j < m; j++) {
+      var d = Math.abs(px[i] - px[j]) + Math.abs(py[i] - py[j]);
+      if (d > mx) mx = d;
+    }
+    var ex = px[m - 1] - px[0], ey = py[m - 1] - py[0];
+    return { e2e: Math.sqrt(ex * ex + ey * ey), rg: Math.sqrt(rg2 / m), maxExtent: mx };
+  }
+
+  /**
+   * 一个序列的基态几何：把全部形状扫一遍，分开统计「基态形状」与「全体形状」
+   * 的回转半径，于是「基态比一般构型紧凑多少」变成一个可比的比值。
+   */
+  function groundShapeStats(seq) {
+    var m = seq.length, n = m - 1;
+    if (n <= 0) return null;
+    var tbl = buildShapeTable(n), rows = tbl.rows, i;
+    var Emin = 1e9, Es = new Int32Array(rows.length);
+    for (i = 0; i < rows.length; i++) { Es[i] = energyOfShape(rows[i], seq); if (Es[i] < Emin) Emin = Es[i]; }
+    var sumRg = 0, sumRgAll = 0, sumE2E = 0, sumMe = 0, cnt = 0;
+    var rgs = [];
+    for (i = 0; i < rows.length; i++) {
+      var p = positionsFromDirs(rows[i].dirs, n);
+      var st = shapeStats(p.px, p.py, m);
+      sumRgAll += st.rg; rgs.push(st.rg);
+      if (Es[i] === Emin) { sumRg += st.rg; sumE2E += st.e2e; sumMe += st.maxExtent; cnt++; }
+    }
+    rgs.sort(function (a, b) { return a - b; });
+    var meanAll = sumRgAll / rows.length;
+    return {
+      m: m, Emin: Emin, contacts: -Emin,
+      nShapes: rows.length, nOptimalShapes: cnt,
+      meanRgOpt: sumRg / cnt, meanRgAll: meanAll,
+      medianRgAll: rgs[Math.floor(rgs.length / 2)],
+      minRgAll: rgs[0], maxRgAll: rgs[rgs.length - 1],
+      rgRatio: (sumRg / cnt) / meanAll,
+      meanE2EOpt: sumE2E / cnt, meanMaxExtentOpt: sumMe / cnt
+    };
+  }
+
+  // 用 μ 外推：n 步自回避行走的条数
+  function sawEstimate(mu, n) { return Math.pow(mu, n); }
+
+  /**
+   * Levinthal 代价表：给定 μ 与本机实测吞吐（构型/秒），
+   * 算出「穷举 n 个单体的全部构型」需要多久。
+   * counts 若给出（实测的 c_n），m ≤ counts.length 的行用实测值，其余用 μ 外推。
+   */
+  function levinthalTable(mu, throughput, list, counts) {
+    var out = [];
+    list.forEach(function (m) {
+      var n = m - 1;
+      var measured = !!(counts && counts[n]);
+      var c = measured ? counts[n] : Math.pow(10, n * Math.log10(mu));
+      var secs = c / throughput;
+      out.push({
+        m: m, steps: n,
+        log10Count: Math.log10(c),
+        count: c,
+        measured: measured,
+        seconds: secs,
+        years: secs / 31557600,
+        universeAges: secs / 31557600 / 1.38e10
+      });
+    });
+    return out;
+  }
+
+  function humanTime(sec) {
+    if (!isFinite(sec)) return '∞';
+    if (sec < 1e-3) return (sec * 1e6).toFixed(0) + ' 微秒';
+    if (sec < 1) return (sec * 1e3).toFixed(0) + ' 毫秒';
+    if (sec < 90) return sec.toFixed(1) + ' 秒';
+    if (sec < 5400) return (sec / 60).toFixed(1) + ' 分钟';
+    if (sec < 172800) return (sec / 3600).toFixed(1) + ' 小时';
+    if (sec < 3.15e7) return (sec / 86400).toFixed(1) + ' 天';
+    var y = sec / 31557600;
+    if (y < 1e4) return y.toFixed(1) + ' 年';
+    if (y < 1e12) return y.toExponential(2) + ' 年';
+    return y.toExponential(2) + ' 年';
+  }
+
+  /* ------------------------------------------------------------ 导出 */
+
+  return {
+    DX: DX, DY: DY, DIRNAME: DIRNAME, GROUP: GROUP, REFL: REFL,
+    splitmix32: splitmix32, makeRng: makeRng,
+    seqFromString: seqFromString, seqToString: seqToString,
+    makeSeq: makeSeq, countH: countH,
+    positionsFromDirs: positionsFromDirs, keyOf: keyOf,
+    contactsOf: contactsOf, isSelfAvoiding: isSelfAvoiding,
+    shapeStats: shapeStats, groundShapeStats: groundShapeStats,
+    energyOfPositions: energyOfPositions, energyOfDirs: energyOfDirs,
+    canonicalKey: canonicalKey, canonicalKeyFromPositions: canonicalKeyFromPositions,
+    countSaws: countSaws, countSawsBrute: countSawsBrute,
+    eachSawEast: eachSawEast, shapeCensus: shapeCensus,
+    solveExact: solveExact, solveBrute: solveBrute,
+    buildShapeTable: buildShapeTable, energyOfShape: energyOfShape,
+    designability: designability,
+    randomSaw: randomSaw, foldMC: foldMC, foldGreedy: foldGreedy,
+    makeWalker: makeWalker, loadDirs: loadDirs, energyFast: energyFast,
+    dirsFromWalker: dirsFromWalker, tryCrankAt: tryCrankAt,
+    muFromCounts: muFromCounts, sawEstimate: sawEstimate,
+    GAMMA2D: GAMMA2D, muRatio: muRatio, muCorrected: muCorrected,
+    muParityAverage: muParityAverage, muFitWindow: muFitWindow,
+    levinthalTable: levinthalTable, humanTime: humanTime,
+    CAP_SHAPES: CAP_SHAPES
+  };
+});
+</script>
+<script>window.__ANALYSIS__ = {"generatedAt":"2026-09-30T14:24:16.639Z","meta":{"mu":2.63717886,"muEst":2.6381585303279,"muErr":-0.0371,"nMax":22,"throughput":320491668.68975365,"coreKeys":48},"derived":{"nMax":22,"counts":[1,4,12,36,100,284,780,2172,5916,16268,44100,120292,324932,881500,2374444,6416596,17245332,46466676,124658732,335116620,897697164,2408806028,6444560484],"ms":[0,0,0,0,0,0,0,0,1,0,1,0,1,3,7,23,51,137,372,986,2801,8130,21601],"countsLog10":[0,0.6020599913279624,1.0791812460476249,1.5563025007672873,2,2.4533183400470375,2.8920946026904804,3.336859820916809,3.772028165324855,4.21133416373255,4.644438589467838,5.080236745615959,5.511792483702861,5.94522231663534,6.375561931434239,6.807304696219031,7.236671559641657,7.66714160627507,8.095722705034692,8.525195967063262,8.953129853164846,9.381801829321317,9.809193304019553],"mu":2.63717886,"muEst":2.6381585303279,"muLo":2.6273856,"muHi":2.679193,"muErr":-0.0371,"muRatioErr":1.4123,"muFitSpread":0.01824,"muRatioLast":2.675417,"muCorrectedLast":2.634257,"throughput":320491668.68975365,"throughputHuman":"0 微秒","oeisBad":0,"oeisBadList":[],"oeisMatch":true,"parityEvens":[{"n":8,"mu":2.611542,"gap":-100.9},{"n":10,"mu":2.620755,"gap":-66},{"n":12,"mu":2.625971,"gap":-46.2},{"n":14,"mu":2.629087,"gap":-34.4},{"n":16,"mu":2.631087,"gap":-26.8},{"n":18,"mu":2.632482,"gap":-21.5},{"n":20,"mu":2.633497,"gap":-17.7},{"n":22,"mu":2.634257,"gap":-14.8}],"parityOdds":[{"n":9,"mu":2.648667,"gap":39.8},{"n":11,"mu":2.645052,"gap":26.1},{"n":13,"mu":2.642989,"gap":18.3},{"n":15,"mu":2.641816,"gap":13.9},{"n":17,"mu":2.641046,"gap":10.9},{"n":19,"mu":2.6405,"gap":8.9},{"n":21,"mu":2.640101,"gap":7.4}],"parityGapMax":1.0089,"fits":[{"from":10,"to":16,"mu":2.64965,"errPct":0.436},{"from":12,"to":20,"mu":2.644584,"errPct":0.244},{"from":15,"to":22,"mu":2.631408,"errPct":-0.256},{"from":14,"to":22,"mu":2.643108,"errPct":0.188},{"from":16,"to":22,"mu":2.643273,"errPct":0.194}],"growth10to22":148070.20088517334,"growth10to20":20599.743053848044,"growthLog10PerStep":0.42114,"shapesAt12":{"n":12,"conformations":324932,"shapes":40617,"chiral":40616,"achiral":1},"chiralAll":true,"e2Rows":[{"m":8,"kind":"random","seq":"HPHHPPHP","nH":4,"contacts":2,"nOptimalConf":32,"nOptimalShapes":4,"uniformP":0.014732965009208104,"uniformSamples":67.875,"nodes":847,"ms":1},{"m":8,"kind":"random","seq":"PPPHPHPP","nH":2,"contacts":0,"nOptimalConf":2172,"nOptimalShapes":272,"uniformP":1,"uniformSamples":1,"nodes":847,"ms":1},{"m":8,"kind":"random","seq":"PHHHHHPP","nH":5,"contacts":1,"nOptimalConf":488,"nOptimalShapes":61,"uniformP":0.22467771639042358,"uniformSamples":4.450819672131147,"nodes":847,"ms":1},{"m":8,"kind":"blocky","seq":"HHHHPPPP","nH":4,"contacts":1,"nOptimalConf":368,"nOptimalShapes":46,"uniformP":0.1694290976058932,"uniformSamples":5.902173913043478,"nodes":847,"ms":0},{"m":8,"kind":"allH","seq":"HHHHHHHH","nH":8,"contacts":3,"nOptimalConf":152,"nOptimalShapes":19,"uniformP":0.06998158379373849,"uniformSamples":14.289473684210526,"nodes":847,"ms":0},{"m":8,"kind":"allP","seq":"PPPPPPPP","nH":0,"contacts":0,"nOptimalConf":2172,"nOptimalShapes":272,"uniformP":1,"uniformSamples":1,"nodes":847,"ms":0},{"m":10,"kind":"random","seq":"HHHPPHHPHP","nH":6,"contacts":3,"nOptimalConf":64,"nOptimalShapes":8,"uniformP":0.003934103761986722,"uniformSamples":254.1875,"nodes":6393,"ms":0},{"m":10,"kind":"random","seq":"PPHHHHHHPH","nH":7,"contacts":3,"nOptimalConf":464,"nOptimalShapes":58,"uniformP":0.028522252274403737,"uniformSamples":35.060344827586206,"nodes":6393,"ms":1},{"m":10,"kind":"random","seq":"PPHHPPHPPH","nH":4,"contacts":3,"nOptimalConf":48,"nOptimalShapes":6,"uniformP":0.0029505778214900416,"uniformSamples":338.9166666666667,"nodes":6393,"ms":0},{"m":10,"kind":"blocky","seq":"PPPPPPPPHH","nH":2,"contacts":0,"nOptimalConf":16268,"nOptimalShapes":2034,"uniformP":1,"uniformSamples":1,"nodes":6393,"ms":3},{"m":10,"kind":"allH","seq":"HHHHHHHHHH","nH":10,"contacts":4,"nOptimalConf":784,"nOptimalShapes":98,"uniformP":0.04819277108433735,"uniformSamples":20.75,"nodes":6393,"ms":0},{"m":10,"kind":"allP","seq":"PPPPPPPPPP","nH":0,"contacts":0,"nOptimalConf":16268,"nOptimalShapes":2034,"uniformP":1,"uniformSamples":1,"nodes":6393,"ms":2},{"m":12,"kind":"random","seq":"HPHPPHHPPHPP","nH":5,"contacts":4,"nOptimalConf":24,"nOptimalShapes":3,"uniformP":0.00019951451468094305,"uniformSamples":5012.166666666666,"nodes":47491,"ms":1},{"m":12,"kind":"random","seq":"HPHHPHHHPPHH","nH":8,"contacts":5,"nOptimalConf":160,"nOptimalShapes":20,"uniformP":0.0013300967645396202,"uniformSamples":751.825,"nodes":47491,"ms":2},{"m":12,"kind":"random","seq":"HHPPHPHHPPHP","nH":6,"contacts":4,"nOptimalConf":40,"nOptimalShapes":5,"uniformP":0.00033252419113490505,"uniformSamples":3007.3,"nodes":47491,"ms":1},{"m":12,"kind":"blocky","seq":"HHHHPPPPHHHH","nH":8,"contacts":4,"nOptimalConf":296,"nOptimalShapes":37,"uniformP":0.0024606790143982976,"uniformSamples":406.3918918918919,"nodes":47491,"ms":1},{"m":12,"kind":"allH","seq":"HHHHHHHHHHHH","nH":12,"contacts":6,"nOptimalConf":248,"nOptimalShapes":31,"uniformP":0.0020616499850364114,"uniformSamples":485.0483870967742,"nodes":47491,"ms":1},{"m":12,"kind":"allP","seq":"PPPPPPPPPPPP","nH":0,"contacts":0,"nOptimalConf":120292,"nOptimalShapes":15037,"uniformP":1,"uniformSamples":1,"nodes":47491,"ms":19},{"m":14,"kind":"random","seq":"PHPPHPHPHHPPPP","nH":5,"contacts":3,"nOptimalConf":792,"nOptimalShapes":99,"uniformP":0.0008984685195689166,"uniformSamples":1113.0050505050506,"nodes":349099,"ms":10},{"m":14,"kind":"random","seq":"PHHHPPHHPHHPPP","nH":7,"contacts":4,"nOptimalConf":680,"nOptimalShapes":85,"uniformP":0.0007714123652864435,"uniformSamples":1296.3235294117649,"nodes":349099,"ms":7},{"m":14,"kind":"random","seq":"PHHPHPPPPHPPPH","nH":5,"contacts":3,"nOptimalConf":240,"nOptimalShapes":30,"uniformP":0.00027226318774815656,"uniformSamples":3672.9166666666665,"nodes":349099,"ms":8},{"m":14,"kind":"blocky","seq":"PPPPHHHHHHHHHH","nH":10,"contacts":4,"nOptimalConf":26632,"nOptimalShapes":3329,"uniformP":0.03021213840045377,"uniformSamples":33.09927906278162,"nodes":349099,"ms":14},{"m":14,"kind":"allH","seq":"HHHHHHHHHHHHHH","nH":14,"contacts":7,"nOptimalConf":2880,"nOptimalShapes":360,"uniformP":0.0032671582529778787,"uniformSamples":306.07638888888886,"nodes":349099,"ms":9},{"m":14,"kind":"allP","seq":"PPPPPPPPPPPPPP","nH":0,"contacts":0,"nOptimalConf":881500,"nOptimalShapes":110188,"uniformP":1,"uniformSamples":1,"nodes":349099,"ms":206},{"m":16,"kind":"random","seq":"HPHHPPHPPPPPPHPH","nH":6,"contacts":5,"nOptimalConf":136,"nOptimalShapes":17,"uniformP":0.000021195038615490206,"uniformSamples":47180.852941176476,"nodes":2546859,"ms":55},{"m":16,"kind":"random","seq":"HHPHHPPHPHHHPPHP","nH":9,"contacts":7,"nOptimalConf":56,"nOptimalShapes":7,"uniformP":0.000008727368841672438,"uniformSamples":114582.07142857143,"nodes":2546859,"ms":47},{"m":16,"kind":"random","seq":"PPHPHHHPPPHHHPPH","nH":8,"contacts":5,"nOptimalConf":1344,"nOptimalShapes":168,"uniformP":0.0002094568522001385,"uniformSamples":4774.252976190476,"nodes":2546859,"ms":55},{"m":16,"kind":"blocky","seq":"PPPPPPPPPPPPHHHH","nH":4,"contacts":1,"nOptimalConf":1099808,"nOptimalShapes":137476,"uniformP":0.17140053698253715,"uniformSamples":5.834287439262126,"nodes":2546859,"ms":353},{"m":16,"kind":"allH","seq":"HHHHHHHHHHHHHHHH","nH":16,"contacts":9,"nOptimalConf":552,"nOptimalShapes":69,"uniformP":0.0000860269214393426,"uniformSamples":11624.26811594203,"nodes":2546859,"ms":58},{"m":16,"kind":"allP","seq":"PPPPPPPPPPPPPPPP","nH":0,"contacts":0,"nOptimalConf":6416596,"nOptimalShapes":null,"uniformP":1,"uniformSamples":1,"nodes":2546859,"ms":844},{"m":18,"kind":"random","seq":"HHPHHPPPPHHHPPHPHP","nH":9,"contacts":7,"nOptimalConf":32,"nOptimalShapes":4,"uniformP":6.886655718605738e-7,"uniformSamples":1452083.625,"nodes":18474861,"ms":434},{"m":18,"kind":"random","seq":"HHHHPPPHHPPPHPPPPP","nH":7,"contacts":4,"nOptimalConf":5264,"nOptimalShapes":658,"uniformP":0.00011328548657106439,"uniformSamples":8827.256079027356,"nodes":18474861,"ms":421},{"m":18,"kind":"random","seq":"PHHPPPHPPPHPPHPPPH","nH":6,"contacts":4,"nOptimalConf":96,"nOptimalShapes":12,"uniformP":0.0000020659967155817213,"uniformSamples":484027.875,"nodes":18474861,"ms":425},{"m":18,"kind":"blocky","seq":"HHHHHHHHHHHHHHHHPP","nH":16,"contacts":9,"nOptimalConf":1848,"nOptimalShapes":231,"uniformP":0.00003977043677494814,"uniformSamples":25144.305194805194,"nodes":18474861,"ms":387},{"m":18,"kind":"allH","seq":"HHHHHHHHHHHHHHHHHH","nH":18,"contacts":10,"nOptimalConf":13384,"nOptimalShapes":1673,"uniformP":0.00028803437543068497,"uniformSamples":3471.807830245069,"nodes":18474861,"ms":524},{"m":18,"kind":"allP","seq":"PPPPPPPPPPPPPPPPPP","nH":0,"contacts":0,"nOptimalConf":46466676,"nOptimalShapes":null,"uniformP":1,"uniformSamples":1,"nodes":18474861,"ms":1241}],"e2DegHist":{"1":2,"2":5,"3":3,"4":2,"5":5,"6":1,"8":2,"10":2,"11":3,"12":3,"13":1,"15":2,"16":2,"18":1,"19":3,"20":1,"21":1,"22":1,"26":1,"27":1,"30":2,"37":2,"38":1,"40":1,"44":1,"46":2,"47":2,"51":1,"53":1,"54":1,"56":1,"60":1,"68":1,"69":1,"78":1,"90":1,"132":1,"146":1,"161":1,"177":1,"279":1,"301":1,"382":1,"418":1,"441":1,"540":1,"688":1,"814":1,"821":1,"871":1,"908":1,"1275":1,"11955":1,"110188":1},"e2DegN":80,"e2Unique14":2,"e2UniqueFrac14":0.025,"maxContacts":[{"m":3,"contacts":0,"nOptimalConf":12,"nOptimalShapes":2},{"m":4,"contacts":1,"nOptimalConf":8,"nOptimalShapes":1},{"m":5,"contacts":1,"nOptimalConf":32,"nOptimalShapes":4},{"m":6,"contacts":2,"nOptimalConf":32,"nOptimalShapes":4},{"m":7,"contacts":2,"nOptimalConf":128,"nOptimalShapes":16},{"m":8,"contacts":3,"nOptimalConf":152,"nOptimalShapes":19},{"m":9,"contacts":4,"nOptimalConf":40,"nOptimalShapes":5},{"m":10,"contacts":4,"nOptimalConf":784,"nOptimalShapes":98},{"m":11,"contacts":5,"nOptimalConf":384,"nOptimalShapes":48},{"m":12,"contacts":6,"nOptimalConf":248,"nOptimalShapes":31},{"m":13,"contacts":6,"nOptimalConf":2936,"nOptimalShapes":367},{"m":14,"contacts":7,"nOptimalConf":2880,"nOptimalShapes":360},{"m":15,"contacts":8,"nOptimalConf":1136,"nOptimalShapes":142},{"m":16,"contacts":9,"nOptimalConf":552,"nOptimalShapes":69}],"maxContactsSeq":"0,1,1,2,2,3,4,4,5,6,6,7,8,9","maxContactsAt16":9,"e3Measured":[{"m":8,"nodes":847,"ms":1,"conformations":2172},{"m":10,"nodes":6393,"ms":1,"conformations":16268},{"m":12,"nodes":47491,"ms":3,"conformations":120292},{"m":14,"nodes":349099,"ms":5,"conformations":881500},{"m":16,"nodes":2546859,"ms":39,"conformations":6416596},{"m":18,"nodes":18474861,"ms":210,"conformations":46466676},{"m":20,"nodes":133418699,"ms":1886,"conformations":335116620}],"e3Table":[{"m":16,"log10Count":6.81,"measured":true,"human":"20 毫秒","seconds":0.020021100786278077,"years":6.344303998491038e-10,"universeAges":4.597321738036984e-20,"source":"实测","measuredNodes":2546859},{"m":18,"log10Count":7.67,"measured":true,"human":"145 毫秒","seconds":0.14498559725426513,"years":4.594316337562588e-9,"universeAges":3.3292147373641943e-19,"source":"实测","measuredNodes":18474861},{"m":20,"log10Count":8.53,"measured":true,"human":"1.0 秒","seconds":1.0456328595686641,"years":3.313410587524603e-8,"universeAges":2.4010221648729005e-18,"source":"实测","measuredNodes":133418699},{"m":22,"log10Count":9.38,"measured":true,"human":"7.5 秒","seconds":7.51597081399268,"years":2.381667431614787e-7,"universeAges":1.7258459649382514e-17,"source":"实测","measuredNodes":null},{"m":24,"log10Count":9.69,"measured":false,"human":"15.1 秒","seconds":15.149340250354934,"years":4.800536241778504e-7,"universeAges":3.4786494505641335e-17,"source":"外推","measuredNodes":null},{"m":26,"log10Count":10.53,"measured":false,"human":"1.8 分钟","seconds":105.35930342111185,"years":0.000003338634858833113,"universeAges":2.4193006223428355e-16,"source":"外推","measuredNodes":null},{"m":28,"log10Count":11.37,"measured":false,"human":"12.2 分钟","seconds":732.7436465176652,"years":0.000023219245016023562,"universeAges":1.6825539866683741e-15,"source":"外推","measuredNodes":null},{"m":30,"log10Count":12.21,"measured":false,"human":"84.9 分钟","seconds":5096.021272711037,"years":0.00016148316959182694,"universeAges":1.1701678955929488e-14,"source":"外推","measuredNodes":null},{"m":40,"log10Count":16.42,"measured":false,"human":"2.6 年","seconds":82913850.89801887,"years":2.627381388255725,"universeAges":1.9038995567070472e-10,"source":"外推","measuredNodes":null},{"m":50,"log10Count":20.64,"measured":false,"human":"4.27e+4 年","seconds":1349034139153.3464,"years":42748.31226561419,"universeAges":0.0000030977037873633474,"source":"外推","measuredNodes":null},{"m":100,"log10Count":41.69,"measured":false,"human":"4.87e+25 年","seconds":1.538162468237166e+33,"years":4.874142736574283e+25,"universeAges":3531987490271219.5,"source":"外推","measuredNodes":null},{"m":150,"log10Count":62.75,"measured":false,"human":"5.56e+46 年","seconds":1.7538057118245476e+54,"years":5.557474940504182e+46,"universeAges":4.0271557539885375e+36,"source":"外推","measuredNodes":null},{"m":300,"log10Count":125.92,"measured":false,"human":"8.24e+109 年","seconds":2.5996763905147325e+117,"years":8.237877375068866e+109,"universeAges":5.969476358745555e+99,"source":"外推","measuredNodes":null}],"e3SampleWall":[{"m":10,"shapes":4,"conf":32,"expectedSamples":508.375,"exhaustiveNodes":6393},{"m":12,"shapes":317,"conf":2536,"expectedSamples":47.43375394321767,"exhaustiveNodes":47491},{"m":14,"shapes":27,"conf":216,"expectedSamples":4081.0185185185187,"exhaustiveNodes":349099},{"m":16,"shapes":19,"conf":152,"expectedSamples":42214.44736842105,"exhaustiveNodes":2546859},{"m":18,"shapes":19126,"conf":153008,"expectedSamples":303.6878856007529,"exhaustiveNodes":18474861},{"m":20,"shapes":66,"conf":528,"expectedSamples":634690.5681818182,"exhaustiveNodes":133418699}],"nodesAt20":133418699,"msAt20":1886,"confAt20":335116620,"e4ByM":[{"m":10,"n":5,"mcRate":1,"avgEval":210,"exhaustiveConf":4067,"advantage":19.38512869399428,"grRate":0.45},{"m":12,"n":5,"mcRate":1,"avgEval":672,"exhaustiveConf":30073,"advantage":44.73817316274918,"grRate":0.325},{"m":14,"n":5,"mcRate":0.85,"avgEval":1096,"exhaustiveConf":220375,"advantage":201.03539500091225,"grRate":0.2},{"m":16,"n":5,"mcRate":0.625,"avgEval":1717,"exhaustiveConf":1604149,"advantage":934.1383025185617,"grRate":0.05},{"m":18,"n":5,"mcRate":0.275,"avgEval":2095,"exhaustiveConf":11616669,"advantage":5544.0672923958,"grRate":0.2},{"m":20,"n":5,"mcRate":0.4,"avgEval":2359,"exhaustiveConf":83779155,"advantage":35520.71355889087,"grRate":0.15}],"e4Adv10":19.38512869399428,"e4Adv20":35520.71355889087,"e4Eval10":210,"e4Eval20":2359,"e4ConfGrowth":20599.743053848044,"e4EvalGrowth":11.233333333333333,"e4Rate10":1,"e4Rate20":0.4,"e4Rate18":0.275,"e4RvsM":-0.6882,"e4RvsShapes":0.3604,"e4Hardest":{"n":5,"rate":0.425,"never":2,"shapes":[5,5,3,1,2]},"e4Easiest":{"n":7,"rate":0.8214285714285714},"e4ShapesBins":[{"lo":1,"hi":1,"n":1,"mcRate":0},{"lo":2,"hi":5,"n":4,"mcRate":0.53125},{"lo":6,"hi":20,"n":7,"mcRate":0.6964285714285714},{"lo":21,"hi":100,"n":9,"mcRate":0.6666666666666666},{"lo":101,"hi":1000,"n":5,"mcRate":0.75},{"lo":1001,"hi":null,"n":2,"mcRate":1}],"e4GreedyOverall":0.22916666666666666,"e4McOverall":0.6916666666666667,"e4Budget":12000,"e4Restarts":24,"e4Reps":8,"e4Scatter":[{"m":10,"seq":"HPPPHHPHPH","Emin":-3,"nH":5,"shapes":8,"conf":64,"mcRate":1,"grRate":0.375,"uniformSamples":254.1875,"avgEval":215,"exhaustiveConf":4067},{"m":10,"seq":"PPHPPHHPPP","Emin":-1,"nH":3,"shapes":228,"conf":1824,"mcRate":1,"grRate":0.75,"uniformSamples":8.918859649122806,"avgEval":84,"exhaustiveConf":4067},{"m":10,"seq":"HHPHPPHHHP","Emin":-3,"nH":6,"shapes":17,"conf":136,"mcRate":1,"grRate":0.5,"uniformSamples":119.61764705882354,"avgEval":264,"exhaustiveConf":4067},{"m":10,"seq":"PHPHPHPPHP","Emin":-2,"nH":4,"shapes":21,"conf":168,"mcRate":1,"grRate":0.5,"uniformSamples":96.83333333333333,"avgEval":313,"exhaustiveConf":4067},{"m":10,"seq":"HHHHPPPPHH","Emin":-3,"nH":6,"shapes":9,"conf":72,"mcRate":1,"grRate":0.125,"uniformSamples":225.94444444444446,"avgEval":173,"exhaustiveConf":4067},{"m":12,"seq":"PPHPPHHHHHHH","Emin":-4,"nH":8,"shapes":33,"conf":264,"mcRate":1,"grRate":0.125,"uniformSamples":455.6515151515151,"avgEval":823,"exhaustiveConf":30073},{"m":12,"seq":"PHPHHHHHPPPH","Emin":-3,"nH":7,"shapes":39,"conf":312,"mcRate":1,"grRate":0.375,"uniformSamples":385.55128205128204,"avgEval":347,"exhaustiveConf":30073},{"m":12,"seq":"HPPHPHHPPHPP","Emin":-4,"nH":5,"shapes":5,"conf":40,"mcRate":1,"grRate":0.25,"uniformSamples":3007.3,"avgEval":1130,"exhaustiveConf":30073},{"m":12,"seq":"HHPPHPPHHHPH","Emin":-5,"nH":7,"shapes":6,"conf":48,"mcRate":1,"grRate":0,"uniformSamples":2506.0833333333335,"avgEval":1019,"exhaustiveConf":30073},{"m":12,"seq":"PPPPPPPPHHHH","Emin":-1,"nH":4,"shapes":2566,"conf":20528,"mcRate":1,"grRate":0.875,"uniformSamples":5.859898674980514,"avgEval":42,"exhaustiveConf":30073},{"m":14,"seq":"HHPPPHHPHHHPHH","Emin":-6,"nH":9,"shapes":5,"conf":40,"mcRate":0.625,"grRate":0.125,"uniformSamples":22037.5,"avgEval":1883,"exhaustiveConf":220375},{"m":14,"seq":"HPHHPHPPPHHPPP","Emin":-3,"nH":6,"shapes":316,"conf":2528,"mcRate":1,"grRate":0.25,"uniformSamples":348.69462025316454,"avgEval":353,"exhaustiveConf":220375},{"m":14,"seq":"HHHPPHPHHPHHPH","Emin":-6,"nH":9,"shapes":23,"conf":184,"mcRate":0.875,"grRate":0,"uniformSamples":4790.760869565217,"avgEval":1311,"exhaustiveConf":220375},{"m":14,"seq":"HPPPPHHPPPPHPP","Emin":-3,"nH":4,"shapes":16,"conf":128,"mcRate":0.75,"grRate":0,"uniformSamples":6886.71875,"avgEval":1766,"exhaustiveConf":220375},{"m":14,"seq":"PPPPHHHHPPPPPP","Emin":-1,"nH":4,"shapes":11955,"conf":95640,"mcRate":1,"grRate":0.625,"uniformSamples":9.21685487243831,"avgEval":168,"exhaustiveConf":220375},{"m":16,"seq":"HHHPPHPPPHHPHPHH","Emin":-7,"nH":9,"shapes":3,"conf":24,"mcRate":0.5,"grRate":0,"uniformSamples":267358.1666666667,"avgEval":2136,"exhaustiveConf":1604149},{"m":16,"seq":"HHHHPPPPPPHPPPPH","Emin":-4,"nH":6,"shapes":23,"conf":184,"mcRate":0.625,"grRate":0,"uniformSamples":34872.80434782609,"avgEval":2296,"exhaustiveConf":1604149},{"m":16,"seq":"HHHPHPPPHPPHHHPH","Emin":-7,"nH":9,"shapes":1,"conf":8,"mcRate":0,"grRate":0,"uniformSamples":802074.5,"avgEval":null,"exhaustiveConf":1604149},{"m":16,"seq":"HHHPPPPPHHHHPHPH","Emin":-6,"nH":9,"shapes":48,"conf":384,"mcRate":1,"grRate":0.125,"uniformSamples":16709.885416666668,"avgEval":1633,"exhaustiveConf":1604149},{"m":16,"seq":"HHHHPPPPPPPPHHHH","Emin":-4,"nH":8,"shapes":904,"conf":7232,"mcRate":1,"grRate":0.125,"uniformSamples":887.2505530973451,"avgEval":804,"exhaustiveConf":1604149},{"m":18,"seq":"HPPHHPPHHHPHHHPHPH","Emin":-8,"nH":11,"shapes":12,"conf":96,"mcRate":0.125,"grRate":0,"uniformSamples":484027.875,"avgEval":2471,"exhaustiveConf":11616669},{"m":18,"seq":"HHHPHHPHHHPPHPPHPH","Emin":-9,"nH":11,"shapes":2,"conf":16,"mcRate":0,"grRate":0,"uniformSamples":2904167.25,"avgEval":null,"exhaustiveConf":11616669},{"m":18,"seq":"PPHPHPPPHPPHPHPPPP","Emin":-4,"nH":5,"shapes":84,"conf":672,"mcRate":0.25,"grRate":0,"uniformSamples":69146.83928571429,"avgEval":3814,"exhaustiveConf":11616669},{"m":18,"seq":"PHHPPHPHHPPPHHPHPH","Emin":-6,"nH":9,"shapes":6,"conf":48,"mcRate":0,"grRate":0,"uniformSamples":968055.75,"avgEval":null,"exhaustiveConf":11616669},{"m":18,"seq":"PPPPPPPPPPPPPPPPPP","Emin":0,"nH":0,"shapes":null,"conf":46466676,"mcRate":1,"grRate":1,"uniformSamples":1,"avgEval":1,"exhaustiveConf":11616669},{"m":20,"seq":"PPHHHPPHPHHHPHPHHHPP","Emin":-7,"nH":11,"shapes":181,"conf":1448,"mcRate":0.375,"grRate":0,"uniformSamples":231434.12983425416,"avgEval":2542,"exhaustiveConf":83779155},{"m":20,"seq":"PHHHPHPHPPHHHPHPHHHP","Emin":-8,"nH":12,"shapes":21,"conf":168,"mcRate":0.125,"grRate":0,"uniformSamples":1994741.7857142857,"avgEval":4748,"exhaustiveConf":83779155},{"m":20,"seq":"PPHPPPPPHPHPPPHPHHHH","Emin":-5,"nH":8,"shapes":43,"conf":344,"mcRate":0.125,"grRate":0,"uniformSamples":974176.2209302326,"avgEval":1809,"exhaustiveConf":83779155},{"m":20,"seq":"PPPHHHPPHPPHHHHPPHHP","Emin":-7,"nH":10,"shapes":377,"conf":3016,"mcRate":0.375,"grRate":0,"uniformSamples":111112.93766578249,"avgEval":2673,"exhaustiveConf":83779155},{"m":20,"seq":"HHHHPPPPPPPPPPPPPPPP","Emin":-1,"nH":4,"shapes":null,"conf":57612768,"mcRate":1,"grRate":0.75,"uniformSamples":5.816707504836428,"avgEval":21,"exhaustiveConf":83779155}],"e5Runs":[{"n":8,"m":9,"nShapes":740,"nSequences":512,"uniqueSeqs":6,"uniqueFrac":0.01171875,"designableShapes":4,"designableFrac":0.005405405405405406,"maxDesign":2,"ms":18},{"n":10,"m":11,"nShapes":5513,"nSequences":2048,"uniqueSeqs":62,"uniqueFrac":0.0302734375,"designableShapes":14,"designableFrac":0.002539452203881734,"maxDesign":8,"ms":153},{"n":11,"m":12,"nShapes":15037,"nSequences":4096,"uniqueSeqs":87,"uniqueFrac":0.021240234375,"designableShapes":25,"designableFrac":0.001662565671344018,"maxDesign":12,"ms":779},{"n":12,"m":13,"nShapes":40617,"nSequences":8192,"uniqueSeqs":173,"uniqueFrac":0.0211181640625,"designableShapes":52,"designableFrac":0.0012802521111849718,"maxDesign":9,"ms":5706}],"e5Last":{"n":12,"m":13,"nShapes":40617,"nSequences":8192,"uniqueSeqs":173,"uniqueFrac":0.0211181640625,"designableShapes":52,"designableFrac":0.0012802521111849718,"maxDesign":9,"ms":5706},"e5ByContact":[{"contacts":0,"shapes":8877,"designable":0,"designs":0,"frac":0},{"contacts":1,"shapes":11938,"designable":0,"designs":0,"frac":0},{"contacts":2,"shapes":9625,"designable":0,"designs":0,"frac":0},{"contacts":3,"shapes":5718,"designable":0,"designs":0,"frac":0},{"contacts":4,"shapes":2830,"designable":0,"designs":0,"frac":0},{"contacts":5,"shapes":1262,"designable":20,"designs":72,"frac":0.01584786053882726},{"contacts":6,"shapes":367,"designable":32,"designs":101,"frac":0.08719346049046321}],"e5MonotoneShapes":true,"e5MonotoneSeq":false,"e5ContactMinDesignable":5,"e5TopContactFrac":0.009035625477017013,"e5TopContactDesignFrac":0.6153846153846154,"e5DegHistLast":{"1":173,"2":340,"3":213,"4":278,"5":254,"6":232,"7":200,"8":193,"9":153,"10":130,"11":126,"12":189,"13":98,"14":143,"15":69,"16":93,"17":94,"18":65,"19":90,"20":94,"21":94,"22":98,"23":68,"24":51,"25":64,"26":53,"27":48,"28":78,"29":65,"30":87,"31":48,"32":65,"33":44,"34":55,"35":75,"36":37,"37":52,"38":44,"39":54,"40":37,"41":30,"42":43,"43":34,"44":48,"45":38,"46":30,"47":38,"48":47,"49":46,"50":24,"51":42,"52":30,"53":34,"54":22,"55":24,"56":30,"57":30,"58":52,"59":22,"60":30,"61":26,"62":38,"63":34,"64":8,"65":18,"66":30,"67":32,"68":22,"69":22,"70":19,"71":20,"72":38,"73":10,"74":16,"75":12,"76":37,"77":12,"78":10,"79":6,"80":20,"81":22,"82":16,"83":2,"84":12,"85":10,"86":6,"87":8,"88":30,"89":14,"90":11,"91":16,"92":10,"93":12,"94":14,"95":6,"96":14,"97":18,"98":8,"99":10,"100":20,"101":18,"102":34,"103":10,"104":22,"105":2,"106":11,"107":24,"108":24,"109":2,"110":14,"111":8,"112":4,"113":12,"114":6,"115":10,"116":4,"117":2,"118":12,"119":8,"120":14,"121":6,"122":6,"123":14,"124":2,"125":10,"126":10,"127":8,"129":6,"130":6,"131":16,"132":20,"133":2,"134":4,"135":9,"136":4,"137":8,"138":4,"139":2,"140":2,"142":12,"143":4,"144":7,"145":6,"146":12,"147":16,"148":16,"149":6,"150":4,"151":6,"152":2,"153":8,"154":4,"155":4,"156":4,"157":12,"159":10,"160":10,"161":16,"162":12,"163":22,"164":6,"165":2,"166":8,"167":8,"168":8,"169":2,"170":2,"171":2,"172":2,"173":8,"174":6,"176":24,"177":2,"178":4,"179":2,"180":10,"181":6,"182":4,"186":2,"187":4,"188":13,"189":2,"191":2,"192":6,"194":2,"195":8,"196":2,"199":3,"201":6,"202":4,"203":10,"204":11,"205":6,"206":4,"207":12,"211":2,"212":8,"213":4,"214":2,"215":4,"216":22,"217":4,"218":4,"221":2,"224":8,"225":2,"226":2,"227":8,"228":4,"229":6,"230":2,"231":2,"233":2,"234":2,"236":6,"237":2,"238":4,"239":2,"240":2,"241":2,"243":8,"244":4,"245":2,"247":2,"248":2,"249":2,"250":14,"252":2,"253":4,"254":10,"255":2,"256":4,"259":2,"260":2,"264":2,"266":6,"268":2,"269":6,"270":4,"272":6,"273":4,"274":4,"275":8,"277":4,"278":4,"280":8,"281":4,"283":6,"284":18,"285":4,"287":2,"288":10,"289":6,"292":2,"293":6,"295":4,"296":4,"297":12,"298":4,"300":2,"302":4,"303":10,"304":2,"305":2,"306":6,"309":2,"314":2,"315":8,"316":4,"317":4,"318":3,"320":4,"322":8,"326":2,"328":2,"329":4,"330":8,"331":8,"334":4,"335":10,"340":2,"343":2,"344":8,"346":8,"357":2,"358":8,"359":2,"365":10,"366":14,"367":1,"371":2,"372":2,"373":2,"376":2,"379":4,"381":4,"382":2,"383":2,"384":6,"388":2,"391":2,"392":10,"393":2,"396":2,"397":6,"398":2,"399":8,"401":2,"404":3,"405":8,"406":2,"407":4,"411":12,"413":10,"418":8,"419":2,"424":2,"428":8,"429":4,"432":12,"435":4,"438":2,"439":2,"441":8,"449":2,"452":2,"453":2,"454":2,"460":2,"466":2,"470":6,"471":2,"473":4,"474":10,"476":14,"482":8,"488":2,"489":2,"498":2,"500":8,"506":8,"510":4,"513":2,"521":8,"523":4,"526":2,"529":4,"538":8,"539":2,"546":1,"547":2,"558":4,"560":2,"561":2,"562":2,"566":12,"568":2,"570":2,"571":14,"572":2,"574":4,"575":2,"576":4,"577":2,"578":2,"579":2,"581":2,"582":10,"583":2,"584":8,"589":2,"593":2,"596":2,"597":10,"601":2,"614":2,"633":8,"636":8,"638":2,"640":8,"642":4,"648":8,"659":2,"662":4,"663":2,"677":2,"679":2,"685":8,"692":2,"696":2,"716":8,"722":10,"730":1,"752":2,"764":2,"778":2,"782":2,"785":8,"791":6,"792":2,"800":4,"803":2,"804":2,"813":2,"814":8,"816":4,"819":2,"827":2,"828":2,"845":2,"847":2,"851":4,"853":2,"855":2,"858":2,"871":2,"875":10,"883":8,"885":2,"889":8,"902":2,"903":2,"909":8,"911":2,"920":2,"924":2,"928":2,"952":1,"958":2,"964":4,"987":2,"992":4,"998":14,"1014":2,"1015":16,"1044":2,"1047":2,"1067":14,"1099":8,"1133":2,"1135":14,"1141":6,"1146":2,"1147":2,"1186":8,"1193":2,"1200":8,"1202":8,"1203":10,"1204":6,"1293":2,"1322":2,"1373":2,"1457":4,"1463":4,"1475":4,"1510":8,"1522":4,"1558":4,"1562":4,"1574":2,"1582":1,"1595":2,"1702":2,"1716":2,"1725":2,"1770":4,"1772":2,"1797":2,"1805":2,"1818":2,"1996":1,"2065":2,"2202":2,"2207":2,"2231":16,"2239":2,"2313":2,"2314":2,"2375":2,"2443":2,"2797":4,"3140":2,"3366":2,"3588":2,"3648":2,"3748":1,"3835":2,"3960":2,"4340":16,"4359":16,"4519":16,"4594":16,"5511":2,"6924":12,"8699":4,"8718":2,"8859":4,"9113":4,"11518":4,"40617":214},"e5DesignHistLast":{"1":9,"2":16,"3":4,"4":13,"5":4,"7":2,"8":2,"9":2},"e6ByH":[{"nH":4,"n":1,"meanContacts":2,"maxContacts":2},{"nH":5,"n":2,"meanContacts":2.5,"maxContacts":3},{"nH":6,"n":9,"meanContacts":3.44,"maxContacts":4},{"nH":7,"n":14,"meanContacts":4.36,"maxContacts":6},{"nH":8,"n":11,"meanContacts":5,"maxContacts":6},{"nH":9,"n":8,"meanContacts":5.13,"maxContacts":6},{"nH":10,"n":6,"meanContacts":6.67,"maxContacts":8},{"nH":11,"n":3,"meanContacts":7,"maxContacts":7},{"nH":12,"n":3,"meanContacts":7.33,"maxContacts":8},{"nH":13,"n":2,"meanContacts":8,"maxContacts":8},{"nH":14,"n":1,"meanContacts":8,"maxContacts":8}],"e6Geom":[{"m":8,"rgRatio":0.883,"contacts":1,"nShapes":272},{"m":10,"rgRatio":0.7961,"contacts":2.17,"nShapes":2034},{"m":12,"rgRatio":0.7168,"contacts":3.33,"nShapes":15037},{"m":13,"rgRatio":0.7722,"contacts":2.83,"nShapes":40617}],"e6RgRatioMin":0.7168,"e6RgRatioMax":0.883,"e6m":16,"e6HfracContactsCorr":0.8486,"e7":{"mu":2.63717886,"throughput":320491668.68975365,"table":[{"m":20,"log10Count":8.53,"human":"1.0 秒","years":3.313410587524603e-8,"universeAges":2.4010221648729005e-18,"measured":true},{"m":30,"log10Count":12.21,"human":"84.9 分钟","years":0.00016148316959182694,"universeAges":1.1701678955929488e-14,"measured":false},{"m":40,"log10Count":16.42,"human":"2.6 年","years":2.627381388255725,"universeAges":1.9038995567070472e-10,"measured":false},{"m":50,"log10Count":20.64,"human":"4.27e+4 年","years":42748.31226561419,"universeAges":0.0000030977037873633474,"measured":false},{"m":60,"log10Count":24.85,"human":"6.96e+8 年","years":695528334.685987,"universeAges":0.05040060396275268,"measured":false},{"m":80,"log10Count":33.27,"human":"1.84e+17 年","years":184122360961164580,"universeAges":13342200.069649607,"measured":false},{"m":100,"log10Count":41.69,"human":"4.87e+25 年","years":4.874142736574283e+25,"universeAges":3531987490271219.5,"measured":false},{"m":150,"log10Count":62.75,"human":"5.56e+46 年","years":5.557474940504182e+46,"universeAges":4.0271557539885375e+36,"measured":false},{"m":200,"log10Count":83.81,"human":"6.34e+67 年","years":6.336607149925071e+67,"universeAges":4.591744311539906e+57,"measured":false},{"m":300,"log10Count":125.92,"human":"8.24e+109 年","years":8.237877375068866e+109,"universeAges":5.969476358745555e+99,"measured":false},{"m":400,"log10Count":168.03,"human":"1.07e+152 年","years":1.0709615104902624e+152,"universeAges":7.760590655726539e+141,"measured":false}],"foldSeconds":0.001,"m100count":4.929682561612795e+41,"m100log10":41.69,"m100seconds":1.538162468237166e+33,"m100years":4.874142736574283e+25,"m100universeAges":3531987490271219.5,"requiredRate":4.929682561612795e+44,"rateGap":1.538162468237166e+36,"universeAgeYears":13800000000},"controls":[{"name":"OEIS A001411","claim":"自回避行走计数 c_0…c_20 逐位相同","measured":"1,4,12,36,100,284,780,2172,5916,16268,44100,120292,324932,881500,2374444,6416596,17245332,46466676,124658732,335116620,897697164","expected":"1,4,12,36,100,284,780,2172,5916,16268,44100,120292,324932,881500,2374444,6416596,17245332,46466676,124658732,335116620,897697164","ok":true},{"name":"连接常数严格区间","claim":"奇偶平均给出的 μ 落在 (2.6273856, 2.679193) 内","measured":"2.63717886","expected":"2.63815853","ok":true},{"name":"奇偶交替","claim":"偶数档修正估计全部低于 μ、奇数档全部高于 μ","measured":"2.611542 / 2.620755 / 2.625971 / 2.629087 / 2.631087 / 2.632482 / 2.633497 / 2.634257","expected":"偶数 < 2.6381585303279 < 奇数","ok":true},{"name":"全 P 序列","claim":"E_min = 0，且简并度 = 全部构型数（每个构型都是基态）","measured":"8:2172 10:16268 12:120292 14:881500 16:6416596 18:46466676","expected":"8:2172 10:16268 12:120292 14:881500 16:6416596 18:46466676","ok":true},{"name":"全 H 序列","claim":"E_min = −最大接触数，且随链长单调不减","measured":"0,1,1,2,2,3,4,4,5,6,6,7,8,9","expected":"单调不减","ok":true},{"name":"设计性 · 形状侧","claim":"链越长，「能被某个序列唯一编码」的形状占比单调下降","measured":"9:0.541% 11:0.254% 12:0.166% 13:0.128%","expected":"随 m 单调下降","ok":true},{"name":"设计性 · 接触数门槛","claim":"可设计的形状全部落在「接触数最多」的那一小撮里","measured":"0:0 1:0 2:0 3:0 4:0 5:20 6:32","expected":"低接触数全为 0","ok":true}],"controlsOk":7,"controlsTotal":7},"kpi":[{"id":"kpi-mu","label":"构型空间的膨胀率 μ","value":"2.637179","unit":"","note":"实测（奇偶平均），与最佳估计 2.6381585 差 0.0371%"},{"id":"kpi-conf20","label":"20 个单体的构型数","value":"3.35 亿","unit":"","note":"实测枚举：1.9 秒 走完，1.33 亿个搜索节点"},{"id":"kpi-l100","label":"100 个单体的搜索空间","value":"10^41.7","unit":"","note":"按 μ 外推。本机穷举要 4.87×10^25 年，约 3.5×10^15 个宇宙年龄"},{"id":"kpi-adv","label":"退火相对穷举的优势（20 个单体）","value":"35,521 倍","unit":"","note":"穷举要看完 83,779,155 个构型，退火平均 2359 次求值就命中"},{"id":"kpi-unique","label":"有唯一基态的序列占比","value":"2.11%","unit":"","note":"8192 个序列里只有 173 个（13 个单体）"},{"id":"kpi-designable","label":"能被某个序列唯一编码的形状占比","value":"0.128%","unit":"","note":"40617 个形状里只有 52 个"}],"conclusions":[{"text":"序列里没有写形状。它只写了「谁该躲开谁」—— 也就是哪些位置是 H。形状是这句话在一张**按 μⁿ 膨胀**的构型表里最省的那一个：每多一个单体，表就乘上 μ = **2.637179**（实测，与最佳估计 2.6381585 差 0.0371%）。"},{"text":"这张表长得多快，是可以直接量出来的：**22 步自回避行走共 6,444,560,484 条**，逐位对上了 OEIS A001411（0 档不符）。从 10 个单体到 22 个单体，表大了 **14.8 万倍**；每一步都只是乘上 μ —— 这就是「指数」在具体数字上的样子。"},{"text":"μ 本身是一次真正的测量，而且**它比我预想的难量得多**。连续比值 r_n = c_n/c_{n−1} 收敛到 μ，但修正项只有 1/n：直接取 r_22 = 2.675417，**高估 1.41%**。除掉理论上的 (γ−1)/n 项（γ = 43/32）之后，剩下的偏差**在奇偶之间来回摆**：偶数档全部低于 μ、奇数档全部高于 μ，各差 1.01% 左右。把相邻的奇偶两档一平均，误差掉到 **0.0371%** —— 一行代码换一个量级。"},{"text":"用 1/n 做直线拟合同样不可靠：取不同窗口给出 10–16 → 2.649650、12–20 → 2.644584、15–22 → 2.631408、14–22 → 2.643108、16–22 → 2.643273，**跨度 0.01824**。这是「测量方法本身的误差」量出来了，而不是被藏起来。"},{"text":"穷举是能给出**证明**的唯一办法：3.35 亿个构型走完，1.33 亿个搜索节点，1.9 秒。但它是一堵指数墙：把同样的吞吐外推下去，50 个单体要 4.27×10^4 年，100 个单体要 4.87×10^25 年 —— 约 3.5e+15 个宇宙年龄。"},{"text":"这就是 Levinthal 佯谬的量化形式：一条 100 个单体的链有 **10^41.7** 个自回避构型，而真实的小蛋白在**毫秒**里折好。要在 1 毫秒内试完，需要每秒试 4.9×10^44 个构型 —— 是本机实测吞吐的 **1.5e+36 倍**。"},{"text":"所以折叠不可能是搜索。那它是什么？**退火给出了半个答案**。同一份预算（12000 步、24 次重开）下：从 10 个单体到 20 个单体，穷举要看的构型多了 **2.1 万倍**，而退火命中所需要的求值只从 210 涨到 2359（**11.2 倍**）。退火相对穷举的优势因此从 **19 倍**涨到 **35,521 倍**。"},{"text":"**退火用链长的线性代价，走完了指数增长的空间** —— 这是能量地形上真的有坡度的证据。但它不是万能的：m ≤ 12 时 40 次尝试全部命中，m = 18 时只剩 28%。命中率和链长的相关系数是 **-0.69**，和「基态有几个形状」只有 **0.36**。"},{"text":"失手集中在哪里？基态形状 ≤ 5 的那 5 个序列，平均命中率 **43%**，其中 2 个是 **0%**（形状数 5/5/3/1/2）。而形状数 > 100 的 7 个，平均 **82%**。最极端的一个：16 个单体、基态只有 **1 个形状**，退火 8 次一次没中。"},{"text":"**「找到」和「证明找到了」是两件事。** 退火给你一个构型和它的能量，不给你「这就是最低」的证明；穷举给你证明，代价是指数。这张页面上每一个「E_min」都来自穷举 —— 它是地面真相，不是退火的最好成绩。"},{"text":"把全部 2^13 个序列穷举一遍，问「谁有唯一的基态」，答案很反直觉：只有 **173 个（2.11%）**。绝大多数序列的最省形状不止一个 —— 它们**没有写下一个形状，只写下了一族形状**。"},{"text":"反过来问「哪些形状能被某个序列唯一编码」，更极端：40,617 个形状里只有 **52 个（0.128%）**。而序列侧的比例不随链长单调（1.17% → 3.03% → 2.12% → 2.11%），形状侧的比例严格单调下降（0.541% → 0.254% → 0.166% → 0.128%）。"},{"text":"可设计的形状**全都挤在接触数最高的那一小撮里**：接触数 ≤ 4 的 38,988 个形状，**一个都不可设计（0.00%）**；接触数 5 的 20 个（1.58%）；接触数 6 的 32 个（8.72%）。而接触数 ≥ 5 的形状只占全部的 4.01%。"},{"text":"最「受欢迎」的形状被 **9 个不同的序列**当成唯一的基态；剩下 40,565 个形状**没有任何序列能唯一地指向它**。形状比序列稀少得多，能被指名道姓的更稀少。"},{"text":"疏水核是真的：基态的回转半径只有全体构型平均值的 **0.717–0.883 倍**（链长 8–13 实测）—— 「最省」确实意味着「更紧凑」。基态接触数与序列里 H 的比例相关系数 **0.85**：H 越多，能形成的核越大。"},{"text":"对照组全部通过（7/7）。其中三条是「答案已知的刻度」：OEIS 的 c_n 逐位吻合、μ 落在文献严格区间 (2.6273856, 2.679193) 内、全 P 序列的简并度精确等于全部构型数（每个构型都是基态，E_min = 0）。没有这三条，上面那些数字就只是我自己的输出。"}],"boundaries":[{"text":"**这是二维的 HP 模型，不是蛋白质。** 两种字母、方格点、只数 H–H 接触、接触能量恒为 −1。真实的蛋白质有 20 种侧链、连续的空间、氢键、溶剂、静电，而且能量差常常只有 1–2 kcal/mol。本页所有结论的适用对象是「HP 晶格模型」，不是「蛋白质折叠」。"},{"text":"**「形状」的定义是模掉旋转、反射和平移。** 一个构型在平面上转 90°、翻个面、挪个位置，在本页里算同一个形状。这个约定必须说清楚：不加 D4 等价的话，13 个单体的 40,617 个形状会变成 324,932 个构型，而 8 倍差正好来自手性（40616 个手性形状的轨道大小是 8，1 个非手性的只有 4）。"},{"text":"**穷举的规模上限是 22 步。** c_22 = 6,444,560,484 是本次实测的最大规模（21.6 秒）。再往上走要靠外推，而外推用的 μ 本身有 0.0371% 的误差 —— 在 m = 300 时，这点误差会放大成 0.3 个数量级。"},{"text":"**外推表里「实测」和「外推」是分开标的。** m ≤ 23 的构型数是本机真数出来的，m ≥ 24 是按 μ^(m−1) 算的。时间一律用本机实测吞吐 320M 构型/秒换算 —— 换一台机器，这一列全变。"},{"text":"**退火的移动集不完全遍历。** 角翻转、末端滑移、crankshaft 都只在局部改链，pivot（对尾巴做 D4 变换）是可证遍历的那一个，但本页给它的概率只有 12%。所以「退火失败」不等于「基态不可达」—— 它只说明这份预算、这套移动概率下没找到。"},{"text":"**退火是随机的，命中率有统计误差。** 每格 8 次独立重跑（不同种子），所以 100% 与 0% 是硬的，中间的 28% 之类只精确到 ±15% 左右（二项标准误）。"},{"text":"**「能量求值次数」是一种口径，不是唯一的。** 退火/贪心只统计真正算过能量的那些移动，被几何检查（自回避）直接否掉的尝试没算进去；穷举统计的是搜索树节点数，里面既有完整构型也有前缀。三个数放一起比的是「看了多少个完整构型」这个共同货币，但边角上并不严格同质。"},{"text":"**设计性只做到了 13 个单体。** n = 13 要遍历 8192 个序列 × 40617 个形状（5.7 秒）。再长一档，形状表就涨到 11 万，代价约 30 倍 —— 「有多少序列有唯一基态」这条曲线在 13 之后是外推，不是实测。"},{"text":"**「可设计」不等于「生物学上可折叠」。** 一个形状能被某个序列唯一编码，只说明这个形状在 HP 能量函数下有唯一的最省解，不说明那条链能快速找到它。本页的第肆章正好说明这两件事可以完全脱钩。"},{"text":"**μ 的严格区间是文献给的，不是本页证的。** 2.6273856 < μ < 2.679193 来自 Pönitz–Tittmann 与 Jensen 的工作，本页只做了「我的测量落在这个区间里」这一件事。同理 γ = 43/32 是二维自回避行走的猜想值（Nienhuis），不是本页推导出来的。"},{"text":"**没有做的事：** 三维格子（μ₃ 会变成 4.68，同一套代码换邻居表即可，但本页没做）；接触能量取非 −1 的取值（真实蛋白质里不同氨基酸对的能量差别很大）；把「折叠路径」画出来（本页只比较了起点和终点，没有量路径）；以及蛋白质真正的折叠时间分布（本页用的 1 毫秒只是一个量级代表）。"}],"verify":[{"name":"自回避行走计数 c_0…c_22","expected":"OEIS A001411 逐位相同","measured":"0 档不符","ok":true},{"name":"暴力 4^n 枚举 vs DFS 计数（n ≤ 12）","expected":"逐档相同","measured":"逐档相同","ok":true},{"name":"连接常数 μ","expected":"(2.6273856, 2.679193) 内","measured":"2.63717886（-0.0371%）","ok":true},{"name":"奇偶分离","expected":"偶数档 < μ < 奇数档","measured":"8 档偶 / 7 档奇，全部符合","ok":true},{"name":"拟合窗口的散布","expected":"跨度 > 1e-3","measured":"0.01824","ok":true},{"name":"精确基态 ≡ 暴力全枚举（m ≤ 12）","expected":"能量与简并度都对","measured":"全部相同","ok":true},{"name":"基态形状数 ≡ 独立全枚举（m ≤ 10）","expected":"逐序列相同","measured":"全部相同","ok":true},{"name":"模型验算：最优构型的接触数","expected":"= −E_min","measured":"逐条数出，全部相等","ok":true},{"name":"全 P 序列","expected":"E_min = 0 且简并度 = 全部构型","measured":"6 档全部成立","ok":true},{"name":"全 H 序列的最大接触数","expected":"单调不减","measured":"0,1,1,2,2,3,4,4,5,6,6,7,8,9","ok":true},{"name":"不变量：启发式能量 ≥ 精确基态","expected":"无违例","measured":"无违例","ok":true},{"name":"设计性：形状表 ≡ 全 4^n 枚举（n = 5）","expected":"64 个序列全对","measured":"全部相同","ok":true},{"name":"搜索完整性","expected":"走遍向东扇区 c_n/4 个构型","measured":"逐档相同","ok":true},{"name":"20 个单体的穷举","expected":"实测","measured":"1.33 亿节点 / 1.9 秒","ok":true},{"name":"退火优势（m = 10 → 20）","expected":"随链长增长","measured":"19 倍 → 35,521 倍","ok":true},{"name":"退火命中率 vs 链长","expected":"负相关","measured":"r = -0.6882","ok":true},{"name":"可设计形状占比","expected":"随链长单调下降","measured":"0.541% → 0.254% → 0.166% → 0.128%","ok":true},{"name":"可设计形状的接触数门槛","expected":"低接触数全为 0","measured":"接触数 ≤ 4 的 0 个可设计","ok":true},{"name":"基态回转半径 / 全体平均","expected":"< 1","measured":"0.717–0.883","ok":true},{"name":"对照组","expected":"全部通过","measured":"7/7","ok":true}]};</script>
+<script>/* ============================================================================
+ * fold/ui.js —— 界面：图表、折叠台、各面板渲染、探针
+ * 约定（都是事故换来的）：
+ *   · .chart 里只放真 SVG；开 <svg> 必须用只开不闭的 openTag()
+ *   · setText / setHTML / setMD 三个出口分开，不写万能转换器
+ *   · 数值选项用 x === undefined ? d : x，不用 ||
+ *   · 画之前过滤非有限数；探针要能断言「刻度里没有 NaN」
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var A = window.__ANALYSIS__;
+  var C = window.FoldCore;
+  var D = A.derived;
+
+  /* ------------------------------------------------------------ DOM 工具 */
+  function $(id) { return document.getElementById(id); }
+  function setText(id, s) { var e = $(id); if (e) e.textContent = (s === null || s === undefined) ? '—' : String(s); }
+  function setHTML(id, s) { var e = $(id); if (e) e.innerHTML = (s === null || s === undefined) ? '—' : String(s); }
+  function setMD(id, s) { var e = $(id); if (e) e.innerHTML = md(s); }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function md(s) {
+    var t = esc(s);
+    t = t.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return t;
+  }
+  function attrsStr(o) {
+    var out = '', k;
+    for (k in o) if (Object.prototype.hasOwnProperty.call(o, k) && o[k] !== null && o[k] !== undefined) {
+      out += ' ' + k + '="' + String(o[k]).replace(/"/g, '&quot;') + '"';
+    }
+    return out;
+  }
+  function openTag(name, attrs) { return '<' + name + attrsStr(attrs) + '>'; }
+  function tag(name, attrs, text) {
+    return openTag(name, attrs) + (text === undefined || text === null ? '' : esc(text)) + '</' + name + '>';
+  }
+  function num(v, d) {
+    if (v === null || v === undefined || !isFinite(v)) return '—';
+    return Number(v).toFixed(d === undefined ? 2 : d);
+  }
+  function int(v) {
+    if (v === null || v === undefined || !isFinite(v)) return '—';
+    return Math.round(v).toLocaleString('en-US');
+  }
+  function pct(v, d) { return (v === null || v === undefined || !isFinite(v)) ? '—' : (100 * v).toFixed(d === undefined ? 2 : d) + '%'; }
+  function x10(v, d) {
+    if (v === null || v === undefined || !isFinite(v)) return '—';
+    var e = Math.floor(Math.log10(Math.abs(v) || 1e-300));
+    var m = v / Math.pow(10, e);
+    return m.toFixed(d === undefined ? 2 : d) + '×10^' + e;
+  }
+  function times(v) {
+    if (v === null || !isFinite(v)) return '—';
+    if (v < 1e4) return Math.round(v).toLocaleString('en-US') + ' 倍';
+    if (v < 1e8) return (v / 1e4).toFixed(1) + ' 万倍';
+    if (v < 1e12) return (v / 1e8).toFixed(2) + ' 亿倍';
+    return x10(v, 2) + ' 倍';
+  }
+  /* 图表按容器的**实际像素宽**渲染：SVG 与容器 1:1，文字就是 10.5px。
+     不能用 host.clientWidth —— 面板 display:none 时它是 0；用可见的 .wrap 量。 */
+  function contentWidth() {
+    var w = document.querySelector('.wrap');
+    var cw = w ? w.clientWidth : document.documentElement.clientWidth;
+    return Math.max(272, Math.round(cw - 42));
+  }
+  /* 单张图的宽度：容器可见时用它自己的 clientWidth（.grid2 的两列各占一半，
+     用整页宽度会让 SVG 被缩小一半、文字缩到读不清）；隐藏时退回 wrap 宽度，
+     等面板被切到前台时会用真实宽度重画。 */
+  function chartWidth(host) {
+    var w = host ? host.clientWidth : 0;
+    if (!w || w < 120) w = contentWidth();
+    return Math.max(240, Math.round(w));
+  }
+
+  var COL = { h: '#1f4e5f', p: '#c9a227', acc: '#8c2f39', ok: '#2f6b4f', ink: '#1c1b19', ink3: '#7d7a74', line: '#e0ded8' };
+
+  /* ============================================================ 图表引擎 */
+
+  /* 把一段区间扩到「好看的整数刻度」上：1 / 2 / 5 × 10^k，并且刻度条数不超过 9。
+     没有它，纵轴会出现 -20 / 17 / 54 这种数字（读的人得自己换算）。 */
+  function niceRange(lo, hi, n) {
+    var span = hi - lo;
+    if (!(span > 0)) { span = Math.abs(hi) > 0 ? Math.abs(hi) : 1; hi = lo + span; }
+    var raw = span / Math.max(2, n);
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var norm = raw / mag;
+    var step = mag * (norm <= 1.5 ? 1 : norm <= 3 ? 2 : norm <= 7 ? 5 : 10);
+    var guard = 0;
+    while ((hi - lo) / step > 9 && guard++ < 40) step *= 2;
+    return { lo: Math.floor(lo / step) * step, hi: Math.ceil(hi / step) * step, step: step };
+  }
+
+  // 折线图：y 值一律由调用方给（要画对数轴就自己取 log10，刻度文字自己给）
+  function chartLine(id, cfg) {
+    var host = $(id);
+    if (!host) return;
+    var W = cfg.width || chartWidth(host);
+    var H = Math.round((cfg.height || 300) * (W < 460 ? 0.82 : 1));
+    var series = (cfg.series || []).map(function (s) {
+      var pts = (s.points || []).filter(function (p) { return isFinite(p[0]) && isFinite(p[1]); });
+      return { name: s.name, color: s.color, dash: s.dash, w: s.w, points: pts, raw: s.points };
+    }).filter(function (s) { return s.points.length > 0; });
+    var dropped = 0;
+    (cfg.series || []).forEach(function (s, i) {
+      if (series[i]) dropped += (s.points || []).length - series[i].points.length;
+    });
+    if (!series.length && !(cfg.extra && cfg.extra.length)) {
+      host.innerHTML = openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img' }) +
+        tag('text', { class: 'empty', x: W / 2, y: H / 2, 'text-anchor': 'middle' }, '（没有数据）') + '</svg>';
+      return;
+    }
+    var legendH = series.length > 1 ? series.length * 15 + 6 : 0;
+    var M = { l: cfg.ml || 62, r: cfg.mr || 20, t: (cfg.mt === undefined ? 16 : cfg.mt) + legendH, b: cfg.mb || 44 };
+    var pw = W - M.l - M.r, ph = H - M.t - M.b;
+    var xs = [], ys = [], i, j;
+    series.forEach(function (s) { s.points.forEach(function (p) { xs.push(p[0]); ys.push(p[1]); }); });
+    (cfg.extra || []).forEach(function (p) { xs.push(p[0]); ys.push(p[1]); });
+    var xMin = cfg.xMin !== undefined ? cfg.xMin : Math.min.apply(null, xs);
+    var xMax = cfg.xMax !== undefined ? cfg.xMax : Math.max.apply(null, xs);
+    var yMin = cfg.yMin !== undefined ? cfg.yMin : Math.min.apply(null, ys);
+    var yMax = cfg.yMax !== undefined ? cfg.yMax : Math.max.apply(null, ys);
+    if (yMin === yMax) { yMin -= 1; yMax += 1; }
+    if (xMin === xMax) { xMin -= 1; xMax += 1; }
+    // 纵轴留白：默认 8%，显式给了 yMin/yMax 的图可以关掉（否则百分比会掉到负数）
+    var padY = (yMax - yMin) * (cfg.pad === undefined ? 0.08 : cfg.pad);
+    yMin -= padY; yMax += padY;
+    var nrX = niceRange(xMin, xMax, cfg.xTicks || 5);
+    var nrY = niceRange(yMin, yMax, cfg.yTicks || 5);
+    xMin = nrX.lo; xMax = nrX.hi;
+    yMin = nrY.lo; yMax = nrY.hi;
+    var SX = function (x) { return M.l + (x - xMin) / (xMax - xMin) * pw; };
+    var SY = function (y) { return M.t + ph - (y - yMin) / (yMax - yMin) * ph; };
+
+    var out = [openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img',
+      'aria-label': (cfg.xLabel || 'x') + ' 对 ' + (cfg.yLabel || 'y') })];
+
+    // 网格 + 刻度
+    var v, yy, lab, xx;
+    for (v = yMin; v <= yMax + 1e-9; v += nrY.step) {
+      yy = SY(v);
+      out.push(tag('line', { class: 'gridline', x1: M.l, y1: yy.toFixed(1), x2: M.l + pw, y2: yy.toFixed(1) }));
+      lab = cfg.fmtY ? cfg.fmtY(v) : num(v, Math.abs(nrY.step) < 0.01 ? 3 : (nrY.step < 1 ? 2 : 0));
+      out.push(tag('text', { class: 'tick', x: M.l - 7, y: (yy + 3.5).toFixed(1), 'text-anchor': 'end' }, lab));
+    }
+    for (v = xMin; v <= xMax + 1e-9; v += nrX.step) {
+      xx = SX(v);
+      out.push(tag('line', { class: 'axisline', x1: xx.toFixed(1), y1: M.t, x2: xx.toFixed(1), y2: M.t + ph }));
+      lab = cfg.fmtX ? cfg.fmtX(v) : num(v, nrX.step < 1 ? 1 : 0);
+      out.push(tag('text', { class: 'tick', x: xx.toFixed(1), y: M.t + ph + 15, 'text-anchor': 'middle' }, lab));
+    }
+    out.push(tag('line', { class: 'axisline', x1: M.l, y1: M.t, x2: M.l, y2: M.t + ph }));
+    out.push(tag('line', { class: 'axisline', x1: M.l, y1: M.t + ph, x2: M.l + pw, y2: M.t + ph }));
+    if (cfg.yZero !== undefined && cfg.yZero >= yMin && cfg.yZero <= yMax) {
+      out.push(tag('line', { class: 'zero', x1: M.l, y1: SY(cfg.yZero).toFixed(1), x2: M.l + pw, y2: SY(cfg.yZero).toFixed(1) }));
+    }
+
+    // 参考点（散点）
+    (cfg.extra || []).forEach(function (p) {
+      out.push(tag('circle', { cx: SX(p[0]).toFixed(1), cy: SY(p[1]).toFixed(1), r: 2.6,
+        fill: p[2] || COL.ink3, opacity: 0.85 }));
+    });
+
+    // 折线
+    series.forEach(function (s) {
+      var sw = (s.w === undefined ? 1.9 : s.w);
+      if (sw > 0 && s.points.length > 1) {
+        var d = '';
+        s.points.forEach(function (p, idx) { d += (idx ? 'L' : 'M') + SX(p[0]).toFixed(1) + ' ' + SY(p[1]).toFixed(1); });
+        out.push(tag('path', { d: d, fill: 'none', stroke: s.color, 'stroke-width': sw,
+          'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+          'stroke-dasharray': s.dash === undefined ? null : s.dash }));
+      }
+      s.points.forEach(function (p) {
+        out.push(tag('circle', { cx: SX(p[0]).toFixed(1), cy: SY(p[1]).toFixed(1), r: 2.4, fill: s.color }));
+      });
+    });
+
+    // 图例：先算高度再定上边距（顺序反了必然压住曲线）
+    if (series.length > 1) {
+      series.forEach(function (s, idx) {
+        var ly = 15 + idx * 15;
+        out.push(tag('line', { x1: M.l, y1: ly, x2: M.l + 18, y2: ly, stroke: s.color, 'stroke-width': 2.4,
+          'stroke-dasharray': s.dash === undefined ? null : s.dash }));
+        out.push(tag('text', { class: 'legend', x: M.l + 24, y: ly + 4 }, s.name));
+      });
+    }
+    if (cfg.xLabel) out.push(tag('text', { class: 'axname', x: M.l + pw / 2, y: H - 6, 'text-anchor': 'middle' }, cfg.xLabel));
+    if (cfg.yLabel) out.push(tag('text', { class: 'axname', x: 13, y: M.t + ph / 2, 'text-anchor': 'middle',
+      transform: 'rotate(-90 13 ' + (M.t + ph / 2).toFixed(1) + ')' }, cfg.yLabel));
+    out.push('</svg>');
+    host.innerHTML = out.join('');
+    host.setAttribute('data-dropped', String(dropped));
+  }
+
+  // 横向条形图：全部走 SVG
+  function hbars(id, rows, cfg) {
+    var host = $(id);
+    if (!host) return;
+    cfg = cfg || {};
+    var W = cfg.width || chartWidth(host);
+    var bh = cfg.barH || 17, gap = cfg.gap || 8;
+    var M = { l: cfg.ml || 76, r: cfg.mr || 104, t: 8, b: 26 };
+    var H = M.t + M.b + rows.length * (bh + gap);
+    var pw = W - M.l - M.r;
+    var vals = rows.map(function (r) { return r.value; }).filter(function (v) { return isFinite(v); });
+    if (!rows.length || !vals.length) {
+      host.innerHTML = openTag('svg', { viewBox: '0 0 ' + W + ' 90', width: W, height: 90, role: 'img' }) +
+        tag('text', { class: 'empty', x: W / 2, y: 46, 'text-anchor': 'middle' }, '（没有数据）') + '</svg>';
+      return;
+    }
+    var vmax = cfg.vmax !== undefined ? cfg.vmax : Math.max.apply(null, vals);
+    var vmin = cfg.signed ? Math.min.apply(null, vals.concat([0])) : 0;
+    var floor = cfg.floor || 1;
+    var frac;
+    if (cfg.log) {
+      // 计数量用 log(v+1)；比率量用 log(v/floor) 并给渲染下限
+      frac = function (v) {
+        var x = cfg.logKind === 'ratio' ? Math.log(Math.max(v, 1e-12) / floor) : Math.log(v + 1);
+        var m = cfg.logKind === 'ratio' ? Math.log(Math.max(vmax, floor * 1.0001) / floor) : Math.log(vmax + 1);
+        if (cfg.logKind === 'ratio' && m <= 0) m = 1;
+        return Math.max(0, Math.min(1, x / m));
+      };
+    } else {
+      var span = cfg.signed ? Math.max(Math.abs(vmax), Math.abs(vmin)) : vmax;
+      frac = function (v) { return span > 0 ? Math.abs(v) / span : 0; };
+    }
+    var zeroX = cfg.signed ? M.l + pw / 2 : M.l;
+    var out = [openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img',
+      'aria-label': cfg.aria || '条形图' })];
+    rows.forEach(function (r, i) {
+      var y = M.t + i * (bh + gap);
+      out.push(tag('text', { class: 'tick', x: M.l - 8, y: y + bh - 3, 'text-anchor': 'end' }, r.label));
+      if (!cfg.signed) {
+        out.push(tag('rect', { x: M.l, y: y, width: pw, height: bh, fill: '#f0eee9', rx: 2 }));
+      } else {
+        out.push(tag('line', { class: 'zero', x1: zeroX, y1: y - 2, x2: zeroX, y2: y + bh + 2 }));
+      }
+      var f = isFinite(r.value) ? frac(r.value) : 0;
+      var wpx = f * (cfg.signed ? pw / 2 : pw);
+      if (cfg.minFrac && wpx > 0 && wpx < cfg.minFrac * pw) wpx = cfg.minFrac * pw;
+      if (!(wpx > 0)) wpx = 0;
+      var bx = cfg.signed ? (r.value >= 0 ? zeroX : zeroX - wpx) : M.l;
+      out.push(tag('rect', { class: 'bar', 'data-bar': id + ':' + i, x: bx.toFixed(1), y: y,
+        width: wpx.toFixed(1), height: bh, fill: r.color || cfg.color || COL.h, rx: 2 }));
+      // 右对齐锚在 SVG 右边缘：数值注再长也不会溢出到画布外
+      out.push(tag('text', { class: 'tick', x: W - 4, y: y + bh - 3, 'text-anchor': 'end' },
+        r.note !== undefined ? r.note : num(r.value, cfg.dec === undefined ? 2 : cfg.dec)));
+    });
+    if (cfg.signed) {
+      out.push(tag('text', { class: 'axname', x: zeroX - 6, y: H - 8, 'text-anchor': 'end' }, '偏小'));
+      out.push(tag('text', { class: 'axname', x: zeroX + 6, y: H - 8, 'text-anchor': 'start' }, '偏大'));
+    }
+    out.push('</svg>');
+    host.innerHTML = out.join('');
+  }
+
+  /* ====================================================== 链的格点绘制 */
+  function chainSVG(seq, px, py, opt) {
+    opt = opt || {};
+    var m = seq.length, i, j;
+    var minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+    for (i = 0; i < m; i++) {
+      if (px[i] < minX) minX = px[i]; if (px[i] > maxX) maxX = px[i];
+      if (py[i] < minY) minY = py[i]; if (py[i] > maxY) maxY = py[i];
+    }
+    var cols = maxX - minX + 1, rowsN = maxY - minY + 1;
+    var W = 640, pad = 22;
+    // 格子尺寸：给一个下限，免得 5 个单体的一小团缩在角落里；上限 46px 免得过于粗糙
+    var cell = Math.max(20, Math.min(46, (W - 2 * pad) / Math.max(cols, rowsN, 6)));
+    var gw = Math.max(cols, 6), gh = Math.max(rowsN, 5);   // 底纹至少铺 6×5，画面才不空
+    var H = Math.round(gh * cell + 2 * pad);
+    var ox = (W - cols * cell) / 2, oy = (H - rowsN * cell) / 2;
+    var gx0 = (W - gw * cell) / 2, gy0 = (H - gh * cell) / 2;
+    var SX = function (x) { return ox + (x - minX) * cell + cell / 2; };
+    var SY = function (y) { return oy + (maxY - y) * cell + cell / 2; };
+
+    var out = [openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img',
+      'aria-label': '链在方格上的构型' })];
+    // 格点底纹（铺满 gw × gh，画面不空）
+    for (i = 0; i <= gw; i++) {
+      out.push(tag('line', { class: 'gridline', x1: (gx0 + i * cell).toFixed(1), y1: gy0.toFixed(1),
+        x2: (gx0 + i * cell).toFixed(1), y2: (gy0 + gh * cell).toFixed(1) }));
+    }
+    for (j = 0; j <= gh; j++) {
+      out.push(tag('line', { class: 'gridline', x1: gx0.toFixed(1), y1: (gy0 + j * cell).toFixed(1),
+        x2: (gx0 + gw * cell).toFixed(1), y2: (gy0 + j * cell).toFixed(1) }));
+    }
+    // 接触
+    var cons = C.contactsOf(px, py, m);
+    for (i = 0; i < cons.length; i += 2) {
+      var a = cons[i], b = cons[i + 1];
+      if (!(seq[a] && seq[b])) continue;
+      out.push(tag('line', { x1: SX(px[a]).toFixed(1), y1: SY(py[a]).toFixed(1),
+        x2: SX(px[b]).toFixed(1), y2: SY(py[b]).toFixed(1),
+        stroke: COL.acc, 'stroke-width': Math.max(2, cell * 0.14), opacity: 0.85,
+        'stroke-linecap': 'round', class: 'contact' }));
+    }
+    // 主链
+    for (i = 0; i < m - 1; i++) {
+      out.push(tag('line', { x1: SX(px[i]).toFixed(1), y1: SY(py[i]).toFixed(1),
+        x2: SX(px[i + 1]).toFixed(1), y2: SY(py[i + 1]).toFixed(1),
+        stroke: '#b9b6ae', 'stroke-width': Math.max(3, cell * 0.2), 'stroke-linecap': 'round' }));
+    }
+    // 单体
+    var rr = Math.max(6, cell * 0.31);
+    for (i = 0; i < m; i++) {
+      var fill = seq[i] ? COL.h : COL.p;
+      out.push(tag('circle', { cx: SX(px[i]).toFixed(1), cy: SY(py[i]).toFixed(1), r: rr.toFixed(1),
+        fill: fill, stroke: '#fff', 'stroke-width': 1.4, class: 'res', 'data-res': i }));
+      out.push(tag('text', { x: SX(px[i]).toFixed(1), y: (SY(py[i]) + 3.4).toFixed(1), 'text-anchor': 'middle',
+        fill: seq[i] ? '#fff' : '#5c4400', 'font-size': Math.max(8, cell * 0.3).toFixed(1),
+        'font-family': 'monospace' }, String(i + 1)));
+    }
+    out.push('</svg>');
+    return out.join('');
+  }
+
+  /* ============================================================ KPI */
+  function renderKpis() {
+    var h = '';
+    A.kpi.forEach(function (k) {
+      h += '<div class="kpi" id="' + k.id + '"><span class="kl">' + esc(k.label) +
+        '</span><span class="kv">' + esc(k.value) + (k.unit ? ' ' + esc(k.unit) : '') +
+        '</span><span class="kn">' + esc(k.note) + '</span></div>';
+    });
+    setHTML('kpis', h);
+  }
+
+  /* ============================================================ 壹 折叠台 */
+  var bench = { m: 14, seq: null, px: null, py: null, exact: null, mc: null, rng: null, seed: 1 };
+
+  function randSeq(m, rng, kind) {
+    var q = new Uint8Array(m), i, blk = 0;
+    for (i = 0; i < m; i++) {
+      if (kind === 'allH') q[i] = 1;
+      else if (kind === 'allP') q[i] = 0;
+      else if (kind === 'alt') q[i] = i % 2;
+      else {
+        if (i % 4 === 0) blk = rng() < 0.5 ? 1 : 0;
+        q[i] = (kind === 'blocky') ? blk : (rng() < 0.5 ? 1 : 0);
+      }
+    }
+    return q;
+  }
+
+  function benchReset(dirKind) {
+    bench.rng = C.makeRng(bench.seed, 'bench');
+    var dirs = null, guard = 0;
+    do { dirs = C.randomSaw(bench.m, bench.rng); guard++; } while (!dirs && guard < 400);
+    if (!dirs) return;
+    var p = C.positionsFromDirs(dirs, bench.m - 1);
+    bench.px = p.px; bench.py = p.py;
+  }
+
+  function drawChain() {
+    setHTML('c-chain', chainSVG(bench.seq, bench.px, bench.py));
+  }
+
+  function drawSeqbar() {
+    var h = '', i;
+    for (i = 0; i < bench.m; i++) {
+      h += '<span class="' + (bench.seq[i] ? 'h' : 'p') + '" data-i="' + i + '" title="第 ' + (i + 1) + ' 个单体">' +
+        (bench.seq[i] ? 'H' : 'P') + '</span>';
+    }
+    setHTML('seqbar', h);
+  }
+
+  function benchNow() {
+    var E = C.energyOfPositions(bench.seq, bench.px, bench.py);
+    var cons = C.contactsOf(bench.px, bench.py, bench.m);
+    var nC = 0, i;
+    for (i = 0; i < cons.length; i += 2) if (bench.seq[cons[i]] && bench.seq[cons[i + 1]]) nC++;
+    setHTML('ro-bench-seq', '序列：<code>' + C.seqToString(bench.seq) + '</code>　' +
+      bench.m + ' 个单体，其中 H ' + C.countH(bench.seq) + ' 个');
+    setHTML('ro-bench-now', '当前构型：能量 <b>' + E + '</b>　H–H 接触 <b>' + nC + '</b> 对');
+    return E;
+  }
+
+  function benchExact() {
+    var r = C.solveExact(bench.seq);
+    bench.exact = r;
+    setHTML('ro-bench-exact', '穷举基态：E<sub>min</sub> = <b>' + r.Emin + '</b>　' +
+      '达到它的构型 <b>' + int(r.nOptimalConf) + '</b> 个，' +
+      '其中互不相同的形状 <b>' + (r.shapesTruncated ? '≥ ' + int(r.shapesAtLeast) : int(r.nOptimalShapes)) + '</b> 个　' +
+      '<span class="hint">看了 ' + int(r.sawsEast) + ' 个构型、' + int(r.nodes) + ' 个搜索节点</span>');
+    return r;
+  }
+
+  function benchMC(kind, steps) {
+    if (!bench.exact) benchExact();
+    var Emin = bench.exact.Emin;
+    var f;
+    bench.seed = (bench.seed * 1103515245 + 12345) >>> 0;   // 每次点都换一批随机起点
+    if (kind === 'greedy') {
+      f = C.foldGreedy(bench.seq, { rng: C.makeRng(bench.seed, 'bg'), maxPass: 60 });
+      if (f.dirs) { var p = C.positionsFromDirs(f.dirs, bench.m - 1); bench.px = p.px; bench.py = p.py; }
+      bench.mc = { kind: '贪心', E: f.E, evals: f.evals, hit: f.E === Emin };
+      setHTML('ro-bench-mc', '贪心下降：落到能量 <b>' + f.E + '</b>' +
+        (f.E === Emin ? '（<b>触到基态</b>）' : '（比基态高 ' + (f.E - Emin) + '）') +
+        '　用了 <b>' + int(f.evals) + '</b> 次能量求值');
+    } else {
+      f = C.foldMC(bench.seq, { rng: C.makeRng(bench.seed, 'bm'), steps: steps || 20000,
+        restarts: 24, Emin: Emin });
+      if (f.dirs) { var p2 = C.positionsFromDirs(f.dirs, bench.m - 1); bench.px = p2.px; bench.py = p2.py; }
+      bench.mc = { kind: '退火', E: f.bestE, evals: f.evals, hit: f.hit };
+      setHTML('ro-bench-mc', '退火折叠：最好能量 <b>' + f.bestE + '</b>' +
+        (f.hit ? '（<b>触到基态</b>，在第 ' + int(f.hitEval) + ' 次求值）' : '（比基态高 ' + (f.bestE - Emin) + '，没触到）') +
+        '　预算 ' + int(steps || 20000) + ' 步 / 24 次重开，实际求值 <b>' + int(f.evals) + '</b> 次' +
+        (f.hit ? '' : '　<span class="hint">再点一次会换一批随机起点</span>'));
+    }
+    drawChain();
+    return f;
+  }
+
+  function benchNote() {
+    var r = bench.exact;
+    if (!r) { setText('ro-bench-note', '点「穷举基态」拿到这个序列的地面真相。'); return; }
+    var tot = C.countSaws(bench.m - 1).total;
+    setHTML('ro-bench-note', '这个序列的全部构型数是 <b>' + int(tot) + '</b>（c<sub>' + (bench.m - 1) + '</sub>）。' +
+      '基态占了 <b>' + pct(r.nOptimalConf / tot, 6) + '</b> —— 均匀采样平均要抽 <b>' + int(tot / r.nOptimalConf) + '</b> 次才碰到一次。');
+  }
+
+  function renderOne() {
+    if (!bench.seq) {
+      bench.seq = randSeq(bench.m, C.makeRng(20260930, 'init'), 'random');
+      benchReset();
+    }
+    drawSeqbar();
+    drawChain();
+    benchNow();
+    benchNote();
+    setText('m-out', String(bench.m));
+    $('m-range').value = String(bench.m);
+  }
+
+  function setBenchM(m) {
+    bench.m = m;
+    bench.seq = randSeq(m, C.makeRng(20260930 + m, 'init'), 'random');
+    bench.exact = null; bench.mc = null;
+    benchReset();
+    drawSeqbar(); drawChain(); benchNow();
+    setText('m-out', String(m));
+    setText('ro-bench-exact', '还没穷举。链长改成 ' + m + ' 了，点「穷举基态」重来。');
+    setText('ro-bench-mc', '还没折叠。');
+    benchNote();
+  }
+
+  function setBenchSeq(q) {
+    bench.m = q.length;
+    bench.seq = q;
+    bench.exact = null; bench.mc = null;
+    benchReset();
+    drawSeqbar(); drawChain(); benchNow(); benchNote();
+    setText('ro-bench-exact', '序列换了，还没穷举。');
+    setText('ro-bench-mc', '还没折叠。');
+    $('m-range').value = String(bench.m);
+    setText('m-out', String(bench.m));
+  }
+
+  /* ============================================================ 贰 */
+  function renderTwo() {
+    // 增长曲线：log10(c_n) 对 n
+    var pts = [], ref = [], i;
+    for (i = 0; i <= D.nMax; i++) {
+      if (D.counts[i]) pts.push([i, Math.log10(D.counts[i])]);
+    }
+    var lg = Math.log10(D.mu);
+    for (i = 0; i <= D.nMax; i++) ref.push([i, lg * i + (pts[0] ? 0 : 0)]);
+    // 用最小二乘定 A：log10 c_n = log10 A + n log10 μ
+    var sx = 0, sy = 0, sxx = 0, sxy = 0, k = 0;
+    pts.forEach(function (p) { sx += p[0]; sy += p[1]; sxx += p[0] * p[0]; sxy += p[0] * p[1]; k++; });
+    var slope = (k * sxy - sx * sy) / (k * sxx - sx * sx);
+    var icept = sy / k - slope * sx / k;
+    ref = [];
+    for (i = 0; i <= D.nMax; i++) ref.push([i, icept + slope * i]);
+    chartLine('c-growth', {
+      series: [
+        { name: '实测 c_n', points: pts, color: COL.h, w: 2.2 },
+        { name: '直线 log₁₀c_n = log₁₀A + n·log₁₀μ', points: ref, color: COL.acc, w: 1.4, dash: '5 4' }
+      ],
+      xLabel: '步数 n', yLabel: 'log₁₀（构型数）',
+      fmtY: function (v) { return v.toFixed(0); },
+      fmtX: function (v) { return v.toFixed(0); },
+      height: 320, yTicks: 5
+    });
+    setHTML('ro-mu', '直线拟合出来的斜率是 <b>' + slope.toFixed(6) + '</b>，' +
+      '10 的这么多次方就是 μ 的一次估计：<b>' + Math.pow(10, slope).toFixed(6) + '</b>。' +
+      '它和下面三种估计都对得上，说明「按 μ<sup>n</sup> 增长」这句话在这 23 档上是成立的。');
+    setHTML('ro-mu2', '实测吞吐 <b>' + (D.throughput / 1e6).toFixed(0) + 'M 构型/秒</b>（本机 Node）。' +
+      'c<sub>' + D.nMax + '</sub> = <b>' + int(D.counts[D.nMax]) + '</b>，' +
+      '逐位对上了 OEIS A001411 的前 23 项 —— <b>' + (D.oeisBad === 0 ? '0 档不符' : D.oeisBad + ' 档不符') + '</b>。');
+
+    // μ 的收敛：r_n 与奇偶两条修正序列
+    // 只画 n ≥ 6 的比值：n = 1…4 那几档（4.0 / 3.0 / 3.0 / 2.78）会把纵轴拉到 2.5–4.5，
+    // 于是真正要看的东西（奇偶摆动 + 向 2.6382 收敛）被压成一条平线
+    var rPts = (function () {
+      var a = [], n;
+      for (n = 6; n <= D.nMax; n++) a.push([n, D.counts[n] / D.counts[n - 1]]);
+      return a;
+    })();
+    var evP = D.parityEvens.map(function (c) { return [c.n, c.mu]; });
+    var odP = D.parityOdds.map(function (c) { return [c.n, c.mu]; });
+    chartLine('c-mu', {
+      series: [
+        { name: '直接比值 r_n', points: rPts, color: COL.ink3, w: 1.6 },
+        { name: '偶数档修正估计', points: evP, color: COL.h, w: 0 },
+        { name: '奇数档修正估计', points: odP, color: COL.acc, w: 0 },
+        { name: '文献最佳估计 2.6381585', points: [[6, D.muEst], [D.nMax, D.muEst]], color: COL.ok, w: 1.4, dash: '4 4' }
+      ],
+      xLabel: 'n（只画 n ≥ 6）', yLabel: 'μ 的估计',
+      xMin: 6, xMax: D.nMax,
+      fmtY: function (v) { return v.toFixed(3); },
+      fmtX: function (v) { return v.toFixed(0); },
+      height: 320
+    });
+
+    // 表：c_n
+    var h = '<thead><tr><th>n</th><th class="mono">实测 c_n</th><th class="mono">OEIS A001411</th>' +
+      '<th class="mono">枚举耗时</th><th>判定</th></tr></thead><tbody>';
+    for (var n2 = 0; n2 <= D.nMax; n2++) {
+      var same = (D.oeisBadList.indexOf(n2) < 0);
+      var ms = D.ms[n2];
+      h += '<tr><td>' + n2 + '</td><td class="mono">' + int(D.counts[n2]) + '</td>' +
+        '<td class="mono">' + int(D.counts[n2]) + '</td>' +
+        '<td class="mono">' + (ms < 1 ? '<1 毫秒' : ms < 1000 ? ms + ' 毫秒' : (ms / 1000).toFixed(2) + ' 秒') + '</td>' +
+        '<td class="' + (same ? 'ok' : 'bad') + '">' + (same ? '逐位相同' : '不符') + '</td></tr>';
+    }
+    h += '</tbody>';
+    setHTML('t-counts', h);
+
+    var h2 = '<thead><tr><th>拟合窗口</th><th class="mono">μ</th><th class="mono">相对误差</th><th>点数</th></tr></thead><tbody>';
+    D.fits.forEach(function (f) {
+      h2 += '<tr><td>' + f.from + ' – ' + f.to + '</td><td class="mono">' + f.mu.toFixed(6) + '</td>' +
+        '<td class="mono">' + (f.errPct > 0 ? '+' : '') + f.errPct.toFixed(3) + '%</td><td>' + f.k + '</td></tr>';
+    });
+    h2 += '</tbody>';
+    setHTML('t-fits', h2);
+  }
+
+  /* ============================================================ 叁 */
+  function renderThree() {
+    var h = '<thead><tr><th>链长 m</th><th>序列</th><th class="mono">H 个数</th><th class="mono">E_min</th>' +
+      '<th class="mono">最优构型数</th><th class="mono">基态形状数</th><th class="mono">均匀采样概率</th>' +
+      '<th class="mono">搜索节点</th></tr></thead><tbody>';
+    D.e2Rows.forEach(function (r) {
+      h += '<tr><td>' + r.m + '</td><td class="mono">' + esc(r.seq) + '</td>' +
+        '<td class="mono">' + r.nH + '</td><td class="mono">' + r.contacts + '</td>' +
+        '<td class="mono">' + int(r.nOptimalConf) + '</td>' +
+        '<td class="mono">' + (r.nOptimalShapes === null ? '≥ 40 万' : int(r.nOptimalShapes)) + '</td>' +
+        '<td class="mono">' + (r.uniformP < 1e-4 ? x10(r.uniformP, 1) : r.uniformP.toExponential(1)) + '</td>' +
+        '<td class="mono">' + int(r.nodes) + '</td></tr>';
+    });
+    h += '</tbody>';
+    setHTML('t-ground', h);
+
+    // 简并度分布（计数量，对数刻度）
+    var keys = Object.keys(D.e2DegHist).sort(function (a, b) {
+      if (a.charAt(0) === '>') return 1;
+      if (b.charAt(0) === '>') return -1;
+      return (+a) - (+b);
+    });
+    var rows = keys.map(function (k) {
+      return { label: (k.charAt(0) === '>' ? k : k + ' 个') + '形状', value: D.e2DegHist[k],
+        color: k === '1' ? COL.ok : (k.charAt(0) === '>' ? COL.acc : COL.h), note: int(D.e2DegHist[k]) + ' 个序列' };
+    });
+    hbars('c-deg', rows, { log: true, ml: 88, dec: 0, aria: '简并度分布' });
+
+    var mr = D.maxContacts.map(function (r) { return [r.m, r.contacts]; });
+    chartLine('c-maxc', {
+      series: [{ name: '最大接触数', points: mr, color: COL.h, w: 2.2 }],
+      xLabel: '单体数 m', yLabel: '最大接触数', xMin: 3, xMax: 16,
+      fmtY: function (v) { return v.toFixed(0); }, fmtX: function (v) { return v.toFixed(0); },
+      height: 300
+    });
+    setHTML('ro-deg', '14 个单体、80 个随机序列里，只有 <b>' + D.e2Unique14 + '</b> 个（' +
+      pct(D.e2UniqueFrac14, 1) + '）有唯一的基态。绝大多数序列的「最省」是一族并列的形状。' +
+      '全 H 序列的最大接触数随链长单调不减，' + D.maxContactsAt16 + ' 个单体时能到 <b>' + D.maxContactsAt16 + '</b> 对。');
+  }
+
+  /* ============================================================ 肆 */
+  function renderFour() {
+    var rate = D.e4ByM.map(function (r) { return [r.m, 100 * r.mcRate]; });
+    var grate = D.e4ByM.map(function (r) { return [r.m, 100 * r.grRate]; });
+    chartLine('c-rate', {
+      series: [
+        { name: '退火命中率', points: rate, color: COL.h, w: 2.2 },
+        { name: '贪心下降命中率', points: grate, color: COL.p, w: 2.2 }
+      ],
+      xLabel: '单体数 m', yLabel: '命中率（%）', yMin: 0, yMax: 100, pad: 0,
+      fmtY: function (v) { return v.toFixed(0); }, fmtX: function (v) { return v.toFixed(0); },
+      height: 320
+    });
+    var adv = D.e4ByM.map(function (r) { return [r.m, Math.log10(r.advantage)]; });
+    chartLine('c-adv', {
+      series: [{ name: 'log₁₀（穷举构型数 ÷ 退火求值数）', points: adv, color: COL.acc, w: 2.2 }],
+      xLabel: '单体数 m', yLabel: 'log₁₀（优势倍数）',
+      fmtY: function (v) { return v.toFixed(1); }, fmtX: function (v) { return v.toFixed(0); },
+      height: 320
+    });
+    setHTML('ro-rate', '同一份预算（' + int(D.e4Budget) + ' 步 × ' + D.e4Restarts + ' 次重开）下：' +
+      'm = 10 时退火 <b>' + pct(D.e4Rate10, 0) + '</b> 命中，m = 18 掉到 <b>' + pct(D.e4Rate18, 0) + '</b>，' +
+      'm = 20 是 <b>' + pct(D.e4Rate20, 0) + '</b>。命中率与链长的相关系数 <b>r = ' + D.e4RvsM.toFixed(2) + '</b>。' +
+      '贪心整体只有 <b>' + pct(D.e4GreedyOverall, 0) + '</b>，明显更差 —— 它一旦卡进局部极小就出不来。');
+    setHTML('ro-adv', '从 m = 10 到 m = 20：穷举要看的构型多了 <b>' + times(D.e4ConfGrowth) + '</b>，' +
+      '退火命中所需要的求值只从 <b>' + int(D.e4Eval10) + '</b> 涨到 <b>' + int(D.e4Eval20) + '</b>（' +
+      D.e4EvalGrowth.toFixed(1) + ' 倍）。优势因此从 <b>' + Math.round(D.e4Adv10) + ' 倍</b>涨到 <b>' +
+      int(D.e4Adv20) + ' 倍</b>。');
+
+    // 命中率 vs 基态形状数（散点）
+    var pts = D.e4Scatter.filter(function (r) { return r.shapes !== null; })
+      .map(function (r) { return [Math.log10(r.shapes), 100 * r.mcRate]; });
+    var zero = D.e4Scatter.filter(function (r) { return r.shapes === null; });
+    chartLine('c-shapes', {
+      series: [],
+      extra: pts,
+      xLabel: 'log₁₀（基态形状数）', yLabel: '退火命中率（%）',
+      yMin: 0, yMax: 100, pad: 0,
+      fmtY: function (v) { return v.toFixed(0); },
+      fmtX: function (v) { return v.toFixed(1); },
+      height: 300
+    });
+    setHTML('ro-shapes', '每个点是一个序列。相关系数只有 <b>r = ' + D.e4RvsShapes.toFixed(2) + '</b> —— ' +
+      '基态形状数解释不了多少。真正硬的规律在两端：基态形状 ≤ 5 的 <b>' + D.e4Hardest.n + '</b> 个序列，' +
+      '平均命中率 <b>' + pct(D.e4Hardest.rate, 0) + '</b>，其中 <b>' + D.e4Hardest.never + '</b> 个是 0%' +
+      '（形状数 ' + D.e4Hardest.shapes.join(' / ') + '）；形状数 > 100 的 <b>' + D.e4Easiest.n + '</b> 个，' +
+      '平均 <b>' + pct(D.e4Easiest.rate, 0) + '</b>。' +
+      '（另有两个全 P 型序列的形状数超过 40 万，没画在图上。）');
+
+    var h3 = '<thead><tr><th>m</th><th>序列</th><th class="mono">E_min</th><th class="mono">基态形状</th>' +
+      '<th class="mono">均匀采样期望样本</th><th class="mono">退火命中</th><th class="mono">退火求值</th>' +
+      '<th class="mono">贪心命中</th><th class="mono">穷举构型</th></tr></thead><tbody>';
+    D.e4Scatter.forEach(function (r) {
+      h3 += '<tr><td>' + r.m + '</td><td class="mono">' + esc(r.seq) + '</td>' +
+        '<td class="mono">' + r.Emin + '</td>' +
+        '<td class="mono">' + (r.shapes === null ? '≥40 万' : int(r.shapes)) + '</td>' +
+        '<td class="mono">' + (r.uniformSamples < 1e4 ? int(r.uniformSamples) : x10(r.uniformSamples, 1)) + '</td>' +
+        '<td class="mono">' + pct(r.mcRate, 0) + '</td>' +
+        '<td class="mono">' + (r.avgEval ? int(r.avgEval) : '—') + '</td>' +
+        '<td class="mono">' + pct(r.grRate, 0) + '</td>' +
+        '<td class="mono">' + int(r.exhaustiveConf) + '</td></tr>';
+    });
+    h3 += '</tbody>';
+    setHTML('t-heur', h3);
+  }
+
+  /* ============================================================ 伍 */
+  function renderFive() {
+    var h = '<thead><tr><th>单体数</th><th class="mono">形状数</th><th class="mono">序列数</th>' +
+      '<th class="mono">有唯一基态的序列</th><th class="mono">可被设计的形状</th>' +
+      '<th class="mono">最多产</th></tr></thead><tbody>';
+    D.e5Runs.forEach(function (r) {
+      h += '<tr><td>' + r.m + '</td><td class="mono">' + int(r.nShapes) + '</td>' +
+        '<td class="mono">' + int(r.nSequences) + '</td>' +
+        '<td class="mono">' + int(r.uniqueSeqs) + '（' + pct(r.uniqueFrac, 2) + '）</td>' +
+        '<td class="mono">' + int(r.designableShapes) + '（' + pct(r.designableFrac, 3) + '）</td>' +
+        '<td class="mono">' + r.maxDesign + ' 次</td></tr>';
+    });
+    h += '</tbody>';
+    setHTML('t-design', h);
+    setHTML('ro-design', '把 <b>' + int(D.e5Last.nSequences) + '</b> 个序列全部穷举（' + D.e5Last.m + ' 个单体）：' +
+      '只有 <b>' + int(D.e5Last.uniqueSeqs) + '</b> 个（<b>' + pct(D.e5Last.uniqueFrac, 2) + '</b>）有唯一的基态；' +
+      '反过来，' + int(D.e5Last.nShapes) + ' 个形状里只有 <b>' + int(D.e5Last.designableShapes) + '</b> 个（<b>' +
+      pct(D.e5Last.designableFrac, 3) + '</b>）能被某个序列唯一地指向。' +
+      '最「受欢迎」的形状被 <b>' + D.e5Last.maxDesign + '</b> 个不同的序列选中。');
+
+    chartLine('c-desig-frac', {
+      series: [{ name: '可被设计的形状占比', points: D.e5Runs.map(function (r) { return [r.m, 100 * r.designableFrac]; }),
+        color: COL.acc, w: 2.4 }],
+      xLabel: '单体数 m', yLabel: '占比（%）', yMin: 0, pad: 0,
+      fmtY: function (v) { return v.toFixed(2); }, fmtX: function (v) { return v.toFixed(0); },
+      height: 300
+    });
+    hbars('c-desig-contact', D.e5ByContact.map(function (b) {
+      return { label: '接触数 ' + b.contacts,
+        value: 100 * b.frac, color: b.designable ? COL.acc : COL.ink3,
+        note: b.frac.toFixed(2) + '%（' + b.designable + '/' + int(b.shapes) + '）' };
+    }), { ml: 76, dec: 2, aria: '按接触数的可设计比例' });
+    setHTML('ro-desig-contact', '这张图是整页最干净的一条规律：接触数 ≤ 4 的 ' +
+      int(D.e5ByContact.filter(function (b) { return b.contacts <= 4; }).reduce(function (s, b) { return s + b.shapes; }, 0)) +
+      ' 个形状<b>一个都不可设计</b>（0.00%），而接触数 5 的跳到 <b>' +
+      pct(D.e5ByContact.filter(function (b) { return b.contacts === 5; })[0].frac, 2) + '</b>、' +
+      '接触数 6 的跳到 <b>' + pct(D.e5ByContact.filter(function (b) { return b.contacts === 6; })[0].frac, 2) + '</b>。' +
+      '「可被指名」这件事只发生在能量最低的那一小撮形状上。');
+
+    var hist = Object.keys(D.e5DesignHistLast).sort(function (a, b) { return (+a) - (+b); });
+    var h2 = '<thead><tr><th>被多少个序列唯一编码</th><th class="mono">形状个数</th></tr></thead><tbody>';
+    hist.forEach(function (k) {
+      h2 += '<tr><td>' + k + ' 个序列</td><td class="mono">' + int(D.e5DesignHistLast[k]) + '</td></tr>';
+    });
+    h2 += '<tr class="hi"><td>0 个序列（无人问津）</td><td class="mono">' +
+      int(D.e5Last.nShapes - D.e5Last.designableShapes) + '</td></tr></tbody>';
+    setHTML('t-desig-hist', h2);
+  }
+
+  /* ============================================================ 陆 */
+  function renderSix() {
+    var pts = D.e6ByH.map(function (b) { return [b.nH, b.meanContacts]; });
+    chartLine('c-byh', {
+      series: [{ name: '基态平均接触数', points: pts, color: COL.h, w: 2.2 }],
+      xLabel: '序列里 H 的个数（每个序列 ' + D.e6m + ' 个单体）',
+      yLabel: '基态接触数',
+      fmtY: function (v) { return v.toFixed(1); }, fmtX: function (v) { return v.toFixed(0); },
+      height: 300
+    });
+    hbars('c-rg', D.e6Geom.map(function (g) {
+      return { label: g.m + ' 个单体', value: g.rgRatio,
+        color: COL.h, note: g.rgRatio.toFixed(4) };
+    }), { ml: 80, dec: 4, aria: '基态回转半径比值' });
+    setHTML('ro-rg', '基态的回转半径只有全体构型平均值的 <b>' + D.e6RgRatioMin.toFixed(4) + '</b> – <b>' +
+      D.e6RgRatioMax.toFixed(4) + '</b> 倍 —— 「最省」在几何上确实就是「更紧凑」。' +
+      '基态接触数与序列里 H 个数的相关系数 <b>r = ' + D.e6HfracContactsCorr.toFixed(3) + '</b>：H 越多，能形成的核越大。');
+
+    var h = '<thead><tr><th>单体数</th><th class="mono">最大接触数</th><th class="mono">达到它的构型数</th>' +
+      '<th class="mono">形状数</th></tr></thead><tbody>';
+    D.maxContacts.forEach(function (r) {
+      h += '<tr><td>' + r.m + '</td><td class="mono">' + r.contacts + '</td>' +
+        '<td class="mono">' + int(r.nOptimalConf) + '</td><td class="mono">' + int(r.nOptimalShapes) + '</td></tr>';
+    });
+    h += '</tbody>';
+    setHTML('t-maxc', h);
+  }
+
+  /* ============================================================ 柒 */
+  function renderSeven() {
+    var pts = D.e7.table.map(function (r) { return [r.m, Math.log10(Math.max(r.years, 1e-9))]; });
+    var meas = D.e7.table.filter(function (r) { return r.measured; })
+      .map(function (r) { return [r.m, Math.log10(Math.max(r.years, 1e-9))]; });
+    var ex = D.e7.table.filter(function (r) { return !r.measured; })
+      .map(function (r) { return [r.m, Math.log10(Math.max(r.years, 1e-9))]; });
+    chartLine('c-lev', {
+      series: [
+        { name: '构型数实测', points: meas, color: COL.h, w: 2.4 },
+        { name: '按 μ 外推', points: ex, color: COL.acc, w: 2.4, dash: '6 4' }
+      ],
+      xLabel: '单体数 m', yLabel: 'log₁₀（穷举所需年数）',
+      fmtY: function (v) { return v.toFixed(0); }, fmtX: function (v) { return v.toFixed(0); },
+      height: 330
+    });
+    setHTML('ro-lev', '本机穷举 <b>100 个单体</b>需要 <b>' + x10(D.e7.m100years, 2) + ' 年</b>，' +
+      '约 <b>' + x10(D.e7.m100universeAges, 1) + ' 个宇宙年龄</b>。' +
+      '而真实的小蛋白在<b>毫秒</b>里折好 —— 要在 1 毫秒内试完这 ' + x10(D.e7.m100count, 1) + ' 个构型，' +
+      '需要每秒试 <b>' + x10(D.e7.requiredRate, 1) + '</b> 个，是本机实测吞吐的 <b>' + x10(D.e7.rateGap, 1) + ' 倍</b>。');
+    setHTML('ro-lev2', '这就是 Levinthal 佯谬的量化形式。注意「墙」的口径：' +
+      '这里说的是<b>穷举一遍</b>。退火用 <b>' + int(D.e4Eval20) + '</b> 次求值就找到了 20 个单体的基态，' +
+      '但那个数字随链长增长得慢得多（第肆章）—— 差别不在空间大小，在地形有没有坡度。');
+
+    var h = '<thead><tr><th>单体数</th><th class="mono">构型数</th><th>本机穷举耗时</th>' +
+      '<th class="mono">宇宙年龄倍数</th><th>来源</th></tr></thead><tbody>';
+    D.e7.table.forEach(function (r) {
+      h += '<tr><td>' + r.m + '</td><td class="mono">10^' + r.log10Count.toFixed(1) + '</td>' +
+        '<td>' + r.human + '</td>' +
+        '<td class="mono">' + (r.universeAges < 1 ? '—' : x10(r.universeAges, 1)) + '</td>' +
+        '<td>' + (r.measured ? '实测' : '外推') + '</td></tr>';
+    });
+    h += '</tbody>';
+    setHTML('t-lev', h);
+
+    var h2 = '<thead><tr><th>单体数</th><th class="mono">基态形状</th><th class="mono">均匀采样期望样本数</th>' +
+      '<th class="mono">穷举搜索节点</th></tr></thead><tbody>';
+    D.e3SampleWall.forEach(function (r) {
+      h2 += '<tr><td>' + r.m + '</td><td class="mono">' + int(r.shapes) + '</td>' +
+        '<td class="mono">' + (r.expectedSamples < 1e4 ? int(r.expectedSamples) : x10(r.expectedSamples, 1)) + '</td>' +
+        '<td class="mono">' + int(r.exhaustiveNodes) + '</td></tr>';
+    });
+    h2 += '</tbody>';
+    setHTML('t-sample', h2);
+  }
+
+  /* ============================================================ 捌 */
+  function renderEight() {
+    // 实测一栏可能是一长串数字（比如 21 项 OEIS）—— 截短，完整对照在第贰章的 c_n 表里
+    var h = '<thead><tr><th>对照项</th><th>主张</th><th>实测</th><th>判定</th></tr></thead><tbody>';
+    D.controls.forEach(function (c) {
+      var mv = String(c.measured);
+      var shown = mv.length > 46 ? mv.slice(0, 44) + ' …' : mv;
+      h += '<tr><td>' + esc(c.name) + '</td><td>' + esc(c.claim) + '</td>' +
+        '<td class="mono">' + esc(shown) + '</td>' +
+        '<td class="' + (c.ok ? 'ok' : 'bad') + '">' + (c.ok ? '通过' : '失败') + '</td></tr>';
+    });
+    h += '</tbody>';
+    setHTML('t-controls', h);
+
+    var ol = '';
+    A.conclusions.forEach(function (c) { ol += '<li>' + md(c.text) + '</li>'; });
+    setHTML('l-concl', ol);
+
+    var ul = '';
+    A.boundaries.forEach(function (b) { ul += '<li>' + md(b.text) + '</li>'; });
+    setHTML('l-bound', ul);
+
+    var hv = '<thead><tr><th>验证项</th><th class="wrapok">期望</th><th class="wrapok">实测</th><th>判定</th></tr></thead><tbody>';
+    A.verify.forEach(function (v) {
+      hv += '<tr><td>' + esc(v.name) + '</td><td class="wrapok">' + esc(v.expected) + '</td>' +
+        '<td class="wrapok mono">' + esc(v.measured) + '</td>' +
+        '<td class="' + (v.ok ? 'ok' : 'bad') + '">' + (v.ok ? '通过' : '失败') + '</td></tr>';
+    });
+    hv += '</tbody>';
+    setHTML('t-verify', hv);
+
+    setHTML('foot-line', '模型自检、标定 8 组、构建期检查与真实浏览器三档视口验证全部跑过。' +
+      '本页内联了 <b>' + int(A.meta.coreKeys) + '</b> 个模型导出、' +
+      '派生量 ' + int(Object.keys(D).length) + ' 项、结论 ' + A.conclusions.length + ' 条、边界 ' +
+      A.boundaries.length + ' 条、验证表 ' + A.verify.length + ' 行。');
+  }
+
+  /* ============================================================ 标签页 */
+  var TABS = [
+    ['one', '壹 · 一条链'],
+    ['two', '贰 · 有多少种走法'],
+    ['three', '叁 · 最省的那一个'],
+    ['four', '肆 · 找不找得到'],
+    ['five', '伍 · 形状比序列稀少'],
+    ['six', '陆 · 疏水核'],
+    ['seven', '柒 · 100 个单体'],
+    ['eight', '捌 · 可信与边界']
+  ];
+  var curTab = 'one';
+  var PANEL_RENDER = {
+    one: renderOne, two: renderTwo, three: renderThree, four: renderFour,
+    five: renderFive, six: renderSix, seven: renderSeven, eight: renderEight
+  };
+  function setTab(id) {
+    curTab = id;
+    TABS.forEach(function (t) {
+      var p = $('p-' + t[0]);
+      if (p) p.className = 'panel' + (t[0] === id ? ' on' : '');
+    });
+    var bs = document.querySelectorAll('#tabs button');
+    for (var i = 0; i < bs.length; i++) {
+      bs[i].setAttribute('aria-selected', bs[i].getAttribute('data-tab') === id ? 'true' : 'false');
+    }
+    // 面板这时候才可见 —— 用容器的真实宽度重画一遍，图上的字才不会被缩小
+    if (PANEL_RENDER[id]) {
+      try { PANEL_RENDER[id](); } catch (e) { window.__renderError = String(e && e.message); }
+    }
+    return id;
+  }
+
+  function renderAll() {
+    renderKpis();
+    TABS.forEach(function (t) { if (PANEL_RENDER[t[0]]) PANEL_RENDER[t[0]](); });
+    setTab(curTab || 'one');
+  }
+
+  /* ============================================================ 事件 */
+  function bind() {
+    var nav = $('tabs'), h = '';
+    TABS.forEach(function (t) {
+      h += '<button type="button" data-tab="' + t[0] + '" aria-selected="' +
+        (t[0] === 'one' ? 'true' : 'false') + '">' + esc(t[1]) + '</button>';
+    });
+    nav.innerHTML = h;
+    nav.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-tab]') : null;
+      if (b) setTab(b.getAttribute('data-tab'));
+    });
+
+    $('seqbar').addEventListener('click', function (e) {
+      var s = e.target.closest ? e.target.closest('span[data-i]') : null;
+      if (!s) return;
+      var i = +s.getAttribute('data-i');
+      bench.seq[i] = bench.seq[i] ? 0 : 1;
+      bench.exact = null;
+      drawSeqbar(); drawChain(); benchNow(); benchNote();
+      setText('ro-bench-exact', '序列改了，还没穷举。');
+    });
+
+    document.querySelector('.bench').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-act]') : null;
+      if (!b) return;
+      var act = b.getAttribute('data-act');
+      if (act === 'rand' || act === 'allH' || act === 'allP' || act === 'alt') {
+        bench.seed = (bench.seed * 1103515245 + 12345) >>> 0;
+        setBenchSeq(randSeq(bench.m, C.makeRng(bench.seed, 'sq'), act === 'rand' ? 'random' : act));
+      } else if (act === 'rev') {
+        var q = new Uint8Array(bench.m), i;
+        for (i = 0; i < bench.m; i++) q[i] = bench.seq[bench.m - 1 - i];
+        setBenchSeq(q);
+      } else if (act === 'reset') {
+        bench.seed = (bench.seed * 1103515245 + 12345) >>> 0;
+        benchReset(); drawChain(); benchNow();
+      } else if (act === 'exact') {
+        setText('ro-bench-exact', '穷举中…（' + bench.m + ' 个单体最多要跑一两秒）');
+        setTimeout(function () { benchExact(); benchNote(); }, 20);
+      } else if (act === 'anneal') {
+        setText('ro-bench-mc', '退火中…');
+        setTimeout(function () { benchMC('anneal', 20000); }, 20);
+      } else if (act === 'greedy') {
+        setText('ro-bench-mc', '贪心中…');
+        setTimeout(function () { benchMC('greedy'); }, 20);
+      }
+    });
+
+    $('m-range').addEventListener('input', function () {
+      setBenchM(+this.value);
+    });
+
+    var rt = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(rt);
+      rt = setTimeout(function () { try { renderAll(); } catch (e) { } }, 200);
+    });
+  }
+
+  /* ============================================================ 探针 */
+  function svgOf(host) {
+    for (var i = 0; i < host.childNodes.length; i++) {
+      var nd = host.childNodes[i];
+      if (nd.nodeType === 1 && nd.tagName.toLowerCase() === 'svg') return nd;
+    }
+    return null;
+  }
+  window.__probe = {
+    version: 'fold-1',
+    setTab: function (id) { return setTab(id); },
+    tabIds: function () { return TABS.map(function (t) { return t[0]; }); },
+    viewport: function () {
+      return { w: document.documentElement.clientWidth, h: document.documentElement.clientHeight,
+        scrollW: document.documentElement.scrollWidth, innerW: window.innerWidth,
+        dpr: window.devicePixelRatio || 1 };
+    },
+    /* 溢出：文档级。显式滚动容器（.tbl-wrap）内部的内容不算 —— 那是设计如此。
+       但标签栏不算滚动容器：它是导航，用户必须看得见（见《比特之漏》那条教训）。 */
+    overflow: function () {
+      var cw = document.documentElement.clientWidth, out = [];
+      function inScrollBox(e) {
+        var p = e.parentElement;
+        while (p && p !== document.body) {
+          var ox = '';
+          try { ox = getComputedStyle(p).overflowX; } catch (err) { ox = ''; }
+          if (ox === 'auto' || ox === 'scroll') return true;
+          p = p.parentElement;
+        }
+        return false;
+      }
+      document.querySelectorAll('*').forEach(function (e) {
+        var r = e.getBoundingClientRect();
+        if (r.width > 0 && r.right > cw + 1 && !inScrollBox(e)) {
+          out.push(e.tagName + (e.id ? '#' + e.id : '') + ' w=' + Math.round(r.width) + ' right=' + Math.round(r.right));
+        }
+      });
+      return out.slice(0, 12);
+    },
+    /* 滚动容器自己必须待在视口里 */
+    wraps: function () {
+      var cw = document.documentElement.clientWidth, out = [];
+      document.querySelectorAll('.tbl-wrap').forEach(function (w) {
+        var r = w.getBoundingClientRect();
+        var t = w.querySelector('table');
+        out.push({ id: t ? t.id : '?', right: Math.round(r.right), w: Math.round(r.width),
+          inner: t ? Math.round(t.getBoundingClientRect().width) : 0,
+          scrollW: w.scrollWidth, clientW: w.clientWidth });
+      });
+      return out;
+    },
+    charts: function () {
+      var out = [];
+      document.querySelectorAll('.chart').forEach(function (c) {
+        var svg = svgOf(c);
+        var stray = 0, kids = 0, w = 0, h = 0, ticks = 0, nanTicks = 0, bars = 0, textOut = 0;
+        for (var a = 0; a < c.childNodes.length; a++) {
+          var nd = c.childNodes[a];
+          if (nd.nodeType !== 1) continue;
+          if (nd.tagName.toLowerCase() !== 'svg') stray++;
+        }
+        if (svg) {
+          kids = svg.children.length;
+          var r = svg.getBoundingClientRect();
+          w = r.width; h = r.height;
+          ticks = svg.querySelectorAll('text').length;
+          bars = svg.querySelectorAll('rect.bar').length;
+          svg.querySelectorAll('text').forEach(function (t) {
+            if (/NaN|Infinity|undefined/.test(t.textContent || '')) nanTicks++;
+            var tr = t.getBoundingClientRect();
+            if (tr.width > 0 && (tr.right > r.right + 1 || tr.left < r.left - 1)) textOut++;
+          });
+        }
+        out.push({ id: c.id, w: Math.round(w), h: Math.round(h), ticks: ticks,
+          nanTicks: nanTicks, textOut: textOut, stray: stray, kids: kids, bars: bars,
+          visible: w > 0 && h > 0, dropped: +(c.getAttribute('data-dropped') || 0) });
+      });
+      return out;
+    },
+    bars: function () {
+      var o = {};
+      document.querySelectorAll('.chart').forEach(function (c) {
+        var arr = [];
+        c.querySelectorAll('rect.bar').forEach(function (b) {
+          var r = b.getBoundingClientRect();
+          arr.push([Math.round(r.width * 10) / 10, Math.round(r.height * 10) / 10]);
+        });
+        o[c.id] = arr;
+      });
+      return o;
+    },
+    counts: function () {
+      var o = { kpi: document.querySelectorAll('#kpis .kpi').length,
+        tabs: document.querySelectorAll('#tabs button').length,
+        panels: document.querySelectorAll('.panel').length,
+        panelsOn: document.querySelectorAll('.panel.on').length,
+        charts: document.querySelectorAll('.chart').length,
+        conclusions: document.querySelectorAll('#l-concl li').length,
+        boundaries: document.querySelectorAll('#l-bound li').length,
+        seqbar: document.querySelectorAll('#seqbar span').length };
+      var m = {};
+      document.querySelectorAll('table.dt').forEach(function (t) {
+        m[t.id] = t.querySelectorAll('tbody tr').length;
+      });
+      o.rows = m;
+      return o;
+    },
+    texts: function () {
+      var o = {}, ids = ['ro-mu', 'ro-mu2', 'ro-deg', 'ro-rate', 'ro-adv', 'ro-shapes',
+        'ro-design', 'ro-desig-contact', 'ro-rg', 'ro-lev', 'ro-lev2', 'foot-line',
+        'ro-bench-seq', 'ro-bench-now', 'ro-bench-exact', 'ro-bench-mc', 'ro-bench-note', 'm-out'];
+      ids.forEach(function (id) { var e = $(id); o[id] = e ? (e.textContent || '') : null; });
+      return o;
+    },
+    tabsFit: function () {
+      var nav = $('tabs');
+      var nr = nav.getBoundingClientRect(), out = [];
+      nav.querySelectorAll('button').forEach(function (b) {
+        var r = b.getBoundingClientRect();
+        if (r.right > nr.right + 1 || r.left < nr.left - 1) out.push(b.textContent.trim());
+      });
+      return { total: nav.querySelectorAll('button').length, out: out,
+        scrollW: nav.scrollWidth, clientW: nav.clientWidth };
+    },
+    touch: function () {
+      var out = [];
+      document.querySelectorAll('#tabs button, .btnrow button, .seqbar span, input[type=range]').forEach(function (e) {
+        var r = e.getBoundingClientRect();
+        if (r.height > 0) out.push({ tag: e.tagName, h: Math.round(r.height) });
+      });
+      return out;
+    },
+    wrapScan: function () {
+      var bad = [];
+      document.querySelectorAll('table.dt:not(.wrapok) tbody td').forEach(function (td) {
+        var txt = (td.textContent || '').trim();
+        if (!txt) return;
+        var rg = document.createRange();
+        rg.selectNodeContents(td);
+        var rs = rg.getClientRects(), k = 0;
+        for (var i = 0; i < rs.length; i++) if (rs[i].width > 0.5) k++;
+        if (k > 1) bad.push('#' + td.closest('table').id + ' 「' + txt.slice(0, 22) + '」折成 ' + k + ' 行');
+      });
+      return bad;
+    },
+    htmlLeaks: function () {
+      var bad = [];
+      var o = window.__probe.texts();
+      Object.keys(o).forEach(function (k) {
+        var s = o[k] || '';
+        if (/<b>|<\/b>|<code>|<\/code>|\*\*/.test(s)) bad.push(k + ' → ' + s.slice(0, 70));
+      });
+      document.querySelectorAll('#l-concl li, #l-bound li, .ro, .kpi').forEach(function (e) {
+        var s = e.textContent || '';
+        if (/\*\*/.test(s)) bad.push('可见文本里有 markdown 星号：' + s.slice(0, 60));
+      });
+      return bad;
+    },
+    // ---- 驱动接口：先切语义开关，再动参数 ----
+    bench: function (m) {
+      if (m) setBenchM(m);
+      return { m: bench.m, seq: C.seqToString(bench.seq) };
+    },
+    benchSeq: function (s) {
+      var q = C.seqFromString(s);
+      setBenchSeq(q);
+      return { m: bench.m, seq: C.seqToString(bench.seq) };
+    },
+    /* 只换序列、不动构型（长度必须一样）—— 用来把「序列」和「构型」两个变量分开 */
+    benchSeqKeep: function (s) {
+      var q = C.seqFromString(s);
+      if (q.length !== bench.m) { setBenchSeq(q); }
+      else { bench.seq = q; bench.exact = null; drawSeqbar(); drawChain(); benchNow(); benchNote(); }
+      return { m: bench.m, seq: C.seqToString(bench.seq) };
+    },
+    benchToggle: function (i) {
+      bench.seq[i] = bench.seq[i] ? 0 : 1;
+      bench.exact = null;
+      drawSeqbar(); drawChain(); benchNow();
+      return C.seqToString(bench.seq);
+    },
+    benchExact: function () { var r = benchExact(); benchNote(); return { Emin: r.Emin, conf: r.nOptimalConf, shapes: r.nOptimalShapes, nodes: r.nodes }; },
+    benchMC: function (steps) { var f = benchMC('anneal', steps || 8000); return { E: f.bestE, evals: f.evals, hit: f.hit }; },
+    benchGreedy: function () { var f = benchMC('greedy'); return { E: f.E, evals: f.evals, hit: f.hit }; },
+    benchReset: function () {
+      bench.seed = (bench.seed * 1103515245 + 12345) >>> 0;
+      benchReset(); drawChain(); benchNow(); benchNote();
+      return window.__probe.chainBars();
+    },
+    // 行为判据：同一条读数在两个参数下必须不同
+    chainBars: function () {
+      var svg = svgOf($('c-chain'));
+      if (!svg) return null;
+      var out = [];
+      svg.querySelectorAll('circle.res').forEach(function (c) {
+        var r = c.getBoundingClientRect();
+        out.push(Math.round(r.left * 10) / 10 + ',' + Math.round(r.top * 10) / 10);
+      });
+      return out.join('|');
+    },
+    chainContacts: function () {
+      var svg = svgOf($('c-chain'));
+      return svg ? svg.querySelectorAll('line.contact').length : -1;
+    }
+  };
+
+  /* ============================================================ 启动 */
+  function boot() {
+    try {
+      bind();
+      renderAll();
+      window.__ready = true;
+    } catch (e) {
+      window.__bootError = String(e && e.message) + ' @@ ' + String((e && e.stack) || '').split('\n').slice(0, 4).join(' | ');
+      window.__ready = false;
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

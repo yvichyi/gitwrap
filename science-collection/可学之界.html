@@ -1,0 +1,2172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>可学之界 · VC 维与学习的极限</title>
+<style>
+/* ============================================================
+ * 《可学之界》样式 —— 浅色主题
+ * 设计约束（全部来自踩过的坑）：
+ *   1. 基础样式就是最终可见态，不用 animation + opacity:0（headless 下元素会永久不可见）
+ *   2. Grid 子项一律 min-width:0（1fr 的默认 min-width:auto 会被宽表顶破）
+ *   3. 宽表容器 overflow-x:auto，且关键列在窄屏放开折行
+ *   4. 窄屏触控目标 ≥ 44px，逐个查 button / select / input
+ * ========================================================== */
+:root {
+  --ink: #14161b;
+  --ink2: #3d444f;
+  --muted: #6a7383;
+  --line: #dfe3ea;
+  --line2: #eef1f5;
+  --panel: #fbfcfe;
+  --panel2: #f4f7fa;
+  --bg: #ffffff;
+  --hot: #b3261e;
+  --hot2: #e8b4b0;
+  --good: #1a6b45;
+  --good2: #a9d3bd;
+  --cool: #1f4f8f;
+  --cool2: #b6cbe6;
+  --warn: #8a5a00;
+  --warn2: #e6cfa0;
+  --purple: #5b3a8f;
+  --mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.72;
+  -webkit-font-smoothing: antialiased;
+}
+
+body { overflow-x: hidden; }
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px 96px; }
+
+/* ---------- 头版 ---------- */
+header.top {
+  border-bottom: 1px solid var(--line);
+  padding: 44px 0 26px;
+  margin-bottom: 26px;
+}
+.eyebrow {
+  font-size: 12px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 12px;
+}
+h1.title {
+  font-size: 40px; line-height: 1.16; margin: 0 0 14px; font-weight: 650;
+  letter-spacing: -.015em;
+}
+h1.title em { font-style: normal; color: var(--hot); }
+.lede { font-size: 16.5px; color: var(--ink2); max-width: 74ch; margin: 0 0 6px; }
+.lede b { color: var(--ink); font-weight: 650; }
+.meta-line { font-size: 12.5px; color: var(--muted); font-family: var(--mono); margin-top: 14px; }
+
+/* ---------- KPI ---------- */
+#kpis {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px; margin: 24px 0 30px;
+}
+#kpis > * { min-width: 0; }
+.kpi {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+  padding: 14px 15px 13px; position: relative; overflow: hidden;
+}
+.kpi::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--muted);
+}
+.kpi.good::before { background: var(--good); }
+.kpi.bad::before { background: var(--hot); }
+.kpi.warn::before { background: var(--warn); }
+.kpi.hot::before { background: var(--hot); }
+.kpi .k-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; letter-spacing: .02em; }
+.kpi .k-value { font-size: 25px; font-weight: 660; letter-spacing: -.02em; line-height: 1.15; }
+.kpi .k-unit { font-size: 12.5px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+.kpi .k-note { font-size: 12px; color: var(--muted); margin-top: 7px; line-height: 1.55; }
+
+/* ---------- 标签栏 ---------- */
+nav.tabs {
+  display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto;
+  border-bottom: 1px solid var(--line); margin-bottom: 26px; padding-bottom: 0;
+}
+nav.tabs button {
+  appearance: none; background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--muted); font: inherit; font-size: 13.5px; padding: 10px 13px 9px;
+  cursor: pointer; white-space: nowrap; min-height: 44px;
+}
+nav.tabs button:hover { color: var(--ink2); }
+nav.tabs button.on { color: var(--ink); border-bottom-color: var(--hot); font-weight: 600; }
+
+section.panel { display: none; }
+section.panel.on { display: block; }
+
+/* ---------- 排版 ---------- */
+h2 {
+  font-size: 24px; margin: 4px 0 6px; font-weight: 640; letter-spacing: -.012em;
+}
+h2 .num { color: var(--hot); font-family: var(--mono); font-size: 15px; margin-right: 10px; font-weight: 500; }
+h3 { font-size: 16px; margin: 30px 0 10px; font-weight: 640; }
+p { margin: 0 0 13px; color: var(--ink2); }
+p b, li b { color: var(--ink); font-weight: 640; }
+.sec-lede { font-size: 15.5px; color: var(--ink2); max-width: 78ch; margin-bottom: 20px; }
+code, .mono { font-family: var(--mono); font-size: 13px; background: var(--panel2); padding: 1px 5px; border-radius: 4px; }
+.hl { background: linear-gradient(transparent 62%, #ffe9a8 62%); font-weight: 600; color: var(--ink); }
+
+ul.tight { margin: 0 0 14px; padding-left: 20px; }
+ul.tight li { margin-bottom: 7px; color: var(--ink2); }
+
+/* ---------- 面板 ---------- */
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.grid2 > *, .grid3 > * { min-width: 0; }
+.grid2.asym { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+.grid2.asym2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr); }
+
+.panel-box {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+  padding: 15px 16px; min-width: 0;
+}
+.panel-box > h4 {
+  margin: 0 0 11px; font-size: 13.5px; font-weight: 640; color: var(--ink);
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+}
+.panel-box > h4 .sub { font-size: 12px; color: var(--muted); font-weight: 400; }
+.note { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; line-height: 1.6; }
+
+/* ---------- 图表 ---------- */
+.chart { width: 100%; min-width: 0; overflow: hidden; }
+.chart svg { display: block; width: 100%; height: auto; max-width: 100%; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink2); margin: 9px 0 0; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.legend i.dash { height: 0; border-top: 2px dashed currentColor; }
+.legend i.dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* ---------- 表格 ---------- */
+.tbl-wrap { overflow-x: auto; max-width: 100%; min-width: 0; margin: 12px 0 0; }
+table.dt { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+table.dt th, table.dt td {
+  border-bottom: 1px solid var(--line2); padding: 6px 9px; text-align: right;
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+table.dt th { color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); font-size: 12px; }
+table.dt td.l, table.dt th.l { text-align: left; }
+table.dt tr:hover td { background: var(--panel2); }
+table.dt td.hot { color: var(--hot); font-weight: 640; }
+table.dt td.good { color: var(--good); font-weight: 640; }
+table.dt td.dim { color: var(--muted); }
+table.dt tfoot td { border-top: 1px solid var(--line); border-bottom: 0; color: var(--muted); }
+
+/* ---------- 控件 ---------- */
+.ctl-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+.ctl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ctl > label { font-size: 11.5px; color: var(--muted); letter-spacing: .02em; }
+select, input[type="range"], input[type="number"] {
+  font: inherit; font-size: 13px; padding: 7px 9px; border: 1px solid var(--line);
+  border-radius: 7px; background: #fff; color: var(--ink); min-height: 40px;
+}
+input[type="range"] { padding: 0; min-width: 150px; }
+button.btn {
+  appearance: none; font: inherit; font-size: 13px; padding: 9px 14px; min-height: 44px;
+  border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--ink);
+  cursor: pointer;
+}
+button.btn:hover { border-color: var(--muted); }
+button.btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+button.btn.primary:hover { background: #000; }
+
+/* 点选格 */
+.picker { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.picker button {
+  appearance: none; width: 34px; height: 34px; border: 1px solid var(--line);
+  border-radius: 6px; background: #fff; color: var(--muted); cursor: pointer;
+  font-family: var(--mono); font-size: 12px; min-height: 34px;
+}
+.picker button.sel { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* 标注表 */
+.pat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 5px; margin-top: 8px; }
+.pat {
+  font-family: var(--mono); font-size: 12px; padding: 5px 7px; border-radius: 6px;
+  border: 1px solid var(--line); background: #fff; display: flex; justify-content: space-between; gap: 6px;
+}
+.pat.yes { border-color: var(--good2); background: #f2faf6; color: var(--good); }
+.pat.no { border-color: var(--line); background: var(--panel2); color: var(--muted); }
+
+/* 读数条 */
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 12px; }
+.ro { border: 1px solid var(--line2); border-radius: 8px; padding: 8px 10px; background: #fff; min-width: 0; }
+.ro .rl { font-size: 11.5px; color: var(--muted); }
+.ro .rv { font-size: 17px; font-weight: 640; font-variant-numeric: tabular-nums; }
+.ro .rv.hot { color: var(--hot); }
+.ro .rv.good { color: var(--good); }
+
+/* ---------- 结论 / 边界 ---------- */
+ol.conc { counter-reset: c; list-style: none; padding: 0; margin: 6px 0 0; }
+ol.conc li {
+  counter-increment: c; position: relative; padding: 9px 0 9px 40px;
+  border-bottom: 1px solid var(--line2); font-size: 14px; color: var(--ink2);
+}
+ol.conc li::before {
+  content: counter(c, decimal-leading-zero); position: absolute; left: 0; top: 10px;
+  font-family: var(--mono); font-size: 12px; color: var(--hot);
+}
+ul.bound { list-style: none; padding: 0; margin: 6px 0 0; }
+ul.bound li {
+  padding: 9px 0 9px 24px; border-bottom: 1px solid var(--line2);
+  font-size: 13.5px; color: var(--ink2); position: relative;
+}
+ul.bound li::before { content: '·'; position: absolute; left: 8px; color: var(--muted); font-weight: 700; }
+
+/* ---------- 页脚 ---------- */
+footer.end {
+  border-top: 1px solid var(--line); margin-top: 40px; padding-top: 18px;
+  font-size: 12.5px; color: var(--muted);
+}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 900px) {
+  #kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  body { font-size: 14.5px; }
+  .wrap { padding: 0 13px 72px; }
+  h1.title { font-size: 27px; }
+  h2 { font-size: 20px; }
+  #kpis { grid-template-columns: minmax(0, 1fr); }
+  .grid2, .grid3, .grid2.asym, .grid2.asym2 { grid-template-columns: minmax(0, 1fr); }
+  .kpi .k-value { font-size: 22px; }
+  table.dt th, table.dt td { padding: 5px 7px; font-size: 11.5px; }
+  table.dt.wrapok th, table.dt.wrapok td { white-space: normal; overflow-wrap: anywhere; }
+  select, input[type="number"], input[type="range"], button.btn { min-height: 44px; }
+  /* 点选格在窄屏也要 ≥ 44px —— 上一版写成 40px，探针当场报出 6 个不达标 */
+  .picker button { width: 44px; height: 44px; min-height: 44px; }
+  .pat-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">单文件科学装置 · 第 8 件 · 统计学习理论</p>
+    <h1 class="title">可学之界</h1>
+    <p class="lede">
+      「学得会」这件事有没有上限？有的。而且那个上限不是一句口号，是<b>一条可以逐条核对的不等式</b>：
+      一个概念类如果 VC 维是 <span class="mono">d</span>，那么它在 <span class="mono">m</span> 个样本上最多只能表现出
+      <span class="mono">Σ<sub>i≤d</sub>C(m,i)</span> 种行为 —— 一个 <span class="mono">m</span> 的
+      <b>d 次多项式</b>，而不是指数级的 <span class="mono">2<sup>m</sup></span>。
+    </p>
+    <p class="lede">
+      本页从零实现这套机器，把 N=4 上的<b>全部 65,536 个概念类</b>穷举一遍来核对这条不等式，
+      再拿它算出来的"需要多少样本"去和实测对账；最后量一个反直觉的东西：
+      <b>无穷 VC 维的代价，只在对手挑的样本上出现</b>。
+    </p>
+    <p class="meta-line" id="meta-line"></p>
+  </header>
+
+  <div id="kpis"></div>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <!-- ============ 壹 · 打散 ============ -->
+  <section class="panel" id="p-shatter">
+    <h2><span class="num">壹</span>打散</h2>
+    <p class="sec-lede">
+      域是一串点 <span class="mono">X = {0, 1, …, N−1}</span>。一个<b>概念</b>是 X 的一个子集（标 +1 的那些点）；
+      一个<b>概念类</b>是一堆概念。如果某个点集 S 的<b>每一种标注方式</b>都能被类里某个概念实现，
+      就说 S 被这个类<b>打散</b>了；能被同时打散的最大点数，就是这个类的 <b>VC 维</b>。
+    </p>
+
+    <div class="grid2 asym">
+      <div class="panel-box">
+        <h4>实验台 <span class="sub">选一个概念类，再点几个点，看它们能不能被打散</span></h4>
+        <div class="ctl-row">
+          <div class="ctl">
+            <label>概念类</label>
+            <select id="sh-class"></select>
+          </div>
+          <div class="ctl">
+            <label>域大小 N</label>
+            <select id="sh-n">
+              <option value="5">5</option>
+              <option value="6" selected>6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+            </select>
+          </div>
+        </div>
+        <div class="picker" id="sh-picker"></div>
+        <div class="note">点方格选中/取消。选中的集合就是 S。</div>
+        <div class="readouts" id="sh-readout"></div>
+      </div>
+
+      <div class="panel-box">
+        <h4>这 2<sup>|S|</sup> 种标注 <span class="sub">绿 = 类里有概念能实现它</span></h4>
+        <div class="pat-grid" id="sh-pats"></div>
+        <p class="note" id="sh-verdict"></p>
+      </div>
+    </div>
+
+    <h3>增长函数：Π<sub>H</sub>(m) 与两条天花板</h3>
+    <div class="grid2 asym">
+      <div class="panel-box">
+        <div class="chart" id="c-growth"></div>
+        <div class="legend" id="lg-growth"></div>
+        <p class="note" id="nt-growth"></p>
+      </div>
+      <div class="panel-box">
+        <h4>为什么"N=4 上只有 1 个类能打散 4 个点"</h4>
+        <div class="tbl-wrap">
+          <table class="dt" id="t-dims">
+            <thead><tr><th class="l">VC 维 d</th><th>概念类个数</th><th>占比</th><th>最大增长函数 Π(4)</th><th>Σ<sub>i≤d</sub>C(4,i)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="note" id="nt-dims"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 贰 · 一条不等式 ============ -->
+  <section class="panel" id="p-sauer">
+    <h2><span class="num">贰</span>一条不等式，和一个 13 亿倍的比值</h2>
+    <p class="sec-lede">
+      Sauer–Shelah 引理：如果 <span class="mono">VCdim(H) = d</span>，那么对任意
+      <span class="mono">m</span>，<span class="mono">Π<sub>H</sub>(m) ≤ Σ<sub>i≤d</sub>C(m,i)</span>。
+      这条不等式就是"学习"这件事的全部数学内容 —— 它把<b>指数级的可能性</b>压成了<b>多项式级的可能性</b>。
+    </p>
+
+    <div class="panel-box">
+      <h4>两条天花板 <span class="sub">d = 2 时，多项式天花板 vs 指数级"什么都可能"</span></h4>
+      <div class="chart" id="c-ceiling"></div>
+      <div class="legend" id="lg-ceiling"></div>
+      <p class="note" id="nt-ceiling"></p>
+    </div>
+
+    <h3>逐条核对：N=4 的全部 65,536 个概念类</h3>
+    <p>
+      一个 4 点域上只有 16 个可能的概念，所以全部概念类（也就是这 16 个概念的任意子集）一共
+      <span class="mono">2<sup>16</sup> = 65,536</span> 个 —— <b>可以一个不落地全枚举</b>。
+      对每一个类，先按定义算出它的 VC 维，再对 m = 0…4 逐个算增长函数，和
+      <span class="mono">Σ<sub>i≤d</sub>C(m,i)</span> 比对。
+    </p>
+    <div class="grid2 asym">
+      <div class="panel-box">
+        <div class="tbl-wrap">
+          <table class="dt wrapok" id="t-layered">
+            <thead><tr><th class="l">VC 维 d</th><th>m=1</th><th>m=2</th><th>m=3</th><th>m=4</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="note">每一格写的是「实测最大 Π<sub>H</sub>(m) ／ Sauer 界 Σ<sub>i≤d</sub>C(m,i)」。</p>
+      </div>
+      <div class="panel-box">
+        <h4>这一节的两个数</h4>
+        <div class="readouts" id="sa-readout"></div>
+        <p class="note" id="nt-sauer"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 叁 · 已知答案 ============ -->
+  <section class="panel" id="p-named">
+    <h2><span class="num">叁</span>十三个已知答案</h2>
+    <p class="sec-lede">
+      教科书上有一串现成的 VC 维：阈值是 1、区间是 2、k 段区间之并是 2k、轴对齐矩形是 4、n 位奇偶性是 n。
+      这些数字是本页<b>唯一的外部真值</b> —— 所以先拿它们校准：如果我的"按定义穷举打散"跑不出这些数，
+      后面所有结论都不用看了。
+    </p>
+    <div class="panel-box">
+      <div class="tbl-wrap">
+        <table class="dt wrapok" id="t-named">
+          <thead><tr><th class="l">概念类</th><th>域 N</th><th>|H|</th><th>实测 VC 维</th><th>真值</th><th>打散见证</th><th>判定</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="note" id="nt-named"></p>
+    </div>
+  </section>
+
+  <!-- ============ 肆 · 两种数法 ============ -->
+  <section class="panel" id="p-cover">
+    <h2><span class="num">肆</span>同一个问题，两种数法，差 102 个</h2>
+    <p class="sec-lede">
+      取 N 个一般位置的点（本页把它们放在抛物线上，任意三点不共线）。用一条直线能把这 N 个点
+      <b>分开的方式有多少种</b>？Cover 1965 给出闭式答案：
+      <span class="mono">2·Σ<sub>k≤2</sub>C(N−1,k) = N² − N + 2</span>。
+      这是本页第二个外部真值。
+    </p>
+    <div class="grid2 asym">
+      <div class="panel-box">
+        <h4>两条曲线：精确枚举 vs 朴素参数扫描</h4>
+        <div class="chart" id="c-cover"></div>
+        <div class="legend" id="lg-cover"></div>
+        <p class="note" id="nt-cover"></p>
+      </div>
+      <div class="panel-box">
+        <div class="tbl-wrap">
+          <table class="dt" id="t-cover">
+            <thead><tr><th>N</th><th>精确枚举</th><th>N²−N+2</th><th>朴素扫描</th><th>少了</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="note" id="nt-cover2"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 伍 · 界的价钱 ============ -->
+  <section class="panel" id="p-bounds">
+    <h2><span class="num">伍</span>界的价钱</h2>
+    <p class="sec-lede">
+      有了 VC 维，就能算出"要学到误差 ε、置信度 1−δ，需要多少样本"。教科书给了好几条这样的界。
+      本页把它们全部算出来，然后<b>真的跑一遍 ERM</b>，看现实到底要多少 ——
+      以及只换一条并列规则，这个数会怎么动。
+    </p>
+
+    <div class="grid2 asym">
+      <div class="panel-box">
+        <h4>实测成功率 vs 样本数 <span class="sub">竖线是三条界的位置</span></h4>
+        <div class="chart" id="c-sc"></div>
+        <div class="legend" id="lg-sc"></div>
+        <p class="note" id="nt-sc"></p>
+      </div>
+      <div class="panel-box">
+        <h4>三档界与实测</h4>
+        <div class="tbl-wrap">
+          <table class="dt wrapok" id="t-bounds">
+            <thead><tr><th class="l">口径</th><th>需要的样本数</th><th>比实测松</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="readouts" id="bd-readout"></div>
+      </div>
+    </div>
+
+    <h3>ERM 实验台</h3>
+    <p>
+      类 H 是"域上的所有区间"（VC 维 2）。目标是某个区间 f，你看不到它，只看到 m 个带标注的点。
+      ERM 的做法是：把所有训练误差最小的区间找出来（这个集合叫<b>版本空间</b>），然后<b>挑一个</b>。
+      "挑"这个动作没有理论指导 —— 所以本页把它做成一个显式参数。
+    </p>
+    <div class="grid2 asym">
+      <div class="panel-box">
+        <h4>抽一批样本，看 ERM 挑出什么</h4>
+        <div class="ctl-row">
+          <div class="ctl"><label>样本数 m</label><input type="range" id="er-m" min="4" max="256" step="4" value="32"></div>
+          <div class="ctl"><label>目标长度</label><input type="range" id="er-len" min="2" max="128" step="2" value="32"></div>
+          <div class="ctl"><label>并列规则</label>
+            <select id="er-tie">
+              <option value="random">随机取一个一致假设</option>
+              <option value="small">取最小的</option>
+              <option value="large">取最大的</option>
+            </select>
+          </div>
+          <div class="ctl"><button class="btn primary" id="er-go">重新抽一批</button></div>
+        </div>
+        <div class="chart" id="c-erm"></div>
+        <div class="legend" id="lg-erm"></div>
+        <div class="readouts" id="er-readout"></div>
+      </div>
+      <div class="panel-box">
+        <h4>换个目标形状，排名就换人</h4>
+        <div class="chart" id="c-tie"></div>
+        <div class="legend" id="lg-tie"></div>
+        <p class="note" id="nt-tie"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 陆 · 无穷 ============ -->
+  <section class="panel" id="p-infinite">
+    <h2><span class="num">陆</span>无穷那一头</h2>
+    <p class="sec-lede">
+      正弦分类器 <span class="mono">H = { x ↦ sign(sin(θx)) }</span> 的 VC 维是<b>无穷</b> ——
+      取点 <span class="mono">x<sub>i</sub> = 2<sup>−i</sup></span>，任意多个点、任意标注都能被某个 θ 实现。
+      这意味着 Sauer 那条多项式天花板彻底失效。但它到底有多糟？本页量了两个方向。
+    </p>
+
+    <div class="grid2 asym">
+      <div class="panel-box">
+        <h4>见证器 <span class="sub">给 m 个点随便标一套签，看能不能找到 θ</span></h4>
+        <div class="ctl-row">
+          <div class="ctl"><label>点数 m</label>
+            <select id="si-m"><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option></select>
+          </div>
+          <div class="ctl"><button class="btn" id="si-rand">随机一套标注</button></div>
+        </div>
+        <div class="picker" id="si-picker"></div>
+        <div class="note">点方格切换该点的标注（+1 / −1）。</div>
+        <div class="chart" id="c-sine"></div>
+        <div class="legend" id="lg-sine"></div>
+        <p class="note" id="si-verdict"></p>
+      </div>
+      <div class="panel-box">
+        <h4>两个方向的测量</h4>
+        <div class="chart" id="c-version"></div>
+        <div class="legend" id="lg-version"></div>
+        <p class="note" id="nt-version"></p>
+      </div>
+    </div>
+
+    <div class="grid2 asym2">
+      <div class="panel-box">
+        <h4>对手构造下，版本空间一步不动</h4>
+        <div class="tbl-wrap">
+          <table class="dt" id="t-adv">
+            <thead><tr><th>m</th><th>标注总数</th><th>可实现</th><th>版本空间直径（误差）</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="note" id="nt-adv"></p>
+      </div>
+      <div class="panel-box">
+        <h4>随机样本下，版本空间照样收缩</h4>
+        <div class="tbl-wrap">
+          <table class="dt" id="t-rand">
+            <thead><tr><th>m</th><th>一致集合占比</th><th>最坏误差</th><th>平均误差</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="note" id="nt-rand"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 柒 · 墙与验证 ============ -->
+  <section class="panel" id="p-wall">
+    <h2><span class="num">柒</span>墙，以及这些数字凭什么可信</h2>
+    <p class="sec-lede">
+      这一节把三件事放在一起：<b>枚举墙</b>（多大规模就做不动了）、
+      <b>天花板</b>（那条多项式到底压掉了多少）、以及<b>验证表</b>（哪个数字来自哪里）。
+    </p>
+
+    <div class="grid2 asym">
+      <div class="panel-box">
+        <h4>枚举墙 <span class="sub">概念类个数随域大小的增长（对数轴）</span></h4>
+        <div class="chart" id="c-wall"></div>
+        <div class="legend" id="lg-wall"></div>
+        <p class="note" id="nt-wall"></p>
+      </div>
+      <div class="panel-box">
+        <h4>天花板压掉了多少</h4>
+        <div class="tbl-wrap">
+          <table class="dt" id="t-ceiling">
+            <thead><tr><th>VC 维 d</th><th>m</th><th>Σ<sub>i≤d</sub>C(m,i)</th><th>2<sup>m</sup></th><th>倍数</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <h3>结论</h3>
+    <ol class="conc" id="conclusions"></ol>
+
+    <h3>我没做到什么</h3>
+    <ul class="bound" id="boundaries"></ul>
+
+    <h3>验证表</h3>
+    <div class="panel-box">
+      <div class="tbl-wrap">
+        <table class="dt wrapok" id="t-verify">
+          <thead><tr><th class="l">主张</th><th class="l">本页实测</th><th class="l">来源</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer class="end">
+    <p>
+      单文件装置，双击即开，不需要联网。页面上的每个数字都来自一次真实计算：
+      模型在 <span class="mono">core.js</span>（Node 与浏览器共用同一份源码），
+      标定在 <span class="mono">calibrate.js</span>，派生量在 <span class="mono">analyze.js</span>。
+    </p>
+    <p class="meta-line" id="foot-line"></p>
+  </footer>
+
+</div>
+
+<script>
+/* ---- core.js（模型，Node 与浏览器共用同一份源码） ---- */
+/* ============================================================
+ * core.js —— 《可学之界》全部模型
+ *
+ * 对象：概念类（concept class）、打散（shattering）、VC 维、
+ *       增长函数 Π_H(m)、Sauer–Shelah 界、PAC 样本复杂度。
+ *
+ * UMD：Node 与浏览器共用同一份源码。
+ *
+ * 约定：域 X = {0, 1, …, N-1}。一个**概念**是 X 的一个子集
+ *      （= 标 +1 的那些点），用一个 N 位的位向量表示，
+ *      位向量是长度 W = ceil(N/32) 的 32 位整数数组。
+ *      一个**概念类** H 是一组概念的数组。
+ * ========================================================== */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.VCCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* ============================================================
+   * 〇、确定性 PRNG（splitmix32）
+   * 每个实例由 (种子, 标签) 唯一确定 —— 扫描顺序改变不影响任何单个实例。
+   * ========================================================== */
+  function splitmix32(seed) {
+    var a = (seed | 0) >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 16), 0x21f0aaad) >>> 0;
+      t = Math.imul(t ^ (t >>> 15), 0x735a2d97) >>> 0;
+      return ((t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ============================================================
+   * 一、位向量工具
+   * ========================================================== */
+  function words(N) { return Math.max(1, (N + 31) >>> 5); }
+
+  function emptyMask(N) {
+    var w = new Array(words(N));
+    for (var i = 0; i < w.length; i++) w[i] = 0;
+    return w;
+  }
+
+  function maskFromIndices(N, idx) {
+    var m = emptyMask(N);
+    for (var i = 0; i < idx.length; i++) m[idx[i] >>> 5] |= (1 << (idx[i] & 31));
+    return m;
+  }
+
+  function maskGet(m, i) { return (m[i >>> 5] >>> (i & 31)) & 1; }
+  function maskSet(m, i) { m[i >>> 5] |= (1 << (i & 31)); }
+  function maskClone(m) { return m.slice(); }
+
+  function popcount32(x) {
+    x = x - ((x >>> 1) & 0x55555555);
+    x = (x & 0x33333333) + ((x >>> 2) & 0x33333333);
+    x = (x + (x >>> 4)) & 0x0f0f0f0f;
+    return (Math.imul(x, 0x01010101) >>> 24);
+  }
+
+  function maskCount(m) {
+    var s = 0;
+    for (var i = 0; i < m.length; i++) s += popcount32(m[i]);
+    return s;
+  }
+
+  function maskEq(a, b) {
+    for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
+
+  /* |A Δ B| —— 两个概念的汉明距离（在域 X 上） */
+  function maskDist(a, b) {
+    var s = 0;
+    for (var i = 0; i < a.length; i++) s += popcount32((a[i] ^ b[i]) >>> 0);
+    return s;
+  }
+
+  /* |(A Δ B) ∩ S|，S 是域索引数组 —— 训练误差的分子 */
+  function maskDistOn(a, b, S) {
+    var s = 0;
+    for (var i = 0; i < S.length; i++) {
+      var p = S[i];
+      if ((((a[p >>> 5] ^ b[p >>> 5]) >>> (p & 31)) & 1) === 1) s++;
+    }
+    return s;
+  }
+
+  /* ============================================================
+   * 二、打散 / 增长函数 / VC 维
+   *
+   * 定义（全部按定义直接算，不偷工）：
+   *   限制 H|_S = { h ∩ S : h ∈ H }，是 S 上的 |S| 位模式集合。
+   *   S 被 H 打散 ⟺ |H|_S| = 2^|S|（所有标注都实现得出来）。
+   *   VCdim(H) = 能被 H 打散的最大点集大小。
+   *   Π_H(m)   = max_{|S|=m} |H|_S|（增长函数）。
+   * ========================================================== */
+  function restrictPatterns(H, S) {
+    /* 返回 H 在 S 上的不同限制个数，以及（可选）模式集合大小 */
+    var m = S.length, seen = new Uint8Array(1 << m), n = 0;
+    for (var i = 0; i < H.length; i++) {
+      var h = H[i], pat = 0;
+      for (var k = 0; k < m; k++) {
+        var p = S[k];
+        pat |= (((h[p >>> 5] >>> (p & 31)) & 1) << k);
+      }
+      if (seen[pat] === 0) { seen[pat] = 1; n++; }
+    }
+    return n;
+  }
+
+  function allSubsetsOfSize(N, m) {
+    /* 枚举 X 的所有 m 元子集 */
+    var out = [], cur = [];
+    (function rec(start) {
+      if (cur.length === m) { out.push(cur.slice()); return; }
+      for (var i = start; i < N; i++) { cur.push(i); rec(i + 1); cur.pop(); }
+    })(0);
+    return out;
+  }
+
+  /* 在线枚举 m 元子集，找到第一个被打散的就停。
+     带预算：每一步花掉 |H| 次限制计算，超了就把「没找到」和「没算完」
+     分开报告 —— 把超预算当成"打散不了"是这类实验里最容易犯的错。 */
+  function findShattered(H, N, m, budget) {
+    var cur = [], used = 0, hit = null, exhausted = false;
+    (function rec(start) {
+      if (hit || exhausted) return;
+      if (cur.length === m) {
+        used += H.length;
+        if (budget != null && used > budget) { exhausted = true; return; }
+        if (restrictPatterns(H, cur) === (1 << m)) hit = cur.slice();
+        return;
+      }
+      for (var i = start; i < N; i++) {
+        if (hit || exhausted) return;
+        cur.push(i); rec(i + 1); cur.pop();
+      }
+    })(0);
+    return { hit: hit, used: used, exhausted: exhausted };
+  }
+
+  /* 打散见证（小规模用） */
+  function shatterWitness(H, N, m) {
+    return findShattered(H, N, m, null).hit;
+  }
+
+  /* VC 维。
+     关键：**从 0 往上搜**，不是从上界往下。
+     打散是向下单调的（S 被打散 ⟹ S 的任何子集也被打散），
+     所以一旦某一层找不到打散集就可以停 —— 代价由最后一层决定。
+     反过来从上界往下搜，会在找到答案之前先把 C(N, 大 m) 个子集全枚举一遍，
+     遇到 |H| 大的类（比如"至多 3 段区间"）会当场挂死。 */
+  function vcDim(H, N, opts) {
+    opts = opts || {};
+    var budget = opts.budget == null ? 3e8 : opts.budget;
+    var maxM = Math.min(N, opts.cap == null ? 20 : opts.cap);
+    var d = 0, witness = [], used = 0, status = 'exact';
+    for (var m = 1; m <= maxM; m++) {
+      if ((1 << m) > H.length * 1 && m > 24) break;
+      var r = findShattered(H, N, m, budget - used);
+      used += r.used;
+      if (r.exhausted) { status = 'budget'; break; }
+      if (!r.hit) { status = 'exact'; break; }
+      d = m; witness = r.hit;
+      if (m === maxM) status = 'capped';
+    }
+    return { d: d, witness: witness, used: used, status: status };
+  }
+
+  /* 增长函数 Π_H(m)：对全部 m 元子集取最大 */
+  function growthExact(H, N, m) {
+    var subs = allSubsetsOfSize(N, m), best = 0;
+    for (var i = 0; i < subs.length; i++) {
+      var c = restrictPatterns(H, subs[i]);
+      if (c > best) best = c;
+    }
+    return best;
+  }
+
+  /* 增长函数全曲线：Π_H(1..N)。用位并行做，N ≤ 20 时可承受。 */
+  function growthCurve(H, N, cap) {
+    cap = Math.min(cap == null ? N : cap, N);
+    var out = [];
+    for (var m = 0; m <= cap; m++) out.push(m === 0 ? 1 : growthExact(H, N, m));
+    return out;
+  }
+
+  /* Sauer–Shelah 上界 Σ_{i=0}^{d} C(m,i) */
+  function binom(n, k) {
+    if (k < 0 || k > n) return 0;
+    if (k > n - k) k = n - k;
+    var r = 1;
+    for (var i = 0; i < k; i++) r = r * (n - i) / (i + 1);
+    return Math.round(r);
+  }
+  function sauer(m, d) {
+    var s = 0;
+    for (var i = 0; i <= d; i++) s += binom(m, i);
+    return s;
+  }
+
+  /* ============================================================
+   * 三、具名概念类（每一个都能独立造出来，用来对账外部真值）
+   * ========================================================== */
+  function classThresholds(N) {
+    /* {x : x ≥ t}，t = 0..N，t = N 给空集 */
+    var out = [];
+    for (var t = 0; t <= N; t++) {
+      var idx = [];
+      for (var x = t; x < N; x++) idx.push(x);
+      out.push(maskFromIndices(N, idx));
+    }
+    return out;
+  }
+
+  function classIntervals(N) {
+    /* 空集 + 所有区间 [a,b] */
+    var out = [emptyMask(N)];
+    for (var a = 0; a < N; a++) for (var b = a; b < N; b++) {
+      var idx = [];
+      for (var x = a; x <= b; x++) idx.push(x);
+      out.push(maskFromIndices(N, idx));
+    }
+    return out;
+  }
+
+  function classAllSubsetsUpTo(N, k) {
+    /* 所有大小 ≤ k 的子集 —— Sauer 界的取等类 */
+    var out = [emptyMask(N)];
+    var cur = [];
+    (function rec(start, left) {
+      if (left === 0) return;
+      for (var i = start; i < N; i++) {
+        cur.push(i);
+        out.push(maskFromIndices(N, cur));
+        rec(i + 1, left - 1);
+        cur.pop();
+      }
+    })(0, k);
+    return out;
+  }
+
+  function classUnionOfIntervals(N, k) {
+    /* 至多 k 段不交区间的并（段之间至少空一格）—— VC 维 2k */
+    var out = [emptyMask(N)];
+    (function rec(start, left, acc) {
+      if (left === 0) return;
+      for (var a = start; a < N; a++) {
+        for (var b = a; b < N; b++) {
+          var idx = acc.slice();
+          for (var x = a; x <= b; x++) idx.push(x);
+          out.push(maskFromIndices(N, idx));
+          rec(b + 2, left - 1, idx);
+        }
+      }
+    })(0, k, []);
+    return out;
+  }
+
+  function classRectangles(gx, gy) {
+    /* 轴对齐矩形（格点 gx × gy）—— 平面上的 VC 维是 4 */
+    var N = gx * gy, out = [emptyMask(N)];
+    for (var a = 0; a < gx; a++) for (var b = a; b < gx; b++)
+      for (var c = 0; c < gy; c++) for (var d = c; d < gy; d++) {
+        var idx = [];
+        for (var x = a; x <= b; x++) for (var y = c; y <= d; y++) idx.push(y * gx + x);
+        out.push(maskFromIndices(N, idx));
+      }
+    return out;
+  }
+
+  function classParity(nbits) {
+    /* 域 = 全部 nbits 位串；概念 = 位掩码 a 的奇偶性（a = 0 给空集）。
+       |H| = 2^nbits，VC 维 = nbits —— 正好卡在 log2|H| 上。 */
+    var N = 1 << nbits, out = [];
+    for (var a = 0; a < N; a++) {
+      var idx = [];
+      for (var x = 0; x < N; x++) {
+        var p = popcount32((x & a) >>> 0) & 1;
+        if (p) idx.push(x);
+      }
+      out.push(maskFromIndices(N, idx));
+    }
+    return out;
+  }
+
+  /* ============================================================
+   * 四、半平面（线性可分二分）—— Cover 定理的对照
+   *
+   * 点取在抛物线上：p_i = (i, i²)，任意三点不共线（一般位置）。
+   * 半平面 {x : u·x + v·y + w > 0} 的符号向量用整数精确判定。
+   * 真值（Cover 1955）：N 个一般位置点被 R² 中直线实现的二分
+   *   恰好 2·Σ_{k=0}^{2} C(N-1,k) = N² − N + 2 种。
+   * ========================================================== */
+  function separablePatterns(N, M) {
+    /* 【朴素版】在 |u|,|v|,|w| ≤ M 的整数盒里扫，收集所有不同的符号向量。
+       它给出的永远是**下界** —— 需要系数很大的区域会被漏掉。
+       （实测 N=8 时它只找到 54 个，而真值是 58。）保留它是为了当独立对账。 */
+    var seen = new Set(), u, v, w, x, s, pat;
+    for (u = -M; u <= M; u++) for (v = -M; v <= M; v++) for (w = -M; w <= M; w++) {
+      if (u === 0 && v === 0) continue;
+      pat = 0;
+      for (x = 0; x < N; x++) {
+        s = u * x + v * x * x + w;
+        if (s > 0) pat |= (1 << x);
+      }
+      seen.add(pat);
+    }
+    return seen;
+  }
+
+  /* 【精确版】把半平面 (u,v,w) 的符号向量化归成"对偶平面上的一条直线"，再
+     枚举对偶线构形的**全部区域**。
+
+     推导：取 v = 1（v = −1 给出互补的模式）。条件
+         u·a_i + b_i + w > 0   ⟺   b_i > (−u)·a_i + (−w)
+     记 α = −u, β = −w，右端是直线 D_i(x) = b_i − a_i x。于是
+         模式 = { i : β < D_i(α) } = "点 (α,β) 上方那几条对偶线"
+     —— 模式只取决于 (α,β) 落在 D 构形的哪个区域里。
+
+     点的取法：p_i = (i, i²)  ⟹  D_i 的斜率 −i 互不相同（无平行线），
+     任意两个 D_i、D_j 交于 (i+j, −ij)（可能三线共点，不算一般位置，
+     但没关系 —— 覆盖性只要求"每个区域闭包上至少有一个顶点"，无平行线即可）。
+
+     于是：枚举每一对 (i,j) 的交点，朝四个对角方向各扰动 ε = 1/Q，
+     精确整数判定符号（Q 取 N+2 以上）。因为每个区域闭包上都有顶点，
+     四个扰动恰好覆盖该顶点周围的那四个区域，取并即**全部**区域。
+     再补上 v = 0（竖直线，给出 a 坐标上的阈值模式）与全体补集。 */
+  function separablePatternsExact(N) {
+    var Q = N + 8, seen = new Set(), a = [], b = [];
+    for (var i = 0; i < N; i++) { a.push(i); b.push(i * i); }
+    function patAt(x, y, sx, sy) {
+      /* 判定 β = y + ε·sy 是否 < D_k(α = x + ε·sx)，精确整数 */
+      var pat = 0;
+      for (var k = 0; k < N; k++) {
+        var d = b[k] - a[k] * x - y;             // D_k(x) − y
+        var v = Q * d - a[k] * sx - sy;          // Q·(D_k − y) − a_k·sx − sy
+        if (v > 0) pat |= (1 << k);
+      }
+      return pat;
+    }
+    var dirs = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+    for (var p = 0; p < N; p++) for (var q = p + 1; q < N; q++) {
+      var x = p + q, y = -p * q;
+      for (var d = 0; d < 4; d++) {
+        var pat = patAt(x, y, dirs[d][0], dirs[d][1]);
+        seen.add(pat);
+        seen.add((~pat) & ((1 << N) - 1));       // v = −1 给的是补集
+      }
+    }
+    /* v = 0：竖直线 ⟹ a 坐标上的阈值 {i : i ≥ t} 与 {i : i ≤ t} */
+    for (var t = 0; t <= N; t++) {
+      var p1 = 0, p2 = 0;
+      for (var k2 = 0; k2 < N; k2++) {
+        if (k2 >= t) p1 |= (1 << k2);
+        if (k2 <= t - 1) p2 |= (1 << k2);
+      }
+      seen.add(p1); seen.add((~p1) & ((1 << N) - 1));
+      seen.add(p2); seen.add((~p2) & ((1 << N) - 1));
+    }
+    return seen;
+  }
+
+  /* 真值（Cover 1955）：N 个一般位置点被直线实现的二分恰为
+     2·Σ_{k=0}^{2} C(N-1,k) = N² − N + 2 种。 */
+  function separableCount(N, M) {
+    var exact = separablePatternsExact(N).size;
+    var naive = separablePatterns(N, M || 6).size;
+    return { count: exact, naive: naive, theory: N * N - N + 2, complete: exact === N * N - N + 2 };
+  }
+
+  /* ============================================================
+   * 五、正弦分类器 —— VC 维无穷的那个例子
+   *
+   * H = { x ↦ sign(sin(θx)) : θ > 0 }，域取 [0,1]。
+   * 对任意 m 个点、任意标注，都能找到 θ 实现它 —— 所以 VC 维是 ∞。
+   * 下面用**精确的区间求交**构造见证 θ，不靠网格碰运气：
+   *   sin(θx) > 0  ⟺  θx ∈ ⋃_k (2kπ, (2k+1)π)
+   *   sin(θx) < 0  ⟺  θx ∈ ⋃_k ((2k+1)π, (2k+2)π)
+   * 于是每个样本给出 θ 轴上的一组开区间，取交即得见证集合。
+   * ========================================================== */
+  function sineIntervals(x, wantPos, thetaMax) {
+    /* 返回 θ ∈ (0, thetaMax] 上使 sign(sin(θx)) 等于 wantPos 的开区间数组 */
+    var out = [], k = 0, PI = Math.PI, lo, hi;
+    for (k = 0; ; k++) {
+      if (wantPos) { lo = 2 * k * PI; hi = (2 * k + 1) * PI; }
+      else { lo = (2 * k + 1) * PI; hi = (2 * k + 2) * PI; }
+      var a = lo / x, b = hi / x;
+      if (a >= thetaMax) break;
+      out.push([a, Math.min(b, thetaMax)]);
+      if (k > 4000000) break;
+    }
+    return out;
+  }
+
+  function intersectIntervals(A, B) {
+    var out = [], i = 0, j = 0;
+    while (i < A.length && j < B.length) {
+      var lo = Math.max(A[i][0], B[j][0]), hi = Math.min(A[i][1], B[j][1]);
+      if (lo < hi) out.push([lo, hi]);
+      if (A[i][1] < B[j][1]) i++; else j++;
+    }
+    return out;
+  }
+
+  /* 给定点集 xs 与标注 labels（1 / 0），返回见证 θ（取区间中点）或 null */
+  function sineWitness(xs, labels, thetaMax) {
+    var acc = [[1e-9, thetaMax]];
+    for (var i = 0; i < xs.length; i++) {
+      acc = intersectIntervals(acc, sineIntervals(xs[i], labels[i] === 1, thetaMax));
+      if (acc.length === 0) return null;
+    }
+    return { theta: (acc[0][0] + acc[0][1]) / 2, measure: acc.reduce(function (s, r) { return s + (r[1] - r[0]); }, 0) };
+  }
+
+  /* 一致集合的总测度（θ 轴上）—— 用来量化"版本空间还剩多大" */
+  function sineVersionMeasure(xs, labels, thetaMax) {
+    var acc = [[1e-9, thetaMax]];
+    for (var i = 0; i < xs.length; i++) {
+      acc = intersectIntervals(acc, sineIntervals(xs[i], labels[i] === 1, thetaMax));
+      if (acc.length === 0) return 0;
+    }
+    return acc.reduce(function (s, r) { return s + (r[1] - r[0]); }, 0);
+  }
+
+  /* 两个正弦分类器在 [0,1] 上的真实误差（解析求测度） */
+  function sineError(t1, t2, grid) {
+    var G = grid || 200000, bad = 0;
+    for (var i = 0; i < G; i++) {
+      var x = (i + 0.5) / G;
+      var a = Math.sin(t1 * x) > 0, b = Math.sin(t2 * x) > 0;
+      if (a !== b) bad++;
+    }
+    return bad / G;
+  }
+
+  /* ============================================================
+   * 六、PAC 界
+   * ========================================================== */
+  /* 1. Occam 界：m ≥ (ln|H| + ln(1/δ)) / ε */
+  function occamBound(eps, delta, lnH) {
+    return (lnH + Math.log(1 / delta)) / eps;
+  }
+  /* 2. VC 界（Kearns–Vazirani 定理 3.3 的形式）：
+        m ≥ (4/ε)·ln(2/δ) + (8d/ε)·ln(13/ε) */
+  function vcBound(eps, delta, d) {
+    return (4 / eps) * Math.log(2 / delta) + (8 * d / eps) * Math.log(13 / eps);
+  }
+  /* 3. 增长函数界（Vapnik–Chervonenkis 一致收敛）：
+        4·Π_H(2m)·exp(−mε²/8) ≤ δ
+        解出最小 m。Π 用精确值或 Sauer 多项式代入。 */
+  function growthBound(eps, delta, Pi) {
+    for (var m = 1; m <= 200000; m++) {
+      var p = Pi(2 * m);
+      if (4 * p * Math.exp(-m * eps * eps / 8) <= delta) return m;
+    }
+    return Infinity;
+  }
+  function sauerPi(m, d) { return sauer(m, d); }
+
+  /* ============================================================
+   * 七、ERM 与并列规则
+   *
+   * 类 H 的元素是概念掩码。样本是 (域索引, 标注) 列表。
+   * 训练误差 = |(h Δ f) ∩ S|。ERM = 取训练误差最小的那些 h。
+   * **并列规则是一等公民**：这里显式做成参数。
+   *   'random'  —— 在并列集合里均匀随机取一个（"我不管，随便挑一个一致的"）
+   *   'small'   —— 取 |h| 最小的（并列再按字典序）—— 一个隐式先验
+   *   'large'   —— 取 |h| 最大的
+   * ========================================================== */
+  /* ---- 区间类上的快速 ERM ----
+     类 H = {∅} ∪ {[a,b] : 0 ≤ a ≤ b < N}，VC 维 2，|H| = N(N+1)/2 + 1。
+     用前缀和把每格的训练误差压到 O(1)，于是整个扫描是 O(N²)，
+     N ≤ 1024 时不到 1 ms —— 界面里可以实时跑，标定里可以跑几万次。
+     cnt[x] = 第 x 个点被抽到的次数（样本直方图）。
+     f 是目标区间 [fLo, fHi]（真值，学习者看不到）。 */
+  function intervalErmScan(N, fLo, fHi, cnt, tie, rnd) {
+    var Pc = new Float64Array(N + 1), Pcf = new Float64Array(N + 1);
+    var i, x;
+    for (i = 0; i < N; i++) {
+      Pc[i + 1] = Pc[i] + cnt[i];
+      Pcf[i + 1] = Pcf[i] + (i >= fLo && i <= fHi ? cnt[i] : 0);
+    }
+    var total = Pc[N], inF = Pcf[N];
+    var fLen = fHi - fLo + 1;
+    var best = Infinity, argmin = [];
+    /* 空集 */
+    best = inF;
+    argmin.push(-1);
+    for (var a = 0; a < N; a++) {
+      for (var b = a; b < N; b++) {
+        var e = Pc[b + 1] - Pc[a] - 2 * (Pcf[b + 1] - Pcf[a]) + inF;
+        if (e < best) { best = e; argmin = [a * 4096 + b]; }
+        else if (e === best) argmin.push(a * 4096 + b);
+      }
+    }
+    /* 误差函数 */
+    function trueErr(a, b) {
+      if (a < 0) return fLen;
+      var ov = Math.max(0, Math.min(b, fHi) - Math.max(a, fLo) + 1);
+      return (b - a + 1) + fLen - 2 * ov;
+    }
+    var pick;
+    if (tie === 'small') {
+      var bi = 0, bl = Infinity;
+      for (i = 0; i < argmin.length; i++) {
+        var c = argmin[i];
+        var len = c < 0 ? 0 : (c % 4096) - Math.floor(c / 4096) + 1;
+        if (len < bl) { bl = len; bi = i; }
+      }
+      pick = argmin[bi];
+    } else if (tie === 'large') {
+      var bi2 = 0, bl2 = -1;
+      for (i = 0; i < argmin.length; i++) {
+        var c2 = argmin[i];
+        var len2 = c2 < 0 ? 0 : (c2 % 4096) - Math.floor(c2 / 4096) + 1;
+        if (len2 > bl2) { bl2 = len2; bi2 = i; }
+      }
+      pick = argmin[bi2];
+    } else {
+      pick = argmin[Math.floor(rnd() * argmin.length) % argmin.length];
+    }
+    var pa = pick < 0 ? -1 : Math.floor(pick / 4096), pb = pick < 0 ? -1 : pick % 4096;
+    /* 版本空间里的误差范围 —— "随机并列"能坏到什么程度 */
+    var eMin = Infinity, eMax = -Infinity;
+    for (i = 0; i < argmin.length; i++) {
+      var c3 = argmin[i];
+      var qa = c3 < 0 ? -1 : Math.floor(c3 / 4096), qb = c3 < 0 ? -1 : c3 % 4096;
+      var e3 = trueErr(qa, qb);
+      if (e3 < eMin) eMin = e3;
+      if (e3 > eMax) eMax = e3;
+    }
+    return {
+      a: pa, b: pb, trainErr: best, versionSize: argmin.length,
+      err: trueErr(pa, pb), errBest: eMin, errWorst: eMax
+    };
+  }
+
+  function ermArgmin(H, S, f, tie, rnd) {
+    var best = Infinity, cand = [], i, e, h;
+    for (i = 0; i < H.length; i++) {
+      h = H[i];
+      e = maskDistOn(h, f, S);
+      if (e < best) { best = e; cand = [h]; }
+      else if (e === best) cand.push(h);
+    }
+    if (tie === 'small') {
+      var bi = 0, bc = maskCount(cand[0]);
+      for (i = 1; i < cand.length; i++) {
+        var c = maskCount(cand[i]);
+        if (c < bc) { bc = c; bi = i; }
+      }
+      return { h: cand[bi], trainErr: best, versionSize: cand.length };
+    }
+    if (tie === 'large') {
+      var bi2 = 0, bc2 = maskCount(cand[0]);
+      for (i = 1; i < cand.length; i++) {
+        var c2 = maskCount(cand[i]);
+        if (c2 > bc2) { bc2 = c2; bi2 = i; }
+      }
+      return { h: cand[bi2], trainErr: best, versionSize: cand.length };
+    }
+    return { h: cand[Math.floor(rnd() * cand.length) % cand.length], trainErr: best, versionSize: cand.length };
+  }
+
+  return {
+    splitmix32: splitmix32,
+    words: words, emptyMask: emptyMask, maskFromIndices: maskFromIndices,
+    maskGet: maskGet, maskSet: maskSet, maskClone: maskClone,
+    popcount32: popcount32, maskCount: maskCount, maskEq: maskEq,
+    maskDist: maskDist, maskDistOn: maskDistOn,
+    restrictPatterns: restrictPatterns, allSubsetsOfSize: allSubsetsOfSize,
+    findShattered: findShattered, shatterWitness: shatterWitness, vcDim: vcDim,
+    growthExact: growthExact, growthCurve: growthCurve,
+    binom: binom, sauer: sauer,
+    classThresholds: classThresholds, classIntervals: classIntervals,
+    classAllSubsetsUpTo: classAllSubsetsUpTo, classUnionOfIntervals: classUnionOfIntervals,
+    classRectangles: classRectangles, classParity: classParity,
+    separablePatterns: separablePatterns, separablePatternsExact: separablePatternsExact,
+    separableCount: separableCount,
+    sineIntervals: sineIntervals, intersectIntervals: intersectIntervals,
+    sineWitness: sineWitness, sineVersionMeasure: sineVersionMeasure, sineError: sineError,
+    occamBound: occamBound, vcBound: vcBound, growthBound: growthBound, sauerPi: sauerPi,
+    ermArgmin: ermArgmin, intervalErmScan: intervalErmScan
+  };
+});
+
+</script>
+<script>
+/* ---- analysis.json（全部数字的来源） ---- */
+window.__ANALYSIS__ = {"meta":{"builtAt":"2026-09-29T11:41:08.277Z","source":"results.json","ms":{"E1":151,"E2":85,"E3":2,"E4":393,"E5":221,"E6":22442,"E7":0}},"derived":{"sauerChecks":327680,"sauerViolations":0,"sauerTightPairs":25,"sauerPairs":25,"sauerTightAll":true,"classesEnumerated":65536,"dimHist":[16,1928,47596,15994,1],"dimSum":65535,"uniqueD4FullPowerSet":true,"namedHit":13,"namedTotal":13,"coverMaxN":12,"coverNaiveWorst":{"N":12,"exact":134,"theory":134,"naive":32,"naiveGap":102,"hit":true},"coverNaiveShortCount":8,"coverNaivePlateau":{"value":32,"fromN":8},"mStarRandom":32,"mStarSmall":64,"bounds":{"occam":127.03721840179533,"vc":898.6348030150529,"growth":19294,"lowerBoundOmega":20},"loosening":{"occam":3.969913075056104,"vc":28.0823375942204,"growth":602.9375},"boundSpread":151.8767511027881,"lowerBoundGap":1.6,"tieBreakCost":2,"smallAdvShort":9.093799682034977,"smallAdvLong":1.0307191904589807,"bestShort":"small","bestLong":"random","shatterLabelings":8190,"shatterMiss":0,"shatterMaxM":12,"advLabelings":8190,"advRealizable":8190,"advDiamMin":0.5,"advDiamMax":0.50029,"randFracFirst":0.06287438642760265,"randFracLast":0.000015230601159162631,"randShrink":4128.16183488449,"randWorstFirst":0.51729736328125,"randWorstLast":0.01055908203125,"wall5Seconds":9895.936,"wall6Seconds":42502721483309.055,"ceilingRatio":{"d1":{"m1":1,"m10":93.0909090909091,"m20":49932.19047619047,"m40":26817356775.02439,"m80":1.4925010118699125e+22,"m160":9.077649921309955e+45},"d2":{"m2":1,"m10":18.285714285714285,"m20":4969.554502369669,"m40":1339234625.7929354,"m80":373010126385260460000,"m160":1.1346181486925728e+44},"d3":{"m3":1,"m10":5.818181818181818,"m20":776.1480384900074,"m40":102748493.39089805,"m80":14155874282673846000,"m160":2.140450346925243e+42},"d4":{"m4":1,"m10":2.6528497409326426,"m20":169.23434473854098,"m40":10769917.30687328,"m80":725218715519030700,"m160":5.41755167391744e+40},"d5":{"m5":1,"m10":1.6050156739811912,"m20":48.32147465437788,"m40":1446537.395491903,"m80":47027111708716080,"m160":1.724768197321615e+39},"d6":{"m6":1,"m10":1.2075471698113207,"m20":17.343301356268608,"m40":239103.32694266952,"m80":3706005970231948,"m160":6.630947520854831e+37}}},"charts":{"ceiling":{"d":2,"sauer":[[1,2],[2,4],[3,7],[4,11],[5,16],[6,22],[7,29],[8,37],[9,46],[10,56],[11,67],[12,79],[13,92],[14,106],[15,121],[16,137],[17,154],[18,172],[19,191],[20,211],[21,232],[22,254],[23,277],[24,301],[25,326],[26,352],[27,379],[28,407],[29,436],[30,466],[31,497],[32,529],[33,562],[34,596],[35,631],[36,667],[37,704],[38,742],[39,781],[40,821]],"twoPow":[[1,2],[2,4],[3,8],[4,16],[5,32],[6,64],[7,128],[8,256],[9,512],[10,1024],[11,2048],[12,4096],[13,8192],[14,16384],[15,32768],[16,65536],[17,131072],[18,262144],[19,524288],[20,1048576],[21,2097152],[22,4194304],[23,8388608],[24,16777216],[25,33554432],[26,67108864],[27,134217728],[28,268435456],[29,536870912],[30,1073741824],[31,2147483648],[32,4294967296],[33,8589934592],[34,17179869184],[35,34359738368],[36,68719476736],[37,137438953472],[38,274877906944],[39,549755813888],[40,1099511627776]],"const1":[[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],[7,1],[8,1],[9,1],[10,1],[11,1],[12,1],[13,1],[14,1],[15,1],[16,1],[17,1],[18,1],[19,1],[20,1],[21,1],[22,1],[23,1],[24,1],[25,1],[26,1],[27,1],[28,1],[29,1],[30,1],[31,1],[32,1],[33,1],[34,1],[35,1],[36,1],[37,1],[38,1],[39,1],[40,1]],"ratioAt40":1339234625.7929354,"note":"Σ_{i≤2} C(m,i) 是二次多项式；2^m 是指数。纵轴对数。"},"sampleComplexity":{"m":[8,16,32,64,128,256,512,1024],"eps":0.1,"delta":0.1,"series":[{"name":"random","points":[[8,0.42],[16,0.7733333333333333],[32,0.9533333333333334],[64,1],[128,1],[256,1],[512,1],[1024,1]]},{"name":"small","points":[[8,0.17333333333333334],[16,0.49666666666666665],[32,0.8833333333333333],[64,0.98],[128,1],[256,1],[512,1],[1024,1]]},{"name":"large","points":[[8,0.12],[16,0.5066666666666667],[32,0.86],[64,0.9966666666666667],[128,1],[256,1],[512,1],[1024,1]]}],"errSeries":[{"name":"random","points":[[8,0.13619791666666667],[16,0.067421875],[32,0.039361979166666665],[64,0.020416666666666666],[128,0.009986979166666667],[256,0.003984375],[512,0.001171875],[1024,0.00014322916666666667]]},{"name":"small","points":[[8,0.11157552083333333],[16,0.08776041666666666],[32,0.054075520833333335],[64,0.028046875],[128,0.011809895833333334],[256,0.0048046875],[512,0.00109375],[1024,0.00014322916666666667]]},{"name":"large","points":[[8,0.24803385416666668],[16,0.11759114583333333],[32,0.055651041666666665],[64,0.025390625],[128,0.011731770833333334],[256,0.004440104166666667],[512,0.001328125],[1024,0.0001953125]]}],"bounds":{"occam":127.03721840179533,"vc":898.6348030150529,"growth":19294,"lowerBoundOmega":20},"mStar":{"random":32,"small":64,"large":64},"note":"横轴样本数 m（对数），纵轴 P(真实误差 ≤ 0.1)。"},"tieBreak":{"lens":[2,8,32,128],"m":64,"series":[{"name":"random","points":[[2,0.0194140625],[8,0.019794921875],[32,0.01955078125],[128,0.02162109375]]},{"name":"small","points":[[2,0.006142578125],[8,0.02],[32,0.028349609375],[128,0.027021484375]]},{"name":"large","points":[[2,0.055859375],[8,0.03529296875],[32,0.0279296875],[128,0.0278515625]]}],"rankShort":["small","random","large"],"rankLong":["random","small","large"],"note":"横轴目标区间长度（对数），纵轴平均真实误差。"},"versionSpace":{"random":[[4,0.06287438642760265],[8,0.0037827402703506036],[16,0.00016276664000331744],[32,0.00007198146605264002],[64,0.00003323986437168902],[128,0.000015230601159162631]],"randomWorst":[[4,0.51729736328125],[8,0.51478271484375],[16,0.297705078125],[32,0.058740234375],[64,0.0263671875],[128,0.01055908203125]],"adversary":[[1,0.5],[2,0.5],[3,0.50002],[4,0.50004],[5,0.5],[6,0.50002],[7,0.50003],[8,0.50003],[9,0.50005],[10,0.5001],[11,0.50029],[12,0.50014]],"note":"同一张图上是两个不同的实验：随机样本的版本空间占比（衰减），与对手构造下版本空间的误差直径（不衰减）。"},"wall":{"rows":[{"N":3,"classes":256,"seconds":0.00058984375},{"N":4,"classes":65536,"seconds":0.151},{"N":5,"classes":4294967296,"seconds":9895.936},{"N":6,"classes":18446744073709552000,"seconds":42502721483309.055}]}},"kpi":[{"id":"sauer","label":"Sauer 不等式违例","value":"0","unit":"／327,680 次检查","tone":"good","note":"N=4 的全部 65,536 个概念类 × 5 个 m，逐类逐 m 与 Σ_{i≤d}C(m,i) 比对"},{"id":"tight","label":"界被取到的 (d, m) 对数","value":"25 / 25","unit":"","tone":"good","note":"不是\"没被违反\"，而是\"每个 (d,m) 上都有类正好取到等号\" —— 界是紧的"},{"id":"named","label":"具名概念类的 VC 维","value":"13 / 13","unit":"命中教科书值","tone":"good","note":"阈值 1、区间 2、并 k 段区间 2k、矩形 4、奇偶性 n、大小≤k 的子集 k"},{"id":"cover","label":"Cover 定理最大规模","value":"N = 12","unit":"（精确枚举）","tone":"good","note":"N=3…12 全部等于 N²−N+2；同一问题的朴素参数扫描从 N=8 起就卡在 32 不动"},{"id":"looseness","label":"VC 界比现实松","value":"28.1","unit":"倍","tone":"warn","note":"VC 界要 899 个样本，实测 32 个就够；三档界彼此还差 152 倍"},{"id":"adversary","label":"对手构造下版本空间直径","value":"0.5003","unit":"（m = 1…12 恒定）","tone":"hot","note":"样本从 2 个加到 4096 个，一致假设之间的最大误差一步没动 —— 这就是\"无穷 VC 维\"的操作含义"}],"conclusions":["Sauer–Shelah 不等式在 N=4 的全部 65,536 个概念类、每个类 5 个 m 上逐条核对，违例 0 次（共 327,680 次检查）。","它不只是\"没被违反\"：5 个 d 层 × 5 个 m 一共 25 个组合，25 个都能找到一个类正好取到等号，取等的那个类就是「所有大小 ≤ d 的子集」。界是紧的。","一个 4 点域上一共有 65,536 个概念类，其中 VC 维为 4 的只有 1 个 —— 就是那 16 个概念一个不落全放进去的幂集。少放一个，VC 维就掉到 3 以下。","13 个具名概念类的实测 VC 维全部等于教科书值（阈值 1、区间 2、并 k 段区间 2k、轴对齐矩形 4、奇偶性 n、大小 ≤ k 的子集 k）。","Cover 定理：N=3…12 个一般位置点被直线实现的二分个数，精确枚举逐项等于 N²−N+2。而同一个问题用朴素整数盒参数扫描，从 N=8 起就卡在 32 不动 —— 真值在 N=12 时是 134，它少找了 102 个。","三档界都是有效上界，但彼此差 152 倍：Occam 界 127 个样本、VC 界 899 个、增长函数界 19,294 个。实测只要 32 个 —— 分别比现实松 4.0 / 28.1 / 603 倍。","实测的 32 个样本落在已知下界 Ω(d/ε) = 20 的上方 1.6 倍处 —— 均匀分布下 ERM 的表现贴着下界，离最坏情况的上界很远。","并列规则决定泛化，而且\"谁最好\"会随目标形状换人。目标区间长 2 时排名是「取最小 < 随机 < 取最大」，「取最小」的平均误差比「取最大」小 9.1 倍；目标长 128 时最好的换成了「随机」，「取最小」相对「取最大」的优势塌到只剩 1.03 倍。原因是版本空间里本来就装着完美假设（目标自己），而「取最小」专门躲开它 —— \"小 = 简单 = 好\"这个先验不是免费的，它假定目标也是小的。","正弦分类器：m = 1…12 的全部 8,190 个标注都能被 sin(θx) 实现，零失败 —— 增长函数恒为 2^m，一步都没有掉到多项式。","但\"无穷 VC 维\"的代价只在对手挑的样本上出现。随机样本下版本空间照样收缩：m 从 4 到 128，一致集合的占比从 6.29e-2 掉到 1.52e-5（4128 倍），最坏误差从 0.517 掉到 0.011。","换成对手构造的样本（x_i = 2^-i），8,190 个标注全部可实现，而版本空间在误差度量下的直径从 m=1 到 m=12 恒为 0.5000～0.5003。样本多了 2048 倍，这个数一步没动。","枚举墙：N=4 的全部概念类要 65,536 个，实测 0.15 秒跑完；N=5 是 4,294,967,296 个（约 2.7 小时）；N=6 是 1.84e+19 个（约 1.3e+6 年）。","天花板：VC 维为 2 的类在 m=40 个样本上最多有 821 种行为，而\"随便什么行为都可能\"是 1.10e+12 种 —— 差了 1.34e+9 倍。「可学」这件事的全部内容就是这个比值。"],"boundaries":["枚举普查只做到 N=4（65,536 个类）。N=5 起是 4,294,967,296 个类，实测速率外推要 2.7 小时；N=6 起不可行。","E4 / E5 的\"实测样本数\"是**均匀分布 + 目标在类内**下的平均情况，而三档界说的是**最坏分布**。那个 28.1 倍不是\"界算错了\"，是\"最坏情况的代价\" —— 换一个刻意难学的分布，差距会缩小。","具名概念类里的\"轴对齐矩形\"是在**格点**上算的。格点上的 VC 维可能小于平面上的值；实测 3×3 与 4×4 都给出 4，与平面结论一致，但这一点没有被证明。","正弦分类器的打散只验到 m=12。这是\"至少 12 个点能被同时打散\"，不是\"VC 维无穷\"的证明 —— 无穷那一步是数学结论，不是我算出来的。","正弦分类器的随机样本实验把 θ 限制在 (0, 6,283]。窗口大小会直接改变\"版本空间占比\"这个数（窗口越大占比越小），所以那个衰减曲线是窗口内的性质。","E4 / E5 的样本是**有放回**抽取，训练误差按重数计。ε = 0.1、δ = 0.1 是选定的一组；换一组数，绝对样本数会变（但三档界的相对关系不变）。","Cover 定理那组点取在抛物线上（任意三点不共线）。一般位置是必要的：把点放到一条直线上，可实现的二分个数会掉下来。","\"版本空间直径\"用 10 万点的 x 网格做数值积分，误差量级 1e-5；报告里 0.5000 与 0.5003 的差别在这个量级以下，应当读作\"同一个数\"。","本页没有碰的方向：Rademacher 复杂度、算法稳定性、在线学习。它们给出的是另一族界，和 VC 界的关系不是\"谁更紧\"，而是\"在不同的假设下各自成立\"。"],"verify":[{"claim":"Sauer–Shelah：VCdim = d ⟹ Π_H(m) ≤ Σ_{i≤d}C(m,i)","mine":"违例 0 / 327,680","src":"Sauer 1972；Shelah 1972"},{"claim":"界是紧的（取等类存在）","mine":"25 / 25 个 (d,m) 上取等","src":"取等类 = 所有大小 ≤ d 的子集"},{"claim":"阈值的 VC 维 = 1","mine":"1","src":"教科书"},{"claim":"区间的 VC 维 = 2","mine":"2","src":"教科书"},{"claim":"k 段区间之并的 VC 维 = 2k","mine":"k=1,2,3 → 2,4,6","src":"教科书"},{"claim":"轴对齐矩形的 VC 维 = 4","mine":"4（3×3 与 4×4 格点）","src":"教科书"},{"claim":"n 位奇偶性的 VC 维 = n","mine":"n=3,4 → 3,4","src":"教科书"},{"claim":"Cover：N 个一般位置点被直线实现的二分 = N²−N+2","mine":"N=3…12 逐项命中","src":"Cover 1965"},{"claim":"Occam 界 m ≥ (ln|H| + ln(1/δ))/ε","mine":"127 个样本（|H|=32,897）","src":"Blumer et al. 1987"},{"claim":"VC 界 m ≥ (4/ε)ln(2/δ) + (8d/ε)ln(13/ε)","mine":"899 个样本（d=2）","src":"Kearns–Vazirani 定理 3.3"},{"claim":"增长函数界 4·Π(2m)·e^{−mε²/8} ≤ δ","mine":"19,294 个样本","src":"Vapnik–Chervonenkis"},{"claim":"PAC 学习需要 m = Ω(d/ε)","mine":"实测 32 ≥ 下界 20","src":"Ehrenfeucht et al. 1989"},{"claim":"sin(θx) 类可以打散任意多个点","mine":"m=1…12 全部 8,190 个标注零失败","src":"教科书（VC 维无穷的标准例子）"}],"page":{"E1":{"N":4,"classes":65536,"dimHist":[16,1928,47596,15994,1],"layered":[{"d":0,"maxAt":[1,1,1,1,1],"countAt":[16,16,16,16,16],"sauer":[1,1,1,1,1],"attainsSauerAt":[true,true,true,true,true]},{"d":1,"maxAt":[1,2,3,4,5],"countAt":[1928,1928,1808,1248,400],"sauer":[1,2,3,4,5],"attainsSauerAt":[true,true,true,true,true]},{"d":2,"maxAt":[1,2,4,7,11],"countAt":[47596,47596,47596,23760,400],"sauer":[1,2,4,7,11],"attainsSauerAt":[true,true,true,true,true]},{"d":3,"maxAt":[1,2,4,8,15],"countAt":[15994,15994,15994,15994,16],"sauer":[1,2,4,8,15],"attainsSauerAt":[true,true,true,true,true]},{"d":4,"maxAt":[1,2,4,8,16],"countAt":[1,1,1,1,1],"sauer":[1,2,4,8,16],"attainsSauerAt":[true,true,true,true,true]}],"uniqueD4":{"d":4,"size":16,"isFullPowerSet":true,"bits":65535}},"E2":[{"name":"阈值 {x : x ≥ t}","N":20,"size":21,"d":1,"theory":1,"source":"教科书","witness":[0],"status":"exact","used":4011,"hit":true},{"name":"区间 [a,b]","N":20,"size":211,"d":2,"theory":2,"source":"教科书","witness":[0,1],"status":"exact","used":240962,"hit":true},{"name":"至多 1 段区间的并","N":14,"size":106,"d":2,"theory":2,"source":"教科书","witness":[0,1],"status":"exact","used":38796,"hit":true},{"name":"至多 2 段区间的并","N":14,"size":1471,"d":4,"theory":4,"source":"教科书","witness":[0,1,2,3],"status":"exact","used":2950826,"hit":true},{"name":"至多 3 段区间的并","N":13,"size":4096,"d":6,"theory":6,"source":"教科书","witness":[0,1,2,3,4,5],"status":"exact","used":7053312,"hit":true},{"name":"轴对齐矩形（3×3 格点）","N":9,"size":37,"d":4,"theory":4,"source":"教科书","witness":[1,3,5,7],"status":"exact","used":7918,"hit":true},{"name":"轴对齐矩形（4×4 格点）","N":16,"size":101,"d":4,"theory":4,"source":"教科书","witness":[1,4,6,9],"status":"exact","used":504899,"hit":true},{"name":"奇偶性（3 位）","N":8,"size":8,"d":3,"theory":3,"source":"教科书","witness":[1,2,4],"status":"exact","used":824,"hit":true},{"name":"奇偶性（4 位）","N":16,"size":16,"d":4,"theory":4,"source":"教科书","witness":[1,2,4,8],"status":"exact","used":79424,"hit":true},{"name":"大小 ≤ 1 的全部子集","N":11,"size":12,"d":1,"theory":1,"source":"Sauer 取等类","witness":[0],"status":"exact","used":672,"hit":true},{"name":"大小 ≤ 2 的全部子集","N":11,"size":67,"d":2,"theory":2,"source":"Sauer 取等类","witness":[0,1],"status":"exact","used":11189,"hit":true},{"name":"大小 ≤ 3 的全部子集","N":11,"size":232,"d":3,"theory":3,"source":"Sauer 取等类","witness":[0,1,2],"status":"exact","used":77256,"hit":true},{"name":"大小 ≤ 4 的全部子集","N":11,"size":562,"d":4,"theory":4,"source":"Sauer 取等类","witness":[0,1,2,3],"status":"exact","used":261892,"hit":true}],"E3":[{"N":3,"exact":8,"theory":8,"naive":8,"naiveGap":0,"hit":true},{"N":4,"exact":14,"theory":14,"naive":14,"naiveGap":0,"hit":true},{"N":5,"exact":22,"theory":22,"naive":20,"naiveGap":2,"hit":true},{"N":6,"exact":32,"theory":32,"naive":26,"naiveGap":6,"hit":true},{"N":7,"exact":44,"theory":44,"naive":30,"naiveGap":14,"hit":true},{"N":8,"exact":58,"theory":58,"naive":32,"naiveGap":26,"hit":true},{"N":9,"exact":74,"theory":74,"naive":32,"naiveGap":42,"hit":true},{"N":10,"exact":92,"theory":92,"naive":32,"naiveGap":60,"hit":true},{"N":11,"exact":112,"theory":112,"naive":32,"naiveGap":80,"hit":true},{"N":12,"exact":134,"theory":134,"naive":32,"naiveGap":102,"hit":true}],"E4":{"N":256,"fLen":32,"eps":0.1,"delta":0.1,"trials":300,"mList":[8,16,32,64,128,256,512,1024],"rules":["random","small","large"],"table":{"random":[{"m":8,"pSucc":0.42,"meanErr":0.13619791666666667,"meanVersion":3544.09,"meanErrBest":0,"meanErrWorst":0.2927604166666667},{"m":16,"pSucc":0.7733333333333333,"meanErr":0.067421875,"meanVersion":1005.2433333333333,"meanErrBest":0,"meanErrWorst":0.15571614583333335},{"m":32,"pSucc":0.9533333333333334,"meanErr":0.039361979166666665,"meanVersion":235.70666666666668,"meanErrBest":0,"meanErrWorst":0.085703125},{"m":64,"pSucc":1,"meanErr":0.020416666666666666,"meanVersion":57.446666666666665,"meanErrBest":0,"meanErrWorst":0.041979166666666665},{"m":128,"pSucc":1,"meanErr":0.009986979166666667,"meanVersion":17.486666666666668,"meanErrBest":0,"meanErrWorst":0.02020833333333333},{"m":256,"pSucc":1,"meanErr":0.003984375,"meanVersion":4.523333333333333,"meanErrBest":0,"meanErrWorst":0.00765625},{"m":512,"pSucc":1,"meanErr":0.001171875,"meanVersion":1.7366666666666666,"meanErrBest":0,"meanErrWorst":0.0024088541666666668},{"m":1024,"pSucc":1,"meanErr":0.00014322916666666667,"meanVersion":1.06,"meanErrBest":0,"meanErrWorst":0.000234375}],"small":[{"m":8,"pSucc":0.17333333333333334,"meanErr":0.11157552083333333,"meanVersion":3393.9,"meanErrBest":0,"meanErrWorst":0.2928776041666667},{"m":16,"pSucc":0.49666666666666665,"meanErr":0.08776041666666666,"meanVersion":972.6933333333334,"meanErrBest":0,"meanErrWorst":0.15938802083333334},{"m":32,"pSucc":0.8833333333333333,"meanErr":0.054075520833333335,"meanVersion":232.83666666666667,"meanErrBest":0,"meanErrWorst":0.08352864583333333},{"m":64,"pSucc":0.98,"meanErr":0.028046875,"meanVersion":60.026666666666664,"meanErrBest":0,"meanErrWorst":0.042005208333333335},{"m":128,"pSucc":1,"meanErr":0.011809895833333334,"meanVersion":15.356666666666667,"meanErrBest":0,"meanErrWorst":0.019075520833333335},{"m":256,"pSucc":1,"meanErr":0.0048046875,"meanVersion":4.886666666666667,"meanErrBest":0,"meanErrWorst":0.008138020833333334},{"m":512,"pSucc":1,"meanErr":0.00109375,"meanVersion":1.71,"meanErrBest":0,"meanErrWorst":0.0023307291666666667},{"m":1024,"pSucc":1,"meanErr":0.00014322916666666667,"meanVersion":1.0866666666666667,"meanErrBest":0,"meanErrWorst":0.0003255208333333333}],"large":[{"m":8,"pSucc":0.12,"meanErr":0.24803385416666668,"meanVersion":3393.9,"meanErrBest":0,"meanErrWorst":0.2928776041666667},{"m":16,"pSucc":0.5066666666666667,"meanErr":0.11759114583333333,"meanVersion":972.6933333333334,"meanErrBest":0,"meanErrWorst":0.15938802083333334},{"m":32,"pSucc":0.86,"meanErr":0.055651041666666665,"meanVersion":232.83666666666667,"meanErrBest":0,"meanErrWorst":0.08352864583333333},{"m":64,"pSucc":0.9966666666666667,"meanErr":0.025390625,"meanVersion":60.026666666666664,"meanErrBest":0,"meanErrWorst":0.042005208333333335},{"m":128,"pSucc":1,"meanErr":0.011731770833333334,"meanVersion":15.356666666666667,"meanErrBest":0,"meanErrWorst":0.019075520833333335},{"m":256,"pSucc":1,"meanErr":0.004440104166666667,"meanVersion":4.886666666666667,"meanErrBest":0,"meanErrWorst":0.008138020833333334},{"m":512,"pSucc":1,"meanErr":0.001328125,"meanVersion":1.71,"meanErrBest":0,"meanErrWorst":0.0023307291666666667},{"m":1024,"pSucc":1,"meanErr":0.0001953125,"meanVersion":1.0866666666666667,"meanErrBest":0,"meanErrWorst":0.0003255208333333333}]},"mStar":{"random":32,"small":64,"large":64},"bounds":{"occam":127.03721840179533,"vc":898.6348030150529,"growth":19294,"lowerBoundOmega":20}},"E5":{"N":256,"m":64,"trials":400,"lens":[2,8,32,128],"rules":["random","small","large"],"rows":[{"len":2,"rules":{"random":{"meanErr":0.0194140625,"pSucc":0.9975},"small":{"meanErr":0.006142578125,"pSucc":1},"large":{"meanErr":0.055859375,"pSucc":0.945}}},{"len":8,"rules":{"random":{"meanErr":0.019794921875,"pSucc":1},"small":{"meanErr":0.02,"pSucc":1},"large":{"meanErr":0.03529296875,"pSucc":0.9325}}},{"len":32,"rules":{"random":{"meanErr":0.01955078125,"pSucc":0.9975},"small":{"meanErr":0.028349609375,"pSucc":0.99},"large":{"meanErr":0.0279296875,"pSucc":0.985}}},{"len":128,"rules":{"random":{"meanErr":0.02162109375,"pSucc":0.9975},"small":{"meanErr":0.027021484375,"pSucc":0.9875},"large":{"meanErr":0.0278515625,"pSucc":0.9925}}}],"rankShort":["small","random","large"],"rankLong":["random","small","large"],"flips":true,"ms":221},"E6":{"shatterRows":[{"m":1,"labelings":2,"miss":0,"thetaMax":50.26548245743669},{"m":2,"labelings":4,"miss":0,"thetaMax":100.53096491487338},{"m":3,"labelings":8,"miss":0,"thetaMax":201.06192982974676},{"m":4,"labelings":16,"miss":0,"thetaMax":402.1238596594935},{"m":5,"labelings":32,"miss":0,"thetaMax":804.247719318987},{"m":6,"labelings":64,"miss":0,"thetaMax":1608.495438637974},{"m":7,"labelings":128,"miss":0,"thetaMax":3216.990877275948},{"m":8,"labelings":256,"miss":0,"thetaMax":6433.981754551896},{"m":9,"labelings":512,"miss":0,"thetaMax":12867.963509103793},{"m":10,"labelings":1024,"miss":0,"thetaMax":25735.927018207585},{"m":11,"labelings":2048,"miss":0,"thetaMax":51471.85403641517},{"m":12,"labelings":4096,"miss":0,"thetaMax":102943.70807283034}],"shatterMaxM":12,"versionRows":[{"m":4,"trials":20,"meanVersionFrac":0.06287438642760265,"meanWorstErr":0.51729736328125,"meanErr":0.49639453125000016},{"m":8,"trials":20,"meanVersionFrac":0.0037827402703506036,"meanWorstErr":0.51478271484375,"meanErr":0.47343994140624995},{"m":16,"trials":20,"meanVersionFrac":0.00016276664000331744,"meanWorstErr":0.297705078125,"meanErr":0.13656341552734377},{"m":32,"trials":20,"meanVersionFrac":0.00007198146605264002,"meanWorstErr":0.058740234375,"meanErr":0.027079772949218744},{"m":64,"trials":20,"meanVersionFrac":0.00003323986437168902,"meanWorstErr":0.0263671875,"meanErr":0.01215252685546875},{"m":128,"trials":20,"meanVersionFrac":0.000015230601159162631,"meanWorstErr":0.01055908203125,"meanErr":0.0047147216796875}],"adversaryRows":[{"m":1,"labelings":2,"realizable":2,"versionDiameter":0.5,"witnessPat":0},{"m":2,"labelings":4,"realizable":4,"versionDiameter":0.5,"witnessPat":0},{"m":3,"labelings":8,"realizable":8,"versionDiameter":0.50002,"witnessPat":0},{"m":4,"labelings":16,"realizable":16,"versionDiameter":0.50004,"witnessPat":0},{"m":5,"labelings":32,"realizable":32,"versionDiameter":0.5,"witnessPat":1},{"m":6,"labelings":64,"realizable":64,"versionDiameter":0.50002,"witnessPat":0},{"m":7,"labelings":128,"realizable":128,"versionDiameter":0.50003,"witnessPat":31},{"m":8,"labelings":256,"realizable":256,"versionDiameter":0.50003,"witnessPat":63},{"m":9,"labelings":512,"realizable":512,"versionDiameter":0.50005,"witnessPat":191},{"m":10,"labelings":1024,"realizable":1024,"versionDiameter":0.5001,"witnessPat":224},{"m":11,"labelings":2048,"realizable":2048,"versionDiameter":0.50029,"witnessPat":992},{"m":12,"labelings":4096,"realizable":4096,"versionDiameter":0.50014,"witnessPat":3584}],"thetaStar":62.83185307179586,"thetaMaxRandom":6283.185307179586,"xgrid":4096,"samplesPerTrial":200,"ms":22442},"E7":{"wall":[{"N":3,"classes":256,"seconds":0.00058984375,"rate":434013.2450331126},{"N":4,"classes":65536,"seconds":0.151,"rate":434013.2450331126},{"N":5,"classes":4294967296,"seconds":9895.936,"rate":434013.2450331126},{"N":6,"classes":18446744073709552000,"seconds":42502721483309.055,"rate":434013.2450331126}],"ceiling":[{"d":1,"at":[{"m":1,"sauer":2,"twoPowM":2,"ratio":1},{"m":10,"sauer":11,"twoPowM":1024,"ratio":93.0909090909091},{"m":20,"sauer":21,"twoPowM":1048576,"ratio":49932.19047619047},{"m":40,"sauer":41,"twoPowM":1099511627776,"ratio":26817356775.02439},{"m":80,"sauer":81,"twoPowM":1.2089258196146292e+24,"ratio":1.4925010118699125e+22},{"m":160,"sauer":161,"twoPowM":1.461501637330903e+48,"ratio":9.077649921309955e+45}],"firstStrictBelow":2},{"d":2,"at":[{"m":2,"sauer":4,"twoPowM":4,"ratio":1},{"m":10,"sauer":56,"twoPowM":1024,"ratio":18.285714285714285},{"m":20,"sauer":211,"twoPowM":1048576,"ratio":4969.554502369669},{"m":40,"sauer":821,"twoPowM":1099511627776,"ratio":1339234625.7929354},{"m":80,"sauer":3241,"twoPowM":1.2089258196146292e+24,"ratio":373010126385260460000},{"m":160,"sauer":12881,"twoPowM":1.461501637330903e+48,"ratio":1.1346181486925728e+44}],"firstStrictBelow":3},{"d":3,"at":[{"m":3,"sauer":8,"twoPowM":8,"ratio":1},{"m":10,"sauer":176,"twoPowM":1024,"ratio":5.818181818181818},{"m":20,"sauer":1351,"twoPowM":1048576,"ratio":776.1480384900074},{"m":40,"sauer":10701,"twoPowM":1099511627776,"ratio":102748493.39089805},{"m":80,"sauer":85401,"twoPowM":1.2089258196146292e+24,"ratio":14155874282673846000},{"m":160,"sauer":682801,"twoPowM":1.461501637330903e+48,"ratio":2.140450346925243e+42}],"firstStrictBelow":4},{"d":4,"at":[{"m":4,"sauer":16,"twoPowM":16,"ratio":1},{"m":10,"sauer":386,"twoPowM":1024,"ratio":2.6528497409326426},{"m":20,"sauer":6196,"twoPowM":1048576,"ratio":169.23434473854098},{"m":40,"sauer":102091,"twoPowM":1099511627776,"ratio":10769917.30687328},{"m":80,"sauer":1666981,"twoPowM":1.2089258196146292e+24,"ratio":725218715519030700},{"m":160,"sauer":26977161,"twoPowM":1.461501637330903e+48,"ratio":5.41755167391744e+40}],"firstStrictBelow":5},{"d":5,"at":[{"m":5,"sauer":32,"twoPowM":32,"ratio":1},{"m":10,"sauer":638,"twoPowM":1024,"ratio":1.6050156739811912},{"m":20,"sauer":21700,"twoPowM":1048576,"ratio":48.32147465437788},{"m":40,"sauer":760099,"twoPowM":1099511627776,"ratio":1446537.395491903},{"m":80,"sauer":25706997,"twoPowM":1.2089258196146292e+24,"ratio":47027111708716080},{"m":160,"sauer":847361193,"twoPowM":1.461501637330903e+48,"ratio":1.724768197321615e+39}],"firstStrictBelow":6},{"d":6,"at":[{"m":6,"sauer":64,"twoPowM":64,"ratio":1},{"m":10,"sauer":848,"twoPowM":1024,"ratio":1.2075471698113207},{"m":20,"sauer":60460,"twoPowM":1048576,"ratio":17.343301356268608},{"m":40,"sauer":4598479,"twoPowM":1099511627776,"ratio":239103.32694266952},{"m":80,"sauer":326207197,"twoPowM":1.2089258196146292e+24,"ratio":3706005970231948},{"m":160,"sauer":22040615353,"twoPowM":1.461501637330903e+48,"ratio":6.630947520854831e+37}],"firstStrictBelow":7}],"note":"Σ_{i≤d} C(m,i) 是 m 的 d 次多项式，2^m 是指数 —— 天花板在 m > d 之后才起作用","ms":0}}};
+</script>
+<script>
+/* ---- ui.js（界面与交互） ---- */
+/* ============================================================
+ * ui.js —— 《可学之界》界面与交互
+ *
+ * 依赖：VCCore（core.js 内联）、A（analysis.json 内联）
+ *
+ * 规矩（全部是踩过的坑）：
+ *   · 开容器一律用 openTag()，**只开不闭**。用成对的 tag() 开 <svg> 会
+ *     产出当场闭合的空 SVG，后面所有图元变成它的兄弟节点 —— DOM 里数得出来、
+ *     屏幕上什么都没有，而断言照样全绿。
+ *   · 断言"看得见"一律读 getBoundingClientRect()，不数元素、不读样式属性。
+ *   · 对数轴分两种：计数量用 log(v+1)，概率量用 log(v/floor) 并给渲染下限。
+ *   · 画图前过滤非有限数；一个 NaN 会吃掉整条纵轴，而刻度文字还在。
+ * ========================================================== */
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var C = window.VCCore;
+  var A = window.__ANALYSIS__;
+
+  /* ---------- 小工具 ---------- */
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function attrsToStr(a) {
+    if (!a) return '';
+    var s = '';
+    for (var k in a) if (Object.prototype.hasOwnProperty.call(a, k)) {
+      if (a[k] === null || a[k] === undefined) continue;
+      s += ' ' + k + '="' + esc(a[k]) + '"';
+    }
+    return s;
+  }
+  /* 只开不闭 —— 用于 svg / g 这类容器 */
+  function openTag(name, attrs) { return '<' + name + attrsToStr(attrs) + '>'; }
+  function tag(name, attrs, text) { return openTag(name, attrs) + esc(text || '') + '</' + name + '>'; }
+
+  function num(x, n) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return Number(x).toFixed(n === undefined ? 3 : n);
+  }
+  function sci(x, n) {
+    if (x === null || x === undefined || !isFinite(x) || x === 0) return '—';
+    return Number(x).toExponential(n === undefined ? 2 : n).replace('e+', '×10^').replace('e-', '×10^−');
+  }
+  function commas(x) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+  function pct(x, n) { return (x === null || !isFinite(x)) ? '—' : (x * 100).toFixed(n === undefined ? 1 : n) + '%'; }
+
+  var COLOR = {
+    ink: '#14161b', ink2: '#3d444f', muted: '#6a7383', line: '#dfe3ea',
+    hot: '#b3261e', good: '#1a6b45', cool: '#1f4f8f', warn: '#8a5a00', purple: '#5b3a8f'
+  };
+
+  /* ============================================================
+   * 通用折线图
+   * cfg = { series:[{name,points,color,dash,dot}], xLog,yLog,xMin,xMax,yMin,yMax,
+   *         xLabel,yLabel, vlines:[{x,color,label}], hlines:[{y,color,label}],
+   *         fmtX,fmtY, w,h, logBaseFloor }
+   * ========================================================== */
+  function lineChart(host, cfg) {
+    if (!host) return;
+    var W = cfg.w || 720, H = cfg.h || 300;
+    var PL = 62, PR = 16, PT = 14, PB = 40;
+    var iw = W - PL - PR, ih = H - PT - PB;
+    var all = [];
+    cfg.series.forEach(function (s) {
+      s.points.forEach(function (p) {
+        if (isFinite(p[0]) && isFinite(p[1])) all.push(p);
+      });
+    });
+    if (!all.length) { host.innerHTML = '<p class="note">没有可用数据。</p>'; return; }
+
+    function lo(a) { return Math.min.apply(null, a); }
+    function hi(a) { return Math.max.apply(null, a); }
+    var xs = all.map(function (p) { return p[0]; }), ys = all.map(function (p) { return p[1]; });
+    var xmin = cfg.xMin !== undefined ? cfg.xMin : lo(xs);
+    var xmax = cfg.xMax !== undefined ? cfg.xMax : hi(xs);
+    var ymin = cfg.yMin !== undefined ? cfg.yMin : lo(ys);
+    var ymax = cfg.yMax !== undefined ? cfg.yMax : hi(ys);
+    if (ymin === ymax) { ymin = ymin - 1; ymax = ymax + 1; }
+    if (xmin === xmax) { xmin = xmin - 1; xmax = xmax + 1; }
+
+    var floorY = cfg.logFloor || 1e-9;
+    function tx(v) {
+      if (cfg.xLog) {
+        var a = Math.log(Math.max(v, 1e-12)), b = Math.log(Math.max(xmin, 1e-12)), c = Math.log(Math.max(xmax, 1e-12));
+        return PL + iw * (a - b) / (c - b || 1);
+      }
+      return PL + iw * (v - xmin) / (xmax - xmin || 1);
+    }
+    function ty(v) {
+      if (cfg.yLog) {
+        var a = Math.log(Math.max(v, floorY)), b = Math.log(Math.max(ymin, floorY)), c = Math.log(Math.max(ymax, floorY));
+        return PT + ih - ih * (a - b) / (c - b || 1);
+      }
+      return PT + ih - ih * (v - ymin) / (ymax - ymin || 1);
+    }
+
+    var out = [];
+    out.push(openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img',
+      'aria-label': (cfg.aria || '折线图') }));
+
+    /* 网格 + 刻度 */
+    function ticks(lo0, hi0, log) {
+      var t = [], i;
+      if (log) {
+        var a = Math.floor(Math.log(Math.max(lo0, 1e-12)) / Math.LN10), b = Math.ceil(Math.log(Math.max(hi0, 1e-12)) / Math.LN10);
+        for (i = a; i <= b; i++) t.push(Math.pow(10, i));
+      } else {
+        var step = (hi0 - lo0) / 4;
+        for (i = 0; i <= 4; i++) t.push(lo0 + step * i);
+      }
+      return t;
+    }
+    var yt = ticks(ymin, ymax, cfg.yLog), i;
+    for (i = 0; i < yt.length; i++) {
+      var v = yt[i]; if (v < ymin * 0.999 || v > ymax * 1.001) continue;
+      var yy = ty(v);
+      out.push(tag('line', { x1: PL, y1: yy.toFixed(1), x2: PL + iw, y2: yy.toFixed(1), stroke: COLOR.line, 'stroke-width': 1 }));
+      out.push(tag('text', { x: PL - 8, y: (yy + 4).toFixed(1), 'text-anchor': 'end', 'font-size': 11, fill: COLOR.muted },
+        cfg.fmtY ? cfg.fmtY(v) : (cfg.yLog ? sci(v, 0) : num(v, Math.abs(v) < 1 ? 3 : 0))));
+    }
+    var xt = ticks(xmin, xmax, cfg.xLog);
+    for (i = 0; i < xt.length; i++) {
+      var v2 = xt[i]; if (v2 < xmin * 0.999 || v2 > xmax * 1.001) continue;
+      var xx = tx(v2);
+      out.push(tag('line', { x1: xx.toFixed(1), y1: PT, x2: xx.toFixed(1), y2: PT + ih, stroke: COLOR.line, 'stroke-width': 1 }));
+      out.push(tag('text', { x: xx.toFixed(1), y: PT + ih + 17, 'text-anchor': 'middle', 'font-size': 11, fill: COLOR.muted },
+        cfg.fmtX ? cfg.fmtX(v2) : (cfg.xLog ? sci(v2, 0) : num(v2, 0))));
+    }
+    /* 轴 */
+    out.push(tag('line', { x1: PL, y1: PT + ih, x2: PL + iw, y2: PT + ih, stroke: COLOR.ink2, 'stroke-width': 1 }));
+    out.push(tag('line', { x1: PL, y1: PT, x2: PL, y2: PT + ih, stroke: COLOR.ink2, 'stroke-width': 1 }));
+
+    /* 参考线 */
+    (cfg.vlines || []).forEach(function (v) {
+      var xx = tx(v.x);
+      if (xx < PL || xx > PL + iw) return;
+      out.push(tag('line', { x1: xx.toFixed(1), y1: PT, x2: xx.toFixed(1), y2: PT + ih,
+        stroke: v.color || COLOR.hot, 'stroke-width': 1.4, 'stroke-dasharray': '5 4' }));
+      if (v.label) out.push(tag('text', { x: xx.toFixed(1), y: PT + 12, 'text-anchor': 'middle',
+        'font-size': 10.5, fill: v.color || COLOR.hot }, v.label));
+    });
+    (cfg.hlines || []).forEach(function (v) {
+      var yy2 = ty(v.y);
+      if (yy2 < PT || yy2 > PT + ih) return;
+      out.push(tag('line', { x1: PL, y1: yy2.toFixed(1), x2: PL + iw, y2: yy2.toFixed(1),
+        stroke: v.color || COLOR.cool, 'stroke-width': 1.2, 'stroke-dasharray': '3 3' }));
+    });
+
+    /* 曲线 */
+    var drawnPts = 0;
+    cfg.series.forEach(function (s) {
+      var pts = s.points.filter(function (p) { return isFinite(p[0]) && isFinite(p[1]); });
+      drawnPts += pts.length;
+      if (!pts.length) return;
+      if (s.dot) {
+        pts.forEach(function (p) {
+          out.push(tag('circle', { cx: tx(p[0]).toFixed(1), cy: ty(p[1]).toFixed(1), r: 3,
+            fill: s.color || COLOR.hot }));
+        });
+      } else {
+        var d = pts.map(function (p, k) { return (k ? 'L' : 'M') + tx(p[0]).toFixed(1) + ' ' + ty(p[1]).toFixed(1); }).join(' ');
+        out.push(tag('path', { d: d, fill: 'none', stroke: s.color || COLOR.ink,
+          'stroke-width': s.w || 2, 'stroke-dasharray': s.dash || null, 'stroke-linejoin': 'round' }));
+      }
+    });
+
+    /* 轴名 */
+    if (cfg.xLabel) out.push(tag('text', { x: PL + iw / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': 11.5, fill: COLOR.ink2 }, cfg.xLabel));
+    if (cfg.yLabel) out.push(tag('text', { x: 13, y: PT + ih / 2, 'text-anchor': 'middle', 'font-size': 11.5, fill: COLOR.ink2,
+      transform: 'rotate(-90 13 ' + (PT + ih / 2) + ')' }, cfg.yLabel));
+    out.push('</svg>');
+    host.innerHTML = out.join('');
+    host.__pts = drawnPts;
+  }
+
+  /* 横向条形图（真 SVG，柱体是 rect） */
+  function hbars(host, rows, cfg) {
+    cfg = cfg || {};
+    var W = cfg.w || 720, rowH = cfg.rowH || 26, PL = cfg.pl || 150, PR = 62, PT = 8;
+    var H = PT + rows.length * rowH + 8;
+    var iw = W - PL - PR;
+    var max = 0, i;
+    for (i = 0; i < rows.length; i++) max = Math.max(max, rows[i].value);
+    if (!isFinite(max) || max <= 0) max = 1;
+    var log = !!cfg.log;
+    function frac(v) {
+      if (log) return Math.log((v || 0) / (cfg.floor || 1) + 1) / Math.log(max / (cfg.floor || 1) + 1);
+      return (v || 0) / max;
+    }
+    var out = [openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img', 'aria-label': cfg.aria || '条形图' })];
+    for (i = 0; i < rows.length; i++) {
+      var r = rows[i], y = PT + i * rowH;
+      var w = frac(r.value) * iw;
+      if (cfg.minFrac && w > 0 && w < cfg.minFrac * iw) w = cfg.minFrac * iw;
+      out.push(tag('text', { x: PL - 10, y: (y + rowH * 0.62).toFixed(1), 'text-anchor': 'end', 'font-size': 11.5, fill: COLOR.ink2 }, r.label));
+      out.push(tag('rect', { x: PL, y: (y + 4).toFixed(1), width: iw, height: (rowH - 12).toFixed(1), fill: '#f1f4f8', rx: 3 }));
+      if (w > 0) out.push(tag('rect', { class: 'bar-fill', x: PL, y: (y + 4).toFixed(1), width: w.toFixed(1),
+        height: (rowH - 12).toFixed(1), fill: r.color || COLOR.cool, rx: 3 }));
+      out.push(tag('text', { x: (PL + iw + 6).toFixed(1), y: (y + rowH * 0.62).toFixed(1), 'font-size': 11, fill: COLOR.muted },
+        r.note || num(r.value, cfg.dec === undefined ? 2 : cfg.dec)));
+    }
+    out.push('</svg>');
+    host.innerHTML = out.join('');
+    host.__pts = rows.length;
+  }
+
+  /* ============================================================
+   * 头版
+   * ========================================================== */
+  var TABS = [
+    ['shatter', '壹 · 打散'],
+    ['sauer', '贰 · 不等式'],
+    ['named', '叁 · 已知答案'],
+    ['cover', '肆 · 两种数法'],
+    ['bounds', '伍 · 界的价钱'],
+    ['infinite', '陆 · 无穷'],
+    ['wall', '柒 · 墙与验证']
+  ];
+  var activeTab = 'shatter';
+
+  function buildTabs() {
+    var nav = $('tabs');
+    nav.innerHTML = TABS.map(function (t) {
+      return '<button data-tab="' + t[0] + '"' + (t[0] === activeTab ? ' class="on"' : '') + '>' + esc(t[1]) + '</button>';
+    }).join('');
+    nav.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-tab]');
+      if (b) setTab(b.getAttribute('data-tab'));
+    });
+  }
+  function setTab(id) {
+    activeTab = id;
+    TABS.forEach(function (t) {
+      var p = $('p-' + t[0]);
+      if (p) p.className = 'panel' + (t[0] === id ? ' on' : '');
+    });
+    var bs = $('tabs').querySelectorAll('button');
+    for (var i = 0; i < bs.length; i++) {
+      bs[i].className = bs[i].getAttribute('data-tab') === id ? 'on' : '';
+    }
+    if (id === 'shatter') renderGrowth();
+  }
+
+  function buildKpi() {
+    $('kpis').innerHTML = A.kpi.map(function (k) {
+      return '<div class="kpi ' + esc(k.tone || '') + '">' +
+        '<div class="k-label">' + esc(k.label) + '</div>' +
+        '<div class="k-value">' + esc(k.value) + '<span class="k-unit">' + esc(k.unit || '') + '</span></div>' +
+        '<div class="k-note">' + esc(k.note) + '</div></div>';
+    }).join('');
+    $('meta-line').textContent =
+      '模型自检 57 项全绿 · 标定 7 组实验 · 全枚举 65,536 个概念类 · ' +
+      '生成于 ' + (A.meta.builtAt || '').slice(0, 19).replace('T', ' ');
+    $('foot-line').textContent =
+      'analysis.json ' + (A.verify ? A.verify.length : 0) + ' 行验证表 · ' +
+      A.conclusions.length + ' 条结论 · ' + A.boundaries.length + ' 条边界';
+  }
+
+  /* ============================================================
+   * 壹 · 打散实验台
+   * ========================================================== */
+  var shState = { cls: 'intervals', N: 6, S: [] };
+
+  var CLASSES = [
+    { id: 'thresholds', name: '阈值 {x ≥ t}', make: function (N) { return C.classThresholds(N); } },
+    { id: 'intervals', name: '区间 [a,b]', make: function (N) { return C.classIntervals(N); } },
+    { id: 'union1', name: '至多 1 段区间的并', make: function (N) { return C.classUnionOfIntervals(N, 1); } },
+    { id: 'union2', name: '至多 2 段区间的并', make: function (N) { return C.classUnionOfIntervals(N, 2); } },
+    { id: 'upto1', name: '大小 ≤ 1 的全部子集', make: function (N) { return C.classAllSubsetsUpTo(N, 1); } },
+    { id: 'upto2', name: '大小 ≤ 2 的全部子集', make: function (N) { return C.classAllSubsetsUpTo(N, 2); } },
+    { id: 'power', name: '全部子集（幂集）', make: function (N) { return C.classAllSubsetsUpTo(N, N); } }
+  ];
+
+  function currentClass() {
+    var c = CLASSES.filter(function (x) { return x.id === shState.cls; })[0] || CLASSES[1];
+    return c.make(shState.N);
+  }
+
+  function buildShatter() {
+    var sel = $('sh-class');
+    sel.innerHTML = CLASSES.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('');
+    sel.value = shState.cls;
+    sel.addEventListener('change', function () { shState.cls = sel.value; shState.S = []; renderShatter(); });
+    $('sh-n').value = String(shState.N);
+    $('sh-n').addEventListener('change', function () { shState.N = parseInt($('sh-n').value, 10); shState.S = []; renderShatter(); });
+    renderShatter();
+  }
+
+  function renderShatter() {
+    var N = shState.N, H = currentClass();
+    var pk = $('sh-picker');
+    var html = '';
+    for (var i = 0; i < N; i++) {
+      html += '<button data-i="' + i + '" class="' + (shState.S.indexOf(i) >= 0 ? 'sel' : '') + '">' + i + '</button>';
+    }
+    pk.innerHTML = html;
+    var btns = pk.querySelectorAll('button');
+    for (var k = 0; k < btns.length; k++) {
+      btns[k].addEventListener('click', function () {
+        var i = parseInt(this.getAttribute('data-i'), 10), at = shState.S.indexOf(i);
+        if (at >= 0) shState.S.splice(at, 1); else shState.S.push(i);
+        shState.S.sort(function (a, b) { return a - b; });
+        renderShatter();
+      });
+    }
+    var m = shState.S.length;
+    var pats = m ? C.restrictPatterns(H, shState.S) : 0;
+    var need = Math.pow(2, m);
+    var d = C.vcDim(H, N, { budget: 4e7 });
+
+    /* 标注表 */
+    var pg = $('sh-pats');
+    if (!m) {
+      pg.innerHTML = '<p class="note">先在左边点几个点。</p>';
+    } else {
+      var realized = {};
+      for (var hi = 0; hi < H.length; hi++) {
+        var pat = 0;
+        for (var q = 0; q < m; q++) {
+          var p0 = shState.S[q];
+          pat |= (((H[hi][p0 >>> 5] >>> (p0 & 31)) & 1) << q);
+        }
+        realized[pat] = 1;
+      }
+      var out = '';
+      for (var t = 0; t < need; t++) {
+        var s = '';
+        for (var q2 = 0; q2 < m; q2++) s += ((t >> q2) & 1) ? '+' : '−';
+        out += '<div class="pat ' + (realized[t] ? 'yes' : 'no') + '"><span>' + esc(s) + '</span><span>' +
+          (realized[t] ? '✓' : '×') + '</span></div>';
+      }
+      pg.innerHTML = out;
+    }
+
+    $('sh-readout').innerHTML =
+      ro('选中的点数 |S|', m, '') +
+      ro('实现得出来的标注数', m ? pats : '—', '／' + (m ? need : '—'), pats === need && m ? 'good' : '') +
+      ro('这个类的 VC 维', d.d, d.status === 'exact' ? '' : '（' + d.status + '）', 'hot') +
+      ro('类的概念数 |H|', commas(H.length), '');
+
+    $('sh-verdict').innerHTML = !m
+      ? '还没有选点。'
+      : (pats === need
+        ? '<b>被打散。</b>S 的全部 ' + need + ' 种标注都能实现 —— 说明这个类的 VC 维至少是 ' + m + '。'
+        : '<b>没被打散。</b>' + need + ' 种标注里有 ' + (need - pats) + ' 种实现不出来 —— 所以 VC 维 < ' + m + '。');
+
+    renderGrowth();
+  }
+
+  function ro(label, value, unit, cls) {
+    return '<div class="ro"><div class="rl">' + esc(label) + '</div><div class="rv ' + esc(cls || '') + '">' +
+      esc(value) + '<span class="k-unit">' + esc(unit || '') + '</span></div></div>';
+  }
+
+  function renderGrowth() {
+    var N = shState.N, H = currentClass();
+    var d = C.vcDim(H, N, { budget: 4e7 }).d;
+    var pts = [], bound = [], exp = [];
+    for (var m = 0; m <= N; m++) {
+      pts.push([m, m === 0 ? 1 : C.growthExact(H, N, m)]);
+      bound.push([m, Math.min(C.sauer(m, d), Math.pow(2, m))]);
+      exp.push([m, Math.pow(2, m)]);
+    }
+    lineChart($('c-growth'), {
+      series: [
+        { name: '实测 Π', points: pts, color: COLOR.hot, dot: true },
+        { name: 'Sauer 界', points: bound, color: COLOR.cool, dash: '6 4' },
+        { name: '2^m', points: exp, color: COLOR.muted, dash: '2 4' }
+      ],
+      xLabel: 'm（样本点数）', yLabel: '不同的行为数', yLog: true,
+      h: 250, w: 620
+    });
+    $('lg-growth').innerHTML =
+      legend([['实测 Π_H(m)', COLOR.hot, 'dot'], ['Sauer 界 Σ C(m,i)', COLOR.cool, 'dash'], ['2^m（什么都可能）', COLOR.muted, 'dash']]);
+    $('nt-growth').textContent =
+      '当前类：' + CLASSES.filter(function (x) { return x.id === shState.cls; })[0].name +
+      '（|H| = ' + commas(H.length) + '，VC 维 ' + d + '）。纵轴对数：实测曲线一旦贴住 Sauer 界，' +
+      '就说明这个类"已经用满了它被允许的表现力"。';
+  }
+
+  function legend(items) {
+    return items.map(function (it) {
+      var style = it[2] === 'dot' ? 'background:' + it[1] : (it[2] === 'dash' ? 'color:' + it[1] : 'background:' + it[1]);
+      return '<span><i class="' + (it[2] === 'dot' ? 'dot' : (it[2] === 'dash' ? 'dash' : '')) + '" style="' + style + '"></i>' + esc(it[0]) + '</span>';
+    }).join('');
+  }
+
+  /* ============================================================
+   * 壹（表）：VC 维分布
+   * ========================================================== */
+  function renderDims() {
+    var E1 = A.page.E1, tot = E1.classes, tb = $('t-dims').querySelector('tbody');
+    var rows = '';
+    for (var d = 0; d <= E1.N; d++) {
+      var lay = E1.layered[d];
+      rows += '<tr><td class="l">' + d + '</td><td>' + commas(E1.dimHist[d]) + '</td><td>' + pct(E1.dimHist[d] / tot) +
+        '</td><td>' + (lay ? commas(lay.maxAt[E1.N]) : '—') + '</td><td>' + (lay ? commas(lay.sauer[E1.N]) : '—') + '</td></tr>';
+    }
+    tb.innerHTML = rows;
+    $('nt-dims').innerHTML = 'N=4 时 Π<sub>H</sub>(4) 恒等于 |H|（S 取整个域，限制就是概念本身）—— ' +
+      '所以这一列只是"类有多大"。真正的信息在<b>那一行只有 1 个类</b>：要打散 4 个点，' +
+      '你必须把 16 个概念一个不落地全放进去。';
+  }
+
+  /* ============================================================
+   * 贰 · 天花板 + 分层核对
+   * ========================================================== */
+  function renderSauer() {
+    var ch = A.charts.ceiling;
+    lineChart($('c-ceiling'), {
+      series: [
+        { name: 'Σ_{i≤2} C(m,i)', points: ch.sauer, color: COLOR.cool },
+        { name: '2^m', points: ch.twoPow, color: COLOR.hot },
+        { name: '1（VC 维 0 的类）', points: ch.const1, color: COLOR.muted, dash: '4 4' }
+      ],
+      xLabel: 'm（样本点数）', yLabel: '行为数（对数）', xLog: true, yLog: true,
+      xMin: 1, yMin: 1, h: 300, w: 660
+    });
+    $('lg-ceiling').innerHTML = legend([
+      ['Σ_{i≤2}C(m,i) —— 二次多项式', COLOR.cool, ''],
+      ['2^m —— 随便什么行为都可能', COLOR.hot, ''],
+      ['VC 维 0：只有一种行为', COLOR.muted, 'dash']
+    ]);
+    $('nt-ceiling').innerHTML = '在 m = 40 时，两条线差了 <b>' + sci(ch.ratioAt40, 2) + '</b> 倍。' +
+      '「可学」这件事的全部内容，就是这个比值 —— 它把"可能需要的行为数"从指数压成了多项式。';
+
+    var E1 = A.page.E1, tb = $('t-layered').querySelector('tbody'), rows = '';
+    for (var d = 0; d <= E1.N; d++) {
+      var lay = E1.layered[d];
+      if (!lay) continue;
+      rows += '<tr><td class="l">' + d + '</td>';
+      for (var m = 1; m <= E1.N; m++) {
+        var ok = lay.attainsSauerAt[m];
+        rows += '<td class="' + (ok ? 'good' : 'dim') + '">' + commas(lay.maxAt[m]) + ' / ' + commas(lay.sauer[m]) +
+          '<br><span class="mono" style="font-size:10.5px;color:var(--muted)">' + commas(lay.countAt[m]) + ' 个类取等</span></td>';
+      }
+      rows += '</tr>';
+    }
+    tb.innerHTML = rows;
+    var dv = A.derived;
+    $('sa-readout').innerHTML =
+      ro('违例', dv.sauerViolations, '／' + commas(dv.sauerChecks) + ' 次', dv.sauerViolations === 0 ? 'good' : 'hot') +
+      ro('取到等号的 (d,m)', dv.sauerTightPairs, '／' + dv.sauerPairs, 'good') +
+      ro('VC 维为 4 的类', dv.dimHist[4], '个（共 ' + commas(dv.classesEnumerated) + '）', 'hot');
+    $('nt-sauer').innerHTML = '这条不等式不是"没被违反"，而是<b>每个 (d, m) 上都刚好有类取到等号</b> —— ' +
+      '取等的那一族就是「所有大小 ≤ d 的子集」。所以它不是一条松垮的估计，是紧的。';
+  }
+
+  /* ============================================================
+   * 叁 · 具名类
+   * ========================================================== */
+  function renderNamed() {
+    var rows = A.page.E2.map(function (r) {
+      return '<tr><td class="l">' + esc(r.name) + '</td><td>' + r.N + '</td><td>' + commas(r.size) +
+        '</td><td class="' + (r.hit ? 'good' : 'hot') + '">' + r.d + '</td><td>' + r.theory + '</td>' +
+        '<td class="l mono" style="font-size:11px">' + esc(JSON.stringify(r.witness)) + '</td>' +
+        '<td class="' + (r.hit ? 'good' : 'hot') + '">' + (r.hit ? '✓ 命中' : '✗ ' + r.status) + '</td></tr>';
+    }).join('');
+    $('t-named').querySelector('tbody').innerHTML = rows;
+    $('nt-named').innerHTML = '全部 ' + A.page.E2.length + ' 个类都命中。<b>"打散见证"那一列是真的算出来的</b>：' +
+      '它是第一个能被该类打散的 d 元点集；同时非打散那一层也是穷举过的（在预算内枚举完全部 ' +
+      'C(N, d+1) 个子集，一个都没打散，才敢说 VC 维到此为止）。';
+  }
+
+  /* ============================================================
+   * 肆 · Cover
+   * ========================================================== */
+  function renderCover() {
+    var rows = A.page.E3;
+    lineChart($('c-cover'), {
+      series: [
+        { name: '精确枚举', points: rows.map(function (r) { return [r.N, r.exact]; }), color: COLOR.cool, dot: true },
+        { name: 'N²−N+2', points: rows.map(function (r) { return [r.N, r.theory]; }), color: COLOR.good, dash: '7 4' },
+        { name: '朴素整数盒扫描', points: rows.map(function (r) { return [r.N, r.naive]; }), color: COLOR.hot, dot: true }
+      ],
+      xLabel: '点数 N', yLabel: '可实现的二分个数', h: 290, w: 620
+    });
+    $('lg-cover').innerHTML = legend([
+      ['精确枚举（对偶线构形 + 顶点扰动）', COLOR.cool, 'dot'],
+      ['闭式解 N²−N+2（Cover 1965）', COLOR.good, 'dash'],
+      ['朴素整数盒参数扫描', COLOR.hot, 'dot']
+    ]);
+    $('nt-cover').innerHTML = '两条曲线一开始重合，从 N=8 起分开 —— 朴素扫描<b>卡在 32 不动</b>了。' +
+      '它不是"算得慢"，是"数漏了"：需要系数很大的那些区域它够不着。';
+    $('t-cover').querySelector('tbody').innerHTML = rows.map(function (r) {
+      return '<tr><td>' + r.N + '</td><td class="good">' + r.exact + '</td><td>' + r.theory + '</td><td class="' +
+        (r.naiveGap ? 'hot' : '') + '">' + r.naive + '</td><td>' + (r.naiveGap || '—') + '</td></tr>';
+    }).join('');
+    $('nt-cover2').innerHTML = '同一个问题、同一个真值，<b>换一种枚举方式</b>，从"少 102 个"变成"一个不差"。' +
+      '这是本页唯一一处"我的第一版实现是错的"的公开记录。';
+  }
+
+  /* ============================================================
+   * 伍 · 界与实测
+   * ========================================================== */
+  function renderBounds() {
+    var E4 = A.page.E4, ch = A.charts.sampleComplexity;
+    var vlines = [
+      { x: E4.mStar.random, color: COLOR.good, label: '实测 ' + E4.mStar.random },
+      { x: E4.bounds.occam, color: COLOR.warn, label: 'Occam ' + Math.round(E4.bounds.occam) },
+      { x: E4.bounds.vc, color: COLOR.hot, label: 'VC ' + Math.round(E4.bounds.vc) },
+      { x: E4.bounds.growth, color: COLOR.purple, label: '增长函数 ' + commas(Math.round(E4.bounds.growth)) }
+    ];
+    lineChart($('c-sc'), {
+      series: ch.series.map(function (s, i) {
+        return { name: s.name, points: s.points, color: [COLOR.good, COLOR.cool, COLOR.hot][i], dot: true };
+      }),
+      xLabel: '样本数 m（对数）', yLabel: 'P(真实误差 ≤ ' + E4.eps + ')', xLog: true,
+      yMin: 0, yMax: 1.02, vlines: vlines, h: 300, w: 660
+    });
+    $('lg-sc').innerHTML = legend([
+      ['随机并列', COLOR.good, 'dot'], ['取最小', COLOR.cool, 'dot'], ['取最大', COLOR.hot, 'dot']
+    ]);
+    $('nt-sc').innerHTML = '三条实测曲线都很快冲到 1，而三条界的竖线在<b>更右边</b>。' +
+      '这不是界算错了 —— 界说的是最坏分布，这里跑的是均匀分布。';
+
+    var b = E4.bounds, dv = A.derived;
+    $('t-bounds').querySelector('tbody').innerHTML =
+      '<tr><td class="l">Occam 界 (ln|H| + ln(1/δ))/ε</td><td>' + Math.round(b.occam) + '</td><td>' + num(dv.loosening.occam, 1) + '×</td></tr>' +
+      '<tr><td class="l">VC 界 (4/ε)ln(2/δ) + (8d/ε)ln(13/ε)</td><td>' + Math.round(b.vc) + '</td><td>' + num(dv.loosening.vc, 1) + '×</td></tr>' +
+      '<tr><td class="l">增长函数界 4Π(2m)e^(−mε²/8) ≤ δ</td><td>' + commas(Math.round(b.growth)) + '</td><td>' + num(dv.loosening.growth, 0) + '×</td></tr>' +
+      '<tr><td class="l"><b>实测（均匀分布，P ≥ ' + pct(1 - E4.delta, 0) + '）</b></td><td class="good"><b>' + dv.mStarRandom + '</b></td><td>1×</td></tr>' +
+      '<tr><td class="l">已知下界 Ω(d/ε)</td><td>' + Math.round(b.lowerBoundOmega) + '</td><td class="dim">下界</td></tr>';
+    $('bd-readout').innerHTML =
+      ro('三档界彼此相差', num(dv.boundSpread, 0), '倍', 'hot') +
+      ro('实测 / 已知下界', num(dv.lowerBoundGap, 1), '倍', 'good') +
+      ro('换并列规则最多多花', num(dv.tieBreakCost, 0), '倍样本', 'warn');
+  }
+
+  /* ---- ERM 实验台 ---- */
+  var erState = { m: 32, len: 32, tie: 'random', cnt: null, res: null, seed: 12345 };
+  var ER_N = 256;
+
+  function erRun() {
+    var fLo = Math.floor((ER_N - erState.len) / 2), fHi = fLo + erState.len - 1;
+    var rnd = C.splitmix32(erState.seed);
+    var cnt = new Float64Array(ER_N), S = [];
+    for (var i = 0; i < erState.m; i++) { var p = Math.floor(rnd() * ER_N); cnt[p]++; S.push(p); }
+    var res = C.intervalErmScan(ER_N, fLo, fHi, cnt, erState.tie, rnd);
+    erState.cnt = cnt; erState.res = res; erState.fLo = fLo; erState.fHi = fHi;
+    renderErm();
+  }
+
+  function renderErm() {
+    if (!erState.res) return;
+    var res = erState.res, cnt = erState.cnt, fLo = erState.fLo, fHi = erState.fHi;
+    var W = 660, H = 168, PL = 14, iw = W - 28;
+    var out = [openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img', 'aria-label': 'ERM 结果' })];
+    var y0 = 34, cellW = iw / ER_N, cellH = 30;
+    /* 真值 f */
+    out.push(tag('text', { x: PL, y: 22, 'font-size': 11.5, fill: COLOR.muted }, '真值 f（学习者看不到）'));
+    out.push(tag('rect', { x: (PL + fLo * cellW).toFixed(1), y: y0, width: (erState.len * cellW).toFixed(1), height: cellH, fill: '#e8eef7', stroke: COLOR.cool, 'stroke-width': 1 }));
+    /* ERM 选出的 h */
+    var y1 = y0 + cellH + 16;
+    out.push(tag('text', { x: PL, y: y1 - 5, 'font-size': 11.5, fill: COLOR.muted }, 'ERM 挑出的 h'));
+    if (res.a >= 0) {
+      out.push(tag('rect', { x: (PL + res.a * cellW).toFixed(1), y: y1, width: ((res.b - res.a + 1) * cellW).toFixed(1), height: cellH, fill: '#fbeceb', stroke: COLOR.hot, 'stroke-width': 1 }));
+    } else {
+      out.push(tag('text', { x: PL, y: y1 + 20, 'font-size': 11.5, fill: COLOR.hot }, '∅（空集）'));
+    }
+    /* 样本点 */
+    var y2 = y1 + cellH + 18;
+    out.push(tag('text', { x: PL, y: y2 - 5, 'font-size': 11.5, fill: COLOR.muted }, '抽到的样本（m = ' + erState.m + '，有放回）'));
+    for (var x = 0; x < ER_N; x++) {
+      if (!cnt[x]) continue;
+      var inside = (x >= fLo && x <= fHi);
+      out.push(tag('rect', { x: (PL + x * cellW).toFixed(2), y: y2, width: Math.max(1, cellW).toFixed(2), height: 14,
+        fill: inside ? COLOR.good : COLOR.muted, opacity: 0.85 }));
+    }
+    /* 版本空间的误差范围 */
+    var y3 = y2 + 30;
+    var xa = PL + (res.errBest / ER_N) * iw, xb = PL + (res.errWorst / ER_N) * iw;
+    out.push(tag('line', { x1: PL, y1: y3, x2: PL + iw, y2: y3, stroke: COLOR.line, 'stroke-width': 1 }));
+    out.push(tag('line', { x1: xa.toFixed(1), y1: y3, x2: xb.toFixed(1), y2: y3, stroke: COLOR.warn, 'stroke-width': 5, opacity: 0.5 }));
+    out.push(tag('circle', { cx: (PL + (res.err / ER_N) * iw).toFixed(1), cy: y3, r: 5, fill: COLOR.hot }));
+    out.push(tag('text', { x: PL, y: y3 + 24, 'font-size': 11.5, fill: COLOR.muted },
+      '版本空间里所有一致假设的误差范围：' + pct(res.errBest / ER_N) + ' ～ ' + pct(res.errWorst / ER_N) + '（红点 = 这次挑到的）'));
+    out.push('</svg>');
+    $('c-erm').innerHTML = out.join('');
+    $('c-erm').__pts = 4;
+
+    $('lg-erm').innerHTML = legend([['目标 f', COLOR.cool, ''], ['ERM 的 h', COLOR.hot, ''], ['样本点（绿=在 f 内）', COLOR.good, 'dot'], ['版本空间误差范围', COLOR.warn, '']]);
+    $('er-readout').innerHTML =
+      ro('训练误差', pct(res.trainErr / erState.m), '', 'good') +
+      ro('真实误差', pct(res.err / ER_N), '', res.err / ER_N <= 0.1 ? 'good' : 'hot') +
+      ro('版本空间大小', commas(res.versionSize), '个假设') +
+      ro('最好的可能', pct(res.errBest / ER_N), '', 'good') +
+      ro('最坏的并列', pct(res.errWorst / ER_N), '', 'hot');
+  }
+
+  function buildErm() {
+    var rm = $('er-m'), rl = $('er-len'), rt = $('er-tie');
+    function sync() {
+      erState.m = parseInt(rm.value, 10);
+      erState.len = parseInt(rl.value, 10);
+      erState.tie = rt.value;
+      erRun();
+    }
+    rm.addEventListener('input', sync); rl.addEventListener('input', sync); rt.addEventListener('change', sync);
+    $('er-go').addEventListener('click', function () { erState.seed = (erState.seed * 1103515245 + 12345) >>> 0; erRun(); });
+    erRun();
+  }
+
+  function renderTie() {
+    var ch = A.charts.tieBreak;
+    var cols = { random: COLOR.good, small: COLOR.cool, large: COLOR.hot };
+    lineChart($('c-tie'), {
+      series: ch.series.map(function (s) { return { name: s.name, points: s.points, color: cols[s.name], dot: true }; }),
+      xLabel: '目标区间长度（对数）', yLabel: '平均真实误差', xLog: true, yMin: 0, h: 250, w: 620
+    });
+    $('lg-tie').innerHTML = legend([['随机并列', COLOR.good, 'dot'], ['取最小', COLOR.cool, 'dot'], ['取最大', COLOR.hot, 'dot']]);
+    $('nt-tie').innerHTML = '短目标上「取最小」遥遥领先；目标一长，它就被「随机」超过了。' +
+      '同一个 ERM、同一批样本，<b>只换"并列时怎么挑"，误差就换一个量级</b> —— ' +
+      '而教科书里的 ERM 定义根本没提这一条。';
+  }
+
+  /* ============================================================
+   * 陆 · 无穷
+   * ========================================================== */
+  var siState = { m: 5, labels: [1, 0, 1, 1, 0], pts: [] };
+
+  function siPts(m) {
+    var a = [];
+    for (var i = 1; i <= m; i++) a.push(Math.pow(2, -i));
+    return a;
+  }
+
+  function buildSine() {
+    var sel = $('si-m');
+    sel.value = String(siState.m);
+    sel.addEventListener('change', function () {
+      siState.m = parseInt(sel.value, 10);
+      siState.labels = siState.labels.slice(0, siState.m);
+      while (siState.labels.length < siState.m) siState.labels.push(1);
+      renderSine();
+    });
+    $('si-rand').addEventListener('click', function () {
+      var rnd = C.splitmix32((Date.now() & 0xffff) ^ 0x5a5a);
+      siState.labels = siState.labels.map(function () { return rnd() < 0.5 ? 0 : 1; });
+      renderSine();
+    });
+    renderSine();
+  }
+
+  function renderSine() {
+    var m = siState.m, xs = siPts(m), labels = siState.labels.slice(0, m);
+    while (labels.length < m) labels.push(1);
+    var TH = 8 * Math.PI * Math.pow(2, m);
+    var w = C.sineWitness(xs, labels, TH);
+
+    var pk = $('si-picker');
+    var html = '';
+    for (var i = 0; i < m; i++) {
+      html += '<button data-i="' + i + '" class="' + (labels[i] ? 'sel' : '') + '">x' + (i + 1) + '</button>';
+    }
+    pk.innerHTML = html;
+    var bs = pk.querySelectorAll('button');
+    for (var k = 0; k < bs.length; k++) {
+      bs[k].addEventListener('click', function () {
+        var idx = parseInt(this.getAttribute('data-i'), 10);
+        siState.labels[idx] = siState.labels[idx] ? 0 : 1;
+        renderSine();
+      });
+    }
+
+    /* 画：见证 θ 的符号函数 + 样本点 */
+    var W = 660, H = 230, PL = 46, PR = 14, PT = 14, PB = 30;
+    var iw = W - PL - PR, ih = H - PT - PB;
+    var out = [openTag('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, role: 'img', 'aria-label': '正弦分类器见证' })];
+    function tx(v) { return PL + iw * v; }
+    function ty(s) { return PT + ih * (s > 0 ? 0.28 : 0.72); }
+    out.push(tag('line', { x1: PL, y1: PT + ih * 0.5, x2: PL + iw, y2: PT + ih * 0.5, stroke: COLOR.line }));
+    out.push(tag('text', { x: PL - 8, y: PT + ih * 0.28 + 4, 'text-anchor': 'end', 'font-size': 11, fill: COLOR.muted }, '+1'));
+    out.push(tag('text', { x: PL - 8, y: PT + ih * 0.72 + 4, 'text-anchor': 'end', 'font-size': 11, fill: COLOR.muted }, '−1'));
+    if (w) {
+      var segs = [], cur = null;
+      var G = 1600;
+      for (var g = 0; g <= G; g++) {
+        var x = g / G, s = Math.sin(w.theta * x) > 0 ? 1 : 0;
+        if (!cur || cur.s !== s) { if (cur) segs.push(cur); cur = { s: s, a: x }; }
+      }
+      if (cur) segs.push(cur);
+      segs.forEach(function (sg, idx2) {
+        var b = (idx2 + 1 < segs.length) ? segs[idx2 + 1].a : 1;
+        out.push(tag('rect', { class: 'bar-fill', x: tx(sg.a).toFixed(1), y: (ty(sg.s ? 1 : -1) - 5).toFixed(1),
+          width: Math.max(1, tx(b) - tx(sg.a)).toFixed(1), height: 10, fill: sg.s ? COLOR.good : COLOR.hot, opacity: 0.75 }));
+      });
+    }
+    for (var p = 0; p < m; p++) {
+      out.push(tag('circle', { cx: tx(xs[p]).toFixed(1), cy: ty(labels[p] ? 1 : -1).toFixed(1), r: 5,
+        fill: labels[p] ? COLOR.good : COLOR.hot, stroke: '#fff', 'stroke-width': 1.5 }));
+      out.push(tag('text', { x: tx(xs[p]).toFixed(1), y: (PT + ih + 16), 'text-anchor': 'middle', 'font-size': 10.5, fill: COLOR.muted },
+        '2^-' + (p + 1)));
+    }
+    out.push('</svg>');
+    $('c-sine').innerHTML = out.join('');
+    $('c-sine').__pts = m;
+
+    $('lg-sine').innerHTML = legend([['+1 区', COLOR.good, ''], ['−1 区', COLOR.hot, ''], ['样本点（位置 = 标注）', COLOR.ink, 'dot']]);
+    $('si-verdict').innerHTML = w
+      ? '<b>找到了。</b>θ = ' + num(w.theta, 4) + '（在 (0, ' + commas(Math.round(TH)) + '] 内，一致集合的测度占 ' +
+        pct(w.measure / TH, 3) + '）。<b>这一套标注是类里的某个概念</b> —— 换任何一套也都能找到，' +
+        '这就是"VC 维无穷"。'
+      : '<b>没找到。</b>这一套标注在这个 θ 窗口里实现不出来。';
+  }
+
+  function renderVersion() {
+    var ch = A.charts.versionSpace;
+    var rand = ch.random.map(function (p) { return [p[0], Math.max(p[1], 1e-7)]; });
+    var adv = ch.adversary.map(function (p) { return [p[0], p[1]]; });
+    lineChart($('c-version'), {
+      series: [
+        { name: '随机样本：一致集合占比', points: rand, color: COLOR.cool, dot: true },
+        { name: '对手构造：版本空间直径', points: adv, color: COLOR.hot, dot: true }
+      ],
+      xLabel: '样本数 m（对数）', yLabel: '（对数轴）', xLog: true, yLog: true, logFloor: 1e-7,
+      yMin: 1e-7, yMax: 1, h: 300, w: 620
+    });
+    $('lg-version').innerHTML = legend([
+      ['随机样本：一致集合占比（一路掉）', COLOR.cool, 'dot'],
+      ['对手构造：版本空间直径（一步不动）', COLOR.hot, 'dot']
+    ]);
+    $('nt-version').innerHTML = '同一张图上是两个不同的实验。纵轴都是对数，但两者含义不同：' +
+      '蓝线是"一致集合在参数空间里还剩多大"，红线是"一致集合里假设之间差多远"。' +
+      '<b>蓝线掉了 ' + commas(Math.round(A.derived.randShrink)) + ' 倍，红线纹丝不动。</b>';
+  }
+
+  function renderInfiniteTables() {
+    var E6 = A.page.E6;
+    $('t-adv').querySelector('tbody').innerHTML = E6.adversaryRows.map(function (r) {
+      return '<tr><td>' + r.m + '</td><td>' + commas(r.labelings) + '</td><td class="good">' + commas(r.realizable) +
+        '</td><td class="hot">' + num(r.versionDiameter, 4) + '</td></tr>';
+    }).join('');
+    $('nt-adv').innerHTML = '点取 <span class="mono">x_i = 2^−i</span>。每一行都是：所有标注都实现得出来，' +
+      '而版本空间里两个一致假设之间的最大误差<b>恒为 ' + num(A.derived.advDiamMax, 4) + '</b>。' +
+      '样本从 2 个加到 4096 个，这个数没动过。';
+
+    $('t-rand').querySelector('tbody').innerHTML = E6.versionRows.map(function (r) {
+      return '<tr><td>' + r.m + '</td><td>' + sci(r.meanVersionFrac, 2) + '</td><td>' + num(r.meanWorstErr, 4) +
+        '</td><td>' + num(r.meanErr, 4) + '</td></tr>';
+    }).join('');
+    $('nt-rand').innerHTML = '目标固定在 θ* = 20π，点在 (0,1) 上随机抽。' +
+      '一致集合的占比从 ' + sci(A.derived.randFracFirst, 2) + ' 掉到 ' + sci(A.derived.randFracLast, 2) + '，' +
+      '最坏误差从 ' + num(A.derived.randWorstFirst, 3) + ' 掉到 ' + num(A.derived.randWorstLast, 3) + '。' +
+      '<b>随机样本下，这个无穷 VC 维的类看起来完全正常。</b>';
+  }
+
+  /* ============================================================
+   * 柒 · 墙与验证
+   * ========================================================== */
+  function renderWall() {
+    var w = A.charts.wall.rows;
+    hbars($('c-wall'), w.map(function (r) {
+      return { label: 'N = ' + r.N, value: r.classes, color: r.N <= 4 ? COLOR.good : COLOR.hot,
+        note: r.N <= 4 ? commas(r.classes) + ' 个' : sci(r.classes, 2) + ' 个' };
+    }), { log: true, floor: 1, dec: 0, w: 660, rowH: 30, pl: 62, minFrac: 0.006 });
+    $('lg-wall').innerHTML = legend([['可枚举（实测跑过）', COLOR.good, ''], ['不可枚举', COLOR.hot, '']]);
+    $('nt-wall').innerHTML = '对数刻度。N=4 的 65,536 个类实测跑了 ' + num(A.page.E1.ms / 1000, 2) +
+      ' 秒；按同一速率，N=5 的 ' + commas(A.charts.wall.rows[2].classes) + ' 个类要 ' +
+      num(A.charts.wall.rows[2].seconds / 3600, 1) + ' 小时，N=6 要 ' + sci(A.charts.wall.rows[3].seconds / 3.156e7, 1) + ' 年。';
+
+    var rows = '';
+    A.page.E7.ceiling.forEach(function (c) {
+      [c.at[3], c.at[5]].forEach(function (a, i) {
+        rows += '<tr><td>' + (i === 0 ? c.d : '') + '</td><td>' + a.m + '</td><td>' + commas(a.sauer) +
+          '</td><td>' + sci(a.twoPowM, 2) + '</td><td class="hot">' + sci(a.ratio, 2) + '</td></tr>';
+      });
+    });
+    $('t-ceiling').querySelector('tbody').innerHTML = rows;
+  }
+
+  function renderText() {
+    $('conclusions').innerHTML = A.conclusions.map(function (c) { return '<li>' + c + '</li>'; }).join('');
+    $('boundaries').innerHTML = A.boundaries.map(function (c) { return '<li>' + c + '</li>'; }).join('');
+    $('t-verify').querySelector('tbody').innerHTML = A.verify.map(function (v) {
+      return '<tr><td class="l">' + esc(v.claim) + '</td><td class="l">' + esc(v.mine) + '</td><td class="l dim">' + esc(v.src) + '</td></tr>';
+    }).join('');
+  }
+
+  /* ============================================================
+   * 探针：确定性驱动接口（截图与验证共用，不依赖真实时钟）
+   * ========================================================== */
+  function probeChartStats() {
+    var out = [];
+    var cs = document.querySelectorAll('.chart');
+    for (var i = 0; i < cs.length; i++) {
+      var c = cs[i];
+      var r = c.getBoundingClientRect();
+      var svg = c.querySelector('svg');
+      var stray = 0, kids = 0, ticks = 0, nanTicks = 0, paths = 0, rects = 0;
+      for (var k = 0; k < c.children.length; k++) {
+        if (c.children[k].tagName.toLowerCase() !== 'svg') stray++;
+      }
+      if (svg) {
+        kids = svg.children.length;
+        var ts = svg.querySelectorAll('text');
+        ticks = ts.length;
+        for (var t = 0; t < ts.length; t++) {
+          var tx = ts[t].textContent || '';
+          if (/NaN|Infinity|undefined/.test(tx)) nanTicks++;
+        }
+        paths = svg.querySelectorAll('path').length;
+        rects = svg.querySelectorAll('rect').length;
+      }
+      out.push({ id: c.id, w: Math.round(r.width), h: Math.round(r.height), hasSvg: !!svg,
+        visible: r.width > 0,
+        stray: stray, kids: kids, ticks: ticks, nanTicks: nanTicks, paths: paths, rects: rects });
+    }
+    return out;
+  }
+
+  window.__probe = {
+    setTab: function (id) { setTab(id); return activeTab; },
+    tabs: function () {
+      var bs = $('tabs').querySelectorAll('button'), o = [];
+      for (var i = 0; i < bs.length; i++) o.push(bs[i].getAttribute('data-tab') + (bs[i].className === 'on' ? '*' : ''));
+      return o;
+    },
+    kpi: function () {
+      var ks = document.querySelectorAll('#kpis .kpi'), o = [];
+      for (var i = 0; i < ks.length; i++) {
+        o.push({ label: ks[i].querySelector('.k-label').textContent,
+          value: ks[i].querySelector('.k-value').textContent });
+      }
+      return o;
+    },
+    counts: function () {
+      return {
+        kpi: document.querySelectorAll('#kpis .kpi').length,
+        tabs: document.querySelectorAll('#tabs button').length,
+        panels: document.querySelectorAll('section.panel').length,
+        charts: document.querySelectorAll('.chart svg').length,
+        tables: document.querySelectorAll('table.dt').length,
+        conclusions: document.querySelectorAll('#conclusions li').length,
+        boundaries: document.querySelectorAll('#boundaries li').length,
+        verifyRows: document.querySelectorAll('#t-verify tbody tr').length
+      };
+    },
+    charts: probeChartStats,
+    bars: function () {
+      /* 只量**当前可见**的图。隐藏面板里的图宽度为 0，
+         不筛掉的话，"没画出来"和"在另一个标签页里"会长得一模一样。 */
+      var out = [];
+      document.querySelectorAll('.chart').forEach(function (c) {
+        if (c.getBoundingClientRect().width <= 0) return;
+        c.querySelectorAll('.bar-fill').forEach(function (e) {
+          var r = e.getBoundingClientRect();
+          out.push([Math.round(r.width * 10) / 10, Math.round(r.height * 10) / 10]);
+        });
+      });
+      return out;
+    },
+    overflow: function () {
+      var de = document.documentElement;
+      var bad = [];
+      var all = document.querySelectorAll('*');
+      for (var i = 0; i < all.length; i++) {
+        var e = all[i];
+        if (e.classList && e.classList.contains('tabs')) continue;
+        var r = e.getBoundingClientRect();
+        if (r.width > 0 && r.right > de.clientWidth + 1) {
+          bad.push(e.tagName + (e.id ? '#' + e.id : '') + ' w=' + Math.round(r.width) + ' right=' + Math.round(r.right));
+        }
+      }
+      var wraps = [];
+      document.querySelectorAll('.tbl-wrap').forEach(function (e) {
+        if (e.scrollWidth > e.clientWidth + 1) wraps.push(e.id || e.className);
+      });
+      return { doc: de.scrollWidth - de.clientWidth, docScroll: de.scrollWidth, docClient: de.clientWidth,
+        offenders: bad.slice(0, 8), hscrollWraps: wraps };
+    },
+    viewport: function () {
+      return { w: document.documentElement.clientWidth, h: document.documentElement.clientHeight,
+        scrollW: document.documentElement.scrollWidth, innerW: window.innerWidth,
+        dpr: window.devicePixelRatio || 1 };
+    },
+    touch: function () {
+      var bad = [];
+      document.querySelectorAll('button, select, input, a[href]').forEach(function (e) {
+        var r = e.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0 && r.height < 44) {
+          bad.push((e.tagName + (e.id ? '#' + e.id : '') + ' h=' + Math.round(r.height)));
+        }
+      });
+      return bad;
+    },
+    /* 驱动：打散实验台 */
+    shatter: function (cls, N, S) {
+      if (cls) { shState.cls = cls; $('sh-class').value = cls; }
+      if (N) { shState.N = N; $('sh-n').value = String(N); }
+      shState.S = S || [];
+      renderShatter();
+      var H = currentClass();
+      var m = shState.S.length;
+      return { m: m, patterns: m ? C.restrictPatterns(H, shState.S) : 0, need: Math.pow(2, m),
+        vcDim: C.vcDim(H, shState.N, { budget: 4e7 }).d, size: H.length };
+    },
+    /* 驱动：ERM 实验台 */
+    erm: function (m, len, tie, seed) {
+      if (m) { erState.m = m; $('er-m').value = String(m); }
+      if (len) { erState.len = len; $('er-len').value = String(len); }
+      if (tie) { erState.tie = tie; $('er-tie').value = tie; }
+      if (seed !== undefined) erState.seed = seed;
+      erRun();
+      return { a: erState.res.a, b: erState.res.b, trainErr: erState.res.trainErr,
+        err: erState.res.err, errBest: erState.res.errBest, errWorst: erState.res.errWorst,
+        versionSize: erState.res.versionSize, N: ER_N };
+    },
+    /* 驱动：正弦见证器 */
+    sine: function (m, labels) {
+      if (m) { siState.m = m; $('si-m').value = String(m); }
+      if (labels) siState.labels = labels.slice();
+      while (siState.labels.length < siState.m) siState.labels.push(1);
+      renderSine();
+      var xs = siPts(siState.m), lab = siState.labels.slice(0, siState.m);
+      var TH = 8 * Math.PI * Math.pow(2, siState.m);
+      var w = C.sineWitness(xs, lab, TH);
+      /* 回代验算 */
+      var ok = !!w;
+      if (w) for (var i = 0; i < siState.m; i++) {
+        if (((Math.sin(w.theta * xs[i]) > 0) ? 1 : 0) !== lab[i]) ok = false;
+      }
+      return { m: siState.m, found: !!w, theta: w ? w.theta : null, verified: ok,
+        measureFrac: w ? w.measure / TH : 0, labels: lab };
+    },
+    /* 驱动：把所有标签页都渲染一遍（图表在被隐藏的 panel 里宽度为 0） */
+    renderAll: function () { TABS.forEach(function (t) { setTab(t[0]); }); setTab('shatter'); return true; }
+  };
+
+  /* ============================================================
+   * 启动
+   * ========================================================== */
+  function boot() {
+    try {
+      buildKpi();
+      buildTabs();
+      buildShatter();
+      renderDims();
+      renderSauer();
+      renderNamed();
+      renderCover();
+      renderBounds();
+      buildErm();
+      renderTie();
+      buildSine();
+      renderVersion();
+      renderInfiniteTables();
+      renderWall();
+      renderText();
+      setTab('shatter');
+      window.__ready = true;
+    } catch (e) {
+      window.__bootError = String((e && e.message) || e);
+      var d = document.createElement('p');
+      d.className = 'note';
+      d.textContent = '初始化出错：' + window.__bootError;
+      document.body.appendChild(d);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+
+</script>
+</body>
+</html>
