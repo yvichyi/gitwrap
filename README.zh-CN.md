@@ -2,6 +2,8 @@
 
 **你的编码年度报告。** 一条命令，把 git 历史变成 Spotify Wrapped 风格的年度总结——数字、提交热力图、连击纪录、专属称号。为截图分享而生。
 
+仓库中还收录了按七个主题整理的 [41 件单文件互动科学作品](science-collection/README.md)。在本地打开 `science-collection/index.html` 可搜索和浏览展厅；[整理与优化报告](science-collection/docs/REVIEW.md) 记录了改进内容和科学结果的复现边界。
+
 ```text
 YOUR YEAR IN CODE
 
