@@ -141,7 +141,7 @@ async function run() {
     report.regressions.clock = { viewport: 390, scrollWidth: 390, openCloseAndSources: 'passed' };
 
     await page.goto(base + 'index.html');
-    assert.equal(await page.locator('.card:visible').count(), 41, 'Gallery includes all works offline');
+    assert.equal(await page.locator('.card:visible').count(), 42, 'Gallery includes all works offline');
     await page.locator('#query').fill('wasserstein');
     assert.equal(await page.locator('.card:visible').count(), 1, 'Search model names');
     await page.locator('#query').fill('没有这样的关键词');
@@ -151,14 +151,14 @@ async function run() {
     await page.locator('#category').selectOption('地球与交通');
     assert.equal(await page.locator('.card:visible').count(), 5, 'Category filter');
     await page.getByRole('button', { name: '清除筛选' }).click();
-    assert.equal(await page.locator('.card:visible').count(), 41, 'Reset filters');
+    assert.equal(await page.locator('.card:visible').count(), 42, 'Reset filters');
     await page.setViewportSize({ width: 320, height: 700 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 320, 'Gallery fits 320px viewport');
     await page.screenshot({ path: path.join(root, 'artifacts/gallery-mobile.png'), fullPage: true });
     const noJS = await browser.newContext({ javaScriptEnabled: false });
     const staticPage = await noJS.newPage();
     await staticPage.goto(base + 'index.html');
-    assert.equal(await staticPage.locator('.card a').count(), 41, 'All links remain without JavaScript');
+    assert.equal(await staticPage.locator('.card a').count(), 42, 'All links remain without JavaScript');
     await noJS.close();
     report.regressions.gallery = { localServer: 'passed', directFile: 'not_tested_browser_policy', search: 'passed', category: 'passed', reset: 'passed', mobile320: 'passed', withoutJavaScript: 'passed' };
     await page.close();
