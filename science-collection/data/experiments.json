@@ -1,0 +1,22 @@
+{
+  "experiments": [
+    {
+      "id":"traffic_wave",
+      "title":"拥堵之波",
+      "file":"拥堵之波.html",
+      "concepts":["emergence","feedback","complex_system"]
+    },
+    {
+      "id":"critical_shape",
+      "title":"临界的形状",
+      "file":"临界的形状.html",
+      "concepts":["emergence","complex_system"]
+    },
+    {
+      "id":"nand_world",
+      "title":"与非之上",
+      "file":"与非之上.html",
+      "concepts":["information","feedback"]
+    }
+  ]
+}
