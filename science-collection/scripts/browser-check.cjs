@@ -140,6 +140,49 @@ async function run() {
     await page.screenshot({ path: path.join(root, 'artifacts/clock-mobile.png'), fullPage: true });
     report.regressions.clock = { viewport: 390, scrollWidth: 390, openCloseAndSources: 'passed' };
 
+    await page.goto(base + encodeURIComponent('迟滞之痕.html'));
+    await page.evaluate(() => document.body.focus());
+    for (let i = 0; i < 25; i++) await page.keyboard.press('ArrowRight');
+    const direct = await page.evaluate(() => ({
+      h: Number(document.getElementById('hRead').textContent.replace('−', '-')),
+      m: Number(document.getElementById('mRead').textContent.replace('−', '-')),
+      history: Number(document.getElementById('historyRead').textContent)
+    }));
+    assert.ok(Math.abs(direct.h) < 0.03, 'Hysteresis direct path reaches H≈0');
+    await page.locator('#pinBtn').click();
+    for (let i = 0; i < 25; i++) await page.keyboard.press('ArrowRight');
+    for (let i = 0; i < 25; i++) await page.keyboard.press('ArrowLeft');
+    const looped = await page.evaluate(() => ({
+      h: Number(document.getElementById('hRead').textContent.replace('−', '-')),
+      m: Number(document.getElementById('mRead').textContent.replace('−', '-')),
+      note: document.getElementById('plotNote').textContent
+    }));
+    assert.ok(Math.abs(looped.h) < 0.03, 'Hysteresis loop returns to H≈0');
+    assert.ok(Math.abs(looped.m - direct.m) > 0.5, 'Same H must retain materially different history-dependent M');
+    assert.match(looped.note, /ΔM/, 'Same-input comparison is surfaced in the recorder');
+    await page.locator('#scrub').evaluate((el, value) => {
+      el.value = String(value);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }, 25);
+    await page.evaluate(() => document.body.focus());
+    await page.keyboard.press('ArrowLeft');
+    const branch = await page.evaluate(() => ({
+      label: document.getElementById('branchRead').textContent,
+      frame: document.getElementById('timeMeta').textContent
+    }));
+    assert.match(branch.label, /分支 02/, 'Editing the past creates a new branch');
+    assert.match(branch.frame, /LIVE/, 'New branch returns to a live head');
+    await page.locator('#notesToggle').click();
+    assert.equal(await page.locator('#backside').evaluate(e => e.classList.contains('open')), true, 'Instrument backplate opens');
+    await page.locator('#closeNotes').click();
+    report.regressions.hysteresis = {
+      directAtZero: direct,
+      loopedAtZero: looped,
+      deltaM: looped.m - direct.m,
+      branch: branch.label,
+      rewindAndBranch: 'passed'
+    };
+
     await page.goto(base + 'index.html');
     assert.equal(await page.locator('.card:visible').count(), 44, 'Gallery includes all works offline');
     await page.locator('#query').fill('wasserstein');
