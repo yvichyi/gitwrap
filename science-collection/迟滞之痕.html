@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="一台可改写历史的磁滞记录仪。拖动外场、倒回时间再分叉，观察同一个外场如何因历史不同而留下不同状态。">
+<title>迟滞之痕 · 可改写历史的磁滞记录仪</title>
+<style>
+:root{
+  color-scheme:light;
+  --paper:#f2efe6;--ink:#161915;--soft:#6e7068;--line:#c9c4b7;--line2:#ded9cc;
+  --blue:#183f8f;--rust:#a0472d;--green:#506a4c;--ghost:#9a9589;--white:#faf8f1;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --serif:Georgia,"Songti SC","Noto Serif SC",serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--paper);color:var(--ink)}
+body{font-family:var(--mono);-webkit-text-size-adjust:100%}
+button,input{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+#app{height:100svh;display:grid;grid-template-rows:auto 1fr auto;background:
+ linear-gradient(rgba(22,25,21,.035) 1px,transparent 1px),
+ linear-gradient(90deg,rgba(22,25,21,.025) 1px,transparent 1px),var(--paper);background-size:24px 24px,24px 24px,auto}
+header{display:grid;grid-template-columns:minmax(0,1.25fr) auto minmax(0,1fr);gap:18px;align-items:start;padding:16px 18px 12px;border-bottom:1px solid var(--ink)}
+.brand{min-width:0}.kicker{font-size:9px;letter-spacing:.17em;color:var(--rust)}
+h1{margin:5px 0 0;font:400 clamp(25px,3.1vw,44px)/1 var(--serif);letter-spacing:.06em}.thesis{margin:7px 0 0;max-width:560px;font:13px/1.65 var(--serif);color:#4d5049}
+.readouts{display:grid;grid-template-columns:repeat(3,minmax(74px,1fr));min-width:290px;border-left:1px solid var(--line)}
+.readout{padding:3px 13px;border-right:1px solid var(--line)}.readout span{display:block;font-size:8px;letter-spacing:.11em;color:var(--soft)}.readout strong{display:block;margin-top:5px;font:400 18px/1 var(--mono);font-variant-numeric:tabular-nums}.readout small{display:block;margin-top:4px;font-size:7px;color:var(--ghost)}
+.nav{justify-self:end;text-align:right;font-size:8px;line-height:1.9;color:var(--soft)}.nav a{color:inherit;text-underline-offset:3px}.nav button{appearance:none;border:0;border-bottom:1px solid var(--ink);padding:0;background:transparent;cursor:pointer;font-size:8px}
+.workbench{min-height:0;display:grid;grid-template-columns:minmax(0,1.18fr) minmax(330px,.82fr);border-bottom:1px solid var(--ink)}
+.stage,.plot{position:relative;min-width:0;min-height:0}.stage{border-right:1px solid var(--ink)}
+.label{position:absolute;z-index:3;left:14px;top:12px;font-size:8px;letter-spacing:.14em;color:var(--soft);pointer-events:none}.label b{color:var(--ink);font-weight:500}.plot .label{left:12px}
+canvas{display:block;width:100%;height:100%}.stage canvas{cursor:ew-resize;touch-action:none}.plot canvas{cursor:crosshair;touch-action:none}
+.dragHint{position:absolute;z-index:4;left:50%;bottom:42px;transform:translateX(-50%);pointer-events:none;text-align:center;font-size:8px;color:var(--soft);transition:opacity .3s}.dragHint b{display:block;margin-top:5px;font:400 17px/1.2 var(--serif);color:var(--ink)}
+.fieldScale{position:absolute;z-index:4;left:18px;right:18px;bottom:12px;height:18px;border-top:1px solid var(--ink);pointer-events:none}.fieldScale:before,.fieldScale:after{position:absolute;top:4px;font-size:7px;color:var(--soft)}.fieldScale:before{content:"−1";left:0}.fieldScale:after{content:"+1";right:0}.zero{position:absolute;left:50%;top:0;height:7px;border-left:1px solid var(--ink)}.needle{position:absolute;top:-8px;width:1px;height:17px;background:var(--rust);box-shadow:0 0 0 1px rgba(160,71,45,.08)}.needle:after{content:"";position:absolute;left:-3px;top:-1px;border-left:3px solid transparent;border-right:3px solid transparent;border-top:5px solid var(--rust)}
+.plotNote{position:absolute;right:12px;bottom:12px;max-width:210px;text-align:right;font:10px/1.5 var(--serif);color:var(--soft);pointer-events:none}.plotNote b{color:var(--rust);font-weight:400}
+.timelineWrap{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:9px 14px 11px;background:rgba(242,239,230,.94)}
+.timelineMeta{min-width:150px}.timelineMeta span{display:block;font-size:7px;color:var(--soft);letter-spacing:.12em}.timelineMeta strong{display:block;margin-top:4px;font-size:10px;font-weight:500}.timeline{position:relative;height:40px;min-width:0}.timeline canvas{position:absolute;inset:0;width:100%;height:40px;cursor:col-resize;touch-action:none}.timeline input{position:absolute;inset:0;width:100%;height:40px;opacity:0;cursor:col-resize}
+.actions{display:flex;gap:6px}.actions button{appearance:none;border:1px solid var(--ink);background:transparent;min-height:36px;padding:7px 10px;cursor:pointer;font-size:8px;letter-spacing:.06em}.actions button.primary{background:var(--ink);color:var(--paper)}.actions button:hover{background:var(--white)}.actions button.primary:hover{background:#30332d}
+.branchFlag{color:var(--rust)}
+#backside{position:fixed;z-index:20;inset:0;display:none;align-items:stretch;justify-content:flex-end;background:rgba(20,20,16,.28);backdrop-filter:blur(3px)}#backside.open{display:flex}.sheet{width:min(620px,92vw);height:100%;overflow:auto;background:#f8f5ed;border-left:1px solid var(--ink);padding:24px clamp(20px,5vw,48px) 42px;box-shadow:-25px 0 80px rgba(28,26,20,.14)}.sheetHead{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.sheet .close{border:1px solid var(--ink);background:transparent;padding:6px 8px;cursor:pointer}.sheet h2{font:400 31px/1.15 var(--serif);margin:10px 0 20px}.sheet h3{font:400 17px/1.3 var(--serif);margin:26px 0 7px}.sheet p,.sheet li{font:13px/1.8 var(--serif);color:#44473f}.sheet code{font-family:var(--mono);font-size:11px}.formula{padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font:12px/1.8 var(--mono);color:var(--blue)}.sheet .edge{font-size:11px;color:var(--soft)}
+.toast{position:fixed;z-index:30;left:50%;top:48%;transform:translate(-50%,-44%);padding:9px 12px;background:var(--ink);color:var(--paper);font-size:9px;letter-spacing:.04em;opacity:0;pointer-events:none;transition:.18s}.toast.show{opacity:1;transform:translate(-50%,-50%)}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:900px){header{grid-template-columns:1fr auto}.readouts{grid-column:1/-1;grid-row:2;min-width:0;border-top:1px solid var(--line);border-left:0;padding-top:8px}.nav{grid-column:2;grid-row:1}.workbench{grid-template-columns:1fr;grid-template-rows:minmax(0,1.1fr) minmax(190px,.9fr)}.stage{border-right:0;border-bottom:1px solid var(--ink)}.plotNote{max-width:170px}.timelineWrap{grid-template-columns:1fr auto}.timelineMeta{min-width:0}.timeline{grid-column:1/-1;grid-row:2}.actions{grid-column:2;grid-row:1}.thesis{max-width:500px}}
+@media(max-width:560px){header{padding:11px 12px 9px;gap:8px}.kicker{font-size:7px}h1{font-size:27px}.thesis{font-size:11px;line-height:1.55;margin-top:5px}.nav{font-size:7px}.readouts{grid-template-columns:repeat(3,1fr);padding-top:6px}.readout{padding:2px 8px}.readout strong{font-size:15px}.readout small{display:none}.workbench{grid-template-rows:minmax(0,1.05fr) minmax(170px,.95fr)}.label{top:8px;left:10px;font-size:7px}.dragHint{bottom:36px}.dragHint b{font-size:14px}.fieldScale{left:12px;right:12px}.plotNote{font-size:9px;max-width:148px}.timelineWrap{padding:7px 9px 9px;gap:7px}.timelineMeta strong{font-size:9px}.actions{gap:4px}.actions button{min-height:34px;padding:6px 7px;font-size:7px}.sheet{width:96vw;padding:18px 18px 34px}.sheet h2{font-size:27px}}
+@media(prefers-reduced-motion:reduce){.toast,.dragHint{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="brand">
+    <div class="kicker">HISTORY RECORDER / PREISACH RELAY ENSEMBLE</div>
+    <h1>迟滞之痕</h1>
+    <p class="thesis">把外场拉回同一个数，材料不一定回到同一个状态。这里记录的不是“现在”，而是现在里面残留的过去。</p>
+  </div>
+  <div class="nav"><a href="index.html">← 展厅</a><br><button id="notesToggle" type="button">翻到仪器背面 / 模型说明</button></div>
+  <div class="readouts" aria-label="实时读数">
+    <div class="readout"><span>FIELD H</span><strong id="hRead">−1.000</strong><small>外部驱动</small></div>
+    <div class="readout"><span>MAGNETIZATION M</span><strong id="mRead">−1.000</strong><small>平均状态</small></div>
+    <div class="readout"><span>HISTORY</span><strong id="historyRead">001</strong><small id="branchRead">原始时间线</small></div>
+  </div>
+</header>
+
+<main class="workbench">
+  <section class="stage" aria-labelledby="fieldLabel">
+    <div class="label" id="fieldLabel">01 / MATERIAL FIELD · <b>拖动任意位置改变 H</b></div>
+    <canvas id="material" aria-label="由许多具有不同翻转阈值的双稳态单元组成的材料。水平拖动改变外场。"></canvas>
+    <div class="dragHint" id="dragHint">DRAG LEFT / RIGHT<b>先把场拉到 +1，再慢慢拉回来。</b></div>
+    <div class="fieldScale"><i class="zero"></i><i class="needle" id="needle"></i></div>
+  </section>
+  <section class="plot" aria-labelledby="plotLabel">
+    <div class="label" id="plotLabel">02 / RECORDER · <b>M(H) 不只是一条函数</b></div>
+    <canvas id="loop" aria-label="磁化强度 M 对外场 H 的历史轨迹。不同历史可能在相同 H 上产生不同 M。"></canvas>
+    <div class="plotNote" id="plotNote">轨迹会把历史刻在平面上。<br><b>倒回时间再改写后续</b>，旧未来会留下灰色虚线。</div>
+  </section>
+</main>
+
+<footer class="timelineWrap">
+  <div class="timelineMeta"><span>03 / TIME TAPE</span><strong id="timeMeta">frame 0 / 0 · <span class="branchFlag">LIVE</span></strong></div>
+  <div class="timeline"><canvas id="tape" aria-hidden="true"></canvas><input id="scrub" type="range" min="0" max="0" value="0" aria-label="回放历史时间轴"></div>
+  <div class="actions">
+    <button id="pinBtn" type="button">标记此刻 [P]</button>
+    <button id="resetBtn" type="button" class="primary">重置历史</button>
+  </div>
+</footer>
+</div>
+
+<div id="backside" role="dialog" aria-modal="true" aria-labelledby="notesTitle">
+  <article class="sheet">
+    <div class="sheetHead"><div><div class="kicker">INSTRUMENT BACKPLATE</div><h2 id="notesTitle">这台仪器真正算了什么？</h2></div><button class="close" id="closeNotes" type="button">关闭 ×</button></div>
+    <p>《迟滞之痕》不是把“磁滞”做成一个滑杆配一张图。页面把<b>历史本身</b>作为第一等对象：每次改变外场都会写入时间带；你可以回到过去，再从那里继续拖动，于是旧未来被保存为灰色分支，新未来从同一状态重新长出。</p>
+    <h3>模型</h3>
+    <p>材料由一群理想化的双稳态单元组成。每个单元有两个阈值：上翻阈值 <code>α</code> 与下翻阈值 <code>β</code>，且 <code>β ≤ α</code>。外场足够大时它翻到 +1，足够小时翻到 −1；夹在两个阈值之间时，它<b>保持之前的状态</b>。这就是记忆的来源。</p>
+    <div class="formula">sᵢ(H) = +1, H ≥ αᵢ<br>sᵢ(H) = −1, H ≤ βᵢ<br>sᵢ(H) = sᵢ(previous), βᵢ &lt; H &lt; αᵢ<br><br>M = (1/N) Σ sᵢ</div>
+    <p>这类“relay”集合是 Preisach 磁滞思想的教学化版本。不同单元拥有不同阈值，因此宏观上会出现回线、次回线和路径依赖。页面中的二维排列只是为了让翻转过程可见，不代表真实磁畴几何。</p>
+    <h3>为什么“同一个 H”会有不同 M</h3>
+    <p>因为 <code>H</code> 只告诉你当前驱动力，不告诉你上一次越过了哪些阈值。先从 −1 拉到 +1 再回到 0，与只从 −1 拉到 0，会让不同数量的单元保留在 +1。于是同一个横坐标上能出现多个纵坐标。此处最重要的数据不是某个点，而是<b>走到这个点的路径</b>。</p>
+    <h3>交互与工程结构</h3>
+    <ul>
+      <li>材料状态使用紧凑的 <code>Int8Array</code>；阈值使用 <code>Float32Array</code>，避免为每个单元创建对象。</li>
+      <li>每次有意义的外场变化都会写入事件历史，并保存可回放状态快照。拖动时间带会恢复过去状态，而不是“倒放动画”。</li>
+      <li>在过去继续操作时，系统保留被截断的旧未来作为 ghost branch，再开启新分支。右侧记录图同时显示两条历史。</li>
+      <li>“标记此刻”保存一个 <code>(H, M, state)</code> 参照。之后回到相近 H 时，页面会直接计算两段历史造成的 <code>ΔM</code>。</li>
+    </ul>
+    <h3>模型边界</h3>
+    <p>真实磁性材料包含磁畴相互作用、热涨落、空间结构、速率依赖与更复杂的耗散机制。这里的 relay 集合只用来解释<b>迟滞、路径依赖与记忆</b>如何从带阈值的局部单元产生，不用于材料参数预测，也不能替代真实 Preisach 参数辨识。</p>
+    <p class="edge">建议实验：先从 −1 拉到 +1，再回到 0 并按 P。随后回到过去，在未到 +1 的地方转向，再回到 0。若两次的 H 接近而 M 不同，页面会显示“同值，不同历史”。再尝试做更小的嵌套回线。</p>
+  </article>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="sr" id="live" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+const material=document.getElementById('material'),mctx=material.getContext('2d',{alpha:false});
+const loop=document.getElementById('loop'),lctx=loop.getContext('2d');
+const tape=document.getElementById('tape'),tctx=tape.getContext('2d');
+const scrub=document.getElementById('scrub');
+const hRead=document.getElementById('hRead'),mRead=document.getElementById('mRead'),historyRead=document.getElementById('historyRead');
+const branchRead=document.getElementById('branchRead'),timeMeta=document.getElementById('timeMeta'),needle=document.getElementById('needle');
+const dragHint=document.getElementById('dragHint'),plotNote=document.getElementById('plotNote'),toast=document.getElementById('toast'),live=document.getElementById('live');
+const notes=document.getElementById('backside');
+const COLS=44,ROWS=30,N=COLS*ROWS,MAX_HISTORY=520;
+let dpr=1,H=-1,M=-1,cursor=0,branchNo=1,pointer=false,pin=null,ghost=null,interactions=0;
+let alpha=new Float32Array(N),beta=new Float32Array(N),state=new Int8Array(N),history=[];
+let seed=0x5f3759df;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const fmt=v=>(v<0?'−':'')+Math.abs(v).toFixed(3);
+function rnd(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
+function initThresholds(){
+  seed=0x5f3759df;state.fill(-1);
+  for(let i=0;i<N;i++){
+    const center=(rnd()+rnd()+rnd()-1.5)*.62;
+    const half=.08+Math.pow(rnd(),1.35)*.58;
+    beta[i]=clamp(center-half,-.98,.88);alpha[i]=clamp(center+half,-.88,.98);
+    if(beta[i]>alpha[i]){const t=beta[i];beta[i]=alpha[i];alpha[i]=t}
+  }
+}
+function magnetization(arr=state){let s=0;for(let i=0;i<N;i++)s+=arr[i];return s/N}
+function applyField(nextH){
+  H=clamp(nextH,-1,1);
+  for(let i=0;i<N;i++){if(H>=alpha[i])state[i]=1;else if(H<=beta[i])state[i]=-1}
+  M=magnetization();
+}
+function snapshot(){return state.slice()}
+function record(force=false){
+  const last=history[cursor];
+  if(!force&&last&&Math.abs(last.h-H)<.006)return;
+  if(cursor<history.length-1){
+    ghost={from:cursor,records:history.slice(cursor).map(r=>({h:r.h,m:r.m,state:r.state.slice()}))};
+    history=history.slice(0,cursor+1);branchNo++;flash('旧未来已保留为灰色分支，新时间线从这里开始。');
+  }
+  history.push({h:H,m:M,state:snapshot()});
+  if(history.length>MAX_HISTORY){
+    history.shift();
+    if(ghost)ghost.from=Math.max(0,ghost.from-1);
+    if(pin)pin.cursor=Math.max(0,pin.cursor-1);
+  }
+  cursor=history.length-1;scrub.max=cursor;scrub.value=cursor;
+}
+function restore(index){
+  index=clamp(index,0,history.length-1);const r=history[index];
+  H=r.h;M=r.m;state=r.state.slice();cursor=index;scrub.value=index;update();
+}
+function reset(){
+  initThresholds();H=-1;M=-1;cursor=0;branchNo=1;ghost=null;pin=null;interactions=0;history=[];record(true);dragHint.style.opacity='1';update();flash('历史已清空。材料回到负饱和。');
+}
+function pinNow(){pin={h:H,m:M,state:snapshot(),branch:branchNo,cursor};update();flash('已标记这一刻。现在绕一条不同的路，再回到相同 H。')}
+function comparePin(){
+  if(!pin)return null;const dh=Math.abs(H-pin.h);if(dh>.025)return null;return {dh,dm:M-pin.m};
+}
+function setFromPointer(e){
+  const r=material.getBoundingClientRect();const x=clamp(e.clientX-r.left,0,r.width);
+  applyField(x/r.width*2-1);record();interactions++;dragHint.style.opacity=interactions>2?'.12':'.45';update();
+}
+material.addEventListener('pointerdown',e=>{pointer=true;material.setPointerCapture(e.pointerId);setFromPointer(e)});
+material.addEventListener('pointermove',e=>{if(pointer)setFromPointer(e)});
+material.addEventListener('pointerup',()=>pointer=false);material.addEventListener('pointercancel',()=>pointer=false);
+scrub.addEventListener('input',()=>restore(Number(scrub.value)));
+function keyStep(delta){applyField(H+delta);record();interactions++;update()}
+window.addEventListener('keydown',e=>{
+  if(e.target.matches('button,input,a')||e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.key==='ArrowLeft'){e.preventDefault();keyStep(-.04)}
+  if(e.key==='ArrowRight'){e.preventDefault();keyStep(.04)}
+  if(e.key.toLowerCase()==='p'){e.preventDefault();pinNow()}
+});
+document.getElementById('pinBtn').addEventListener('click',pinNow);
+document.getElementById('resetBtn').addEventListener('click',reset);
+document.getElementById('notesToggle').addEventListener('click',()=>{notes.classList.add('open');document.getElementById('closeNotes').focus()});
+document.getElementById('closeNotes').addEventListener('click',()=>notes.classList.remove('open'));
+notes.addEventListener('click',e=>{if(e.target===notes)notes.classList.remove('open')});
+window.addEventListener('keydown',e=>{if(e.key==='Escape')notes.classList.remove('open')});
+function flash(msg){toast.textContent=msg;live.textContent=msg;toast.classList.add('show');clearTimeout(flash.t);flash.t=setTimeout(()=>toast.classList.remove('show'),1300)}
+function sizeCanvas(canvas,ctx){
+  const r=canvas.getBoundingClientRect();dpr=Math.min(2,devicePixelRatio||1);
+  const pw=Math.max(1,Math.round(r.width*dpr)),ph=Math.max(1,Math.round(r.height*dpr));
+  if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph}
+  ctx.setTransform(dpr,0,0,dpr,0,0);return r
+}
+function drawMaterial(){
+  const r=sizeCanvas(material,mctx),w=r.width,h=r.height;mctx.fillStyle='#f2efe6';mctx.fillRect(0,0,w,h);
+  const padX=Math.max(24,w*.055),padTop=42,padBottom=50;const cw=(w-padX*2)/COLS,ch=(h-padTop-padBottom)/ROWS;const s=Math.max(1,Math.min(cw,ch));
+  const gridW=s*COLS,gridH=s*ROWS,ox=(w-gridW)/2,oy=padTop+(h-padTop-padBottom-gridH)/2;
+  mctx.fillStyle='#e7e2d6';mctx.fillRect(ox,oy,gridW,gridH);
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const i=y*COLS+x,st=state[i];const coerc=(alpha[i]-beta[i])*.5;
+    const base=st>0?'#183f8f':'#a0472d';mctx.fillStyle=base;
+    const inset=Math.min(1.4,s*.15);mctx.globalAlpha=.48+.46*(1-coerc);
+    mctx.fillRect(ox+x*s+inset,oy+y*s+inset,Math.max(1,s-inset*2),Math.max(1,s-inset*2));
+  }
+  mctx.globalAlpha=1;mctx.strokeStyle='rgba(22,25,21,.22)';mctx.lineWidth=1;mctx.strokeRect(ox-.5,oy-.5,gridW+1,gridH+1);
+  mctx.fillStyle='#6e7068';mctx.font='8px '+getComputedStyle(document.documentElement).getPropertyValue('--mono');mctx.fillText('−1 domains',ox,oy+gridH+16);mctx.textAlign='right';mctx.fillText('+1 domains',ox+gridW,oy+gridH+16);mctx.textAlign='left';
+}
+function axes(ctx,w,h,pad){
+  ctx.strokeStyle='rgba(22,25,21,.38)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad,h-pad);ctx.lineTo(w-pad,h-pad);ctx.moveTo(pad,pad);ctx.lineTo(pad,h-pad);ctx.stroke();
+  ctx.strokeStyle='rgba(22,25,21,.11)';ctx.beginPath();for(let k=1;k<4;k++){const x=pad+(w-2*pad)*k/4;ctx.moveTo(x,pad);ctx.lineTo(x,h-pad);const y=pad+(h-2*pad)*k/4;ctx.moveTo(pad,y);ctx.lineTo(w-pad,y)}ctx.stroke();
+  ctx.fillStyle='#6e7068';ctx.font='8px '+getComputedStyle(document.documentElement).getPropertyValue('--mono');ctx.fillText('H',w-pad+5,h-pad+3);ctx.fillText('M',pad-3,pad-7);
+}
+function hp(Hv,w,pad){return pad+(Hv+1)*.5*(w-2*pad)}
+function mp(Mv,h,pad){return h-pad-(Mv+1)*.5*(h-2*pad)}
+function path(ctx,records,w,h,pad,color,width=1.5,dash=[]){
+  if(!records||records.length<2)return;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash);ctx.beginPath();
+  records.forEach((r,i)=>{const x=hp(r.h,w,pad),y=mp(r.m,h,pad);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});ctx.stroke();ctx.setLineDash([])
+}
+function drawLoop(){
+  const r=sizeCanvas(loop,lctx),w=r.width,h=r.height,pad=Math.max(34,Math.min(w,h)*.1);lctx.fillStyle='#f2efe6';lctx.fillRect(0,0,w,h);axes(lctx,w,h,pad);
+  if(ghost){const before=history.slice(0,Math.min(ghost.from+1,history.length));path(lctx,before.concat(ghost.records),w,h,pad,'rgba(110,112,104,.55)',1,[4,5])}
+  path(lctx,history.slice(0,cursor+1),w,h,pad,'#183f8f',1.8,[]);
+  const x=hp(H,w,pad),y=mp(M,h,pad);lctx.fillStyle='#a0472d';lctx.beginPath();lctx.arc(x,y,4.2,0,Math.PI*2);lctx.fill();
+  if(pin){
+    const px=hp(pin.h,w,pad),py=mp(pin.m,h,pad);lctx.strokeStyle='#506a4c';lctx.lineWidth=1.4;lctx.beginPath();lctx.arc(px,py,6,0,Math.PI*2);lctx.stroke();
+    lctx.beginPath();lctx.moveTo(px-9,py);lctx.lineTo(px+9,py);lctx.moveTo(px,py-9);lctx.lineTo(px,py+9);lctx.stroke()
+  }
+  const c=comparePin();
+  if(c&&Math.abs(c.dm)>.025){
+    lctx.strokeStyle='rgba(160,71,45,.45)';lctx.setLineDash([3,3]);const px=hp(pin.h,w,pad),py=mp(pin.m,h,pad);
+    lctx.beginPath();lctx.moveTo(px,py);lctx.lineTo(x,y);lctx.stroke();lctx.setLineDash([]);
+    plotNote.innerHTML=`同一个 H 附近，两段历史相差 <b>ΔM = ${c.dm>=0?'+':''}${c.dm.toFixed(3)}</b>。`
+  } else plotNote.innerHTML='轨迹会把历史刻在平面上。<br><b>倒回时间再改写后续</b>，旧未来会留下灰色虚线。';
+}
+function drawTape(){
+  const r=sizeCanvas(tape,tctx),w=r.width,h=r.height;tctx.clearRect(0,0,w,h);const n=Math.max(1,history.length-1),mid=h*.56;
+  tctx.strokeStyle='rgba(22,25,21,.25)';tctx.beginPath();tctx.moveTo(0,mid);tctx.lineTo(w,mid);tctx.stroke();
+  if(history.length>1){tctx.strokeStyle='#183f8f';tctx.lineWidth=1.2;tctx.beginPath();history.forEach((v,i)=>{const x=i/n*w,y=mid-v.h*(h*.31);if(i===0)tctx.moveTo(x,y);else tctx.lineTo(x,y)});tctx.stroke()}
+  if(ghost&&ghost.records.length>1){
+    const gStart=Math.min(ghost.from,n)/n*w,total=Math.max(1,ghost.records.length-1);
+    tctx.strokeStyle='rgba(110,112,104,.62)';tctx.setLineDash([3,3]);tctx.beginPath();
+    ghost.records.forEach((v,i)=>{const x=gStart+(w-gStart)*i/total,y=mid-v.h*(h*.31);if(i===0)tctx.moveTo(x,y);else tctx.lineTo(x,y)});tctx.stroke();tctx.setLineDash([])
+  }
+  const cx=n?cursor/n*w:0;tctx.strokeStyle='#a0472d';tctx.lineWidth=1;tctx.beginPath();tctx.moveTo(cx,2);tctx.lineTo(cx,h-2);tctx.stroke();
+  if(pin){const px=n?pin.cursor/n*w:0;tctx.strokeStyle='#506a4c';tctx.beginPath();tctx.moveTo(px,h-9);tctx.lineTo(px,h-2);tctx.stroke()}
+}
+function update(){
+  hRead.textContent=fmt(H);mRead.textContent=fmt(M);historyRead.textContent=String(history.length).padStart(3,'0');branchRead.textContent=branchNo===1?'原始时间线':'分支 '+String(branchNo).padStart(2,'0');
+  timeMeta.innerHTML=`frame ${cursor} / ${history.length-1} · <span class="branchFlag">${cursor===history.length-1?'LIVE':'PAST'}</span>`;
+  needle.style.left=((H+1)*50)+'%';scrub.max=Math.max(0,history.length-1);scrub.value=cursor;
+  drawMaterial();drawLoop();drawTape();
+  const c=comparePin();
+  if(c&&Math.abs(c.dm)>.06&&interactions>5&&!update.notified){update.notified=true;flash(`同值，不同历史：ΔM ${c.dm>=0?'+':''}${c.dm.toFixed(3)}`)}
+  if(!c||Math.abs(c.dm)<.03)update.notified=false;
+}
+let resizeT=0;window.addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(update,60)});
+reset();window.__ready=true;
+})();
+</script>
+</body>
+</html>
