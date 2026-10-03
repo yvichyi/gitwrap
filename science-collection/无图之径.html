@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="一件持续运行的自组织运输网络实验：放置食物、画出干燥带、切断通路，观察网络如何依照流量反馈自行改写。">
+<title>无图之径 · 自组织运输网络</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#080a08;--ink:#e9eadf;--muted:#8f9586;--dim:#62675c;
+  --lime:#cadc8d;--lime2:#809850;--amber:#d4a25f;--soil:#665244;
+  --glass:rgba(14,18,14,.72);--line:rgba(219,226,196,.14);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --serif:Georgia,"Songti SC","Noto Serif SC",serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--ink);font-family:var(--mono);overflow:hidden}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
+#app{position:relative;width:100%;height:100svh;overflow:hidden;background:
+  radial-gradient(circle at 22% 12%,rgba(111,128,78,.11),transparent 31%),
+  radial-gradient(circle at 76% 86%,rgba(123,88,57,.11),transparent 33%),
+  linear-gradient(155deg,#0b0d0a,#050605 70%)}
+#field{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.grain{position:absolute;inset:0;pointer-events:none;opacity:.16;mix-blend-mode:screen;background-image:
+  radial-gradient(circle at 20% 30%,#fff 0 .4px,transparent .6px),
+  radial-gradient(circle at 80% 70%,#fff 0 .35px,transparent .55px);background-size:13px 17px,19px 23px}
+.top{
+  position:absolute;left:18px;right:18px;top:16px;z-index:4;display:flex;justify-content:space-between;align-items:flex-start;gap:18px;
+  pointer-events:none
+}
+.title{max-width:min(680px,68vw)}
+.kicker{font-size:9px;letter-spacing:.18em;color:var(--lime);text-transform:uppercase}
+h1{margin:7px 0 6px;font:400 clamp(34px,5.5vw,72px)/.98 var(--serif);letter-spacing:.02em}
+.title p{margin:0;max-width:620px;color:#b5b9aa;font:13px/1.72 var(--serif)}
+.title b{font-weight:400;color:#edf0d8}
+.status{min-width:178px;padding:11px 13px;border:1px solid var(--line);background:rgba(7,9,7,.58);backdrop-filter:blur(9px);font-size:9px;line-height:1.65;color:var(--muted);text-align:right}
+.status strong{display:block;color:var(--lime);font-size:12px;font-weight:500;letter-spacing:.08em}
+.toolbar{
+  position:absolute;z-index:6;left:50%;bottom:88px;transform:translateX(-50%);
+  display:flex;align-items:center;gap:6px;padding:6px;border:1px solid var(--line);
+  background:rgba(8,11,8,.78);backdrop-filter:blur(12px);box-shadow:0 18px 55px rgba(0,0,0,.32);border-radius:2px
+}
+.tool{
+  appearance:none;border:1px solid transparent;background:transparent;padding:9px 11px;min-height:38px;cursor:pointer;
+  color:#a7ad9d;font-size:9px;letter-spacing:.04em;white-space:nowrap
+}
+.tool:hover{background:rgba(210,222,170,.06);color:var(--ink)}
+.tool.active{border-color:rgba(202,220,141,.42);background:rgba(180,204,112,.09);color:var(--lime)}
+.tool.warn.active{border-color:rgba(212,162,95,.5);background:rgba(212,162,95,.09);color:#e2b878}
+.tool.sep{margin-left:7px;border-left-color:var(--line)}
+.notebook{
+  position:absolute;z-index:5;left:18px;right:18px;bottom:16px;display:grid;grid-template-columns:1.35fr repeat(4,minmax(90px,.52fr));gap:0;
+  border:1px solid var(--line);background:rgba(8,10,8,.71);backdrop-filter:blur(12px)
+}
+.note{min-height:56px;padding:10px 13px;border-right:1px solid var(--line);display:flex;flex-direction:column;justify-content:center}
+.note:last-child{border-right:0}
+.note span{font-size:8px;letter-spacing:.09em;color:var(--dim)}
+.note strong{margin-top:3px;font-size:15px;font-weight:400;color:#daddcf;font-variant-numeric:tabular-nums}
+.observation{font-family:var(--serif);font-size:12px;line-height:1.55;color:#c5c9b9}
+.observation b{font-weight:400;color:var(--lime)}
+.hint{
+  position:absolute;z-index:4;right:18px;top:144px;width:min(310px,38vw);padding:11px 13px;border-left:1px solid rgba(202,220,141,.34);
+  color:#9ea494;background:linear-gradient(90deg,rgba(10,13,10,.65),rgba(10,13,10,.16));font:11px/1.65 var(--serif);transition:opacity .35s
+}
+.hint b{font-weight:400;color:#e7e9dc}
+.legend{position:absolute;z-index:4;left:19px;top:170px;display:grid;gap:7px;color:#767d70;font-size:8px;pointer-events:none}
+.legend span{display:flex;align-items:center;gap:7px}.legend i{display:inline-block;width:17px;height:1px;background:var(--lime)}.legend i.food{height:7px;width:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 3px rgba(212,162,95,.12)}.legend i.dry{height:7px;background:#6a5140;border-radius:1px}
+.info{
+  position:absolute;z-index:10;inset:0;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(3,4,3,.76);backdrop-filter:blur(10px)
+}
+.info.open{display:flex}
+.info-card{width:min(760px,100%);max-height:86svh;overflow:auto;padding:24px;border:1px solid rgba(215,226,190,.2);background:#0d100d;box-shadow:0 30px 90px rgba(0,0,0,.45)}
+.info-card button{float:right;border:1px solid var(--line);background:#111511;padding:6px 8px;cursor:pointer}
+.info-card h2{margin:8px 0 14px;font:400 30px/1.2 var(--serif)}
+.info-card h3{margin:22px 0 8px;color:#d6dda9;font:400 15px/1.4 var(--serif)}
+.info-card p,.info-card li{color:#aeb4a4;font:12px/1.8 var(--serif)}
+.info-card code{font-family:var(--mono);color:#d8deb9;font-size:11px}.info-card a{color:#d6c08a;text-underline-offset:3px}
+.toast{position:absolute;z-index:8;left:50%;top:50%;transform:translate(-50%,-40%);padding:9px 12px;border:1px solid var(--line);background:rgba(9,12,9,.86);color:#ced3c2;font-size:10px;opacity:0;pointer-events:none;transition:.22s}.toast.show{opacity:1;transform:translate(-50%,-50%)}
+@media(max-width:760px){
+  .top{left:12px;right:12px;top:11px}.title{max-width:76vw}.title p{font-size:11px;line-height:1.55}.status{min-width:110px;padding:8px;font-size:7px}
+  h1{font-size:42px}.hint{right:12px;top:126px;width:45vw;font-size:9px}.legend{left:13px;top:150px}
+  .toolbar{bottom:102px;width:calc(100% - 24px);overflow:auto;justify-content:flex-start}.tool{padding:8px 9px}
+  .notebook{left:12px;right:12px;bottom:10px;grid-template-columns:1.4fr repeat(2,.7fr)}.note{min-height:42px;padding:7px 9px}.note:nth-child(4),.note:nth-child(5){display:none}.note strong{font-size:12px}.observation{font-size:10px}
+}
+@media(max-width:480px){.title p{display:none}.status{display:none}.hint{top:87px;width:56vw}.legend{top:105px}.notebook{grid-template-columns:1.6fr .8fr}.note:nth-child(3){display:none}.toolbar{bottom:75px}.note{min-height:48px}}
+@media(prefers-reduced-motion:reduce){.toast,.hint{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="field" aria-label="自组织运输网络模拟区域。点击或拖动可根据当前工具放置食物、画干燥带或切断通路。"></canvas>
+  <div class="grain"></div>
+  <header class="top">
+    <div class="title"><div class="kicker">adaptive transport / no central planner</div><h1>无图之径</h1><p>这里没有路线规划器。只有局部管道、压力与流量。<b>放下食物，环境会逼着网络自己决定哪里值得留下。</b></p></div>
+    <div class="status"><span>FIELD STATE</span><strong id="stateLabel">GROWING</strong><span id="foodCount">3 nutrient sites</span></div>
+  </header>
+  <div class="legend"><span><i></i>活跃管道</span><span><i class="food"></i>营养点</span><span><i class="dry"></i>高阻区域</span></div>
+  <div class="hint" id="hint">先别找“开始”按钮。系统已经在运行。<br><b>在空白处点一下</b>，加一个新的营养点。</div>
+
+  <nav class="toolbar" aria-label="实验工具">
+    <button class="tool active" data-mode="food">＋ 放食物 <small>[1]</small></button>
+    <button class="tool warn" data-mode="dry">≈ 画干燥带 <small>[2]</small></button>
+    <button class="tool warn" data-mode="cut">× 切断通路 <small>[3]</small></button>
+    <button class="tool sep" id="pauseBtn">Ⅱ 暂停 <small>[Space]</small></button>
+    <button class="tool" id="resetBtn">↺ 重置 <small>[R]</small></button>
+    <button class="tool" id="infoBtn">模型边界</button>
+  </nav>
+
+  <section class="notebook" aria-label="实时观察记录">
+    <div class="note observation" id="observation">网络还在试路。<b>粗线不是预设路线，而是被流量反复强化后的结果。</b></div>
+    <div class="note"><span>ACTIVE LENGTH</span><strong id="lengthMetric">—</strong></div>
+    <div class="note"><span>DISSIPATION</span><strong id="lossMetric">—</strong></div>
+    <div class="note"><span>LOOPS</span><strong id="loopMetric">—</strong></div>
+    <div class="note"><span>REWIRING</span><strong id="rewireMetric">—</strong></div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="info" id="info">
+    <div class="info-card">
+      <button id="closeInfo">关闭 ×</button>
+      <div class="kicker">MODEL / EVIDENCE / LIMITS</div>
+      <h2>这不是一只真的黏菌。</h2>
+      <p>页面把培养皿压缩成一个规则网格。每条相邻格点之间都有“管道导通度” <code>D</code>。营养点建立源和汇，程序反复求一个近似压力场，再由 <code>Q = D · Δp / L</code> 得到流量。流量大的管道被强化，流量小的管道逐渐萎缩。干燥带提高局部阻力，切断则直接削弱附近管道。</p>
+      <h3>为什么它会“找路”</h3>
+      <p>这是受 Physarum 自适应运输网络模型启发的教学化版本。关键不是全局搜索一条最短路，而是<b>局部正反馈</b>：更能承担流量的边获得更高导通度，更高导通度又进一步吸引流量。多轮以后，许多冗余支路会消退，留下较经济的连接骨架。</p>
+      <h3>这里真正计算了什么</h3>
+      <ul>
+        <li>每个模拟步用 Gauss–Seidel 迭代近似求解离散 Kirchhoff 压力方程；</li>
+        <li>边流量由当前导通度、压力差和干燥阻力共同决定；</li>
+        <li>导通度按 <code>dD/dt = |Q|^γ − D</code> 的简化反馈律更新，并保留极小背景导通度以允许重新长路；</li>
+        <li>“LOOPS”仅统计高导通子图的图论环数，“DISSIPATION”是此离散网络中的相对耗散，不是生物体实测能耗。</li>
+      </ul>
+      <h3>模型边界</h3>
+      <p>真实 Physarum 的迁移、化学信号、管径变化和环境响应远比这里复杂；本页也没有复现东京铁路实验的真实地理、养分或实验条件。它展示的是“流量强化可产生自适应网络”这一类机制，不应被当作生物学预测器或交通规划算法。</p>
+      <p>相关模型可参见 Tero 等人的自适应网络研究：<a href="https://doi.org/10.1016/j.jtbi.2006.07.015" target="_blank" rel="noreferrer">J. Theor. Biol. 2007</a>；以及 <a href="https://doi.org/10.1126/science.1177894" target="_blank" rel="noreferrer">Science 2010</a>。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+const canvas=document.getElementById('field'),ctx=canvas.getContext('2d',{alpha:false});
+const stateLabel=document.getElementById('stateLabel'),foodCount=document.getElementById('foodCount');
+const hint=document.getElementById('hint'),toast=document.getElementById('toast');
+const lengthMetric=document.getElementById('lengthMetric'),lossMetric=document.getElementById('lossMetric');
+const loopMetric=document.getElementById('loopMetric'),rewireMetric=document.getElementById('rewireMetric'),observation=document.getElementById('observation');
+const pauseBtn=document.getElementById('pauseBtn');
+let W=0,H=0,DPR=1,NX=34,NY=22,N=NX*NY,mode='food',paused=false,frame=0,dirtyMetrics=0;
+let cellX=1,cellY=1,marginX=0,marginY=0;
+let pressure=new Float32Array(N),source=new Float32Array(N),dry=new Float32Array(N);
+let edges=[],adj=Array.from({length:N},()=>[]),foods=[],lastDelta=1,interacted=0;
+let pointerDown=false,lastPaint=-1;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const idx=(x,y)=>y*NX+x;
+const xy=i=>[i%NX,Math.floor(i/NX)];
+function seeded(i){let x=Math.sin((i+1)*127.1+311.7)*43758.5453;return x-Math.floor(x)}
+function buildGraph(){
+  edges=[];adj=Array.from({length:N},()=>[]);
+  let k=0;
+  for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
+    const a=idx(x,y);
+    if(x<NX-1)addEdge(a,idx(x+1,y),k++);
+    if(y<NY-1)addEdge(a,idx(x,y+1),k++);
+  }
+}
+function addEdge(a,b,k){
+  const e={a:a,b:b,d:0.04+seeded(k)*0.016,q:0,prev:0.05};
+  const ei=edges.push(e)-1;adj[a].push(ei);adj[b].push(ei);
+}
+function nodeToScreen(i){
+  const p=xy(i);
+  return [marginX+p[0]*cellX,marginY+p[1]*cellY];
+}
+function resize(){
+  DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;
+  canvas.width=Math.round(W*DPR);canvas.height=Math.round(H*DPR);canvas.style.width=W+'px';canvas.style.height=H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const usableW=Math.max(280,W-70),usableH=Math.max(250,H-170);
+  cellX=usableW/(NX-1);cellY=usableH/(NY-1);
+  const s=Math.min(cellX,cellY);cellX=cellY=s;
+  marginX=(W-cellX*(NX-1))/2; marginY=Math.max(84,(H-cellY*(NY-1))/2-18);
+}
+function reset(){
+  pressure.fill(0);source.fill(0);dry.fill(0);buildGraph();
+  foods=[idx(6,7),idx(27,6),idx(20,17)];
+  paused=false;pauseBtn.textContent='Ⅱ 暂停 [Space]';stateLabel.textContent='GROWING';lastDelta=1;interacted=0;hint.style.opacity='1';
+}
+function rebuildSources(){
+  source.fill(0);
+  if(foods.length<2)return;
+  source[foods[0]]=1;
+  const sink=-1/(foods.length-1);
+  for(let i=1;i<foods.length;i++)source[foods[i]]=sink;
+}
+function resistance(e){
+  return 1+5.5*(dry[e.a]+dry[e.b])*.5;
+}
+function solvePressure(){
+  if(foods.length<2){pressure.fill(0);return}
+  rebuildSources();
+  const pin=foods[foods.length-1];
+  pressure[pin]=0;
+  for(let it=0;it<34;it++){
+    for(let i=0;i<N;i++){
+      if(i===pin)continue;
+      let sumG=0,sumGP=0;
+      const aa=adj[i];
+      for(let j=0;j<aa.length;j++){
+        const e=edges[aa[j]],other=e.a===i?e.b:e.a;
+        const g=e.d/resistance(e);
+        sumG+=g;sumGP+=g*pressure[other];
+      }
+      if(sumG>1e-8)pressure[i]=(source[i]+sumGP)/sumG;
+    }
+  }
+}
+function step(){
+  if(foods.length<2)return;
+  solvePressure();
+  let delta=0;
+  for(let i=0;i<edges.length;i++){
+    const e=edges[i],r=resistance(e),q=e.d*(pressure[e.a]-pressure[e.b])/r;
+    e.q=q;e.prev=e.d;
+    const target=0.003+Math.pow(Math.abs(q),0.78)*0.92;
+    e.d=clamp(e.d+(target-e.d)*0.065,0.0025,1.15);
+    delta+=Math.abs(e.d-e.prev);
+  }
+  lastDelta=delta/edges.length;
+}
+function nearestNode(px,py){
+  let x=Math.round((px-marginX)/cellX),y=Math.round((py-marginY)/cellY);
+  x=clamp(x,0,NX-1);y=clamp(y,0,NY-1);return idx(x,y);
+}
+function affect(px,py){
+  const n=nearestNode(px,py),p=xy(n),radius=mode==='dry'?2.25:1.65;
+  if(mode==='food'){
+    if(lastPaint===n)return;lastPaint=n;
+    let hit=-1;
+    for(let i=0;i<foods.length;i++){const f=xy(foods[i]);if(Math.hypot(f[0]-p[0],f[1]-p[1])<1.5){hit=i;break}}
+    if(hit>=0&&foods.length>2){foods.splice(hit,1);flash('移除一个营养点')}else if(hit<0&&foods.length<8){foods.push(n);flash('新的营养点改变了流量分配')}
+    interacted++;hint.style.opacity='.18';return;
+  }
+  for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
+    const dd=Math.hypot(x-p[0],y-p[1]);if(dd>radius)continue;
+    const i=idx(x,y),w=1-dd/radius;
+    if(mode==='dry')dry[i]=clamp(dry[i]+0.18*w,0,1);
+    else{
+      const aa=adj[i];for(let j=0;j<aa.length;j++)edges[aa[j]].d=Math.max(.0025,edges[aa[j]].d*(1-.72*w));
+    }
+  }
+  interacted++;hint.style.opacity='.12';
+}
+function flash(msg){toast.textContent=msg;toast.classList.add('show');clearTimeout(flash.t);flash.t=setTimeout(()=>toast.classList.remove('show'),950)}
+function pointerPos(e){const r=canvas.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+canvas.addEventListener('pointerdown',e=>{pointerDown=true;canvas.setPointerCapture(e.pointerId);lastPaint=-1;const p=pointerPos(e);affect(p[0],p[1])});
+canvas.addEventListener('pointermove',e=>{if(!pointerDown||mode==='food')return;const p=pointerPos(e);affect(p[0],p[1])});
+canvas.addEventListener('pointerup',()=>{pointerDown=false;lastPaint=-1});
+canvas.addEventListener('pointercancel',()=>{pointerDown=false;lastPaint=-1});
+function setMode(m){
+  mode=m;document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+  hint.style.opacity='1';
+  hint.innerHTML=m==='food'?'在培养皿里<b>点击空白处</b>添加营养点；点已有营养点可移除。':m==='dry'?'按住并拖动，画出一条<b>高阻干燥带</b>。网络不会停止，它会尝试绕路。':'在粗管附近拖一下，把导通度骤降。<b>真正有韧性的网络会重接。</b>';
+}
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+pauseBtn.addEventListener('click',()=>{paused=!paused;pauseBtn.textContent=paused?'▶ 继续 [Space]':'Ⅱ 暂停 [Space]';stateLabel.textContent=paused?'FROZEN':'GROWING'});
+document.getElementById('resetBtn').addEventListener('click',()=>{reset();flash('培养皿恢复到初始状态')});
+const info=document.getElementById('info');
+document.getElementById('infoBtn').addEventListener('click',()=>info.classList.add('open'));
+document.getElementById('closeInfo').addEventListener('click',()=>info.classList.remove('open'));
+info.addEventListener('click',e=>{if(e.target===info)info.classList.remove('open')});
+addEventListener('keydown',e=>{
+  if(e.key==='1')setMode('food');if(e.key==='2')setMode('dry');if(e.key==='3')setMode('cut');
+  if(e.code==='Space'){e.preventDefault();pauseBtn.click()} if(e.key.toLowerCase()==='r')reset(); if(e.key==='Escape')info.classList.remove('open');
+});
+function drawPetri(){
+  ctx.fillStyle='#070907';ctx.fillRect(0,0,W,H);
+  const cx=W/2,cy=(marginY+cellY*(NY-1)/2),rx=cellX*(NX-1)/2+26,ry=cellY*(NY-1)/2+26;
+  const g=ctx.createRadialGradient(cx,cy,20,cx,cy,Math.max(rx,ry));g.addColorStop(0,'#111510');g.addColorStop(.72,'#0b0e0b');g.addColorStop(1,'#050605');
+  ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(222,230,203,.12)';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='rgba(222,230,203,.045)';ctx.beginPath();ctx.ellipse(cx,cy,rx-8,ry-8,0,0,Math.PI*2);ctx.stroke();
+}
+function drawDry(){
+  for(let i=0;i<N;i++){if(dry[i]<.04)continue;const p=nodeToScreen(i),r=Math.max(3,cellX*.72);ctx.fillStyle='rgba(103,77,56,'+(dry[i]*.13)+')';ctx.beginPath();ctx.arc(p[0],p[1],r,0,Math.PI*2);ctx.fill()}
+}
+function drawEdges(t){
+  ctx.lineCap='round';
+  for(let pass=0;pass<2;pass++){
+    for(let i=0;i<edges.length;i++){
+      const e=edges[i];if(e.d<(pass?0.055:0.012))continue;
+      const a=nodeToScreen(e.a),b=nodeToScreen(e.b),v=clamp((e.d-.012)/.52,0,1);
+      ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);
+      if(pass===0){ctx.strokeStyle='rgba(127,151,80,'+(0.035+v*.11)+')';ctx.lineWidth=.6+v*1.2}
+      else{ctx.strokeStyle='rgba(205,221,145,'+(0.08+v*.68)+')';ctx.lineWidth=.55+Math.pow(v,.72)*4.4}
+      ctx.stroke();
+      if(pass===1&&Math.abs(e.q)>.012&&v>.1){
+        const dir=e.q>=0?1:-1,phase=((t*.00022*dir+i*.173)%1+1)%1;
+        const x=a[0]+(b[0]-a[0])*phase,y=a[1]+(b[1]-a[1])*phase;
+        ctx.fillStyle='rgba(245,247,207,'+(0.25+v*.55)+')';ctx.beginPath();ctx.arc(x,y,.7+v*.75,0,Math.PI*2);ctx.fill();
+      }
+    }
+  }
+}
+function drawFoods(t){
+  for(let k=0;k<foods.length;k++){
+    const p=nodeToScreen(foods[k]),pulse=1+Math.sin(t*.002+k)*.08;
+    ctx.fillStyle='rgba(212,162,95,.10)';ctx.beginPath();ctx.arc(p[0],p[1],12*pulse,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(226,184,117,.35)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(p[0],p[1],7.5,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle=k===0?'#e6c57e':'#d2a05d';ctx.beginPath();ctx.arc(p[0],p[1],3.3,0,Math.PI*2);ctx.fill();
+  }
+}
+function graphMetrics(){
+  const th=.11;let activeE=0,activeNodes=new Set(),length=0,loss=0;
+  const parent=new Int32Array(N);for(let i=0;i<N;i++)parent[i]=i;
+  const find=a=>{while(parent[a]!==a){parent[a]=parent[parent[a]];a=parent[a]}return a};
+  const union=(a,b)=>{a=find(a);b=find(b);if(a!==b)parent[b]=a};
+  for(let i=0;i<edges.length;i++){
+    const e=edges[i],r=resistance(e);loss+=e.q*e.q*r/Math.max(e.d,.0025);
+    if(e.d>th){activeE++;activeNodes.add(e.a);activeNodes.add(e.b);union(e.a,e.b);length+=1}
+  }
+  const comps=new Set();activeNodes.forEach(n=>comps.add(find(n)));
+  const loops=Math.max(0,activeE-activeNodes.size+comps.size);
+  return {length:length,loss:loss,loops:loops};
+}
+function updateMetrics(){
+  const m=graphMetrics();lengthMetric.textContent=m.length+' cells';lossMetric.textContent=m.loss.toFixed(2);loopMetric.textContent=String(m.loops);
+  const rw=clamp(lastDelta*950,0,9.99);rewireMetric.textContent=rw.toFixed(2);
+  foodCount.textContent=foods.length+' nutrient sites';
+  if(foods.length<2)observation.innerHTML='至少需要两个营养点才会形成运输。<b>再放一个。</b>';
+  else if(lastDelta>.0017)observation.innerHTML='环境刚被改写，网络正在重分配流量。<b>旧路不会因为“曾经重要”而被永久保留。</b>';
+  else if(m.loops>5)observation.innerHTML='现在还有不少冗余回路。<b>它们提高绕行能力，也增加了维持成本。</b>';
+  else if(m.loops===0&&interacted>2)observation.innerHTML='网络已经被压到接近树状。<b>省材料与抗损伤之间开始出现张力。</b>';
+  else observation.innerHTML='高流量通路逐渐变粗，弱支路缓慢退化。<b>“路线”是反馈留下的痕迹，不是预先画好的答案。</b>';
+  stateLabel.textContent=paused?'FROZEN':lastDelta>.001?'REWIRING':'SETTLING';
+}
+function loop(t){
+  frame++;
+  if(!paused){step();if(frame%2===0)step()}
+  drawPetri();drawDry();drawEdges(t);drawFoods(t);
+  if(++dirtyMetrics>12){dirtyMetrics=0;updateMetrics()}
+  requestAnimationFrame(loop);
+}
+addEventListener('resize',resize);
+resize();reset();updateMetrics();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
