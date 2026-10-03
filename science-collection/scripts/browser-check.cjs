@@ -150,6 +150,7 @@ async function run() {
     }));
     assert.ok(Math.abs(direct.h) < 0.03, 'Hysteresis direct path reaches H≈0');
     await page.locator('#pinBtn').click();
+    await page.evaluate(() => document.activeElement.blur());
     for (let i = 0; i < 25; i++) await page.keyboard.press('ArrowRight');
     for (let i = 0; i < 25; i++) await page.keyboard.press('ArrowLeft');
     const looped = await page.evaluate(() => ({
