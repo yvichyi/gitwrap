@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Science Explorer</title>
+<style>
+body{margin:0;background:#070b12;color:#e8eef8;font-family:system-ui;padding:40px}
+.node{display:inline-block;margin:12px;padding:18px;border:1px solid #334155;border-radius:16px;cursor:pointer;background:#111827}
+.node:hover{transform:translateY(-4px)}
+.card{margin-top:30px;padding:24px;background:#0f172a;border-radius:20px}
+a{color:#7dd3fc}
+</style>
+</head>
+<body>
+<h1>Science Explorer</h1>
+<p>从科学概念进入实验，而不是从页面列表开始。</p>
+<div id="nodes"></div>
+<div class="card" id="detail">选择一个概念。</div>
+<script>
+Promise.all([
+ fetch('../data/concepts.json').then(r=>r.json()),
+ fetch('../data/experiments.json').then(r=>r.json())
+]).then(([concepts,experiments])=>{
+ const root=document.querySelector('#nodes');
+ concepts.nodes.forEach(n=>{
+  const el=document.createElement('div');
+  el.className='node';
+  el.textContent=n.name;
+  el.onclick=()=>{
+   const items=experiments.experiments.filter(e=>e.concepts.includes(n.id));
+   document.querySelector('#detail').innerHTML='<h2>'+n.name+'</h2><p>'+n.description+'</p>'+items.map(i=>'<a href="../'+i.file+'">'+i.title+'</a>').join('<br>');
+  };
+  root.appendChild(el);
+ });
+});
+</script>
+</body>
+</html>
