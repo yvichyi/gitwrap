@@ -193,7 +193,7 @@
   const normalize = text => text.normalize('NFKC').toLocaleLowerCase();
   cards.forEach(card => { card.searchText = normalize(card.dataset.search); });
   function filter() {
-    const words = normalize(query.value).trim().split(/\\s+/).filter(Boolean);
+    const words = normalize(query.value).trim().split(/\s+/).filter(Boolean);
     let count = 0;
     cards.forEach(card => {
       card.hidden = Boolean(category.value && card.dataset.category !== category.value) || !words.every(word => card.searchText.includes(word));
