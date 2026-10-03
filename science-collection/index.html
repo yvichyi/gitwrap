@@ -7,7 +7,7 @@
 </style></head><body><a class="skip" href="#works">跳到作品</a><main>
 <header><div class="eyebrow">INTERACTIVE SCIENCE / 42 WORKS</div><h1>改变一个条件，<br>让模型自己回答。</h1><p>42 件互动科学装置，7 个主题。每件作品都能单独打开：先动手，再看解释，最后检查答案成立的边界。</p><nav aria-label="推荐入口"><a href="拥堵之波.html">从车流开始</a><a href="马后炮·新生入口.html">两分钟理解缓存</a><a href="偏振之间.html">试试三片偏振片</a></nav></header>
 <form class="filters" role="search"><label>搜索作品、问题或方法<input id="query" type="search" placeholder="例如：随机、光、Wasserstein" autocomplete="off"></label><label>按主题浏览<select id="category"><option value="">全部主题</option><option value="数学与随机性">数学与随机性</option><option value="计算与信息">计算与信息</option><option value="物理与天文">物理与天文</option><option value="地球与交通">地球与交通</option><option value="生命与认知">生命与认知</option><option value="测量与逆问题">测量与逆问题</option><option value="社会与证据">社会与证据</option></select></label><button type="reset">清除筛选</button></form>
-<p class="result" id="result-count" role="status" aria-live="polite">显示 41 / 42 件作品</p><noscript><p>搜索需要 JavaScript；下方完整目录与所有作品链接仍可使用。</p></noscript>
+<p class="result" id="result-count" role="status" aria-live="polite">显示 42 / 42 件作品</p><noscript><p>搜索需要 JavaScript；下方完整目录与所有作品链接仍可使用。</p></noscript>
 <div id="works"><section class="category"><h2>数学与随机性 <small>7 件</small></h2><div class="grid"><article class="card" data-category="数学与随机性" data-search="sishierfei.html 似是而非 数学与随机性 素性检验的“可能正确”能有多可靠？ 费马检验、Miller–Rabin、卡迈克尔数 先选 561，再切换两种检验，比较说谎的底 任意大数的固定底检验不能一概称为确定性证明">
 <h3><a href="sishierfei.html">似是而非<span aria-hidden="true"> ↗</span></a></h3>
 <p class="question">素性检验的“可能正确”能有多可靠？</p><p class="model">费马检验、Miller–Rabin、卡迈克尔数</p>
@@ -185,7 +185,7 @@
   const normalize = text => text.normalize('NFKC').toLocaleLowerCase();
   cards.forEach(card => { card.searchText = normalize(card.dataset.search); });
   function filter() {
-    const words = normalize(query.value).trim().split(/\s+/).filter(Boolean);
+    const words = normalize(query.value).trim().split(/\\s+/).filter(Boolean);
     let count = 0;
     cards.forEach(card => {
       card.hidden = Boolean(category.value && card.dataset.category !== category.value) || !words.every(word => card.searchText.includes(word));
