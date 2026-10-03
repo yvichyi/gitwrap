@@ -104,14 +104,14 @@ radial-gradient(circle at 50% 50%,rgba(73,106,75,.06),transparent 38%),#030403}
   <div class="labGrid">
    <section class="panel"><h3>1. 写规则</h3><p>一个格子的下一状态，只取决于它现在是否存活，以及周围 8 格有几个活细胞。点亮你认为会导致“出生”或“存活”的邻居数量。</p>
     <div class="ruleRows" id="ruleRows"></div>
-    <div class="compile"><button id="copyPrev">从上次最佳结果开始</button><button class="primary" id="testHyp">在全部观测上测试</button></div>
+    <div class="compile"><button id="copyPrev">从上次最佳结果开始</button><button class="primary" id="testHyp">在全部观测上测试</button><button id="adversary" disabled>生成反例实验</button></div>
     <div class="score" id="score"><small>PREDICTION ACCURACY</small><strong>—</strong></div>
    </section>
    <section class="panel"><h3>2. 观测簿</h3><p>PROBE 会记录一个局部样本：中心状态、邻居数，以及下一帧真实结果。假说必须同时解释所有已记录样本。</p><div class="notebook" id="notebook"><div class="entry">还没有观测。回到世界，用 <b>PROBE</b> 点几个你觉得关键的位置。</div></div></section>
    <section class="panel"><h3>3. 反事实分支</h3><p>FORK 会复制当前世界。你可以在两个分支施加不同干预，再分别推进。它们共享同一条隐藏定律。</p><div class="branchList" id="branchList"></div></section>
    <section class="panel"><h3>4. 证伪，而不是猜答案</h3><p>高准确率不等于识别了规律。如果观测都来自相似局面，多条不同规则会同样解释它们。制造能区分假说的新局部结构，再回来测试。</p><div class="score" id="coverage"><small>OBSERVED NEIGHBOR COUNTS</small><strong>0 / 18</strong></div></section>
   </div>
-  <div class="explain"><b>作品结构与旧展品不同：</b>页面不会按顺序解释某个现成知识点，也没有固定“正确操作”。隐藏规则每次会从一组局部元胞规律中随机选择；时间线、实验、观测和假说是同一个系统。只有当你的规则在足够多样的局部观测上持续预测正确时，页面才会认为你接近识别成功。实现使用双缓冲 <code>Uint8Array</code> 状态网格、可回放历史快照、分支状态树与即时假说评估。<br><br><b>模型边界：</b>这里的“宇宙”属于二维 outer-totalistic cellular automata，只用于训练实验设计、预测与证伪。它不是现实物理规律的模型，也不说明自然定律一定具有局部离散形式。</div>
+  <div class="explain"><b>作品结构与旧展品不同：</b>页面不会按顺序解释某个现成知识点，也没有固定“正确操作”。隐藏规则每次会从一组局部元胞规律中随机选择；时间线、实验、观测和假说是同一个系统。只有当你的规则在足够多样的局部观测上持续预测正确时，才值得继续；即便 100% 拟合现有数据，页面仍可主动寻找一个能区分假说与隐藏规律的最小反例。实现使用双缓冲 <code>Uint8Array</code> 状态网格、可回放历史快照、分支状态树与即时假说评估。<br><br><b>模型边界：</b>这里的“宇宙”属于二维 outer-totalistic cellular automata，只用于训练实验设计、预测与证伪。它不是现实物理规律的模型，也不说明自然定律一定具有局部离散形式。</div>
  </div>
 </div>
 </div>
@@ -209,6 +209,7 @@ function updateUI(){
 }
 function flash(s){const t=$('#toast');t.textContent=s;t.classList.add('show');clearTimeout(flash.t);flash.t=setTimeout(()=>t.classList.remove('show'),1000)}
 function addObservation(x,y){
+ if(x<0||x>=GRID_W||y<0||y>=GRID_H)return;
  const before=grid.slice(),after=new Uint8Array(SIZE);evolve(before,after);const i=index(x,y),n=countN(before,x,y),alive=before[i],out=after[i],key=alive+':'+n+':'+out;
  const sig=generation+':'+x+':'+y+':'+key;if(obsKeys.has(sig))return;obsKeys.add(sig);observations.push({generation,x,y,n,alive,out,branch:currentBranch});
  renderNotebook();updateCoverage();updateUI();showProbe(x,y,before,after);flash('局部观测已写入实验簿');
@@ -239,11 +240,30 @@ function testHyp(){
  const h=currentHyp();let ok=0;
  observations.forEach(o=>{const pred=o.alive?h.s.has(o.n):h.b.has(o.n);if(+pred===o.out)ok++});
  const score=ok/observations.length,s=$('#score');s.className='score '+(score===1?'good':score<.65?'bad':'');s.querySelector('strong').textContent=(score*100).toFixed(1)+'%';
- $('#hypStat').textContent=(score*100).toFixed(0)+'%';if(score>bestHyp.score)bestHyp={b:new Set(h.b),s:new Set(h.s),score};
+ $('#hypStat').textContent=(score*100).toFixed(0)+'%';$('#adversary').disabled=score!==1;if(score>bestHyp.score)bestHyp={b:new Set(h.b),s:new Set(h.s),score};
  const coverage=new Set(observations.map(o=>o.alive+':'+o.n)).size;
  if(score===1&&coverage>=10){flash('它解释了目前全部观测。现在试着设计一个更刁钻的反例。')}
  else if(score===1){flash('目前零反例，但证据覆盖还很窄。')}
  else flash((observations.length-ok)+' 个观测与假说冲突');
+}
+function generateCounterexample(){
+ const h=currentHyp();let diff=null;
+ for(let alive=0;alive<=1&&!diff;alive++)for(let n=0;n<=8;n++){
+   const truth=alive?((surviveMask>>n)&1):((birthMask>>n)&1);
+   const pred=alive?h.s.has(n):h.b.has(n);
+   if(+pred!==truth){diff={alive,n};break}
+ }
+ if(!diff){
+   $('#hypStat').textContent='SOLVED';$('#score').className='score good';$('#score strong').textContent='NO COUNTEREXAMPLE';
+   flash('在当前规则语言中找不到反例：假说与隐藏规律一致。');return;
+ }
+ running=false;grid.fill(0);
+ const cx=Math.floor(GRID_W/2),cy=Math.floor(GRID_H/2),neighbors=[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+ if(diff.alive)grid[index(cx,cy)]=1;
+ for(let i=0;i<diff.n;i++){const p=neighbors[i];grid[index(cx+p[0],cy+p[1])]=1}
+ resetHistory();drawer.classList.remove('open');tool='probe';$('[data-tool]').forEach(x=>x.classList.toggle('active',x.dataset.tool==='probe'));
+ setTimeout(()=>{addObservation(cx,cy);},180);
+ flash('已构造一个最小区分实验。观察中心格下一帧。');
 }
 function updateCoverage(){
  const c=new Set(observations.map(o=>o.alive+':'+o.n)).size;$('#coverage strong').textContent=c+' / 18';$('#coverage').className='score '+(c>=10?'good':'');
@@ -259,7 +279,7 @@ $('#playBtn').onclick=()=>{running=!running;updateUI()};
 $('#scrub').oninput=e=>setFromHistory(+e.target.value);
 $('#forkBtn').onclick=fork;
 const drawer=$('#drawer');$('#labBtn').onclick=()=>{running=false;updateUI();renderBranches();drawer.classList.add('open')};$('#closeLab').onclick=()=>drawer.classList.remove('open');drawer.onclick=e=>{if(e.target===drawer)drawer.classList.remove('open')};
-$('#testHyp').onclick=testHyp;$('#copyPrev').onclick=()=>setHyp(bestHyp);
+$('#testHyp').onclick=testHyp;$('#copyPrev').onclick=()=>setHyp(bestHyp);$('#adversary').onclick=generateCounterexample;
 addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();$('#playBtn').click()}if(e.key==='Escape')drawer.classList.remove('open');if(e.key.toLowerCase()==='f')fork();if(e.key.toLowerCase()==='p'){$$('[data-tool]').find(x=>x.dataset.tool==='probe').click()}});
 initRule();buildRuleUI();resize();randomSeed();branches.set('A',{grid:grid.slice(),history:history.map(a=>a.slice()),cursor,generation});renderBranches();updateUI();addEventListener('resize',resize);requestAnimationFrame(animate);
 })();
