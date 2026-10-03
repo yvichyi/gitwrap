@@ -85,7 +85,10 @@ def main():
         else:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding='utf-8')
-    print(f'Catalogue is current: {len(json.loads((ROOT / "catalog.json").read_text(encoding="utf-8"))["items"])} works, 7 categories.')
+    data = json.loads((ROOT / 'catalog.json').read_text(encoding='utf-8'))
+    work_count = len(data['items'])
+    category_count = len({item['category'] for item in data['items']})
+    print(f'Catalogue is current: {work_count} works, {category_count} categories.')
 
 
 if __name__ == '__main__':
