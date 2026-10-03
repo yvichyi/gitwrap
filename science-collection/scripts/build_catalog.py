@@ -69,7 +69,7 @@ def render():
   form.addEventListener('reset', () => { query.value = ''; category.value = ''; filter(); });
 })();
 </script></body></html>
-'''.replace('OPTIONS', options).replace('SECTIONS', ''.join(sections))
+'''.replace('OPTIONS', options).replace('SECTIONS', ''.join(sections)).replace('41', str(len(items)))
     return {'index.html': page, 'docs/CATALOG.md': '\n'.join(markdown).rstrip() + '\n'}
 
 
@@ -85,7 +85,7 @@ def main():
         else:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding='utf-8')
-    print('Catalogue is current: 41 works, 7 categories.')
+    print(f'Catalogue is current: {len(json.loads((ROOT / "catalog.json").read_text(encoding="utf-8"))["items"])} works, 7 categories.')
 
 
 if __name__ == '__main__':
