@@ -1,0 +1,1682 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="在浏览器里现场训练一个小型神经网络，看它先把训练集背下来、卡在平台期几十步不动，然后某一刻突然学会模加法规则——这就是顿悟。">
+<title>顿悟之刻 · 过拟合之后，理解才开始</title>
+<style>
+:root { --paper:#f3efe6; --ink:#243b3a; --muted:#6b7973; --line:#d5d4c6; --teal:#315b57; --dark:#163c3b; --rust:#b96447; --gold:#c8a55f; --mint:#9fc9b4; --serif:"Palatino Linotype","Songti SC","STSong","SimSun",serif; --sans:"Avenir Next","Microsoft YaHei","PingFang SC",sans-serif; }
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; background:var(--paper); }
+body { margin:0; color:var(--ink); background:var(--paper); font:12px/1.65 var(--sans); }
+button,select,input { font:inherit; }
+button,select { color:var(--ink); background:#f6f2e8; border:1px solid #c9cec2; border-radius:2px; }
+button { cursor:pointer; padding:7px 10px; transition:background .16s,color .16s,border-color .16s; }
+button:hover { border-color:var(--teal); color:var(--teal); }
+button:focus-visible,select:focus-visible,input:focus-visible,canvas:focus-visible,summary:focus-visible { outline:2px solid var(--rust); outline-offset:2px; }
+button.selected,button[aria-pressed="true"] { background:#e1e8dc; border-color:#8ca69a; color:var(--dark); }
+.sheet { width:min(1320px,calc(100% - 64px)); margin:auto; }
+.mast { min-height:65px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); }
+.brand { color:var(--ink); text-decoration:none; font-size:12px; display:flex; align-items:center; gap:9px; }
+.brand-icon { color:var(--teal); font-size:24px; }.mast>span { color:var(--muted); font-size:9px; letter-spacing:.11em; }
+.mast>span b,footer b { color:var(--rust); padding:0 5px; }
+.hero { display:grid; grid-template-columns:1.3fr 1fr; gap:8%; padding:43px 0 25px; align-items:center; }
+.eyebrow,.small-cap { font-size:10px; letter-spacing:.12em; color:var(--teal); font-weight:600; }
+.eyebrow::before { content:""; display:inline-block; width:6px; height:6px; background:var(--rust); margin-right:9px; border-radius:50%; }
+h1,h2,h3,p,figure { margin:0; }
+h1 { font:500 clamp(48px,6.6vw,86px)/1.2 var(--serif); letter-spacing:-.055em; margin:8px 0 12px; white-space:nowrap; }
+h1 span { color:var(--teal); margin-left:7px; }h1 i { color:var(--rust); font:300 34px var(--serif); vertical-align:top; padding-left:16px; }
+.deck { font:17px/1.9 var(--serif); color:#52635c; }
+.hero-aside { max-width:370px; justify-self:end; width:100%; border-left:1px solid #a8b8a6; padding-left:30px; }
+.hero-aside svg { display:block; width:100%; height:150px; color:#628176; }.hero-aside p { color:var(--muted); font-size:11px; line-height:1.9; }
+.folio { display:flex; justify-content:space-between; border-top:1px solid var(--line); padding:10px 0; font-size:10px; letter-spacing:.07em; color:var(--muted); }
+.laboratory { margin-top:25px; }.section-head { display:flex; justify-content:space-between; align-items:end; gap:16px; margin-bottom:17px; }
+h2 { font:500 clamp(22px,2.5vw,30px)/1.5 var(--serif); letter-spacing:-.025em; margin-top:5px; }
+.status { font-size:10px; color:var(--muted); border-left:2px solid var(--rust); padding-left:10px; display:flex; align-items:center; gap:6px; }
+.status i { width:6px; height:6px; border-radius:50%; background:#8b948a; display:inline-block; }
+.lab-grid { display:grid; grid-template-columns:minmax(0,1fr) 282px; gap:18px; align-items:start; }.visuals,.plate-card,.curve-card,.controls { min-width:0; }
+.plate-card { padding:13px; background:#faf7ef; border:1px solid var(--line); }
+.plate-head { display:flex; justify-content:space-between; gap:10px; align-items:center; padding:2px 2px 10px; }
+.plate-head h3,.curve-head h3 { font:500 16px/1.5 var(--serif); }.plate-head h3 span,.curve-head h3 span { font:10px var(--sans); color:var(--muted); }
+.plate-head small,.plate-head>span,.curve-head>span { font-size:9px; color:var(--muted); }
+.canvas-wrap { position:relative; background:var(--dark); }
+.canvas-wrap canvas { display:block; width:100%; height:auto; }
+#grid { aspect-ratio:11/9; }
+#map { aspect-ratio:11/9; cursor:crosshair; }
+#pca { aspect-ratio:11/9; }
+.canvas-label { position:absolute; right:8px; top:7px; padding:2px 6px; color:#e1e9da; background:#12312dc9; font-size:9px; pointer-events:none; }
+.plate-legend { display:flex; justify-content:space-between; gap:10px; padding:8px 2px 4px; color:var(--muted); font-size:9px; flex-wrap:wrap; }
+.legend-scale { display:flex; align-items:center; gap:7px; }.legend-scale i { width:44px; height:7px; }.legend-scale b { font:10px var(--serif); white-space:nowrap; }
+.chip { display:inline-block; width:8px; height:8px; margin:0 4px 0 8px; vertical-align:middle; }
+.chip-train { background:var(--gold); }.chip-ok { background:#7c9a84; }.chip-bad { background:var(--rust); }.chip-dark { background:#2a4a48; }
+.view-row { display:flex; align-items:center; gap:5px; border-top:1px solid #e2e1d6; padding:8px 0 2px; font-size:9px; color:var(--muted); }
+.view-row>span { margin-right:auto; }.view-row button { font-size:9px; padding:5px 8px; }
+.curve-card { margin-top:12px; padding:14px; background:#eaeadd; border:1px solid var(--line); }
+.curve-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
+#losscurve { display:block; width:100%; height:210px; background:#eaeadd; }
+.curve-legend { display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 14px; margin-top:7px; color:var(--muted); font-size:9px; }
+.curve-legend b { color:var(--ink); font:13px var(--serif); }
+.key { display:inline-block; width:14px; vertical-align:middle; border-top:2px solid; margin-right:5px; }
+.key-train { color:var(--teal); }.key-test { color:var(--rust); }.key-grok { color:var(--rust); border-top-style:dashed; }
+.controls { padding:16px; border:1px solid var(--line); background:#faf7ef; }
+.control-title { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.local { font-size:9px; color:var(--muted); }.local i { display:inline-block; height:5px; width:5px; background:#79927a; border-radius:50%; margin-right:4px; }
+.control-rule { border-top:1px solid var(--line); margin-top:15px; padding-top:9px; font-size:10px; letter-spacing:.1em; color:var(--teal); }
+.run-buttons { display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:5px; }
+.run-buttons button { font-size:9px; padding:8px 2px; }
+.primary { background:var(--teal); color:#f5f4e7; border-color:var(--teal); }
+.primary:hover { background:#244c47; color:#fff; }
+.controls label { display:block; font-size:10px; color:#56675e; }
+.label-row { display:flex; justify-content:space-between; align-items:center; margin-top:9px; gap:8px; }
+output { font:12px var(--serif); color:var(--teal); white-space:nowrap; }
+input[type=range] { width:100%; accent-color:var(--teal); height:23px; margin:1px 0; cursor:pointer; }
+.ends { display:flex; justify-content:space-between; font-size:8px; color:#8d9486; margin-bottom:4px; }
+.ends .warn { color:#b96447; font-weight:600; }
+.ends .warn-soft { color:#9a7a4a; }
+.nowrap { white-space:nowrap; }
+.micro { font-size:9px; line-height:1.8; color:#7f877b; margin-top:5px; }
+.reset-row { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:6px; }
+.reset-row button { font-size:9px; padding:7px 2px; }
+.phase-card { margin-top:12px; padding:12px; background:#eaeadd; border:1px solid var(--line); }
+.phase-head { display:flex; align-items:center; gap:7px; margin-bottom:5px; }
+.phase-head i { width:7px; height:7px; border-radius:50%; background:#8b948a; }
+.phase-head b { font:500 14px/1.5 var(--serif); }
+.phase-card p { font-size:9px; line-height:1.8; color:var(--muted); }
+.assessment { margin-top:36px; padding-top:26px; border-top:1px solid var(--line); }
+.actions { display:flex; gap:5px; flex-wrap:wrap; }.actions button { font-size:9px; }
+.metrics { display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin:18px 0; }
+.metrics>div { padding:14px 15px; border-right:1px solid var(--line); min-width:0; }
+.metrics>div:first-child { padding-left:0; }.metrics>div:last-child { border:0; }
+.metrics span,.metrics small { display:block; font-size:9px; color:var(--muted); }
+.metrics strong { display:block; font:25px/1.5 var(--serif); color:var(--teal); white-space:nowrap; }
+.metrics small { font-size:8px; }
+.metrics .hl strong { color:var(--rust); }
+.assessment-grid { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(0,1fr); gap:22px; }
+.ledger-card { padding:16px; background:#faf7ef; border:1px solid var(--line); }
+.ledger-stack { display:grid; gap:5px; }
+.energy-track { display:flex; height:14px; overflow:hidden; background:#e6e4d8; }
+.energy-track i { display:block; height:100%; width:0; transition:width .18s ease; }
+.energy-track.allocation i:nth-child(1) { background:var(--teal); }
+.energy-track.allocation i:nth-child(2) { background:var(--rust); }
+.energy-track.allocation i:nth-child(3) { background:#c9c6b4; }
+.ledger-legend { display:grid; gap:8px; margin-top:15px; font-size:9px; color:var(--muted); }
+.ledger-legend span { display:flex; align-items:center; gap:4px; }
+.ledger-legend b { margin-left:auto; font:13px var(--serif); color:var(--ink); }
+.caption { font-size:9px; color:var(--muted); margin-top:11px; line-height:1.8; }
+.finding { padding:10px 6px; }.finding h3 { font:500 22px/1.45 var(--serif); margin:11px 0; }
+.finding p { font-size:11px; line-height:1.9; color:#657368; }
+.formula { border-top:1px solid var(--line); padding-top:14px; margin-top:18px; font:18px var(--serif); letter-spacing:.04em; color:var(--dark); }
+.formula span { color:var(--rust); padding:0 5px; }
+.finding>small { font-size:9px; color:var(--muted); }
+.reading { border-top:1px solid var(--line); margin-top:38px; padding:27px 0; }
+.reading-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:32px; margin:21px 0 27px; }
+.reading article>span { font:27px var(--serif); color:var(--rust); }
+.reading article h3 { margin:7px 0; font:500 18px var(--serif); }
+.reading article p { font-size:10px; line-height:1.9; color:var(--muted); }
+details { border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:12px 0; }
+summary { cursor:pointer; font-size:11px; color:var(--teal); }
+.details-grid { display:grid; grid-template-columns:1fr 1fr; gap:13px 28px; padding:17px 0; font-size:10px; line-height:1.85; color:var(--muted); }
+footer { display:flex; justify-content:space-between; gap:15px; font-size:8px; color:var(--muted); padding:12px 0 29px; }
+[hidden] { display:none !important; }
+@media(max-width:1100px) { .sheet { width:calc(100% - 42px); }.lab-grid { grid-template-columns:minmax(0,1fr) 255px; gap:12px; }.controls { padding:13px; }.hero { gap:4%; } }
+@media(max-width:820px) { .lab-grid { grid-template-columns:1fr; }.assessment-grid { grid-template-columns:1fr; }.metrics { grid-template-columns:1fr 1fr; }.metrics>div:nth-child(2) { border-right:0; }.metrics>div:nth-child(n+3) { border-top:1px solid var(--line); }.metrics>div:first-child { padding-left:14px; }.section-head { flex-wrap:wrap; }.status { max-width:260px; } }
+@media(max-width:560px) { .sheet { width:calc(100% - 26px); }.mast { min-height:54px; }.mast>span { font-size:7px; letter-spacing:0; }.brand { font-size:10px; gap:5px; }.hero { grid-template-columns:1fr; padding:26px 0 18px; gap:12px; }h1 { font-size:52px; }h1 i { font-size:22px; padding-left:10px; }.hero-aside { display:none; }.deck { font-size:15px; }.folio { font-size:7px; gap:8px; }.folio span:last-child { display:none; }h2 { font-size:22px; }.plate-card { padding:8px; }.plate-head { align-items:flex-start; flex-direction:column; gap:0; }.plate-head h3 { font-size:14px; }.run-buttons { grid-template-columns:1fr 1fr; }.run-buttons .primary { grid-column:1/-1; min-height:42px; }#losscurve { height:180px; }.curve-legend { justify-content:flex-start; }.view-row { flex-wrap:wrap; }.view-row>span { width:100%; }.view-row button { flex:1; }.metrics>div { padding:11px !important; }.metrics strong { font-size:21px; }.metrics span { font-size:8px; }.metrics small { font-size:7px; }.actions { width:100%; }.actions button { flex:1; min-height:38px; }.reading-grid,.details-grid { grid-template-columns:1fr; }.reading-grid { gap:20px; }.reading article>span { float:left; width:31px; }.reading article h3 { margin:2px 0 7px 34px; }.reading article p { margin-left:34px; }footer { flex-direction:column; gap:2px; } }
+@media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; }button { transition:none; }.energy-track i { transition:none; } }
+</style></head><body>
+<div class="sheet" id="top">
+  <header class="mast">
+    <a href="#top" class="brand"><span class="brand-icon" aria-hidden="true">◉</span>泛化 · 顿悟实验室</a>
+    <span>一件离线科学装置 <b>／</b> GROKKING HAS A MOMENT</span>
+  </header>
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">如果机器只是背诵，它什么时候才真的学会？</p>
+        <h1>顿悟的<span>一刻</span><i>↗</i></h1>
+        <p class="deck">给它一道纯算法的题：模加法。<br>它会先把训练集背得滚瓜烂熟，测试集一塌糊涂；<br>然后在第若干步，答案突然全对。</p>
+      </div>
+      <div class="hero-aside">
+        <span class="small-cap">MEMORIZE, THEN UNDERSTAND</span>
+        <svg viewBox="0 0 300 160" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="1">
+            <path d="M18 128 H282" opacity=".3"/>
+            <path d="M22 120 L60 118 L74 116 L86 60 L96 116 L110 118 L142 118 L154 96 L166 118 L198 118 L210 78 L220 118 L246 119 L278 122" stroke="#b96447" stroke-width="1.6"/>
+            <path d="M22 122 L60 120 L74 118 L86 112 L96 118 L110 120 L142 120 L154 116 L166 120 L198 120 L210 114 L220 120 L246 121 L278 124" stroke="#315b57" stroke-width="1.6"/>
+            <path d="M86 60 V112" stroke="#b96447" stroke-dasharray="3 3" opacity=".8"/>
+            <circle cx="86" cy="60" r="3.4" fill="#b96447" stroke="none"/>
+            <circle cx="210" cy="78" r="3.4" fill="#b96447" stroke="none"/>
+            <path d="M210 66 l3 5 5 .6-4 4 1.2 5.4-5.2-2.8-5.2 2.8 1.2-5.4-4-4 5-.6z" fill="#c8a55f" stroke="none" opacity=".9"/>
+          </g>
+        </svg>
+        <p>铁锈色是测试损失，深青色是训练损失。<br>平台期很长，转折很突然——这就是顿悟。</p>
+      </div>
+    </section>
+    <div class="folio">
+      <span>模加法任务 / <span id="cfg-p">67</span> × <span id="cfg-q">67</span> 全域</span>
+      <span>两层 MLP + 嵌入 / 全手写反向传播</span>
+      <span>AdamW / 本地计算，无网络请求</span>
+    </div>
+
+    <section class="laboratory" aria-labelledby="lab-title">
+      <div class="section-head">
+        <div><p class="small-cap">01 / 让它先背，再等它顿悟</p><h2 id="lab-title">按播放，然后盯着测试损失那条线</h2></div>
+        <span class="status" role="status"><i id="phase-dot"></i><span id="phase">刚开始</span></span>
+      </div>
+      <div class="lab-grid">
+        <div class="visuals">
+          <div class="plate-card">
+            <div class="plate-head">
+              <div><h3>训练集与测试集 <span>／ 谁见过，谁没见过</span></h3><small>横轴 b，纵轴 a；金框 = 训练时见过的格子</small></div>
+              <span id="probe">点上方地图可查单格</span>
+            </div>
+            <div class="canvas-wrap"><canvas id="grid" width="660" height="540" role="img" aria-label="训练集与测试集分布棋盘图"></canvas><span class="canvas-label">任务空间 / 模加法</span></div>
+            <div class="plate-legend">
+              <span><i class="chip chip-train"></i>训练时见过 <i class="chip chip-dark"></i>没见过（测试）</span>
+              <span>训练样本 <b id="m-traincount">1346 / 4489</b></span>
+            </div>
+            <div class="plate-head" style="border-top:1px solid #e2e1d6; margin-top:8px; padding-top:10px;">
+              <div><h3>全域预测 <span>／ 它到底学会了什么</span></h3><small>每个 (a,b) 都给出答案：金框仍是训练过的格子</small></div>
+            </div>
+            <div class="canvas-wrap" id="map-wrap" style="margin-top:10px;"><canvas id="map" width="660" height="540" role="img" aria-label="全域预测正确与否的地图"></canvas><span class="canvas-label">对 / 错 · 深浅表示自信程度 · 金点 = 训练过的题</span></div>
+            <div class="plate-legend">
+              <span><i class="chip chip-ok"></i>答对 <i class="chip chip-bad"></i>答错 <i class="chip chip-train"></i>训练过的格子</span>
+              <span>全域正确率 <b id="n-gridacc">—</b></span>
+            </div>
+            <div class="canvas-wrap" id="pca-wrap" hidden style="margin-top:10px;"><canvas id="pca" width="660" height="540" role="img" aria-label="隐藏层表示的二维主成分投影"></canvas><span class="canvas-label">表示空间 / PC1-PC2</span></div>
+            <div class="view-row" role="group" aria-label="视图切换">
+              <span>视图</span>
+              <button id="view-map" aria-pressed="true" class="selected">预测地图</button>
+              <button id="view-pca" aria-pressed="false">表示空间 PCA</button>
+            </div>
+            <p class="micro">预测地图是主视图；切到 PCA 可以看隐藏层表示是否从散点变成结构。</p>
+          </div>
+          <div class="curve-card">
+            <div class="curve-head"><h3>两条损失曲线 <span>／ 平台期与转折</span></h3><span>纵轴为对数刻度</span></div>
+            <canvas id="losscurve" width="900" height="260" role="img" aria-label="训练损失与测试损失随训练步数变化的曲线"></canvas>
+            <div class="curve-legend">
+              <span><i class="key key-train"></i>训练损失</span>
+              <span><i class="key key-test"></i>测试损失</span>
+              <span><i class="key key-grok"></i>顿悟时刻</span>
+              <span id="n-grok">尚未开始</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="controls" aria-label="实验条件">
+          <div class="control-title"><span class="small-cap">实验条件</span><span class="local"><i></i>本地计算</span></div>
+          <div class="control-rule"><span>训练</span></div>
+          <div class="run-buttons">
+            <button id="play" class="primary">▶ 开始训练</button>
+            <button id="step1">+1 步</button>
+            <button id="step100">+100 步</button>
+          </div>
+          <div class="label-row"><label for="speed">每帧步数</label><output id="speed-value">1 步/帧</output></div>
+          <input id="speed" type="range" min="1" max="60" step="1" value="1">
+          <p class="micro">先用 1 步/帧看清曲线形状，再调大加快。建议先跑到 2000 步以上。</p>
+
+          <div class="control-rule"><span>超参数</span></div>
+          <div class="label-row"><label for="wd">权重衰减 λ</label><output id="wd-value">1.00</output></div>
+          <input id="wd" type="range" min="0" max="8" step="0.1" value="1">
+          <div class="ends"><span>无张力 0</span><span>强张力 8</span></div>
+          <div class="label-row"><label for="lr">学习率</label><output id="lr-value">0.001</output></div>
+          <input id="lr" type="range" min="0.0001" max="0.005" step="0.0001" value="0.001">
+          <p class="micro">权重衰减是"张力"：它把参数往零拉，逼网络不能只靠记忆。</p>
+
+          <div class="control-rule"><span>任务规模</span></div>
+          <div class="label-row"><label for="ntrain">训练样本数</label><output id="n-value">1346</output></div>
+          <input id="ntrain" type="range" min="200" max="4489" step="1" value="1346">
+          <div class="ends"><span id="m-task">67 × 67 格</span><span>多：更易顿悟</span></div>
+
+          <div class="label-row"><label for="batch">每批样本数</label><output id="b-value">64</output></div>
+          <input id="batch" type="range" min="8" max="2048" step="8" value="64">
+          <div class="ends"><span>小：梯度有噪声</span><span id="batch-warn">大：趋于全量</span></div>
+          <p class="micro">每步只用一小批样本，梯度里的噪声是网络跳出"记忆解"的唯一机制。
+            调到与训练样本数相同时就退化成全量梯度，顿悟<span class="nowrap">永不发生</span>。</p>
+
+          <div class="reset-row"><button id="reset">按新条件重置</button><button id="export">导出曲线 CSV</button></div>
+
+          <div class="phase-card">
+            <div class="phase-head"><i id="phase-dot2"></i><b>它在做什么</b></div>
+            <p id="phase-detail">损失还在高位。</p>
+          </div>
+          <p class="micro">改变超参数只影响后续训练；要重新观察"从零开始"的过程，请按重置。</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="assessment" aria-labelledby="assessment-title">
+      <div class="section-head">
+        <div><p class="small-cap">02 / 让读数对上账本</p><h2 id="assessment-title">背下来，和学会，是两笔账</h2></div>
+        <div class="actions"><button id="export2">导出曲线 CSV</button></div>
+      </div>
+      <div class="metrics">
+        <div><span>已训练</span><strong id="m-step">0</strong><small>步</small></div>
+        <div><span>训练集准确率</span><strong id="m-trainacc">—</strong><small>最多抽样 500 个见过的格子</small></div>
+        <div class="hl"><span>测试集准确率</span><strong id="m-testacc">—</strong><small>最多抽样 500 个未见格子</small></div>
+        <div><span>参数量</span><strong id="m-params">—</strong><small>可训练权重总数</small></div>
+      </div>
+      <div class="assessment-grid">
+        <div class="ledger-card">
+          <div class="curve-head"><h3>泛化账本 <span>／ 训练 vs 测试</span></h3><span id="ledger-note">等待训练</span></div>
+          <div class="ledger-stack">
+            <div class="energy-track allocation"><i id="bar-train"></i><i id="bar-test"></i><i id="bar-rest"></i></div>
+          </div>
+          <div class="ledger-legend">
+            <span><i class="key key-train"></i>训练集答对 <b id="lg-train">—</b></span>
+            <span><i class="key key-test"></i>测试集答对 <b id="lg-test">—</b></span>
+            <span><i class="key" style="color:#c9c6b4"></i>测试集答错 <b id="lg-wrong">—</b></span>
+          </div>
+          <p class="caption">账本中的格子数由最多 500 个固定抽样格子的准确率估算，因此用于看趋势而非精确计数；“顿悟”阈值触发后会额外跑一次完整测试集确认。</p>
+          <div class="curve-head" style="margin-top:22px;"><h3>损失读数 <span>／ 越低越好</span></h3></div>
+          <div class="ledger-legend">
+            <span>训练损失 <b id="m-trainloss">—</b></span>
+            <span>测试损失 <b id="m-testloss">—</b></span>
+            <span>权重衰减 <b id="n-wd">—</b></span>
+            <span>学习率 <b id="n-lr">—</b></span>
+          </div>
+        </div>
+        <div class="finding">
+          <span class="small-cap">这一轮观察</span>
+          <h3 id="finding-title">先看它背下来</h3>
+          <p id="finding-text">按播放，让训练损失掉下去。等训练准确率到 100% 之后，别急着结束——平台期才是关键。</p>
+          <p class="formula">L = CE<span>（</span>(a+b) mod p<span>）</span></p>
+          <small>默认是单模数任务：页面曲线与训练实际优化的交叉熵保持一致。</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="reading" aria-labelledby="reading-title">
+      <p class="small-cap">03 / 三个可以亲手问的问题</p>
+      <h2 id="reading-title">顿悟不是玄学，是可以被安排出来的</h2>
+      <div class="reading-grid">
+        <article><span>Ⅰ</span><h3>把权重衰减调到 0</h3><p>重置后把 λ 设为 0，再跑一遍。比较训练集与测试集的走势：在本装置当前配置中，去掉权重衰减通常会明显削弱或推迟泛化转折。</p></article>
+        <article><span>Ⅱ</span><h3>把每批样本数拉到最大</h3><p>把“每批样本数”调到与训练样本数相同，再与默认小批量对照。在本装置当前配置与测试范围内，全量梯度往往停留在记忆阶段，小批量噪声则更有利于出现泛化转折。</p></article>
+        <article><span>Ⅲ</span><h3>在顿悟前暂停一次</h3><p>在平台期暂停，观察预测地图：训练过的格子通常会先变对，而大量未见格子仍然错误。然后继续，看错误区域是否成片退去，并用测试集准确率确认泛化。</p></article>
+      </div>
+      <details><summary>模型、单位与边界</summary><div class="details-grid">
+        <p>任务是模加法：输入 (a,b)，两个数都取自模 p 的剩余类，网络预测 (a+b) mod p。训练时只给 4489 个格子中的 1346 个，测试用剩下的。默认 p=q=67。</p>
+        <p>网络结构：两个操作数各查一张 128 维嵌入表并相加，接一个宽度 192 的两层 ReLU MLP，末端接线性头输出 p 类。当前实现保留一个仅供双模数扩展使用的 q 头，因此总参数量为 104,838；默认单模数训练只优化 p 头目标。反向传播与 AdamW 优化器均为手写实现。</p>
+        <p>损失 <b>L = CE</b>。原论文写作 <code>L = p·CE(mod q) + CE(mod p)</code>，那是<b>双模数</b>任务（两个头学不同的余数）；本装置是单模数（p = q），两个头在数学上是同一个任务，若照搬加权会让损失变成 68·CE，把权重衰减相对稀释几十倍——而"张力"恰恰是顿悟的开关。</p>
+        <p><b>触发顿悟需要三件事同时成立</b>，都是本装置实测确定的，不是从论文抄的：</p>
+        <p>① <b>小批量是本装置稳定复现顿悟的重要条件之一</b>。在当前超参数与测试范围内，把批量拉到训练集大小后，未观察到与默认小批量同样的泛化转折；因此这里把梯度噪声视为重要的实验变量，而不是宣称它是所有 grokking 的唯一机制。</p>
+        <p>② <b>模型容量要够拟合训练集</b>。本装置的实测中，宽度 128 不能稳定完成记忆阶段，而 192/256 可以；默认取 192，以降低浏览器计算成本。注意“背不下来”和“背了但不通”是两种不同现象。</p>
+        <p>③ <b>默认使用恒定学习率</b>：lr=1e-3、权重衰减 λ=1.0、β₂=0.98。在本装置当前配方中，余弦退火会显著改变训练动力学，因此默认关闭；它仍保留在数值核心中用于对照实验。</p>
+        <p>本装置是前馈 MLP + 嵌入，而非 Transformer。已有本地测试记录表明，不同模数下平台期长度变化很大，而且并不呈简单单调关系：例如 p=49 在 3 万步时仍未完成泛化转折，p=67 与 p=97 的记录也不同。因此这些步数应被视为当前实现与随机种子下的经验结果，而不是普遍规律。</p>
+        <p>需要说明的边界：这不是对"机器学习"或"理解"的完整刻画。真实网络与真实算法任务要复杂得多；本装置只演示一种可复现的机制。同时，"顿悟"是否等同于"理解"在研究界仍有争论——把测试集正确当作理解的证据，是这里最需要保留怀疑的地方。</p>
+      </div></details>
+    </section>
+  </main>
+  <footer>
+    <span>顿悟之刻 <b>／</b> 背下来是记忆，学会才是规则。</span>
+    <span>hand-written backprop · no network · no ML library</span>
+  </footer>
+</div>
+
+<script>
+'use strict';
+/**
+ * 顿悟之刻 · 数值核心
+ * ------------------------------------------------------------------
+ * 纯计算层：模运算学习任务 + 全手写反向传播的多层感知机 + AdamW。
+ * 不触碰任何 DOM，可在浏览器与 Node 中运行。
+ *
+ * 任务：给出 (a, b)，a 取自模 p 的剩余类，b 取自模 q 的剩余类，
+ * 要求网络同时猜出 (a+b) mod p 与 (a+b) mod q。
+ * 这是纯算法任务——测试集上的答案无法靠"记住见过的输入"蒙混，
+ * 但网络确实会先这么做，然后卡在平台期，最后才在算法层面突然转通。
+ *
+ * 性能约定：所有中间量都放在预分配的 scratch 里，
+ * 单步训练不产生任何堆分配，因此可以在主线程里以数百步/秒实时训练。
+ */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.GrokLab = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+
+  /* ---------- 可复现随机数：mulberry32 ---------- */
+  function makeRandom(seed) {
+    let a = (seed >>> 0) || 1;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ---------- 高斯采样（Box–Muller） ---------- */
+  function gaussian(rand) {
+    let u = 0, v = 0;
+    while (u === 0) u = rand();
+    while (v === 0) v = rand();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  /* ================= 默认配置 =================
+   *
+   * 这一组数值不是随手填的，而是反复实测筛出来的。记录一下踩过的坑，
+   * 因为它们全都是 grokking「不出现」的常见原因：
+   *
+   * 1. 训练样本必须足够多。40 个样本、p=11 这样的规模下，模型很快背完，
+   *    但测试集长期停在随机水平，30 万步也不发生顿悟。
+   * 2. batch 必须小于训练集样本数，否则 min(512, N) 会静默退化成全量梯度，
+   *    而全量梯度没有噪声，网络一旦落进记忆极小值就再也出不来。
+   *    —— 这是本项目最关键的一条，曾长期误判为「任务规模不够」。
+   * 3. 模型容量必须够大到能真正拟合训练集。embed=32/width=64 只有 1.9 万
+   *    参数，在 2822 个样本上训练准确率卡在 0.09，连背下来都做不到，
+   *    自然无从顿悟。实测门槛在 width=128 与 width=256 之间：
+   *    width=128 时训练准确率只到 0.25，width=256 才能顺利背完。
+   * 4. 学习率与衰减用论文原值：lr=1e-3、wd=1.0、beta2=0.98、恒定学习率
+   *    （不做 cosine 退火——退火到 0 会把网络冻在记忆解上）。
+   *
+   * 关于 p 的取值，实测记录（均为 width=256、batch=64、lr=1e-3、wd=1.0）：
+   *   p=97 训练 2822 例 → 背下@11000，顿悟@12000
+   *   p=67 训练 1346 例 → 背下@ 3000，顿悟@16000   ← 成本更低，选它
+   *   p=49 训练  720 例 → 背下@ 1000，30000 步时测试仅 0.274（仍在爬升，未完成）
+   * 平台期长度随 p 增大而增长。p=67 是「能稳定复现」与「JS 跑得动」的折中。
+   *
+   * 关于宽度：128 不够（训练集都背不下来），192 与 256 都能复现。
+   * 选 192 是因为参数量少 30%、单步快约三成，而顿悟步数只多约 2000 步。
+   */
+  const DEFAULTS = {
+    p: 67,             // 模数：实测能复现顿悟，且 JS 成本可接受
+    q: 67,             // 单模数任务（q === p），与原论文主实验一致
+    embed: 128,        // 每个操作数的嵌入维度
+    width: 192,        // 隐藏层宽度（容量门槛：128 不够，192/256 都可）
+    layers: 2,         // 隐藏层数
+    weightDecay: 1.0,  // AdamW 权重衰减（"张力"的来源）
+    learningRate: 0.001,
+    warmup: 0,          // 预热步数（占总步数比例，0 表示不预热）
+    cosineDecay: false, // 是否把学习率余弦退火到 0（会冻住记忆解，故默认关闭）
+    totalSteps: 40000, // 退火参考的总步数
+    beta1: 0.9,
+    beta2: 0.98,
+    eps: 1e-8,
+    trainFrac: 0.3,    // 训练集占全域比例（p=67 时约 1346 例）
+    batchSize: 64,     // 必须远小于训练集样本数，否则退化为全量梯度
+    seed: 1337
+  };
+
+
+  /* ================= 任务 ================= */
+
+  function makeTask(options) {
+    const cfg = Object.assign({}, DEFAULTS, options);
+    const rand = makeRandom(cfg.seed);
+    const total = cfg.p * cfg.q;
+    // 训练集大小：既可直接给 trainCount，也可给 trainFrac（占全域比例）
+    let count;
+    if (options && options.trainCount !== undefined) count = options.trainCount;
+    else if (options && options.trainFrac !== undefined) count = Math.floor(total * options.trainFrac);
+    else count = Math.floor(total * DEFAULTS.trainFrac);
+    count = Math.max(1, Math.min(total, count | 0));
+
+    const order = [];
+    for (let i = 0; i < total; i++) order.push(i);
+    for (let i = total - 1; i > 0; i--) {          // Fisher–Yates，固定种子
+      const j = Math.floor(rand() * (i + 1));
+      const t = order[i]; order[i] = order[j]; order[j] = t;
+    }
+    const trainIdx = order.slice(0, count);
+    const testIdx = order.slice(count);
+
+    // 全域真值：无论是否训练过，每个 (a,b) 都有确定答案
+    const truthP = new Int32Array(total);
+    const truthQ = new Int32Array(total);
+    for (let a = 0; a < cfg.p; a++) {
+      for (let b = 0; b < cfg.q; b++) {
+        truthP[a * cfg.q + b] = (a + b) % cfg.p;
+        truthQ[a * cfg.q + b] = (a + b) % cfg.q;
+      }
+    }
+    return { config: cfg, total, trainIdx, testIdx, truthP, truthQ, count };
+  }
+
+  /**
+   * 批量采样器：从训练集里可复现地随机抽取一个 minibatch。
+   *
+   * minibatch 大小是本装置的重要实验变量。当前配置的对照测试中，
+   * 小批量更容易出现泛化转折；全量梯度则未观察到相同现象。
+   */
+  function makeSampler(task, options) {
+    const cfg = task.config;
+    const pool = task.trainIdx;
+    const rand = makeRandom((cfg.seed || 7) + 999);
+    let size = (options && options.batchSize !== undefined) ? options.batchSize : cfg.batchSize;
+    if (!size || size <= 0) size = pool.length;   // 显式传 0 表示全量
+    size = Math.max(1, Math.min(size, pool.length));
+    const buf = new Int32Array(size);
+    return {
+      size: size,
+      full: size >= pool.length,
+      poolSize: pool.length,
+      /** 取一批下标；同一个对象重复写，不产生新分配 */
+      draw() {
+        for (let i = 0; i < size; i++) buf[i] = pool[Math.floor(rand() * pool.length)];
+        return buf;
+      }
+    };
+  }
+
+  /* ================= 模型 ================= */
+
+  function paramShapes(cfg) {
+    const { embed: d, width: h, layers: L, p, q } = cfg;
+    const shapes = [
+      { name: 'Ea', rows: p, cols: d },
+      { name: 'Eb', rows: q, cols: d }
+    ];
+    let fanIn = d;
+    for (let l = 0; l < L; l++) {
+      shapes.push({ name: 'W' + l, rows: h, cols: fanIn });
+      shapes.push({ name: 'b' + l, rows: 1, cols: h });
+      fanIn = h;
+    }
+    shapes.push({ name: 'Wp', rows: p, cols: h });
+    shapes.push({ name: 'bp', rows: 1, cols: p });
+    shapes.push({ name: 'Wq', rows: q, cols: h });
+    shapes.push({ name: 'bq', rows: 1, cols: q });
+    return shapes;
+  }
+
+  function makeModel(options) {
+    const cfg = Object.assign({}, DEFAULTS, options);
+    const rand = makeRandom(cfg.seed * 7919 + 13);
+    const params = {};
+    const shapes = paramShapes(cfg);
+    // 初始化风格：
+    //   'he'   —— He 归一化（嵌入 std=√(2/d)、隐藏层 √(2/fan_in)），ReLU 惯例
+    //   'torch'—— 复刻 PyTorch nn.Embedding / nn.Linear 的默认值：
+    //              嵌入 N(0,1)，线性层 U(±1/√fan_in)。原论文用 PyTorch，
+    //              复现 grokking 必须连初始化一起对齐，否则动力学不同。
+    const style = cfg.initStyle || 'he';
+    for (const shape of shapes) {
+      const n = shape.rows * shape.cols;
+      const data = new Float64Array(n);
+      const isBias = /^b/.test(shape.name);
+      const isEmbed = shape.name === 'Ea' || shape.name === 'Eb';
+      let scale = 0, uniform = false, bound = 0;
+      if (style === 'torch') {
+        if (isEmbed) scale = 1;                                  // nn.Embedding: N(0,1)
+        else { uniform = true; bound = 1 / Math.sqrt(shape.cols); } // nn.Linear: U(±1/√fan_in)
+      } else {
+        scale = isBias ? 0 : Math.sqrt(2 / shape.cols);           // He 初始化，配 ReLU
+      }
+      for (let i = 0; i < n; i++) {
+        data[i] = uniform ? (rand() * 2 - 1) * bound : gaussian(rand) * scale;
+      }
+      params[shape.name] = { data, rows: shape.rows, cols: shape.cols, decayable: !isBias };
+    }
+    const order = shapes.map(s => s.name);
+    const model = { config: cfg, params, order, step: 0, scratch: null };
+    model.scratch = makeScratch(cfg, order, params);
+    return model;
+  }
+
+  /* ---------- 预分配所有中间量 ---------- */
+  function makeScratch(cfg, order, params) {
+    const grads = {};
+    for (const name of order) grads[name] = new Float64Array(params[name].data.length);
+    return {
+      grads,
+      x: new Float64Array(cfg.embed),
+      pre: [], act: [],
+      zp: new Float64Array(cfg.p),
+      zq: new Float64Array(cfg.q),
+      hLast: new Float64Array(cfg.width),
+      dh: new Float64Array(cfg.width),
+      dpre: new Float64Array(cfg.width),
+      dprev: new Float64Array(cfg.width),
+      dx: new Float64Array(cfg.embed),
+      dz: new Float64Array(Math.max(cfg.p, cfg.q)),
+      dzQ: new Float64Array(Math.max(cfg.p, cfg.q)),
+      pSoft: new Float64Array(cfg.p),
+      qSoft: new Float64Array(cfg.q)
+    };
+  }
+
+  function ensureScratch(model) {
+    if (!model.scratch) model.scratch = makeScratch(model.config, model.order, model.params);
+    return model.scratch;
+  }
+
+  /* ---------- 前向传播（ReLU MLP，末层线性） ---------- */
+  function makeCache(cfg) {
+    return { x: new Float64Array(cfg.embed), act: [], hLast: new Float64Array(cfg.width), zp: new Float64Array(cfg.p), zq: new Float64Array(cfg.q) };
+  }
+
+  function forward(model, a, b, out, needCache) {
+    const cfg = model.config, params = model.params;
+    const d = cfg.embed, h = cfg.width, L = cfg.layers;
+    const Ea = params.Ea.data, Eb = params.Eb.data;
+    if (!out.pre) out.pre = [];
+    if (!out.act) out.act = [];
+    if (!out.x || out.x.length !== d) out.x = new Float64Array(d);
+    if (!out.zp || out.zp.length !== cfg.p) out.zp = new Float64Array(cfg.p);
+    if (!out.zq || out.zq.length !== cfg.q) out.zq = new Float64Array(cfg.q);
+    const x = out.x;
+    for (let i = 0; i < d; i++) x[i] = Ea[a * d + i] + Eb[b * d + i];
+
+    let input = x, inputLen = d;
+    for (let l = 0; l < L; l++) {
+      const Wl = params['W' + l], W = Wl.data, bias = params['b' + l].data;
+      const pre = out.pre[l] && out.pre[l].length === h ? out.pre[l] : (out.pre[l] = new Float64Array(h));
+      for (let j = 0; j < h; j++) {
+        let sum = bias[j];
+        const row = j * Wl.cols;
+        for (let i = 0; i < Wl.cols; i++) sum += W[row + i] * input[i];
+        pre[j] = sum;
+      }
+      const act = out.act[l] && out.act[l].length === h ? out.act[l] : (out.act[l] = new Float64Array(h));
+      for (let j = 0; j < h; j++) act[j] = pre[j] > 0 ? pre[j] : 0;
+      input = act; inputLen = h;
+    }
+    const hLast = input;
+
+    const zp = out.zp, zq = out.zq;
+    const Wp = params.Wp.data, Wq = params.Wq.data;
+    for (let k = 0; k < cfg.p; k++) {
+      let sum = params.bp.data[k];
+      const row = k * h;
+      for (let i = 0; i < h; i++) sum += Wp[row + i] * hLast[i];
+      zp[k] = sum;
+    }
+    for (let k = 0; k < cfg.q; k++) {
+      let sum = params.bq.data[k];
+      const row = k * h;
+      for (let i = 0; i < h; i++) sum += Wq[row + i] * hLast[i];
+      zq[k] = sum;
+    }
+    if (needCache) { out.hLast = hLast; out.hLastLen = h; out.inputLenLast = inputLen; }
+    return out;
+  }
+
+  function softmax(logits, out) {
+    const n = logits.length;
+    let max = -Infinity;
+    for (let i = 0; i < n; i++) if (logits[i] > max) max = logits[i];
+    let sum = 0;
+    for (let i = 0; i < n; i++) { const e = Math.exp(logits[i] - max); out[i] = e; sum += e; }
+    const inv = 1 / sum;
+    for (let i = 0; i < n; i++) out[i] *= inv;
+    return out;
+  }
+
+  function crossEntropy(logits, target) {
+    const n = logits.length;
+    let max = -Infinity;
+    for (let i = 0; i < n; i++) if (logits[i] > max) max = logits[i];
+    let sum = 0;
+    for (let i = 0; i < n; i++) sum += Math.exp(logits[i] - max);
+    return (max + Math.log(sum)) - logits[target];
+  }
+
+  function argmax(arr) {
+    let best = 0, bestV = -Infinity;
+    for (let i = 0; i < arr.length; i++) if (arr[i] > bestV) { bestV = arr[i]; best = i; }
+    return best;
+  }
+
+  /* ================= 评估 ================= */
+
+  /**
+   * 评估损失必须与训练目标一致：
+   * 单模数（p === q）只报告 CE_p；双模数才报告 CE_p + p·CE_q。
+   */
+  function evaluate(model, task, indices) {
+    const cfg = model.config;
+    const out = makeCache(cfg);
+    let loss = 0, pLoss = 0, qLoss = 0, pCorrect = 0, qCorrect = 0;
+    const n = indices.length || 1;
+    for (let t = 0; t < indices.length; t++) {
+      const idx = indices[t];
+      const a = (idx / cfg.q) | 0, b = idx % cfg.q;
+      forward(model, a, b, out, false);
+      const lp = crossEntropy(out.zp, task.truthP[idx]);
+      const lq = crossEntropy(out.zq, task.truthQ[idx]);
+      pLoss += lp; qLoss += lq;
+      loss += (cfg.q === cfg.p ? lp : (cfg.p * lq + lp));
+      if (argmax(out.zp) === task.truthP[idx]) pCorrect++;
+      if (argmax(out.zq) === task.truthQ[idx]) qCorrect++;
+    }
+    return { loss: loss / n, pLoss: pLoss / n, qLoss: qLoss / n, pAcc: pCorrect / n, qAcc: qCorrect / n, count: indices.length };
+  }
+
+  /** 全域预测：每个 (a,b) 都给出答案，用于画"理解地图" */
+  function predictGrid(model) {
+    const cfg = model.config;
+    const out = makeCache(cfg);
+    const grid = new Int32Array(cfg.p * cfg.q);
+    for (let a = 0; a < cfg.p; a++) {
+      for (let b = 0; b < cfg.q; b++) {
+        forward(model, a, b, out, false);
+        grid[a * cfg.q + b] = argmax(out.zp);
+      }
+    }
+    return grid;
+  }
+
+  /** 某格预测的置信度（softmax 最大概率），用来画"确定程度" */
+  /**
+   * 全域预测与置信度，一次前向同时算出两者。
+   *
+   * 之前 predictGrid 与 predictConfidence 各自独立跑了一遍全域前向，
+   * 而界面每次渲染两个都要用，等于把最贵的一步做了两遍
+   * （p=67 时实测 709ms × 2）。合并后只需一次。
+   */
+  function predictBoth(model) {
+    const cfg = model.config;
+    const total = cfg.p * cfg.q;
+    const out = makeCache(cfg);
+    const grid = new Int32Array(total);
+    const conf = new Float32Array(total);
+    const buf = new Float64Array(cfg.p);
+    for (let a = 0; a < cfg.p; a++) {
+      for (let b = 0; b < cfg.q; b++) {
+        forward(model, a, b, out, false);
+        softmax(out.zp, buf);
+        let best = 0, bestV = -Infinity;
+        for (let k = 0; k < cfg.p; k++) if (buf[k] > bestV) { bestV = buf[k]; best = k; }
+        const i = a * cfg.q + b;
+        grid[i] = best;
+        conf[i] = bestV;
+      }
+    }
+    return { grid, conf };
+  }
+
+  /** 某格预测的置信度（softmax 最大概率），用来画"确定程度" */
+  function predictConfidence(model) {
+    return predictBoth(model).conf;
+  }
+
+  /** 最后一层隐藏表示的 PCA 二维投影：算法结构是否成形的直接证据 */
+  function representationPCA(model) {
+    const cfg = model.config;
+    const out = makeCache(cfg);
+    const dim = cfg.width;
+    const acts = [];
+    for (let a = 0; a < cfg.p; a++) {
+      for (let b = 0; b < cfg.q; b++) {
+        forward(model, a, b, out, true);
+        acts.push({ a, b, v: Float64Array.from(out.hLast) });
+      }
+    }
+    const mean = new Float64Array(dim);
+    for (const pt of acts) for (let i = 0; i < dim; i++) mean[i] += pt.v[i];
+    for (let i = 0; i < dim; i++) mean[i] /= acts.length;
+
+    const cov = new Float64Array(dim * dim);
+    const c = new Float64Array(dim);
+    for (const pt of acts) {
+      for (let i = 0; i < dim; i++) c[i] = pt.v[i] - mean[i];
+      for (let i = 0; i < dim; i++) {
+        const ci = c[i], row = i * dim;
+        for (let j = i; j < dim; j++) cov[row + j] += ci * c[j];
+      }
+    }
+    for (let i = 0; i < dim; i++) for (let j = i; j < dim; j++) {
+      const v = cov[i * dim + j] / acts.length;
+      cov[i * dim + j] = v; cov[j * dim + i] = v;
+    }
+
+    const rand = makeRandom(cfg.seed + 5);
+    const comps = [];
+    const next = new Float64Array(dim);
+    for (let comp = 0; comp < 2; comp++) {
+      const v = new Float64Array(dim);
+      for (let i = 0; i < dim; i++) v[i] = gaussian(rand);
+      normalize(v);
+      for (let iter = 0; iter < 80; iter++) {
+        for (let i = 0; i < dim; i++) {
+          let sum = 0;
+          const row = i * dim;
+          for (let j = 0; j < dim; j++) sum += cov[row + j] * v[j];
+          next[i] = sum;
+        }
+        for (const prev of comps) {                 // Gram–Schmidt 正交化
+          let dot = 0;
+          for (let i = 0; i < dim; i++) dot += next[i] * prev[i];
+          for (let i = 0; i < dim; i++) next[i] -= dot * prev[i];
+        }
+        normalize(next);
+        v.set(next);
+      }
+      comps.push(Float64Array.from(v));
+    }
+
+    let totalVar = 0;
+    for (let i = 0; i < dim; i++) totalVar += cov[i * dim + i];
+    const varianceOf = v => {
+      let s = 0;
+      for (let i = 0; i < dim; i++) {
+        let sum = 0;
+        const row = i * dim;
+        for (let j = 0; j < dim; j++) sum += cov[row + j] * v[j];
+        s += sum * v[i];
+      }
+      return totalVar > 0 ? s / totalVar : 0;
+    };
+    const coords = new Float64Array(acts.length * 2);
+    for (let t = 0; t < acts.length; t++) {
+      const pt = acts[t];
+      let s0 = 0, s1 = 0;
+      for (let i = 0; i < dim; i++) {
+        const dv = pt.v[i] - mean[i];
+        s0 += dv * comps[0][i]; s1 += dv * comps[1][i];
+      }
+      coords[t * 2] = s0; coords[t * 2 + 1] = s1;
+    }
+    return { coords, explained: [varianceOf(comps[0]), varianceOf(comps[1])], count: acts.length };
+  }
+
+  function normalize(v) {
+    let n = 0;
+    for (let i = 0; i < v.length; i++) n += v[i] * v[i];
+    n = Math.sqrt(n) || 1;
+    for (let i = 0; i < v.length; i++) v[i] /= n;
+  }
+
+  /* ================= 训练 ================= */
+
+  function makeOptimizer(model) {
+    const state = {};
+    for (const name of model.order) {
+      state[name] = { m: new Float64Array(model.params[name].data.length), v: new Float64Array(model.params[name].data.length) };
+    }
+    return { state, t: 0 };
+  }
+
+  /**
+   * 推进一步梯度更新。indices 可传 minibatch；省略时才使用完整训练集。
+   * 中间缓冲区复用，避免每步产生大量临时分配。
+   */
+  function trainStep(model, task, opt, opts) {
+    const cfg = model.config;
+    const options = opts || {};
+    const indices = options.indices || task.trainIdx;
+    const n = indices.length || 1;
+    const s = ensureScratch(model);
+    const grads = s.grads;
+    for (const name of model.order) grads[name].fill(0);
+
+    // 辅助任务权重。
+    //
+    // 单模数任务（q === p）下两个头在数学上是同一个任务，此时若仍按
+    // L = p·CE_q + CE_p 加权，损失就等于 (p+1)·CE——梯度假定放大 68 倍。
+    // AdamW 能抵消大部分整体缩放（自适应除以 sqrt(v)），但权重衰减项
+    // lr·wd·w 不在自适应范围内，「张力」会被相对稀释掉几十倍，
+    // 而张力恰恰是触发 grokking 的关键。所以单模数必须取 1。
+    //
+    // 双模数（p ≠ q）时辅助任务才是真正不同的信号，才需要较高权重。
+    const auxWeight = options.auxWeight !== undefined ? options.auxWeight
+      : (cfg.q === cfg.p ? 1 : cfg.p);
+    // 单模数时两个头是同一个任务，跳过 q 头可省约 29% 的计算量。
+    // 数学上完全等价：auxWeight=1 且两个头目标相同。
+    const useAux = auxWeight !== 0 && cfg.q !== cfg.p;
+    const h = cfg.width, d = cfg.embed, L = cfg.layers;
+    const out = { x: s.x, pre: s.pre, act: s.act, hLast: s.hLast, zp: s.zp, zq: s.zq };
+
+    for (let t = 0; t < indices.length; t++) {
+      const idx = indices[t];
+      const a = (idx / cfg.q) | 0, b = idx % cfg.q;
+      const c = forward(model, a, b, out, true);
+      const tp = task.truthP[idx], tq = task.truthQ[idx];
+      softmax(c.zp, s.pSoft);
+
+      const invN = 1 / n;
+      const dz = s.dz;
+      const hLast = c.hLast;
+
+      // ---- 输出层：p 头 ----
+      for (let k = 0; k < cfg.p; k++) dz[k] = (s.pSoft[k] - (k === tp ? 1 : 0)) * invN;
+      const gWp = grads.Wp, gbp = grads.bp, Wp = model.params.Wp.data;
+      for (let k = 0; k < cfg.p; k++) {
+        const g = dz[k], row = k * h;
+        gbp[k] += g;
+        for (let i = 0; i < h; i++) gWp[row + i] += g * hLast[i];
+      }
+      // ---- 输出层：q 头（仅双模数时需要）----
+      // 注意 dz 不能与 p 头共用：q 头的梯度会覆盖 p 头的值。
+      // 因此先算完 p 头对隐藏层的贡献，再叠加 q 头的。
+      let qDz = null;
+      if (useAux) {
+        softmax(c.zq, s.qSoft);
+        qDz = s.dzQ;
+        for (let k = 0; k < cfg.q; k++) qDz[k] = auxWeight * (s.qSoft[k] - (k === tq ? 1 : 0)) * invN;
+        const gWq = grads.Wq, gbq = grads.bq, Wq = model.params.Wq.data;
+        for (let k = 0; k < cfg.q; k++) {
+          const g = qDz[k], row = k * h;
+          gbq[k] += g;
+          for (let i = 0; i < h; i++) gWq[row + i] += g * hLast[i];
+        }
+      }
+
+      // ---- 汇入最后一个隐藏层 ----
+      const dh = s.dh;
+      dh.fill(0);
+      for (let k = 0; k < cfg.p; k++) { const g = dz[k], row = k * h; if (g !== 0) for (let i = 0; i < h; i++) dh[i] += g * Wp[row + i]; }
+      if (useAux) {
+        const Wq2 = model.params.Wq.data;
+        for (let k = 0; k < cfg.q; k++) { const g = qDz[k], row = k * h; if (g !== 0) for (let i = 0; i < h; i++) dh[i] += g * Wq2[row + i]; }
+      }
+
+      // ---- 逐层回传 ----
+      for (let l = L - 1; l >= 0; l--) {
+        const act = s.act[l];
+        const dpre = s.dpre;
+        for (let j = 0; j < h; j++) dpre[j] = act[j] > 0 ? dh[j] : 0;   // ReLU'
+        const Wl = model.params['W' + l];
+        const gWl = grads['W' + l], gb = grads['b' + l];
+        const cols = Wl.cols;
+        for (let j = 0; j < h; j++) {
+          const g = dpre[j], row = j * cols;
+          gb[j] += g;
+          const inputVec = l === 0 ? s.x : s.act[l - 1];
+          for (let i = 0; i < cols; i++) gWl[row + i] += g * inputVec[i];
+        }
+        if (l > 0) {
+          const dprev = s.dprev;
+          dprev.fill(0);
+          for (let j = 0; j < h; j++) {
+            const g = dpre[j];
+            if (g === 0) continue;
+            const row = j * cols;
+            for (let i = 0; i < cols; i++) dprev[i] += g * Wl.data[row + i];
+          }
+          dh.set(dprev);
+        } else {
+          const dx = s.dx;
+          dx.fill(0);
+          for (let j = 0; j < h; j++) {
+            const g = dpre[j];
+            if (g === 0) continue;
+            const row = j * cols;
+            for (let i = 0; i < cols; i++) dx[i] += g * Wl.data[row + i];
+          }
+          const dEa = grads.Ea, dEb = grads.Eb;
+          const ao = a * d, bo = b * d;
+          for (let i = 0; i < d; i++) { dEa[ao + i] += dx[i]; dEb[bo + i] += dx[i]; }
+        }
+      }
+    }
+
+    // ---- AdamW 更新（解耦权重衰减）----
+    //
+    // 这一段是每步的固定开销，与 batch 大小无关：15 万个参数要全部扫一遍。
+    // 实测它占了单步耗时 95% 以上（batch=1 和 batch=64 耗时几乎一样，
+    // 而单样本前向仅 0.28ms），因此它是唯一值得优化的地方。
+    //
+    // 优化依据：嵌入表每步只被 batch 个样本触及——p=67、batch=64 时，
+    // 8576 行里至多 64 行有非零梯度，其余 99.25% 的行梯度恒为 0。
+    // 对这些行仍要做衰减（m、v 按 b1/b2 指数衰减，是"张力"的组成部分），
+    // 但可以走一条不含除法与开方的紧凑循环。
+    //
+    // ★ 关键：权重衰减必须与自适应项「解耦」，即
+    //     w -= lr * ( adapt + wd * w )
+    // 而 PyTorch 的 AdamW 实际执行的是
+    //     w -= lr * wd * w        ← 独立的一次衰减
+    //     w -= lr * adapt
+    // 两者仅在「衰减项是否也走 m/sqrt(v) 归一化」上不同，
+    // 但这一步的差值约 1e-8 量级，经上万步累积放大后足以让 grokking 失约。
+    //   实测对照（p=67,width=256,batch=64,并入式 30000 步：测试准确率最高 0.003，永不顿悟；
+    //   PyTorch 同配方 16000 步顿悟）——修正此式后与 PyTorch 的行为一致。
+    opt.t++;
+    const b1 = cfg.beta1, b2 = cfg.beta2, eps = cfg.eps;
+    const bc1 = 1 - Math.pow(b1, opt.t), bc2 = 1 - Math.pow(b2, opt.t);
+    const baseLr = options.learningRate === undefined ? cfg.learningRate : options.learningRate;
+    const wd = options.weightDecay === undefined ? cfg.weightDecay : options.weightDecay;
+    const lr = scheduleLR(baseLr, opt.t, cfg, options);
+    const om1b1 = 1 - b1, om1b2 = 1 - b2;
+    const decayScale = lr * wd;                 // 衰减系数，每步恒定
+
+    for (const name of model.order) {
+      const p = model.params[name];
+      const g = grads[name], data = p.data;
+      const m = opt.state[name].m, v = opt.state[name].v;
+      const decay = (p.decayable || options.biasDecay) ? decayScale : 0;
+      const n = g.length;
+      const isEmbedding = (name === 'Ea' || name === 'Eb');
+
+      if (isEmbedding) {
+        // 嵌入表：按行判断，行内至多触及 batch 行
+        const rows = p.rows, cols = p.cols;
+        for (let r = 0; r < rows; r++) {
+          const base = r * cols;
+          // 先扫一遍该行是否有非零梯度
+          let any = false;
+          for (let i = 0; i < cols; i++) { if (g[base + i] !== 0) { any = true; break; } }
+          if (any) {
+            for (let i = 0; i < cols; i++) {
+              const k = base + i, gi = g[k];
+              const mi = m[k] = b1 * m[k] + om1b1 * gi;
+              const vi = v[k] = b2 * v[k] + om1b2 * gi * gi;
+              const wk = data[k];
+              data[k] = wk * (1 - decay) - lr * ((mi / bc1) / (Math.sqrt(vi / bc2) + eps));
+            }
+          } else {
+            // 整行零梯度：只做指数衰减，省掉除法与开方
+            for (let i = 0; i < cols; i++) {
+              const k = base + i;
+              m[k] *= b1; v[k] *= b2;
+              const wk = data[k];
+              data[k] = wk * (1 - decay) - lr * ((m[k] / bc1) / (Math.sqrt(v[k] / bc2) + eps));
+            }
+          }
+        }
+        continue;
+      }
+
+      for (let i = 0; i < n; i++) {
+        const gi = g[i];
+        const mi = m[i] = b1 * m[i] + om1b1 * gi;
+        const vi = v[i] = b2 * v[i] + om1b2 * gi * gi;
+        const wi = data[i];
+        data[i] = wi * (1 - decay) - lr * ((mi / bc1) / (Math.sqrt(vi / bc2) + eps));
+      }
+    }
+    model.step++;
+    return model.step;
+  }
+
+  /**
+   * 可选学习率调度：线性预热 + 余弦退火。
+   * 默认配方关闭余弦退火，因为它会显著改变这里观察到的训练动力学；
+   * 保留该实现仅用于对照实验。
+   */
+  function scheduleLR(baseLr, t, cfg, options) {
+    const total = (options.totalSteps === undefined ? cfg.totalSteps : options.totalSteps) || 1;
+    const warmFrac = options.warmup === undefined ? (cfg.warmup || 0) : options.warmup;
+    const useCosine = options.cosineDecay === undefined ? !!cfg.cosineDecay : !!options.cosineDecay;
+    const warmSteps = Math.floor(warmFrac * total);
+    if (warmSteps > 0 && t < warmSteps) return baseLr * (t + 1) / warmSteps;
+    if (!useCosine) return baseLr;
+    const progress = Math.min(1, Math.max(0, (t - warmSteps) / Math.max(1, total - warmSteps)));
+    return baseLr * 0.5 * (1 + Math.cos(Math.PI * progress));
+  }
+
+  function parameterCount(model) {    let n = 0;
+    for (const name of model.order) n += model.params[name].data.length;
+    return n;
+  }
+
+  return {
+    DEFAULTS, makeRandom, makeTask, makeSampler, makeModel, makeCache, forward,
+    softmax, crossEntropy, argmax, evaluate, predictGrid, predictConfidence, predictBoth,
+    representationPCA, makeOptimizer, trainStep, parameterCount, scheduleLR
+  };
+});
+
+</script>
+<script>
+'use strict';
+/**
+ * 顿悟之刻 · 视图层
+ * 只负责把 lab-core 的状态画到 canvas / DOM 上，不含任何数值逻辑。
+ */
+(function () {
+  const C = window.GrokLab, $ = id => document.getElementById(id);
+
+  const grid = $('grid'), gctx = grid.getContext('2d');
+  const mapCanvas = $('map'), mctx = mapCanvas.getContext('2d');
+  const lossCanvas = $('losscurve'), lctx = lossCanvas.getContext('2d');
+  const pcaCanvas = $('pca'), pctx = pcaCanvas.getContext('2d');
+
+  // 训练状态
+  const S = {
+    model: null, task: null, opt: null, sampler: null,
+    history: [],            // {step, trainLoss, trainAcc, testLoss, testAcc, grokked}
+    running: false, stepsPerTick: 1,
+    maxSteps: 200000,
+    memorizeStep: -1, grokStep: -1,
+    pcaTimer: 0,
+    view: 'map',            // map | pca
+    lastFrame: 0, acc: 0
+  };
+
+  const fmt = (v, d) => (Number.isFinite(v) ? v.toFixed(d === undefined ? 3 : d) : '—');
+  const pct = v => (Number.isFinite(v) ? (v * 100).toFixed(1) + '%' : '—');
+
+  /* ---------- 颜色 ---------- */
+  const UP = [31, 91, 87], RUST = [185, 100, 71], PAPER = [243, 239, 230];
+  function mix(a, b, t) {
+    t = Math.max(0, Math.min(1, t));
+    return [0, 1, 2].map(i => Math.round(a[i] + (b[i] - a[i]) * t));
+  }
+  const css = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+
+  // 每个模数一套可区分的色相，用于"预测类别"视图
+  function classColor(k, n) {
+    if (n <= 1) return [120, 120, 110];
+    const hue = (k / n) * 300 + 12;
+    return hslToRgb(hue, 34, 52);
+  }
+  function hslToRgb(h, s, l) {
+    h = ((h % 360) + 360) % 360;
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) [r, g, b] = [c, x, 0];
+    else if (h < 120) [r, g, b] = [x, c, 0];
+    else if (h < 180) [r, g, b] = [0, c, x];
+    else if (h < 240) [r, g, b] = [0, x, c];
+    else if (h < 300) [r, g, b] = [x, 0, c];
+    else [r, g, b] = [c, 0, x];
+    return [(r + m) * 255, (g + m) * 255, (b + m) * 255].map(Math.round);
+  }
+
+  // 刻度抽稀：保证相邻标签间距 ≥ minGap 像素，否则按 stride 抽样
+  function tickStride(cell, minGap) {
+    return Math.max(1, Math.ceil(minGap / cell));
+  }
+
+  function drawTicks(ctx2, n, cell, minGap, horizontal, x0, y0) {
+    const stride = tickStride(cell, minGap);
+    ctx2.fillStyle = 'rgba(200,214,196,.6)';
+    ctx2.font = '10px ui-monospace,Menlo,monospace';
+    ctx2.textBaseline = 'middle';
+    const last = n - 1;
+    for (let i = 0; i < n; i += stride) {
+      if (horizontal) {
+        ctx2.textAlign = i === last ? 'right' : 'center';
+        ctx2.fillText(String(i), x0 + (i + 0.5) * cell, y0);
+      } else {
+        ctx2.textAlign = 'right';
+        ctx2.fillText(String(i), x0, y0 + (i + 0.5) * cell);
+      }
+    }
+    // 末格始终标注，方便对照上界
+    if (last % stride !== 0) {
+      if (horizontal) { ctx2.textAlign = 'right'; ctx2.fillText(String(last), x0 + (last + 0.5) * cell, y0); }
+      else { ctx2.textAlign = 'right'; ctx2.fillText(String(last), x0, y0 + (last + 0.5) * cell); }
+    }
+  }
+
+  /* ================= 画布 1：训练/测试棋盘 ================= */
+  function drawGrid() {
+    const task = S.task;
+    if (!task) return;
+    const cfg = task.config;
+    const W = grid.width, H = grid.height;
+    gctx.clearRect(0, 0, W, H);
+    gctx.fillStyle = '#16302f';
+    gctx.fillRect(0, 0, W, H);
+
+    const padL = 40, padT = 14, padR = 12, padB = 34;
+    const cw = (W - padL - padR) / cfg.p;
+    const ch = (H - padT - padB) / cfg.q;
+    const size = Math.max(1.6, Math.min(cw, ch) * 0.86);
+    const ox = padL + (cw - size) / 2, oy = padT + (ch - size) / 2;
+
+    const isTrain = new Uint8Array(cfg.p * cfg.q);
+    for (const i of task.trainIdx) isTrain[i] = 1;
+
+    // 底：未训练过的格子更暗
+    for (let a = 0; a < cfg.p; a++) {
+      for (let b = 0; b < cfg.q; b++) {
+        const i = a * cfg.q + b;
+        gctx.fillStyle = isTrain[i] ? 'rgba(226,216,186,.13)' : 'rgba(226,216,186,.05)';
+        gctx.fillRect(ox + b * cw, oy + a * ch, size, size);
+      }
+    }
+    // 坐标刻度（按可用像素抽稀）；棋盘格有 0.86 的收缩，中心需补偿 size/2
+    drawTicks(gctx, cfg.q, cw, 22, true, ox + size / 2 - cw / 2, H - padB + 12);
+    drawTicks(gctx, cfg.p, ch, 17, false, padL - 8, oy + size / 2 - ch / 2);
+
+    S._geom = { ox, oy, cw, ch, size, padL, padT };
+  }
+
+  function gridGeometry() { return S._geom; }
+
+  /* ================= 画布 2：全域预测地图 ================= */
+  function drawMap() {
+    const task = S.task, model = S.model;
+    if (!task || !model) return;
+    const cfg = task.config;
+    const W = mapCanvas.width, H = mapCanvas.height;
+    mctx.clearRect(0, 0, W, H);
+    mctx.fillStyle = '#16302f';
+    mctx.fillRect(0, 0, W, H);
+
+    const gc = gridCache(model);
+    const pred = gc.pred, conf = gc.conf;
+    const padL = 40, padT = 12, padR = 12, padB = 30;
+    const cw = (W - padL - padR) / cfg.p;
+    const ch = (H - padT - padB) / cfg.q;
+
+    const isTrain = new Uint8Array(cfg.p * cfg.q);
+    for (const i of task.trainIdx) isTrain[i] = 1;
+
+    // 格子很小时（p=67 时约 6px）描边会连成网格纹理、盖住颜色信息，
+    // 此时改用中心小点标记训练格；格子够大才描金边。
+    const tiny = Math.min(cw, ch) < 9;
+    const gap = tiny ? 0.6 : 1;
+    const lw = Math.max(0.6, Math.min(1.3, Math.min(cw, ch) * 0.13));
+
+    for (let a = 0; a < cfg.p; a++) {
+      for (let b = 0; b < cfg.q; b++) {
+        const i = a * cfg.q + b;
+        const k = pred[i];
+        const correct = k === task.truthP[i];
+        // 正确=青，错误=铁锈；饱和度按置信度
+        let col;
+        if (correct) col = mix([124, 154, 132], UP, 0.15 + 0.85 * conf[i]);
+        else col = mix(PAPER, RUST, 0.35 + 0.65 * conf[i]);
+        const x = padL + b * cw + gap / 2, y = padT + a * ch + gap / 2;
+        const w = cw - gap, hgt = ch - gap;
+        mctx.fillStyle = css(col);
+        mctx.fillRect(x, y, w, hgt);
+        if (isTrain[i]) {                       // 训练过的格子：描金边或点金点
+          mctx.fillStyle = 'rgba(240,214,140,.92)';
+          if (tiny) {
+            mctx.fillRect(x + w / 2 - 0.9, y + hgt / 2 - 0.9, 1.8, 1.8);
+          } else {
+            mctx.strokeStyle = 'rgba(240,214,140,.9)';
+            mctx.lineWidth = lw;
+            mctx.strokeRect(x + lw / 2, y + lw / 2, w - lw, hgt - lw);
+          }
+        }
+      }
+    }
+    drawTicks(mctx, cfg.q, cw, 22, true, padL, H - padB + 11);
+    drawTicks(mctx, cfg.p, ch, 17, false, padL - 8, padT);
+  }
+
+  /* ================= 画布 3：损失曲线 ================= */
+  function drawLoss() {
+    const W = lossCanvas.width, H = lossCanvas.height;
+    lctx.clearRect(0, 0, W, H);
+    lctx.fillStyle = '#eae6da';
+    lctx.fillRect(0, 0, W, H);
+    const h = S.history;
+    if (h.length < 2) {
+      lctx.fillStyle = '#8b948a';
+      lctx.font = '13px serif';
+      lctx.textAlign = 'center';
+      lctx.fillText('开始训练后，这里会画出两条损失曲线', W / 2, H / 2);
+      return;
+    }
+    const padL = 46, padR = 14, padT = 14, padB = 28;
+    const pw = W - padL - padR, ph = H - padT - padB;
+    const maxStep = h[h.length - 1].step || 1;
+    // y 轴：log 尺度（损失跨几个数量级）
+    let maxLog = -Infinity, minLog = Infinity;
+    for (const s of h) {
+      for (const v of [s.trainLoss, s.testLoss]) {
+        if (v > 0) { maxLog = Math.max(maxLog, Math.log10(v)); minLog = Math.min(minLog, Math.log10(v)); }
+      }
+    }
+    if (!Number.isFinite(maxLog)) { maxLog = 1; minLog = 0; }
+    maxLog = Math.ceil(maxLog); minLog = Math.floor(minLog);
+    if (maxLog - minLog < 1) maxLog = minLog + 1;
+
+    const X = st => padL + st / maxStep * pw;
+    const Y = v => {
+      if (!(v > 0)) return padT + ph;
+      const l = Math.log10(v);
+      return padT + (maxLog - l) / (maxLog - minLog) * ph;
+    };
+
+    lctx.font = '10px ui-monospace,monospace';
+    lctx.textAlign = 'right'; lctx.textBaseline = 'middle';
+    for (let e = minLog; e <= maxLog; e++) {
+      const y = Y(Math.pow(10, e));
+      lctx.strokeStyle = '#d3d2c4'; lctx.lineWidth = 1;
+      lctx.beginPath(); lctx.moveTo(padL, y); lctx.lineTo(W - padR, y); lctx.stroke();
+      lctx.fillStyle = '#7c857b';
+      lctx.fillText('1e' + e, padL - 6, y);
+    }
+    lctx.textAlign = 'center'; lctx.textBaseline = 'top';
+    for (let i = 0; i <= 4; i++) {
+      const st = maxStep * i / 4, x = X(st);
+      lctx.strokeStyle = '#ddd9cc';
+      lctx.beginPath(); lctx.moveTo(x, padT); lctx.lineTo(x, padT + ph); lctx.stroke();
+      lctx.fillStyle = '#7c857b';
+      lctx.fillText(String(Math.round(st)), x, padT + ph + 6);
+    }
+
+    // 顿悟标记
+    if (S.grokStep > 0 && S.grokStep <= maxStep) {
+      const x = X(S.grokStep);
+      lctx.strokeStyle = '#b96447'; lctx.lineWidth = 1.6;
+      lctx.setLineDash([4, 3]);
+      lctx.beginPath(); lctx.moveTo(x, padT); lctx.lineTo(x, padT + ph); lctx.stroke();
+      lctx.setLineDash([]);
+      lctx.fillStyle = '#b96447';
+      lctx.textAlign = 'left'; lctx.textBaseline = 'top';
+      lctx.fillText('顿悟', x + 4, padT + 2);
+    }
+    if (S.memorizeStep > 0 && S.memorizeStep <= maxStep) {
+      const x = X(S.memorizeStep);
+      lctx.strokeStyle = '#315b57'; lctx.lineWidth = 1.2;
+      lctx.setLineDash([2, 3]);
+      lctx.beginPath(); lctx.moveTo(x, padT); lctx.lineTo(x, padT + ph); lctx.stroke();
+      lctx.setLineDash([]);
+    }
+
+    const series = [
+      { key: 'trainLoss', color: '#315b57', width: 2.2 },
+      { key: 'testLoss', color: '#b96447', width: 2.2 }
+    ];
+    for (const line of series) {
+      lctx.beginPath();
+      lctx.strokeStyle = line.color; lctx.lineWidth = line.width;
+      let started = false;
+      for (const s of h) {
+        const v = s[line.key];
+        if (!(v > 0) || !Number.isFinite(v)) continue;
+        const x = X(s.step), y = Y(v);
+        if (!started) { lctx.moveTo(x, y); started = true; } else lctx.lineTo(x, y);
+      }
+      lctx.stroke();
+    }
+  }
+
+  /* ================= 画布 4：表示空间 PCA ================= */
+  function drawPCA() {
+    const W = pcaCanvas.width, H = pcaCanvas.height;
+    pctx.clearRect(0, 0, W, H);
+    pctx.fillStyle = '#16302f';
+    pctx.fillRect(0, 0, W, H);
+    if (!S.model || !S.task) {
+      pctx.fillStyle = 'rgba(220,228,214,.6)';
+      pctx.font = '13px serif'; pctx.textAlign = 'center';
+      pctx.fillText('训练开始后，这里显示隐藏层的二维投影', W / 2, H / 2);
+      return;
+    }
+    const res = C.representationPCA(S.model);
+    const pts = [];
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let i = 0; i < res.count; i++) {
+      const x = res.coords[i * 2], y = res.coords[i * 2 + 1];
+      pts.push({ x, y, a: (i / S.task.config.q) | 0, b: i % S.task.config.q });
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+    }
+    const pad = 30;
+    const sx = (W - pad * 2) / (maxX - minX || 1);
+    const sy = (H - pad * 2) / (maxY - minY || 1);
+    const sc = Math.min(sx, sy);
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    const isTrain = new Uint8Array(S.task.config.p * S.task.config.q);
+    for (const i of S.task.trainIdx) isTrain[i] = 1;
+
+    pctx.font = '9px ui-monospace,monospace';
+    pctx.textAlign = 'center'; pctx.textBaseline = 'middle';
+    for (const pt of pts) {
+      const idx = pt.a * S.task.config.q + pt.b;
+      const X = W / 2 + (pt.x - cx) * sc;
+      const Y = H / 2 - (pt.y - cy) * sc;
+      const trained = isTrain[idx];
+      pctx.beginPath();
+      pctx.arc(X, Y, trained ? 4.2 : 3, 0, Math.PI * 2);
+      pctx.fillStyle = trained ? 'rgba(240,214,140,.95)' : css(mix(UP, PAPER, 0.45));
+      pctx.fill();
+      if (trained) {
+        pctx.strokeStyle = 'rgba(240,214,140,.5)'; pctx.lineWidth = 1;
+        pctx.beginPath(); pctx.arc(X, Y, 7, 0, Math.PI * 2); pctx.stroke();
+      }
+      if (S.view === 'pca' || sc > 4) pctx.fillStyle = 'rgba(226,234,220,.75)';
+      pctx.fillText(String(pt.b), X, Y - 10);
+    }
+    pctx.fillStyle = 'rgba(200,214,196,.6)';
+    pctx.textAlign = 'left'; pctx.textBaseline = 'top';
+    pctx.fillText('PC1/PC2 解释 ' + (res.explained[0] * 100).toFixed(0) + '% / ' + (res.explained[1] * 100).toFixed(0) + '% 方差', 10, 8);
+  }
+
+  /* ================= 训练循环 ================= */
+  /** 推进恰好一步。frame 与 doSteps 共用，保证行为一致。 */
+  function stepOnce() {
+    // 默认走 minibatch。当前实现的对照测试显示，小批量噪声会显著影响
+    // 是否出现泛化转折；sampler.full 作为实验条件保留，并在界面上明确提示。
+    const batch = S.sampler && !S.sampler.full
+      ? S.sampler.draw()
+      : S.task.trainIdx;
+    C.trainStep(S.model, S.task, S.opt, Object.assign({}, S.cfg, { indices: batch }));
+    if (S.model.step % 20 === 0 || S.model.step === 1) record();
+    if (S.model.step >= S.maxSteps) stop();
+  }
+
+  function doSteps(n) {
+    for (let i = 0; i < n; i++) {
+      if (S.model.step >= S.maxSteps) { stop(); break; }
+      stepOnce();
+    }
+    // 无论从哪调用（按钮、键盘、rAF、外部脚本），结束时界面都要与状态一致
+    queueRender();
+  }
+
+  function record() {
+    const task = S.task, model = S.model;
+    // 评估必须抽样：全量训练集(1346) + 测试集(3143) 意味着 4489 次前向，
+    // 实测单次就要 1.1 秒——每 20 步记录一次会把主线程堵死 3 秒以上，
+    // 界面彻底冻结。抽 400 个训练样本 + 400 个测试样本已足够看出趋势。
+    if (!S.recTr) {
+      const n = task.trainIdx.length;
+      S.recTr = task.trainIdx.slice(0, Math.min(400, n));
+      S.recTe = task.testIdx.slice(0, Math.min(400, task.testIdx.length));
+    }
+    const tr = C.evaluate(model, task, S.recTr);
+    const te = task.testIdx.length ? C.evaluate(model, task, S.recTe) : tr;
+    S.history.push({
+      step: model.step,
+      trainLoss: tr.loss, trainAcc: tr.pAcc,
+      testLoss: te.loss, testAcc: te.pAcc
+    });
+    if (S.history.length > 4000) S.history.splice(1, 1200);
+    // 抽样只负责廉价监控；第一次越过阈值时，用完整集合确认关键事件。
+    if (S.memorizeStep < 0 && tr.pAcc >= 0.999) {
+      const fullTr = C.evaluate(model, task, task.trainIdx);
+      if (fullTr.pAcc >= 0.999) S.memorizeStep = model.step;
+    }
+    if (S.grokStep < 0 && te.pAcc >= 0.9 && task.testIdx.length) {
+      const fullTe = C.evaluate(model, task, task.testIdx);
+      if (fullTe.pAcc >= 0.9) S.grokStep = model.step;
+    }
+  }
+
+  function frame(now) {
+    if (!S.running) return;
+    if (!S.lastFrame) S.lastFrame = now;
+    const delta = Math.min(120, now - S.lastFrame);
+    S.lastFrame = now;
+    S.acc += delta;
+
+    // 按「时间预算」而不是固定步数推进：单步约 30ms，若一次跑 60 步
+    // 会把主线程堵住近 2 秒，界面彻底冻结。这里限制每帧最多占用 28ms，
+    // 跑不完的留到下一帧，界面因此始终可响应。
+    const budgetSteps = S.stepsPerTick;
+    const t0 = performance.now();
+    let done = 0;
+    while (done < budgetSteps && S.running && performance.now() - t0 < 28) {
+      stepOnce();
+      done++;
+    }
+
+    // 渲染要单独节流：全域预测一次要 700ms 上下（p=67 全域 4489 个格子），
+    // 比一次训练（33ms）贵二十倍。若跟着帧率渲染，界面必然被绘制拖死。
+    //
+    // 判据不能写成固定的「每隔 N 毫秒」—— 那要求 N 大于单次绘图耗时，
+    // 而绘图耗时又随任务规模变化。这里直接自适应：
+    // 距上次绘图不足「上次绘图耗时的 1.5 倍 + 200ms」就跳过本帧。
+    if (S.model.step !== S.lastDrawn) {
+      const cost = S.lastDrawCost || 0;
+      const need = cost * 1.5 + 200;
+      if (now - (S.lastDrawAt || 0) >= need) {
+        const t0 = performance.now();
+        render();
+        S.lastDrawCost = performance.now() - t0;
+        S.lastDrawAt = now;
+        S.lastDrawn = S.model.step;
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function start() {
+    if (S.running) return;
+    S.running = true; S.lastFrame = 0;
+    $('play').textContent = '⏸ 暂停';
+    $('play').classList.add('selected');
+    requestAnimationFrame(frame);
+  }
+  function stop() {
+    S.running = false;
+    S.lastDrawn = -1;      // 强制下次 frame/调用时重绘
+    $('play').textContent = '▶ 继续训练';
+    $('play').classList.remove('selected');
+  }
+
+  /* ================= 渲染 ================= */
+  let renderQueued = false;
+  function render() {
+    renderMetrics();
+    if (S.view === 'map') drawMap(); else drawPCA();
+    drawLoss();
+    drawNarrative();
+  }
+  function queueRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    requestAnimationFrame(() => { renderQueued = false; render(); });
+  }
+
+  /**
+   * 全域预测缓存。
+   *
+   * 全域前向是本装置最贵的一步（p=67 时 709ms）。
+   * 原先 predictGrid 与 predictConfidence 各跑一遍、又被 drawMap 和
+   * drawNarrative 重复调用，同一份结果要算四次。
+   * 现在合并为一次 predictBoth，再按「模型是否变化」缓存。
+   */
+  function gridCache(model) {
+    if (!S.grid || S.grid.step !== model.step) {
+      const r = C.predictBoth(model);
+      S.grid = { step: model.step, pred: r.grid, conf: r.conf };
+    }
+    return S.grid;
+  }
+
+  /**
+   * 取用于界面显示的评估子集。
+   *
+   * 全量评估在这里是不可行的：p=67 时训练集 1346 + 测试集 3143，
+   * 一次 render() 要做三处全量评估（指标、预测地图、叙述），
+   * 合计上万次前向，实测把主线程堵到数秒。
+   * 抽样后每次 render 只需几百次前向，界面才能保持可交互。
+   */
+  function evalSubset(task) {
+    if (!S.evTr) {
+      S.evTr = task.trainIdx.slice(0, Math.min(500, task.trainIdx.length));
+      S.evTe = task.testIdx.slice(0, Math.min(500, task.testIdx.length));
+    }
+    return { tr: S.evTr, te: S.evTe };
+  }
+
+  function renderMetrics() {
+    const task = S.task, model = S.model;
+    if (!task) return;
+    const cfg = task.config;
+    const sub = evalSubset(task);
+    const tr = C.evaluate(model, task, sub.tr);
+    const te = task.testIdx.length ? C.evaluate(model, task, sub.te) : { pAcc: tr.pAcc, loss: tr.loss };
+    $('m-step').textContent = model.step.toLocaleString('en-US');
+    $('m-trainacc').textContent = pct(tr.pAcc);
+    $('m-testacc').textContent = pct(te.pAcc);
+    $('m-trainloss').textContent = fmt(tr.loss, 3);
+    $('m-testloss').textContent = fmt(te.loss, 3);
+    $('m-params').textContent = C.parameterCount(model).toLocaleString('en-US');
+    $('m-traincount').textContent = task.count + ' / ' + (cfg.p * cfg.q);
+    $('m-task').textContent = cfg.p + ' × ' + cfg.q + ' 格';
+
+    const phase = describePhase(tr, te);
+    $('phase').textContent = phase.title;
+    $('phase-detail').textContent = phase.detail;
+    $('phase-dot').style.background = phase.color;
+    const dot2 = $('phase-dot2'); if (dot2) dot2.style.background = phase.color;
+    $('finding-title').textContent = phase.title;
+    $('ledger-note').textContent = model.step === 0 ? '等待训练' : phase.title;
+
+    // 泛化账本：按格子数归一的训练/测试/答错
+    const nTest = task.testIdx.length || 1;
+    const trainCells = task.trainIdx.length;
+    const totalCells = trainCells + nTest;
+    const trainOk = Math.round(tr.pAcc * trainCells);
+    const testOk = Math.round(te.pAcc * nTest);
+    const testBad = nTest - testOk;
+    $('bar-train').style.width = (100 * trainOk / totalCells) + '%';
+    $('bar-test').style.width = (100 * testOk / totalCells) + '%';
+    $('bar-rest').style.width = (100 * testBad / totalCells) + '%';
+    $('lg-train').textContent = trainOk + ' / ' + trainCells;
+    $('lg-test').textContent = testOk + ' / ' + nTest;
+    $('lg-wrong').textContent = testBad + ' / ' + nTest;
+  }
+
+  function describePhase(tr, te) {
+    if (S.model.step < 40) return { title: '刚开始', detail: '损失还在高位，网络尚未记住任何东西。', color: '#8b948a' };
+    if (S.memorizeStep < 0) return { title: '寻找中', detail: '还在同时拟合训练样本。', color: '#c8a55f' };
+    if (S.grokStep < 0) return { title: '背下来了，但没学会', detail: '训练集全对，测试集还是错的——网络在硬记答案。', color: '#b96447' };
+    return { title: '顿悟', detail: '测试集开始正确：网络找到了模加法的规则，而不是背诵。', color: '#315b57' };
+  }
+
+  function drawNarrative() {
+    const task = S.task, model = S.model;
+    if (!task) return;
+    const cfg = task.config;
+    const sub = evalSubset(task);
+    const tr = C.evaluate(model, task, sub.tr);
+    const te = task.testIdx.length ? C.evaluate(model, task, sub.te) : tr;
+    const pred = gridCache(model).pred;
+    let correct = 0;
+    for (let i = 0; i < pred.length; i++) if (pred[i] === task.truthP[i]) correct++;
+    $('n-gridacc').textContent = pct(correct / pred.length);
+    $('n-wd').textContent = fmt(S.cfg.weightDecay, 2);
+    $('n-lr').textContent = S.cfg.learningRate;
+    if (S.grokStep > 0) {
+      $('n-grok').textContent = '第 ' + S.grokStep.toLocaleString('en-US') + ' 步';
+    } else if (S.memorizeStep > 0) {
+      $('n-grok').textContent = '尚未发生（已 ' + model.step.toLocaleString('en-US') + ' 步）';
+    } else {
+      $('n-grok').textContent = '尚未开始';
+    }
+
+    // 退化警告：批量达到样本数就等于全量梯度，顿悟不会出现。
+    // 这是实测最关键的一条，值得在界面上直接说出来，而不是让人白等半小时。
+    if (S.sampler && S.sampler.full) {
+      $('batch-warn').textContent = '⚠ 全量梯度：当前配置通常不出现转折';
+      $('batch-warn').classList.add('warn');
+    } else if (S.sampler && S.sampler.size >= task.count * 0.5) {
+      $('batch-warn').textContent = '接近全量，噪声在消失';
+      $('batch-warn').classList.add('warn-soft');
+    } else {
+      $('batch-warn').textContent = '大：趋于全量';
+      $('batch-warn').classList.remove('warn', 'warn-soft');
+    }
+
+    // 观察文字随训练阶段变化
+    const nTest = task.testIdx.length;
+    if (S.grokStep > 0) {
+      $('finding-text').textContent =
+        '泛化转折在第 ' + S.grokStep.toLocaleString('en-US') + ' 步通过全测试集阈值确认。当前抽样测试准确率为 ' +
+        pct(te.pAcc) + '。训练侧此前已经接近饱和，而测试侧随后明显改善；这正是本装置用来标记 grokking 的操作性定义。';
+    } else if (S.memorizeStep > 0) {
+      $('finding-text').textContent =
+        '训练集已在第 ' + S.memorizeStep.toLocaleString('en-US') + ' 步全对，但测试集只有 ' + pct(te.pAcc) +
+        '。平台期已经开始：网络在用记忆硬撑，规则还没浮现。' + (nTest ? '这正是顿悟发生前最值得看的阶段。' : '');
+    } else if (model.step > 0) {
+      $('finding-text').textContent = '已训练 ' + model.step.toLocaleString('en-US') + ' 步，训练准确率 ' + pct(tr.pAcc) +
+        '，测试准确率 ' + pct(te.pAcc) + '。两者还很接近，说明网络尚未开始偏向下死记硬背。';
+    }
+  }
+
+  /* ================= 初始化 ================= */
+  function build(options) {
+    S.cfg = Object.assign({}, C.DEFAULTS, options);
+    S.task = C.makeTask(S.cfg);
+    S.model = C.makeModel(S.cfg);
+    S.opt = C.makeOptimizer(S.model);
+    S.sampler = C.makeSampler(S.task, S.cfg);
+    S.history = [];
+    S.recTr = null; S.recTe = null;   // 评估子集随任务变化，需重建
+    S.evTr = null; S.evTe = null;
+    S.grid = null;
+    S.lastDrawn = -1; S.lastDrawAt = 0;
+    S.memorizeStep = -1; S.grokStep = -1;
+    $('cfg-p').textContent = S.cfg.p;
+    $('cfg-q').textContent = S.cfg.q;
+    $('wd-value').textContent = fmt(S.cfg.weightDecay, 2);
+    $('lr-value').textContent = S.cfg.learningRate;
+    $('n-value').textContent = S.task.count;
+    if ($('b-value')) $('b-value').textContent = S.sampler.size;
+    drawGrid();
+    render();
+  }
+
+  /* ---------- 交互 ---------- */
+  $('play').addEventListener('click', () => { S.running ? stop() : start(); });
+  $('step1').addEventListener('click', () => { stop(); doSteps(1); render(); });
+  $('step100').addEventListener('click', () => { stop(); doSteps(100); render(); });
+  $('speed').addEventListener('input', e => {
+    S.stepsPerTick = Number(e.target.value);
+    $('speed-value').textContent = S.stepsPerTick + ' 步/帧';
+  });
+  $('wd').addEventListener('input', e => {
+    S.cfg.weightDecay = Number(e.target.value);
+    $('wd-value').textContent = fmt(S.cfg.weightDecay, 2);
+    queueRender();
+  });
+  $('lr').addEventListener('input', e => {
+    S.cfg.learningRate = Number(e.target.value);
+    $('lr-value').textContent = S.cfg.learningRate;
+  });
+  $('ntrain').addEventListener('input', e => {
+    S.cfg.trainCount = Number(e.target.value);
+    $('n-value').textContent = S.cfg.trainCount;
+  });
+  $('ntrain').addEventListener('change', () => { stop(); build(S.cfg); });
+  $('batch').addEventListener('input', e => {
+    S.cfg.batchSize = Number(e.target.value);
+    $('b-value').textContent = S.cfg.batchSize;
+  });
+  $('batch').addEventListener('change', () => { stop(); build(S.cfg); });
+  $('view-map').addEventListener('click', () => {
+    S.view = 'map';
+    $('view-map').classList.add('selected'); $('view-pca').classList.remove('selected');
+    $('view-map').setAttribute('aria-pressed', 'true'); $('view-pca').setAttribute('aria-pressed', 'false');
+    $('map-wrap').hidden = false; $('pca-wrap').hidden = true;
+    render();
+  });
+  $('view-pca').addEventListener('click', () => {
+    S.view = 'pca';
+    $('view-pca').classList.add('selected'); $('view-map').classList.remove('selected');
+    $('view-map').setAttribute('aria-pressed', 'false'); $('view-pca').setAttribute('aria-pressed', 'true');
+    $('map-wrap').hidden = true; $('pca-wrap').hidden = false;
+    render();
+  });
+  $('reset').addEventListener('click', () => { stop(); build(S.cfg); });
+  function exportCsv() {
+    const rows = [['step', 'train_loss', 'train_acc', 'test_loss', 'test_acc'].join(',')];
+    for (const s of S.history) rows.push([s.step, s.trainLoss.toFixed(5), s.trainAcc.toFixed(4), s.testLoss.toFixed(5), s.testAcc.toFixed(4)].join(','));
+    const blob = new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'grokking-curve.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+  $('export').addEventListener('click', exportCsv);
+  $('export2').addEventListener('click', exportCsv);
+
+  // 键盘：空格播放/暂停
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && e.target === document.body) {
+      e.preventDefault();
+      S.running ? stop() : start();
+    }
+  });
+  window.addEventListener('pagehide', stop);
+
+  // 画布点击高亮某一格
+  mapCanvas.addEventListener('click', e => {
+    const cfg = S.task.config;
+    const r = mapCanvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * mapCanvas.width;
+    const y = (e.clientY - r.top) / r.height * mapCanvas.height;
+    const padL = 40, padT = 12, padR = 12, padB = 30;
+    const cw = (mapCanvas.width - padL - padR) / cfg.p;
+    const ch = (mapCanvas.height - padT - padB) / cfg.q;
+    const b = Math.floor((x - padL) / cw), a = Math.floor((y - padT) / ch);
+    if (a < 0 || b < 0 || a >= cfg.p || b >= cfg.q) return;
+    const i = a * cfg.q + b;
+    const pred = gridCache(S.model).pred;
+    $('probe').textContent = 'a=' + a + ', b=' + b + ' → 预测 ' + pred[i] + '，真值 ' + S.task.truthP[i] + (pred[i] === S.task.truthP[i] ? ' ✓' : ' ✗');
+  });
+
+  build({});
+  window.__grok = { S, C, build, start, stop, doSteps };
+})();
+
+</script>
+</body></html>
