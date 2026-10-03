@@ -1,0 +1,13 @@
+{
+  "nodes": [
+    {"id":"emergence","name":"涌现","description":"简单规则产生复杂结构"},
+    {"id":"information","name":"信息","description":"描述、传递和压缩世界状态"},
+    {"id":"feedback","name":"反馈","description":"系统通过循环影响自身"},
+    {"id":"complex_system","name":"复杂系统","description":"大量局部规则形成宏观行为"}
+  ],
+  "edges": [
+    {"from":"feedback","to":"emergence"},
+    {"from":"information","to":"complex_system"},
+    {"from":"complex_system","to":"emergence"}
+  ]
+}
