@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="一个不先告诉你规律的黑箱实验。制造初态、分叉时间、收集观测，再把自己的假说编译成预测器。">
+<title>无名定律 · 黑箱科学实验</title>
+<style>
+:root{
+  color-scheme:dark;--bg:#030403;--fg:#dce2d9;--muted:#737d72;--dim:#495148;
+  --line:rgba(204,220,202,.12);--line2:rgba(204,220,202,.24);--signal:#b9f2b4;
+  --cyan:#86d7d2;--warn:#e0b16e;--bad:#d77e70;--panel:rgba(5,8,6,.78);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --serif:Georgia,"Songti SC","Noto Serif SC",serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--mono)}
+button,input{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+#app{position:relative;width:100%;height:100svh;background:
+radial-gradient(circle at 50% 50%,rgba(73,106,75,.06),transparent 38%),#030403}
+#world{position:absolute;inset:0;width:100%;height:100%;touch-action:none;image-rendering:pixelated;cursor:crosshair}
+.scan{position:absolute;inset:0;pointer-events:none;opacity:.09;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(220,255,220,.2) 4px)}
+.vignette{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 130px 40px #000}
+.topbar{position:absolute;z-index:5;left:14px;right:14px;top:12px;display:grid;grid-template-columns:1fr auto 1fr;align-items:start;pointer-events:none}
+.brand{font-size:9px;letter-spacing:.14em;color:var(--muted)}.brand b{display:block;margin-top:5px;color:var(--fg);font-size:13px;font-weight:500;letter-spacing:.08em}
+.runstate{text-align:center;font-size:9px;color:var(--muted);letter-spacing:.13em}.runstate strong{display:block;margin-top:5px;color:var(--signal);font-size:12px;font-weight:500}
+.seed{text-align:right;font-size:8px;line-height:1.7;color:var(--dim)}.seed b{color:#8e998c;font-weight:500}
+.readout{position:absolute;z-index:5;left:14px;top:78px;width:220px;border-left:1px solid var(--line2);padding:9px 12px;background:linear-gradient(90deg,rgba(3,5,4,.78),transparent)}
+.readout h1{margin:0 0 6px;font:400 29px/1 var(--serif);letter-spacing:.04em}.readout p{margin:0;color:#9ba59a;font:11px/1.55 var(--serif)}
+.readout .unknown{color:var(--signal)}
+.stats{position:absolute;z-index:5;right:14px;top:77px;display:grid;grid-template-columns:repeat(2,100px);border:1px solid var(--line);background:rgba(3,5,4,.55);backdrop-filter:blur(8px)}
+.stat{padding:8px 10px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}.stat:nth-child(even){border-right:0}.stat:nth-last-child(-n+2){border-bottom:0}
+.stat span{display:block;font-size:7px;color:var(--dim);letter-spacing:.08em}.stat strong{display:block;margin-top:3px;font-size:12px;font-weight:400;color:#c5cdc2}
+.dock{position:absolute;z-index:8;left:50%;bottom:16px;transform:translateX(-50%);width:min(980px,calc(100% - 28px));display:grid;grid-template-columns:auto 1fr auto;gap:7px;align-items:stretch}
+.tools,.time,.labBtn{border:1px solid var(--line);background:rgba(4,7,5,.82);backdrop-filter:blur(12px)}
+.tools{display:flex;padding:5px;gap:4px}
+.tool{appearance:none;border:1px solid transparent;background:transparent;padding:8px 9px;min-width:46px;cursor:pointer;color:#7f8a7e;font-size:8px}.tool:hover{color:var(--fg);background:rgba(185,242,180,.05)}.tool.active{border-color:rgba(185,242,180,.3);color:var(--signal);background:rgba(185,242,180,.06)}
+.time{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:9px;padding:5px 7px}.time button,.labBtn{appearance:none;border:1px solid transparent;background:transparent;cursor:pointer;padding:8px 10px;font-size:8px;color:#94a093}.time button:hover,.labBtn:hover{color:var(--fg);border-color:var(--line2)}
+.timeline{position:relative;height:26px}.timeline input{width:100%;height:100%;margin:0;accent-color:var(--signal);cursor:pointer}.timeline:before{content:"PAST";position:absolute;left:0;top:-7px;font-size:6px;color:var(--dim)}.timeline:after{content:"NOW";position:absolute;right:0;top:-7px;font-size:6px;color:var(--dim)}
+.frame{min-width:78px;text-align:right;font-size:8px;color:var(--muted)}.frame b{color:#c8d0c5;font-weight:400}
+.labBtn{padding:8px 13px;color:var(--cyan);white-space:nowrap}
+.probe{position:absolute;z-index:7;display:none;width:210px;padding:10px 11px;border:1px solid var(--line2);background:rgba(5,8,6,.92);box-shadow:0 18px 48px rgba(0,0,0,.4);font-size:8px;color:var(--muted);pointer-events:none}
+.probe.show{display:block}.probe b{color:var(--fg);font-weight:400}.miniGrid{display:grid;grid-template-columns:repeat(3,14px);gap:2px;margin:8px 0}.miniGrid i{width:14px;height:14px;border:1px solid #263026;background:#090c09}.miniGrid i.on{background:#a9dfa6;box-shadow:0 0 8px rgba(185,242,180,.22)}.probe .next{color:var(--signal)}
+.drawer{position:absolute;z-index:20;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.72);backdrop-filter:blur(10px)}.drawer.open{display:flex}
+.lab{width:min(1000px,100%);max-height:90svh;overflow:auto;border:1px solid var(--line2);background:#060906;box-shadow:0 28px 100px rgba(0,0,0,.55)}
+.labHead{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:18px 20px;border-bottom:1px solid var(--line)}.labHead .k{font-size:8px;letter-spacing:.15em;color:var(--cyan)}.labHead h2{margin:5px 0 0;font:400 26px/1.2 var(--serif)}.close{border:1px solid var(--line);background:#0b100c;padding:7px 9px;cursor:pointer}
+.labGrid{display:grid;grid-template-columns:1fr 1fr;gap:0}.panel{padding:18px 20px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}.panel:nth-child(even){border-right:0}.panel:nth-last-child(-n+2){border-bottom:0}
+.panel h3{margin:0 0 7px;font:400 17px/1.4 var(--serif)}.panel p{margin:0 0 12px;color:#8e988d;font:11px/1.65 var(--serif)}
+.ruleRows{display:grid;grid-template-columns:auto repeat(9,1fr);gap:4px;align-items:center}.ruleRows span{font-size:8px;color:var(--muted)}.ruleRows button{aspect-ratio:1;border:1px solid var(--line);background:#0b0f0c;color:#596258;cursor:pointer;font-size:9px;padding:0}.ruleRows button.on{background:rgba(134,215,210,.12);border-color:rgba(134,215,210,.45);color:var(--cyan)}
+.compile{display:flex;gap:7px;margin-top:12px}.compile button{border:1px solid var(--line2);background:#0b100c;padding:8px 10px;cursor:pointer;font-size:9px}.compile .primary{color:var(--cyan);border-color:rgba(134,215,210,.38)}
+.score{margin-top:12px;padding:12px;border:1px solid var(--line);background:#040604}.score strong{display:block;font:400 28px/1 var(--serif);color:#d6ddd3}.score small{color:var(--muted)}.score.good strong{color:var(--signal)}.score.bad strong{color:var(--bad)}
+.notebook{display:grid;gap:7px}.entry{padding:9px 10px;border-left:1px solid var(--line2);background:#080c09;font-size:8px;line-height:1.6;color:#7c877b}.entry b{color:#c7cec4;font-weight:400}.entry .ok{color:var(--signal)}.entry .bad{color:var(--bad)}
+.branchList{display:grid;gap:6px}.branch{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--line);font-size:8px;color:var(--muted)}.branch i{width:7px;height:7px;border-radius:50%;background:#506050}.branch.active i{background:var(--cyan);box-shadow:0 0 0 4px rgba(134,215,210,.08)}.branch button{border:0;background:transparent;color:#9ba69a;cursor:pointer}
+.explain{padding:18px 20px;border-top:1px solid var(--line);color:#8e988d;font:11px/1.75 var(--serif)}.explain b{color:#cdd5cb;font-weight:400}.explain code{font-family:var(--mono);color:#b6c0b4;font-size:10px}
+.toast{position:absolute;z-index:30;left:50%;top:50%;transform:translate(-50%,-40%);border:1px solid var(--line2);background:#080c09;padding:10px 13px;color:#cbd3c9;font-size:9px;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translate(-50%,-50%)}
+@media(max-width:780px){
+ .topbar{grid-template-columns:1fr auto}.runstate{display:none}.readout{top:65px;width:190px}.stats{top:64px;grid-template-columns:80px 80px}.dock{grid-template-columns:1fr auto}.tools{grid-column:1/-1;overflow:auto}.time{grid-template-columns:auto 1fr auto}.time button:nth-last-child(1){display:none}.labBtn{grid-column:2}.labGrid{grid-template-columns:1fr}.panel{border-right:0!important}.panel:nth-last-child(-n+2){border-bottom:1px solid var(--line)}.panel:last-child{border-bottom:0}.seed{font-size:7px}
+}
+@media(max-width:480px){.readout p{display:none}.stats{display:none}.seed{display:none}.dock{bottom:9px}.tool{min-width:42px}.labBtn{padding:8px 10px}}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+<canvas id="world" aria-label="未知规则的二维黑箱世界。绘制初态并运行，通过观测推断隐藏的局部规则。"></canvas>
+<div class="scan"></div><div class="vignette"></div>
+<div class="topbar">
+  <div class="brand">BLACK-BOX FIELD / INSTANCE <span id="instance">—</span><b>规律：未公开</b></div>
+  <div class="runstate">WORLD STATE<strong id="runState">PAUSED</strong></div>
+  <div class="seed">SESSION SEED <b id="seedLabel">—</b><br>RULE FAMILY <b>OUTER-TOTALISTIC / HIDDEN</b></div>
+</div>
+<section class="readout"><h1>无名定律</h1><p>不要找说明书。制造现象，观察局部，再写出一条能<b class="unknown">预测下一帧</b>的规律。</p></section>
+<div class="stats">
+ <div class="stat"><span>GENERATION</span><strong id="genStat">0</strong></div>
+ <div class="stat"><span>LIVE CELLS</span><strong id="liveStat">0</strong></div>
+ <div class="stat"><span>OBSERVATIONS</span><strong id="obsStat">0</strong></div>
+ <div class="stat"><span>HYPOTHESIS</span><strong id="hypStat">UNTESTED</strong></div>
+</div>
+
+<div class="dock">
+ <div class="tools">
+  <button class="tool active" data-tool="draw">DRAW</button>
+  <button class="tool" data-tool="erase">ERASE</button>
+  <button class="tool" data-tool="probe">PROBE</button>
+  <button class="tool" id="randomBtn">SEED</button>
+  <button class="tool" id="clearBtn">CLEAR</button>
+ </div>
+ <div class="time">
+  <button id="playBtn">▶ RUN</button>
+  <div class="timeline"><input id="scrub" type="range" min="0" max="0" value="0"></div>
+  <div class="frame">FRAME <b id="frameLabel">0 / 0</b></div>
+  <button id="forkBtn">FORK TIMELINE</button>
+ </div>
+ <button class="labBtn" id="labBtn">OPEN HYPOTHESIS LAB</button>
+</div>
+
+<div class="probe" id="probe"><div>LOCAL OBSERVATION / <b id="probeCoord">—</b></div><div class="miniGrid" id="miniGrid"></div><div>neighbors alive: <b id="neighborCount">—</b></div><div>center now: <b id="centerNow">—</b></div><div class="next">center next: <b id="centerNext">—</b></div></div>
+<div class="toast" id="toast"></div>
+
+<div class="drawer" id="drawer">
+ <div class="lab">
+  <div class="labHead"><div><div class="k">HYPOTHESIS COMPILER</div><h2>把猜测写成一个会失败的预测器。</h2></div><button class="close" id="closeLab">关闭 ×</button></div>
+  <div class="labGrid">
+   <section class="panel"><h3>1. 写规则</h3><p>一个格子的下一状态，只取决于它现在是否存活，以及周围 8 格有几个活细胞。点亮你认为会导致“出生”或“存活”的邻居数量。</p>
+    <div class="ruleRows" id="ruleRows"></div>
+    <div class="compile"><button id="copyPrev">从上次最佳结果开始</button><button class="primary" id="testHyp">在全部观测上测试</button></div>
+    <div class="score" id="score"><small>PREDICTION ACCURACY</small><strong>—</strong></div>
+   </section>
+   <section class="panel"><h3>2. 观测簿</h3><p>PROBE 会记录一个局部样本：中心状态、邻居数，以及下一帧真实结果。假说必须同时解释所有已记录样本。</p><div class="notebook" id="notebook"><div class="entry">还没有观测。回到世界，用 <b>PROBE</b> 点几个你觉得关键的位置。</div></div></section>
+   <section class="panel"><h3>3. 反事实分支</h3><p>FORK 会复制当前世界。你可以在两个分支施加不同干预，再分别推进。它们共享同一条隐藏定律。</p><div class="branchList" id="branchList"></div></section>
+   <section class="panel"><h3>4. 证伪，而不是猜答案</h3><p>高准确率不等于识别了规律。如果观测都来自相似局面，多条不同规则会同样解释它们。制造能区分假说的新局部结构，再回来测试。</p><div class="score" id="coverage"><small>OBSERVED NEIGHBOR COUNTS</small><strong>0 / 18</strong></div></section>
+  </div>
+  <div class="explain"><b>作品结构与旧展品不同：</b>页面不会按顺序解释某个现成知识点，也没有固定“正确操作”。隐藏规则每次会从一组局部元胞规律中随机选择；时间线、实验、观测和假说是同一个系统。只有当你的规则在足够多样的局部观测上持续预测正确时，页面才会认为你接近识别成功。实现使用双缓冲 <code>Uint8Array</code> 状态网格、可回放历史快照、分支状态树与即时假说评估。<br><br><b>模型边界：</b>这里的“宇宙”属于二维 outer-totalistic cellular automata，只用于训练实验设计、预测与证伪。它不是现实物理规律的模型，也不说明自然定律一定具有局部离散形式。</div>
+ </div>
+</div>
+</div>
+<script>
+(function(){
+'use strict';
+const canvas=document.getElementById('world'),ctx=canvas.getContext('2d',{alpha:false});
+const GRID_W=96,GRID_H=60,SIZE=GRID_W*GRID_H,MAX_HISTORY=180;
+let dpr=1,W=0,H=0,scale=10,ox=0,oy=0;
+let grid=new Uint8Array(SIZE),next=new Uint8Array(SIZE);
+let history=[],cursor=0,generation=0,running=false,lastTick=0,tickMs=115,tool='draw',painting=false;
+let observations=[],obsKeys=new Set(),branchSeq=1,currentBranch='A',branches=new Map();
+let bestHyp={b:new Set(),s:new Set(),score:0};
+let birthMask=0,surviveMask=0,sessionSeed=0,instanceId='';
+const RULES=[
+ {name:'R-A',b:[3],s:[2,3]},
+ {name:'R-B',b:[3,6],s:[2,3]},
+ {name:'R-C',b:[2],s:[]},
+ {name:'R-D',b:[3,6,7,8],s:[3,4,6,7,8]},
+ {name:'R-E',b:[1,3,5,7],s:[1,3,5,7]},
+ {name:'R-F',b:[3,5,6,7,8],s:[5,6,7,8]},
+ {name:'R-G',b:[2,3],s:[2,3]},
+ {name:'R-H',b:[3,4],s:[3,4]}
+];
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function rnd(){sessionSeed=(sessionSeed*1664525+1013904223)>>>0;return sessionSeed/4294967296}
+function initRule(){
+ const a=new Uint32Array(1);crypto.getRandomValues(a);sessionSeed=a[0]||123456789;
+ const id=Math.floor(rnd()*RULES.length),r=RULES[id];birthMask=0;surviveMask=0;
+ r.b.forEach(n=>birthMask|=1<<n);r.s.forEach(n=>surviveMask|=1<<n);
+ instanceId=((a[0]^0x9e3779b9)>>>0).toString(16).slice(0,6).toUpperCase();
+ $('#instance').textContent=instanceId;$('#seedLabel').textContent=(a[0]>>>0).toString(16).toUpperCase();
+}
+function resize(){
+ dpr=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+ const usableW=W-30,usableH=H-150;scale=Math.max(4,Math.floor(Math.min(usableW/GRID_W,usableH/GRID_H)));ox=(W-GRID_W*scale)/2;oy=Math.max(55,(H-GRID_H*scale)/2-18);
+}
+function index(x,y){return y*GRID_W+x}
+function countN(arr,x,y){
+ let c=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const xx=x+dx,yy=y+dy;if(xx>=0&&xx<GRID_W&&yy>=0&&yy<GRID_H)c+=arr[index(xx,yy)]}return c;
+}
+function evolve(src,dst,bm=birthMask,sm=surviveMask){
+ for(let y=0;y<GRID_H;y++)for(let x=0;x<GRID_W;x++){const i=index(x,y),n=countN(src,x,y),alive=src[i];dst[i]=alive?((sm>>n)&1):((bm>>n)&1)}
+}
+function snapshot(){return grid.slice()}
+function resetHistory(){history=[snapshot()];cursor=0;generation=0;saveBranch()}
+function commitFrame(){
+ if(cursor<history.length-1)history=history.slice(0,cursor+1);
+ history.push(snapshot());if(history.length>MAX_HISTORY)history.shift();else cursor++;generation++;
+ saveBranch();updateUI();
+}
+function step(){
+ evolve(grid,next);const t=grid;grid=next;next=t;commitFrame();
+}
+function setFromHistory(pos){pos=clamp(pos,0,history.length-1);grid=history[pos].slice();cursor=pos;generation=pos;running=false;saveBranch();updateUI()}
+function mutateCell(x,y,val){
+ if(x<0||x>=GRID_W||y<0||y>=GRID_H)return;grid[index(x,y)]=val;history=history.slice(0,cursor+1);history[cursor]=snapshot();saveBranch();updateUI();
+}
+function randomSeed(){
+ grid.fill(0);
+ const cx=Math.floor(GRID_W/2),cy=Math.floor(GRID_H/2),r=10+Math.floor(rnd()*8);
+ for(let y=cy-r;y<=cy+r;y++)for(let x=cx-r;x<=cx+r;x++)if(rnd()<.28)grid[index(x,y)]=1;
+ resetHistory();flash('新的初态已生成。规律没有改变。');
+}
+function clearGrid(){grid.fill(0);resetHistory();flash('世界被清空，但隐藏规律仍然相同。')}
+function liveCount(){let n=0;for(let i=0;i<SIZE;i++)n+=grid[i];return n}
+function screenToCell(px,py){return [Math.floor((px-ox)/scale),Math.floor((py-oy)/scale)]}
+function drawWorld(){
+ ctx.fillStyle='#020302';ctx.fillRect(0,0,W,H);
+ ctx.fillStyle='#071008';ctx.fillRect(ox-1,oy-1,GRID_W*scale+2,GRID_H*scale+2);
+ if(scale>=7){ctx.strokeStyle='rgba(177,213,177,.045)';ctx.lineWidth=1;ctx.beginPath();for(let x=0;x<=GRID_W;x++){ctx.moveTo(ox+x*scale+.5,oy);ctx.lineTo(ox+x*scale+.5,oy+GRID_H*scale)}for(let y=0;y<=GRID_H;y++){ctx.moveTo(ox,oy+y*scale+.5);ctx.lineTo(ox+GRID_W*scale,oy+y*scale+.5)}ctx.stroke()}
+ ctx.shadowColor='rgba(185,242,180,.28)';ctx.shadowBlur=scale*.55;ctx.fillStyle='#a9dda5';
+ for(let y=0;y<GRID_H;y++)for(let x=0;x<GRID_W;x++)if(grid[index(x,y)]){ctx.fillRect(ox+x*scale+1,oy+y*scale+1,Math.max(1,scale-2),Math.max(1,scale-2))}
+ ctx.shadowBlur=0;
+}
+function animate(t){
+ if(running&&t-lastTick>tickMs){lastTick=t;step()}
+ drawWorld();requestAnimationFrame(animate);
+}
+function saveBranch(){branches.set(currentBranch,{grid:grid.slice(),history:history.map(a=>a.slice()),cursor,generation})}
+function switchBranch(id){
+ saveBranch();const b=branches.get(id);if(!b)return;currentBranch=id;grid=b.grid.slice();history=b.history.map(a=>a.slice());cursor=b.cursor;generation=b.generation;running=false;renderBranches();updateUI();flash('已切换到时间线 '+id);
+}
+function fork(){
+ saveBranch();const id=String.fromCharCode(65+branchSeq++);branches.set(id,{grid:grid.slice(),history:history.map(a=>a.slice()),cursor,generation});currentBranch=id;renderBranches();flash('时间线 '+id+' 从当前帧分叉');
+}
+function renderBranches(){
+ const box=$('#branchList');box.innerHTML='';[...branches.entries()].forEach(([id,b])=>{const d=document.createElement('div');d.className='branch '+(id===currentBranch?'active':'');d.innerHTML='<i></i><span>LINE '+id+' · frame '+b.cursor+' · '+b.grid.reduce((a,v)=>a+v,0)+' live</span><button>切换</button>';d.querySelector('button').onclick=()=>switchBranch(id);box.append(d)})
+}
+function updateUI(){
+ $('#genStat').textContent=generation;$('#liveStat').textContent=liveCount();$('#obsStat').textContent=observations.length;
+ $('#runState').textContent=running?'RUNNING':'PAUSED';$('#playBtn').textContent=running?'Ⅱ PAUSE':'▶ RUN';
+ $('#scrub').max=Math.max(0,history.length-1);$('#scrub').value=cursor;$('#frameLabel').textContent=cursor+' / '+(history.length-1);
+}
+function flash(s){const t=$('#toast');t.textContent=s;t.classList.add('show');clearTimeout(flash.t);flash.t=setTimeout(()=>t.classList.remove('show'),1000)}
+function addObservation(x,y){
+ const before=grid.slice(),after=new Uint8Array(SIZE);evolve(before,after);const i=index(x,y),n=countN(before,x,y),alive=before[i],out=after[i],key=alive+':'+n+':'+out;
+ const sig=generation+':'+x+':'+y+':'+key;if(obsKeys.has(sig))return;obsKeys.add(sig);observations.push({generation,x,y,n,alive,out,branch:currentBranch});
+ renderNotebook();updateCoverage();updateUI();showProbe(x,y,before,after);flash('局部观测已写入实验簿');
+}
+function showProbe(x,y,before=grid,after=null){
+ if(!after){after=new Uint8Array(SIZE);evolve(before,after)}
+ const box=$('#probe'),mg=$('#miniGrid');mg.innerHTML='';
+ for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy,v=xx>=0&&xx<GRID_W&&yy>=0&&yy<GRID_H?before[index(xx,yy)]:0;const el=document.createElement('i');if(v)el.className='on';mg.append(el)}
+ const i=index(x,y);$('#probeCoord').textContent='x '+x+' / y '+y;$('#neighborCount').textContent=countN(before,x,y);$('#centerNow').textContent=before[i]?'ALIVE':'DEAD';$('#centerNext').textContent=after[i]?'ALIVE':'DEAD';
+ const px=ox+(x+.5)*scale,py=oy+(y+.5)*scale;box.style.left=clamp(px+15,8,W-225)+'px';box.style.top=clamp(py-55,55,H-210)+'px';box.classList.add('show');clearTimeout(showProbe.t);showProbe.t=setTimeout(()=>box.classList.remove('show'),2400);
+}
+function renderNotebook(){
+ const n=$('#notebook');n.innerHTML='';observations.slice(-14).reverse().forEach(o=>{const d=document.createElement('div');d.className='entry';d.innerHTML='LINE <b>'+o.branch+'</b> / frame <b>'+o.generation+'</b> · center '+(o.alive?'alive':'dead')+' · neighbors <b>'+o.n+'</b> → <span class="'+(o.out?'ok':'bad')+'">'+(o.out?'alive':'dead')+'</span>';n.append(d)});
+ if(!observations.length)n.innerHTML='<div class="entry">还没有观测。回到世界，用 <b>PROBE</b> 点几个你觉得关键的位置。</div>';
+}
+function buildRuleUI(){
+ const box=$('#ruleRows');box.innerHTML='';
+ [['BIRTH','b'],['SURVIVE','s']].forEach(row=>{const lab=document.createElement('span');lab.textContent=row[0];box.append(lab);for(let n=0;n<=8;n++){const b=document.createElement('button');b.textContent=n;b.dataset.kind=row[1];b.dataset.n=n;b.onclick=()=>b.classList.toggle('on');box.append(b)}})
+}
+function currentHyp(){
+ const b=new Set(),s=new Set();$$('#ruleRows button.on').forEach(x=>(x.dataset.kind==='b'?b:s).add(+x.dataset.n));return {b,s}
+}
+function setHyp(h){
+ $$('#ruleRows button').forEach(x=>x.classList.toggle('on',(x.dataset.kind==='b'?h.b:h.s).has(+x.dataset.n)));
+}
+function testHyp(){
+ if(!observations.length){flash('先收集几个局部观测');return}
+ const h=currentHyp();let ok=0;
+ observations.forEach(o=>{const pred=o.alive?h.s.has(o.n):h.b.has(o.n);if(+pred===o.out)ok++});
+ const score=ok/observations.length,s=$('#score');s.className='score '+(score===1?'good':score<.65?'bad':'');s.querySelector('strong').textContent=(score*100).toFixed(1)+'%';
+ $('#hypStat').textContent=(score*100).toFixed(0)+'%';if(score>bestHyp.score)bestHyp={b:new Set(h.b),s:new Set(h.s),score};
+ const coverage=new Set(observations.map(o=>o.alive+':'+o.n)).size;
+ if(score===1&&coverage>=10){flash('它解释了目前全部观测。现在试着设计一个更刁钻的反例。')}
+ else if(score===1){flash('目前零反例，但证据覆盖还很窄。')}
+ else flash((observations.length-ok)+' 个观测与假说冲突');
+}
+function updateCoverage(){
+ const c=new Set(observations.map(o=>o.alive+':'+o.n)).size;$('#coverage strong').textContent=c+' / 18';$('#coverage').className='score '+(c>=10?'good':'');
+}
+canvas.addEventListener('pointerdown',e=>{
+ painting=true;canvas.setPointerCapture(e.pointerId);const r=canvas.getBoundingClientRect(),p=screenToCell(e.clientX-r.left,e.clientY-r.top);if(tool==='probe'){addObservation(p[0],p[1]);painting=false}else mutateCell(p[0],p[1],tool==='draw'?1:0)
+});
+canvas.addEventListener('pointermove',e=>{if(!painting||tool==='probe')return;const r=canvas.getBoundingClientRect(),p=screenToCell(e.clientX-r.left,e.clientY-r.top);mutateCell(p[0],p[1],tool==='draw'?1:0)});
+canvas.addEventListener('pointerup',()=>painting=false);canvas.addEventListener('pointercancel',()=>painting=false);
+$$('[data-tool]').forEach(b=>b.onclick=()=>{tool=b.dataset.tool;$$('[data-tool]').forEach(x=>x.classList.toggle('active',x===b));flash(tool==='probe'?'PROBE：点一个格子记录局部观测':tool.toUpperCase())});
+$('#randomBtn').onclick=randomSeed;$('#clearBtn').onclick=clearGrid;
+$('#playBtn').onclick=()=>{running=!running;updateUI()};
+$('#scrub').oninput=e=>setFromHistory(+e.target.value);
+$('#forkBtn').onclick=fork;
+const drawer=$('#drawer');$('#labBtn').onclick=()=>{running=false;updateUI();renderBranches();drawer.classList.add('open')};$('#closeLab').onclick=()=>drawer.classList.remove('open');drawer.onclick=e=>{if(e.target===drawer)drawer.classList.remove('open')};
+$('#testHyp').onclick=testHyp;$('#copyPrev').onclick=()=>setHyp(bestHyp);
+addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();$('#playBtn').click()}if(e.key==='Escape')drawer.classList.remove('open');if(e.key.toLowerCase()==='f')fork();if(e.key.toLowerCase()==='p'){$$('[data-tool]').find(x=>x.dataset.tool==='probe').click()}});
+initRule();buildRuleUI();resize();randomSeed();branches.set('A',{grid:grid.slice(),history:history.map(a=>a.slice()),cursor,generation});renderBranches();updateUI();addEventListener('resize',resize);requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
