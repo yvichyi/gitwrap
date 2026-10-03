@@ -140,8 +140,52 @@ async function run() {
     await page.screenshot({ path: path.join(root, 'artifacts/clock-mobile.png'), fullPage: true });
     report.regressions.clock = { viewport: 390, scrollWidth: 390, openCloseAndSources: 'passed' };
 
+    await page.goto(base + encodeURIComponent('迟滞之痕.html'));
+    await page.evaluate(() => document.body.focus());
+    for (let i = 0; i < 25; i++) await page.keyboard.press('ArrowRight');
+    const direct = await page.evaluate(() => ({
+      h: Number(document.getElementById('hRead').textContent.replace('−', '-')),
+      m: Number(document.getElementById('mRead').textContent.replace('−', '-')),
+      history: Number(document.getElementById('historyRead').textContent)
+    }));
+    assert.ok(Math.abs(direct.h) < 0.03, 'Hysteresis direct path reaches H≈0');
+    await page.locator('#pinBtn').click();
+    await page.evaluate(() => document.activeElement.blur());
+    for (let i = 0; i < 25; i++) await page.keyboard.press('ArrowRight');
+    for (let i = 0; i < 25; i++) await page.keyboard.press('ArrowLeft');
+    const looped = await page.evaluate(() => ({
+      h: Number(document.getElementById('hRead').textContent.replace('−', '-')),
+      m: Number(document.getElementById('mRead').textContent.replace('−', '-')),
+      note: document.getElementById('plotNote').textContent
+    }));
+    assert.ok(Math.abs(looped.h) < 0.03, 'Hysteresis loop returns to H≈0');
+    assert.ok(Math.abs(looped.m - direct.m) > 0.5, 'Same H must retain materially different history-dependent M');
+    assert.match(looped.note, /ΔM/, 'Same-input comparison is surfaced in the recorder');
+    await page.locator('#scrub').evaluate((el, value) => {
+      el.value = String(value);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }, 25);
+    await page.evaluate(() => document.body.focus());
+    await page.keyboard.press('ArrowLeft');
+    const branch = await page.evaluate(() => ({
+      label: document.getElementById('branchRead').textContent,
+      frame: document.getElementById('timeMeta').textContent
+    }));
+    assert.match(branch.label, /分支 02/, 'Editing the past creates a new branch');
+    assert.match(branch.frame, /LIVE/, 'New branch returns to a live head');
+    await page.locator('#notesToggle').click();
+    assert.equal(await page.locator('#backside').evaluate(e => e.classList.contains('open')), true, 'Instrument backplate opens');
+    await page.locator('#closeNotes').click();
+    report.regressions.hysteresis = {
+      directAtZero: direct,
+      loopedAtZero: looped,
+      deltaM: looped.m - direct.m,
+      branch: branch.label,
+      rewindAndBranch: 'passed'
+    };
+
     await page.goto(base + 'index.html');
-    assert.equal(await page.locator('.card:visible').count(), 41, 'Gallery includes all works offline');
+    assert.equal(await page.locator('.card:visible').count(), 44, 'Gallery includes all works offline');
     await page.locator('#query').fill('wasserstein');
     assert.equal(await page.locator('.card:visible').count(), 1, 'Search model names');
     await page.locator('#query').fill('没有这样的关键词');
@@ -151,14 +195,14 @@ async function run() {
     await page.locator('#category').selectOption('地球与交通');
     assert.equal(await page.locator('.card:visible').count(), 5, 'Category filter');
     await page.getByRole('button', { name: '清除筛选' }).click();
-    assert.equal(await page.locator('.card:visible').count(), 41, 'Reset filters');
+    assert.equal(await page.locator('.card:visible').count(), 44, 'Reset filters');
     await page.setViewportSize({ width: 320, height: 700 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 320, 'Gallery fits 320px viewport');
     await page.screenshot({ path: path.join(root, 'artifacts/gallery-mobile.png'), fullPage: true });
     const noJS = await browser.newContext({ javaScriptEnabled: false });
     const staticPage = await noJS.newPage();
     await staticPage.goto(base + 'index.html');
-    assert.equal(await staticPage.locator('.card a').count(), 41, 'All links remain without JavaScript');
+    assert.equal(await staticPage.locator('.card a').count(), 44, 'All links remain without JavaScript');
     await noJS.close();
     report.regressions.gallery = { localServer: 'passed', directFile: 'not_tested_browser_policy', search: 'passed', category: 'passed', reset: 'passed', mobile320: 'passed', withoutJavaScript: 'passed' };
     await page.close();
