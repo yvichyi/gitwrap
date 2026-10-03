@@ -20,7 +20,19 @@ jobs:
           cache-dependency-path: science-collection/package-lock.json
       - name: Static collection checks
         working-directory: science-collection
-        run: python3 scripts/check.py
+        run: |
+          if ! python3 scripts/check.py; then
+            cp index.html /tmp/index.before
+            cp docs/CATALOG.md /tmp/catalog.before
+            python3 scripts/build_catalog.py
+            echo "::group::Generated gallery diff"
+            diff -u /tmp/index.before index.html || true
+            echo "::endgroup::"
+            echo "::group::Generated catalogue diff"
+            diff -u /tmp/catalog.before docs/CATALOG.md || true
+            echo "::endgroup::"
+            exit 1
+          fi
       - name: Install browser test dependency
         working-directory: science-collection
         run: npm ci
