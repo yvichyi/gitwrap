@@ -1,0 +1,4535 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="自愿接种的群体免疫博弈：SIR 疫情在接触网络上传播，成本、结构与风险感决定谁来补墙，接种率绕着群体阈值呼吸。">
+<title>一墙之隔 · 群体免疫接种博弈</title>
+<style>
+@charset "UTF-8";
+/* ============================================================
+ * 《一墙之隔》样式 —— 浅色纸面 + 深色仪表板，四学科各领一种强调色
+ * （epi 锈红 / net 深蓝 / game 湖青 / mind 土黄；kalman/SPEC §7 同源）
+ * 硬规矩（沿全屋踩坑约束，比特之漏 / 临界的形状 / kalman）：
+ *   1. 媒体查询全部写在文件末尾——CSS 同名规则靠后的赢。
+ *   2. Grid 子项一律 min-width:0（1fr 默认 min-width:auto 会被画布顶破）。
+ *   3. 触控目标 ≥ 44px；focus-visible 必须可见。
+ *   4. 基础样式就是最终可见态，不用 animation + opacity:0 起始态。
+ * ========================================================== */
+:root{
+  color-scheme:light;
+  --paper:#f4f0e8;--paper-deep:#e9e2d6;--panel:#fffdf8;
+  --ink:#1e2d31;--dim:#626e6d;--dim2:#87908a;
+  --line:#d9d2c6;--line-strong:#c9c0b1;
+  /* 四学科强调色 */
+  --epi:#b8583d;--epi-pale:#f1e1d7;      /* 流行病学：感染、疫情曲线、阈值线 */
+  --net:#3f5e78;--net-pale:#e3ebf1;      /* 网络科学：边、结构线、S 曲线 */
+  --game:#4c7779;--game-pale:#e2eeea;    /* 博弈/接种：墙砖、覆盖率线 */
+  --mind:#b8860b;--mind-pale:#f3e8cf;    /* 风险认知：感知线、记忆读数 */
+  --ghost:#7d8c88;                        /* 参考虚线、康复节点、真值幽灵 */
+  --board:#23363a;--board-deep:#26383b;   /* hero 仪表板 / 公式板 */
+  --canvas-paper:#faf8f2;--canvas-grid:#e5e1d7;
+  --gap-stroke:#d9d2c6;                   /* 墙上缺口砖位的描边（填充即画布纸面） */
+  --serif:"Iowan Old Style","Palatino Linotype","Songti SC","Noto Serif CJK SC","STSong",serif;
+  --sans:"Avenir Next","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,monospace;
+}
+*{box-sizing:border-box}
+/* 不用 scroll-behavior:smooth：无头截屏（--virtual-time-budget）下平滑滚动
+ * 动画不前进，锚点跳转会停在页顶；瞬时跳转让 #act1/#act2/#act3/#model 深链
+ * 在任何环境都可靠 */
+html{scroll-padding-top:96px}
+body{margin:0;min-width:320px;color:var(--ink);background:radial-gradient(ellipse at 18% 0%,rgba(193,164,126,.10),transparent 36rem),radial-gradient(ellipse at 85% 12%,rgba(76,119,121,.07),transparent 30rem),var(--paper);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+button,input,output{font:inherit}
+a{color:inherit}
+button,a,input{-webkit-tap-highlight-color:transparent}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid rgba(184,88,61,.75);outline-offset:3px}
+[hidden]{display:none!important}
+.v-skip-link{position:fixed;z-index:60;left:12px;top:12px;padding:10px 14px;color:#fff;background:var(--ink);transform:translateY(-160%)}
+.v-skip-link:focus{transform:translateY(0)}
+.v-site-header,.v-page-shell,.v-site-footer{width:min(1320px,calc(100% - 72px));margin:0 auto}
+
+/* ---------- header ---------- */
+.v-site-header{height:76px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.v-wordmark{display:flex;align-items:center;min-height:44px;gap:11px;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:.04em}
+.v-wordmark small{display:block;margin-top:3px;color:var(--dim);font-size:9px;font-weight:500;letter-spacing:.09em}
+.v-brand-mark{width:26px;height:26px;display:block}
+.v-brand-mark svg{display:block;width:100%;height:100%}
+.v-site-header nav{display:flex;align-items:center;gap:26px}
+.v-site-header nav a{padding:14px 0;font-size:12px;color:#536164;text-decoration:none;transition:color .18s}
+.v-site-header nav a:hover{color:var(--epi)}
+/* inline-flex + min-height 把 9px 小字链接的触控目标抬到 44px（§2.3） */
+.v-header-index{display:inline-flex;align-items:center;min-height:44px;padding:14px 0;font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:#6a7775;text-decoration:none}
+.v-header-index span{padding-left:8px;color:var(--epi);font-size:14px}
+
+/* ---------- hero ---------- */
+/* 文案列拿 1.15fr：h1 每行 7–9 个全角字，比 kalman 的 5–6 字行需要更宽的列，
+ * 否则 77px 字号下「缺口是各人留的。」会折行——三行结构是硬约束 */
+.v-hero{min-height:620px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(420px,.85fr);align-items:center;gap:clamp(44px,7vw,100px);padding:64px 0 70px}
+.v-hero-copy{min-width:0;padding:6px 0 0 2px}
+.v-eyebrow{display:flex;align-items:center;gap:9px;margin:0;color:var(--epi);font-size:10px;font-weight:700;letter-spacing:.14em}
+.v-eyebrow-mark{width:7px;height:7px;border-radius:50%;background:var(--epi);box-shadow:0 0 0 4px rgba(184,88,61,.09)}
+.v-hero h1{margin:23px 0 21px;font-family:var(--serif);font-weight:500;font-size:clamp(47px,6vw,77px);line-height:1.16;letter-spacing:-.06em}
+.v-hero h1 span{color:var(--epi)}
+.v-hero-question{margin:0 0 13px;color:#394e50;font-family:var(--serif);font-size:22px;line-height:1.6}
+.v-hero-description{max-width:480px;margin:0;color:#617073;font-size:13px;line-height:1.9}
+.v-hero-link{display:inline-flex;align-items:center;gap:18px;min-height:44px;margin-top:22px;padding:0 0 6px;border-bottom:1px solid #a9917e;text-decoration:none;font-size:12px;font-weight:700}
+.v-hero-link span{color:var(--epi);font-size:17px;transition:transform .18s}
+.v-hero-link:hover span{transform:translateY(3px)}
+.v-hero-plate{margin:0;min-width:0;padding:18px 20px 12px;color:#f3eee2;background:var(--board);box-shadow:14px 16px 0 rgba(34,53,56,.07)}
+.v-plate-meta{display:flex;justify-content:space-between;gap:12px;color:#b4c0bb;font-family:var(--mono);font-size:9px;letter-spacing:.1em}
+.v-hero-plate svg{display:block;width:100%;height:auto;margin:9px 0 4px}
+.v-hero-plate svg text{font-family:var(--sans)}
+.v-hero-plate figcaption{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 14px;padding:10px 2px 2px;border-top:1px solid rgba(232,226,210,.18);color:#c3cbc3;font-size:9px}
+.v-hero-plate figcaption span{display:inline-flex;align-items:center;gap:6px}
+.v-plate-key{display:inline-block;width:16px;height:0;vertical-align:middle}
+.v-plate-key-net{border-top:2px solid #7d99ab}
+.v-plate-key-brick{width:8px;height:8px;border-radius:50%;background:#5fa299}
+.v-plate-key-fire{width:8px;height:8px;border-radius:50%;background:#cf7050}
+.v-plate-key-gap{width:9px;height:9px;border:1.3px solid #d8d2c4;border-radius:50%;background:#23363a}
+.v-hero-footnote{grid-column:1/-1;display:grid;grid-template-columns:110px minmax(0,1fr);gap:20px;align-items:baseline;padding:18px 22px;background:var(--paper-deep);border-left:3px solid var(--epi)}
+.v-hero-footnote>span{color:var(--epi);font-size:10px;font-weight:700;letter-spacing:.11em}
+.v-hero-footnote p{margin:0;color:#4f6061;font-family:var(--serif);font-size:15px;line-height:1.7}
+
+/* ---------- 全局读数条：页面级粘性，hero 与 #act1 之间 ---------- */
+.v-readout-strip{position:sticky;top:0;z-index:40;display:grid;grid-template-columns:auto repeat(4,minmax(84px,1fr)) minmax(150px,1.2fr) auto;align-items:center;gap:6px 18px;padding:9px 18px;background:var(--paper-deep);border-top:2px solid var(--game);border-bottom:1px solid var(--line);box-shadow:0 12px 22px -18px rgba(30,45,49,.55)}
+.v-readout-strip>*{min-width:0}
+.v-strip-tag{display:flex;flex-direction:column;gap:2px;padding-right:16px;border-right:1px solid var(--line-strong)}
+.v-strip-tag span{font-size:10px;font-weight:700;letter-spacing:.08em}
+.v-strip-tag small{font-family:var(--mono);font-size:8px;letter-spacing:.12em;color:#8b938d}
+.v-readout-cell{display:grid;gap:2px}
+.v-readout-cell>span{font-size:8px;letter-spacing:.05em;color:#747d77;white-space:nowrap}
+.v-readout-cell strong{font-family:var(--serif);font-size:19px;font-weight:500;line-height:1.05;font-variant-numeric:tabular-nums;white-space:nowrap}
+.v-readout-cell strong b{font-weight:inherit}
+.v-readout-cell strong small{margin-left:3px;color:#717b77;font-family:var(--sans);font-size:9px}
+.v-readout-live{display:flex;align-items:center;gap:7px;min-width:0;white-space:nowrap}
+.v-readout-live i{flex:0 0 6px;width:6px;height:6px;border-radius:50%;background:#90a69a}
+.v-readout-live.is-running i{background:var(--epi);box-shadow:0 0 0 4px rgba(184,88,61,.13);animation:v-pulse 1.2s infinite}
+.v-readout-live span{color:#75807a;font-size:9px;overflow:hidden;text-overflow:ellipsis}
+@keyframes v-pulse{50%{box-shadow:0 0 0 7px rgba(184,88,61,0)}}
+.v-strip-time{display:flex;gap:6px}
+.v-time-button{min-height:44px;padding:0 10px;color:#fffdf7;background:var(--ink);border:1px solid var(--ink);border-radius:2px;font-size:10px;font-weight:600;cursor:pointer;transition:background .16s}
+.v-time-button:hover{background:#395054}
+.v-play-button{min-height:44px;display:flex;align-items:center;gap:7px;padding:0 11px;color:#fffaf2;background:var(--epi);border:1px solid var(--epi);border-radius:2px;font-size:10px;font-weight:700;cursor:pointer;transition:background .18s}
+.v-play-button:hover{background:#a7462e}
+.v-play-button[aria-pressed=true]{background:#9d4229;border-color:#9d4229}
+.v-play-icon{font-size:9px}
+.v-play-button small{margin-left:2px;color:#f2d0c0;font-size:8px;font-weight:400}
+.v-play-button[aria-pressed=true] .v-play-icon{font-size:0}
+.v-play-button[aria-pressed=true] .v-play-icon::after{content:"Ⅱ";font-size:11px}
+.v-reset-button{min-height:44px;padding:0 10px;color:#576664;background:transparent;border:1px solid #cfc9bd;border-radius:2px;font-size:10px;font-weight:600;cursor:pointer;transition:all .16s}
+.v-reset-button:hover{color:var(--epi);border-color:#b9b2a4}
+
+/* ---------- 章节 ---------- */
+.v-chapter{padding:34px 0 82px;border-top:1px solid var(--line)}
+.v-method-chapter{padding-top:38px}
+.v-chapter-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:35px;margin-bottom:31px}
+.v-chapter-heading>div{min-width:0}
+.v-section-number{display:inline-grid;width:22px;height:22px;place-items:center;margin-right:9px;border:1px solid #d6a08d;border-radius:50%;font-family:var(--mono);font-size:9px;letter-spacing:0}
+.v-chapter-heading h2{margin:14px 0 0;font-family:var(--serif);font-weight:500;font-size:clamp(34px,4vw,49px);line-height:1.16;letter-spacing:-.06em}
+.v-chapter-heading h2 em{color:var(--epi);font-style:normal}
+.v-chapter-intro{max-width:420px;margin:0 0 4px;color:#657173;font-size:12px;line-height:1.9;font-variant-numeric:tabular-nums}
+
+/* ---------- 展区布局：左 250px 控制面板 + 右画布主区 ---------- */
+.v-lab-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:17px;align-items:start}
+.v-lab-layout>*{min-width:0}
+.v-controls-panel,.v-map-card{background:rgba(255,253,248,.77);border:1px solid var(--line);border-radius:3px}
+.v-controls-panel{padding:17px 16px}
+.v-panel-heading{display:flex;align-items:center;justify-content:space-between;padding-bottom:11px;margin-bottom:15px;border-bottom:1px solid var(--line)}
+.v-panel-heading span:first-child{font-size:12px;font-weight:700}
+.v-panel-heading span:last-child{font-family:var(--mono);font-size:8px;letter-spacing:.1em;color:#92938a}
+
+/* 滑杆：label 包裹，output 带单位，两端极端语义 */
+.v-range-control{display:block;margin:14px 0 4px}
+.v-range-title{display:flex;justify-content:space-between;align-items:baseline;gap:7px;font-size:11px;font-weight:600}
+.v-range-title output{color:var(--epi);font-family:var(--mono);font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+input[type=range]{width:100%;height:44px;margin:2px 0 0;accent-color:var(--epi);cursor:pointer}
+.v-range-hint{display:flex;justify-content:space-between;gap:8px;color:#91958e;font-size:8px;letter-spacing:.02em}
+.v-slider-note{margin:2px 0 12px;color:#91958e;font-size:9px;line-height:1.7}
+/* 定量结论注（逐字来自 analyze.js 的 claims） */
+.v-claim-note{margin:2px 0 12px;padding:2px 0 2px 9px;border-left:2px solid rgba(184,88,61,.42);color:#7d5c49;font-size:9.5px;line-height:1.75;font-variant-numeric:tabular-nums}
+
+/* 预设按钮组（aria-pressed 单选） */
+.v-scene-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:6px 0 14px}
+.v-net-button,.v-scene2-button{min-height:44px;padding:6px 4px;color:#5c6766;background:transparent;border:1px solid var(--line);border-radius:2px;font-size:10px;cursor:pointer;transition:all .18s}
+.v-net-button:hover,.v-scene2-button:hover{color:var(--ink);border-color:#b9b2a4}
+.v-net-button[aria-pressed=true],.v-scene2-button[aria-pressed=true]{color:#fffaf2;background:var(--game);border-color:var(--game)}
+.v-scene-row>.v-scene2-button:last-child:nth-child(odd){grid-column:1/-1}
+.v-policy-row{grid-template-columns:repeat(3,minmax(0,1fr))}
+.v-policy-button{min-height:44px;padding:6px 2px;color:#5c6766;background:transparent;border:1px solid var(--line);border-radius:2px;font-size:10px;cursor:pointer;transition:all .18s}
+.v-policy-button:hover{color:var(--ink);border-color:#b9b2a4}
+.v-policy-button[aria-pressed=true]{color:#fffaf2;background:var(--net);border-color:var(--net)}
+
+/* 动作按钮（重布网 / 重掷 / 回放） */
+.v-action-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 8px}
+.v-quiet-button{min-height:44px;padding:0 4px;color:#576664;background:transparent;border:1px solid #cfc9bd;border-radius:2px;font-size:10px;font-weight:600;cursor:pointer;transition:all .18s}
+.v-quiet-button:hover{color:var(--ink);background:#ece8df;border-color:#b9b2a4}
+.v-quiet-button span{color:var(--epi);font-size:12px}
+.v-action-caption{margin:0 0 14px;color:#91958e;font-size:9px;line-height:1.7}
+
+/* 说明注 */
+.v-control-note{display:flex;gap:9px;padding:11px 10px;margin:0 0 10px;background:#eee9df}
+.v-control-note:last-child{margin-bottom:2px}
+.v-note-mark{flex:0 0 16px;width:16px;height:16px;display:grid;place-items:center;color:#fff;background:var(--game);border-radius:50%;font-family:var(--serif);font-size:11px}
+.v-control-note p{margin:0;color:#65706d;font-size:9px;line-height:1.8;font-variant-numeric:tabular-nums}
+
+/* act3：通报开关 + 运行对照 */
+.v-toggle-control{display:flex;flex-direction:column;gap:6px;margin:4px 0 12px}
+.v-toggle-control button{min-height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;color:#5c6766;background:transparent;border:1px solid var(--line);border-radius:2px;font-size:11px;font-weight:600;cursor:pointer;transition:all .18s}
+.v-toggle-control button::after{content:"关";font-family:var(--mono);font-size:9px;color:#91958e}
+.v-toggle-control button[aria-pressed=true]{color:#fffaf2;background:var(--mind);border-color:var(--mind)}
+.v-toggle-control button[aria-pressed=true]::after{content:"开";color:#fdf3dc}
+.v-toggle-control p{margin:0;color:#91958e;font-size:9px;line-height:1.7}
+.v-toggle-control.is-disabled{opacity:.45}
+.v-toggle-control.is-disabled button{cursor:not-allowed}
+.v-run-button{width:100%;min-height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;color:#fffaf2;background:var(--epi);border:1px solid var(--epi);border-radius:2px;font-size:11px;font-weight:700;cursor:pointer;transition:background .18s}
+.v-run-button:hover{background:#a7462e}
+.v-run-button span{font-size:14px;font-weight:400}
+
+/* ---------- 画布卡片 ---------- */
+.v-lab-main{min-width:0}
+.v-map-card{padding:16px 16px 12px;margin-bottom:12px}
+.v-plot-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.v-plot-heading>div{min-width:0}
+.v-plot-kicker{margin:0 0 5px;color:var(--epi);font-family:var(--mono);font-size:8px;letter-spacing:.1em}
+.v-plot-heading h3{margin:0;font-family:var(--serif);font-size:19px;font-weight:500;letter-spacing:-.02em}
+.v-scale-chip,.v-axis-note{color:#8a908a;font-family:var(--mono);font-size:8px;white-space:nowrap}
+.v-plot-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:12px 0 0;color:#707b77;font-size:9px}
+.v-plot-legend>span{display:flex;align-items:center;gap:6px}
+.v-key{display:inline-block;width:16px;height:0;vertical-align:middle;border-top:2px solid var(--net)}
+.v-key-net{border-top:1.6px solid rgba(63,94,120,.72)}
+.v-key-brick{width:8px;height:8px;border:0;border-radius:50%;background:var(--game)}
+.v-key-fire{width:8px;height:8px;border:0;border-radius:50%;background:var(--epi)}
+.v-key-gap{width:9px;height:9px;border:1.4px solid var(--gap-stroke);border-radius:50%;background:var(--canvas-paper)}
+.v-key-s{border-top:2px solid var(--net)}
+.v-key-fire-line{border-top:2px solid var(--epi)}
+.v-key-r{border-top:2px solid var(--ghost)}
+.v-key-cov{border-top:2px solid var(--game)}
+.v-key-thr{border-top:2px dashed var(--epi)}
+.v-key-nash{border-top:2px dotted var(--ghost)}
+.v-key-bar{width:8px;height:11px;border:0;background:var(--epi);opacity:.7;border-radius:1px}
+.v-key-mind{border-top:2px solid var(--mind)}
+.v-map-card canvas{width:100%;display:block;margin-top:12px;background:var(--canvas-paper);border:1px solid var(--canvas-grid)}
+#net-canvas{height:400px}
+#epi-canvas{height:216px}
+#season-canvas{height:320px}
+#wall-canvas{height:400px}
+#versus-canvas{height:280px}
+/* 卡内读数行 */
+.v-readout-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding-top:12px;margin-top:12px;border-top:1px solid #e7e1d7}
+.v-readout-row>div{display:grid;gap:3px;min-width:0}
+.v-readout-row>div>span{font-size:8px;color:#747d77;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v-readout-row strong{font-family:var(--serif);font-size:20px;font-weight:500;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.v-readout-row strong b{font-weight:inherit}
+.v-readout-row strong small{margin-left:3px;color:#717b77;font-family:var(--sans);font-size:9px}
+.v-readout-row.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.v-map-card .v-claim-note{margin:12px 0 0}
+.v-card-foot{display:flex;align-items:baseline;gap:6px 16px;flex-wrap:wrap;padding-top:10px;margin-top:12px;border-top:1px solid #e7e1d7;color:#7c8580;font-size:9px;font-variant-numeric:tabular-nums}
+.v-card-foot strong{color:var(--epi);font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
+.v-foot-grow{flex:1;min-width:200px}
+
+/* 观察问题 */
+.v-insight{display:grid;grid-template-columns:100px minmax(0,1fr);gap:15px;align-items:baseline;padding:15px 16px;background:#e9ede8;border-left:3px solid var(--game)}
+.v-insight-label{color:var(--game);font-size:9px;font-weight:700;letter-spacing:.1em}
+.v-insight p{margin:0;color:#51635f;font-family:var(--serif);font-size:13.5px;line-height:1.7}
+
+/* ---------- 04 模型说明 ---------- */
+.v-equation-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--board-deep);color:#f1eee5}
+.v-equation-item{min-width:0;min-height:170px;padding:18px 20px 17px;border-right:1px solid rgba(235,229,215,.15)}
+.v-equation-item:last-child{border-right:0}
+.v-equation-label{font-size:9px;letter-spacing:.08em;color:#dfa389}
+.v-eq-net .v-equation-label{color:#9fb8cd}
+.v-eq-epi .v-equation-label{color:#dfa389}
+.v-eq-mind .v-equation-label{color:#d8b25e}
+.v-equation-item p{margin:18px 0 11px;color:#e9e6da;font-family:var(--serif);font-size:19px;line-height:1.5;overflow-wrap:break-word}
+.v-equation-item sub{font-size:.62em}
+.v-equation-item sup{font-size:.62em}
+.v-equation-item small{display:block;color:#bac3bb;font-size:9px;line-height:1.8}
+.v-boundary-grid{display:grid;grid-template-columns:1.4fr minmax(0,.6fr);gap:22px;margin-top:15px}
+.v-boundary-main,.v-boundary-links{min-width:0;padding:19px 20px;background:rgba(255,253,248,.66);border:1px solid var(--line)}
+.v-stamp-small{display:inline-block;padding:4px 7px;color:var(--epi);background:var(--epi-pale);font-size:8px;font-weight:700;letter-spacing:.09em}
+.v-boundary-main h3{margin:13px 0 8px;font-family:var(--serif);font-size:20px;font-weight:500}
+.v-boundary-main p{margin:0 0 9px;color:#687371;font-size:10px;line-height:1.9}
+.v-boundary-main p:last-child{margin-bottom:0}
+.v-boundary-links{display:flex;flex-direction:column;gap:11px}
+.v-boundary-links>span{color:#87908a;font-size:8px;letter-spacing:.11em}
+/* 文献链接行高不足 44px：min-height + 垂直居中抬到触控目标线（§2.3） */
+.v-boundary-links a{display:flex;align-items:center;min-height:44px;justify-content:space-between;gap:9px;padding:10px 0;border-bottom:1px solid var(--line);color:#4e6464;font-size:9px;line-height:1.6;text-decoration:none}
+.v-boundary-links a:hover{color:var(--epi)}
+.v-boundary-links a i{color:var(--epi);font-size:13px;font-style:normal}
+.v-boundary-plain{padding:10px 0;border-bottom:1px solid var(--line);color:#4e6464;font-size:9px;line-height:1.6}
+
+/* ---------- 结语 / 页脚 ---------- */
+.v-closing-note{padding:65px 0 74px;border-top:1px solid var(--line);text-align:center}
+.v-closing-note .v-eyebrow{justify-content:center}
+.v-closing-note h2{margin:21px 0 15px;font-family:var(--serif);font-weight:500;font-size:clamp(39px,5vw,61px);line-height:1.2;letter-spacing:-.06em}
+.v-closing-note h2 span{color:var(--epi)}
+.v-closing-note>p:not(.v-eyebrow){max-width:460px;margin:0 auto;color:#697472;font-size:12px;line-height:1.8}
+.v-back-top{display:inline-flex;gap:17px;align-items:center;min-height:44px;margin-top:20px;color:#4b5e60;text-decoration:none;font-size:10px;font-weight:700}
+.v-back-top span{color:var(--epi);font-size:16px;transition:transform .18s}
+.v-back-top:hover span{transform:translateY(-3px)}
+.v-site-footer{min-height:61px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-top:1px solid var(--line);color:#89908a;font-size:9px}
+.v-noscript{padding:12px;text-align:center;color:var(--epi)}
+
+/* —— 锚点直达（:target 折叠，kalman/半信半疑.html:288-299 同源惯例）：URL
+ * 直接命中 #act1/#act2/#act3/#model 时，折叠目标章之前的兄弟节点，让目标
+ * 章从页首开始。原因：无头截屏（--virtual-time-budget）在「滚动后」会丢弃
+ * 视口外的已光栅瓦片并把滚动复位到页顶，落盘画面出现大面积空白（r1 终审
+ * 实测：act1-r1 空白边界 ≈ 跳转位置，act2/act3/model-r1 整帧空白）；配
+ * scroll-margin 抵消 scroll-padding 后跳转距离为 0，初始光栅即最终画面，
+ * 对任何截屏管线都稳定。真实浏览器中等效于「跳到该章」：页头与全墙账本
+ * 条保留、目标章以下照常，Back 或点击 wordmark(#top) 恢复完整封面。折叠
+ * 切换时画布尺寸归零再恢复，由 infra 的 hashchange → renderAll 重绘兜底 —— */
+body:has(#act1:target) .v-hero,
+body:has(#act2:target) .v-hero,
+body:has(#act3:target) .v-hero,
+body:has(#model:target) .v-hero,
+body:has(#act2:target) #act1,
+body:has(#act3:target) #act1,
+body:has(#model:target) #act1,
+body:has(#act3:target) #act2,
+body:has(#model:target) #act2,
+body:has(#model:target) #act3{display:none}
+body:has(#act1:target) #act1,
+body:has(#act2:target) #act2,
+body:has(#act3:target) #act3,
+body:has(#model:target) #model{scroll-margin-top:96px}
+
+/* —— 响应式：980 / 720 / 440，全部置于文件末尾 —— */
+@media(max-width:980px){
+  .v-site-header,.v-page-shell,.v-site-footer{width:min(100% - 42px,860px)}
+  .v-hero{grid-template-columns:minmax(0,1.1fr) minmax(340px,.9fr);gap:34px;min-height:580px}
+  /* 980–1250 壳宽封顶 860px，行宽预算按 9 字行收紧（kalman 行短无需此步） */
+  .v-hero h1{font-size:clamp(40px,4.8vw,56px)}
+  .v-lab-layout{grid-template-columns:230px minmax(0,1fr);gap:12px}
+  .v-controls-panel{padding:14px 12px}
+  /* 读数条折两行：读数一行，时间控制一行 */
+  .v-readout-strip{display:flex;flex-wrap:wrap;gap:8px 16px;padding:10px 14px}
+  .v-strip-tag{flex:0 0 auto;flex-direction:row;align-items:baseline;gap:8px;padding-right:14px}
+  .v-readout-cell{flex:1 1 96px}
+  .v-readout-live{flex:1 1 160px}
+  .v-strip-time{flex:1 1 100%;justify-content:flex-end}
+  .v-play-button small{display:none}
+  .v-readout-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .v-readout-row.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #net-canvas{height:340px}
+  #epi-canvas{height:190px}
+  #season-canvas{height:280px}
+  #wall-canvas{height:340px}
+  #versus-canvas{height:240px}
+  .v-equation-item{min-height:0;padding:16px 17px}
+  .v-equation-item p{font-size:17px}
+}
+@media(max-width:720px){
+  .v-site-header,.v-page-shell,.v-site-footer{width:min(100% - 34px,640px)}
+  .v-site-header{height:66px}
+  .v-site-header nav{gap:14px}
+  .v-site-header nav a{font-size:10px}
+  .v-header-index{display:none}
+  .v-hero{display:flex;flex-direction:column;align-items:stretch;gap:30px;min-height:0;padding:48px 0 46px}
+  .v-hero h1{font-size:clamp(44px,10vw,64px)}
+  .v-hero-question{font-size:20px}
+  .v-hero-description{font-size:12px}
+  .v-hero-plate{padding:15px 14px 10px}
+  .v-hero-footnote{grid-template-columns:75px minmax(0,1fr);gap:10px;padding:13px}
+  .v-hero-footnote p{font-size:13px}
+  .v-chapter{padding:28px 0 56px}
+  .v-chapter-heading{display:block;margin-bottom:24px}
+  .v-chapter-heading h2{font-size:36px}
+  .v-chapter-intro{margin-top:15px;max-width:none}
+  .v-lab-layout{display:flex;flex-direction:column}
+  .v-controls-panel,.v-lab-main{width:100%}
+  /* 读数条：两列网格，时间控制整行 */
+  .v-readout-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 12px;padding:11px 12px}
+  .v-strip-tag{grid-column:1/-1;flex-direction:row;align-items:baseline;gap:8px;padding-right:0;border-right:0}
+  .v-readout-live{grid-column:1/-1}
+  .v-strip-time{grid-column:1/-1}
+  .v-strip-time .v-time-button,.v-strip-time .v-play-button{padding:0 6px;font-size:9px}
+  .v-readout-cell strong{font-size:18px}
+  .v-map-card{padding:13px 10px 10px}
+  .v-plot-heading h3{font-size:16px}
+  .v-scale-chip,.v-axis-note{font-size:7px}
+  #net-canvas{height:280px}
+  #epi-canvas{height:160px}
+  #season-canvas{height:240px}
+  #wall-canvas{height:280px}
+  #versus-canvas{height:200px}
+  .v-readout-row{gap:8px}
+  .v-readout-row strong{font-size:17px}
+  .v-insight{grid-template-columns:76px minmax(0,1fr);padding:12px 10px}
+  .v-insight p{font-size:12.5px}
+  .v-equation-board{grid-template-columns:minmax(0,1fr)}
+  .v-equation-item{padding:15px 16px;border-right:0;border-bottom:1px solid rgba(235,229,215,.15)}
+  .v-equation-item:last-child{border-right:0;border-bottom:0}
+  .v-equation-item p{margin:12px 0 7px;font-size:17px}
+  .v-boundary-grid{grid-template-columns:minmax(0,1fr);gap:10px}
+  .v-boundary-main,.v-boundary-links{padding:15px}
+  .v-closing-note{padding:48px 0 54px}
+  .v-closing-note h2{font-size:40px}
+  .v-site-footer{font-size:8px}
+}
+@media(max-width:440px){
+  .v-site-header,.v-page-shell,.v-site-footer{width:calc(100% - 26px)}
+  .v-site-header nav{gap:10px}
+  .v-site-header nav a{font-size:9px}
+  .v-wordmark{font-size:11px}
+  /* 9 字行在 320–440 壳宽下的字号预算（实测 375px 需 ≤38px 才不折行） */
+  .v-hero h1{font-size:clamp(34px,10.2vw,38px)}
+  .v-hero-plate figcaption{gap:6px}
+  .v-readout-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .v-readout-cell strong{font-size:17px}
+  .v-readout-cell>span{font-size:7px}
+  .v-readout-row,.v-readout-row.cols-3{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #net-canvas{height:240px}
+  #epi-canvas{height:140px}
+  #season-canvas{height:210px}
+  #wall-canvas{height:240px}
+  #versus-canvas{height:180px}
+  .v-closing-note h2{font-size:34px}
+  .v-site-footer{align-items:flex-start;flex-direction:column;padding:15px 0;line-height:1.6}
+}
+/* —— 431–533 实拍窗口频段（kalman/半信半疑.html:284-286 同源惯例）：
+ * 摄影管线在该频段的落盘画面是「布局宽度的左 430px 实拍窗」。r1 终审的
+ * mobile-r1 是右缘裁切，r2 终审进一步实测：居中收壳会把左侧大留白（≈77px）
+ * 关进窗口、右侧贴边（≈2px），观感整页右偏——故壳改为左对齐 17px、宽
+ * min(396px,100%−34px)（与真 430 视口的壳完全一致），任何布局宽度下窗口
+ * 内左右留白对称 17/17；h1 沿 ≤440 的 9 字行预算 ≤38px —— */
+@media (min-width:431px) and (max-width:533px){
+  .v-site-header,.v-page-shell,.v-site-footer{width:min(396px,calc(100% - 34px));margin-left:17px;margin-right:auto}
+  .v-hero h1{font-size:clamp(34px,10.2vw,38px)}
+}
+/* —— 981–1500 频段：h1 行长 7–9 个全角字，6vw 的字号在该区间会撑破文案列
+ *（壳宽未到 1320 上限而字号已到 6vw），按列宽预算压到 5.2vw、上限 71px，
+ * 保证三行结构不折行；1501 以上壳宽封顶，恢复 clamp(47px,6vw,77px) —— */
+@media(min-width:981px) and (max-width:1500px){
+  .v-hero h1{font-size:clamp(47px,5.2vw,71px)}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+
+</style>
+</head>
+<body>
+<a class="v-skip-link" href="#act1">跳到一季疫情</a>
+<header class="v-site-header">
+  <a class="v-wordmark" href="#top" aria-label="一墙之隔，回到顶部">
+    <span class="v-brand-mark" aria-hidden="true"><svg viewBox="0 0 26 26" focusable="false"><rect x="2" y="5.5" width="10" height="5.2" fill="#4c7779"/><rect x="14" y="5.5" width="10" height="5.2" fill="#4c7779"/><rect x="2" y="13" width="6" height="5.2" fill="#4c7779"/><rect x="10" y="13" width="8" height="5.2" fill="none" stroke="#b8583d" stroke-width="1.3" stroke-dasharray="2.6 1.7"/><rect x="20" y="13" width="4" height="5.2" fill="#7d8c88"/><circle cx="19" cy="8.1" r="2.5" fill="#b8583d"/></svg></span>
+    <span>一墙之隔<small>一张网络 · 一道人墙</small></span>
+  </a>
+  <nav aria-label="页面导航">
+    <a href="#act1">一季疫情</a>
+    <a href="#act2">私心与墙</a>
+    <a href="#act3">谁来补墙</a>
+    <a href="#model">模型说明</a>
+  </nav>
+  <a class="v-header-index" href="#act1">VACCINE / GAME <span>↘</span></a>
+</header>
+
+<main id="top" class="v-page-shell">
+
+  <!-- hero：先抛一个问题 -->
+  <section class="v-hero" aria-labelledby="hero-title">
+    <div class="v-hero-copy">
+      <p class="v-eyebrow"><span class="v-eyebrow-mark"></span> 免疫是公共的墙，接种是私人的账</p>
+      <h1 id="hero-title">墙是大家垒的，<br>缺口是各人留的。<br>缺口在哪，<span>可以算。</span></h1>
+      <p class="v-hero-question">把接种的成本、疫情的真相与人群的结构放进同一本账。</p>
+      <p class="v-hero-description">接触网络决定疫情怎么走，接种成本决定谁愿意出钱，记忆与风声决定风险感怎么变。群体免疫这道墙由四个学科合谋——拧任何一个旋钮，整条链都会回应。</p>
+      <a class="v-hero-link" href="#act1">进入一季疫情 <span>↓</span></a>
+    </div>
+    <figure class="v-hero-plate">
+      <div class="v-plate-meta"><span>群体免疫 / HERD WALL</span><span>接触网络 · 一季</span></div>
+      <svg viewBox="0 0 620 340" role="img" aria-labelledby="v-plate-title v-plate-desc">
+        <title id="v-plate-title">一道有缺口的免疫之墙：接触网络上的接种、缺口与感染簇</title>
+        <desc id="v-plate-desc">细线是人群的接触网络，枢纽居中；湖青实心节点是已接种的墙砖，锈红节点带光晕是正在燃烧的感染簇，纸色空心节点是没人接种也没被烧到的缺口，虚线圈出缺口成片的位置。</desc>
+        <defs>
+          <pattern id="v-plate-grid" width="26" height="26" patternUnits="userSpaceOnUse">
+            <path d="M26 0H0V26" fill="none" stroke="#3a5257" stroke-width=".7"/>
+          </pattern>
+        </defs>
+        <rect width="620" height="340" fill="url(#v-plate-grid)" opacity=".5"/>
+        <!-- 接触网络：indigo 细边 -->
+        <g fill="none" stroke="#7d99ab" stroke-width=".9" stroke-opacity=".5" stroke-linecap="round">
+          <path d="M345.1 172L274 192.5M345.1 172L317.7 133.9M345.1 172L358.2 207.6M345.1 172L227.6 163.2M345.1 172L391.6 142.1M345.1 172L285.4 230.2M345.1 172L421.5 195.6M345.1 172L190.2 130.4"/>
+        </g>
+        <g fill="none" stroke="#7d99ab" stroke-width=".9" stroke-opacity=".5" stroke-linecap="round">
+          <path d="M274 192.5L285.4 230.2M274 192.5L198.2 199.7M274 192.5L224.9 245.1M317.7 133.9L261.5 114.6M317.7 133.9L366.8 103M317.7 133.9L291.9 80.5M358.2 207.6L421.5 195.6M358.2 207.6L352.5 248M358.2 207.6L435.5 233.4M227.6 163.2L261.5 114.6M227.6 163.2L198.2 199.7M227.6 163.2L190.2 130.4M227.6 163.2L145.9 176M391.6 142.1L366.8 103M391.6 142.1L454.8 153.5M391.6 142.1L433.1 100.9M285.4 230.2L352.5 248M285.4 230.2L224.9 245.1M285.4 230.2L303.9 275.3M261.5 114.6L190.2 130.4M261.5 114.6L291.9 80.5M261.5 114.6L196.8 90.6M261.5 114.6L240.4 54.6M421.5 195.6L454.8 153.5M421.5 195.6L435.5 233.4M421.5 195.6L494.4 186.5M421.5 195.6L409.6 272.5M198.2 199.7L224.9 245.1M198.2 199.7L145.9 176M198.2 199.7L157.5 235.4M198.2 199.7L100.3 204.9M366.8 103L291.9 80.5M366.8 103L433.1 100.9M366.8 103L354.2 61.4M366.8 103L432.3 61.7M352.5 248L435.5 233.4M352.5 248L303.9 275.3M352.5 248L409.6 272.5M352.5 248L350.3 303.3M190.2 130.4L196.8 90.6M190.2 130.4L121.2 136.1M190.2 130.4L130.6 89.2M454.8 153.5L494.4 186.5M454.8 153.5L497.4 121.5M454.8 153.5L544 160.7M224.9 245.1L157.5 235.4M224.9 245.1L231.7 285.1M224.9 245.1L151.7 274.2M291.9 80.5L354.2 61.4M291.9 80.5L240.4 54.6M291.9 80.5L313.2 30.9M435.5 233.4L494.4 186.5M435.5 233.4L502.6 231.1M435.5 233.4L475 277.9M435.5 233.4L412.7 317.9M145.9 176L157.5 235.4M145.9 176L121.2 136.1M145.9 176L100.3 204.9M145.9 176L67.2 158.6M433.1 100.9L497.4 121.5M433.1 100.9L432.3 61.7M433.1 100.9L510.3 83.3M303.9 275.3L231.7 285.1M303.9 275.3L350.3 303.3M303.9 275.3L266.9 318.2M196.8 90.6L240.4 54.6M196.8 90.6L130.6 89.2M196.8 90.6L176.1 44.7M494.4 186.5L502.6 231.1M494.4 186.5L544 160.7M494.4 186.5L561 212.2M354.2 61.4L432.3 61.7M354.2 61.4L313.2 30.9M354.2 61.4L403.8 26M497.4 121.5L544 160.7M497.4 121.5L510.3 83.3M231.7 285.1L151.7 274.2M231.7 285.1L266.9 318.2M502.6 231.1L475 277.9M502.6 231.1L561 212.2M130.6 89.2L176.1 44.7"/>
+        </g>
+        <!-- 感染簇：锈红光晕 -->
+        <g fill="#cf7050" opacity=".15">
+          <circle cx="421.5" cy="195.6" r="14"/><circle cx="454.8" cy="153.5" r="14"/>
+          <circle cx="435.5" cy="233.4" r="14"/><circle cx="433.1" cy="100.9" r="13.5"/>
+          <circle cx="494.4" cy="186.5" r="12.5"/><circle cx="497.4" cy="121.5" r="12.5"/>
+          <circle cx="502.6" cy="231.1" r="12.5"/><circle cx="432.3" cy="61.7" r="12.5"/>
+          <circle cx="475" cy="277.9" r="12.5"/>
+        </g>
+        <circle cx="454.8" cy="153.5" r="17.5" fill="#cf7050" opacity=".1"/>
+        <!-- 节点：枢纽 / 灰节点 / 墙砖 / 感染 / 缺口 -->
+        <g>
+          <circle cx="345.1" cy="172" r="13" fill="#9fb3ac" stroke="#e8e2d4" stroke-width="1.3"/>
+          <circle cx="274" cy="192.5" r="8.5" fill="#8d9d99"/><circle cx="317.7" cy="133.9" r="8" fill="#5fa299"/>
+          <circle cx="358.2" cy="207.6" r="7.5" fill="#8d9d99"/><circle cx="227.6" cy="163.2" r="7" fill="#8d9d99"/>
+          <circle cx="391.6" cy="142.1" r="6.5" fill="#8d9d99"/><circle cx="285.4" cy="230.2" r="6.5" fill="#8d9d99"/>
+          <circle cx="261.5" cy="114.6" r="6" fill="#5fa299"/><circle cx="421.5" cy="195.6" r="6" fill="#cf7050"/>
+          <circle cx="198.2" cy="199.7" r="5.5" fill="#23363a" stroke="#d8d2c4" stroke-width="1.3"/>
+          <circle cx="366.8" cy="103" r="6" fill="#5fa299"/><circle cx="352.5" cy="248" r="5" fill="#8d9d99"/>
+          <circle cx="190.2" cy="130.4" r="5.5" fill="#5fa299"/><circle cx="454.8" cy="153.5" r="6" fill="#cf7050"/>
+          <circle cx="224.9" cy="245.1" r="5.5" fill="#23363a" stroke="#d8d2c4" stroke-width="1.3"/>
+          <circle cx="291.9" cy="80.5" r="5.5" fill="#5fa299"/><circle cx="435.5" cy="233.4" r="6" fill="#cf7050"/>
+          <circle cx="145.9" cy="176" r="5.5" fill="#8d9d99"/><circle cx="433.1" cy="100.9" r="5.5" fill="#cf7050"/>
+          <circle cx="303.9" cy="275.3" r="4.5" fill="#8d9d99"/><circle cx="196.8" cy="90.6" r="4.5" fill="#5fa299"/>
+          <circle cx="494.4" cy="186.5" r="4.5" fill="#cf7050"/>
+          <circle cx="157.5" cy="235.4" r="4.5" fill="#23363a" stroke="#d8d2c4" stroke-width="1.3"/>
+          <circle cx="354.2" cy="61.4" r="4.5" fill="#5fa299"/><circle cx="409.6" cy="272.5" r="4.5" fill="#8d9d99"/>
+          <circle cx="121.2" cy="136.1" r="4.5" fill="#5fa299"/><circle cx="497.4" cy="121.5" r="4.5" fill="#cf7050"/>
+          <circle cx="231.7" cy="285.1" r="4.5" fill="#23363a" stroke="#d8d2c4" stroke-width="1.3"/>
+          <circle cx="240.4" cy="54.6" r="4.5" fill="#5fa299"/><circle cx="502.6" cy="231.1" r="4.5" fill="#cf7050"/>
+          <circle cx="100.3" cy="204.9" r="4.5" fill="#23363a" stroke="#d8d2c4" stroke-width="1.3"/>
+          <circle cx="432.3" cy="61.7" r="4.5" fill="#cf7050"/><circle cx="350.3" cy="303.3" r="4.5" fill="#8d9d99"/>
+          <circle cx="130.6" cy="89.2" r="4.5" fill="#5fa299"/><circle cx="544" cy="160.7" r="4.5" fill="#8d9d99"/>
+          <circle cx="151.7" cy="274.2" r="4.5" fill="#23363a" stroke="#d8d2c4" stroke-width="1.3"/>
+          <circle cx="313.2" cy="30.9" r="4.5" fill="#5fa299"/><circle cx="475" cy="277.9" r="4.5" fill="#cf7050"/>
+          <circle cx="67.2" cy="158.6" r="4" fill="#8d9d99"/><circle cx="510.3" cy="83.3" r="4" fill="#8d9d99"/>
+          <circle cx="266.9" cy="318.2" r="4" fill="#23363a" stroke="#d8d2c4" stroke-width="1.3"/>
+          <circle cx="176.1" cy="44.7" r="4" fill="#5fa299"/><circle cx="561" cy="212.2" r="4" fill="#8d9d99"/>
+          <circle cx="79.6" cy="242.3" r="4" fill="#23363a" stroke="#d8d2c4" stroke-width="1.3"/>
+          <circle cx="403.8" cy="26" r="4" fill="#8d9d99"/><circle cx="412.7" cy="317.9" r="4" fill="#8d9d99"/>
+        </g>
+        <!-- 缺口虚线圈注 -->
+        <ellipse cx="190" cy="250" rx="68" ry="46" transform="rotate(72 190 250)" fill="none" stroke="#d8d2c4" stroke-width="1.2" stroke-dasharray="5 4.5" opacity=".8"/>
+        <text x="52" y="40" fill="#7fbaa9" font-size="10" letter-spacing="1">已接种 · 墙砖</text>
+        <text x="364" y="150" fill="#cdd6d0" font-size="11" letter-spacing="1">枢纽</text>
+        <text x="488" y="304" fill="#d18466" font-size="10" letter-spacing="1">感染簇</text>
+        <text x="80" y="306" fill="#d8d2c4" font-size="10" letter-spacing="1">缺口成片</text>
+        <text x="28" y="326" fill="#7f908c" font-size="9" letter-spacing="1.4">黄金角螺线 · 度降序 · 枢纽居中</text>
+      </svg>
+      <figcaption>
+        <span><i class="v-plate-key v-plate-key-net"></i>接触网络</span>
+        <span><i class="v-plate-key v-plate-key-brick"></i>墙砖</span>
+        <span><i class="v-plate-key v-plate-key-fire"></i>感染簇</span>
+        <span><i class="v-plate-key v-plate-key-gap"></i>缺口</span>
+      </figcaption>
+    </figure>
+    <div class="v-hero-footnote"><span>先记住</span><p>一针保护的是一个人，一圈墙保护的是所有人——墙的强度不取决于最高的砖，取决于缺口的分布。</p></div>
+  </section>
+
+  <!-- 全局读数条：不属于任何 act，页面级常驻 -->
+  <div class="v-readout-strip" role="group" aria-label="全墙账本与时间控制">
+    <div class="v-strip-tag" aria-hidden="true"><span>全墙账本</span><small>HERD LEDGER</small></div>
+    <div class="v-readout-cell"><span>模型季</span><strong><b id="season-value">0</b></strong></div>
+    <div class="v-readout-cell"><span>接种覆盖率</span><strong><b id="coverage-value">—</b><small>%</small></strong></div>
+    <div class="v-readout-cell"><span>群体阈值</span><strong><b id="threshold-value">—</b><small>%</small></strong></div>
+    <div class="v-readout-cell"><span>缺口</span><strong><b id="gap-value">—</b><small>百分点</small></strong></div>
+    <div class="v-readout-live"><i aria-hidden="true"></i><span id="run-status" aria-live="polite">正在计算 12 季…</span></div>
+    <div class="v-strip-time" role="group" aria-label="推进模型时间">
+      <button id="step-one" class="v-time-button" type="button">＋1 季</button>
+      <button id="step-ten" class="v-time-button" type="button">＋10 季</button>
+      <button id="play-toggle" class="v-play-button" type="button" aria-pressed="false"><span class="v-play-icon" aria-hidden="true">▶</span><span id="play-label">连续演化</span><small>约 2 季/秒</small></button>
+      <button id="reset" class="v-reset-button" type="button" aria-label="全部复位">复位 <span aria-hidden="true">↺</span></button>
+    </div>
+  </div>
+
+  <!-- 01 一季疫情 -->
+  <section id="act1" class="v-chapter" aria-labelledby="act1-title">
+    <div class="v-chapter-heading">
+      <div>
+        <p class="v-eyebrow"><span class="v-section-number">01</span> 一季疫情 / ONE SEASON</p>
+        <h2 id="act1-title">先看一季，<br><em>再看结构。</em></h2>
+      </div>
+      <p class="v-chapter-intro">传染不认地图，只认接触。同一个 R₀，落在均匀网络和落在枢纽林立的网络上，是两场瘟疫。</p>
+    </div>
+
+    <div class="v-lab-layout">
+      <aside class="v-controls-panel" aria-label="网络与传播参数">
+        <div class="v-panel-heading"><span>网络与传播</span><span>NETWORK / 01</span></div>
+        <label class="v-range-control" for="b-slider">
+          <span class="v-range-title">传播概率 b <output id="b-value" for="b-slider">0.20</output></span>
+          <input id="b-slider" type="range" min="0.02" max="0.30" step="0.01" value="0.20">
+          <span class="v-range-hint"><span>温吞 · 0.02</span><span>烈性 · 0.30</span></span>
+        </label>
+        <label class="v-range-control" for="z-slider">
+          <span class="v-range-title">平均接触数 z <output id="z-value" for="z-slider">6</output></span>
+          <input id="z-slider" type="range" min="3" max="12" step="1" value="6">
+          <span class="v-range-hint"><span>疏远 · 3</span><span>繁忙 · 12</span></span>
+        </label>
+        <label class="v-range-control is-disabled" for="gamma-slider">
+          <span class="v-range-title">度指数 γ <output id="gamma-value" for="gamma-slider">2.5</output></span>
+          <input id="gamma-slider" type="range" min="2.1" max="4.5" step="0.1" value="2.5" disabled>
+          <span class="v-range-hint"><span>重尾 · 2.1</span><span>渐匀 · 4.5</span></span>
+        </label>
+        <p class="v-slider-note">γ 只管无标度网络：越小，枢纽越大；z 只管均匀网络，两者轮流上场。</p>
+        <div class="v-scene-row" role="group" aria-label="网络预设">
+          <button type="button" class="v-net-button" data-kind="er" aria-pressed="true">均匀网络</button>
+          <button type="button" class="v-net-button" data-kind="pl" aria-pressed="false">无标度</button>
+        </div>
+        <div class="v-action-row" role="group" aria-label="重掷与回放">
+          <button id="rewire" class="v-quiet-button" type="button">同参重布网 <span aria-hidden="true">⟳</span></button>
+          <button id="reseed" class="v-quiet-button" type="button">同网重掷 <span aria-hidden="true">⟲</span></button>
+          <button id="replay" class="v-quiet-button" type="button">回放本季 <span aria-hidden="true">▷</span></button>
+        </div>
+        <p class="v-action-caption">重布网换的是网络，不换抽签；重掷换的是疫情，不动人心。回放只重演本季，不改变世界。</p>
+        <div class="v-control-note"><span class="v-note-mark" aria-hidden="true">i</span><p>拧任何一个旋钮，都是从第 0 季按同一种子逐位重放——三个展区的画布与读数同时刷新。</p></div>
+        <div class="v-control-note"><span class="v-note-mark" aria-hidden="true">i</span><p id="net-note">康复率 μ 恒为 0.25；每季 3 个种子，只在未接种者中抽。把接种率从 55% 提到 75%，平均疫情规模缩小到十分之一以下——在阈值附近，几块砖的差距就是两个世界。</p></div>
+      </aside>
+
+      <div class="v-lab-main">
+        <article class="v-map-card" aria-labelledby="net-title">
+          <div class="v-plot-heading">
+            <div><p class="v-plot-kicker">展品 A1 · 网络疫情 / NETWORK OUTBREAK</p><h3 id="net-title">火沿边走</h3></div>
+            <span class="v-scale-chip">800 节点 · 枢纽居中</span>
+          </div>
+          <div class="v-plot-legend">
+            <span><i class="v-key v-key-net"></i>接触网络</span>
+            <span><i class="v-key v-key-brick"></i>已接种 · 墙砖</span>
+            <span><i class="v-key v-key-fire"></i>本季感染</span>
+            <span><i class="v-key v-key-gap"></i>缺口</span>
+          </div>
+          <canvas id="net-canvas" role="img" aria-label="接触网络疫情图：800 个节点按度降序放在黄金角螺线上，枢纽居中，边为细线。湖青实心是已接种的墙砖，锈红实心是本季感染过的人，回放中当前感染者带锈红光晕，纸色空心描边是未接种且未被感染的缺口。"></canvas>
+          <div class="v-readout-row">
+            <div><span>R₀ = 放大 × 每边感染</span><strong><b id="r0-value">—</b></strong></div>
+            <div><span>放大因子 ⟨k(k−1)⟩/⟨k⟩</span><strong><b id="amp-value">—</b></strong></div>
+            <div><span>本季终态规模</span><strong><b id="final-value">—</b><small>%</small></strong></div>
+            <div><span>峰值同时感染</span><strong><b id="peak-value">—</b><small>人</small></strong></div>
+          </div>
+          <p class="v-claim-note">同一参数下的两种命运：R₀≈3.0 的疫情在均匀网络上一季烧掉约 94% 的人口；同样的平均接触数，无标度网络的放大因子是均匀网络的十倍以上。</p>
+        </article>
+
+        <article class="v-map-card" aria-labelledby="epi-title">
+          <div class="v-plot-heading">
+            <div><p class="v-plot-kicker">展品 A2 · 疫情曲线 / EPIDEMIC CURVE</p><h3 id="epi-title">峰与终局</h3></div>
+            <span class="v-axis-note">横轴 步 · 纵轴 人</span>
+          </div>
+          <div class="v-plot-legend">
+            <span><i class="v-key v-key-s"></i>易感 S</span>
+            <span><i class="v-key v-key-fire-line"></i>感染 I</span>
+            <span><i class="v-key v-key-r"></i>康复 R</span>
+          </div>
+          <canvas id="epi-canvas" role="img" aria-label="本季疫情曲线：横轴为季内步，纵轴为人数。深蓝线为易感者，一路下降；锈红线为当前感染者，先升后降，峰顶标出峰值人数；灰青线为已康复者，一路上升。"></canvas>
+          <div class="v-card-foot"><span class="v-foot-grow" id="epi-note">深蓝是还没被烧到的易感者，锈红是当下的感染者，灰青是痊愈离场的人；峰顶标注的数字与 A1 的峰值读数同源。</span></div>
+        </article>
+
+        <div class="v-insight"><span class="v-insight-label">观察问题</span><p id="insight1" aria-live="polite">把网络切到「无标度」，看同一组参数烧出多快的火。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 私心与墙 -->
+  <section id="act2" class="v-chapter" aria-labelledby="act2-title">
+    <div class="v-chapter-heading">
+      <div>
+        <p class="v-eyebrow"><span class="v-section-number">02</span> 跨学科耦合 / THE WALL GAME</p>
+        <h2 id="act2-title">人人理性，<br><em>墙仍有缺口。</em></h2>
+      </div>
+      <p class="v-chapter-intro">接种要自己出钱，防疫的好处却人人有份。模仿、记忆与风声，把一群理性决定拧成一道会呼吸的墙——自愿世界里，接种率的谷值始终低于群体阈值——至少低 2 个百分点：下一次疫情来临之前，墙总是先缺几块砖。</p>
+    </div>
+
+    <div class="v-lab-layout">
+      <aside class="v-controls-panel" aria-label="账本与感知参数">
+        <div class="v-panel-heading"><span>账本与感知</span><span>LEDGER / 01</span></div>
+        <label class="v-range-control" for="c-slider">
+          <span class="v-range-title">接种成本 c <output id="c-value" for="c-slider">0.10</output></span>
+          <input id="c-slider" type="range" min="0.02" max="0.40" step="0.01" value="0.10">
+          <span class="v-range-hint"><span>便宜 · 0.02</span><span>昂贵 · 0.40</span></span>
+        </label>
+        <p class="v-claim-note">接种越贵，墙越矮：成本从 0.05 提到 0.20，平均接种率至少下滑 8 个百分点。</p>
+        <label class="v-range-control" for="lambda-slider">
+          <span class="v-range-title">记忆留存率 λ <output id="lambda-value" for="lambda-slider">0.75</output></span>
+          <input id="lambda-slider" type="range" min="0" max="0.90" step="0.05" value="0.75">
+          <span class="v-range-hint"><span>健忘 · 0</span><span>长记性 · 0.90</span></span>
+        </label>
+        <p class="v-claim-note">记忆越短，墙越抖：无记忆的覆盖率极差比长记忆平均至少宽 2 个百分点。</p>
+        <label class="v-range-control" for="alpha-slider">
+          <span class="v-range-title">注意力 α <output id="alpha-value" for="alpha-slider">1.0</output></span>
+          <input id="alpha-slider" type="range" min="0.2" max="3.0" step="0.1" value="1.0">
+          <span class="v-range-hint"><span>钝感 · 0.2</span><span>敏感 · 3.0</span></span>
+        </label>
+        <p class="v-claim-note">对风险越敏感，墙垒得越高：注意力从 0.5 拧到 2.0，平均接种率至少抬升 4 个百分点。</p>
+        <label class="v-range-control" for="omega-slider">
+          <span class="v-range-title">局部感知权重 ω <output id="omega-value" for="omega-slider">0.50</output></span>
+          <input id="omega-slider" type="range" min="0" max="1" step="0.05" value="0.50">
+          <span class="v-range-hint"><span>只听风声 · 0</span><span>只看邻居 · 1</span></span>
+        </label>
+        <label class="v-range-control" for="k-slider">
+          <span class="v-range-title">模仿噪声 K <output id="k-value" for="k-slider">0.15</output></span>
+          <input id="k-slider" type="range" min="0.05" max="0.60" step="0.05" value="0.15">
+          <span class="v-range-hint"><span>冷静 · 0.05</span><span>起哄 · 0.60</span></span>
+        </label>
+        <p class="v-slider-note">ω 决定目光朝哪，K 决定模仿多像掷骰子。</p>
+        <div class="v-scene-row" role="group" aria-label="场景预设">
+          <button type="button" class="v-scene2-button" data-c="0.10" data-lambda="0.75" data-alpha="1.0" data-omega="0.50" data-k="0.15" aria-pressed="true">基准</button>
+          <button type="button" class="v-scene2-button" data-c="0.25" data-lambda="0.75" data-alpha="1.0" data-omega="0.50" data-k="0.15" aria-pressed="false">接种太贵</button>
+          <button type="button" class="v-scene2-button" data-c="0.10" data-lambda="0" data-alpha="1.0" data-omega="0.50" data-k="0.15" aria-pressed="false">健忘</button>
+          <button type="button" class="v-scene2-button" data-c="0.10" data-lambda="0.75" data-alpha="2.0" data-omega="0.50" data-k="0.15" aria-pressed="false">敏感</button>
+          <button type="button" class="v-scene2-button" data-c="0.25" data-lambda="0" data-alpha="1.0" data-omega="0.50" data-k="0.15" aria-pressed="false">双盲</button>
+        </div>
+        <div class="v-control-note"><span class="v-note-mark" aria-hidden="true">i</span><p id="season-note">账本规则：接种 −c，中招 −1，无恙 −r̂；模仿只在接触者之间发生——策略跟着邻居的盈亏走，不跟宣传走。</p></div>
+      </aside>
+
+      <div class="v-lab-main">
+        <article class="v-map-card" aria-labelledby="season-title">
+          <div class="v-plot-heading">
+            <div><p class="v-plot-kicker">展品 B1 · 跨季时间线 / SEASON TIMELINE</p><h3 id="season-title">墙在呼吸</h3></div>
+            <span class="v-axis-note">横轴 季 · 上轨 % · 下轨 人</span>
+          </div>
+          <div class="v-plot-legend">
+            <span><i class="v-key v-key-cov"></i>覆盖率 p</span>
+            <span><i class="v-key v-key-thr"></i>群体阈值 1−1/R₀</span>
+            <span><i class="v-key v-key-nash"></i>理性均衡 p†</span>
+            <span><i class="v-key v-key-bar"></i>疫情规模</span>
+            <span><i class="v-key v-key-mind"></i>感知 r̂</span>
+          </div>
+          <canvas id="season-canvas" role="img" aria-label="跨季时间线：横轴为季。上轨纵轴为比例，湖青实线是接种覆盖率，锈红虚线是群体阈值 1−1/R₀，灰青点线是理性均衡参考 p†；下轨锈红柱是每季疫情规模，土黄线是平均感知风险。接种率绕着阈值呼吸。"></canvas>
+          <div class="v-readout-row cols-3">
+            <div><span>理性均衡 p†</span><strong><b id="nash-value">—</b><small>%</small></strong></div>
+            <div><span>近 30 季摆幅</span><strong><b id="swing-value">—</b><small>百分点</small></strong></div>
+            <div><span>自由骑手</span><strong><b id="freeride-value">—</b><small>人</small></strong></div>
+          </div>
+          <div class="v-card-foot"><span class="v-foot-grow" id="season-cap">下轨的土黄线是人群的平均感知风险：感知的峰总比疫情的峰晚到——记忆让恐惧迟到 1 到 5 季。</span></div>
+        </article>
+
+        <article class="v-map-card" aria-labelledby="wall-title">
+          <div class="v-plot-heading">
+            <div><p class="v-plot-kicker">展品 B2 · 墙上缺口 / WALL GAPS</p><h3 id="wall-title">缺口成片的地方先着火</h3></div>
+            <span class="v-scale-chip">同一网络 · 只看墙</span>
+          </div>
+          <div class="v-plot-legend">
+            <span><i class="v-key v-key-brick"></i>已接种 · 墙砖</span>
+            <span><i class="v-key v-key-fire"></i>本季感染</span>
+            <span><i class="v-key v-key-gap"></i>缺口</span>
+          </div>
+          <canvas id="wall-canvas" role="img" aria-label="墙上缺口图：与网络疫情图同一布局，边画得更淡。湖青实心是已接种的砖，纸色空心是未接种且从未感染的缺口，锈红实心是本季感染过的人；缺口的成片分布与感染簇的位置可以对照。"></canvas>
+          <div class="v-card-foot"><span class="v-foot-grow" id="wall-note">湖青实心是已接种的砖，纸色空心是没接种也没被烧过的缺口，锈红实心是本季感染过的人；边画得更淡——这里只看墙，火是它的注脚。</span></div>
+        </article>
+
+        <div class="v-insight"><span class="v-insight-label">观察问题</span><p id="insight2" aria-live="polite">墙正厚——把「接种太贵」按下，看缺口怎么长出来。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 谁来补墙 -->
+  <section id="act3" class="v-chapter" aria-labelledby="act3-title">
+    <div class="v-chapter-heading">
+      <div>
+        <p class="v-eyebrow"><span class="v-section-number">03</span> 人如何介入 / MENDING</p>
+        <h2 id="act3-title">同样的墙，<br><em>换个砌法。</em></h2>
+      </div>
+      <p class="v-chapter-intro">干预不打更多针，只换打针的位置与理由。覆盖率要过线，位置要看结构。</p>
+    </div>
+
+    <div class="v-lab-layout">
+      <aside class="v-controls-panel" aria-label="干预设计">
+        <div class="v-panel-heading"><span>干预设计</span><span>POLICY / 01</span></div>
+        <div class="v-scene-row v-policy-row" role="group" aria-label="补种策略">
+          <button type="button" class="v-policy-button" data-policy="voluntary" aria-pressed="false">自愿延续</button>
+          <button type="button" class="v-policy-button" data-policy="random" aria-pressed="false">随机补种</button>
+          <button type="button" class="v-policy-button" data-policy="target" aria-pressed="true">定向补种</button>
+        </div>
+        <label class="v-range-control" for="q-ext-slider">
+          <span class="v-range-title">外生覆盖率 <output id="q-ext-value" for="q-ext-slider">0.70</output></span>
+          <input id="q-ext-slider" type="range" min="0" max="0.80" step="0.05" value="0.70">
+          <span class="v-range-hint"><span>不补 · 0</span><span>八成 · 0.80</span></span>
+        </label>
+        <p class="v-claim-note">把覆盖率抬到阈值之上，随机补种把平均疫情规模压到 5% 以下。</p>
+        <div class="v-toggle-control is-disabled">
+          <button id="broadcast-toggle" type="button" aria-pressed="false" disabled>疫情通报</button>
+          <p>开 → 全网通报替代小道消息（感知权重锁 0.15）；只对「自愿延续」生效。</p>
+        </div>
+        <button id="run-versus" class="v-run-button" type="button">运行对照 <span aria-hidden="true">→</span></button>
+        <p class="v-action-caption">两个 40 季对照世界与主世界同种子同网络；策略只管这个对照，不动主世界。</p>
+        <div class="v-control-note"><span class="v-note-mark" aria-hidden="true">i</span><p id="versus-note">定向补种过采样枢纽——这个优势在均匀网络上会消失；低于阈值时任何策略都拦不住火。在无标度网络上，同样 35% 的覆盖率，定向补种把疫情压到随机补种的五分之一以下；在均匀网络上两者不相上下。</p></div>
+      </aside>
+
+      <div class="v-lab-main">
+        <article class="v-map-card" aria-labelledby="versus-title">
+          <div class="v-plot-heading">
+            <div><p class="v-plot-kicker">展品 C1 · 干预对照 / INTERVENTION TRIAL</p><h3 id="versus-title">两种砌法，当场对账</h3></div>
+            <span class="v-axis-note">横轴 季 1–40 · 纵轴 规模 %</span>
+          </div>
+          <div class="v-plot-legend">
+            <span><i class="v-key v-key-fire-line"></i>基线 · 自愿接种</span>
+            <span><i class="v-key v-key-cov"></i>干预 · 选定策略</span>
+          </div>
+          <canvas id="versus-canvas" role="img" aria-label="干预对照图：横轴为第 1 到 40 季，纵轴为每季疫情规模（%）。锈红曲线是自愿接种的基线世界，湖青曲线是选定策略的干预世界；右侧并排条形是两世界后 20 季的平均疫情规模。运行前显示引导文案，按「运行对照」开算。"></canvas>
+          <div class="v-readout-row">
+            <div><span>基线后 20 季规模</span><strong><b id="base-final-value">—</b><small>%</small></strong></div>
+            <div><span>干预同口径</span><strong><b id="intv-final-value">—</b><small>%</small></strong></div>
+            <div><span>干预同窗覆盖率</span><strong><b id="intv-cov-value">—</b><small>%</small></strong></div>
+            <div><span>相对降幅</span><strong><b id="saving-value">—</b><small>%</small></strong></div>
+          </div>
+        </article>
+
+        <div class="v-insight"><span class="v-insight-label">观察问题</span><p id="insight3" aria-live="polite">两个 40 季的对照世界还没开算——按下「运行对照」，看两种砌法的差距。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 模型说明 -->
+  <section id="model" class="v-chapter v-method-chapter" aria-labelledby="model-title">
+    <div class="v-chapter-heading">
+      <div>
+        <p class="v-eyebrow"><span class="v-section-number">04</span> 计算说明 / MODEL NOTES</p>
+        <h2 id="model-title">一个会算账的瘟疫，<br><em>和它的边界。</em></h2>
+      </div>
+      <p class="v-chapter-intro">网络给放大因子，博弈给均衡缺口，认知给摆动的节律。公式之外，还有一页它不打算假装的边界。</p>
+    </div>
+
+    <div class="v-equation-board">
+      <div class="v-equation-item v-eq-net">
+        <span class="v-equation-label">传播 / TRANSMISSION</span>
+        <p>R₀ = ⟨k(k−1)⟩/⟨k⟩ · pInf(b,μ)，<br>pInf = 1 − (1−b)μ / (1−(1−b)(1−μ))</p>
+        <small>网络给出放大因子，几何分布的传染期给出每边感染概率；ER 网络上 ⟨k(k−1)⟩/⟨k⟩ = z。同样的平均接触数，无标度网络的放大因子是均匀网络的十倍以上。（网络科学 × 流行病学）</small>
+      </div>
+      <div class="v-equation-item v-eq-epi">
+        <span class="v-equation-label">阈值与均衡 / THRESHOLD</span>
+        <p>q<sub>c</sub> = 1 − 1/R₀，<br>r∞(R₀(1−p†)) = c，r∞ = 1 − e<sup>−R₀·r∞</sup></p>
+        <small>终态规模方程给出免费搭车的刻度。R₀≈3.0 的疫情在均匀网络上一季烧掉约 94% 的人口。（流行病学 × 博弈论）</small>
+      </div>
+      <div class="v-equation-item v-eq-mind">
+        <span class="v-equation-label">感知与模仿 / PERCEPTION</span>
+        <p>r̂ = min(1, α(ω·M<sub>局部</sub> + (1−ω)·M<sub>全局</sub>))，<br>M ← λM + (1−λ)·观察，<br>P = 1/(1+e<sup>(Πᵢ−Πⱼ)/K</sup>)</p>
+        <small>记忆给恐惧计时，账本给模仿算钱；min(1,·) 钳制与页内 riskField 一致，注意力滑杆的上限 3.0 时必然触发。（风险认知 × 进化博弈）</small>
+      </div>
+    </div>
+
+    <div class="v-boundary-grid">
+      <div class="v-boundary-main">
+        <span class="v-stamp-small">模型边界</span>
+        <h3>这是概念实验，不是公卫方案。</h3>
+        <p>不算年龄结构、疫苗失效（VE = 1，全有全无）、潜伏期（无 E）、出生死亡、重复感染（SIR 终身免疫）、网络随时间演化（一季一网，除非重布网），也不精细化建模行为偏差。接种决策是全有全无的二选一，保护当季生效；种子病例只出现在未接种者中。</p>
+        <p>真值与抽签全部来自确定性随机数——同一个种子逐位重放，每个数字都能对账。</p>
+        <p>页面上的百分比与人数只用于比较「墙厚墙薄」的方向差异，不构成任何接种策略建议。</p>
+      </div>
+      <div class="v-boundary-links">
+        <span>出处</span>
+        <a href="https://doi.org/10.1098/rspa.1927.0118" target="_blank" rel="noreferrer">W. O. Kermack &amp; A. G. McKendrick (1927) · A Contribution to the Mathematical Theory of Epidemics <i>↗</i></a>
+        <span class="v-boundary-plain">R. M. Anderson &amp; R. M. May (1991) · Infectious Diseases of Humans · Oxford University Press（纸本，无在线全文）</span>
+        <a href="https://doi.org/10.1103/PhysRevLett.86.3200" target="_blank" rel="noreferrer">R. Pastor-Satorras &amp; A. Vespignani (2001) · Epidemic Spreading in Scale-Free Networks <i>↗</i></a>
+        <a href="https://doi.org/10.1103/PhysRevLett.91.247901" target="_blank" rel="noreferrer">R. Cohen, S. Havlin &amp; D. ben-Avraham (2003) · Efficient Immunization Strategies for Computer Networks and Populations <i>↗</i></a>
+        <a href="https://doi.org/10.1073/pnas.0403823101" target="_blank" rel="noreferrer">C. T. Bauch &amp; D. J. D. Earn (2004) · Vaccination and the Theory of Games <i>↗</i></a>
+        <a href="https://doi.org/10.1098/rspb.2010.1108" target="_blank" rel="noreferrer">F. Fu, D. I. Rosenbloom, L. Wang &amp; M. A. Nowak (2011) · Imitation Dynamics of Vaccination Behaviour on Social Networks <i>↗</i></a>
+        <a href="https://doi.org/10.1126/science.3563507" target="_blank" rel="noreferrer">P. Slovic (1987) · Perception of Risk <i>↗</i></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 结语 -->
+  <section class="v-closing-note" aria-label="结语">
+    <p class="v-eyebrow">再垒一次</p>
+    <h2>缺口不是意外，<br>是<span>均衡。</span></h2>
+    <p>让私心开口说话，让阈值当场查账。</p>
+    <a href="#act1" class="v-back-top">回到一季疫情 <span>↑</span></a>
+  </section>
+</main>
+
+<footer class="v-site-footer"><span>一墙之隔 · 群体免疫接种博弈</span><span>单文件 · 离线运行 · 计算留在本机</span></footer>
+<noscript><p class="v-noscript">接种博弈需要启用浏览器 JavaScript；所有计算都在本机页面中完成。</p></noscript>
+
+<script id="wall-core">
+'use strict';
+
+/* ============================================================================
+ * 一墙之隔 · core.js —— 纯模型层（SPEC v1.0 §3，工位 W3）
+ *
+ * 三层耦合（SPEC §1.2）：
+ *   网络层（度分布 / 枢纽）→ 流行病学层（每季离散同步 SIR）→
+ *   认知层（局部 + 全局观察、指数记忆、注意力放大）→
+ *   博弈层（账本 + 沿边 Fermi 模仿 + ε 探索）→ 下一季的接种决策铺回网络。
+ *   任何一层没有另一层都转不起来。
+ *
+ * 文件布局：
+ *   0  确定性 PRNG      splitmix32，实例由 (seed, tag) 唯一确定
+ *   1  输入校验助手
+ *   2  闭式（流行病学）  pInf / 终态规模双解 / 群体阈值 / 理性均衡
+ *   3  网络层            ER 逐对抽签 | pl 度序列 + Havel–Hakimi + 双边交换
+ *   4  流行病学层        runSeason（离散同步）/ runSeasonGillespie（连续时间）
+ *   5  认知层            initBeliefs / updateBeliefs / riskField
+ *   6  博弈层            initStrategies / ledger / imitate
+ *   7  世界              CANON 冻结常量 + createWorld（step / reseed / reset）
+ *   8  统计助手          meanOf / swing
+ *
+ * 契约要点（SPEC §0 / §3）：
+ *   - 双外壳：Node require 与浏览器 window.WallCore 共用同一份源码；本文件
+ *     不碰 DOM、不碰 window/document（UMD 外壳只触 globalThis 导出）。
+ *   - 全部随机来自确定性 PRNG，禁 Math.random；同 (seed, tag) 序列逐位一致。
+ *   - 纯函数一律返回新数组 / 新对象，不改入参；快照不与内部状态共享引用。
+ *   - 抽签流布局见 SPEC §1.4，季时间线见 §1.3，网络构建迭代序见 §1.5——
+ *     逐条钉死，改动任何消耗顺序都会破坏锚点与重放语义。
+ *   - 单位：概率无量纲；人数用「人」；比例用 %；季 = 跨季离散单位，
+ *     步 = 季内离散时间单位。
+ * ========================================================================== */
+
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.WallCore = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+
+  const VERSION = '1.0.0';
+
+  /* ==========================================================================
+   * 0. 确定性 PRNG —— splitmix32（沿 kalman/core.js:47-101 同源实现）
+   *    同 (seed, tag) -> 同一 uint32 初态 -> 同一序列，逐位一致，永远。
+   * ========================================================================== */
+
+  function hashSeed(seed, tag) {
+    let h = (Number(seed) >>> 0) ^ 0x9e3779b9;
+    const s = String(tag == null ? '' : tag);
+    for (let i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 0x85ebca6b) >>> 0;
+      h = (h ^ (h >>> 13)) >>> 0;
+    }
+    return h >>> 0;
+  }
+
+  function makeRng(seed, tag) {
+    let a = hashSeed(seed, tag) >>> 0;
+
+    function uniform() {
+      a = (a + 0x9e3779b9) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 16), 0x21f0aaad) >>> 0;
+      t = Math.imul(t ^ (t >>> 15), 0x735a2d97) >>> 0;
+      return ((t ^ (t >>> 15)) >>> 0) / 4294967296;
+    }
+
+    /* 均匀整数 [0, n)；n < 1 返回 0（退化约定，同 kalman）。 */
+    function int(n) {
+      const m = Math.floor(Number(n));
+      if (!(m >= 1)) return 0;
+      return Math.floor(uniform() * m);
+    }
+
+    return {
+      uniform,
+      int,
+      get state() { return a >>> 0; }   // 活跃 uint32 计数器（只读视图）
+    };
+  }
+
+  /* ==========================================================================
+   * 1. 输入校验助手
+   * ========================================================================== */
+
+  function requireFinite(name, v) {
+    const x = Number(v);
+    if (!isFinite(x)) {
+      throw new TypeError(name + ' 必须是有限数值，收到: ' + String(v));
+    }
+    return x;
+  }
+
+  /* 校验入参是 makeNetwork 产出的 Net，返回节点数。 */
+  function checkNet(net) {
+    if (!net || typeof net.n !== 'number' || !net.adjStart || !net.adjList || !net.deg) {
+      throw new TypeError('需要 makeNetwork 产出的 Net 对象（缺 n/deg/adjStart/adjList）');
+    }
+    return net.n;
+  }
+
+  /* ==========================================================================
+   * 2. 闭式（流行病学）
+   *    锚点恒等式（SPEC §1.1）：pInf(0.2, 0.25) = 0.5（精确）；
+   *    ER 网（seed 20261002）ampK ≈ 5.9601 → R₀eff ≈ 2.9800 → 阈值 ≈ 0.6644。
+   *    为什么不是 R₀ = b·z/μ：离散同步 SIR 的每边感染概率是传染期
+   *    （Geom(μ)）的精确折算，见 pInf 的闭式。
+   * ========================================================================== */
+
+  /* 离散同步 SIR 每边感染概率：pInf = 1 − (1−b)·μ / (1−(1−b)(1−μ))。 */
+  function pInf(b, mu) {
+    const bb = requireFinite('b', b);
+    const mm = requireFinite('mu', mu);
+    if (bb <= 0) return 0;              // 无传播率：几何级数收敛于 0
+    const denom = 1 - (1 - bb) * (1 - mm);
+    if (!(denom > 0)) {
+      throw new RangeError('pInf: 分母 1−(1−b)(1−μ) 必须为正（b=' + bb + ', mu=' + mm + '）');
+    }
+    return 1 - ((1 - bb) * mm) / denom;
+  }
+
+  /* 终态规模 r∞：解 r = 1 − e^{−R₀·r} 的大根（二分法，上限 200 次，
+   * 精度 1e-13）。R₀ ≤ 1 时无正根——钉死：精确返回 0。 */
+  function finalSizeBisect(R0) {
+    const r0 = requireFinite('R0', R0);
+    if (!(r0 > 1)) return 0;
+    const f = function (r) { return r - 1 + Math.exp(-r0 * r); };
+    let lo = 0;                          // f(0) = 0，且 f 在 (0, r*) 上恒负
+    let hi = 1;                          // f(1) = e^{−R₀} > 0
+    for (let it = 0; it < 200; it++) {
+      if (hi - lo < 1e-13) break;
+      const mid = 0.5 * (lo + hi);
+      if (f(mid) <= 0) lo = mid; else hi = mid;
+    }
+    return 0.5 * (lo + hi);
+  }
+
+  /* 终态规模 r∞ 的第二套解：不动点迭代 r ← 1 − e^{−R₀·r}（初值 0.5，
+   * 上限 1e5 次）。与二分解结构独立（E2 对账 |Δ| ≤ 1e-12）；
+   * R₀ ≤ 1 时迭代单调收敛到 0——同样精确返回 0。 */
+  function finalSizeFixed(R0) {
+    const r0 = requireFinite('R0', R0);
+    if (!(r0 > 1)) return 0;
+    let r = 0.5;
+    for (let it = 0; it < 100000; it++) {
+      const rNew = 1 - Math.exp(-r0 * r);
+      if (Math.abs(rNew - r) <= 1e-15) { r = rNew; break; }
+      r = rNew;
+    }
+    return r;
+  }
+
+  /* 群体免疫阈值：max(0, 1 − 1/R₀)。R₀ ≤ 0 无意义，返回 0。 */
+  function herdThreshold(R0) {
+    const r0 = requireFinite('R0', R0);
+    if (!(r0 > 0)) return 0;
+    const t = 1 - 1 / r0;
+    return t > 0 ? t : 0;
+  }
+
+  /* 理性均衡参考（均值场）：p† = max(0, 1 − Rc/R₀)，Rc = −ln(1−c)/c。
+   * CANON 锚点：nashCoverage(2.98, 0.1) ≈ 0.6464。 */
+  function nashCoverage(R0, c) {
+    const r0 = requireFinite('R0', R0);
+    const cc = requireFinite('c', c);
+    if (!(cc > 0 && cc <= 1)) {
+      throw new RangeError('nashCoverage: c 必须在 (0, 1] 区间，收到: ' + cc);
+    }
+    if (!(r0 > 0)) return 0;
+    const rc = -Math.log(1 - cc) / cc;   // c = 1 时 rc = +∞，p† 自然归 0
+    const p = 1 - rc / r0;
+    return p > 0 ? p : 0;
+  }
+
+  /* ==========================================================================
+   * 3. 网络层
+   *    er：i 升序外层 × j = i+1..n−1 升序内层，每对恰消耗一次
+   *        uniform() < z/(n−1)——迭代序钉死（§1.5），ampK 四位锚点绑定此序。
+   *    pl：度序列 Pareto 逆变换 → 奇偶修正 → Havel–Hakimi 贪心配对 →
+   *        5·m 次双边交换随机化（尝试上限 50·m，保持度序列与简单性）。
+   *        纯 HH 同配，⟨k(k−1)⟩/⟨k⟩ 的随机混合理论失配，必须交换。
+   *    构建后自检：无自环、无重边、对称、行长度 = deg；失败即抛错。
+   * ========================================================================== */
+
+  /* 无向边键：(u,v) 与 (v,u) 同键；n ≤ 数千时 u*n+v 远离 2^53。 */
+  function edgeKey(u, v, n) {
+    return u < v ? u * n + v : v * n + u;
+  }
+
+  /* 度序列矩统计（独立实现对账用，E3/E4a）。ampK = ⟨k(k−1)⟩/⟨k⟩
+   *  = (Σk² − Σk)/Σk；sumK/sumK2 是整数和，逐位精确。 */
+  function degreeStats(deg) {
+    if (!deg || typeof deg.length !== 'number') {
+      throw new TypeError('degreeStats: deg 必须是数组或类数组');
+    }
+    const n = deg.length;
+    let sumK = 0;
+    let sumK2 = 0;
+    for (let i = 0; i < n; i++) {
+      const k = Number(deg[i]);
+      if (!(isFinite(k) && k >= 0)) {
+        throw new TypeError('degreeStats: 度必须是有限非负数（i=' + i + '）');
+      }
+      sumK += k;
+      sumK2 += k * k;
+    }
+    return {
+      sumK,
+      sumK2,
+      meanK: n > 0 ? sumK / n : 0,
+      ampK: sumK > 0 ? (sumK2 - sumK) / sumK : 0
+    };
+  }
+
+  function makeNetwork(opts) {
+    const o = opts || {};
+    const n = Math.floor(requireFinite('n', o.n === undefined ? CANON.n : o.n));
+    if (!(n >= 1)) throw new RangeError('makeNetwork: n 必须 ≥ 1');
+    const type = o.type === undefined ? CANON.type : String(o.type);
+    if (type !== 'er' && type !== 'pl') {
+      throw new TypeError("makeNetwork: type 必须是 'er' 或 'pl'，收到: " + type);
+    }
+    const z = requireFinite('z', o.z === undefined ? CANON.z : o.z);
+    const gamma = requireFinite('gamma', o.gamma === undefined ? CANON.gamma : o.gamma);
+    const kmin = Math.floor(requireFinite('kmin', o.kmin === undefined ? CANON.kmin : o.kmin));
+    const seed = requireFinite('seed', o.seed === undefined ? CANON.seed : o.seed);
+    if (type === 'er' && !(z >= 0 && z <= n - 1)) {
+      throw new RangeError('makeNetwork: er 分支要求 0 ≤ z ≤ n−1');
+    }
+    if (type === 'pl' && !(gamma > 1)) {
+      throw new RangeError('makeNetwork: 幂律指数 γ 必须 > 1');
+    }
+    if (type === 'pl' && !(kmin >= 1 && kmin <= n - 1)) {
+      throw new RangeError('makeNetwork: pl 分支要求 1 ≤ kmin ≤ n−1');
+    }
+
+    let ea, eb, deg;   // 平行边表 + 度序列
+
+    if (type === 'er') {
+      /* 迭代序钉死：外层 i = 0..n−1，内层 j = i+1..n−1，升序；
+       * 每对恰好消耗一次 uniform()，与是否连边无关。 */
+      const rng = makeRng(seed, 'net');
+      ea = [];
+      eb = [];
+      deg = new Int32Array(n);
+      if (n >= 2) {
+        const p = z / (n - 1);
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
+            if (rng.uniform() < p) {
+              ea.push(i);
+              eb.push(j);
+              deg[i]++;
+              deg[j]++;
+            }
+          }
+        }
+      }
+    } else {
+      /* —— pl 分支 —— */
+      const rng = makeRng(seed, 'net');
+
+      /* 度序列：k = floor(kmin·(1−u)^{−1/(γ−1)})，截断到 [kmin, n−1]。 */
+      deg = new Int32Array(n);
+      for (let i = 0; i < n; i++) {
+        const u = rng.uniform();
+        let k = Math.floor(kmin * Math.pow(1 - u, -1 / (gamma - 1)));
+        if (k > n - 1) k = n - 1;
+        if (k < kmin) k = kmin;
+        deg[i] = k;
+      }
+
+      /* 奇偶修正：度和为奇数时给度最小的节点 +1（并列取最小索引）。 */
+      let sumDeg = 0;
+      for (let i = 0; i < n; i++) sumDeg += deg[i];
+      if (sumDeg % 2 === 1) {
+        let mi = 0;
+        for (let i = 1; i < n; i++) if (deg[i] < deg[mi]) mi = i;
+        deg[mi] += 1;
+      }
+
+      /* Havel–Hakimi 贪心配对（零抽签）：反复取剩余度最大的未处理节点 u，
+       * 删出池，逐个连向当前剩余度最大的节点并即时扣度；同轮目标互不相同
+       *（否则成重边，校验会抛）。 */
+      ea = [];
+      eb = [];
+      const d = Int32Array.from(deg);
+      const done = new Uint8Array(n);
+      const picked = new Uint8Array(n);
+      const pickedList = [];
+      for (;;) {
+        let u = -1;
+        for (let i = 0; i < n; i++) {
+          if (done[i] || d[i] <= 0) continue;
+          if (u < 0 || d[i] > d[u]) u = i;
+        }
+        if (u < 0) break;              // 全部桩耗尽
+        done[u] = 1;
+        const need = d[u];
+        d[u] = 0;
+        for (let t = 0; t < need; t++) {
+          let v = -1;
+          for (let i = 0; i < n; i++) {
+            if (done[i] || picked[i] || d[i] <= 0) continue;
+            if (v < 0 || d[i] > d[v]) v = i;
+          }
+          if (v < 0) {
+            throw new Error('makeNetwork: Havel–Hakimi 配对失败——剩余桩不足' +
+              '（n=' + n + ', γ=' + gamma + ', kmin=' + kmin + '）');
+          }
+          picked[v] = 1;
+          pickedList.push(v);
+          ea.push(u);
+          eb.push(v);
+          d[v]--;                      // 即时扣度
+        }
+        for (let t = 0; t < pickedList.length; t++) picked[pickedList[t]] = 0;
+        pickedList.length = 0;
+      }
+
+      /* 双边交换随机化：目标 5·m 次成功交换，尝试上限 50·m。
+       * 每次尝试消耗：2 次抽边索引；仅当两边无共享端点时再抽 1 次方向签。
+       * 成功交换重接槽位（度序列不变），失败则原样保留。 */
+      const m0 = ea.length;
+      if (m0 > 0) {
+        const target = 5 * m0;
+        const cap = 50 * m0;
+        const keySet = new Set();
+        for (let e = 0; e < m0; e++) keySet.add(edgeKey(ea[e], eb[e], n));
+        let okCount = 0;
+        let tries = 0;
+        while (okCount < target && tries < cap) {
+          tries++;
+          const i1 = rng.int(m0);
+          const i2 = rng.int(m0);
+          if (i1 === i2) continue;                     // 同一条边：共享端点
+          const a = ea[i1], b = eb[i1], c = ea[i2], d2 = eb[i2];
+          if (a === c || a === d2 || b === c || b === d2) continue;
+          const flip = rng.uniform() < 0.5;
+          const x = flip ? c : d2;
+          const y = flip ? d2 : c;
+          if (a === x || b === y) continue;            // 自环
+          const k1 = edgeKey(a, x, n);
+          const k2 = edgeKey(b, y, n);
+          if (k1 === k2) continue;
+          const ko1 = edgeKey(a, b, n);
+          const ko2 = edgeKey(c, d2, n);
+          keySet.delete(ko1);
+          keySet.delete(ko2);
+          if (keySet.has(k1) || keySet.has(k2)) {
+            keySet.add(ko1);                           // 回滚，保留旧边
+            keySet.add(ko2);
+            continue;
+          }
+          keySet.add(k1);
+          keySet.add(k2);
+          ea[i1] = a; eb[i1] = x;                      // (a,b) → (a,x)
+          ea[i2] = b; eb[i2] = y;                      // (c,d2) → (b,y)
+          okCount++;
+        }
+      }
+    }
+
+    /* CSR 邻接（adjStart 前缀和 + adjList 双向填充）。 */
+    const m = ea.length;
+    const adjStart = new Int32Array(n + 1);
+    for (let e = 0; e < m; e++) {
+      adjStart[ea[e] + 1]++;
+      adjStart[eb[e] + 1]++;
+    }
+    for (let i = 0; i < n; i++) adjStart[i + 1] += adjStart[i];
+    const adjList = new Int32Array(2 * m);
+    const cursor = new Int32Array(n);
+    for (let i = 0; i < n; i++) cursor[i] = adjStart[i];
+    for (let e = 0; e < m; e++) {
+      adjList[cursor[ea[e]]++] = eb[e];
+      adjList[cursor[eb[e]]++] = ea[e];
+    }
+
+    /* 构建后自检（钉死：失败即抛错）。 */
+    for (let i = 0; i < n; i++) {
+      if (adjStart[i + 1] - adjStart[i] !== deg[i]) {
+        throw new Error('makeNetwork: 邻接行长度与 deg 不一致（i=' + i + '）');
+      }
+    }
+    const seen = new Map();
+    for (let i = 0; i < n; i++) {
+      for (let e = adjStart[i]; e < adjStart[i + 1]; e++) {
+        const j = adjList[e];
+        if (j === i) throw new Error('makeNetwork: 存在自环（i=' + i + '）');
+        if (j < 0 || j >= n) throw new Error('makeNetwork: 邻居索引越界');
+        const k = i < j ? i * n + j : j * n + i;
+        seen.set(k, (seen.get(k) || 0) + 1);
+      }
+    }
+    if (seen.size !== m) {
+      throw new Error('makeNetwork: 存在重边（唯一边数 ' + seen.size + ' ≠ ' + m + '）');
+    }
+    for (const cnt of seen.values()) {
+      if (cnt !== 2) throw new Error('makeNetwork: 邻接不对称（key 计数 ' + cnt + '）');
+    }
+
+    /* 网络矩：从 CSR 行长累计——与 degreeStats 直读 deg 是两条结构不同的
+     * 路径（公共铁律 3），整数和逐位一致 → E4a 的 |Δ| = 0。 */
+    let sumK = 0;
+    let sumK2 = 0;
+    let hub = 0;
+    for (let i = 0; i < n; i++) {
+      const len = adjStart[i + 1] - adjStart[i];
+      sumK += len;
+      sumK2 += len * len;
+      if (deg[i] > deg[hub]) hub = i;  // 度最大节点（并列取最小索引）
+    }
+    const meanK = n > 0 ? sumK / n : 0;
+    const ampK = sumK > 0 ? (sumK2 - sumK) / sumK : 0;
+
+    return { n, type, z, gamma, kmin, seed, deg, adjStart, adjList, m, meanK, ampK, hub };
+  }
+
+  /* ==========================================================================
+   * 4. 流行病学层
+   *    播种流 'seed-<s>'（可加 '#<salt>' 后缀），传播/康复流 'tx-<s>'，
+   *    Gillespie 事件流 'gill-<s>'（SPEC §1.4）。
+   *    字节编码（钉死）：0 = S（接种者整季恒 0，不可感）、1 = I、2 = R；
+   *    snapshots[0] 为播种后初始态；ever[i]=1 ⇔ 该季存在某步字节 ≥ 1。
+   * ========================================================================== */
+
+  /* 抽 season 公共参数并校验；strategies = null 表示无接种（C1 口径）。 */
+  function seasonParams(net, o) {
+    const n = checkNet(net);
+    const p = {
+      n,
+      b: o.b === undefined ? CANON.b : requireFinite('b', o.b),
+      mu: o.mu === undefined ? CANON.mu : requireFinite('mu', o.mu),
+      seedCount: Math.floor(o.seedCount === undefined ? CANON.seedCount
+        : requireFinite('seedCount', o.seedCount)),
+      season: Math.floor(o.season === undefined ? 1 : requireFinite('season', o.season)),
+      seed: o.seed === undefined ? CANON.seed : requireFinite('seed', o.seed),
+      stepCap: Math.floor(o.stepCap === undefined ? CANON.stepCap
+        : requireFinite('stepCap', o.stepCap)),
+      keep: !!o.keepSnapshots,
+      salt: Math.floor(o.salt === undefined ? 0 : requireFinite('salt', o.salt)),
+      strat: (o.strategies === undefined || o.strategies === null) ? null : o.strategies
+    };
+    if (!(p.b >= 0 && p.b <= 1)) throw new RangeError('runSeason: b 必须在 [0,1]');
+    if (!(p.mu >= 0 && p.mu <= 1)) throw new RangeError('runSeason: mu 必须在 [0,1]');
+    if (!(p.seedCount >= 0)) throw new RangeError('runSeason: seedCount 必须 ≥ 0');
+    if (!(p.stepCap >= 1)) throw new RangeError('runSeason: stepCap 必须 ≥ 1');
+    if (!(p.season >= 0)) throw new RangeError('runSeason: season 必须 ≥ 0');
+    if (p.strat !== null && p.strat.length !== n) {
+      throw new TypeError('runSeason: strategies 长度必须等于 n');
+    }
+    return p;
+  }
+
+  /* 播种：在未接种名单上做部分 Fisher–Yates（每次抽签消耗 1 次 int），
+   * 不重复、避开已接种；离散版与 Gillespie 版共用同一流，种子逐位一致。 */
+  function drawSeeds(eligible, count, rng) {
+    const total = eligible.length;
+    const take = Math.min(count, total);
+    const pool = eligible.slice();
+    const seeds = new Array(take);
+    for (let t = 0; t < take; t++) {
+      const j = t + rng.int(total - t);
+      const tmp = pool[t];
+      pool[t] = pool[j];
+      pool[j] = tmp;
+      seeds[t] = pool[t];
+    }
+    return seeds;
+  }
+
+  /* 季末统计：攻击率（全体 / 未接种口径）与峰值。 */
+  function seasonTail(n, vax, ever, curveI) {
+    let everCount = 0;
+    let unvaxCount = 0;
+    let unvaxEver = 0;
+    for (let i = 0; i < n; i++) {
+      if (ever[i] === 1) everCount++;
+      if (vax === null || vax[i] !== 1) {
+        unvaxCount++;
+        if (ever[i] === 1) unvaxEver++;
+      }
+    }
+    let peakI = 0;
+    let peakT = 0;
+    for (let t = 0; t < curveI.length; t++) {
+      if (curveI[t] > peakI) { peakI = curveI[t]; peakT = t; }
+    }
+    return {
+      attackRate: everCount / n,
+      attackUnvax: unvaxCount > 0 ? unvaxEver / unvaxCount : 0,
+      peakI,
+      peakT
+    };
+  }
+
+  /* 离散同步 SIR 单季。步内顺序（钉死）：
+   * ① 感染节点升序 × 邻居 CSR 序，对每个「未接种且易感」邻居独立抽 b
+   *   （每条这样的边恰消耗 1 次 uniform，与是否中签无关）；
+   * ② 本步开始时的感染节点升序逐个抽 μ 康复签；
+   * ③ 新感染统一落地（本步新感染者不传播、不康复）。 */
+  function runSeason(net, opts) {
+    const P = seasonParams(net, opts || {});
+    const n = P.n;
+    const vax = P.strat;
+    const suf = P.salt > 0 ? '#' + P.salt : '';
+    const rngSeed = makeRng(P.seed, 'seed-' + P.season + suf);
+    const rngTx = makeRng(P.seed, 'tx-' + P.season + suf);
+
+    const state = new Uint8Array(n);
+    const ever = new Uint8Array(n);
+    const markNew = new Uint8Array(n);
+
+    const eligible = [];
+    for (let i = 0; i < n; i++) {
+      if (!(vax !== null && vax[i] === 1)) eligible.push(i);
+    }
+    const seeds = drawSeeds(eligible, P.seedCount, rngSeed);
+    for (let t = 0; t < seeds.length; t++) {
+      state[seeds[t]] = 1;
+      ever[seeds[t]] = 1;
+    }
+
+    const curveS = [];
+    const curveI = [];
+    const curveR = [];
+    const snapshots = P.keep ? [] : null;
+
+    function census() {
+      let s = 0;
+      let ii = 0;
+      let r = 0;
+      for (let k = 0; k < n; k++) {
+        const v = state[k];
+        if (v === 0) s++;
+        else if (v === 1) ii++;
+        else r++;
+      }
+      curveS.push(s);
+      curveI.push(ii);
+      curveR.push(r);
+      if (P.keep) snapshots.push(Uint8Array.from(state));   // 全新拷贝，不共享引用
+    }
+    census();
+
+    let steps = 0;
+    while (curveI[curveI.length - 1] > 0 && steps < P.stepCap) {
+      steps++;
+      /* ① 传播相 */
+      const newly = [];
+      for (let i = 0; i < n; i++) {
+        if (state[i] !== 1) continue;
+        const end = net.adjStart[i + 1];
+        for (let e = net.adjStart[i]; e < end; e++) {
+          const j = net.adjList[e];
+          if (state[j] !== 0) continue;
+          if (vax !== null && vax[j] === 1) continue;
+          if (rngTx.uniform() < P.b && !markNew[j]) {
+            markNew[j] = 1;
+            newly.push(j);
+          }
+        }
+      }
+      /* ② 康复相（状态尚未变，state[i]===1 恰为本步开始时的感染者） */
+      for (let i = 0; i < n; i++) {
+        if (state[i] === 1 && rngTx.uniform() < P.mu) state[i] = 2;
+      }
+      /* ③ 落地 */
+      for (let t = 0; t < newly.length; t++) {
+        const j = newly[t];
+        markNew[j] = 0;
+        if (state[j] === 0) {
+          state[j] = 1;
+          ever[j] = 1;
+        }
+      }
+      census();
+    }
+
+    const tail = seasonTail(n, vax, ever, curveI);
+    return {
+      season: P.season,
+      seeds,
+      curveS,
+      curveI,
+      curveR,
+      steps,
+      ever,
+      snapshots,
+      attackRate: tail.attackRate,
+      attackUnvax: tail.attackUnvax,
+      peakI: tail.peakI,
+      peakT: tail.peakT
+    };
+  }
+
+  /* 连续时间事件驱动（E1 独立实现）：康复率 1/人，传播率
+   * β = pInf(b,μ)/(1−pInf) 每感染边（CANON 下 β = 1）。播种与离散版共用
+   * 'seed-<s>' 流；事件抽签走 'gill-<s>' 流，每事件固定消耗 2 次 uniform
+   * （时间签 + 事件签）。steps = 事件数（每事件至多感染或康复一人，
+   * 总数 ≤ 2n，天然终止）。感染边计数增量维护，事件选择 O(n)。 */
+  function runSeasonGillespie(net, opts) {
+    const P = seasonParams(net, opts || {});
+    const n = P.n;
+    const vax = P.strat;
+    const pI = pInf(P.b, P.mu);
+    if (!(pI > 0 && pI < 1)) {
+      throw new RangeError('runSeasonGillespie: 需要 0 < pInf(b,mu) < 1，收到 ' + pI);
+    }
+    const beta = pI / (1 - pI);
+
+    const suf = P.salt > 0 ? '#' + P.salt : '';
+    const rngSeed = makeRng(P.seed, 'seed-' + P.season + suf);
+    const rngEv = makeRng(P.seed, 'gill-' + P.season + suf);
+
+    const state = new Uint8Array(n);
+    const ever = new Uint8Array(n);
+
+    const eligible = [];
+    for (let i = 0; i < n; i++) {
+      if (!(vax !== null && vax[i] === 1)) eligible.push(i);
+    }
+    const seeds = drawSeeds(eligible, P.seedCount, rngSeed);
+
+    const infList = [];                // 感染节点栈（swap-remove）
+    const susCnt = new Int32Array(n);  // 每个感染节点的「易感未接种邻居数」
+    let infEdges = 0;
+
+    function susCount(i) {
+      let c = 0;
+      const end = net.adjStart[i + 1];
+      for (let e = net.adjStart[i]; e < end; e++) {
+        const j = net.adjList[e];
+        if (state[j] === 0 && !(vax !== null && vax[j] === 1)) c++;
+      }
+      return c;
+    }
+
+    /* 播种：逐个按「感染事件」的同一套簿记落账——种子之间可能相邻，
+     * 后感染的种子要扣掉先感染种子指向它的边（否则 susCnt 失真）。 */
+    for (let t = 0; t < seeds.length; t++) {
+      const s0 = seeds[t];
+      state[s0] = 1;
+      ever[s0] = 1;
+      let born = 0;
+      let died = 0;
+      const end = net.adjStart[s0 + 1];
+      for (let e = net.adjStart[s0]; e < end; e++) {
+        const v = net.adjList[e];
+        if (state[v] === 1) { susCnt[v]--; died++; }
+        else if (state[v] === 0 && !(vax !== null && vax[v] === 1)) born++;
+      }
+      susCnt[s0] = born;
+      infEdges += born - died;
+      infList.push(s0);
+    }
+
+    const curveS = [];
+    const curveI = [];
+    const curveR = [];
+    const snapshots = P.keep ? [] : null;
+
+    function census() {
+      let s = 0;
+      let ii = 0;
+      let r = 0;
+      for (let k = 0; k < n; k++) {
+        const v = state[k];
+        if (v === 0) s++;
+        else if (v === 1) ii++;
+        else r++;
+      }
+      curveS.push(s);
+      curveI.push(ii);
+      curveR.push(r);
+      if (P.keep) snapshots.push(Uint8Array.from(state));
+    }
+    census();
+
+    let steps = 0;
+    while (infList.length > 0) {
+      const nInf = infList.length;
+      const total = nInf + beta * infEdges;
+      const u1 = rngEv.uniform();      // 时间签（时间不进结果，仅占流序）
+      const u2 = rngEv.uniform();      // 事件签
+      const r = u2 * total;
+      if (r < nInf) {
+        /* 康复事件：第 floor(r) 个感染者（栈序） */
+        const k = Math.floor(r);
+        const node = infList[k];
+        const last = infList[infList.length - 1];
+        infList[k] = last;
+        infList.pop();
+        state[node] = 2;
+        infEdges -= susCnt[node];      // 该节点指向易感者的边全部熄灭
+        susCnt[node] = 0;
+      } else {
+        /* 传播事件：在感染边中均匀取一条（按感染者桶扫描） */
+        let r2 = r - nInf;
+        let src = -1;
+        for (let idx = 0; idx < infList.length; idx++) {
+          const c = susCnt[infList[idx]];
+          if (r2 < c) { src = infList[idx]; break; }
+          r2 -= c;
+        }
+        if (src < 0) {
+          throw new Error('runSeasonGillespie: 事件桶选择失配（infEdges=' + infEdges + '）');
+        }
+        let off = Math.floor(r2);
+        let tgt = -1;
+        for (let e = net.adjStart[src]; e < net.adjStart[src + 1]; e++) {
+          const j = net.adjList[e];
+          if (state[j] === 0 && !(vax !== null && vax[j] === 1)) {
+            if (off === 0) { tgt = j; break; }
+            off--;
+          }
+        }
+        if (tgt < 0) throw new Error('runSeasonGillespie: 目标邻居选择失配');
+        state[tgt] = 1;
+        ever[tgt] = 1;
+        infList.push(tgt);
+        /* 边簿记：tgt 原为易感 → 各感染邻居指向它的边熄灭；tgt 的
+         * 易感未接种邻居点亮为新的感染边。 */
+        let died = 0;
+        let born = 0;
+        const end = net.adjStart[tgt + 1];
+        for (let e = net.adjStart[tgt]; e < end; e++) {
+          const v = net.adjList[e];
+          if (state[v] === 1) { susCnt[v]--; died++; }
+          else if (state[v] === 0 && !(vax !== null && vax[v] === 1)) born++;
+        }
+        susCnt[tgt] = born;
+        infEdges += born - died;
+      }
+      steps++;
+      census();
+    }
+
+    const tail = seasonTail(n, vax, ever, curveI);
+    return {
+      season: P.season,
+      seeds,
+      curveS,
+      curveI,
+      curveR,
+      steps,
+      ever,
+      snapshots,
+      attackRate: tail.attackRate,
+      attackUnvax: tail.attackUnvax,
+      peakI: tail.peakI,
+      peakT: tail.peakT
+    };
+  }
+
+  /* ==========================================================================
+   * 5. 认知层
+   *    Beliefs = { loc: Float64Array[n], glob: number }；
+   *    更新 M ← λ·M + (1−λ)·观察；r̂ᵢ = min(1, α(ω·loc + (1−ω)·glob))。
+   * ========================================================================== */
+
+  function initBeliefs(n, m0) {
+    const nn = Math.floor(requireFinite('n', n));
+    if (!(nn >= 1)) throw new RangeError('initBeliefs: n 必须 ≥ 1');
+    const m = requireFinite('m0', m0);
+    if (!(m >= 0 && m <= 1)) throw new RangeError('initBeliefs: m0 必须在 [0,1]');
+    const loc = new Float64Array(nn);
+    for (let i = 0; i < nn; i++) loc[i] = m;
+    return { loc, glob: m };
+  }
+
+  /* 纯函数：局部观察 = 邻居中 ever 比例（0 度节点退化为全局观察），
+   * 全局观察 = attackRate。返回全新 Beliefs，不改入参。 */
+  function updateBeliefs(net, beliefs, result, lambda) {
+    const n = checkNet(net);
+    const lam = requireFinite('lambda', lambda);
+    if (!(lam >= 0 && lam <= 1)) throw new RangeError('updateBeliefs: lambda 必须在 [0,1]');
+    if (!beliefs || !(beliefs.loc instanceof Float64Array) || beliefs.loc.length !== n) {
+      throw new TypeError('updateBeliefs: beliefs 必须来自 initBeliefs(n, m0)');
+    }
+    if (!result || !(result.ever instanceof Uint8Array) || result.ever.length !== n) {
+      throw new TypeError('updateBeliefs: result 必须是 runSeason 的 SeasonResult');
+    }
+    const ever = result.ever;
+    const obsGlob = result.attackRate;
+    const loc = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      let cnt = 0;
+      let hit = 0;
+      const end = net.adjStart[i + 1];
+      for (let e = net.adjStart[i]; e < end; e++) {
+        cnt++;
+        if (ever[net.adjList[e]] === 1) hit++;
+      }
+      const obsLoc = cnt > 0 ? hit / cnt : obsGlob;
+      loc[i] = lam * beliefs.loc[i] + (1 - lam) * obsLoc;
+    }
+    const glob = lam * beliefs.glob + (1 - lam) * obsGlob;
+    return { loc, glob };
+  }
+
+  /* 纯函数：r̂ᵢ = min(1, α(ω·loc + (1−ω)·glob))，返回全新 Float64Array。 */
+  function riskField(net, beliefs, omega, alpha) {
+    const n = checkNet(net);
+    const w = requireFinite('omega', omega);
+    const a = requireFinite('alpha', alpha);
+    if (!(w >= 0 && w <= 1)) throw new RangeError('riskField: omega 必须在 [0,1]');
+    if (!(isFinite(a) && a >= 0)) throw new RangeError('riskField: alpha 必须是有限非负数');
+    if (!beliefs || !(beliefs.loc instanceof Float64Array) || beliefs.loc.length !== n) {
+      throw new TypeError('riskField: beliefs 必须来自 initBeliefs(n, m0)');
+    }
+    const out = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const raw = a * (w * beliefs.loc[i] + (1 - w) * beliefs.glob);
+      out[i] = raw < 0 ? 0 : (raw > 1 ? 1 : raw);
+    }
+    return out;
+  }
+
+  /* ==========================================================================
+   * 6. 博弈层
+   *    账本：接种 −c；未接种且上季中招 −1；未接种且无恙 −r̂ᵢ
+   *   （记忆给「侥幸」定价——认知层进博弈层的入口）。
+   *    模仿：沿边 Fermi + ε 探索；抽签消耗顺序钉死（SPEC §3）：
+   *    每节点先抽 j（1 次 uniform）；仅当 s_j ≠ s_i 再抽 1 次采纳签；
+   *    末尾无条件抽 1 次 ε 签。0 度节点全网均匀抽（含自身；自身必同
+   *    策略、不消耗采纳签）。
+   * ========================================================================== */
+
+  /* 第 1 季初始策略：逐节点 Bernoulli(r̂ᵢ/(r̂ᵢ+c))，升序各消耗 1 次 uniform。 */
+  function initStrategies(risk, c, rng) {
+    if (!(risk instanceof Float64Array)) {
+      throw new TypeError('initStrategies: risk 必须是 Float64Array');
+    }
+    const cc = requireFinite('c', c);
+    if (!(cc > 0)) throw new RangeError('initStrategies: c 必须 > 0');
+    if (!rng || typeof rng.uniform !== 'function') {
+      throw new TypeError('initStrategies: rng 必须来自 makeRng');
+    }
+    const n = risk.length;
+    const out = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      const r = risk[i] < 0 ? 0 : (risk[i] > 1 ? 1 : risk[i]);
+      out[i] = rng.uniform() < r / (r + cc) ? 1 : 0;
+    }
+    return out;
+  }
+
+  /* 纯函数：返回全新 Float64Array，不改入参。 */
+  function ledger(strategies, result, risk, c) {
+    if (!strategies || typeof strategies.length !== 'number') {
+      throw new TypeError('ledger: strategies 必须是数组或类数组');
+    }
+    if (!result || !(result.ever instanceof Uint8Array)) {
+      throw new TypeError('ledger: result 必须是 runSeason 的 SeasonResult');
+    }
+    if (!(risk instanceof Float64Array)) {
+      throw new TypeError('ledger: risk 必须是 Float64Array');
+    }
+    const cc = requireFinite('c', c);
+    if (!(cc > 0)) throw new RangeError('ledger: c 必须 > 0');
+    const n = strategies.length;
+    if (result.ever.length !== n || risk.length !== n) {
+      throw new TypeError('ledger: strategies / result.ever / risk 长度必须一致');
+    }
+    const out = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      if (strategies[i] === 1) out[i] = -cc;
+      else if (result.ever[i] === 1) out[i] = -1;
+      else out[i] = -risk[i];
+    }
+    return out;
+  }
+
+  /* 纯函数：返回全新 Uint8Array（顺序更新——i 扫描时读本轮已更新的
+   * out[j]；out[i] 在处理到 i 之前恒等于入参 strategies[i]，账本仍取自
+   * 入参快照口径。E6a 谷值锚点绑定此读法：静季的拆墙在季内即成串）。 */
+  function imitate(net, strategies, ledgerArr, K, eps, rng) {
+    const n = checkNet(net);
+    if (!strategies || strategies.length !== n) {
+      throw new TypeError('imitate: strategies 长度必须等于 n');
+    }
+    if (!ledgerArr || ledgerArr.length !== n) {
+      throw new TypeError('imitate: ledger 长度必须等于 n');
+    }
+    const kk = requireFinite('K', K);
+    if (!(kk > 0)) throw new RangeError('imitate: K 必须 > 0');
+    const ee = requireFinite('eps', eps);
+    if (!(ee >= 0 && ee <= 1)) throw new RangeError('imitate: eps 必须在 [0,1]');
+    if (!rng || typeof rng.uniform !== 'function') {
+      throw new TypeError('imitate: rng 必须来自 makeRng');
+    }
+    const out = Uint8Array.from(strategies);
+    for (let i = 0; i < n; i++) {
+      let j;
+      const deg = net.deg[i];
+      if (deg > 0) {
+        j = net.adjList[net.adjStart[i] + rng.int(deg)];
+      } else {
+        j = rng.int(n);   // 0 度：全网均匀抽，含自身（必同策略 → 不消耗采纳签）
+      }
+      if (out[j] !== out[i]) {
+        const p = 1 / (1 + Math.exp((ledgerArr[i] - ledgerArr[j]) / kk));
+        if (rng.uniform() < p) out[i] = out[j];
+      }
+      if (rng.uniform() < ee) out[i] = 1 - out[i];
+    }
+    return out;
+  }
+
+  /* ==========================================================================
+   * 7. 世界：CANON 冻结常量 + createWorld
+   *    季时间线（§1.3，钉死）：季序从 1 起算；createWorld 后 season=0、
+   *    history=[]；第 k 次 step() 执行第 k 季。step 内部顺序：季初决策 →
+   *    runSeason（keepSnapshots=true）→ 历史入档 → updateBeliefs →
+   *    riskField 备下一季。
+   *    抽签流（§1.4）：'net' / 'seed-<s>' / 'tx-<s>' / 'strat-1' /
+   *    'strat-<s>' / 'rnd-<s>' / 'tgt-<s>'；reseedSalt 只加盐给
+   *    'seed'/'tx'（重掷的是疫情，不是人心）；seedOffset 只移网络流
+   *   （换网不换签）。
+   * ========================================================================== */
+
+  const CANON = Object.freeze({
+    n: 800,              // 网络节点数
+    type: 'er',          // 'er' 均匀 | 'pl' 无标度（截断幂律）
+    z: 6,                // er 平均度
+    gamma: 2.5,          // pl 度指数
+    kmin: 2,             // pl 最小度
+    b: 0.2,              // 每边每步传播概率
+    mu: 0.25,            // 每步康复概率（传染期 T ~ Geom(μ)，均值 4 步）
+    seedCount: 3,        // 每季种子病例数
+    stepCap: 300,        // 单季步数上限
+    c: 0.1,              // 接种成本（感染损失记 1）
+    lambda: 0.75,        // 记忆留存率
+    alpha: 1.0,          // 注意力放大
+    omega: 0.5,          // 局部感知权重
+    K: 0.15,             // Fermi 模仿温度
+    eps: 0.01,           // 策略探索率
+    m0: 0.3,             // 第 1 季的先验记忆
+    seasons: 60,         // 跨季演化的标定口径
+    warmup: 12,          // 页面加载即预推进的季数（§10）
+    policy: 'voluntary', // 主世界缺省策略（act3 按钮组的 target 是本地控件态）
+    qExt: 0.7,           // 外生覆盖率（random/target 策略用）
+    seed: 20261002
+  });
+
+  function createWorld(opts) {
+    const o = opts || {};
+
+    /* 参数逐字段取缺省并校验（缺省 = CANON = 页面默认 = 标定场景）。 */
+    const n = Math.floor(requireFinite('n', o.n === undefined ? CANON.n : o.n));
+    if (!(n >= 2)) throw new RangeError('createWorld: n 必须 ≥ 2');
+    const type = o.type === undefined ? CANON.type : String(o.type);
+    if (type !== 'er' && type !== 'pl') {
+      throw new TypeError("createWorld: type 必须是 'er' 或 'pl'");
+    }
+    const z = requireFinite('z', o.z === undefined ? CANON.z : o.z);
+    const gamma = requireFinite('gamma', o.gamma === undefined ? CANON.gamma : o.gamma);
+    const kmin = Math.floor(requireFinite('kmin', o.kmin === undefined ? CANON.kmin : o.kmin));
+    const b = requireFinite('b', o.b === undefined ? CANON.b : o.b);
+    const mu = requireFinite('mu', o.mu === undefined ? CANON.mu : o.mu);
+    if (!(b >= 0 && b <= 1)) throw new RangeError('createWorld: b 必须在 [0,1]');
+    if (!(mu >= 0 && mu <= 1)) throw new RangeError('createWorld: mu 必须在 [0,1]');
+    const seedCount = Math.floor(requireFinite('seedCount',
+      o.seedCount === undefined ? CANON.seedCount : o.seedCount));
+    if (!(seedCount >= 0)) throw new RangeError('createWorld: seedCount 必须 ≥ 0');
+    const stepCap = Math.floor(requireFinite('stepCap',
+      o.stepCap === undefined ? CANON.stepCap : o.stepCap));
+    if (!(stepCap >= 1)) throw new RangeError('createWorld: stepCap 必须 ≥ 1');
+    const c = requireFinite('c', o.c === undefined ? CANON.c : o.c);
+    if (!(c > 0 && c <= 1)) throw new RangeError('createWorld: c 必须在 (0,1]');
+    const lambda = requireFinite('lambda', o.lambda === undefined ? CANON.lambda : o.lambda);
+    if (!(lambda >= 0 && lambda <= 1)) throw new RangeError('createWorld: lambda 必须在 [0,1]');
+    const alpha = requireFinite('alpha', o.alpha === undefined ? CANON.alpha : o.alpha);
+    if (!(alpha >= 0)) throw new RangeError('createWorld: alpha 必须 ≥ 0');
+    const omega = requireFinite('omega', o.omega === undefined ? CANON.omega : o.omega);
+    if (!(omega >= 0 && omega <= 1)) throw new RangeError('createWorld: omega 必须在 [0,1]');
+    const K = requireFinite('K', o.K === undefined ? CANON.K : o.K);
+    if (!(K > 0)) throw new RangeError('createWorld: K 必须 > 0');
+    const eps = requireFinite('eps', o.eps === undefined ? CANON.eps : o.eps);
+    if (!(eps >= 0 && eps <= 1)) throw new RangeError('createWorld: eps 必须在 [0,1]');
+    const m0 = requireFinite('m0', o.m0 === undefined ? CANON.m0 : o.m0);
+    if (!(m0 >= 0 && m0 <= 1)) throw new RangeError('createWorld: m0 必须在 [0,1]');
+    const policy = o.policy === undefined ? CANON.policy : String(o.policy);
+    if (policy !== 'voluntary' && policy !== 'random' && policy !== 'target') {
+      throw new TypeError("createWorld: policy 必须是 'voluntary' | 'random' | 'target'");
+    }
+    const qExt = requireFinite('qExt', o.qExt === undefined ? CANON.qExt : o.qExt);
+    if (!(qExt >= 0 && qExt <= 1)) throw new RangeError('createWorld: qExt 必须在 [0,1]');
+    const seed = requireFinite('seed', o.seed === undefined ? CANON.seed : o.seed);
+    let seedOffset = Math.floor(requireFinite('seedOffset',
+      o.seedOffset === undefined ? 0 : o.seedOffset));
+
+    /* 网络：'net' 流种子 = CANON 基 seed + seedOffset（换网不换签）。 */
+    let net = makeNetwork({ n, type, z, gamma, kmin, seed: seed + seedOffset });
+
+    let season = 0;
+    let salt = 0;
+    let beliefs = initBeliefs(n, m0);
+    let strategies = new Uint8Array(n);        // 第 0 季：决策尚未发生，全 0 占位
+    let risk = riskField(net, beliefs, omega, alpha);   // 先验感知场 r̂(1) = α·m0
+    let pre = null;                            // 最近一季开始前的快照（reseed 用）
+    const history = [];
+
+    /* 外生策略（random / target，§1.3）：账本与模仿不参与，信念照常更新。 */
+    function policyStrategies(s) {
+      if (policy === 'random') {
+        const rng = makeRng(seed, 'rnd-' + s);
+        const out = new Uint8Array(n);
+        for (let i = 0; i < n; i++) out[i] = rng.uniform() < qExt ? 1 : 0;
+        return out;
+      }
+      /* target：抽 round(qExt·n) 人，各为其一名随机接触接种，去重。
+       * 0 度人选不出 acquaintance——跳过且不消耗邻居抽签。 */
+      const rng = makeRng(seed, 'tgt-' + s);
+      const qn = Math.round(qExt * n);
+      const marked = new Uint8Array(n);
+      for (let t = 0; t < qn; t++) {
+        const person = rng.int(n);
+        const dgr = net.deg[person];
+        if (dgr <= 0) continue;
+        const nbr = net.adjList[net.adjStart[person] + rng.int(dgr)];
+        marked[nbr] = 1;
+      }
+      return marked;
+    }
+
+    /* 季初决策（§1.3）。 */
+    function decisionPhase(s) {
+      if (policy !== 'voluntary') return policyStrategies(s);
+      if (s === 1) {
+        /* 第 1 季不用模仿：先验感知 r̂(1) = α·m0 的 Bernoulli 抽签。 */
+        return initStrategies(risk, c, makeRng(seed, 'strat-1'));
+      }
+      const led = ledger(strategies, history[history.length - 1], risk, c);
+      return imitate(net, strategies, led, K, eps, makeRng(seed, 'strat-' + s));
+    }
+
+    /* 执行一季并入档；decisionRisk = 本季决策时用的感知场（快照口径）。 */
+    function executeSeason(s, strat, saltValue, decisionRisk) {
+      const result = runSeason(net, {
+        b, mu, seedCount,
+        season: s,
+        seed,
+        strategies: strat,
+        stepCap,
+        keepSnapshots: true,
+        salt: saltValue
+      });
+      const rec = {
+        season: s,
+        coverage: meanOf(strat),
+        attackRate: result.attackRate,
+        peakI: result.peakI,
+        peakT: result.peakT,
+        perceivedMean: meanOf(decisionRisk),
+        curveS: result.curveS,
+        curveI: result.curveI,
+        curveR: result.curveR,
+        ever: result.ever,
+        snapshots: result.snapshots
+      };
+      history.push(rec);          // 入档后不再变（记录不可变）
+      season = s;
+      strategies = strat;
+      beliefs = updateBeliefs(net, beliefs, result, lambda);
+      risk = riskField(net, beliefs, omega, alpha);
+      return rec;
+    }
+
+    function step() {
+      const s = season + 1;
+      /* 重掷盐快照：恢复点 = 最近一季开始前（beliefs/risk 深拷贝）。 */
+      pre = {
+        beliefs: { loc: Float64Array.from(beliefs.loc), glob: beliefs.glob },
+        risk: Float64Array.from(risk),
+        strategies: null
+      };
+      const strat = decisionPhase(s);
+      pre.strategies = Uint8Array.from(strat);
+      return executeSeason(s, strat, 0, risk);
+    }
+
+    /* 季级重掷盐（§1.4）：仅在 history 非空时合法；恢复快照、弹末条、
+     * season −1，以 salt+1 重跑该季——'seed'/'tx' 加 '#salt' 后缀，
+     * 'strat' 不加盐（重掷的是疫情，不是人心）。history 为空时静默返回。 */
+    function reseed() {
+      if (history.length === 0 || pre === null) return;
+      history.pop();
+      season -= 1;
+      beliefs = pre.beliefs;
+      risk = pre.risk;
+      strategies = pre.strategies;
+      salt += 1;
+      executeSeason(season + 1, pre.strategies, salt, pre.risk);
+    }
+
+    /* 全部复位：seedOffset / salt 归零（网络随之回到基 seed 重建）。 */
+    function reset() {
+      seedOffset = 0;
+      net = makeNetwork({ n, type, z, gamma, kmin, seed });
+      season = 0;
+      salt = 0;
+      history.length = 0;
+      beliefs = initBeliefs(n, m0);
+      strategies = new Uint8Array(n);
+      risk = riskField(net, beliefs, omega, alpha);
+      pre = null;
+    }
+
+    return {
+      get net() { return net; },
+      get season() { return season; },
+      history,                     // 只读视图（调用方禁止原地改写）
+      get seedOffset() { return seedOffset; },
+      get beliefs() { return beliefs; },
+      get strategies() { return strategies; },
+      get risk() { return risk; },
+      get reseedSalt() { return salt; },
+      step,
+      reset,
+      reseed
+    };
+  }
+
+  /* ==========================================================================
+   * 8. 统计助手
+   * ========================================================================== */
+
+  /* 均值；接受任意类数组（含 Uint8Array）；空输入返回 NaN。 */
+  function meanOf(xs) {
+    if (!xs || typeof xs.length !== 'number') {
+      throw new TypeError('meanOf: 输入必须是数组或类数组');
+    }
+    const len = xs.length;
+    if (len === 0) return NaN;
+    let s = 0;
+    for (let i = 0; i < len; i++) s += Number(xs[i]);
+    return s / len;
+  }
+
+  /* 末 window 项的 max − min；window 非正或输入为空返回 0。 */
+  function swing(xs, window) {
+    if (!xs || typeof xs.length !== 'number') {
+      throw new TypeError('swing: 输入必须是数组或类数组');
+    }
+    const len = xs.length;
+    let w = Math.floor(Number(window));
+    if (!isFinite(w) || w <= 0) return 0;
+    if (w > len) w = len;
+    let mn = Infinity;
+    let mx = -Infinity;
+    for (let i = len - w; i < len; i++) {
+      const v = Number(xs[i]);
+      if (v < mn) mn = v;
+      if (v > mx) mx = v;
+    }
+    return mx - mn;
+  }
+
+  /* ==========================================================================
+   * 导出（§3 字段清单逐字对齐）
+   * ========================================================================== */
+
+  return {
+    VERSION,
+    CANON,
+    hashSeed,
+    makeRng,
+    pInf,
+    finalSizeBisect,
+    finalSizeFixed,
+    herdThreshold,
+    nashCoverage,
+    makeNetwork,
+    degreeStats,
+    runSeason,
+    runSeasonGillespie,
+    initBeliefs,
+    updateBeliefs,
+    riskField,
+    initStrategies,
+    ledger,
+    imitate,
+    createWorld,
+    meanOf,
+    swing
+  };
+});
+
+</script>
+<script id="wall-ui">
+// ===== ui/infra.js =====
+'use strict';
+
+/* ============================================================================
+ * 一墙之隔 (A Wall Apart) · ui/infra.js —— 共享交互基础设施
+ * （W4 工位四件之 1；浏览器 IIFE，绝不在 Node 内求值）
+ *
+ * 三个 act 共享的一切都住在这里，并以 window.VUI 对外发布。钉死契约是
+ * SPEC §8.2；面向各 act 的少量增量扩展（PALETTE / FONTS / niceStep /
+ * formatTick / growFit / renderAll）在下方以「扩展」标注，不携带 §8.2
+ * 已点名之外的任何职责。在其他节钉死、在这里兑现的要点：
+ *
+ *   - SPEC §10  加载即有生命：先建 CANON 世界，预推进若干预热季之后才画
+ *     任何东西，最后 emit('ready')。任何时刻不得出现空白态；#run-status
+ *     预热期间读「正在计算 N 季…」，之后读「演化至第 N 季」。
+ *   - SPEC §1.4 任何参数改动 = 从第 0 季确定性重放并重执行预热；reseed()
+ *     只重跑当前季、盐 reseedSalt+1（策略与信念不动）；rewire() 只拨网络
+ *     流的种子（seedOffset+1 —— 换网不换签）。三条路都经 WallCore 重建
+ *     世界，因为 §3 的 World 没有暴露其他任何变更入口。
+ *   - SPEC §8.1 reset = 全部复位：世界在 seedOffset 0 重建，滑杆回 CANON
+ *     （infra 掌管每个注册滑杆的值与 output 文案），预设/回放索引由各
+ *     act 在 'reset' 里自行恢复。
+ *
+ * 纪律：act 一律不得直接改世界或 params；一切变更都走 stepSeason / reset /
+ * rewire / reseed / applyParams / applyNetParams，三面透镜才不会走散。
+ * infra 只绑定自己名下的十个配额 id；注释用中文，页面文案也用中文；
+ * 一切随机数都来自 core.js 内的带种子 PRNG。
+ * ========================================================================== */
+
+(() => {
+  const Core = window.WallCore;
+
+  const $ = (selector) => document.querySelector(selector);
+
+  /* —— infra 名下的十个功能 id（SPEC §2.1 配额） —— */
+  const el = {
+    seasonValue: $('#season-value'),
+    coverageValue: $('#coverage-value'),
+    thresholdValue: $('#threshold-value'),
+    gapValue: $('#gap-value'),
+    runStatus: $('#run-status'),
+    stepOne: $('#step-one'),
+    stepTen: $('#step-ten'),
+    playToggle: $('#play-toggle'),
+    playLabel: $('#play-label'),
+    resetButton: $('#reset')
+  };
+
+  /* build.js 会把 core.js 内联在本文件之前；这道守卫只兜住脱离装配页
+   * 裸跑 ui 文件的情形 */
+  if (!Core || typeof Core.createWorld !== 'function') {
+    if (el.runStatus) el.runStatus.textContent = '核心模块未加载';
+    return;
+  }
+
+  /* ============================================================
+   * 共享令牌 —— §8.2 之外的扩展，让三个 act 共用同一套色板
+   * （取值见 SPEC §7；edgeNet 与 edgeWall 成对，后者供 act2 的墙画布
+   * 按 OUTLINE §3 使用）
+   * ========================================================== */
+  const PALETTE = {
+    paper: '#faf8f2',
+    panel: '#fffdf8',
+    grid: '#e5e1d7',
+    frame: '#d9d2c6',
+    ink: '#1e2d31',
+    dim: '#626e6d',
+    faint: '#8a938f',
+    epi: '#b8583d',
+    net: '#3f5e78',
+    game: '#4c7779',
+    mind: '#b8860b',
+    ghost: '#7d8c88',
+    edgeNet: 0.12,
+    edgeWall: 0.06
+  };
+  const FONTS = {
+    mono: '9px ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,monospace',
+    monoSmall: '8px ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,monospace',
+    sans: '10px "Avenir Next","PingFang SC","Microsoft YaHei",sans-serif',
+    sansBig: '12px "Avenir Next","PingFang SC","Microsoft YaHei",sans-serif'
+  };
+
+  const TWO_PI = Math.PI * 2;
+  const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));  // ≈ 2.399963 弧度（137.5°）
+  const WARMUP = Core.CANON.warmup;                   // §10：页面加载时世界已 12 季
+  const PLAY_PER_SEC = 2;                             // §8.2：每秒季数
+  const MAX_CATCHUP = 4;                              // 每帧补算的整步数上限
+
+  /* 滑杆 id -> CANON 键。几处别扭的拼写由 §2.1 钉死：k-slider 驱动 K
+   * （Fermi 温度），q-ext-slider 驱动 qExt（act3 的本地路由，永不触发
+   * 主世界重放）。 */
+  const PARAM_KEYS = {
+    'b-slider': 'b',
+    'z-slider': 'z',
+    'gamma-slider': 'gamma',
+    'c-slider': 'c',
+    'lambda-slider': 'lambda',
+    'alpha-slider': 'alpha',
+    'omega-slider': 'omega',
+    'k-slider': 'K',
+    'q-ext-slider': 'qExt'
+  };
+
+  /* ============================================================
+   * 状态
+   * ========================================================== */
+  let world = null;      // WallCore 世界；绝不外发原始引用
+  const params = {};     // CANON 的可变快照（§8.2）
+  const view = {         // 稳定的只读视图对象；字段原地刷新
+    net: null,
+    season: 0,
+    history: [],
+    beliefs: null,
+    strategies: null,
+    risk: null,
+    /* §8.2 字段清单之外的增量扩展：act3 建对照世界必须跟随主世界当前
+     * 的 seedOffset（§8.3）；盐与偏移两个计数器也只以只读状态示人 */
+    seedOffset: 0,
+    reseedSalt: 0
+  };
+
+  const frameHooks = []; // onFrame 注册表 —— 每个 act 只渲染自己的展区
+  const bus = {};        // 事件总线：'net' 'season' 'params' 'reset' 'ready'
+  const sliders = [];    // 全部已绑滑杆，供程序化同步取值
+
+  let playing = false;
+  let frameId = 0;
+  let lastTick = 0;
+  let carry = 0;
+
+  /* ============================================================
+   * 事件总线
+   * ========================================================== */
+  function on(event, fn) {
+    if (typeof fn !== 'function') return;
+    (bus[event] = bus[event] || []).push(fn);
+  }
+
+  function emit(event) {
+    const fns = bus[event];
+    if (!fns) return;
+    for (let i = 0; i < fns.length; i += 1) fns[i]();
+  }
+
+  /* ============================================================
+   * 世界管线
+   * ========================================================== */
+  function syncView() {
+    view.net = world.net;
+    view.season = world.season;
+    view.history = world.history;
+    view.beliefs = world.beliefs;
+    view.strategies = world.strategies;
+    view.risk = world.risk;
+    view.seedOffset = world.seedOffset || 0;
+    view.reseedSalt = world.reseedSalt || 0;
+  }
+
+  function rebuildWorld(seedOffset) {
+    /* createWorld 对缺省字段回落 CANON；params 永远是完整快照，这里的
+     * 整份拷贝只是把「全量传入」写明白（§3） */
+    world = Core.createWorld(Object.assign({}, params, { seedOffset: seedOffset }));
+    syncView();
+  }
+
+  function runWarmup() {
+    setStatus('正在计算 ' + WARMUP + ' 季…');
+    for (let i = 0; i < WARMUP; i += 1) world.step();
+    syncView();
+  }
+
+  function lastRecord() {
+    const hist = view.history;
+    return hist.length ? hist[hist.length - 1] : null;
+  }
+
+  /* ============================================================
+   * 全局读数条 + 状态行（infra 的五格，§2.1；单位的 span 在 body.html
+   * —— 这里只写数字）
+   * ========================================================== */
+  function setStatus(text) {
+    if (el.runStatus) el.runStatus.textContent = text;
+  }
+
+  function statusIdle() {
+    setStatus(view.season > 0 ? '演化至第 ' + view.season + ' 季' : '等待环境设定');
+  }
+
+  function statusAfterMutation() {
+    if (playing) setStatus('连续演化中 · 第 ' + view.season + ' 季');
+    else statusIdle();
+  }
+
+  function updateStrip() {
+    if (el.seasonValue) el.seasonValue.textContent = String(view.season);
+    const rec = lastRecord();
+    if (!rec || !view.net) {
+      if (el.coverageValue) el.coverageValue.textContent = '—';
+      if (el.thresholdValue) el.thresholdValue.textContent = '—';
+      if (el.gapValue) el.gapValue.textContent = '—';
+      return;
+    }
+    const r0 = view.net.ampK * Core.pInf(params.b, params.mu);
+    const thresholdPct = Core.herdThreshold(r0) * 100;
+    const coveragePct = rec.coverage * 100;
+    if (el.coverageValue) el.coverageValue.textContent = coveragePct.toFixed(1);
+    if (el.thresholdValue) el.thresholdValue.textContent = thresholdPct.toFixed(1);
+    if (el.gapValue) el.gapValue.textContent = Math.max(0, thresholdPct - coveragePct).toFixed(1);
+  }
+
+  function markRunning(running) {
+    if (el.playToggle) el.playToggle.classList.toggle('is-running', running);
+    const strip = el.runStatus && el.runStatus.closest
+      ? el.runStatus.closest('.v-readout-strip')
+      : null;
+    if (strip) strip.classList.toggle('is-running', running);
+  }
+
+  /* ============================================================
+   * 时间与状态 —— 唯一的变更入口（§8.2）
+   * ========================================================== */
+  function stepSeason(k) {
+    if (!world) return;
+    const count = Math.max(1, Math.floor(Number(k) || 1));
+    if (playing) pause();
+    if (count > 1) setStatus('正在计算 ' + count + ' 季…');
+    for (let i = 0; i < count; i += 1) world.step();
+    syncView();
+    updateStrip();
+    statusIdle();
+    emit('season');
+    renderAll();
+  }
+
+  function reset() {
+    if (!Core || !Core.CANON) return;
+    if (playing) pause();
+    const canon = Core.CANON;
+    Object.keys(params).forEach((key) => { delete params[key]; });
+    Object.keys(canon).forEach((key) => { params[key] = canon[key]; });
+    rebuildWorld(0);            // seedOffset 归零是钉死条款（§1.4）
+    runWarmup();
+    syncSlidersFromParams();    // 滑杆回 CANON（§8.1）—— output 一并
+    updateStrip();
+    statusIdle();
+    emit('reset');
+    renderAll();
+  }
+
+  function rewire() {
+    if (!world) return;
+    /* seedOffset+1 只碰网络流（§1.4 换网不换签）；此后的规则参数改动
+     * 特意保留这个偏移 */
+    rebuildWorld((world.seedOffset || 0) + 1);
+    runWarmup();
+    updateStrip();
+    statusAfterMutation();
+    emit('net');
+    renderAll();
+  }
+
+  function reseed() {
+    if (!world || !view.history.length) return;   // 仅在有历史时合法（§1.4）
+    world.reseed();
+    syncView();
+    updateStrip();
+    statusAfterMutation();
+    emit('season');
+    renderAll();
+  }
+
+  function applyParams(patch) {
+    if (!patch) return;
+    Object.assign(params, patch);
+    rebuildWorld(world ? (world.seedOffset || 0) : 0);
+    runWarmup();
+    syncSlidersFromParams();
+    updateStrip();
+    statusAfterMutation();
+    emit('params');
+    renderAll();
+  }
+
+  function applyNetParams(patch) {
+    if (!patch) return;
+    Object.assign(params, patch);
+    rebuildWorld(world ? (world.seedOffset || 0) : 0);
+    runWarmup();
+    syncSlidersFromParams();
+    updateStrip();
+    statusAfterMutation();
+    emit('net');
+    renderAll();
+  }
+
+  /* ============================================================
+   * 动画循环（每秒 PLAY_PER_SEC 季，§8.2）
+   * ========================================================== */
+  function tick(timestamp) {
+    if (!playing) return;
+    if (!lastTick) lastTick = timestamp;
+    const elapsed = Math.min(0.25, Math.max(0, (timestamp - lastTick) / 1000));
+    lastTick = timestamp;
+    carry += elapsed * PLAY_PER_SEC;
+    let whole = Math.floor(carry);
+    if (whole > MAX_CATCHUP) {
+      whole = MAX_CATCHUP;      // 标签页唤醒后不搞追赶风暴
+      carry = 0;
+    } else {
+      carry -= whole;
+    }
+    if (whole > 0) {
+      for (let i = 0; i < whole; i += 1) world.step();
+      syncView();
+      updateStrip();
+      setStatus('连续演化中 · 第 ' + view.season + ' 季');
+      emit('season');
+      renderAll();
+    }
+    frameId = requestAnimationFrame(tick);
+  }
+
+  function play() {
+    if (playing || !world) return;
+    playing = true;
+    lastTick = 0;
+    carry = 0;
+    if (el.playToggle) {
+      el.playToggle.setAttribute('aria-pressed', 'true');
+      el.playToggle.classList.add('is-running');
+    }
+    if (el.playLabel) el.playLabel.textContent = '暂停演化';
+    markRunning(true);
+    frameId = requestAnimationFrame(tick);
+  }
+
+  function pause() {
+    if (!playing) return;
+    playing = false;
+    if (frameId) cancelAnimationFrame(frameId);
+    frameId = 0;
+    if (el.playToggle) {
+      el.playToggle.setAttribute('aria-pressed', 'false');
+      el.playToggle.classList.remove('is-running');
+    }
+    /* ▶ 三角由 body.html 的 .v-play-icon 图标 span 独占，标签只写文字，
+     * 否则一次播放/暂停循环后会叠出双三角 */
+    if (el.playLabel) el.playLabel.textContent = '连续演化';
+    markRunning(false);
+    statusIdle();
+  }
+
+  function isPlaying() {
+    return playing;
+  }
+
+  /* ============================================================
+   * 画布管理器（dpr 适配，kalman/ui.js:176-191 一脉）
+   * ========================================================== */
+  function canvas(idOrEl) {
+    const node = typeof idOrEl === 'string' ? document.getElementById(idOrEl) : idOrEl;
+    if (!node || typeof node.getContext !== 'function') return null;
+    const bounds = node.getBoundingClientRect
+      ? node.getBoundingClientRect()
+      : { width: 300, height: 150 };
+    const width = Math.max(1, bounds.width || 0);
+    const height = Math.max(1, bounds.height || 0);
+    const ratio = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+    const pixelWidth = Math.round(width * ratio);
+    const pixelHeight = Math.round(height * ratio);
+    if (node.width !== pixelWidth || node.height !== pixelHeight) {
+      node.width = pixelWidth;
+      node.height = pixelHeight;
+    }
+    const ctx = node.getContext('2d');
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    return { ctx: ctx, w: width, h: height };
+  }
+
+  /* 黄金角螺线，按度降序排布使枢纽居中（§8.2）。坐标落在单位圆盘
+   * [-1, 1] 内；各渲染器用自己的半径缩放。按网络对象缓存。 */
+  const layoutCache = new WeakMap();
+
+  function layout(net) {
+    const cached = layoutCache.get(net);
+    if (cached) return cached;
+    const count = net && net.n ? net.n : 0;
+    const order = [];
+    for (let i = 0; i < count; i += 1) order.push(i);
+    order.sort((a, b) => net.deg[b] - net.deg[a]);
+    const xs = new Float32Array(count);
+    const ys = new Float32Array(count);
+    for (let rank = 0; rank < count; rank += 1) {
+      const node = order[rank];
+      const r = count > 1 ? Math.sqrt(rank / (count - 1)) : 0;
+      const angle = rank * GOLDEN_ANGLE;
+      xs[node] = Math.cos(angle) * r;
+      ys[node] = Math.sin(angle) * r;
+    }
+    const pos = { x: xs, y: ys };
+    layoutCache.set(net, pos);
+    return pos;
+  }
+
+  /* ============================================================
+   * 图表助手 —— 供各 act 使用的扩展
+   * ========================================================== */
+
+  /* 只扩不缩取景：把候选包围盒并进持久包围盒，绝不回缩（kalman
+   * drawScene 配方；丢弃存储即复位） */
+  function growFit(prev, box) {
+    if (!prev) {
+      return { minX: box.minX, maxX: box.maxX, minY: box.minY, maxY: box.maxY };
+    }
+    return {
+      minX: Math.min(prev.minX, box.minX),
+      maxX: Math.max(prev.maxX, box.maxX),
+      minY: Math.min(prev.minY, box.minY),
+      maxY: Math.max(prev.maxY, box.maxY)
+    };
+  }
+
+  function niceStep(span, target) {
+    const raw = Math.max(span, 1e-9) / target;
+    const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+    const mantissas = [1, 2, 5, 10];
+    for (let i = 0; i < mantissas.length; i += 1) {
+      if (mantissas[i] * pow >= raw - 1e-12) return mantissas[i] * pow;
+    }
+    return 10 * pow;
+  }
+
+  function formatTick(value, step) {
+    const decimals = Math.max(0, Math.min(3, Math.ceil(-Math.log10(step) - 1e-9)));
+    return value.toFixed(decimals);
+  }
+
+  function renderAll() {
+    for (let i = 0; i < frameHooks.length; i += 1) frameHooks[i]();
+  }
+
+  function onFrame(fn) {
+    if (typeof fn === 'function') frameHooks.push(fn);
+  }
+
+  /* ============================================================
+   * 控件绑定助手（§8.2）
+   * ========================================================== */
+  function set(id, text) {
+    const node = document.getElementById(id);
+    if (node) node.textContent = String(text);
+  }
+
+  function pct(x, digits) {
+    return (x * 100).toFixed(digits == null ? 1 : digits);
+  }
+
+  function slider(id, valueId, opts) {
+    const input = document.getElementById(id);
+    if (!input) return null;
+    const out = valueId ? document.getElementById(valueId) : null;
+    const fmt = opts && typeof opts.fmt === 'function' ? opts.fmt : (v) => String(v);
+    const aria = opts && typeof opts.aria === 'function' ? opts.aria : fmt;
+    const local = !!(opts && opts.local);
+    const netParam = !!(opts && opts.netParam);
+    const key = PARAM_KEYS[id] || id.replace(/-slider$/, '');
+
+    const present = (v) => {
+      if (out) out.textContent = fmt(v);
+      input.setAttribute('aria-valuetext', aria(v));
+    };
+    present(Number(input.value));
+    sliders.push({ input: input, key: key, present: present });
+
+    input.addEventListener('input', () => {
+      const v = Number(input.value);
+      /* §8.2 顺序：apply -> output -> aria-valuetext；local 滑杆完全绕开
+       * 主世界（q-ext 路由，§8.2/§8.3） */
+      if (!local) {
+        const patch = {};
+        patch[key] = v;
+        if (netParam) applyNetParams(patch);
+        else applyParams(patch);
+      }
+      present(v);
+      if (opts && typeof opts.onInput === 'function') opts.onInput(v);
+    });
+    return input;
+  }
+
+  function syncSlidersFromParams() {
+    for (let i = 0; i < sliders.length; i += 1) {
+      const entry = sliders[i];
+      if (!(entry.key in params)) continue;
+      const v = params[entry.key];
+      entry.input.value = String(v);
+      entry.present(v);
+    }
+  }
+
+  function button(id, onClick) {
+    const node = document.getElementById(id);
+    if (!node) return null;
+    node.addEventListener('click', () => {
+      if (typeof onClick === 'function') onClick();
+    });
+    return node;
+  }
+
+  function buttonGroup(selector, attrName, onPick) {
+    const buttons = Array.prototype.slice.call(document.querySelectorAll(selector));
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const value = btn.getAttribute(attrName);
+        buttons.forEach((other) => {
+          other.setAttribute('aria-pressed', other === btn ? 'true' : 'false');
+        });
+        if (typeof onPick === 'function') onPick(value, btn);
+      });
+    });
+  }
+
+  /* §8.2 对 toggle 点名两次 —— 播放/暂停翻转与 aria-pressed 开关助手。
+   * 一名两职：首参是字符串即绑开关，其余形态翻播放。selfcheck §6.4 的
+   * id 绑定正则锚定在字符串形态上，语义无歧义。 */
+  function toggle(first, onPressed) {
+    if (typeof first === 'string') {
+      const node = document.getElementById(first);
+      if (!node) return;
+      if (!node.hasAttribute('aria-pressed')) node.setAttribute('aria-pressed', 'false');
+      node.addEventListener('click', () => {
+        const next = node.getAttribute('aria-pressed') !== 'true';
+        node.setAttribute('aria-pressed', next ? 'true' : 'false');
+        if (typeof onPressed === 'function') onPressed(next);
+      });
+      return;
+    }
+    if (playing) pause();
+    else play();
+  }
+
+  /* ============================================================
+   * 公开面（§8.2；扩展已标注）
+   * ========================================================== */
+  const api = {
+    VERSION: '1.0.0',
+    Core: Core,
+    world: view,
+    params: params,
+    canvas: canvas,
+    layout: layout,
+    onFrame: onFrame,
+    play: play,
+    pause: pause,
+    toggle: toggle,
+    isPlaying: isPlaying,
+    PLAY_PER_SEC: PLAY_PER_SEC,
+    stepSeason: stepSeason,
+    reset: reset,
+    rewire: rewire,
+    reseed: reseed,
+    applyParams: applyParams,
+    applyNetParams: applyNetParams,
+    slider: slider,
+    button: button,
+    buttonGroup: buttonGroup,
+    set: set,
+    pct: pct,
+    on: on,
+    emit: emit,
+    /* 扩展 */
+    renderAll: renderAll,
+    growFit: growFit,
+    niceStep: niceStep,
+    formatTick: formatTick,
+    PALETTE: PALETTE,
+    FONTS: FONTS
+  };
+
+  /* ============================================================
+   * infra 自有控件（全局读数条，§8.1）+ aria 模式
+   * ========================================================== */
+  if (el.stepOne) el.stepOne.addEventListener('click', () => stepSeason(1));
+  if (el.stepTen) el.stepTen.addEventListener('click', () => stepSeason(10));
+  if (el.playToggle) {
+    if (!el.playToggle.hasAttribute('aria-pressed')) {
+      el.playToggle.setAttribute('aria-pressed', 'false');
+    }
+    el.playToggle.addEventListener('click', () => {
+      if (playing) pause();
+      else play();
+    });
+  }
+  if (el.resetButton) el.resetButton.addEventListener('click', reset);
+  if (el.runStatus && !el.runStatus.hasAttribute('aria-live')) {
+    el.runStatus.setAttribute('aria-live', 'polite');
+  }
+
+  /* resize + hashchange 触发全量重渲（kalman/ui.js:1120-1123 惯例；
+   * :target 折叠会让画布在锚点之间归零） */
+  window.addEventListener('resize', renderAll);
+  window.addEventListener('hashchange', renderAll);
+
+  /* ============================================================
+   * 初始化 —— SPEC §10：先世界，再预热，最后 ready。各 act 在本 IIFE
+   * 之后加载（build 顺序 §9），从已预热的世界渲染各自首帧。
+   * ========================================================== */
+  (function init() {
+    const canon = Core.CANON;
+    Object.keys(canon).forEach((key) => { params[key] = canon[key]; });
+    rebuildWorld(0);
+    runWarmup();
+    updateStrip();
+    statusIdle();
+    emit('ready');
+  })();
+
+  window.VUI = api;
+})();
+
+// ===== ui/act1.js =====
+'use strict';
+
+/* ============================================================================
+ * 一墙之隔 (A Wall Apart) · ui/act1.js —— 第一展区「一季疫情」
+ * （01 单一现象 / ONE SEASON；W4 工位四件之 2；浏览器 IIFE，紧跟 infra.js
+ * 之后加载）
+ *
+ * 本文件是 VUI 基础设施的活样本：下面的每块画布、每根滑杆、每个按钮与
+ * 读数都走 window.VUI —— 世界只经 VUI.world 读取、只经 VUI 的变更入口
+ * 改动（SPEC §8.3 纪律）。
+ *
+ * SPEC §2.1 配给 act1 的 18 个 id 中，#net-note 与 #epi-note 两个注记的
+ * 散文归 W1 的 body.html 静态所有（OUTLINE §2；含 C2 结论句），本文件
+ * 不在运行时覆写，运行时绑定其余 16 个。展品：
+ *   A1 #net-canvas —— 黄金角螺线上的完整接触网络（infra 布局缓存），
+ *      SPEC §3 钉死的三分类着色：湖青 = 已接种的墙砖，锈红 = 本季感染过，
+ *      纸色空心描边 = 未接种且未感染的缺口。#replay 逐帧走读当前季的
+ *      缓存快照（约 6 fps），严格只读：字节==1 的节点烧锈红光晕，世界
+ *      本身纹丝不动。
+ *   A2 #epi-canvas —— 本季 S/I/R 曲线（S 在网络蓝里下降、I 在锈红里
+ *      燃烧、R 在灰青里累积），峰值标注与 #peak-value 格同源同数。
+ * 控件：b / z / gamma 滑杆（z+gamma 是网络参数 -> applyNetParams）、
+ * er|pl 预设组（.v-net-button，data-kind）、rewire / reseed / replay
+ * 按钮、四个读数与三态 #insight1（优先级 1 -> 2 -> 3，OUTLINE §2；
+ * 措辞可微调，条件不得增删）。
+ * ========================================================================== */
+
+(() => {
+  const V = window.VUI;
+  const Core = V ? V.Core : null;
+  if (!V || !Core || typeof Core.createWorld !== 'function') return;
+
+  const P = V.PALETTE;
+  const F = V.FONTS;
+  const TWO_PI = Math.PI * 2;
+  const REPLAY_FPS = 6;   // OUTLINE §2：约 6 帧/秒，只读
+
+  const $ = (selector) => document.querySelector(selector);
+
+  /* —— 画布可访问性兜底（§2.1：role="img" + 中文 aria-label；W1 已写
+   *    则不覆盖） —— */
+  const NET_ARIA = '接触网络全图：节点按度降序排在黄金角螺线上，枢纽居中。'
+    + '青色实心是已接种的墙砖，锈红实心是本季感染过的人，纸色空心描边是未接种且未感染的缺口；'
+    + '细线是接触边。回放中当前感染者带锈红光晕。';
+  const EPI_ARIA = '本季疫情曲线：横轴是季内步，纵轴是人数。'
+    + '深蓝线是易感者，单调下降；锈红线是感染者，冲峰后清零；灰青线是康复者，单调累积；'
+    + '峰值处标注同时感染人数。';
+
+  function ensureAria(node, label) {
+    if (!node) return;
+    if (!node.hasAttribute('role')) node.setAttribute('role', 'img');
+    if (!node.hasAttribute('aria-label')) node.setAttribute('aria-label', label);
+  }
+  ensureAria($('#net-canvas'), NET_ARIA);
+  ensureAria($('#epi-canvas'), EPI_ARIA);
+  const insightNode = $('#insight1');
+  if (insightNode && !insightNode.hasAttribute('aria-live')) {
+    insightNode.setAttribute('aria-live', 'polite');
+  }
+
+  /* ============================================================
+   * 状态（仅 act 本地；世界住在 VUI 里）
+   * ========================================================== */
+  const st = {
+    replay: null,   // 回放存续期间的 { t, last, acc }
+    raf: 0
+  };
+
+  function lastRecord() {
+    const hist = V.world.history;
+    return hist.length ? hist[hist.length - 1] : null;
+  }
+
+  function currentR0() {
+    return V.world.net.ampK * Core.pInf(V.params.b, V.params.mu);
+  }
+
+  /* ============================================================
+   * 读数（§2 配额）—— R₀ = ampK·pInf(b, μ)，2 位小数
+   * ========================================================== */
+  function updateReadouts() {
+    const rec = lastRecord();
+    V.set('r0-value', currentR0().toFixed(2));
+    V.set('amp-value', V.world.net ? V.world.net.ampK.toFixed(2) : '—');
+    V.set('final-value', rec ? V.pct(rec.attackRate, 1) : '—');
+    V.set('peak-value', rec ? String(rec.peakI) : '—');
+  }
+
+  /* ============================================================
+   * 观察问题 #insight1 —— 三态，优先级 1→2→3（OUTLINE §2：R₀<1 自熄；
+   * R₀≥1 且无标度是枢纽引线；其余该去试无标度开关）。条件钉死，
+   * 措辞可微调。
+   * ========================================================== */
+  const INSIGHT_EXTINGUISH = 'R₀ < 1：火焰自己熄灭——阈值之下的世界没有瘟疫。';
+  const INSIGHT_FUSE = 'R₀ ≥ 1，且是无标度网络：枢纽是一根引线——它烧多快，全网就多快。'
+    + '把 b 拧小，看火焰怎么只剩星星点点。';
+  const INSIGHT_SWITCH = 'R₀ ≥ 1，均匀网络：把网络切到「无标度」，看同一组参数烧出多快的火。';
+
+  function updateInsight() {
+    if (!V.world.net) return;
+    const r0 = currentR0();
+    let text;
+    if (r0 < 1) text = INSIGHT_EXTINGUISH;
+    else if (V.params.type === 'pl') text = INSIGHT_FUSE;
+    else text = INSIGHT_SWITCH;
+    V.set('insight1', text);
+  }
+
+  /* ============================================================
+   * 绘图原语
+   * ========================================================== */
+  function dot(ctx, x, y, r, fill, stroke, strokeWidth) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, TWO_PI);
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = strokeWidth || 1.2;
+      ctx.stroke();
+    }
+  }
+
+  function paintNode(ctx, x, y, r, kind) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, TWO_PI);
+    if (kind === 'teal') {
+      ctx.fillStyle = P.game;
+      ctx.fill();
+      return;
+    }
+    if (kind === 'rust') {
+      ctx.fillStyle = P.epi;
+      ctx.fill();
+      return;
+    }
+    /* 缺口：纸面填充 + 描边，即 SPEC §7 的缺口填充 */
+    ctx.fillStyle = P.paper;
+    ctx.fill();
+    ctx.strokeStyle = P.frame;
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+  }
+
+  function drawEmpty(chart, title, sub) {
+    const ctx = chart.ctx;
+    ctx.fillStyle = P.paper;
+    ctx.fillRect(0, 0, chart.w, chart.h);
+    ctx.strokeStyle = P.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(8.5, 8.5, Math.max(1, chart.w - 17), Math.max(1, chart.h - 17));
+    if (!title) return;
+    ctx.fillStyle = P.dim;
+    ctx.font = F.sansBig;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(title, chart.w / 2, chart.h / 2 - 8);
+    if (sub) {
+      ctx.fillStyle = P.faint;
+      ctx.font = F.sans;
+      ctx.fillText(sub, chart.w / 2, chart.h / 2 + 14);
+    }
+  }
+
+  /* ============================================================
+   * A1 · 网络画布
+   * ========================================================== */
+  function drawNet() {
+    const chart = V.canvas('net-canvas');
+    if (!chart) return;
+    const ctx = chart.ctx;
+    const w = chart.w;
+    const h = chart.h;
+    ctx.fillStyle = P.paper;
+    ctx.fillRect(0, 0, w, h);
+
+    const net = V.world.net;
+    const strategies = V.world.strategies;
+    const rec = lastRecord();
+    if (!net || !strategies || !rec || w < 60 || h < 60) {
+      drawEmpty(chart, '网络待命', '参数就绪后，接触网络出现在这里');
+      return;
+    }
+
+    const pos = V.layout(net);
+    const cx = w / 2;
+    const cy = h / 2;
+    const radius = Math.min(w, h) / 2 - 12;
+    const atX = (i) => cx + pos.x[i] * radius;
+    const atY = (i) => cy + pos.y[i] * radius;
+
+    /* 边：共享低透明度的单条批处理路径；act2 的墙画布以 PALETTE.edgeWall
+     * 画同样的边（OUTLINE §3） */
+    ctx.globalAlpha = P.edgeNet;
+    ctx.strokeStyle = P.net;
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    for (let i = 0; i < net.n; i += 1) {
+      const from = net.adjStart[i];
+      const to = net.adjStart[i + 1];
+      for (let k = from; k < to; k += 1) {
+        const j = net.adjList[k];
+        if (j <= i) continue;
+        ctx.moveTo(atX(i), atY(i));
+        ctx.lineTo(atX(j), atY(j));
+      }
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    /* 节点着色 —— 钉死的 ever 单一口径分类；#replay 期间由缓存快照字节
+     * 驱动，字节==1 的当前感染者带锈红光晕 */
+    const frames = rec.snapshots;
+    const replaying = !!(st.replay && frames && frames.length > 1);
+    const frame = replaying ? frames[Math.min(st.replay.t, frames.length - 1)] : null;
+    const nodeR = Math.max(1.6, Math.min(3.2, radius / 115));
+    for (let i = 0; i < net.n; i += 1) {
+      const x = atX(i);
+      const y = atY(i);
+      if (strategies[i] === 1) {
+        paintNode(ctx, x, y, nodeR, 'teal');
+        continue;
+      }
+      const infected = frame ? frame[i] >= 1 : rec.ever[i] === 1;
+      const burning = frame ? frame[i] === 1 : false;
+      paintNode(ctx, x, y, nodeR, infected ? 'rust' : 'gap');
+      if (burning) {
+        ctx.globalAlpha = 0.45;
+        ctx.strokeStyle = P.epi;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(x, y, nodeR * 2.6, 0, TWO_PI);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    /* 角注 */
+    ctx.fillStyle = P.dim;
+    ctx.font = F.monoSmall;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    if (replaying) {
+      ctx.fillText('季 ' + rec.season + ' · 回放 ' + (st.replay.t + 1) + '/'
+        + frames.length + ' 步', 8, h - 8);
+    } else {
+      ctx.fillText('季 ' + rec.season + ' · 终态 · 节点 ' + net.n, 8, h - 8);
+    }
+    ctx.textAlign = 'right';
+    ctx.fillText('青=接种 · 锈=感染过 · 空心=缺口', w - 8, h - 8);
+  }
+
+  /* ============================================================
+   * A2 · 疫情曲线画布
+   * ========================================================== */
+  function drawCurve(ctx, series, xAt, yAt, color, width) {
+    ctx.beginPath();
+    for (let t = 0; t < series.length; t += 1) {
+      const x = xAt(t);
+      const y = yAt(series[t]);
+      if (t === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.stroke();
+  }
+
+  function drawEpi() {
+    const chart = V.canvas('epi-canvas');
+    if (!chart) return;
+    const ctx = chart.ctx;
+    const w = chart.w;
+    const h = chart.h;
+    ctx.fillStyle = P.paper;
+    ctx.fillRect(0, 0, w, h);
+
+    const rec = lastRecord();
+    if (!rec || w < 80 || h < 60) {
+      drawEmpty(chart, '按 ＋1 季，疫情从这里开始', '时间控制就在页面顶部的读数条上');
+      return;
+    }
+    const pad = { left: 44, right: 12, top: 14, bottom: 26 };
+    const plotW = w - pad.left - pad.right;
+    const plotH = h - pad.top - pad.bottom;
+    if (plotW < 40 || plotH < 40) {
+      drawEmpty(chart, '', '');
+      return;
+    }
+
+    const total = Core.CANON.n;
+    const steps = Math.max(1, rec.curveI.length - 1);
+    const xAt = (t) => pad.left + (t / steps) * plotW;
+    const yAt = (v) => pad.top + (1 - Math.min(total, Math.max(0, v)) / total) * plotH;
+
+    /* 网格与刻度走 infra 助手（三个 act 一把尺度尺） */
+    const stepX = V.niceStep(steps, 6);
+    const stepY = V.niceStep(total, 4);
+    ctx.font = F.monoSmall;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = P.grid;
+    ctx.fillStyle = P.dim;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let xv = 0; xv <= steps + 1e-9; xv += stepX) {
+      const x = xAt(xv);
+      ctx.beginPath();
+      ctx.moveTo(x, pad.top);
+      ctx.lineTo(x, pad.top + plotH);
+      ctx.stroke();
+      ctx.fillText(V.formatTick(xv, stepX), x, pad.top + plotH + 6);
+    }
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let yv = 0; yv <= total + 1e-9; yv += stepY) {
+      const y = yAt(yv);
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(pad.left + plotW, y);
+      ctx.stroke();
+      ctx.fillText(V.formatTick(yv, stepY), pad.left - 6, y);
+    }
+
+    /* 三条曲线，裁剪在绘图矩形内 */
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pad.left, pad.top, plotW, plotH);
+    ctx.clip();
+    drawCurve(ctx, rec.curveS, xAt, yAt, P.net, 1.8);
+    drawCurve(ctx, rec.curveR, xAt, yAt, P.ghost, 1.6);
+    drawCurve(ctx, rec.curveI, xAt, yAt, P.epi, 2);
+    /* 峰值标记 —— 与 #peak-value 格显示同一个数 */
+    const peakT = Math.min(steps, Math.max(0, rec.peakT));
+    const px = xAt(peakT);
+    const py = yAt(rec.peakI);
+    dot(ctx, px, py, 3, P.epi, P.panel, 1.4);
+    ctx.fillStyle = P.ink;
+    ctx.font = F.monoSmall;
+    ctx.textAlign = peakT > steps * 0.65 ? 'right' : 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('峰值 ' + rec.peakI + ' 人', px + (peakT > steps * 0.65 ? -7 : 7), py - 6);
+    ctx.restore();
+
+    /* 取景框 + 角注 */
+    ctx.strokeStyle = P.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pad.left + 0.5, pad.top + 0.5, plotW - 1, plotH - 1);
+    ctx.fillStyle = P.faint;
+    ctx.font = F.monoSmall;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('人数', 4, pad.top + 2);
+    ctx.textAlign = 'right';
+    ctx.fillText('季内步', pad.left + plotW, pad.top + plotH + 14);
+    ctx.fillStyle = P.dim;
+    ctx.textAlign = 'left';
+    ctx.fillText('季 ' + rec.season, pad.left + 4, pad.top + 3);
+  }
+
+  /* ============================================================
+   * #replay —— 以约 6 fps 走读当前季的快照。严格只读：不 step、
+   * 不 reset、不改世界；st.replay 存续期间渲染器只读帧字节。
+   * ========================================================== */
+  function stopReplay() {
+    if (st.raf) {
+      cancelAnimationFrame(st.raf);
+      st.raf = 0;
+    }
+    if (st.replay) {
+      st.replay = null;
+      drawNet();
+    }
+  }
+
+  function replayTick(timestamp) {
+    const rp = st.replay;
+    if (!rp) {
+      st.raf = 0;
+      return;
+    }
+    const rec = lastRecord();
+    const frames = rec && rec.snapshots ? rec.snapshots.length : 0;
+    if (!frames) {
+      st.replay = null;
+      st.raf = 0;
+      return;
+    }
+    if (!rp.last) rp.last = timestamp;
+    const dt = Math.min(0.25, Math.max(0, (timestamp - rp.last) / 1000));
+    rp.last = timestamp;
+    rp.acc += dt * REPLAY_FPS;
+    let advance = Math.floor(rp.acc);
+    if (advance > 3) {
+      advance = 3;
+      rp.acc = 0;
+    } else {
+      rp.acc -= advance;
+    }
+    if (advance > 0) {
+      rp.t = Math.min(frames - 1, rp.t + advance);
+      drawNet();
+      if (rp.t >= frames - 1) {
+        st.replay = null;   // 走完 —— 回落到终态着色
+        st.raf = 0;
+        return;
+      }
+    }
+    st.raf = requestAnimationFrame(replayTick);
+  }
+
+  function startReplay() {
+    const rec = lastRecord();
+    if (!rec || !rec.snapshots || rec.snapshots.length < 2) return;
+    if (V.isPlaying()) V.pause();
+    if (st.raf) {
+      cancelAnimationFrame(st.raf);
+      st.raf = 0;
+    }
+    st.replay = { t: 0, last: 0, acc: 0 };   // 再点一次即从头重演
+    drawNet();
+    st.raf = requestAnimationFrame(replayTick);
+  }
+
+  /* ============================================================
+   * 控件（一切绑定都走 VUI 助手）
+   * ========================================================== */
+  const bInput = V.slider('b-slider', 'b-value', {
+    fmt: (v) => v.toFixed(2),
+    aria: (v) => '传播概率 ' + v.toFixed(2) + '，单位：每边每步'
+  });
+  const zInput = V.slider('z-slider', 'z-value', {
+    fmt: (v) => String(Math.round(v)),
+    aria: (v) => '平均接触数 ' + Math.round(v) + '，仅均匀网络生效',
+    netParam: true
+  });
+  const gammaInput = V.slider('gamma-slider', 'gamma-value', {
+    fmt: (v) => v.toFixed(1),
+    aria: (v) => '度指数 ' + v.toFixed(1) + '，仅无标度网络生效',
+    netParam: true
+  });
+
+  V.buttonGroup('.v-net-button', 'data-kind', (kind) => {
+    if (kind && kind !== V.params.type) V.applyNetParams({ type: kind });
+  });
+  V.button('rewire', () => V.rewire());
+  V.button('reseed', () => V.reseed());
+  V.button('replay', startReplay);
+
+  /* 依赖网络类型的控件态：z 只在 er 生效，gamma 只在 pl 生效
+   * （§2.2 is-disabled）；按压态跟随 params.type */
+  function syncKindControls() {
+    const pl = V.params.type === 'pl';
+    if (zInput) zInput.disabled = pl;
+    if (gammaInput) gammaInput.disabled = !pl;
+    [zInput, gammaInput].forEach((input) => {
+      if (!input) return;
+      const off = pl ? input === zInput : input === gammaInput;
+      const ctrl = input.closest ? input.closest('.v-range-control') : null;
+      if (ctrl) ctrl.classList.toggle('is-disabled', off);
+    });
+    const buttons = document.querySelectorAll('.v-net-button');
+    for (let i = 0; i < buttons.length; i += 1) {
+      const on = buttons[i].getAttribute('data-kind') === V.params.type;
+      buttons[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+  }
+
+  /* ============================================================
+   * 渲染 + 事件接线 —— 每个注册的渲染器只画自己的展区；infra 在每次
+   * 变更后与 resize 时调用它们。
+   * ========================================================== */
+  function renderAct1() {
+    drawNet();
+    drawEpi();
+    updateReadouts();
+    updateInsight();
+  }
+
+  ['net', 'params', 'reset'].forEach((event) => {
+    V.on(event, () => { syncKindControls(); });
+  });
+  ['net', 'params', 'season', 'reset'].forEach((event) => {
+    V.on(event, () => { stopReplay(); });
+  });
+  V.onFrame(renderAct1);
+
+  /* 首帧：世界已 12 季（SPEC §10）；#net-note/#epi-note 由 body.html
+   * 静态承担，这里不再覆写 */
+  syncKindControls();
+  renderAct1();
+})();
+
+// ===== ui/act2.js =====
+'use strict';
+
+/* ============================================================
+ * 一墙之隔 · ui/act2.js —— 第二展区「私心与墙」（02 THE WALL GAME）
+ *
+ * 契约：SPEC §2.1（id 配额 18 个）/ §3（口径）/ §8.2–§8.3（infra API
+ * 与 act 纪律）、OUTLINE §3（展品 B1/B2 行为与观察问题三态）。
+ *
+ * 展品 B1 #season-canvas：上下两轨的跨季时间线——上轨覆盖率 p(t)（teal）
+ *   + 群体阈值 1−1/R₀（rust 虚线）+ 理性均衡 p†（ghost 点线）；下轨疫情
+ *   规模 attack(t)（rust 柱）+ 平均感知风险 r̂(t)（amber 线）。接种率
+ *   绕着阈值呼吸的摆动在这里可见。
+ * 展品 B2 #wall-canvas：同一张网只讲墙的事——teal 实心 = 已接种的砖，
+ *   rust 实心 = 本季感染过，纸色空心描边 = 未接种且从未感染（缺口）；
+ *   边保留绘制、透明度降到 0.06。
+ *
+ * 纪律（SPEC §8.3）：
+ *   - 只绑 act2 配额内的 id；只经 VUI 公开 API 触碰世界（world 视图只读，
+ *     参数一律走 slider 助手默认路由 / applyParams）；派生统计（p†、
+ *     swing、自由骑手缺口）就地计算，不写回世界。
+ *   - 场景预设 .v-scene2-button 自持 aria-pressed：buttonGroup 的单属性
+ *     签名装不下五项 data-*，且「按值匹配点亮」能跟随手动拧杆（kalman
+ *     ui.js updateScenarioButtons 先例）。
+ *   - 画布刷新双保险：VUI 事件（ready/net/season/params/reset）全量重渲
+ *     + onFrame 跟帧（连续演化）；绘制内部用脏键去重，静止帧零重绘。
+ *     横轴取景 60 季起步、每 20 季一档，只扩不缩。
+ * ========================================================== */
+
+(() => {
+  const V = window.VUI;
+  if (!V || typeof V.on !== 'function') return;   // 构建契约保证 infra 先行；裸跑兜底
+  const Core = V.Core;
+  if (!Core || typeof Core.pInf !== 'function') return;
+
+  const $ = (selector) => document.querySelector(selector);
+
+  /* —— SPEC §2.1 act2 配额：直取的 8 个元素（其余 10 个经 V.slider 绑定，
+   *    画布经 V.canvas、文案经 V.set，全部落在同一份 18 id 清单内） —— */
+  const el = {
+    seasonCanvas: $('#season-canvas'),
+    wallCanvas: $('#wall-canvas'),
+    nashValue: $('#nash-value'),
+    swingValue: $('#swing-value'),
+    freerideValue: $('#freeride-value'),
+    seasonNote: $('#season-note'),
+    wallNote: $('#wall-note'),
+    insight: $('#insight2')
+  };
+  if (!el.seasonCanvas || !el.wallCanvas || !el.nashValue || !el.swingValue
+    || !el.freerideValue || !el.seasonNote || !el.wallNote || !el.insight) return;
+
+  /* 场景预设按钮组：类选择器，不在 id 配额范围（selfcheck 第 4 条口径） */
+  const SCENE_SELECTOR = '.v-scene2-button';
+
+  /* —— SPEC §7 学科色与字体栈 —— */
+  const COLOR = {
+    paper: '#faf8f2',      // 画布纸面
+    grid: '#e5e1d7',       // 网格
+    gridSoft: '#efebe3',
+    frame: '#d9d2c6',      // 取景框 / 缺口描边
+    ink: '#1e2d31',
+    dim: '#626e6d',
+    faint: '#8a938f',
+    epi: '#b8583d',        // --epi：感染、疫情柱、阈值线
+    net: '#3f5e78',        // --net：边、结构线
+    game: '#4c7779',       // --game：墙砖、覆盖率线
+    mind: '#b8860b',       // --mind：感知线
+    ghost: '#7d8c88',      // --ghost：p† 参考点线
+    white: '#fffdf8'
+  };
+  const FONT_MONO = '8px ui-monospace,"Cascadia Code",Consolas,monospace';
+  const FONT_SANS = '10px "Avenir Next","PingFang SC","Microsoft YaHei",sans-serif';
+  const TAU = Math.PI * 2;
+
+  /* 观察问题三态的「无疫情」读法（OUTLINE §3 钉死 = E7b 疫情峰同一条线） */
+  const ATTACK_QUIET = 0.08;
+
+  /* 画布可访问性兜底（SPEC §2.1：role="img" + 中文 aria-label；W1 已写则不覆盖） */
+  const CANVAS_ARIA = {
+    'season-canvas': '跨季时间线图：横轴是季。上轨青色实线是每季季初接种覆盖率，'
+      + '锈红虚线是群体免疫阈值，灰青点线是理性均衡参考，纵轴 0 到 100%；'
+      + '下轨锈红柱是每季疫情规模，琥珀色线是平均感知风险。接种率绕着阈值呼吸。',
+    'wall-canvas': '墙缺口图：一张接触网络，青色实心是已接种的墙砖，锈红实心是本季'
+      + '感染过的人，纸色空心描边是未接种且从未感染的缺口；灰蓝细边以极低透明度作底。'
+  };
+
+  /* ============================================================
+   * 小工具
+   * ========================================================== */
+  const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+  /* 脏键用的对象身份号（WeakMap；net / record 重建即换新号） */
+  const objIds = new WeakMap();
+  let objSeq = 0;
+  function objId(obj) {
+    if (!obj) return 0;
+    let id = objIds.get(obj);
+    if (id === undefined) {
+      objSeq += 1;
+      id = objSeq;
+      objIds.set(obj, id);
+    }
+    return id;
+  }
+
+  /* 画布 CSS 尺寸键：取景盒变化（含 :target 折叠、resize）即触发重绘 */
+  function sizeKey(canvasEl) {
+    const b = canvasEl.getBoundingClientRect();
+    return Math.round(b.width) + 'x' + Math.round(b.height);
+  }
+
+  let seasonKey = '';
+  let wallKey = '';
+
+  function lastRecord() {
+    const hist = V.world.history;
+    return hist.length ? hist[hist.length - 1] : null;
+  }
+
+  /* 当前世界的 R₀ = ⟨k(k−1)⟩/⟨k⟩ · pInf(b,μ)；网络未就位时返回 null */
+  function currentR0() {
+    const net = V.world.net;
+    const P = V.params;
+    if (!net || !Number.isFinite(net.ampK) || net.ampK <= 0) return null;
+    return net.ampK * Core.pInf(P.b, P.mu);
+  }
+
+  /* 缺口（自由骑手）= 未接种且从未感染（SPEC §3：strategies ⊕ 最新 record.ever） */
+  function countGaps(rec) {
+    const strat = V.world.strategies;
+    if (!rec || !rec.ever || !strat) return null;
+    let cnt = 0;
+    for (let i = 0; i < strat.length; i += 1) {
+      if (!strat[i] && !rec.ever[i]) cnt += 1;
+    }
+    return cnt;
+  }
+
+  function dot(ctx, x, y, radius, fill, stroke, strokeWidth) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, TAU);
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = strokeWidth || 1.2;
+      ctx.stroke();
+    }
+  }
+
+  /* 水平参考线：dash = 阈值（rust 虚线），dot = p†（ghost 点线） */
+  function refLine(ctx, y, x, w, dash, color) {
+    ctx.save();
+    ctx.setLineDash(dash);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w, y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* 行内图例：短样 + 文本；固定步进（中文字宽按 10px 近似），不依赖 measureText */
+  function legend(ctx, x, y, items) {
+    ctx.font = FONT_SANS;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    let cx = x;
+    items.forEach((item) => {
+      if (item.kind === 'bar') {
+        ctx.fillStyle = item.color;
+        ctx.fillRect(cx, y - 4, 9, 7);
+        cx += 13;
+      } else {
+        ctx.save();
+        ctx.setLineDash(item.kind === 'dash' ? [4, 3] : item.kind === 'dot' ? [1.5, 2.5] : []);
+        ctx.strokeStyle = item.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, y);
+        ctx.lineTo(cx + 13, y);
+        ctx.stroke();
+        ctx.restore();
+        cx += 17;
+      }
+      ctx.fillStyle = COLOR.dim;
+      ctx.fillText(item.text, cx, y + 1);
+      cx += item.text.length * 10 + 12;
+    });
+  }
+
+  /* 画布过小（绘图区 < 40px）的占位框（SPEC §9.x） */
+  function drawPlaceholder(chart) {
+    const ctx = chart.ctx;
+    ctx.fillStyle = COLOR.paper;
+    ctx.fillRect(0, 0, chart.w, chart.h);
+    ctx.strokeStyle = COLOR.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, chart.w - 1, chart.h - 1);
+    if (chart.w > 150 && chart.h > 60) {
+      ctx.fillStyle = COLOR.dim;
+      ctx.font = FONT_SANS;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('画布太小，放大窗口再来看', chart.w / 2, chart.h / 2);
+    }
+  }
+
+  /* ============================================================
+   * 展品 B1 · 跨季时间线 #season-canvas
+   * ========================================================== */
+  function drawSeason() {
+    const chart = V.canvas('season-canvas');
+    const ctx = chart.ctx;
+    const padL = 46;
+    const padR = 12;
+    const padT = 10;
+    const padB = 22;
+    const plotW = chart.w - padL - padR;
+    const totalH = chart.h - padT - padB;
+    if (plotW < 40 || totalH < 90) {
+      drawPlaceholder(chart);
+      return;
+    }
+    const gapY = 18;
+    const upH = Math.round((totalH - gapY) * 0.46);
+    const lowH = totalH - gapY - upH;
+    const upTop = padT;
+    const lowTop = padT + upH + gapY;
+
+    const recs = V.world.history;
+    const P = V.params;
+    const r0 = currentR0();
+    const thr = r0 == null ? null : Core.herdThreshold(r0);
+    const pd = r0 == null ? null : Core.nashCoverage(r0, P.c);
+
+    ctx.fillStyle = COLOR.paper;
+    ctx.fillRect(padL, upTop, plotW, upH);
+    ctx.fillRect(padL, lowTop, plotW, lowH);
+
+    /* 横轴：季。60 季起步、每 20 季一档，只扩不缩 */
+    const maxT = Math.max(60, Math.ceil(Math.max(1, recs.length) / 20) * 20);
+    const xAt = (t) => padL + (t / maxT) * plotW;
+    const yUp = (v) => upTop + (1 - clamp01(v)) * upH;
+    const yLow = (v) => lowTop + (1 - clamp01(v)) * lowH;
+
+    /* 两轨共用的竖网格 */
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = COLOR.gridSoft;
+    [0, maxT / 2, maxT].forEach((t) => {
+      const x = xAt(t);
+      ctx.beginPath();
+      ctx.moveTo(x, upTop);
+      ctx.lineTo(x, lowTop + lowH);
+      ctx.stroke();
+    });
+
+    /* —— 上轨：覆盖率 p(t) + 阈值 1−1/R₀ + 理性均衡 p† —— */
+    ctx.font = FONT_MONO;
+    [0, 0.5, 1].forEach((v) => {
+      const y = yUp(v);
+      ctx.strokeStyle = COLOR.grid;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+      ctx.fillStyle = COLOR.dim;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(Math.round(v * 100) + '%', padL - 6, y);
+    });
+
+    /* 阈值线恒在 p† 之上（c ≤ 0.40 时 Rc = −ln(1−c)/c ≥ 1）；两者贴近时合并标签 */
+    const merged = thr != null && pd != null && Math.abs(pd - thr) < 0.02;
+    if (thr != null) {
+      refLine(ctx, yUp(thr), padL, plotW, [5, 4], COLOR.epi);
+      ctx.fillStyle = COLOR.epi;
+      ctx.font = FONT_MONO;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText((merged ? '阈值 ≈ p† ' : '阈值 ') + V.pct(thr, 1) + '%',
+        padL + plotW - 4, yUp(thr) - 3);
+    }
+    if (pd != null && !merged) {
+      refLine(ctx, yUp(pd), padL, plotW, [1.5, 2.5], COLOR.ghost);
+      ctx.fillStyle = COLOR.ghost;
+      ctx.font = FONT_MONO;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      ctx.fillText('p† ' + V.pct(pd, 1) + '%', padL + plotW - 4, yUp(pd) + 3);
+    }
+
+    if (recs.length) {
+      ctx.beginPath();
+      for (let i = 0; i < recs.length; i += 1) {
+        const x = xAt(i + 1);
+        const y = yUp(recs[i].coverage);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = COLOR.game;
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      const last = recs[recs.length - 1];
+      const lx = xAt(recs.length);
+      const ly = yUp(last.coverage);
+      dot(ctx, lx, ly, 2.8, COLOR.game, COLOR.white, 1.2);
+      const nearRight = lx > padL + plotW - 76;
+      ctx.fillStyle = COLOR.game;
+      ctx.font = FONT_MONO;
+      ctx.textAlign = nearRight ? 'right' : 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('p ' + V.pct(last.coverage, 1) + '%', nearRight ? lx - 6 : lx + 6, ly - 4);
+    } else {
+      ctx.fillStyle = COLOR.dim;
+      ctx.font = FONT_SANS;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('推进时间，跨季轨迹从这里开始', padL + plotW / 2, upTop + upH / 2 - 8);
+      ctx.fillStyle = COLOR.faint;
+      ctx.fillText('＋1 季 · ＋10 季 · 连续演化', padL + plotW / 2, upTop + upH / 2 + 12);
+    }
+
+    legend(ctx, padL + 8, upTop + 8, [
+      { kind: 'line', color: COLOR.game, text: '覆盖率 p' },
+      { kind: 'dash', color: COLOR.epi, text: '阈值' },
+      { kind: 'dot', color: COLOR.ghost, text: 'p†' }
+    ]);
+
+    /* —— 下轨：疫情规模 attack(t)（rust 柱）+ 平均感知 r̂(t)（amber 线） —— */
+    ctx.font = FONT_MONO;
+    [0, 0.5, 1].forEach((v) => {
+      const y = yLow(v);
+      ctx.strokeStyle = COLOR.grid;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+      ctx.fillStyle = COLOR.dim;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(Math.round(v * 100) + '%', padL - 6, y);
+    });
+
+    const barW = Math.max(1, (plotW / maxT) * 0.72);
+    ctx.fillStyle = COLOR.epi;
+    for (let i = 0; i < recs.length; i += 1) {
+      const v = clamp01(recs[i].attackRate);
+      if (v <= 0) continue;
+      const x = xAt(i + 1);
+      const y = yLow(v);
+      ctx.fillRect(x - barW / 2, y, barW, lowTop + lowH - y);
+    }
+    if (recs.length) {
+      ctx.beginPath();
+      for (let i = 0; i < recs.length; i += 1) {
+        const x = xAt(i + 1);
+        const y = yLow(recs[i].perceivedMean);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = COLOR.mind;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+    }
+
+    legend(ctx, padL + 8, lowTop + 8, [
+      { kind: 'bar', color: COLOR.epi, text: '疫情规模' },
+      { kind: 'line', color: COLOR.mind, text: '感知 r̂' }
+    ]);
+
+    /* 取景框与 x 轴刻度 */
+    ctx.strokeStyle = COLOR.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(padL + 0.5, upTop + 0.5, plotW - 1, upH - 1);
+    ctx.strokeRect(padL + 0.5, lowTop + 0.5, plotW - 1, lowH - 1);
+    ctx.fillStyle = COLOR.dim;
+    ctx.font = FONT_MONO;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    [0, maxT / 2, maxT].forEach((t) => {
+      ctx.fillText(String(Math.round(t)), xAt(t), lowTop + lowH + 6);
+    });
+    ctx.textAlign = 'right';
+    ctx.fillText('时间 / 季', padL + plotW, lowTop + lowH + 6);
+  }
+
+  function drawSeasonIfDirty() {
+    const rec = lastRecord();
+    const P = V.params;
+    const key = [objId(V.world.net), V.world.season, rec ? objId(rec) : 0,
+      V.world.history.length, P.b, P.mu, P.c, sizeKey(el.seasonCanvas)].join('|');
+    if (key === seasonKey) return;
+    seasonKey = key;
+    drawSeason();
+  }
+
+  /* ============================================================
+   * 展品 B2 · 墙上缺口 #wall-canvas
+   * ========================================================== */
+  function drawWall() {
+    const chart = V.canvas('wall-canvas');
+    const ctx = chart.ctx;
+    const net = V.world.net;
+    if (!net || !net.adjStart || chart.w < 60 || chart.h < 60) {
+      drawPlaceholder(chart);
+      return;
+    }
+    const pos = V.layout(net);
+    if (!pos || !pos.x || !pos.y || pos.x.length < net.n) {
+      drawPlaceholder(chart);
+      return;
+    }
+
+    const margin = 14;
+    const plotW = chart.w - margin * 2;
+    const plotH = chart.h - margin * 2;
+
+    /* 布局坐标自适配：不假设 infra 返回的归一化口径，按包围盒等比装入画布 */
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (let i = 0; i < net.n; i += 1) {
+      const x = pos.x[i];
+      const y = pos.y[i];
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const spanX = Math.max(maxX - minX, 1e-6);
+    const spanY = Math.max(maxY - minY, 1e-6);
+    const scale = Math.min(plotW / spanX, plotH / spanY);
+    const ox = margin + (plotW - spanX * scale) / 2 - minX * scale;
+    const oy = margin + (plotH - spanY * scale) / 2 - minY * scale;
+    const X = (i) => pos.x[i] * scale + ox;
+    const Y = (i) => pos.y[i] * scale + oy;
+
+    const n = net.n;
+    const radii = new Float32Array(n);
+    for (let i = 0; i < n; i += 1) radii[i] = 1.7 + 0.42 * Math.sqrt(net.deg[i]);
+
+    /* 边：透明度 0.06（OUTLINE §3 B2 钉死），CSR 只画 j > i 一向 */
+    ctx.strokeStyle = 'rgba(63,94,120,0.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < n; i += 1) {
+      const x0 = X(i);
+      const y0 = Y(i);
+      for (let k = net.adjStart[i]; k < net.adjStart[i + 1]; k += 1) {
+        const j = net.adjList[k];
+        if (j <= i) continue;
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(X(j), Y(j));
+      }
+    }
+    ctx.stroke();
+
+    /* 节点三分类（SPEC §3 钉死口径），自下而上：缺口 → 墙砖 → 本季感染过 */
+    const strat = V.world.strategies;
+    const rec = lastRecord();
+    const ever = rec ? rec.ever : null;
+
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < n; i += 1) {
+      if (strat[i] || (ever && ever[i])) continue;
+      ctx.moveTo(X(i) + radii[i], Y(i));
+      ctx.arc(X(i), Y(i), radii[i], 0, TAU);
+    }
+    ctx.fillStyle = COLOR.paper;
+    ctx.fill();
+    ctx.strokeStyle = COLOR.frame;
+    ctx.stroke();
+
+    ctx.beginPath();
+    for (let i = 0; i < n; i += 1) {
+      if (!strat[i]) continue;
+      ctx.moveTo(X(i) + radii[i], Y(i));
+      ctx.arc(X(i), Y(i), radii[i], 0, TAU);
+    }
+    ctx.fillStyle = COLOR.game;
+    ctx.fill();
+
+    if (ever) {
+      ctx.beginPath();
+      for (let i = 0; i < n; i += 1) {
+        if (strat[i] || !ever[i]) continue;
+        ctx.moveTo(X(i) + radii[i], Y(i));
+        ctx.arc(X(i), Y(i), radii[i], 0, TAU);
+      }
+      ctx.fillStyle = COLOR.epi;
+      ctx.fill();
+    }
+
+    /* 图例（左下角，行内小样） */
+    const ly = chart.h - 12;
+    let lx = 16;
+    const legendDot = (fill, stroke, text) => {
+      ctx.beginPath();
+      ctx.arc(lx + 4, ly, 3.4, 0, TAU);
+      if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fill();
+      } else {
+        ctx.fillStyle = COLOR.paper;
+        ctx.fill();
+        ctx.strokeStyle = stroke;
+        ctx.stroke();
+      }
+      ctx.fillStyle = COLOR.dim;
+      ctx.font = FONT_SANS;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, lx + 11, ly + 1);
+      lx += 11 + text.length * 10 + 12;
+    };
+    legendDot(COLOR.game, null, '砖');
+    legendDot(COLOR.epi, null, '本季感染过');
+    legendDot(null, COLOR.frame, '缺口');
+  }
+
+  function drawWallIfDirty() {
+    const rec = lastRecord();
+    const key = [objId(V.world.net), V.world.season, rec ? objId(rec) : 0,
+      V.world.history.length, sizeKey(el.wallCanvas)].join('|');
+    if (key === wallKey) return;
+    wallKey = key;
+    drawWall();
+  }
+
+  /* ============================================================
+   * 读数、说明与观察问题（派生统计就地计算，不写回世界）
+   * ========================================================== */
+  function coverages() {
+    const hist = V.world.history;
+    const covs = [];
+    for (let i = 0; i < hist.length; i += 1) covs.push(hist[i].coverage);
+    return covs;
+  }
+
+  function updateReadouts() {
+    const r0 = currentR0();
+    const P = V.params;
+    /* p† = max(0, 1 − Rc/R₀)，Rc = −ln(1−c)/c（Core 闭式），以当前 % 展示 */
+    V.set('nash-value', r0 == null ? '—' : V.pct(Core.nashCoverage(r0, P.c), 1));
+    V.set('swing-value', V.world.history.length
+      ? V.pct(Core.swing(coverages(), 30), 1) : '—');
+    const gap = countGaps(lastRecord());
+    V.set('freeride-value', gap == null ? '—' : String(gap));
+  }
+
+  function updateNotes() {
+    const P = V.params;
+    const swingTxt = V.world.history.length
+      ? V.pct(Core.swing(coverages(), 30), 1) : '—';
+    /* 账本规则是设定说明（SPEC §2.3 豁免），摆幅是当场实况数字 */
+    V.set('season-note', '账本每季一记：接种 −' + P.c.toFixed(2) + '、上季中招 −1、'
+      + '上季无恙 −r̂——记忆给侥幸定价（λ=' + P.lambda.toFixed(2) + '）；'
+      + '模仿只发生在接触者之间（K=' + P.K.toFixed(2) + '）。'
+      + '最近 30 季覆盖率摆幅 ' + swingTxt + ' 个百分点。');
+
+    const rec = lastRecord();
+    if (rec && rec.ever) {
+      const strat = V.world.strategies;
+      let vac = 0;
+      let ever = 0;
+      for (let i = 0; i < strat.length; i += 1) {
+        if (strat[i]) vac += 1;
+        if (rec.ever[i]) ever += 1;
+      }
+      const gap = countGaps(rec);
+      V.set('wall-note', '青色实心是已接种的砖（' + vac + ' 人），锈红实心是本季感染过（'
+        + ever + ' 人），空心描边是缺口——未接种且从未感染（'
+        + (gap == null ? '—' : gap) + ' 人）。火总从缺口成片的地方烧起来。');
+    } else {
+      V.set('wall-note', '青色实心是已接种的砖，锈红实心是本季感染过，'
+        + '空心描边是缺口——未接种且从未感染。');
+    }
+  }
+
+  /* 观察问题三态（OUTLINE §3 钉死判定，优先级 1→2→3）：
+   * 缺口=0 → 墙正厚；缺口>0 且最近一季 attackRate ≤ 0.08 → 拆墙时；否则 → 恐惧补墙 */
+  function updateInsight() {
+    const rec = lastRecord();
+    const gap = countGaps(rec);
+    if (!rec || gap == null) {
+      V.set('insight2', '预热中——墙的缺口马上就有了。');
+      return;
+    }
+    const scaleTxt = '缺口 ' + gap + ' 人，最近一季疫情规模 '
+      + V.pct(rec.attackRate, 1) + '%。';
+    if (gap === 0) {
+      V.set('insight2', '墙正厚——把「接种太贵」按下，看缺口怎么长出来。当前缺口 0 人。');
+    } else if (rec.attackRate <= ATTACK_QUIET) {
+      V.set('insight2', '风平浪静正是拆墙时——自由骑手在攒下一轮疫情。' + scaleTxt);
+    } else {
+      V.set('insight2', '恐惧补墙——覆盖率正在跳升，看下轨的感知线怎么跟在疫情后面。'
+        + scaleTxt);
+    }
+  }
+
+  /* ============================================================
+   * 控件：五根滑杆（默认路由 = infra 代为 applyParams 主世界重放）
+   * ========================================================== */
+  const f1 = (v) => v.toFixed(1);
+  const f2 = (v) => v.toFixed(2);
+  const ariaC = (v) => '接种成本 ' + v.toFixed(2) + '，感染损失记 1';
+  const ariaLambda = (v) => '记忆留存率 ' + v.toFixed(2);
+  const ariaAlpha = (v) => '注意力放大 ' + v.toFixed(1);
+  const ariaOmega = (v) => '局部感知权重 ' + v.toFixed(2);
+  const ariaK = (v) => '模仿噪声 K=' + v.toFixed(2);
+
+  const cInput = V.slider('c-slider', 'c-value', { fmt: f2, aria: ariaC, onInput: renderZone });
+  const lambdaInput = V.slider('lambda-slider', 'lambda-value',
+    { fmt: f2, aria: ariaLambda, onInput: renderZone });
+  const alphaInput = V.slider('alpha-slider', 'alpha-value',
+    { fmt: f1, aria: ariaAlpha, onInput: renderZone });
+  const omegaInput = V.slider('omega-slider', 'omega-value',
+    { fmt: f2, aria: ariaOmega, onInput: renderZone });
+  const kInput = V.slider('k-slider', 'k-value', { fmt: f2, aria: ariaK, onInput: renderZone });
+
+  /* 程序化赋值不触发 input 事件：预设/复位后由这里补齐位置、output 与 aria */
+  function setSlider(input, outId, value, fmt, aria) {
+    if (!input || !Number.isFinite(value)) return;
+    input.value = String(value);
+    V.set(outId, fmt(value));
+    input.setAttribute('aria-valuetext', aria(value));
+  }
+
+  /* 参数可能被任何展区或复位改动：每次渲染都把滑杆对齐到当前世界。
+   * 注意 CANON 的模仿温度键是大写 K（SPEC §1.1），滑杆 id 是小写 k-slider */
+  function syncSliders() {
+    const P = V.params;
+    setSlider(cInput, 'c-value', P.c, f2, ariaC);
+    setSlider(lambdaInput, 'lambda-value', P.lambda, f2, ariaLambda);
+    setSlider(alphaInput, 'alpha-value', P.alpha, f1, ariaAlpha);
+    setSlider(omegaInput, 'omega-value', P.omega, f2, ariaOmega);
+    setSlider(kInput, 'k-value', P.K, f2, ariaK);
+  }
+
+  /* ============================================================
+   * 场景预设 .v-scene2-button（data-c/data-lambda/data-alpha/data-omega/data-k）
+   * ========================================================== */
+  const sceneButtons = Array.prototype.slice.call(document.querySelectorAll(SCENE_SELECTOR));
+  /* data-* 属性名按 SPEC §2.2 钉死为小写 data-k；CANON 参数键是大写 K，
+   * 所以 patch 的最后一项以 K 为键、从 data-k 取值 */
+  const SCENE_KEYS = ['c', 'lambda', 'alpha', 'omega', 'K'];
+
+  function scenePatch(btn) {
+    return {
+      c: Number(btn.getAttribute('data-c')),
+      lambda: Number(btn.getAttribute('data-lambda')),
+      alpha: Number(btn.getAttribute('data-alpha')),
+      omega: Number(btn.getAttribute('data-omega')),
+      K: Number(btn.getAttribute('data-k'))
+    };
+  }
+
+  function applyScene(btn) {
+    const patch = scenePatch(btn);
+    for (let i = 0; i < SCENE_KEYS.length; i += 1) {
+      if (!Number.isFinite(patch[SCENE_KEYS[i]])) return;   // 五属性必须齐全可用
+    }
+    V.applyParams(patch);   // 一次重放；emit('params') → renderZone
+    syncSliders();
+  }
+
+  /* aria-pressed 自持：与当前参数逐项匹配者点亮，手动拧杆后自动熄灭 */
+  function updateScenePressed() {
+    const P = V.params;
+    sceneButtons.forEach((btn) => {
+      const patch = scenePatch(btn);
+      const active = SCENE_KEYS.every((key) =>
+        Number.isFinite(patch[key]) && Math.abs(patch[key] - P[key]) < 1e-9);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  /* ============================================================
+   * 渲染总入口（事件与 onFrame 双入口都汇到这里）
+   * ========================================================== */
+  function renderZone() {
+    syncSliders();
+    updateScenePressed();
+    updateReadouts();
+    updateNotes();
+    updateInsight();
+    drawSeasonIfDirty();
+    drawWallIfDirty();
+  }
+
+  /* —— 画布可访问性兜底（W1 已写则不覆盖） —— */
+  (function ensureA11y() {
+    if (!el.seasonCanvas.hasAttribute('role')) el.seasonCanvas.setAttribute('role', 'img');
+    if (!el.seasonCanvas.hasAttribute('aria-label')) {
+      el.seasonCanvas.setAttribute('aria-label', CANVAS_ARIA['season-canvas']);
+    }
+    if (!el.wallCanvas.hasAttribute('role')) el.wallCanvas.setAttribute('role', 'img');
+    if (!el.wallCanvas.hasAttribute('aria-label')) {
+      el.wallCanvas.setAttribute('aria-label', CANVAS_ARIA['wall-canvas']);
+    }
+    if (!el.insight.hasAttribute('aria-live')) el.insight.setAttribute('aria-live', 'polite');
+  })();
+
+  sceneButtons.forEach((btn) => {
+    btn.addEventListener('click', () => applyScene(btn));
+  });
+
+  /* 事件面：infra 的五类变更全部落到本展区全量重渲（幂等，绘制有脏键去重） */
+  ['ready', 'net', 'season', 'params', 'reset'].forEach((name) => V.on(name, renderZone));
+  if (typeof V.onFrame === 'function') V.onFrame(renderZone);
+  window.addEventListener('resize', renderZone);
+  window.addEventListener('hashchange', renderZone);   // :target 折叠复原后重画
+
+  renderZone();   // 首帧：infra 已预热 12 季（SPEC §10），这里兜底立即成画
+})();
+
+// ===== ui/act3.js =====
+'use strict';
+
+/* ============================================================
+ * 一墙之隔 · ui/act3.js —— 第三展区「谁来补墙」（03 人如何介入 / MENDING）
+ *
+ * 契约：SPEC §2.1（id 配额 11 个）/ §1.3（通报只对自愿延续生效）/
+ * §8.2–§8.3（infra API 与 act 纪律）、OUTLINE §4（展品 C1 行为与
+ * 观察问题五态）、SPEC §10（加载时空态引导是唯一允许的引导态）。
+ *
+ * 展品 C1 #versus-canvas：以主世界当前的 seed 与网络（含 rewire 后的
+ * seedOffset）经 VUI.Core.createWorld 就地创建两个 40 季临时世界并排
+ * 对账——基线 = 主世界参数原样 + policy 'voluntary'；干预 = 同 seed
+ * 同网 + 本展区控件策略 × 外生覆盖率 × 疫情通报。左画两条每季疫情
+ * 规模曲线（基线 rust / 干预 teal），右画末 20 季均值并排条形。
+ *
+ * 纪律（SPEC §8.3）：
+ *   - 策略按钮组默认 data-policy='target' 是本展区本地控件态——不入
+ *     CANON、不影响主世界；#q-ext-slider 走 slider 助手 local 模式、
+ *     #broadcast-toggle 自持——两者都不触发主世界重放。本文件不调用
+ *     stepSeason/applyParams 等任何世界变更入口，只监听 infra 事件。
+ *   - 对照世界手工 step 40 季、不进 VUI.world.history；首帧与复位后自动
+ *     跑一次默认对照（r2 终审：C1 不再空态待启动，SPEC §10 同步修订），
+ *     「运行对照」每次点击仍按当前控件态确定性重算；结果常驻后，
+ *     'params'/'net' 事件随主世界新参新网重算（OUTLINE §1：参数改动，
+ *     三个展区同时刷新）。
+ *   - 读数口径：后 20 季 = 第 21..40 季（history 末 20 条）平均；
+ *     #saving-value = 1 − 干预/基线，基线 < 0.01 显示「—」。
+ *   - q-ext 是本地控件：infra 的 syncSlidersFromParams 会在任何
+ *     applyParams/reset 时把它吸附回 params.qExt（CANON 0.7），本文件
+ *     在每次渲染时把滑杆重申回本地控件态，让用户选的干预覆盖率在
+ *     无关参数改动后保持不动。
+ * ========================================================== */
+
+(() => {
+  const V = window.VUI;
+  if (!V || typeof V.on !== 'function') return;   // 构建契约保证 infra 先行；裸跑兜底
+  const Core = V.Core;
+  if (!Core || typeof Core.createWorld !== 'function') return;
+
+  const $ = (selector) => document.querySelector(selector);
+
+  /* —— SPEC §2.1 act3 配额：直取的 5 个元素（其余 6 个经 V.slider /
+   *    V.button / V.toggle / V.set 绑定，全部落在同一份 11 id 清单内） —— */
+  const el = {
+    versusCanvas: $('#versus-canvas'),
+    qExtSlider: $('#q-ext-slider'),
+    broadcast: $('#broadcast-toggle'),
+    versusNote: $('#versus-note'),
+    insight: $('#insight3')
+  };
+  if (!el.versusCanvas || !el.qExtSlider || !el.broadcast || !el.insight) return;
+
+  /* 策略按钮组：类选择器，不在 id 配额范围（selfcheck 第 4 条口径） */
+  const POLICY_SELECTOR = '.v-policy-button';
+
+  /* —— SPEC §7 学科色与字体栈（与 act1/act2 同值） —— */
+  const COLOR = {
+    paper: '#faf8f2',      // 画布纸面
+    grid: '#e5e1d7',       // 网格
+    frame: '#d9d2c6',      // 取景框
+    ink: '#1e2d31',
+    dim: '#626e6d',
+    faint: '#8a938f',
+    epi: '#b8583d',        // --epi：基线曲线、基线条形
+    game: '#4c7779',       // --game：干预曲线、干预条形
+    ghost: '#7d8c88',      // --ghost：计账窗虚线
+    band: 'rgba(63,94,120,.05)',
+    chip: 'rgba(255,253,248,.88)',
+    white: '#fffdf8'
+  };
+  const FONT_MONO = '9px ui-monospace,"Cascadia Code",Consolas,monospace';
+  const FONT_MONO_SMALL = '8px ui-monospace,"Cascadia Code",Consolas,monospace';
+  const FONT_SANS = '10px "Avenir Next","PingFang SC","Microsoft YaHei",sans-serif';
+  const FONT_SANS_BIG = '12px "Avenir Next","PingFang SC","Microsoft YaHei",sans-serif';
+  const TAU = Math.PI * 2;
+
+  /* —— OUTLINE §4 / SPEC §1.1、§1.3 钉死的常量 —— */
+  const RUN_SEASONS = 40;        // 对照世界各推 40 季
+  const WINDOW_SEASONS = 20;     // 计账窗 = 第 21..40 季（history 末 20 条）
+  const BROADCAST_OMEGA = 0.15;  // 通报开 → 干预世界 ω 固定 0.15（仅自愿延续生效）
+  const BASE_CLEAN = 0.01;       // insight3 状态 0 与「—」读数共用的基线下限
+  const QEXT_MAX = 0.8;          // §2.1 滑杆规格：0–0.80，步 0.05，默认 0.70
+  const QEXT_DEFAULT = typeof Core.CANON.qExt === 'number' ? Core.CANON.qExt : 0.7;
+
+  const POLICY_KEYS = ['voluntary', 'random', 'target'];
+  const POLICY_NAME = {
+    voluntary: '自愿延续',
+    random: '随机补种',
+    target: '定向补种'
+  };
+
+  /* 画布可访问性兜底（SPEC §2.1：role="img" + 中文 aria-label；W1 已写则不覆盖） */
+  const CANVAS_ARIA = '干预对照图：横轴是季（1 到 40），纵轴是每季疫情规模占全网的'
+    + '百分比。锈红线是基线世界（自愿接种、当前参数），青色线是干预世界（选定策略'
+    + '与外生覆盖率），竖直虚线右侧的浅色带是末 20 季计账窗；右侧并排条形是两个'
+    + '世界末 20 季的平均疫情规模，锈红为基线、青色为干预。';
+
+  /* #versus-note 的静态散文由 W1 按 OUTLINE §4 撰写（含 C4 结论句落点）；
+   * 加载时原样留存，动态说明始终追加在它前面，不覆盖对账文本。
+   * W1 留空时兜底 OUTLINE 的钉死句。 */
+  const NOTE_FALLBACK = '定向补种过采样枢纽——这个优势在均匀网络上会消失；'
+    + '低于阈值时任何策略都拦不住火。';
+  const STATIC_NOTE = el.versusNote && el.versusNote.textContent
+    ? el.versusNote.textContent.trim() : '';
+
+  /* 观察问题五态（OUTLINE §4 钉死判定，优先级 0→4，分段穷尽无空隙） */
+  const INSIGHT_GUIDE = '对照还没跑——按「运行对照」，同一个 seed、同一张网，'
+    + '基线与干预各推 40 季、末 20 季对账。';
+  const INSIGHT = [
+    '基线太干净，对照无意义——把参数调凶（或把网络切到无标度）再来。',
+    '钱花在了对的位置——干预把疫情规模砍掉一半以上。',
+    '有效但有限——抬覆盖率或换位置还有余量。',
+    '无增益——这个策略在这张网络上没有优势；回「一季疫情」把网络切到无标度，'
+      + '再看钱该花在哪。'
+  ];
+  /* 状态 4（saving ≤ −0.1）的解释句按本次对照的干预策略分支（SPEC §8.1：
+   * 措辞可微调语气、判定条件不得增删）——「定向会把低度节点漏掉」只对
+   * 定向补种成立；random/target 世界的接种由外生策略直接给定（§1.3），
+   * voluntary 的干预世界只动通报（ω），与「定向/低度节点」无关 */
+  const INSIGHT_WORSE = {
+    target: '更差——补种的钱没花在缺口上：定向在均匀网络上会把低度节点漏掉——'
+      + '结构决定钱花在哪。',
+    random: '更差——补种的钱没花在缺口上：随机撒针撒不进缺口——结构决定钱花在哪。',
+    voluntary: '更差——这轮干预没把墙补厚：只改了风声，缺口还是那些缺口。'
+  };
+
+  /* ============================================================
+   * 状态（本展区私有；对照结果缓存供画布/读数反复取用）
+   * ========================================================== */
+  const state = {
+    policy: 'target',    // 本地控件态，OUTLINE §4 钉死默认 target
+    qExt: QEXT_DEFAULT,  // 外生覆盖率（本地路由，不进主世界 params）
+    broadcast: false,    // 疫情通报开关（默认关；仅自愿延续策略生效）
+    result: null         // 最近一次对照 { baseAtt, intvAtt, baseFinal, intvFinal,
+  };                     //   intvCovMean, saving, cfg:{policy,qExt,broadcast} }
+
+  const policyButtons = Array.prototype.slice.call(
+    document.querySelectorAll(POLICY_SELECTOR)
+  );
+
+  /* ============================================================
+   * 控件态读取（信任 body.html 初值，缺省时按 OUTLINE §4 兜底）
+   * ========================================================== */
+  function readPolicyFromDom() {
+    for (let i = 0; i < policyButtons.length; i += 1) {
+      const btn = policyButtons[i];
+      if (btn.getAttribute('aria-pressed') === 'true') {
+        const p = btn.getAttribute('data-policy');
+        if (POLICY_KEYS.indexOf(p) >= 0) return p;
+      }
+    }
+    return 'target';
+  }
+
+  function readBroadcastFromDom() {
+    return el.broadcast.getAttribute('aria-pressed') === 'true';
+  }
+
+  function readQExtFromDom() {
+    const v = Number(el.qExtSlider.value);
+    return Number.isFinite(v) ? Math.min(QEXT_MAX, Math.max(0, v)) : QEXT_DEFAULT;
+  }
+
+  const fmtQExt = (v) => v.toFixed(2);
+  const ariaQExt = (v) => '外生覆盖率 ' + v.toFixed(2) + '，0 为不补种、0.80 为八成覆盖';
+
+  /* 通报开关置灰：random/target 世界由外生策略决定接种、感知只作展示
+   * （SPEC §1.3），通报无处生效——is-disabled 状态类 + 真禁用双保险 */
+  function syncBroadcast() {
+    const locked = state.policy !== 'voluntary';
+    el.broadcast.disabled = locked;
+    el.broadcast.classList.toggle('is-disabled', locked);
+  }
+
+  /* 程序化赋值不触发 input 事件：滑杆位置、output 与 aria 由这里补齐
+   * （对冲 infra syncSlidersFromParams 的吸附，见文件头说明） */
+  function assertQExtControl() {
+    el.qExtSlider.value = String(state.qExt);
+    V.set('q-ext-value', fmtQExt(state.qExt));
+    el.qExtSlider.setAttribute('aria-valuetext', ariaQExt(state.qExt));
+  }
+
+  /* ============================================================
+   * 对照实验：两个 40 季世界就地创建、手工推进（OUTLINE §4）
+   * ========================================================== */
+  function tailMean(xs, k) {
+    const n = xs.length;
+    const w = Math.min(k, n);
+    if (w <= 0) return 0;
+    let s = 0;
+    for (let i = n - w; i < n; i += 1) s += xs[i];
+    return s / w;
+  }
+
+  function recompute() {
+    const P = V.params;
+    const offset = V.world.seedOffset || 0;   // 跟随主世界：rewire 后随新网（§8.3）
+
+    /* 基线 = 主世界参数原样 + policy 'voluntary'；干预 = 同 seed 同网 + 控件
+     * 策略与外生覆盖率（本地控件态，不入 params）。通报只对自愿延续生效
+     * （§1.3）：开 → 干预世界 ω 固定 0.15，其余原样。 */
+    const baseOpts = Object.assign({}, P, { policy: 'voluntary', seedOffset: offset });
+    const intvOpts = Object.assign({}, P, {
+      policy: state.policy,
+      qExt: state.qExt,
+      seedOffset: offset
+    });
+    if (state.policy === 'voluntary') {
+      intvOpts.omega = state.broadcast ? BROADCAST_OMEGA : P.omega;
+    }
+
+    const baseWorld = Core.createWorld(baseOpts);
+    const intvWorld = Core.createWorld(intvOpts);
+    for (let s = 0; s < RUN_SEASONS; s += 1) {
+      baseWorld.step();
+      intvWorld.step();
+    }
+
+    const baseAtt = baseWorld.history.map((rec) => rec.attackRate);
+    const intvAtt = intvWorld.history.map((rec) => rec.attackRate);
+    const intvCovArr = intvWorld.history.map((rec) => rec.coverage);
+    const baseFinal = tailMean(baseAtt, WINDOW_SEASONS);
+    const intvFinal = tailMean(intvAtt, WINDOW_SEASONS);
+    const intvCovMean = tailMean(intvCovArr, WINDOW_SEASONS);
+    const saving = baseFinal < BASE_CLEAN ? null : 1 - intvFinal / baseFinal;
+
+    state.result = {
+      baseAtt: baseAtt,
+      intvAtt: intvAtt,
+      baseFinal: baseFinal,
+      intvFinal: intvFinal,
+      intvCovMean: intvCovMean,
+      saving: saving,
+      cfg: { policy: state.policy, qExt: state.qExt, broadcast: state.broadcast }
+    };
+  }
+
+  /* 本展区对照世界重算（主世界不动）：结果常驻，控件态每次变化都重算 */
+  function refreshVersus() {
+    if (state.result) recompute();
+    renderZone();
+  }
+
+  /* ============================================================
+   * 读数、说明与观察问题（V.set 只写数字，单位由 body.html 静态承担）
+   * ========================================================== */
+  function updateReadouts() {
+    const r = state.result;
+    V.set('base-final-value', r ? V.pct(r.baseFinal, 1) : '—');
+    V.set('intv-final-value', r ? V.pct(r.intvFinal, 1) : '—');
+    V.set('intv-cov-value', r ? V.pct(r.intvCovMean, 1) : '—');
+    V.set('saving-value', r && r.saving != null ? V.pct(r.saving, 1) : '—');
+  }
+
+  function updateNote() {
+    const r = state.result;
+    const live = r
+      ? '本次对照：基线＝自愿接种（当前参数），干预＝' + POLICY_NAME[r.cfg.policy]
+        + '（q ' + r.cfg.qExt.toFixed(2)
+        + (r.cfg.policy === 'voluntary' ? '，通报' + (r.cfg.broadcast ? '开' : '关') : '')
+        + '），两个世界同 seed 同网、各推 40 季。'
+      : '对照未跑——按「运行对照」，同一 seed、同一张网，基线与干预各推 40 季。';
+    V.set('versus-note', live + (STATIC_NOTE || NOTE_FALLBACK));
+  }
+
+  /* 五态判定（OUTLINE §4 钉死阈值：基线 < 0.01 → 0；saving ≥ 0.5 → 1；
+   * 0.1 ≤ saving < 0.5 → 2；−0.1 < saving < 0.1 → 3；saving ≤ −0.1 → 4） */
+  function updateInsight() {
+    const r = state.result;
+    if (!r) {
+      V.set('insight3', INSIGHT_GUIDE);
+      return;
+    }
+    let k;
+    if (r.baseFinal < BASE_CLEAN) {
+      k = 0;
+    } else {
+      const s = 1 - r.intvFinal / r.baseFinal;
+      if (s >= 0.5) k = 1;
+      else if (s >= 0.1) k = 2;
+      else if (s > -0.1) k = 3;
+      else k = 4;
+    }
+    const scaleTxt = k === 0
+      ? '当前基线仅 ' + V.pct(r.baseFinal, 1) + '%。'
+      : '末 20 季：基线 ' + V.pct(r.baseFinal, 1) + '% → 干预 '
+        + V.pct(r.intvFinal, 1) + '%。';
+    /* 状态 4 的解释句跟随本次对照实际采用的策略（r.cfg.policy 是重算时
+     * 的快照，与 saving 同源）；其余状态用统一文案 */
+    const wording = k === 4
+      ? (INSIGHT_WORSE[r.cfg.policy] || INSIGHT_WORSE.target)
+      : INSIGHT[k];
+    V.set('insight3', wording + scaleTxt);
+  }
+
+  /* ============================================================
+   * 展品 C1 · 干预对照 #versus-canvas
+   * ========================================================== */
+  function dot(ctx, x, y, radius, fill, stroke, strokeWidth) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, TAU);
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = strokeWidth || 1.2;
+      ctx.stroke();
+    }
+  }
+
+  /* 带纸色衬底的画布小注，避免与曲线/网格相撞 */
+  function chipText(ctx, text, x, y, align) {
+    ctx.font = FONT_MONO_SMALL;
+    const w = ctx.measureText(text).width;
+    let x0 = x;
+    if (align === 'right') x0 = x - w;
+    else if (align === 'center') x0 = x - w / 2;
+    ctx.fillStyle = COLOR.chip;
+    ctx.fillRect(x0 - 3, y - 8, w + 6, 12);
+    ctx.fillStyle = COLOR.dim;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(text, x0, y);
+  }
+
+  function drawSeries(ctx, values, xAt, yAt, color, width) {
+    ctx.beginPath();
+    for (let i = 0; i < values.length; i += 1) {
+      const x = xAt(i + 1);
+      const y = yAt(values[i] * 100);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.stroke();
+  }
+
+  function drawBar(ctx, cx, w, vPct, yAt, floorY, color, label, topLimit) {
+    const y = yAt(vPct);
+    const h = Math.max(1.5, floorY - y);
+    ctx.fillStyle = color;
+    ctx.fillRect(cx - w / 2, floorY - h, w, h);
+    ctx.fillStyle = COLOR.ink;
+    ctx.font = FONT_MONO;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(vPct.toFixed(1) + '%', cx, Math.max(topLimit, floorY - h - 4));
+    ctx.fillStyle = COLOR.dim;
+    ctx.font = FONT_SANS;
+    ctx.fillText(label, cx, floorY + 16);
+  }
+
+  function drawLegend(ctx, rightX, baselineY) {
+    ctx.fillStyle = COLOR.chip;
+    ctx.fillRect(rightX - 128, baselineY - 11, 128, 15);
+    ctx.font = FONT_SANS;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.strokeStyle = COLOR.epi;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(rightX - 122, baselineY - 3);
+    ctx.lineTo(rightX - 106, baselineY - 3);
+    ctx.stroke();
+    ctx.fillStyle = COLOR.dim;
+    ctx.fillText('基线', rightX - 101, baselineY);
+    ctx.strokeStyle = COLOR.game;
+    ctx.beginPath();
+    ctx.moveTo(rightX - 62, baselineY - 3);
+    ctx.lineTo(rightX - 46, baselineY - 3);
+    ctx.stroke();
+    ctx.fillText('干预', rightX - 41, baselineY);
+  }
+
+  /* 画布过小（绘图区 < 40px）的占位框（SPEC §9.x） */
+  function drawPlaceholder(chart) {
+    const ctx = chart.ctx;
+    ctx.fillStyle = COLOR.paper;
+    ctx.fillRect(0, 0, chart.w, chart.h);
+    ctx.strokeStyle = COLOR.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, chart.w - 1, chart.h - 1);
+    if (chart.w > 150 && chart.h > 60) {
+      ctx.fillStyle = COLOR.dim;
+      ctx.font = FONT_SANS;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('画布太小，放大窗口再来看', chart.w / 2, chart.h / 2);
+    }
+  }
+
+  /* 空态引导（防御性兜底；r2 后正常流程不出现）：提示指向可点击的「运行对照」 */
+  function drawGuide(ctx, padL, padT, plotW, plotH) {
+    ctx.fillStyle = COLOR.paper;
+    ctx.fillRect(padL, padT, plotW, plotH);
+    ctx.strokeStyle = COLOR.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(padL + 0.5, padT + 0.5, plotW - 1, plotH - 1);
+    const cx = padL + plotW / 2;
+    const cy = padT + plotH / 2;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = COLOR.ink;
+    ctx.font = FONT_SANS_BIG;
+    ctx.fillText('同一张网，两种砌法', cx, cy - 24);
+    ctx.fillStyle = COLOR.dim;
+    ctx.font = FONT_SANS;
+    ctx.fillText('按「运行对照」：基线与干预各跑 40 季，末 20 季当场对账', cx, cy + 2);
+    ctx.fillStyle = COLOR.faint;
+    ctx.font = FONT_MONO_SMALL;
+    ctx.fillText('策略 · 外生覆盖率 · 疫情通报——左侧面板选定，每次点击确定性重算', cx, cy + 24);
+  }
+
+  function drawVersus() {
+    const chart = V.canvas('versus-canvas');
+    if (!chart || typeof chart.ctx !== 'object') return;
+    const ctx = chart.ctx;
+    const padL = 46;
+    const padR = 12;
+    const padT = 18;
+    const padB = 28;
+    const plotW = chart.w - padL - padR;
+    const plotH = chart.h - padT - padB;
+
+    if (plotW < 60 || plotH < 60) {
+      drawPlaceholder(chart);
+      return;
+    }
+    const r = state.result;
+    if (!r) {
+      drawGuide(ctx, padL, padT, plotW, plotH);
+      return;
+    }
+
+    /* —— 布局：左曲线区 + 右条形区；过窄时退化为纯曲线 —— */
+    let barsW = Math.max(56, Math.min(120, Math.round(plotW * 0.30)));
+    let curvesW = plotW - barsW - 30;
+    if (curvesW < 120) {
+      curvesW = plotW;
+      barsW = 0;
+    }
+    const barsLeft = padL + curvesW + 30;
+    const floorY = padT + plotH;
+
+    /* —— 纵轴（%）：两曲线与两条形一起定标。每次重算是新实验而非累积
+     *    序列，故取景随当次数据适配（kalman 手动融合图同款），不做只扩不缩 —— */
+    let maxPct = Math.max(r.baseFinal * 100, r.intvFinal * 100);
+    for (let i = 0; i < r.baseAtt.length; i += 1) {
+      if (r.baseAtt[i] * 100 > maxPct) maxPct = r.baseAtt[i] * 100;
+      if (r.intvAtt[i] * 100 > maxPct) maxPct = r.intvAtt[i] * 100;
+    }
+    if (!(maxPct > 0)) maxPct = 0.5;
+    const yMax = maxPct * 1.12;
+    const yStep = V.niceStep(yMax, 4);
+    const yAt = (vPct) => padT + (1 - vPct / yMax) * plotH;
+    const seasonCount = Math.max(1, r.baseAtt.length);
+    const innerM = 3;
+    const xAt = (season) => padL + innerM
+      + ((season - 1) / Math.max(1, seasonCount - 1)) * (curvesW - innerM * 2);
+
+    /* —— 纸面 + 横向网格（全宽共享纵轴） —— */
+    ctx.fillStyle = COLOR.paper;
+    ctx.fillRect(padL, padT, plotW, plotH);
+    ctx.font = FONT_MONO_SMALL;
+    ctx.lineWidth = 1;
+    const nTicks = Math.floor(yMax / yStep + 1e-9);
+    for (let i = 0; i <= nTicks; i += 1) {
+      const v = i * yStep;
+      const y = yAt(v);
+      ctx.strokeStyle = COLOR.grid;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+      ctx.fillStyle = COLOR.dim;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(V.formatTick(v, yStep), padL - 6, y);
+    }
+
+    /* —— 末 20 季计账窗（第 21..40 季）：浅色带 + 灰青虚线缘 —— */
+    if (seasonCount > WINDOW_SEASONS) {
+      const bx = xAt(seasonCount - WINDOW_SEASONS + 1);
+      ctx.fillStyle = COLOR.band;
+      ctx.fillRect(bx, padT, padL + curvesW - bx, plotH);
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = COLOR.ghost;
+      ctx.beginPath();
+      ctx.moveTo(bx, padT);
+      ctx.lineTo(bx, floorY);
+      ctx.stroke();
+      ctx.restore();
+      if (curvesW > 190) {
+        chipText(ctx, '末 20 季计账窗', bx + 5, floorY - 6, 'left');
+      }
+    }
+
+    /* —— 两条每季疫情规模曲线（基线 rust / 干预 teal）+ 末端点 —— */
+    drawSeries(ctx, r.baseAtt, xAt, yAt, COLOR.epi, 1.6);
+    drawSeries(ctx, r.intvAtt, xAt, yAt, COLOR.game, 1.8);
+    dot(ctx, xAt(seasonCount), yAt(r.baseAtt[seasonCount - 1] * 100), 2.6,
+      COLOR.epi, COLOR.white, 1.2);
+    dot(ctx, xAt(seasonCount), yAt(r.intvAtt[seasonCount - 1] * 100), 2.6,
+      COLOR.game, COLOR.white, 1.2);
+
+    /* —— 右侧并排终态条形：末 20 季均值，同一纵轴 —— */
+    if (barsW > 0) {
+      const slot = barsW / 2;
+      const barW = Math.min(30, slot * 0.52);
+      drawBar(ctx, barsLeft + slot * 0.5, barW, r.baseFinal * 100, yAt, floorY,
+        COLOR.epi, '基线', padT + 12);
+      drawBar(ctx, barsLeft + slot * 1.5, barW, r.intvFinal * 100, yAt, floorY,
+        COLOR.game, '干预', padT + 12);
+      ctx.fillStyle = COLOR.dim;
+      ctx.font = FONT_MONO_SMALL;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText('末 20 季均值', barsLeft + barsW / 2, padT + 5);
+    }
+
+    /* —— 取景框、x 轴刻度与轴注 —— */
+    ctx.strokeStyle = COLOR.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(padL + 0.5, padT + 0.5, curvesW - 1, plotH - 1);
+    if (barsW > 0) ctx.strokeRect(barsLeft + 0.5, padT + 0.5, barsW - 1, plotH - 1);
+    ctx.fillStyle = COLOR.dim;
+    ctx.font = FONT_MONO_SMALL;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const tickSeasons = [];
+    [1, 10, 20, 30, seasonCount].forEach((t) => {
+      if (t >= 1 && t <= seasonCount && tickSeasons.indexOf(t) < 0) tickSeasons.push(t);
+    });
+    tickSeasons.forEach((t) => {
+      ctx.fillText(String(t), xAt(t), floorY + 6);
+    });
+    ctx.textAlign = 'right';
+    ctx.fillText('季', padL + curvesW, floorY + 18);
+    ctx.fillStyle = COLOR.faint;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('每季疫情规模 / %', 8, padT - 6);
+
+    /* —— 配置行（左上）与图例（右上）：本次对照的控件快照 —— */
+    if (plotW > 330) {
+      const cfg = r.cfg;
+      chipText(ctx, '基线＝自愿接种（当前参数）｜干预＝' + POLICY_NAME[cfg.policy]
+        + ' · q ' + cfg.qExt.toFixed(2)
+        + (cfg.policy === 'voluntary' ? ' · 通报' + (cfg.broadcast ? '开' : '关') : ''),
+        padL + 6, padT + 13, 'left');
+    }
+    if (curvesW > 170) drawLegend(ctx, padL + curvesW - 6, padT + 13);
+  }
+
+  /* ============================================================
+   * 渲染总入口（事件与 onFrame 双入口都汇到这里；全程幂等）
+   * ========================================================== */
+  function renderZone() {
+    assertQExtControl();
+    syncBroadcast();
+    updateReadouts();
+    updateNote();
+    updateInsight();
+    drawVersus();
+  }
+
+  /* ============================================================
+   * 控件：q-ext 滑杆（local 路由）· 策略组 · 通报开关 · 运行对照
+   * ========================================================== */
+  V.slider('q-ext-slider', 'q-ext-value', {
+    local: true,   // 只喂本展区对照世界，不触发主世界重放（SPEC §8.2/§8.3）
+    fmt: fmtQExt,
+    aria: ariaQExt,
+    onInput: (v) => {
+      const num = Number(v);
+      state.qExt = Number.isFinite(num) ? Math.min(QEXT_MAX, Math.max(0, num))
+        : readQExtFromDom();
+      refreshVersus();
+    }
+  });
+
+  V.buttonGroup(POLICY_SELECTOR, 'data-policy', (picked, btn) => {
+    let value = null;
+    if (typeof picked === 'string' && POLICY_KEYS.indexOf(picked) >= 0) value = picked;
+    else if (btn && typeof btn.getAttribute === 'function') {
+      const p = btn.getAttribute('data-policy');
+      if (POLICY_KEYS.indexOf(p) >= 0) value = p;
+    }
+    state.policy = value || readPolicyFromDom();
+    syncBroadcast();
+    refreshVersus();
+  });
+
+  V.toggle('broadcast-toggle', (on) => {
+    if (state.policy !== 'voluntary') {
+      syncBroadcast();   // 置灰态不生效（防御；真实 DOM 下禁用按钮本就无点击）
+      return;
+    }
+    state.broadcast = typeof on === 'boolean' ? on : readBroadcastFromDom();
+    refreshVersus();
+  });
+
+  V.button('run-versus', () => {
+    recompute();      // 每次点击确定性重算两个世界（OUTLINE §4）
+    renderZone();
+  });
+
+  /* ============================================================
+   * 复位（infra #reset → emit('reset')；滑杆已由 infra 吸附回 CANON）
+   * ========================================================== */
+  function resetLocal() {
+    state.policy = 'target';      // OUTLINE §4 默认 target
+    policyButtons.forEach((btn) => {
+      btn.setAttribute('aria-pressed',
+        btn.getAttribute('data-policy') === 'target' ? 'true' : 'false');
+    });
+    state.broadcast = false;
+    if (el.broadcast.getAttribute('aria-pressed') === 'true') {
+      el.broadcast.setAttribute('aria-pressed', 'false');
+    }
+    state.qExt = QEXT_DEFAULT;
+    syncBroadcast();
+    recompute();                  // 复位后立即重跑默认对照（结果常驻，无空态）
+  }
+
+  /* 参数/换网改动：对照随主世界新参新网重算（已跑过对照时）；q-ext 是本地
+   * 控件，跟随本地状态而非 params.qExt，故每次渲染重申滑杆位置 */
+  function onWorldChanged() {
+    if (state.result) recompute();
+    renderZone();
+  }
+
+  /* —— 画布可访问性兜底（W1 已写则不覆盖） —— */
+  (function ensureA11y() {
+    if (!el.versusCanvas.hasAttribute('role')) el.versusCanvas.setAttribute('role', 'img');
+    if (!el.versusCanvas.hasAttribute('aria-label')) {
+      el.versusCanvas.setAttribute('aria-label', CANVAS_ARIA);
+    }
+    if (!el.insight.hasAttribute('aria-live')) el.insight.setAttribute('aria-live', 'polite');
+  })();
+
+  /* 控件态初始化：信任 body.html 的初值（§2.1 滑杆规格、OUTLINE §4 默认
+   * target），随后 renderZone → syncBroadcast/assertQExtControl 把控件、
+   * output 与状态三方对齐 */
+  state.policy = readPolicyFromDom();
+  state.broadcast = readBroadcastFromDom();
+  state.qExt = readQExtFromDom();
+
+  /* 事件面：infra 的五类变更全部落到本展区重渲（幂等）；对照结果只随
+   * params/net 变化，'season'（推进/重掷）与对照无关，仅重绘 */
+  V.on('params', onWorldChanged);
+  V.on('net', onWorldChanged);
+  V.on('reset', () => {
+    resetLocal();
+    renderZone();
+  });
+  ['ready', 'season'].forEach((name) => V.on(name, renderZone));
+  if (typeof V.onFrame === 'function') V.onFrame(renderZone);
+  window.addEventListener('resize', renderZone);
+  window.addEventListener('hashchange', renderZone);   // :target 折叠复原后重画
+
+  recompute();    // 首帧即跑默认对照（r2 终审：C1 不空态待启动，SPEC §10 修订）
+  renderZone();
+})();
+
+</script>
+</body>
+</html>

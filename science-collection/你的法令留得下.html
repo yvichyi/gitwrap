@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>你的法令留得下</title>
+<meta name="description" content="给振子群立法：法令存成档案、跨会话存在，带着活过几代的履历。">
+<style>
+/* ============================================================================
+   arch/style.css —— 样式（浅色主题）
+   与既有展项的差异：没有 .tabs、没有 .chart 静态图表容器、
+   没有"结论/边界"预设结论表。主体是起草台 + 档案库（卡片可积累）。
+   ==========================================================================*/
+:root{
+  --bg:#f6f5f2;
+  --panel:#ffffff;
+  --ink:#1c1b19;
+  --ink2:#4a4844;
+  --ink3:#7d7a74;
+  --line:#e0ded8;
+  --line2:#cbc8c0;
+  --code:#f7f5f0;
+  --acc:#8c2f39;
+  --ok:#2f6b4f;
+  --bad:#a8322f;
+  --cool:#1f4e5f;
+  --soft:#f0eee9;
+  --mono:"Cascadia Mono","JetBrains Mono",Consolas,"DejaVu Sans Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--sans);
+  font-size:15px; line-height:1.72; -webkit-text-size-adjust:100%;
+  padding:0 0 64px;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+/* ---------- 头版 ---------- */
+.hero{padding-top:40px;padding-bottom:8px}
+.kicker{font-size:12.5px;letter-spacing:.16em;color:var(--ink3);margin:0 0 6px}
+.hero h1{font-size:40px;line-height:1.15;margin:0 0 14px;letter-spacing:.02em}
+.lead{font-size:16px;color:var(--ink2);margin:0 0 12px;max-width:74ch}
+.lead2{font-size:15px;color:var(--ink3)}
+.lead b{color:var(--ink)}
+
+/* ---------- 起草台 ---------- */
+.desk{margin:26px 0 8px}
+.desk-cols{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:14px;align-items:start}
+.edbox,.stagebox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 15px;min-width:0}
+.edhead,.stageline{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:9px}
+.edlab,.stagelab{font-size:12.5px;letter-spacing:.14em;color:var(--ink3)}
+.stagelab b{font-family:var(--mono);color:var(--ink)}
+.edstat,.stagestat{font-family:var(--mono);font-size:12.5px;color:var(--ink2)}
+
+.ed{
+  display:block;width:100%;font-family:var(--mono);font-size:13.5px;line-height:1.62;
+  color:var(--ink);background:var(--code);border:1px solid var(--line2);
+  border-radius:8px;padding:11px 12px;resize:vertical;min-height:132px;tab-size:2;
+}
+.ed:focus{outline:2px solid var(--cool);outline-offset:1px}
+.ederr{margin-top:9px;padding:9px 11px;border-radius:7px;background:#fdf2f1;
+  border:1px solid #e6c3c1;color:#8a2b28;font-size:13px;line-height:1.6}
+.ederr b{color:#6d201e}
+
+.nameRow{display:flex;align-items:center;gap:9px;margin-top:11px;flex-wrap:wrap}
+.nameRow .nl{font-size:13px;color:var(--ink2);white-space:nowrap}
+.nm{
+  flex:1;min-width:120px;font:inherit;font-size:13.5px;padding:8px 10px;min-height:40px;
+  border:1px solid var(--line2);border-radius:7px;background:var(--code);color:var(--ink);
+}
+.nm:focus{outline:2px solid var(--cool);outline-offset:1px}
+
+.edbtns{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+.btn{font:inherit;font-size:13px;padding:8px 12px;min-height:40px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--line2);border-radius:7px;color:var(--ink)}
+.btn:hover{background:var(--soft)}
+.btn-main{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.btn-main:hover{background:#75262f}
+.btn2{color:var(--acc)}
+.btn3{color:var(--ink3)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+
+.ref{margin-top:13px;border-top:1px solid var(--line);padding-top:10px}
+.ref summary{font-size:13px;color:var(--ink2);cursor:pointer;min-height:24px;
+  display:list-item;list-style-position:inside}
+.reflist{list-style:none;margin:9px 0 0;padding:0}
+.reflist li{margin:0 0 6px}
+.reflist button{font-family:var(--mono);font-size:12.5px;text-align:left;width:100%;
+  background:var(--code);border:1px solid var(--line);border-radius:6px;
+  padding:6px 9px;cursor:pointer;color:var(--ink);min-height:32px}
+.reflist button:hover{background:var(--soft);border-color:var(--line2)}
+.reflist .d{font-family:var(--sans);color:var(--ink3);font-size:12px;display:block}
+code{font-family:var(--mono);font-size:.92em;background:var(--code);
+  border:1px solid var(--line);border-radius:4px;padding:1px 4px}
+
+/* ---------- 群体 ---------- */
+.stage{position:relative;background:var(--panel);border:1px solid var(--line);
+  border-radius:8px;overflow:hidden}
+.stage canvas{display:block;width:100%;height:auto;min-height:300px;
+  touch-action:none;cursor:crosshair}
+.lvbar{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin-top:10px;
+  padding-top:9px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink3)}
+.lvtxt{font-family:var(--mono)}
+.lvprog{margin-left:auto}
+
+/* ---------- 读数 ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0 8px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 13px;min-width:0}
+.kpi .kl{font-size:12px;color:var(--ink3);line-height:1.45;display:block;margin-bottom:4px}
+.kpi .kv{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.01em;display:block}
+.kpi .kv.hit{color:var(--ok)}
+.kpi .kn{font-size:11.5px;color:var(--ink3);line-height:1.5;display:block;margin-top:4px}
+
+/* ---------- 档案库（本作的主体） ---------- */
+.lib{margin:34px 0 0}
+.lib-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.lib h2{font-size:24px;margin:0 0 8px}
+.lib-lede{font-size:14.5px;color:var(--ink2);margin:0;max-width:62ch}
+.libtools{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.storestate{font-size:12px;color:var(--ink3);font-family:var(--mono)}
+.storestate.off{color:var(--bad)}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin:16px 0 0}
+.lib-empty{font-size:13.5px;color:var(--ink3);margin:0;grid-column:1/-1}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 14px;min-width:0}
+.card.c-dead{border-color:#e0c8c6}
+.c-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:2px}
+.c-name{font-size:15px;font-weight:600;word-break:break-word;min-width:0}
+.c-gen{font-family:var(--mono);font-size:12px;color:var(--ink3);white-space:nowrap}
+.c-src{font-size:11.5px;color:var(--ink3);margin:0 0 8px;word-break:break-word}
+.c-code{font-family:var(--mono);font-size:12.5px;background:var(--code);
+  border:1px solid var(--line);border-radius:6px;padding:7px 9px;margin:0 0 9px;
+  white-space:pre-wrap;word-break:break-word;max-height:76px;overflow:hidden}
+
+/* 履历条：六格，每格一代 */
+.c-track{display:flex;gap:3px;margin:0 0 7px}
+.c-cell{flex:1;height:22px;border-radius:3px;background:var(--soft);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:10.5px;color:var(--ink3);border:1px solid transparent}
+.c-cell.hold{background:#e2efe8;color:var(--ok);border-color:#bfd8cb;font-weight:600}
+.c-cell.broke{background:#fbe9e8;color:var(--bad);border-color:#e6c3c1;font-weight:600}
+.c-cell.pending{background:repeating-linear-gradient(45deg,var(--soft),var(--soft) 3px,#e7e5df 3px,#e7e5df 6px)}
+.c-foot{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.c-verdict{font-size:12.5px;color:var(--ink2)}
+.c-verdict.ok{color:var(--ok);font-weight:600}
+.c-verdict.dead{color:var(--bad);font-weight:600}
+.c-from{font-size:11.5px;color:var(--ink3);font-family:var(--mono)}
+.c-acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.c-acts button{font:inherit;font-size:12px;padding:6px 9px;min-height:34px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--line2);border-radius:6px;color:var(--ink2)}
+.c-acts button:hover{background:var(--soft);color:var(--ink)}
+
+.lib-note{font-size:12.5px;color:var(--ink3);margin:14px 2px 0;max-width:74ch}
+.lib-note b{color:var(--ink2)}
+
+/* ---------- 诊断 ---------- */
+.diag{margin:34px 0 0}
+.diag h2{font-size:21px;margin:0 0 8px}
+.diag-lede{font-size:14.5px;color:var(--ink2);margin:0 0 12px;max-width:72ch}
+.diag-empty{font-size:13.5px;color:var(--ink3);margin:0}
+.diagbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:15px 16px}
+.diag-verdict{font-size:15.5px;line-height:1.7;margin:0 0 14px;padding:11px 13px;
+  border-radius:8px;background:var(--soft);border-left:4px solid var(--line2)}
+.diag-verdict.guilty{background:#fdf2f1;border-left-color:var(--bad)}
+.diag-verdict.clean{background:#eef5f1;border-left-color:var(--ok)}
+.tbl-wrap{overflow-x:auto}
+table.dt{width:100%;border-collapse:collapse;font-size:13.5px}
+table.dt th,table.dt td{padding:7px 10px;border-bottom:1px solid var(--line);
+  text-align:right;white-space:nowrap}
+table.dt th{color:var(--ink3);font-weight:600;font-size:12.5px}
+table.dt th:first-child,table.dt td:first-child{text-align:left}
+table.dt td.num{font-family:var(--mono)}
+table.dt tr.culprit td{background:#fdf2f1;font-weight:600}
+table.dt tr.culprit td:first-child{color:var(--bad)}
+.bar{position:relative;height:14px;background:var(--soft);border-radius:3px;min-width:80px;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--cool);display:block}
+.bar i.up{background:var(--ok)}
+.bar i.down{background:var(--bad)}
+.diag-note{font-size:12.5px;color:var(--ink3);margin:12px 0 0}
+
+/* ---------- 玩法 ---------- */
+.guide{margin:36px 0 0}
+.guide h2{font-size:20px;margin:0 0 12px}
+.guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.gitem{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:14px 15px;min-width:0}
+.gitem h3{font-size:15px;margin:0 0 6px}
+.gitem p{font-size:13.5px;color:var(--ink2);margin:0}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width:900px){
+  .desk-cols{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .hero{padding-top:26px}
+  .hero h1{font-size:29px}
+  .lead{font-size:15px}
+  .btn{padding:10px 12px;min-height:44px}
+  .reflist button{min-height:44px}
+  .ref summary{min-height:44px;display:flex;align-items:center}
+  .nm{min-height:44px}
+  .c-acts button{min-height:44px}
+  .stage canvas{min-height:280px}
+  .lvprog{margin-left:0}
+  .cards{grid-template-columns:1fr}
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<!DOCTYPE html>
+<!-- ============================================================================
+     arch/body.html —— 结构
+     与既有展项的结构性差异：
+       既有 = 导语 → KPI 卡 → 标签页 → 若干静态面板 → 预设结论表，看完即弃
+       本作 = 起草台（写法令）+ 档案库（留得住的东西，带履历）+ 群体（实时）
+
+     关键：档案库是本页的主体之一，不是附属。它跨会话存在（localStorage），
+     断网可用，降级成内存也不崩。观众攒下的不是参数，是带履历的记录。
+     ==========================================================================-->
+
+<section class="hero">
+  <p class="kicker">非平衡态 · 可积累的治理</p>
+  <h1>你的法令留得下</h1>
+  <p class="lead">
+    多数展项里，你调完参数就走了，什么也没留下。这件不一样：
+    你写下的法令会存成<b>档案</b>，关掉页面还在，明天回来它还记着
+    自己活过了几代、在哪一代崩掉。
+  </p>
+  <p class="lead lead2">
+    所以真正的问题不是"这次达标了吗"，而是<b>「它能不能被传下去」</b>。
+    一条法令的价值不取决于单次成绩，取决于它在越来越难的世代里能撑多久。
+  </p>
+</section>
+
+<!-- ==================================================== 起草台（主体） -->
+<section class="desk">
+  <div class="desk-cols">
+
+    <!-- 左：起草 -->
+    <div class="edbox">
+      <div class="edhead">
+        <span class="edlab">起草</span>
+        <span class="edstat" id="edstat">0 条</span>
+      </div>
+      <textarea id="law" class="ed" spellcheck="false" autocapitalize="off"
+        autocomplete="off" autocorrect="off" rows="6"
+        aria-label="法令编辑器，每行一条法令"># 一行一条法令，从上到下依次执行
+pull(0.3)
+snap(2)</textarea>
+      <div class="ederr" id="ederr" hidden></div>
+
+      <label class="nameRow">
+        <span class="nl">给它起个名</span>
+        <input type="text" id="archname" class="nm" maxlength="18"
+          placeholder="例如：慢刀斩" value="">
+      </label>
+
+      <div class="edbtns">
+        <button type="button" id="b-save" class="btn btn-main">收进档案库</button>
+        <button type="button" id="b-run" class="btn">先跑跑看</button>
+        <button type="button" id="b-diag" class="btn">诊断</button>
+      </div>
+
+      <details class="ref">
+        <summary>可用法令（点一下插入）</summary>
+        <ul class="reflist" id="reflist"></ul>
+      </details>
+    </div>
+
+    <!-- 右：群体 -->
+    <div class="stagebox">
+      <div class="stageline">
+        <span class="stagelab">被治理的群体 · 第 <b id="lv">1</b> 代</span>
+        <span class="stagestat" id="live">未开始</span>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="cv" width="720" height="440" aria-label="振子群，可点按拖动单个振子"></canvas>
+      </div>
+      <div class="lvbar">
+        <span class="lvtxt" id="lvtxt">K=0.30 · 频率宽度 0.20 · 达标线 0.55</span>
+        <span class="lvprog" id="lvprog">站满 150 步过关</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== 读数（4 张） -->
+<div class="kpis">
+  <div class="kpi">
+    <span class="kl">同步度 r</span>
+    <span class="kv" id="v-r">0.000</span>
+    <span class="kn" id="n-r">当前值</span>
+  </div>
+  <div class="kpi">
+    <span class="kl">本代已守住</span>
+    <span class="kv" id="v-h">0</span>
+    <span class="kn" id="n-h">步</span>
+  </div>
+  <div class="kpi">
+    <span class="kl">档案库里</span>
+    <span class="kv" id="v-c">0</span>
+    <span class="kn" id="n-c">份法令留得下</span>
+  </div>
+  <div class="kpi">
+    <span class="kl">最深传承</span>
+    <span class="kv" id="v-d">0</span>
+    <span class="kn" id="n-d">代 · 库里最长寿的那份</span>
+  </div>
+</div>
+
+<!-- ==================================================== 档案库（主体） -->
+<section class="lib">
+  <div class="lib-head">
+    <div>
+      <h2>档案库</h2>
+      <p class="lib-lede" id="lib-lede">
+        这里的东西关掉页面也在。每份档案都带着自己的履历 —— 活过几代、崩在哪一代。
+      </p>
+    </div>
+    <div class="libtools">
+      <span class="storestate" id="storestate">检查存储中</span>
+      <button type="button" id="b-gen" class="btn btn2">跑一遍全部档案</button>
+      <button type="button" id="b-wipe" class="btn btn3">清空档案库</button>
+    </div>
+  </div>
+
+  <div class="cards" id="cards">
+    <p class="lib-empty" id="lib-empty">
+      库还是空的。写一条法令、点「收进档案库」，它就会在这儿留一辈子。
+    </p>
+  </div>
+
+  <p class="lib-note">
+    <b>为什么这和"调出个好参数"不一样</b>：一份档案的价值不在第 1 代的表现，
+    而在第 4、5、6 代还能不能守住。跑一遍全部档案，你会看到有的能传下去、有的在某一代断掉 ——
+    断在第几代是可查的。
+  </p>
+</section>
+
+<!-- ============================================ 诊断报告（取代结论表） -->
+<section class="diag">
+  <div class="diag-head">
+    <h2>系统的反驳</h2>
+    <p class="diag-lede" id="diag-lede">
+      点「诊断」，系统逐条禁用你的法令重跑一遍，看拿掉哪条局面反而变好。这是受控对照实验。
+    </p>
+  </div>
+  <div id="diag-body">
+    <p class="diag-empty">还没有诊断过。</p>
+  </div>
+</section>
+
+<!-- ================================================== 怎么玩（说明） -->
+<section class="guide">
+  <h2>怎么玩</h2>
+  <div class="guide-grid">
+    <div class="gitem">
+      <h3>先攒几份</h3>
+      <p><code>pull(0.3)</code> 稳住、<code>pull(0.06)</code> 勉强、
+        <code>jitter</code> 掺进来捣乱。三份都收进库，它们会长出不一样的履历。</p>
+    </div>
+    <div class="gitem">
+      <h3>再跑一遍全部</h3>
+      <p>点「跑一遍全部档案」，六代逐代试。结果会直接写在卡片上：
+        撑到第几代、哪一代断了、断的原因。</p>
+    </div>
+    <div class="gitem">
+      <h3>然后改一份试试</h3>
+      <p>在任一份基础上改一条法令，另存为新档案 —— 它会记住自己是从哪份改来的。
+        库就这样长成一棵谱系树。</p>
+    </div>
+  </div>
+</section>
+
+</div>
+<script>/* ============================================================================
+ * law/core.js —— 「立法」：观众写规则来治理一群振子（全部模型，UMD）
+ *
+ * 对象：N 个相位振子 + 一份由观众书写的法令（有序的动词序列）。
+ * 振子按 Kuramoto 演化（与 sync/core.js 同一套物理），每一步演化之前，
+ * 先按书写顺序依次执行观众的法令：
+ *
+ *   pull(a)    把每个振子朝群体相位拉近 a（0-1）
+ *   snap(n)    把相位离群体最远的 n 个振子直接归位（强制同步）
+ *   spin(v)    给每个振子加一个恒定角速度偏移 v
+ *   slow(f)    把最快的 f 比例振子减速（只允许 f < 1）
+ *   jitter(s)  给每个振子加随机抖动 s
+ *   wait()     这一条什么都不做（用它来控制顺序，制造"冲突"）
+ *
+ * 本作的要害：**顺序有意义**。同样两条法令换个次序，结果可以定性不同。
+ * 观众不是在调参数，是在立法；而立法可以被系统反驳 —— blame() 会做反事实对照，
+ * 揪出到底哪一条法令在害他。
+ *
+ * 铁律：随机数一律走 splitmix32（不使��� Math.random），否则立法不可复现。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.LawCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  var TAU = Math.PI * 2;
+
+  /* ---------------------------------------------------------------- PRNG */
+  function splitmix32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ------------------------------------------------------------ 法令表 */
+  // 每条法令：名字、参数个数、参数规格、生效函数。
+  // 生效函数签名统一为 (group, args, ctx) => void，直接改 theta 数组。
+  var LAWS = {
+    pull: {
+      arity: 1,
+      spec: [{ min: 0, max: 1, def: 0.3, hint: '0-1' }],
+      desc: '朝群体拉近',
+      apply: function (g, a) {
+        var psi = meanPhase(g), k = a[0], i;
+        // 逐个朝 psi 靠拢 k 比例（用最短弧 wrapPi，避免绕远路）
+        for (i = 0; i < g.n; i++) {
+          g.theta[i] = g.theta[i] + wrapPi(psi - g.theta[i]) * k;
+        }
+        normAll(g);
+      }
+    },
+    snap: {
+      arity: 1,
+      spec: [{ min: 1, max: 64, int: true, def: 3, hint: '1-64 的整数' }],
+      desc: '把最远的 n 个强行归位',
+      apply: function (g, a) {
+        var n = Math.max(1, Math.min(g.n, Math.round(a[0])));
+        var psi = meanPhase(g);
+        var d = new Float64Array(g.n), i, idx, best, tmp;
+        for (i = 0; i < g.n; i++) d[i] = Math.abs(wrapPi(psi - g.theta[i]));
+        // 选择排序取前 n 个（n 很小，无需全排序）
+        for (i = 0; i < n; i++) {
+          best = i;
+          for (var j = i + 1; j < g.n; j++) if (d[j] < d[best]) best = j;
+          if (best !== i) { tmp = d[i]; d[i] = d[best]; d[best] = tmp; }
+          idx = i;
+          g.theta[idx] = psi;
+        }
+      }
+    },
+    spin: {
+      arity: 1,
+      spec: [{ min: -3, max: 3, def: 0, hint: '-3 到 3' }],
+      desc: '全体加恒定角速度',
+      apply: function (g, a) {
+        var d = a[0];
+        for (var i = 0; i < g.n; i++) g.theta[i] = g.theta[i] + d * 0.02;
+        normAll(g);
+      }
+    },
+    slow: {
+      arity: 1,
+      spec: [{ min: 0, max: 0.9, def: 0.3, hint: '0-0.9 的比例' }],
+      desc: '把最快的 f 比例减速',
+      apply: function (g, a) {
+        var f = a[0], m = Math.max(1, Math.round(g.n * f));
+        var idx = [], i, j, best, tmp, om = g.omega;
+        for (i = 0; i < g.n; i++) idx.push(i);
+        // 按 omega 降序取前 m 个
+        for (i = 0; i < m; i++) {
+          best = i;
+          for (j = i + 1; j < idx.length; j++) if (om[idx[j]] > om[idx[best]]) best = j;
+          tmp = idx[i]; idx[i] = idx[best]; idx[best] = tmp;
+        }
+        for (i = 0; i < m; i++) om[idx[i]] = om[idx[i]] * 0.9;
+      }
+    },
+    jitter: {
+      arity: 1,
+      spec: [{ min: 0, max: 1, def: 0.2, hint: '0-1' }],
+      desc: '加随机抖动',
+      apply: function (g, a, ctx) {
+        var s = a[0];
+        if (!ctx.rng) ctx.rng = splitmix32((g.seed ^ 0x5bf03635) >>> 0);
+        for (var i = 0; i < g.n; i++) g.theta[i] = g.theta[i] + (ctx.rng() * 2 - 1) * s * 0.3;
+        normAll(g);
+      }
+    },
+    wait: {
+      arity: 0,
+      spec: [],
+      desc: '什么也不做（用来排顺序）',
+      apply: function () { }
+    }
+  };
+  var LAW_NAMES = ['pull', 'snap', 'spin', 'slow', 'jitter', 'wait'];
+
+  /* --------------------------------------------------------- 词法/语法 */
+  // 极简语法：每行一条法令，形如  name(arg, arg)  或  name()
+  // 不用正则一把梭：手写扫描器才能报出「第几个字符错了」这种可读错误，
+  // 而观众是从错误里学会语法的 —— 泛泛的"语法错误"没有教学价值。
+  function parse(src) {
+    var out = [], lines = String(src == null ? '' : src).split(/\r?\n/);
+    for (var li = 0; li < lines.length; li++) {
+      var line = lines[li], pos = 0, lineNo = li + 1;
+      // 跳过空行与 # 注释
+      while (pos < line.length && (line[pos] === ' ' || line[pos] === '\t')) pos++;
+      if (pos >= line.length || line[pos] === '#') continue;
+
+      // --- 读标识符 ---
+      var idStart = pos, name = '';
+      while (pos < line.length && /[A-Za-z0-9_]/.test(line[pos])) { name += line[pos]; pos++; }
+      if (name === '') {
+        return fail('第 ' + lineNo + ' 行开头不是法令名', out, name, lineNo);
+      }
+      if (!Object.prototype.hasOwnProperty.call(LAWS, name)) {
+        var near = closest(name);
+        var hint = near ? '，你是不是想写 ' + near + '？' : '，可用：' + LAW_NAMES.join(' / ');
+        return fail('第 ' + lineNo + ' 行不认识「' + name + '」' + hint, out, name, lineNo);
+      }
+      var law = LAWS[name];
+
+      // --- 跳过空白，要求 '(' ---
+      while (pos < line.length && (line[pos] === ' ' || line[pos] === '\t')) pos++;
+      if (line[pos] !== '(') {
+        return fail('第 ' + lineNo + ' 行 ' + name + ' 后面要跟一对括号 ()', out, name, lineNo);
+      }
+      pos++;
+
+      // --- 读参数 ---
+      var args = [], raw = '';
+      while (pos < line.length && line[pos] !== ')') {
+        var ch = line[pos];
+        if (ch === ' ' || ch === '\t' || ch === ',') { pos++; continue; }
+        if (ch === '#') break;                        // 行尾注释
+        if (/[0-9.\-+eE]/.test(ch)) { raw += ch; pos++; continue; }
+        return fail('第 ' + lineNo + ' 行第 ' + (pos + 1) + ' 个字符「' + ch + '」不是数字', out, name, lineNo);
+      }
+      if (line[pos] !== ')') {
+        return fail('第 ' + lineNo + ' 行 ' + name + ' 少了右括号 )', out, name, lineNo);
+      }
+      pos++;
+      if (raw !== '') {
+        var v = Number(raw);
+        if (!isFinite(v)) {
+          return fail('第 ' + lineNo + ' 行的「' + raw + '」不是一个数', out, name, lineNo);
+        }
+        args.push(v);
+      }
+
+      // --- 行尾有残留就是错 ---
+      var tail = line.slice(pos).replace(/^[\s,]+/, '');
+      if (tail !== '' && tail[0] !== '#') {
+        return fail('第 ' + lineNo + ' 行 ' + name + '(...) 后面还有多余的「' + tail + '」', out, name, lineNo);
+      }
+
+      // --- 参数个数与范围 ---
+      if (args.length !== law.arity) {
+        return fail(name + ' 需要 ' + law.arity + ' 个参数，你写了 ' + args.length + ' 个', out, name, lineNo);
+      }
+      for (var ai = 0; ai < args.length; ai++) {
+        var sp = law.spec[ai], val = args[ai];
+        if (sp.int && Math.abs(val - Math.round(val)) > 1e-9) {
+          return fail(name + ' 的第 ' + (ai + 1) + ' 个参数要是整数，你写了 ' + val, out, name, lineNo);
+        }
+        if (val < sp.min || val > sp.max) {
+          return fail(name + ' 的第 ' + (ai + 1) + ' 个参数要落在 ' + sp.min + ' 到 ' + sp.max +
+            '（' + sp.hint + '），你写了 ' + val, out, name, lineNo);
+        }
+      }
+      out.push({ name: name, args: args, line: lineNo });
+    }
+    return { ok: true, laws: out, error: null };
+  }
+
+  function fail(msg, laws, name, lineNo) {
+    return { ok: false, laws: laws, error: msg, at: name, line: lineNo };
+  }
+
+  // 拼写建议：取编辑距离最小的那个法令名
+  function closest(name) {
+    var best = null, bd = 1e9;
+    for (var i = 0; i < LAW_NAMES.length; i++) {
+      var d = editDist(name, LAW_NAMES[i]);
+      if (d < bd) { bd = d; best = LAW_NAMES[i]; }
+    }
+    return bd <= 2 ? best : null;
+  }
+  function editDist(a, b) {
+    var m = a.length, n = b.length, i, j, prev = [], cur = [];
+    for (j = 0; j <= n; j++) prev[j] = j;
+    for (i = 1; i <= m; i++) {
+      cur = [i];
+      for (j = 1; j <= n; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      }
+      prev = cur.slice();
+    }
+    return prev[n];
+  }
+
+  /* -------------------------------------------------------------- 群 */
+  function makeGroup(n, opts) {
+    opts = opts || {};
+    var seed = opts.seed === undefined ? 7 : opts.seed;
+    var width = opts.width === undefined ? 0.35 : opts.width;
+    var K = opts.K === undefined ? 0 : opts.K;
+    var rng = splitmix32(seed);
+    var omega = new Float64Array(n), theta = new Float64Array(n), i;
+    for (i = 0; i < n; i++) omega[i] = width * Math.tan(Math.PI * ((i + 0.5) / n - 0.5));
+    for (i = 0; i < n; i++) theta[i] = rng() * TAU;
+    return {
+      n: n, omega: omega, theta: theta, baseOmega: Float64Array.from(omega),
+      K: K, width: width, seed: seed, t: 0
+    };
+  }
+
+  function cloneGroup(g) {
+    return {
+      n: g.n, omega: Float64Array.from(g.omega), theta: Float64Array.from(g.theta),
+      baseOmega: Float64Array.from(g.baseOmega),
+      K: g.K, width: g.width, seed: g.seed, t: g.t
+    };
+  }
+
+  /* ------------------------------------------------------------ 相位工具 */
+  function wrapPi(a) {
+    a = a % TAU;
+    if (a > Math.PI) a -= TAU;
+    if (a < -Math.PI) a += TAU;
+    return a;
+  }
+  function wrapTo(a) { return a - TAU * Math.floor(a / TAU); }
+  function normAll(g) {
+    for (var i = 0; i < g.n; i++) g.theta[i] = wrapTo(g.theta[i]);
+  }
+  // 群体平均相位（圆周均值）
+  function meanPhase(g) {
+    var s = 0, c = 0, i;
+    for (i = 0; i < g.n; i++) { s += Math.sin(g.theta[i]); c += Math.cos(g.theta[i]); }
+    return Math.atan2(s / g.n, c / g.n);
+  }
+  function orderParam(g) {
+    var s = 0, c = 0, i;
+    for (i = 0; i < g.n; i++) { s += Math.sin(g.theta[i]); c += Math.cos(g.theta[i]); }
+    s /= g.n; c /= g.n;
+    return { r: Math.sqrt(s * s + c * c), psi: Math.atan2(s, c) };
+  }
+
+  // 观众用指针抓住某个振子直接拖 —— 他的手就是外力。
+  function holdPhi(g, i, theta) { g.theta[i] = wrapTo(theta); }
+
+  /* ---------------------------------------------------- 演进一步（含法令） */
+  // laws：解析后的法令数组（有序！）。skipIndex：反事实对照时跳过某一条。
+  function step(g, dt, laws, skipIndex) {
+    var ctx = { rng: null }, i, j;
+    // --- 1. 先按书写顺序执行法令（skipIndex < 0 表示不跳过）---
+    if (laws) {
+      for (i = 0; i < laws.length; i++) {
+        if (skipIndex === i) continue;
+        var L = LAWS[laws[i].name];
+        if (L) L.apply(g, laws[i].args, ctx);
+      }
+    }
+    // --- 2. 再让物理走一步（Kuramoto，与和差公式 O(N) 快积分）---
+    var th = g.theta, om = g.omega, n = g.n, kn = g.K / n;
+    var S = 0, C = 0, a, v, cs, sn;
+    for (i = 0; i < n; i++) { S += Math.sin(th[i]); C += Math.cos(th[i]); }
+    for (i = 0; i < n; i++) {
+      a = th[i]; cs = Math.cos(a); sn = Math.sin(a);
+      v = a + dt * (om[i] + kn * (S * cs - C * sn));
+      th[i] = v - TAU * Math.floor(v / TAU);
+    }
+    g.t += dt;
+    return orderParam(g).r;
+  }
+
+  /* ------------------------------------------------------ 反事实归因 */
+  // 本作最核心的技术手段：观众立法之后系统会"反驳"他。
+  // 做法：把当前法令逐条禁用，各自重跑同样步数，看哪一条禁用后 r 最低。
+  //       r_lowest = 真正在害群体的法令。
+  // 这不是启发式猜测，是受控对照实验 —— 每组只改一个变量。
+  function blame(g, laws, steps, dt, startR) {
+    var results = [], i;
+    var base = { name: '（全开）', idx: -1, r: 0, drop: 0 };
+    // 基线：全开
+    var gb = cloneGroup(g), k;
+    for (k = 0; k < steps; k++) step(gb, dt, laws, -1);
+    base.r = orderParam(gb).r;
+    base.drop = startR - base.r;
+    results.push(base);
+
+    // 逐条禁用
+    for (i = 0; i < laws.length; i++) {
+      var g2 = cloneGroup(g);
+      for (k = 0; k < steps; k++) step(g2, dt, laws, i);
+      var r2 = orderParam(g2).r;
+      results.push({ name: laws[i].name, idx: i, r: r2, drop: startR - r2, args: laws[i].args });
+    }
+    // culprit = 禁用后 r **最高**的那条。
+    // 判据方向别搞反：把一条法令拿掉后局面反而变好，说明这条法令在拖后腿。
+    // （曾写成"r 最低者为元凶"，结果把最有用的 pull 判成元凶 —— 语义反了：
+    //   禁用 pull  r=0.0773（最坏，pull 撑着场面）
+    //   禁用 jitter r=0.9586（最好，jitter 在害群体））
+    var worst = results[0];
+    for (i = 1; i < results.length; i++) {
+      if (results[i].r > worst.r) worst = results[i];
+    }
+    // 基线（全开）比所有单禁用都差 → 说明每条都有贡献，没有元凶
+    var noCulprit = worst.r <= base.r + 1e-9;
+    return {
+      runs: results, culprit: worst, base: base,
+      noCulprit: noCulprit,
+      // gain = 拿掉它之后局面好看了多少（越大越有害）
+      gain: worst.r - base.r
+    };
+  }
+
+  /* --------------------------------------------------- 难度阶梯（法会失效） */
+  // 观众刚立法成功，需求就要加码 —— 打破"调一次参数永久有效"。
+  // level: 1 起。递增方式：加 K（群体更倔）、加宽（频率更杂）、加噪（个体更任性）。
+  //
+  // 封顶 6 是必须的：曾把上限漏掉，结果 pull(0.6)+snap(3) 这样的强法令
+  // 在 2000 帧内连冲 10 级（每 60 帧升一级，新群又被立刻拉齐 → 雪崩式连升），
+  // 难度瞬间崩坏成"随手写两条就通关"。
+  //
+  // 加码幅度也是踩出来的：原来 K=0.3+0.25(g−1)、width=0.2+0.06(g−1) 太松，
+  // 实测 pull(0.06) 在六代全部守住（r≈0.9 一路压过达标线）——
+  // 也就是**任何一条 pull 都能通关**，难度阶梯形同虚设，
+  // 法令的"失效"根本测不出来，档案也就没有积累的意义（等于又退回一次性展项）。
+  // 现在 K 与 width 拉到每代 +1.25/+0.35，实测窗口成立：
+  //   pull(0.02) / pull(0.06) → 会崩（有失效，档案才值得存）
+  //   pull(0.3) 及以上        → 六代稳守（强法令确实能传下去）
+  var MAX_LEVEL = 6;
+  function levelSpec(level) {
+    var lv = Math.max(1, Math.min(MAX_LEVEL, level));
+    return {
+      level: lv,
+      K: 0.3 + 1.25 * (lv - 1),
+      width: 0.2 + 0.35 * (lv - 1),
+      target: 0.55 + 0.05 * (lv - 1),
+      // 顶住这一关需要的连续步数。实测 pull(0.15) 只需 53 帧就过 L1 ——
+      // 太快，观众来不及体会"治理住了"的乐趣就被推走。
+      // 所以起步就给 150 步（2.5 秒），让成功是"守住"出来的而不是"碰到"的。
+      holdSteps: 150 + 60 * (lv - 1)
+    };
+  }
+
+  return {
+    TAU: TAU,
+    splitmix32: splitmix32,
+    LAWS: LAWS,
+    LAW_NAMES: LAW_NAMES,
+    parse: parse,
+    closest: closest,
+    editDist: editDist,
+    makeGroup: makeGroup,
+    cloneGroup: cloneGroup,
+    wrapPi: wrapPi,
+    wrapTo: wrapTo,
+    meanPhase: meanPhase,
+    orderParam: orderParam,
+    holdPhi: holdPhi,
+    step: step,
+    blame: blame,
+    levelSpec: levelSpec,
+    MAX_LEVEL: MAX_LEVEL
+  };
+});
+</script>
+<script>/* ============================================================================
+ * arch/core.js —— 「档案」：法令的可积累记录（全部模型，UMD）
+ *
+ * 这层要解决的问题：45 件展项里，观众创造的东西**一件都留不下来**
+ * （4 件有 download，导出的也只是作者预设的 CSV 表格）。
+ * 所以本作的核心维度不是"换一个操作方式"，而是**时间**：
+ * 观众写下的法令会被存成档案、给它命名、反复重演，
+ * 并且带着自己的**履历** —— 在第几代守住、哪一代崩、崩在什么值上。
+ *
+ * 于是观众攒下的不是参数，是**带履历的记录**。
+ * 一份法令的价值不取决于单次结果，而取决于它能不能被传下去。
+ *
+ * 依赖 law/core.js 的物理与语法（同一份源码内联，不重复实现）。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./../law/core.js'));
+  else root.ArchCore = factory(root.LawCore);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (L) {
+  'use strict';
+
+  var C = L;
+  var TAU = C.TAU;
+
+  /* ============================================================ 档案结构 */
+  // id 必须由内容派生，不能用 Date.now()：
+  // 否则同一份法令每存一次就多一条"新"档案，库会自我膨胀，而且不可复现。
+  function contentId(laws) {
+    var s = laws.map(function (l) { return l.name + '(' + l.args.join(',') + ')'; }).join('|');
+    var h = 2166136261 >>> 0;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return 'a' + (h >>> 0).toString(36);
+  }
+
+  // 一份档案 = 法令序列 + 它的履历
+  // {
+  //   id, name, laws: [{name,args}], createdAt, seed, parentId,
+  //   runs: [ { gen, survived, holdPeak, finalR, note } ]   ← 履历，按代数累积
+  // }
+  function makeArchive(src, name, meta) {
+    meta = meta || {};
+    var parsed = C.parse(src);
+    if (!parsed.ok) return null;
+    var laws = parsed.laws.map(function (l) { return { name: l.name, args: l.args.slice() }; });
+    return {
+      id: meta.id || contentId(laws),
+      name: name || '未命名',
+      laws: laws,
+      createdAt: meta.createdAt || 0,
+      seed: meta.seed === undefined ? 7 : meta.seed,
+      parentId: meta.parentId || '',
+      runs: meta.runs ? meta.runs.slice() : []
+    };
+  }
+
+  // 两份法令是否完全相同（存库时用来避免重复入库）
+  function sameLaws(a, b) {
+    if (a.laws.length !== b.laws.length) return false;
+    for (var i = 0; i < a.laws.length; i++) {
+      if (a.laws[i].name !== b.laws[i].name) return false;
+      if (a.laws[i].args.join() !== b.laws[i].args.join()) return false;
+    }
+    return true;
+  }
+
+  // 档案 → 可读的法令文本（存档的规范形式：以它为准，重演时不依赖原字符串）
+  function archiveToText(a) {
+    return a.laws.map(function (l) {
+      return l.name + '(' + l.args.join(',') + ')';
+    }).join('\n');
+  }
+
+  /* ============================================================ 序列化 */
+  // 履历里有浮点，必须完整往返；数字用 + 前缀编码避免 JSON 丢精度
+  function serialize(list) {
+    return JSON.stringify({
+      v: 1,
+      items: list.map(function (a) {
+        return {
+          i: a.id, n: a.name, c: a.createdAt, s: a.seed,
+          l: a.laws.map(function (l) { return l.name + ':' + l.args.join(','); }),
+          r: a.runs.map(function (run) {
+            return [run.gen, run.survived ? 1 : 0, +run.holdPeak.toFixed(4), +run.finalR.toFixed(4), run.note || ''];
+          })
+        };
+      })
+    });
+  }
+
+  function deserialize(text) {
+    if (!text) return { ok: true, items: [], error: null };
+    var data;
+    try { data = JSON.parse(text); }
+    catch (e) { return { ok: false, items: [], error: '存档已损坏（不是合法 JSON）' }; }
+    if (!data || data.v !== 1 || !Array.isArray(data.items)) {
+      return { ok: false, items: [], error: '存档版本不认识' };
+    }
+    var items = [];
+    for (var i = 0; i < data.items.length; i++) {
+      var d = data.items[i], laws = [], okAll = true;
+      for (var j = 0; j < d.l.length; j++) {
+        var parts = String(d.l[j]).split(':');
+        var name = parts[0];
+        var args = (parts[1] || '').split(',').filter(function (s) { return s !== ''; }).map(Number);
+        // 存回来的档案也要过一遍语法闸：坏档案不许进库
+        if (!C.LAWS[name] || args.some(function (v) { return !isFinite(v); })) okAll = false;
+        laws.push({ name: name, args: args });
+      }
+      if (!okAll) return { ok: false, items: [], error: '存档里有一条档案的法令已损坏' };
+      items.push({
+        id: d.i, name: d.n, createdAt: d.c, seed: d.s, laws: laws,
+        runs: (d.r || []).map(function (x) {
+          return { gen: x[0], survived: !!x[1], holdPeak: x[2], finalR: x[3], note: x[4] };
+        })
+      });
+    }
+    return { ok: true, items: items, error: null };
+  }
+
+  /* ================================================== 一次重演（世代） */
+  // 核心：把一份法令放到第 gen 代难度上重演，看它守不守得住。
+  // 履历就来自这里 —— 观众攒的是"这份法令活过了几代"，不是单次结果。
+  var PROBE_STEPS = 900;    // 每代最多跑多少步
+  var HOLD_FRAC = 0.5;      // 守住的判据：连续达标步数 ≥ 本代所需步数的一半
+
+  function rehearse(archive, gen, steps) {
+    var s = C.levelSpec(gen);
+    var total = steps || PROBE_STEPS;
+    var g = C.makeGroup(120, { seed: archive.seed * 131 + gen * 17, width: s.width, K: s.K });
+    var hold = 0, holdPeak = 0, r = 0, i;
+    for (i = 0; i < total; i++) {
+      C.step(g, 0.02, archive.laws, -1);
+      r = C.orderParam(g).r;
+      if (r >= s.target) { hold++; if (hold > holdPeak) holdPeak = hold; }
+      else hold = 0;
+    }
+    var need = s.holdSteps;
+    var survived = holdPeak >= need * HOLD_FRAC;
+    // 崩在第几代：往前找最后一次守住的位置
+    var lastHold = 0;
+    for (i = 0; i < archive.runs.length; i++) {
+      if (archive.runs[i].survived) lastHold = archive.runs[i].gen;
+    }
+    return {
+      gen: gen, survived: survived, holdPeak: holdPeak, need: need, finalR: r,
+      brokenAt: survived ? 0 : (lastHold || gen - 1),
+      note: survived ? '' : '第 ' + gen + ' 代没守住（需 ' + need + ' 步，只撑了 ' + holdPeak + ' 步）'
+    };
+  }
+
+  // 往档案上追加一次履历（同一代覆盖，不重复累积）
+  function record(a, run) {
+    for (var i = 0; i < a.runs.length; i++) {
+      if (a.runs[i].gen === run.gen) { a.runs[i] = run; return a; }
+    }
+    a.runs.push(run);
+    a.runs.sort(function (x, y) { return x.gen - y.gen; });
+    return a;
+  }
+
+  // 档案的"功绩"：撑过了几代（连续），最深到第几代
+  function achievement(a) {
+    var deepest = 0, streak = 0, sorted = a.runs.slice().sort(function (x, y) { return x.gen - y.gen; });
+    sorted.forEach(function (r) {
+      if (r.gen === 1) streak = 1;
+      else if (r.survived && r.gen === deepest + 1) streak++;
+      else if (r.survived) streak = 1;
+      if (r.survived) deepest = Math.max(deepest, r.gen);
+    });
+    return { deepest: deepest, streak: streak, total: a.runs.length };
+  }
+
+  /* ============================================ 传承：从档案派生后代 */
+  // 观众不止攒一份法令，还能让法令"繁殖"：在已有档案上追加/删改一条法令，
+  // 派生新档案，并记录它是从谁派生的 —— 这样库里长出的是一棵谱系树，
+  // 而不是一堆并列的参数。
+  function derive(parent, src, name) {
+    var child = makeArchive(src, name || (parent.name + ' 变体'));
+    if (!child) return null;
+    child.seed = parent.seed + 1;
+    child.parentId = parent.id;
+    // 继承父档的历史作为"血统"起点
+    child.runs = [];
+    return child;
+  }
+
+  // 谱系：从一批档案里重建父子关系
+  function lineage(items) {
+    var byId = {}, i;
+    for (i = 0; i < items.length; i++) byId[items[i].id] = items[i];
+    return items.map(function (a) {
+      var p = a.parentId && byId[a.parentId] ? byId[a.parentId] : null;
+      return { item: a, parent: p, children: items.filter(function (x) { return x.parentId === a.id; }) };
+    });
+  }
+
+  /* ================================================== 存储（可降级） */
+  // 关键：离线双击打开时 localStorage 在部分环境（file://、隐私模式）不可用。
+  // 所以存储必须能在没有存储时优雅降级成"内存档案库"，
+  // 而不是让整件作品挂掉 —— 这是"可离线打开"这条纪律的延伸。
+  function makeStore(win) {
+    var KEY = 'law.archive.v1';
+    var mem = [];
+    var usable = false;
+    try {
+      var probe = '__arch_probe__';
+      win.localStorage.setItem(probe, '1');
+      win.localStorage.removeItem(probe);
+      usable = true;
+    } catch (e) { usable = false; }
+
+    return {
+      usable: usable,
+      load: function () {
+        if (!usable) return mem.slice();
+        try {
+          var txt = win.localStorage.getItem(KEY);
+          var out = deserialize(txt);
+          return out.ok ? out.items : [];
+        } catch (e) { return []; }
+      },
+      save: function (items) {
+        mem = items.slice();
+        if (!usable) return false;
+        try { win.localStorage.setItem(KEY, serialize(items)); return true; }
+        catch (e) {
+          // 配额超了：丢掉最旧的履历再存一次（履历是历史，法令才是作品本体）
+          try {
+            var trimmed = items.map(function (a) {
+              return { id: a.id, name: a.name, createdAt: a.createdAt, seed: a.seed,
+                laws: a.laws, parentId: a.parentId || '', runs: a.runs.slice(0, 3) };
+            });
+            win.localStorage.setItem(KEY, serialize(trimmed));
+            return true;
+          } catch (e2) { return false; }
+        }
+      },
+      clear: function () {
+        mem = [];
+        if (usable) { try { win.localStorage.removeItem(KEY); } catch (e) { } }
+      }
+    };
+  }
+
+  return {
+    makeArchive: makeArchive,
+    sameLaws: sameLaws,
+    contentId: contentId,
+    archiveToText: archiveToText,
+    serialize: serialize,
+    deserialize: deserialize,
+    rehearse: rehearse,
+    record: record,
+    achievement: achievement,
+    derive: derive,
+    lineage: lineage,
+    makeStore: makeStore,
+    PROBE_STEPS: PROBE_STEPS,
+    HOLD_FRAC: HOLD_FRAC
+  };
+});
+</script>
+<script>/* ============================================================================
+ * arch/ui.js —— 界面与交互
+ *
+ * 与既有展项 ui.js 的根本差异：
+ *   ① 主输入是 <textarea>（观众写法令）。45 件里 38 件主输入是 range 滑杆。
+ *   ② 观众创造的东西**留得下**（localStorage 跨会话），并带着履历。
+ *      既有 45 件里没有一件做到这件事（4 件有 download，导出的也只是作者预设的 CSV）。
+ *   ③ 系统能反驳观众：blame() 做逐条禁用的对照实验。
+ *   ④ 档案可"繁殖"：在任一份上改法令 → 派生子档 → 库长成谱系树。
+ *
+ * 铁律：物理与语法来自 LawCore，档案逻辑来自 ArchCore，本文件不自己实现。
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var C = window.LawCore;
+  var A = window.ArchCore;
+  var TAU = C.TAU;
+
+  function $(id) { return document.getElementById(id); }
+  function setText(id, s) { var e = $(id); if (e) e.textContent = s; }
+  function el(tag, cls) { var e = document.createElement(tag); if (cls) e.className = cls; return e; }
+
+  /* ========================================================== 常量与状态 */
+  var N = 120, DT = 0.02, SUB = 3, GEN_MAX = 6;
+  var LAYOUT = { pad: 14, trackH: 46, minH: 300 };
+
+  var g = null, laws = [], level = 1, running = false, rafId = 0;
+  var rHist = [], HIST_MAX = 200;
+  var hold = 0, dragIdx = -1, celebrate = 0, CELEBRATE = 75;
+  var store = null, lib = [], currentId = null, lastDiag = null;
+
+  var cv = null, ctx = null, dpr = 1;
+  var MONO = '"Cascadia Mono","JetBrains Mono",Consolas,monospace';
+
+  /* ============================================================== 布局 */
+  function metrics() {
+    var w = cv.clientWidth || 720;
+    var h = Math.max(LAYOUT.minH, Math.round(w * 440 / 720));
+    var diskH = h - LAYOUT.trackH - LAYOUT.pad;
+    return {
+      w: w, h: h, diskH: diskH, pad: LAYOUT.pad,
+      cx: w / 2, cy: diskH / 2, R: Math.max(32, Math.min(w, diskH) / 2 - 12)
+    };
+  }
+  function posOf(i, m) {
+    var band = (i % 3) * 0.11;
+    var rad = m.R * (0.48 + band);
+    var ang = (i / N) * TAU - Math.PI / 2;
+    return { x: m.cx + Math.cos(ang) * rad, y: m.cy + Math.sin(ang) * rad };
+  }
+  function nearest(x, y, m) {
+    var best = -1, bestD = 30 * 30;
+    for (var i = 0; i < N; i++) {
+      var p = posOf(i, m), dx = p.x - x, dy = p.y - y, d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  }
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var m = metrics();
+    cv.width = Math.round(m.w * dpr);
+    cv.height = Math.round(m.h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  /* ============================================================== 渲染 */
+  function draw() {
+    var m = metrics();
+    ctx.clearRect(0, 0, m.w, m.h);
+    var op = C.orderParam(g);
+    ctx.strokeStyle = '#e0ded8'; ctx.lineWidth = 1;
+    for (var b = 0; b < 3; b++) { ctx.beginPath(); ctx.arc(m.cx, m.cy, m.R * (0.48 + b * 0.11), 0, TAU); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(31,78,95,.30)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(m.cx, m.cy);
+    ctx.lineTo(m.cx + Math.cos(op.psi) * m.R * 0.97, m.cy + Math.sin(op.psi) * m.R * 0.97);
+    ctx.stroke();
+    for (var i = 0; i < N; i++) {
+      var p = posOf(i, m);
+      var sep = Math.sqrt(2 - 2 * Math.cos(g.theta[i] - op.psi)) / 2;
+      ctx.fillStyle = colorOf(sep);
+      ctx.beginPath(); ctx.arc(p.x, p.y, i === dragIdx ? 6.5 : 4, 0, TAU); ctx.fill();
+      if (i === dragIdx) {
+        ctx.strokeStyle = '#8c2f39'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, TAU); ctx.stroke();
+      }
+    }
+    drawTrack(m);
+  }
+  function colorOf(t) {
+    t = Math.max(0, Math.min(1, t));
+    var r0, g0, b0, r1, g1, b1, u;
+    if (t < 0.5) { u = t / 0.5; r0 = 168; g0 = 50; b0 = 47; r1 = 168; g1 = 118; b1 = 27; }
+    else { u = (t - 0.5) / 0.5; r0 = 168; g0 = 118; b0 = 27; r1 = 47; g1 = 107; b1 = 79; }
+    return 'rgb(' + Math.round(r0 + (r1 - r0) * u) + ',' + Math.round(g0 + (g1 - g0) * u) + ',' + Math.round(b0 + (b1 - b0) * u) + ')';
+  }
+  function drawTrack(m) {
+    var y0 = m.h - LAYOUT.trackH, hgt = LAYOUT.trackH - 10;
+    var target = C.levelSpec(level).target;
+    ctx.strokeStyle = 'rgba(47,107,79,.5)'; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(m.pad, y0 + hgt - target * hgt); ctx.lineTo(m.w - m.pad, y0 + hgt - target * hgt);
+    ctx.stroke(); ctx.setLineDash([]);
+    if (rHist.length < 2) return;
+    ctx.strokeStyle = '#1f4e5f'; ctx.lineWidth = 1.6; ctx.beginPath();
+    for (var i = 0; i < rHist.length; i++) {
+      var x = m.pad + (m.w - 2 * m.pad) * (i / (HIST_MAX - 1));
+      var y = y0 + hgt - rHist[i] * hgt;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    var lastY = y0 + hgt - rHist[rHist.length - 1] * hgt;
+    ctx.fillStyle = '#1f4e5f';
+    ctx.beginPath(); ctx.arc(m.w - m.pad, lastY, 2.6, 0, TAU); ctx.fill();
+    ctx.font = '11px ' + MONO; ctx.textAlign = 'right';
+    ctx.fillText(rHist[rHist.length - 1].toFixed(3), m.w - m.pad - 6, lastY - 5);
+    ctx.textAlign = 'left'; ctx.fillStyle = '#7d7a74';
+    ctx.fillText('同步度 r（绿虚线＝达标线）', m.pad, y0 + 9);
+  }
+
+  /* ========================================================== 演化循环 */
+  function tick() {
+    C.step(g, DT, laws, -1);
+    var s = C.levelSpec(level);
+    if (C.orderParam(g).r >= s.target) { hold++; if (hold >= s.holdSteps) winGen(); }
+    else hold = 0;
+  }
+  function frame() {
+    if (running) {
+      if (celebrate > 0) { celebrate--; if (celebrate === 0) applyGen(level + 1); }
+      else { for (var s = 0; s < SUB; s++) tick(); }
+      var r = C.orderParam(g).r;
+      rHist.push(r); if (rHist.length > HIST_MAX) rHist.shift();
+      syncReadouts(r);
+    }
+    draw();
+    rafId = requestAnimationFrame(frame);
+  }
+  function winGen() {
+    if (level >= GEN_MAX) { setText('live', '已封顶（第 6 代）· 你的法令守住了所有代'); hold = 0; return; }
+    celebrate = CELEBRATE;
+    setText('live', '第 ' + level + ' 代守住了！马上升到第 ' + (level + 1) + ' 代');
+  }
+  function applyGen(lv) {
+    level = Math.max(1, Math.min(GEN_MAX, lv));
+    var s = C.levelSpec(level);
+    g = C.makeGroup(N, { seed: 2026 + level, width: s.width, K: s.K });
+    hold = 0; rHist = [];
+    setText('lv', String(level));
+    setText('lvtxt', 'K=' + s.K.toFixed(2) + ' · 频率宽度 ' + s.width.toFixed(2) + ' · 达标线 ' + s.target.toFixed(2));
+    setText('lvprog', '站满 ' + s.holdSteps + ' 步过关');
+  }
+  function syncReadouts(r) {
+    var s = C.levelSpec(level);
+    setText('v-r', r.toFixed(3));
+    var e = $('v-r'); if (e) e.className = 'kv' + (r >= s.target ? ' hit' : '');
+    setText('v-h', String(hold));
+    var e2 = $('v-h'); if (e2) e2.className = 'kv' + (r >= s.target ? ' hit' : '');
+    setText('n-r', r >= s.target ? '已达标，保持住' : '离达标线还差 ' + (s.target - r).toFixed(3));
+  }
+
+  /* ========================================================== 起草台 */
+  function loadLaws(quiet) {
+    var res = C.parse($('law').value);
+    var box = $('ederr');
+    if (!res.ok) {
+      box.hidden = false;
+      box.textContent = res.error;      // 观众输入不走 innerHTML
+      setText('edstat', res.laws.length + ' 条可用 · 第 ' + res.line + ' 行有问题');
+      $('b-save').disabled = true; $('b-run').disabled = true; $('b-diag').disabled = true;
+      return false;
+    }
+    box.hidden = true;
+    setText('edstat', res.laws.length + ' 条' + (res.laws.length === 0 ? '（空，等于不治理）' : ''));
+    var none = res.laws.length === 0;
+    $('b-save').disabled = none; $('b-run').disabled = none; $('b-diag').disabled = none;
+    laws = res.laws;
+    if (!quiet) hold = 0;
+    return true;
+  }
+
+  /* ====================================================== 档案库（主体） */
+  function persist() { store.save(lib); renderLib(); }
+
+  function saveArchive() {
+    if (!loadLaws(true)) return;
+    var nm = ($('archname').value || '').trim();
+    var arc = A.makeArchive(A.archiveToText({ laws: laws }), nm || '');
+    if (!arc) return;
+    // 同法令已入库：不重复加，只提示（避免库自我膨胀）
+    var dup = null;
+    for (var i = 0; i < lib.length; i++) if (A.sameLaws(lib[i], arc)) dup = lib[i];
+    if (dup) {
+      setText('lib-lede', '这份法令库里已经有了（' + dup.name + '），换条法令或改个名字再收。');
+      return;
+    }
+    // 从选中卡片派生 → 记血统
+    if (currentId) {
+      for (i = 0; i < lib.length; i++) {
+        if (lib[i].id === currentId) { arc.parentId = lib[i].id; break; }
+      }
+    }
+    // 立刻跑第 1 代，让它一进库就有履历（空手进去的档案没价值）
+    A.record(arc, A.rehearse(arc, 1, 900));
+    lib.push(arc);
+    persist();
+    setText('lib-lede', '收好了。它会带着自己的履历一直留在这儿。');
+    $('archname').value = '';
+  }
+
+  function deriveFrom(id) {
+    var src = null, i;
+    for (i = 0; i < lib.length; i++) if (lib[i].id === id) src = lib[i];
+    if (!src) return;
+    $('law').value = A.archiveToText(src);
+    $('archname').value = src.name + ' 改';
+    currentId = src.id;
+    loadLaws(true);
+    setText('edstat', '基于「' + src.name + '」改动后收进库，会记成它的变体');
+    $('law').focus();
+  }
+
+  function removeArchive(id) {
+    lib = lib.filter(function (a) { return a.id !== id; });
+    if (currentId === id) currentId = null;
+    persist();
+  }
+
+  // 跑一遍全部档案的六代 —— 这才是"积累"的意义所在
+  function rehearseAll() {
+    if (!lib.length) { setText('lib-lede', '库还是空的，先收一份进来。'); return; }
+    var i, g2, a, run;
+    for (i = 0; i < lib.length; i++) {
+      a = lib[i];
+      for (g2 = 1; g2 <= GEN_MAX; g2++) {
+        run = A.rehearse(a, g2, 900);
+        A.record(a, run);
+        // 崩了就别再往下跑（后面必然更糟，跑也是浪费）
+        if (!run.survived) break;
+      }
+    }
+    persist();
+    var alive = lib.filter(function (x) { return A.achievement(x).deepest >= GEN_MAX; }).length;
+    setText('lib-lede', '跑完了：' + lib.length + ' 份里有 ' + alive + ' 份撑满六代，' +
+      (lib.length - alive) + ' 份断了。断在第几代写在卡片上。');
+  }
+
+  function renderLib() {
+    var box = $('cards');
+    box.textContent = '';
+    setText('v-c', String(lib.length));
+    if (!lib.length) {
+      var p = el('p', 'lib-empty');
+      p.textContent = '库还是空的。写一条法令、点「收进档案库」，它就会在这儿留一辈子。';
+      box.appendChild(p);
+      setText('v-d', '0');
+      return;
+    }
+    var deepest = 0, i;
+    for (i = 0; i < lib.length; i++) deepest = Math.max(deepest, A.achievement(lib[i]).deepest);
+    setText('v-d', String(deepest));
+
+    for (i = 0; i < lib.length; i++) box.appendChild(makeCard(lib[i]));
+  }
+
+  function makeCard(a) {
+    var ach = A.achievement(a);
+    var card = el('div', 'card');
+    var brokeAt = 0, j;
+    for (j = 0; j < a.runs.length; j++) {
+      if (!a.runs[j].survived) { brokeAt = a.runs[j].gen; break; }
+    }
+    if (brokeAt) card.className = 'card c-dead';
+
+    var top = el('div', 'c-top');
+    var nm = el('span', 'c-name'); nm.textContent = a.name;
+    var gen = el('span', 'c-gen');
+    gen.textContent = ach.deepest >= GEN_MAX ? '六代全守' : (brokeAt ? '断在第 ' + brokeAt + ' 代' : '已守 ' + ach.deepest + ' 代');
+    top.appendChild(nm); top.appendChild(gen); card.appendChild(top);
+
+    if (a.parentId) {
+      var pn = '';
+      for (j = 0; j < lib.length; j++) if (lib[j].id === a.parentId) pn = lib[j].name;
+      if (pn) {
+        var src = el('p', 'c-src');
+        src.textContent = '由「' + pn + '」改出';
+        card.appendChild(src);
+      }
+    }
+
+    var code = el('pre', 'c-code');
+    code.textContent = A.archiveToText(a);
+    card.appendChild(code);
+
+    // 履历条：六格
+    var track = el('div', 'c-track');
+    for (var gi = 1; gi <= GEN_MAX; gi++) {
+      var cell = el('div', 'c-cell');
+      var run = null;
+      for (j = 0; j < a.runs.length; j++) if (a.runs[j].gen === gi) run = a.runs[j];
+      if (!run) { cell.className = 'c-cell pending'; cell.textContent = '·'; }
+      else if (run.survived) { cell.className = 'c-cell hold'; cell.textContent = String(gi); }
+      else { cell.className = 'c-cell broke'; cell.textContent = String(gi); }
+      track.appendChild(cell);
+    }
+    card.appendChild(track);
+
+    var foot = el('div', 'c-foot');
+    var vd = el('span', 'c-verdict ' + (ach.deepest >= GEN_MAX ? 'ok' : (brokeAt ? 'dead' : '')));
+    if (ach.deepest >= GEN_MAX) vd.textContent = '六代全守 · 最长寿';
+    else if (brokeAt) vd.textContent = '第 ' + brokeAt + ' 代没守住';
+    else vd.textContent = '已守 ' + ach.deepest + ' 代';
+    foot.appendChild(vd);
+    var from = el('span', 'c-from');
+    from.textContent = '最深 ' + ach.deepest + ' 代';
+    foot.appendChild(from);
+    card.appendChild(foot);
+
+    var acts = el('div', 'c-acts');
+    var b1 = el('button'); b1.type = 'button'; b1.textContent = '基于它改';
+    b1.addEventListener('click', function () { deriveFrom(a.id); });
+    var b2 = el('button'); b2.type = 'button'; b2.textContent = '载入编辑器';
+    b2.addEventListener('click', function () {
+      $('law').value = A.archiveToText(a);
+      $('archname').value = a.name;
+      loadLaws(true);
+      $('law').focus();
+    });
+    var b3 = el('button'); b3.type = 'button'; b3.textContent = '删掉';
+    b3.addEventListener('click', function () { removeArchive(a.id); });
+    acts.appendChild(b1); acts.appendChild(b2); acts.appendChild(b3);
+    card.appendChild(acts);
+
+    return card;
+  }
+
+  /* ====================================================== 诊断（对照实验） */
+  function runDiag() {
+    if (!laws.length) { setDiag('还没有法令可诊断。'); return; }
+    var bl = C.blame(g, laws, 260, DT, C.orderParam(g).r);
+    lastDiag = bl;
+    renderDiag(bl);
+  }
+  function setDiag(msg) {
+    var box = $('diag-body'); box.textContent = '';
+    var p = el('p', 'diag-empty'); p.textContent = msg; box.appendChild(p);
+  }
+  function renderDiag(res) {
+    var box = $('diag-body'); box.textContent = '';
+    var base = res.base;
+    var v = el('div', 'diag-verdict ' + (res.noCulprit ? 'clean' : 'guilty'));
+    if (res.noCulprit) {
+      v.textContent = '没有元凶：拿掉任何一条法令，局面都不会变好。说明这几条都在帮忙。';
+    } else {
+      v.textContent = '把「' + res.culprit.name + '」这一条单独拿掉，同步度从 ' +
+        base.r.toFixed(3) + ' 涨到 ' + res.culprit.r.toFixed(3) + '。是它在使坏。';
+    }
+    box.appendChild(v);
+
+    var wrap = el('div', 'tbl-wrap');
+    var tb = el('table', 'dt');
+    var thead = el('thead'), trh = el('tr');
+    ['拿掉的法令', '剩下的同步度', '相对全开', '示意图'].forEach(function (h) {
+      var th = el('th'); th.textContent = h; trh.appendChild(th);
+    });
+    thead.appendChild(trh); tb.appendChild(thead);
+    var tbody = el('tbody');
+    res.runs.forEach(function (row) {
+      var tr = el('tr');
+      if (row.idx === res.culprit.idx && row.idx >= 0) tr.className = 'culprit';
+      var td0 = el('td');
+      td0.textContent = row.idx < 0 ? '（什么都不拿掉）' : row.name + '(' + row.args.join(',') + ')';
+      tr.appendChild(td0);
+      var td1 = el('td', 'num'); td1.textContent = row.r.toFixed(3); tr.appendChild(td1);
+      var delta = row.r - base.r;
+      var td2 = el('td', 'num');
+      td2.textContent = (row.idx < 0 ? '—' : (delta >= 0 ? '+' : '') + delta.toFixed(3));
+      tr.appendChild(td2);
+      var td3 = el('td');
+      var bar = el('div', 'bar');
+      var fill = el('i');
+      fill.style.width = Math.round(row.r * 100) + '%';
+      fill.className = row.idx < 0 ? '' : (delta > 0 ? 'up' : (delta < 0 ? 'down' : ''));
+      bar.appendChild(fill); td3.appendChild(bar); tr.appendChild(td3);
+      tbody.appendChild(tr);
+    });
+    tb.appendChild(tbody); wrap.appendChild(tb); box.appendChild(wrap);
+
+    var note = el('p', 'diag-note');
+    note.textContent = '每组只关掉一条法令、其余原样重跑 260 步，所以这是受控对照：' +
+      '绿色表示拿掉它局面变好（它在使坏），红色表示拿掉它变差（它在撑场）。';
+    box.appendChild(note);
+    $('diag-lede').textContent = '下面是刚跑出来的对照实验结果。';
+  }
+
+  /* ========================================================== 法令清单 */
+  function buildRef() {
+    var ul = $('reflist');
+    C.LAW_NAMES.forEach(function (nm) {
+      var law = C.LAWS[nm];
+      var li = el('li'), b = el('button');
+      b.type = 'button';
+      b.textContent = nm + '(' + law.spec.map(function (s) { return s.def; }).join(',') + ')';
+      var d = el('span', 'd');
+      d.textContent = law.desc + (law.arity ? ' · 参数 ' + law.spec.map(function (s) { return s.hint; }).join('，') : '');
+      b.appendChild(d);
+      b.addEventListener('click', function () {
+        var ta = $('law'), s = ta.selectionStart, e = ta.selectionEnd;
+        var v = ta.value, lineStart = v.slice(0, s).lastIndexOf('\n') + 1;
+        var prefix = (lineStart === 0 && s === 0) || v[lineStart - 1] === '\n' ? '' : '';
+        // 按实际插入的文本长度推进光标，不要手算字符数（多参数法令会算错）
+        var snippet = nm + '(' + law.spec.map(function (x) { return x.def; }).join(',') + ')';
+        ta.value = v.slice(0, s) + prefix + snippet + v.slice(e);
+        var np = s + prefix.length + snippet.length;
+        ta.focus(); ta.setSelectionRange(np, np);
+        loadLaws(true);
+      });
+      li.appendChild(b); ul.appendChild(li);
+    });
+  }
+
+  /* ============================================================ 事件 */
+  function pointerXY(ev, m) {
+    var rect = cv.getBoundingClientRect();
+    var scale = (cv.clientWidth || 720) / rect.width;
+    var x = (ev.clientX - rect.left) * scale, y = (ev.clientY - rect.top) * scale;
+    return { x: x, y: y, theta: Math.atan2(y - m.cy, x - m.cx) };
+  }
+
+  function bind() {
+    $('law').addEventListener('input', function () { loadLaws(true); });
+    $('law').addEventListener('keydown', function (e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        var ta = this, s = ta.selectionStart, en = ta.selectionEnd;
+        ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(en);
+        ta.setSelectionRange(s + 2, s + 2);
+        loadLaws(true);
+      }
+    });
+    $('b-save').addEventListener('click', saveArchive);
+    $('b-run').addEventListener('click', function () {
+      if (!loadLaws(true)) return;
+      running = true;
+      setText('live', '正在执行你的 ' + laws.length + ' 条法令（第 ' + level + ' 代）');
+    });
+    $('b-diag').addEventListener('click', runDiag);
+    $('b-gen').addEventListener('click', rehearseAll);
+    $('b-wipe').addEventListener('click', function () {
+      store.clear(); lib = []; currentId = null;
+      renderLib();
+      setText('lib-lede', '档案库已清空。');
+    });
+
+    cv.addEventListener('pointerdown', function (ev) {
+      ev.preventDefault();
+      try { if (cv.setPointerCapture) cv.setPointerCapture(ev.pointerId); } catch (e) { }
+      var m = metrics(), p = pointerXY(ev, m);
+      dragIdx = nearest(p.x, p.y, m);
+    });
+    cv.addEventListener('pointermove', function (ev) {
+      if (dragIdx < 0) return;
+      ev.preventDefault();
+      C.holdPhi(g, dragIdx, pointerXY(ev, metrics()).theta);
+    });
+    window.addEventListener('pointerup', function () { dragIdx = -1; });
+    window.addEventListener('resize', function () { resize(); });
+  }
+
+  /* ================================================================= 启动 */
+  function boot() {
+    cv = $('cv');
+    ctx = cv.getContext('2d');
+    store = A.makeStore(window);
+    lib = store.load();
+    applyGen(1);
+    resize();
+    buildRef();
+    bind();
+    loadLaws(true);
+    renderLib();
+    rafId = requestAnimationFrame(frame);
+
+    var st = $('storestate');
+    if (st) {
+      st.textContent = store.usable ? '存储：可用（关掉页面也在）' : '存储：不可用（本次会话有效）';
+      if (!store.usable) st.className = 'storestate off';
+    }
+
+    window.__probe = {
+      ready: true,
+      r: function () { return C.orderParam(g).r; },
+      level: function () { return level; },
+      lawCount: function () { return laws.length; },
+      running: function () { return running; },
+      loopAlive: function () { return rafId !== 0; },
+      libCount: function () { return lib.length; },
+      libNames: function () { return lib.map(function (a) { return a.name; }); },
+      libRecords: function () {
+        return lib.map(function (a) {
+          return { name: a.name, runs: a.runs.length, deepest: A.achievement(a).deepest };
+        });
+      },
+      storeUsable: function () { return store.usable; },
+      // 存储往返：存→读→比，必须一致（这是"留得下"的唯一证据）
+      roundTrip: function () {
+        var probeArc = A.makeArchive('pull(0.3)\nsnap(2)', '探针档案');
+        A.record(probeArc, A.rehearse(probeArc, 1, 400));
+        var before = A.serialize([probeArc]);
+        store.save(lib.concat([probeArc]));
+        var back = store.load();
+        var found = null;
+        for (var i = 0; i < back.length; i++) if (back[i].id === probeArc.id) found = back[i];
+        var after = found ? A.serialize([found]) : '';
+        // 还原现场
+        lib = lib.filter(function (a) { return a.id !== probeArc.id; });
+        store.save(lib);
+        return { ok: !!found && after === before, runs: found ? found.runs.length : 0 };
+      },
+      tryParse: function (src) { var r = C.parse(src); return { ok: r.ok, error: r.error, count: r.laws.length }; },
+      loadLaws: function (src) { $('law').value = src; return loadLaws(true); },
+      // 探针要能存"指定的法令"，不能写死第一份 ——
+      // 否则探针存第二份时会被"重复入库"守卫挡掉，测出来是守卫的错。
+      saveNow: function (name, src) {
+        $('law').value = src || 'pull(0.3)\nsnap(2)';
+        $('archname').value = name || '探针';
+        loadLaws(true); saveArchive();
+        return lib.length;
+      },
+      rehearseAll: function () { rehearseAll(); return lib.length; },
+      deepest: function () {
+        var d = 0;
+        for (var i = 0; i < lib.length; i++) d = Math.max(d, A.achievement(lib[i]).deepest);
+        return d;
+      },
+      runAll: function (gens) {
+        for (var i = 0; i < lib.length; i++) {
+          for (var gi = 1; gi <= (gens || 6); gi++) {
+            var r = A.rehearse(lib[i], gi, 700);
+            A.record(lib[i], r);
+            if (!r.survived) break;
+          }
+        }
+        persist();
+        return lib.map(function (a) { return A.achievement(a).deepest; });
+      },
+      driveSteps: function (k) {
+        for (var i = 0; i < k; i++) {
+          if (celebrate > 0) { celebrate--; if (celebrate === 0) applyGen(level + 1); }
+          else tick();
+        }
+        var r = C.orderParam(g).r;
+        rHist.push(r); if (rHist.length > HIST_MAX) rHist.shift();
+        syncReadouts(r); draw();
+        return { r: r, level: level, hold: hold };
+      },
+      canvasSize: function () { return { w: cv.clientWidth, h: cv.height / dpr }; },
+      touchTargets: function () {
+        var out = [], nodes = document.querySelectorAll('.btn,.reflist button,.c-acts button,.nm');
+        for (var i = 0; i < nodes.length; i++) {
+          var r = nodes[i].getBoundingClientRect();
+          out.push({ w: Math.round(r.width), h: Math.round(r.height) });
+        }
+        return out;
+      },
+      nanScan: function () { return { nan: /NaN|Infinity|undefined/.test(document.body.innerText) }; }
+    };
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

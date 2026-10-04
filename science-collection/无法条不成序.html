@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>无法条不成序</title>
+<meta name="description" content="观众写法令治理一群振子：顺序有意义，系统会做对照实验反驳你。">
+<style>
+/* ============================================================================
+   law/style.css —— 样式（浅色主题）
+   与既有展项的差异：没有 .tabs、没有 .chart（静态图表容器）、
+   没有"结论/边界"两段固定结论表。主体是编辑器 + 实验台双栏。
+   ==========================================================================*/
+:root{
+  --bg:#f6f5f2;
+  --panel:#ffffff;
+  --ink:#1c1b19;
+  --ink2:#4a4844;
+  --ink3:#7d7a74;
+  --line:#e0ded8;
+  --line2:#cbc8c0;
+  --code:#f7f5f0;
+  --acc:#8c2f39;        /* 观众的立法 */
+  --ok:#2f6b4f;         /* 达标 / 有用 */
+  --bad:#a8322f;        /* 元凶 */
+  --cool:#1f4e5f;
+  --soft:#f0eee9;
+  --mono:"Cascadia Mono","JetBrains Mono",Consolas,"DejaVu Sans Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--sans);
+  font-size:15px; line-height:1.72; -webkit-text-size-adjust:100%;
+  padding:0 0 64px;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+/* ---------- 头版 ---------- */
+.hero{padding-top:40px;padding-bottom:8px}
+.kicker{font-size:12.5px;letter-spacing:.16em;color:var(--ink3);margin:0 0 6px}
+.hero h1{font-size:40px;line-height:1.15;margin:0 0 14px;letter-spacing:.02em}
+.lead{font-size:16px;color:var(--ink2);margin:0 0 12px;max-width:74ch}
+.lead2{font-size:15px;color:var(--ink3)}
+.lead b{color:var(--ink)}
+
+/* ---------- 立法台（双栏） ---------- */
+.desk{margin:26px 0 8px}
+.desk-cols{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:14px;align-items:start}
+
+.edbox,.stagebox{
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 15px;min-width:0;
+}
+.edhead,.stageline{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:9px}
+.edlab,.stagelab{font-size:12.5px;letter-spacing:.14em;color:var(--ink3)}
+.edstat,.stagestat{font-family:var(--mono);font-size:12.5px;color:var(--ink2)}
+
+/* 编辑器：必须像代码编辑器 —— 等宽、行号感、暗一点的底 */
+.ed{
+  display:block;width:100%;font-family:var(--mono);font-size:13.5px;line-height:1.62;
+  color:var(--ink);background:var(--code);
+  border:1px solid var(--line2);border-radius:8px;padding:11px 12px;
+  resize:vertical;min-height:150px;tab-size:2;
+}
+.ed:focus{outline:2px solid var(--cool);outline-offset:1px}
+
+/* 错误条：观众从错误里学语法，所以要给得清楚 */
+.ederr{
+  margin-top:9px;padding:9px 11px;border-radius:7px;
+  background:#fdf2f1;border:1px solid #e6c3c1;color:#8a2b28;
+  font-size:13px;line-height:1.6;
+}
+.ederr b{color:#6d201e}
+
+.edbtns{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+.btn{
+  font:inherit;font-size:13px;padding:8px 12px;min-height:40px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--line2);border-radius:7px;color:var(--ink);
+}
+.btn:hover{background:var(--soft)}
+.btn-main{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.btn-main:hover{background:#75262f}
+.btn2{color:var(--acc)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+
+/* 参考法令清单 */
+.ref{margin-top:13px;border-top:1px solid var(--line);padding-top:10px}
+.ref summary{font-size:13px;color:var(--ink2);cursor:pointer;min-height:24px;display:list-item;list-style-position:inside}
+.reflist{list-style:none;margin:9px 0 0;padding:0}
+.reflist li{margin:0 0 6px}
+.reflist button{
+  font-family:var(--mono);font-size:12.5px;text-align:left;width:100%;
+  background:var(--code);border:1px solid var(--line);border-radius:6px;
+  padding:6px 9px;cursor:pointer;color:var(--ink);min-height:32px;
+}
+.reflist button:hover{background:var(--soft);border-color:var(--line2)}
+.reflist .d{font-family:var(--sans);color:var(--ink3);font-size:12px;display:block}
+.refnote{font-size:12px;color:var(--ink3);margin:9px 0 0}
+code{font-family:var(--mono);font-size:.92em;background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 4px}
+
+/* ---------- 实验台 ---------- */
+.stage{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.stage canvas{
+  display:block;width:100%;
+  height:auto;min-height:340px;
+  touch-action:none;cursor:crosshair;
+}
+.lvbar{
+  display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;
+  margin-top:10px;padding-top:9px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--ink3);
+}
+.lvbar .lv b{font-family:var(--mono);font-size:14px;color:var(--ink)}
+.lvtxt{font-family:var(--mono)}
+.lvprog{margin-left:auto}
+
+/* ---------- 读数 ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0 8px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 13px;min-width:0}
+.kpi .kl{font-size:12px;color:var(--ink3);line-height:1.45;display:block;margin-bottom:4px}
+.kpi .kv{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.01em;display:block}
+.kpi .kv.hit{color:var(--ok)}
+.kpi .kn{font-size:11.5px;color:var(--ink3);line-height:1.5;display:block;margin-top:4px}
+
+/* ---------- 诊断报告 ---------- */
+.diag{margin:32px 0 0}
+.diag h2{font-size:24px;margin:0 0 8px}
+.diag-lede{font-size:14.5px;color:var(--ink2);margin:0 0 12px;max-width:72ch}
+.diag-empty{font-size:13.5px;color:var(--ink3);margin:0}
+.diagbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:15px 16px}
+.diag-verdict{
+  font-size:15.5px;line-height:1.7;margin:0 0 14px;padding:11px 13px;border-radius:8px;
+  background:var(--soft);border-left:4px solid var(--line2);
+}
+.diag-verdict.guilty{background:#fdf2f1;border-left-color:var(--bad)}
+.diag-verdict.clean{background:#eef5f1;border-left-color:var(--ok)}
+.diag-verdict b{font-weight:600}
+.diag-verdict code{background:#fff}
+.tbl-wrap{overflow-x:auto}
+table.dt{width:100%;border-collapse:collapse;font-size:13.5px}
+table.dt th,table.dt td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+table.dt th{color:var(--ink3);font-weight:600;font-size:12.5px}
+table.dt th:first-child,table.dt td:first-child{text-align:left}
+table.dt td.num{font-family:var(--mono)}
+table.dt tr.culprit td{background:#fdf2f1;font-weight:600}
+table.dt tr.culprit td:first-child{color:var(--bad)}
+.bar{position:relative;height:14px;background:var(--soft);border-radius:3px;min-width:80px;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--cool);display:block}
+.bar i.up{background:var(--ok)}
+.bar i.down{background:var(--bad)}
+.diag-note{font-size:12.5px;color:var(--ink3);margin:12px 0 0}
+
+/* ---------- 玩法说明 ---------- */
+.guide{margin:36px 0 0}
+.guide h2{font-size:21px;margin:0 0 12px}
+.guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.gitem{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:14px 15px;min-width:0}
+.gitem h3{font-size:15px;margin:0 0 6px}
+.gitem p{font-size:13.5px;color:var(--ink2);margin:0}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width:900px){
+  .desk-cols{grid-template-columns:1fr}   /* 双栏塌成一栏，编辑器在上 */
+}
+@media (max-width:640px){
+  .hero{padding-top:26px}
+  .hero h1{font-size:29px}
+  .lead{font-size:15px}
+  .edbtns{gap:6px}
+  .btn{padding:10px 12px;min-height:44px}     /* 窄屏触控 44px */
+  .reflist button{min-height:44px}
+  .ref summary{min-height:44px;display:flex;align-items:center}
+  .stage canvas{min-height:300px}
+  .lvprog{margin-left:0}
+  table.dt th,table.dt td{padding:7px 8px}
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<!DOCTYPE html>
+<!-- ============================================================================
+     law/body.html —— 结构
+     与既有展项的结构性差异：
+       既有 = 导语 → KPI 卡 → 标签页 → 若干静态面板 → 预设结论表
+       本作 = 一个代码编辑器 + 一群持续演化的振子 + 一份诊断报告
+     页面没有"结论区"。观众写法令，系统反驳他。
+     ==========================================================================-->
+
+<section class="hero">
+  <p class="kicker">非平衡态 · 自我治理</p>
+  <h1>你立法，它反悔</h1>
+  <p class="lead">
+    下面这群光点谁也不理谁，各自乱转。你的任务不是"调参数"，是<b>立法</b>：
+    写几条法令告诉它们该怎么活，然后看这套法令<b>管不管用</b>。
+  </p>
+  <p class="lead lead2">
+    规矩只有一条：<b>顺序有意义</b>。同样两条法令换个先后，可能得出完全不同的结果，
+    这件事没人会告诉你——只能自己试出来。而且系统会反驳你：
+    局面崩了，它会做对照实验，揪出到底<b>哪一条法令在害你</b>。
+  </p>
+</section>
+
+<!-- ==================================================== 立法台（主体） -->
+<section class="desk">
+  <div class="desk-cols">
+
+    <!-- 左：编辑器 -->
+    <div class="edbox">
+      <div class="edhead">
+        <span class="edlab">法令草案</span>
+        <span class="edstat" id="edstat">0 条</span>
+      </div>
+
+      <textarea id="law" class="ed" spellcheck="false" autocapitalize="off"
+        autocomplete="off" autocorrect="off" rows="7"
+        aria-label="法令编辑器，每行一条法令"># 一行一条法令，从上到下依次执行
+# 想让它们整齐，就写：
+pull(0.3)
+snap(2)</textarea>
+
+      <div class="ederr" id="ederr" hidden></div>
+
+      <div class="edbtns">
+        <button type="button" id="b-run" class="btn btn-main">开始执政</button>
+        <button type="button" id="b-pause" class="btn">暂停</button>
+        <button type="button" id="b-diag" class="btn">诊断</button>
+        <button type="button" id="b-reset" class="btn btn2">重新洗牌</button>
+      </div>
+
+      <details class="ref">
+        <summary>可用法令（点一下插入）</summary>
+        <ul class="reflist" id="reflist"></ul>
+        <p class="refnote">
+          参数范围会一并检查：<code>snap</code> 只收整数、<code>slow</code> 最大 0.9
+          （不能把全体都锁死）。写错会告诉你错在哪一行、哪个字符。
+        </p>
+      </details>
+    </div>
+
+    <!-- 右：实验台 -->
+    <div class="stagebox">
+      <div class="stageline">
+        <span class="stagelab">被治理的群体 · 实时</span>
+        <span class="stagestat" id="live">未开始</span>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="cv" width="760" height="520" aria-label="振子群，可点按拖动单个振子"></canvas>
+      </div>
+      <div class="lvbar">
+        <span class="lv">难度 <b id="lv">1</b></span>
+        <span class="lvtxt" id="lvtxt">K=0.30 · 频率宽度 0.20 · 达标线 0.55</span>
+        <span class="lvprog" id="lvprog">已执政 0 次</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== 读数（4 张） -->
+<div class="kpis">
+  <div class="kpi">
+    <span class="kl">同步度 r</span>
+    <span class="kv" id="v-r">0.000</span>
+    <span class="kn" id="n-r">当前值</span>
+  </div>
+  <div class="kpi">
+    <span class="kl">达标线</span>
+    <span class="kv" id="v-t">0.55</span>
+    <span class="kn" id="n-t">连续保持这么多步算你赢</span>
+  </div>
+  <div class="kpi">
+    <span class="kl">已连续达标</span>
+    <span class="kv" id="v-h">0</span>
+    <span class="kn" id="n-h">步</span>
+  </div>
+  <div class="kpi">
+    <span class="kl">难度等级</span>
+    <span class="kv" id="v-l">1</span>
+    <span class="kn" id="n-l">赢了会自动加码</span>
+  </div>
+</div>
+
+<!-- ============================================ 诊断报告（取代结论表） -->
+<section class="diag">
+  <div class="diag-head">
+    <h2>系统的反驳</h2>
+    <p class="diag-lede" id="diag-lede">
+      点「诊断」，系统会逐条禁用你的法令重跑一遍，看拿掉哪条局面反而变好。
+      这是受控对照实验，不是猜。
+    </p>
+  </div>
+  <div id="diag-body">
+    <p class="diag-empty">还没有诊断过。</p>
+  </div>
+</section>
+
+<!-- ================================================== 怎么玩（说明） -->
+<section class="guide">
+  <h2>怎么玩</h2>
+  <div class="guide-grid">
+    <div class="gitem">
+      <h3>先写出效果</h3>
+      <p><code>pull(0.3)</code> 让大家互相靠拢，<code>jitter</code> 让它们发疯，
+        <code>snap(2)</code> 把跑得最远的两个强行拽回。三条随便搭都能玩，
+        但能不能治理好，要跑过才知道。</p>
+    </div>
+    <div class="gitem">
+      <h3>然后玩顺序</h3>
+      <p>把 <code>snap(2)</code> 挪到 <code>pull</code> 前面再跑一次。
+        你会发现结果不一样——但哪条法令在起作用、哪条在使坏，
+        只有对照实验能回答。</p>
+    </div>
+    <div class="gitem">
+      <h3>最后准备被反驳</h3>
+      <p>你写对了，难度自动加一：群体更倔、频率更杂、达标线更高。
+        上一关的法令未必管用。立法不是一次做完的事。</p>
+    </div>
+  </div>
+</section>
+
+</div>
+<script>/* ============================================================================
+ * law/core.js —— 「立法」：观众写规则来治理一群振子（全部模型，UMD）
+ *
+ * 对象：N 个相位振子 + 一份由观众书写的法令（有序的动词序列）。
+ * 振子按 Kuramoto 演化（与 sync/core.js 同一套物理），每一步演化之前，
+ * 先按书写顺序依次执行观众的法令：
+ *
+ *   pull(a)    把每个振子朝群体相位拉近 a（0-1）
+ *   snap(n)    把相位离群体最远的 n 个振子直接归位（强制同步）
+ *   spin(v)    给每个振子加一个恒定角速度偏移 v
+ *   slow(f)    把最快的 f 比例振子减速（只允许 f < 1）
+ *   jitter(s)  给每个振子加随机抖动 s
+ *   wait()     这一条什么都不做（用它来控制顺序，制造"冲突"）
+ *
+ * 本作的要害：**顺序有意义**。同样两条法令换个次序，结果可以定性不同。
+ * 观众不是在调参数，是在立法；而立法可以被系统反驳 —— blame() 会做反事实对照，
+ * 揪出到底哪一条法令在害他。
+ *
+ * 铁律：随机数一律走 splitmix32（不使��� Math.random），否则立法不可复现。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.LawCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  var TAU = Math.PI * 2;
+
+  /* ---------------------------------------------------------------- PRNG */
+  function splitmix32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ------------------------------------------------------------ 法令表 */
+  // 每条法令：名字、参数个数、参数规格、生效函数。
+  // 生效函数签名统一为 (group, args, ctx) => void，直接改 theta 数组。
+  var LAWS = {
+    pull: {
+      arity: 1,
+      spec: [{ min: 0, max: 1, def: 0.3, hint: '0-1' }],
+      desc: '朝群体拉近',
+      apply: function (g, a) {
+        var psi = meanPhase(g), k = a[0], i;
+        // 逐个朝 psi 靠拢 k 比例（用最短弧 wrapPi，避免绕远路）
+        for (i = 0; i < g.n; i++) {
+          g.theta[i] = g.theta[i] + wrapPi(psi - g.theta[i]) * k;
+        }
+        normAll(g);
+      }
+    },
+    snap: {
+      arity: 1,
+      spec: [{ min: 1, max: 64, int: true, def: 3, hint: '1-64 的整数' }],
+      desc: '把最远的 n 个强行归位',
+      apply: function (g, a) {
+        var n = Math.max(1, Math.min(g.n, Math.round(a[0])));
+        var psi = meanPhase(g);
+        var d = new Float64Array(g.n), i, idx, best, tmp;
+        for (i = 0; i < g.n; i++) d[i] = Math.abs(wrapPi(psi - g.theta[i]));
+        // 选择排序取前 n 个（n 很小，无需全排序）
+        for (i = 0; i < n; i++) {
+          best = i;
+          for (var j = i + 1; j < g.n; j++) if (d[j] < d[best]) best = j;
+          if (best !== i) { tmp = d[i]; d[i] = d[best]; d[best] = tmp; }
+          idx = i;
+          g.theta[idx] = psi;
+        }
+      }
+    },
+    spin: {
+      arity: 1,
+      spec: [{ min: -3, max: 3, def: 0, hint: '-3 到 3' }],
+      desc: '全体加恒定角速度',
+      apply: function (g, a) {
+        var d = a[0];
+        for (var i = 0; i < g.n; i++) g.theta[i] = g.theta[i] + d * 0.02;
+        normAll(g);
+      }
+    },
+    slow: {
+      arity: 1,
+      spec: [{ min: 0, max: 0.9, def: 0.3, hint: '0-0.9 的比例' }],
+      desc: '把最快的 f 比例减速',
+      apply: function (g, a) {
+        var f = a[0], m = Math.max(1, Math.round(g.n * f));
+        var idx = [], i, j, best, tmp, om = g.omega;
+        for (i = 0; i < g.n; i++) idx.push(i);
+        // 按 omega 降序取前 m 个
+        for (i = 0; i < m; i++) {
+          best = i;
+          for (j = i + 1; j < idx.length; j++) if (om[idx[j]] > om[idx[best]]) best = j;
+          tmp = idx[i]; idx[i] = idx[best]; idx[best] = tmp;
+        }
+        for (i = 0; i < m; i++) om[idx[i]] = om[idx[i]] * 0.9;
+      }
+    },
+    jitter: {
+      arity: 1,
+      spec: [{ min: 0, max: 1, def: 0.2, hint: '0-1' }],
+      desc: '加随机抖动',
+      apply: function (g, a, ctx) {
+        var s = a[0];
+        if (!ctx.rng) ctx.rng = splitmix32((g.seed ^ 0x5bf03635) >>> 0);
+        for (var i = 0; i < g.n; i++) g.theta[i] = g.theta[i] + (ctx.rng() * 2 - 1) * s * 0.3;
+        normAll(g);
+      }
+    },
+    wait: {
+      arity: 0,
+      spec: [],
+      desc: '什么也不做（用来排顺序）',
+      apply: function () { }
+    }
+  };
+  var LAW_NAMES = ['pull', 'snap', 'spin', 'slow', 'jitter', 'wait'];
+
+  /* --------------------------------------------------------- 词法/语法 */
+  // 极简语法：每行一条法令，形如  name(arg, arg)  或  name()
+  // 不用正则一把梭：手写扫描器才能报出「第几个字符错了」这种可读错误，
+  // 而观众是从错误里学会语法的 —— 泛泛的"语法错误"没有教学价值。
+  function parse(src) {
+    var out = [], lines = String(src == null ? '' : src).split(/\r?\n/);
+    for (var li = 0; li < lines.length; li++) {
+      var line = lines[li], pos = 0, lineNo = li + 1;
+      // 跳过空行与 # 注释
+      while (pos < line.length && (line[pos] === ' ' || line[pos] === '\t')) pos++;
+      if (pos >= line.length || line[pos] === '#') continue;
+
+      // --- 读标识符 ---
+      var idStart = pos, name = '';
+      while (pos < line.length && /[A-Za-z0-9_]/.test(line[pos])) { name += line[pos]; pos++; }
+      if (name === '') {
+        return fail('第 ' + lineNo + ' 行开头不是法令名', out, name, lineNo);
+      }
+      if (!Object.prototype.hasOwnProperty.call(LAWS, name)) {
+        var near = closest(name);
+        var hint = near ? '，你是不是想写 ' + near + '？' : '，可用：' + LAW_NAMES.join(' / ');
+        return fail('第 ' + lineNo + ' 行不认识「' + name + '」' + hint, out, name, lineNo);
+      }
+      var law = LAWS[name];
+
+      // --- 跳过空白，要求 '(' ---
+      while (pos < line.length && (line[pos] === ' ' || line[pos] === '\t')) pos++;
+      if (line[pos] !== '(') {
+        return fail('第 ' + lineNo + ' 行 ' + name + ' 后面要跟一对括号 ()', out, name, lineNo);
+      }
+      pos++;
+
+      // --- 读参数 ---
+      var args = [], raw = '';
+      while (pos < line.length && line[pos] !== ')') {
+        var ch = line[pos];
+        if (ch === ' ' || ch === '\t' || ch === ',') { pos++; continue; }
+        if (ch === '#') break;                        // 行尾注释
+        if (/[0-9.\-+eE]/.test(ch)) { raw += ch; pos++; continue; }
+        return fail('第 ' + lineNo + ' 行第 ' + (pos + 1) + ' 个字符「' + ch + '」不是数字', out, name, lineNo);
+      }
+      if (line[pos] !== ')') {
+        return fail('第 ' + lineNo + ' 行 ' + name + ' 少了右括号 )', out, name, lineNo);
+      }
+      pos++;
+      if (raw !== '') {
+        var v = Number(raw);
+        if (!isFinite(v)) {
+          return fail('第 ' + lineNo + ' 行的「' + raw + '」不是一个数', out, name, lineNo);
+        }
+        args.push(v);
+      }
+
+      // --- 行尾有残留就是错 ---
+      var tail = line.slice(pos).replace(/^[\s,]+/, '');
+      if (tail !== '' && tail[0] !== '#') {
+        return fail('第 ' + lineNo + ' 行 ' + name + '(...) 后面还有多余的「' + tail + '」', out, name, lineNo);
+      }
+
+      // --- 参数个数与范围 ---
+      if (args.length !== law.arity) {
+        return fail(name + ' 需要 ' + law.arity + ' 个参数，你写了 ' + args.length + ' 个', out, name, lineNo);
+      }
+      for (var ai = 0; ai < args.length; ai++) {
+        var sp = law.spec[ai], val = args[ai];
+        if (sp.int && Math.abs(val - Math.round(val)) > 1e-9) {
+          return fail(name + ' 的第 ' + (ai + 1) + ' 个参数要是整数，你写了 ' + val, out, name, lineNo);
+        }
+        if (val < sp.min || val > sp.max) {
+          return fail(name + ' 的第 ' + (ai + 1) + ' 个参数要落在 ' + sp.min + ' 到 ' + sp.max +
+            '（' + sp.hint + '），你写了 ' + val, out, name, lineNo);
+        }
+      }
+      out.push({ name: name, args: args, line: lineNo });
+    }
+    return { ok: true, laws: out, error: null };
+  }
+
+  function fail(msg, laws, name, lineNo) {
+    return { ok: false, laws: laws, error: msg, at: name, line: lineNo };
+  }
+
+  // 拼写建议：取编辑距离最小的那个法令名
+  function closest(name) {
+    var best = null, bd = 1e9;
+    for (var i = 0; i < LAW_NAMES.length; i++) {
+      var d = editDist(name, LAW_NAMES[i]);
+      if (d < bd) { bd = d; best = LAW_NAMES[i]; }
+    }
+    return bd <= 2 ? best : null;
+  }
+  function editDist(a, b) {
+    var m = a.length, n = b.length, i, j, prev = [], cur = [];
+    for (j = 0; j <= n; j++) prev[j] = j;
+    for (i = 1; i <= m; i++) {
+      cur = [i];
+      for (j = 1; j <= n; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      }
+      prev = cur.slice();
+    }
+    return prev[n];
+  }
+
+  /* -------------------------------------------------------------- 群 */
+  function makeGroup(n, opts) {
+    opts = opts || {};
+    var seed = opts.seed === undefined ? 7 : opts.seed;
+    var width = opts.width === undefined ? 0.35 : opts.width;
+    var K = opts.K === undefined ? 0 : opts.K;
+    var rng = splitmix32(seed);
+    var omega = new Float64Array(n), theta = new Float64Array(n), i;
+    for (i = 0; i < n; i++) omega[i] = width * Math.tan(Math.PI * ((i + 0.5) / n - 0.5));
+    for (i = 0; i < n; i++) theta[i] = rng() * TAU;
+    return {
+      n: n, omega: omega, theta: theta, baseOmega: Float64Array.from(omega),
+      K: K, width: width, seed: seed, t: 0
+    };
+  }
+
+  function cloneGroup(g) {
+    return {
+      n: g.n, omega: Float64Array.from(g.omega), theta: Float64Array.from(g.theta),
+      baseOmega: Float64Array.from(g.baseOmega),
+      K: g.K, width: g.width, seed: g.seed, t: g.t
+    };
+  }
+
+  /* ------------------------------------------------------------ 相位工具 */
+  function wrapPi(a) {
+    a = a % TAU;
+    if (a > Math.PI) a -= TAU;
+    if (a < -Math.PI) a += TAU;
+    return a;
+  }
+  function wrapTo(a) { return a - TAU * Math.floor(a / TAU); }
+  function normAll(g) {
+    for (var i = 0; i < g.n; i++) g.theta[i] = wrapTo(g.theta[i]);
+  }
+  // 群体平均相位（圆周均值）
+  function meanPhase(g) {
+    var s = 0, c = 0, i;
+    for (i = 0; i < g.n; i++) { s += Math.sin(g.theta[i]); c += Math.cos(g.theta[i]); }
+    return Math.atan2(s / g.n, c / g.n);
+  }
+  function orderParam(g) {
+    var s = 0, c = 0, i;
+    for (i = 0; i < g.n; i++) { s += Math.sin(g.theta[i]); c += Math.cos(g.theta[i]); }
+    s /= g.n; c /= g.n;
+    return { r: Math.sqrt(s * s + c * c), psi: Math.atan2(s, c) };
+  }
+
+  // 观众用指针抓住某个振子直接拖 —— 他的手就是外力。
+  function holdPhi(g, i, theta) { g.theta[i] = wrapTo(theta); }
+
+  /* ---------------------------------------------------- 演进一步（含法令） */
+  // laws：解析后的法令数组（有序！）。skipIndex：反事实对照时跳过某一条。
+  function step(g, dt, laws, skipIndex) {
+    var ctx = { rng: null }, i, j;
+    // --- 1. 先按书写顺序执行法令（skipIndex < 0 表示不跳过）---
+    if (laws) {
+      for (i = 0; i < laws.length; i++) {
+        if (skipIndex === i) continue;
+        var L = LAWS[laws[i].name];
+        if (L) L.apply(g, laws[i].args, ctx);
+      }
+    }
+    // --- 2. 再让物理走一步（Kuramoto，与和差公式 O(N) 快积分）---
+    var th = g.theta, om = g.omega, n = g.n, kn = g.K / n;
+    var S = 0, C = 0, a, v, cs, sn;
+    for (i = 0; i < n; i++) { S += Math.sin(th[i]); C += Math.cos(th[i]); }
+    for (i = 0; i < n; i++) {
+      a = th[i]; cs = Math.cos(a); sn = Math.sin(a);
+      v = a + dt * (om[i] + kn * (S * cs - C * sn));
+      th[i] = v - TAU * Math.floor(v / TAU);
+    }
+    g.t += dt;
+    return orderParam(g).r;
+  }
+
+  /* ------------------------------------------------------ 反事实归因 */
+  // 本作最核心的技术手段：观众立法之后系统会"反驳"他。
+  // 做法：把当前法令逐条禁用，各自重跑同样步数，看哪一条禁用后 r 最低。
+  //       r_lowest = 真正在害群体的法令。
+  // 这不是启发式猜测，是受控对照实验 —— 每组只改一个变量。
+  function blame(g, laws, steps, dt, startR) {
+    var results = [], i;
+    var base = { name: '（全开）', idx: -1, r: 0, drop: 0 };
+    // 基线：全开
+    var gb = cloneGroup(g), k;
+    for (k = 0; k < steps; k++) step(gb, dt, laws, -1);
+    base.r = orderParam(gb).r;
+    base.drop = startR - base.r;
+    results.push(base);
+
+    // 逐条禁用
+    for (i = 0; i < laws.length; i++) {
+      var g2 = cloneGroup(g);
+      for (k = 0; k < steps; k++) step(g2, dt, laws, i);
+      var r2 = orderParam(g2).r;
+      results.push({ name: laws[i].name, idx: i, r: r2, drop: startR - r2, args: laws[i].args });
+    }
+    // culprit = 禁用后 r **最高**的那条。
+    // 判据方向别搞反：把一条法令拿掉后局面反而变好，说明这条法令在拖后腿。
+    // （曾写成"r 最低者为元凶"，结果把最有用的 pull 判成元凶 —— 语义反了：
+    //   禁用 pull  r=0.0773（最坏，pull 撑着场面）
+    //   禁用 jitter r=0.9586（最好，jitter 在害群体））
+    var worst = results[0];
+    for (i = 1; i < results.length; i++) {
+      if (results[i].r > worst.r) worst = results[i];
+    }
+    // 基线（全开）比所有单禁用都差 → 说明每条都有贡献，没有元凶
+    var noCulprit = worst.r <= base.r + 1e-9;
+    return {
+      runs: results, culprit: worst, base: base,
+      noCulprit: noCulprit,
+      // gain = 拿掉它之后局面好看了多少（越大越有害）
+      gain: worst.r - base.r
+    };
+  }
+
+  /* --------------------------------------------------- 难度阶梯（法会失效） */
+  // 观众刚立法成功，需求就要加码 —— 打破"调一次参数永久有效"。
+  // level: 1 起。递增方式：加 K（群体更倔）、加宽（频率更杂）、加噪（个体更任性）。
+  //
+  // 封顶 6 是必须的：曾把上限漏掉，结果 pull(0.6)+snap(3) 这样的强法令
+  // 在 2000 帧内连冲 10 级（每 60 帧升一级，新群又被立刻拉齐 → 雪崩式连升），
+  // 难度瞬间崩坏成"随手写两条就通关"。
+  //
+  // 加码幅度也是踩出来的：原来 K=0.3+0.25(g−1)、width=0.2+0.06(g−1) 太松，
+  // 实测 pull(0.06) 在六代全部守住（r≈0.9 一路压过达标线）——
+  // 也就是**任何一条 pull 都能通关**，难度阶梯形同虚设，
+  // 法令的"失效"根本测不出来，档案也就没有积累的意义（等于又退回一次性展项）。
+  // 现在 K 与 width 拉到每代 +1.25/+0.35，实测窗口成立：
+  //   pull(0.02) / pull(0.06) → 会崩（有失效，档案才值得存）
+  //   pull(0.3) 及以上        → 六代稳守（强法令确实能传下去）
+  var MAX_LEVEL = 6;
+  function levelSpec(level) {
+    var lv = Math.max(1, Math.min(MAX_LEVEL, level));
+    return {
+      level: lv,
+      K: 0.3 + 1.25 * (lv - 1),
+      width: 0.2 + 0.35 * (lv - 1),
+      target: 0.55 + 0.05 * (lv - 1),
+      // 顶住这一关需要的连续步数。实测 pull(0.15) 只需 53 帧就过 L1 ——
+      // 太快，观众来不及体会"治理住了"的乐趣就被推走。
+      // 所以起步就给 150 步（2.5 秒），让成功是"守住"出来的而不是"碰到"的。
+      holdSteps: 150 + 60 * (lv - 1)
+    };
+  }
+
+  return {
+    TAU: TAU,
+    splitmix32: splitmix32,
+    LAWS: LAWS,
+    LAW_NAMES: LAW_NAMES,
+    parse: parse,
+    closest: closest,
+    editDist: editDist,
+    makeGroup: makeGroup,
+    cloneGroup: cloneGroup,
+    wrapPi: wrapPi,
+    wrapTo: wrapTo,
+    meanPhase: meanPhase,
+    orderParam: orderParam,
+    holdPhi: holdPhi,
+    step: step,
+    blame: blame,
+    levelSpec: levelSpec,
+    MAX_LEVEL: MAX_LEVEL
+  };
+});
+</script>
+<script>/* ============================================================================
+ * law/ui.js —— 界面与交互
+ *
+ * 与既有展项 ui.js 的根本差异：
+ *   ① 输入入口是 <textarea>（观众写法令），不是滑杆。
+ *      38/44 件既有展项的主输入都是 range —— 本作刻意不用。
+ *   ② 观众写的东西会被系统评价：blame() 做逐条禁用的对照实验，
+ *      把"哪条法令在使坏"指出来。既有展项从不反驳观众。
+ *   ③ 赢了就加码（难度阶梯），所以"立法"不是一次性通关。
+ *
+ * 铁律：物理与语法全来自 window.LawCore，本文件不自己实现任何一条法令。
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var C = window.LawCore;
+  var TAU = C.TAU;
+
+  function $(id) { return document.getElementById(id); }
+
+  /* ========================================================== 常量与状态 */
+  var N = 120;              // 振子数
+  var DT = 0.02;            // 物理步长
+  var SUB = 3;              // 每帧子步
+  // 关卡保持步数由 core 的 levelSpec().holdSteps 决定（随难度变长），这里不再写死
+  var LAYOUT = { pad: 14, trackH: 46, minH: 340 };
+
+  var g = null, laws = [], hold = 0, level = 1, running = false, rafId = 0;
+  var rHist = [], HIST_MAX = 200;
+  var dragIdx = -1, lastDiag = null, cursor = 0;
+  var celebrate = 0;         // 过关庆祝停顿剩余帧（>0 时不推进物理）
+  var CELEBRATE_FRAMES = 75; // 约 1.2 秒，够观众看清"我治理住了"
+  var failFast = false;     // 诊断模式下暂停主循环，让对照实验独占时间
+
+  var cv = null, ctx = null, dpr = 1;
+
+  /* ========================================================== 布局 */
+  function metrics() {
+    var w = cv.clientWidth || 760;
+    var h = Math.max(LAYOUT.minH, Math.round(w * 520 / 760));
+    var diskH = h - LAYOUT.trackH - LAYOUT.pad;
+    return {
+      w: w, h: h, diskH: diskH, pad: LAYOUT.pad,
+      cx: w / 2, cy: diskH / 2, R: Math.max(34, Math.min(w, diskH) / 2 - 12)
+    };
+  }
+
+  function posOf(i, m) {
+    var band = (i % 3) * 0.11;
+    var rad = m.R * (0.48 + band);
+    var ang = (i / N) * TAU - Math.PI / 2;
+    return { x: m.cx + Math.cos(ang) * rad, y: m.cy + Math.sin(ang) * rad };
+  }
+
+  function nearest(x, y, m) {
+    var best = -1, bestD = 30 * 30;
+    for (var i = 0; i < N; i++) {
+      var p = posOf(i, m), dx = p.x - x, dy = p.y - y, d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  }
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var m = metrics();
+    cv.width = Math.round(m.w * dpr);
+    cv.height = Math.round(m.h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  /* ====================================================== 法令装载与校验 */
+  // 观众每敲一个键就重新解析：语法错立刻报出来，而不是等到"开始执政"才说。
+  function loadLaws(quiet) {
+    var res = C.parse($('law').value);
+    var box = $('ederr');
+    if (!res.ok) {
+      box.hidden = false;
+      // 用 textContent 不用 innerHTML：观众输入的内容不能被当成标记解析
+      box.textContent = res.error;
+      $('edstat').textContent = res.laws.length + ' 条可用 · 第 ' + res.line + ' 行有问题';
+      $('b-run').disabled = true;
+      return false;
+    }
+    box.hidden = true;
+    $('edstat').textContent = res.laws.length + ' 条' + (res.laws.length === 0 ? '（空，等于不治理）' : '');
+    $('b-run').disabled = res.laws.length === 0;
+    laws = res.laws;
+    if (!quiet) hold = 0;
+    return true;
+  }
+
+  /* ========================================================== 难度与开局 */
+  function applyLevel(lv) {
+    level = lv;
+    var s = C.levelSpec(lv);
+    g = C.makeGroup(N, { seed: 2026 + lv, width: s.width, K: s.K });
+    hold = 0;
+    rHist = [];
+    setText('v-l', String(lv));
+    setText('v-t', s.target.toFixed(2));
+    setText('lvtxt', 'K=' + s.K.toFixed(2) + ' · 频率宽度 ' + s.width.toFixed(2) + ' · 达标线 ' + s.target.toFixed(2));
+    return s;
+  }
+
+  function setText(id, s) { var e = $(id); if (e) e.textContent = s; }
+
+  /* ============================================================== 渲染 */
+  function draw() {
+    var m = metrics();
+    ctx.clearRect(0, 0, m.w, m.h);
+    var op = C.orderParam(g);
+
+    // 轨道
+    ctx.strokeStyle = '#e0ded8'; ctx.lineWidth = 1;
+    for (var b = 0; b < 3; b++) {
+      ctx.beginPath(); ctx.arc(m.cx, m.cy, m.R * (0.48 + b * 0.11), 0, TAU); ctx.stroke();
+    }
+    // 群体相位指针
+    ctx.strokeStyle = 'rgba(31,78,95,.30)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(m.cx, m.cy);
+    ctx.lineTo(m.cx + Math.cos(op.psi) * m.R * 0.97, m.cy + Math.sin(op.psi) * m.R * 0.97);
+    ctx.stroke();
+
+    // 振子
+    for (var i = 0; i < N; i++) {
+      var p = posOf(i, m);
+      var sep = Math.sqrt(2 - 2 * Math.cos(g.theta[i] - op.psi)) / 2;
+      ctx.fillStyle = colorOf(sep);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, i === dragIdx ? 6.5 : 4, 0, TAU);
+      ctx.fill();
+      if (i === dragIdx) {
+        ctx.strokeStyle = '#8c2f39'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, TAU); ctx.stroke();
+      }
+    }
+    drawTrack(m);
+  }
+
+  function colorOf(t) {
+    t = Math.max(0, Math.min(1, t));
+    var r0, g0, b0, r1, g1, b1, u;
+    if (t < 0.5) { u = t / 0.5; r0 = 168; g0 = 50; b0 = 47; r1 = 168; g1 = 118; b1 = 27; }
+    else { u = (t - 0.5) / 0.5; r0 = 168; g0 = 118; b0 = 27; r1 = 47; g1 = 107; b1 = 79; }
+    return 'rgb(' + Math.round(r0 + (r1 - r0) * u) + ',' + Math.round(g0 + (g1 - g0) * u) + ',' + Math.round(b0 + (b1 - b0) * u) + ')';
+  }
+
+  function drawTrack(m) {
+    var y0 = m.h - LAYOUT.trackH, hgt = LAYOUT.trackH - 10;
+    var target = C.levelSpec(level).target;
+    // 达标线
+    ctx.strokeStyle = 'rgba(47,107,79,.5)'; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(m.pad, y0 + hgt - target * hgt);
+    ctx.lineTo(m.w - m.pad, y0 + hgt - target * hgt);
+    ctx.stroke(); ctx.setLineDash([]);
+
+    if (rHist.length < 2) return;
+    ctx.strokeStyle = '#1f4e5f'; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (var i = 0; i < rHist.length; i++) {
+      var x = m.pad + (m.w - 2 * m.pad) * (i / (HIST_MAX - 1));
+      var y = y0 + hgt - rHist[i] * hgt;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    var lastY = y0 + hgt - rHist[rHist.length - 1] * hgt;
+    ctx.fillStyle = '#1f4e5f';
+    ctx.beginPath(); ctx.arc(m.w - m.pad, lastY, 2.6, 0, TAU); ctx.fill();
+    ctx.font = '11px ' + MONO; ctx.textAlign = 'right';
+    ctx.fillText(rHist[rHist.length - 1].toFixed(3), m.w - m.pad - 6, lastY - 5);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#7d7a74';
+    ctx.fillText('同步度 r（绿虚线＝达标线）', m.pad, y0 + 9);
+  }
+
+  var MONO = '"Cascadia Mono","JetBrains Mono",Consolas,monospace';
+
+  /* ========================================================== 演化循环 */
+  function frame() {
+    if (running && !failFast) {
+      if (celebrate > 0) {
+        // 过关庆祝期：只递减，不推进物理（观众要看清胜利的样子）
+        celebrate--;
+        if (celebrate === 0) doPromote();
+      } else {
+        for (var s = 0; s < SUB; s++) tick();
+      }
+      var r = C.orderParam(g).r;
+      rHist.push(r);
+      if (rHist.length > HIST_MAX) rHist.shift();
+      syncReadouts(r);
+    }
+    draw();
+    rafId = requestAnimationFrame(frame);
+  }
+
+  function tick() {
+    C.step(g, DT, laws, -1);
+    var s = C.levelSpec(level);
+    if (C.orderParam(g).r >= s.target) {
+      hold++;
+      if (hold >= s.holdSteps) winLevel();
+    } else {
+      hold = 0;
+    }
+  }
+
+  function winLevel() {
+    if (level >= C.MAX_LEVEL) {
+      // 封顶了就别再升，改成宣告通关 —— 否则会出现"顶满后反复重置"的抖动
+      setText('live', '已封顶（难度 6）· 你的法令守住了所有关卡');
+      hold = 0;
+      return;
+    }
+    // 别立刻重建群：那样观众刚看到"我成功了"就被清空，
+    // 成功感还没来得及形成。先停一拍（celebrate 帧）让他看清楚。
+    celebrate = CELEBRATE_FRAMES;
+    setText('live', '过关了！难度马上升到 ' + (level + 1) + '，你的法令原样继续执政');
+    setText('lvprog', '已执政 ' + level + ' 关');
+  }
+
+  // 过关后的庆祝停顿：只重画不推进，屏幕上仍是胜利时的样子
+  function doPromote() {
+    var s = applyLevel(level + 1);
+    setText('live', '难度 ' + level + ' 开始 · K=' + s.K.toFixed(2) +
+      '，你的法令还管用吗？');
+  }
+
+  function syncReadouts(r) {
+    setText('v-r', r.toFixed(3));
+    var hit = r >= C.levelSpec(level).target;
+    var e = $('v-r'); if (e) e.className = 'kv' + (hit ? ' hit' : '');
+    // 封顶后 hold 归零会看着像坏了，所以明说"已封顶"
+    if (level >= C.MAX_LEVEL) {
+      setText('v-h', '封顶');
+      setText('n-h', '难度 6 是上限');
+    } else {
+      setText('v-h', String(hold));
+      setText('n-h', '步 · 站满 ' + C.levelSpec(level).holdSteps + ' 步过关');
+    }
+    var e2 = $('v-h'); if (e2) e2.className = 'kv' + (hit ? ' hit' : '');
+    setText('n-r', hit ? '已达标，保持住' : '离达标线还差 ' + (C.levelSpec(level).target - r).toFixed(3));
+  }
+
+  /* ====================================================== 诊断（对照实验） */
+  // 核心交互：不是告诉观众"你失败了"，而是自己做实验把元凶找出来。
+  function runDiag() {
+    if (!laws.length) { setDiag('还没有法令可诊断。先写一条再点诊断。'); return; }
+    failFast = true;                       // 让对照实验独占时间，不被主循环搅
+    var startR = C.orderParam(g).r;
+    var res = C.blame(g, laws, 260, DT, startR);
+    lastDiag = res;
+    renderDiag(res);
+    failFast = false;
+  }
+
+  function setDiag(html) { $('diag-body').innerHTML = ''; var p = document.createElement('p'); p.className = 'diag-empty'; p.textContent = html; $('diag-body').appendChild(p); }
+
+  function renderDiag(res) {
+    var box = $('diag-body');
+    box.innerHTML = '';
+    var base = res.base;
+
+    // --- 结论段 ---
+    var v = document.createElement('div');
+    if (res.noCulprit) {
+      v.className = 'diag-verdict clean';
+      v.textContent = '没有元凶：拿掉任何一条法令，局面都不会变好。说明这几条都在帮忙。';
+    } else {
+      v.className = 'diag-verdict guilty';
+      v.textContent = '';
+      var s1 = document.createElement('span');
+      s1.textContent = '把「' + res.culprit.name + '」这一条单独拿掉，同步度从 ' +
+        base.r.toFixed(3) + ' 涨到 ' + res.culprit.r.toFixed(3) + '。';
+      var s2 = document.createElement('b');
+      s2.textContent = ' 是它在使坏。';
+      v.appendChild(s1); v.appendChild(s2);
+    }
+    box.appendChild(v);
+
+    // --- 对照表 ---
+    var wrap = document.createElement('div');
+    wrap.className = 'tbl-wrap';
+    var tb = document.createElement('table');
+    tb.className = 'dt';
+    var thead = document.createElement('thead');
+    var trh = document.createElement('tr');
+    ['拿掉的法令', '剩下的同步度', '相对全开', '示意图'].forEach(function (h) {
+      var th = document.createElement('th'); th.textContent = h; trh.appendChild(th);
+    });
+    thead.appendChild(trh); tb.appendChild(thead);
+    var tbody = document.createElement('tbody');
+
+    res.runs.forEach(function (row) {
+      var tr = document.createElement('tr');
+      if (row.idx === res.culprit.idx && row.idx >= 0) tr.className = 'culprit';
+
+      var td0 = document.createElement('td');
+      td0.textContent = row.idx < 0 ? '（什么都不拿掉）' : row.name + '(' + row.args.join(',') + ')';
+      tr.appendChild(td0);
+
+      var td1 = document.createElement('td');
+      td1.className = 'num'; td1.textContent = row.r.toFixed(3);
+      tr.appendChild(td1);
+
+      var delta = row.r - base.r;
+      var td2 = document.createElement('td');
+      td2.className = 'num';
+      td2.textContent = (row.idx < 0 ? '—' : (delta >= 0 ? '+' : '') + delta.toFixed(3));
+      tr.appendChild(td2);
+
+      var td3 = document.createElement('td');
+      var bar = document.createElement('div');
+      bar.className = 'bar';
+      var fill = document.createElement('i');
+      fill.style.width = Math.round(row.r * 100) + '%';
+      fill.className = row.idx < 0 ? '' : (delta > 0 ? 'up' : (delta < 0 ? 'down' : ''));
+      bar.appendChild(fill);
+      td3.appendChild(bar);
+      tr.appendChild(td3);
+
+      tbody.appendChild(tr);
+    });
+    tb.appendChild(tbody);
+    wrap.appendChild(tb);
+    box.appendChild(wrap);
+
+    var note = document.createElement('p');
+    note.className = 'diag-note';
+    note.textContent = '每组只关掉一条法令、其余原样重跑 ' + 260 + ' 步，所以这是一组受控对照：' +
+      '绿色表示拿掉它局面变好（它在使坏），红色表示拿掉它局面变差（它在撑场）。';
+    box.appendChild(note);
+
+    $('diag-lede').textContent = '下面是刚跑出来的对照实验结果。';
+  }
+
+  /* ========================================================== 法令清单 */
+  function buildRef() {
+    var ul = $('reflist');
+    C.LAW_NAMES.forEach(function (nm) {
+      var law = C.LAWS[nm];
+      var li = document.createElement('li');
+      var b = document.createElement('button');
+      b.type = 'button';
+      var sig = nm + '(' + law.spec.map(function (s) { return s.def; }).join(',') + ')';
+      b.textContent = sig;
+      var d = document.createElement('span');
+      d.className = 'd';
+      d.textContent = law.desc + (law.arity ? ' · 参数 ' + law.spec.map(function (s) { return s.hint; }).join('，') : '');
+      b.appendChild(d);
+      b.addEventListener('click', function () { insertAtCursor(sig); });
+      li.appendChild(b);
+      ul.appendChild(li);
+    });
+  }
+
+  // 插入到光标处并立刻校验 —— 编辑器的手感必须是"边写边知道对不对"
+  function insertAtCursor(text) {
+    var ta = $('law');
+    var start = ta.selectionStart, end = ta.selectionEnd;
+    var val = ta.value;
+    var before = val.slice(0, start);
+    var lineStart = before.lastIndexOf('\n') + 1;
+    var prefix = (lineStart === 0 && before === '') || before[lineStart - 1] === '\n' ? '' : '';
+    ta.value = val.slice(0, start) + prefix + text + val.slice(end);
+    var np = start + prefix.length + text.length;
+    ta.focus();
+    ta.setSelectionRange(np, np);
+    loadLaws(true);
+  }
+
+  /* ============================================================ 事件 */
+  function pointerXY(ev, m) {
+    var rect = cv.getBoundingClientRect();
+    var scale = (cv.clientWidth || 760) / rect.width;
+    var x = (ev.clientX - rect.left) * scale, y = (ev.clientY - rect.top) * scale;
+    return { x: x, y: y, theta: Math.atan2(y - m.cy, x - m.cx) };
+  }
+
+  function bind() {
+    $('law').addEventListener('input', function () { loadLaws(true); });
+    $('law').addEventListener('keydown', function (e) {
+      // Tab 插入两个空格而不是跳走焦点 —— 观众在写"法令"，得像在写代码
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        var ta = this, s = ta.selectionStart, en = ta.selectionEnd;
+        ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(en);
+        ta.setSelectionRange(s + 2, s + 2);
+        loadLaws(true);
+      }
+    });
+
+    $('b-run').addEventListener('click', function () {
+      if (!loadLaws(true)) return;
+      running = true;
+      $('b-run').textContent = '执政中';
+      setText('live', '正在执行你的 ' + laws.length + ' 条法令');
+    });
+    $('b-pause').addEventListener('click', function () {
+      running = !running;
+      this.textContent = running ? '暂停' : '继续';
+    });
+    $('b-diag').addEventListener('click', runDiag);
+    $('b-reset').addEventListener('click', function () {
+      applyLevel(1);
+      setText('live', '重新洗牌，难度回到 1');
+      setText('lvprog', '已执政 0 关');
+      setDiag('还没有诊断过。');
+      $('diag-lede').textContent = '点「诊断」，系统会逐条禁用你的法令重跑一遍，看拿掉哪条局面反而变好。这是受控对照实验，不是猜。';
+    });
+
+    cv.addEventListener('pointerdown', function (ev) {
+      ev.preventDefault();
+      try { if (cv.setPointerCapture) cv.setPointerCapture(ev.pointerId); } catch (e) { /* 捕获不可用 */ }
+      var m = metrics();
+      dragIdx = nearest(pointerXY(ev, m).x, pointerXY(ev, m).y, m);
+    });
+    cv.addEventListener('pointermove', function (ev) {
+      if (dragIdx < 0) return;
+      ev.preventDefault();
+      C.holdPhi(g, dragIdx, pointerXY(ev, metrics()).theta);
+    });
+    window.addEventListener('pointerup', function () { dragIdx = -1; });
+    window.addEventListener('resize', function () { resize(); });
+  }
+
+  /* ================================================================= 启动 */
+  function boot() {
+    cv = $('cv');
+    ctx = cv.getContext('2d');
+    applyLevel(1);
+    resize();
+    buildRef();
+    bind();
+    loadLaws(true);
+    setText('lvprog', '已执政 0 关');
+    rafId = requestAnimationFrame(frame);
+
+    window.__probe = {
+      ready: true,
+      r: function () { return C.orderParam(g).r; },
+      level: function () { return level; },
+      laws: function () { return laws.map(function (l) { return l.name; }); },
+      lawCount: function () { return laws.length; },
+      running: function () { return running; },
+      frames: function () { return g.t / DT; },
+      loopAlive: function () { return rafId !== 0; },
+      // 解析器：给 verify.js 用来证明"观众写错时系统真的会拒绝"
+      tryParse: function (src) {
+        var r = C.parse(src);
+        return { ok: r.ok, error: r.error, count: r.laws.length };
+      },
+      // 诊断：让探针直接跑对照实验
+      diag: function (steps) {
+        var res = C.blame(g, laws, steps || 120, DT, C.orderParam(g).r);
+        return {
+          culprit: res.noCulprit ? null : res.culprit.name,
+          noCulprit: res.noCulprit,
+          base: res.base.r,
+          runs: res.runs.map(function (x) { return { name: x.name, r: x.r }; })
+        };
+      },
+      // 无头浏览器里 rAF 推进不可靠，靠它主动推进（见 sync 的教训）
+      driveSteps: function (k) {
+        for (var i = 0; i < k; i++) {
+          // 庆祝期也要消耗步数，否则探针会以为升级是瞬时的
+          if (celebrate > 0) { celebrate--; if (celebrate === 0) doPromote(); }
+          else tick();
+        }
+        var r = C.orderParam(g).r;
+        rHist.push(r);
+        if (rHist.length > HIST_MAX) rHist.shift();
+        syncReadouts(r);
+        draw();
+        return { frames: g.t / DT, r: r, level: level, hold: hold, celebrate: celebrate };
+      },
+      loadLaws: function (src) { $('law').value = src; return loadLaws(true); },
+      resetLevel: function () { applyLevel(1); setText('live', '未开始'); return level; },
+      canvasSize: function () { return { w: cv.clientWidth, h: cv.height / dpr }; },
+      touchTargets: function () {
+        var out = [], nodes = document.querySelectorAll('.btn,.reflist button');
+        for (var i = 0; i < nodes.length; i++) {
+          var r = nodes[i].getBoundingClientRect();
+          out.push({ w: Math.round(r.width), h: Math.round(r.height) });
+        }
+        return out;
+      },
+      nanScan: function () { return { nan: /NaN|Infinity|undefined/.test(document.body.innerText) }; }
+    };
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

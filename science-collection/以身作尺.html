@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>以身作尺 · 仪器检定</title>
+<meta name="description" content="把浏览器当待检仪器：现场测量它的时钟步长、帧间隔抖动、事件循环钳制线、屏幕几何与文字栅格，读数附置信区间，当场签发只对此设备此刻有效的检定证书；再校准一台抖动取自本机真实延迟的假计时器，亲手分清准确度与精密度。">
+<style>
+@charset "UTF-8";
+/* ============================================================
+ * 《以身作尺》样式 —— 暗色仪器舱 + 荧光余辉 + 米色证书
+ * 与既有展项的差异（守卫在 build.js 里正面钉死）：
+ *   · 不用既有 35 个纸底色值里的任何一个（清单由构建脚本实测收录）；
+ *   · 不用 --paper/--panel/--line 这批既有变量名，本作用舱内命名；
+ *   · 没有 .hero/.tabs/.chart/<table>。
+ * 硬规矩（沿全屋踩坑约束）：
+ *   1. 媒体查询全部写在文件末尾——CSS 同名规则靠后的赢。
+ *   2. Grid 子项一律 min-width:0（1fr 默认 min-width:auto 会被画布顶破）。
+ *   3. 交互目标 ≥ 44px（窄屏是体检硬线，宽屏也照此做）；focus-visible 可见。
+ * ========================================================== */
+:root{
+  color-scheme:dark;
+  --case:#0b1114;        /* 舱体底色 */
+  --case-2:#0e171c;
+  --plate:#121e24;       /* 面板 */
+  --plate-2:#0f191f;
+  --dial:#0a0f12;        /* 示波屏 */
+  --ink:#dbe7e1;
+  --ink-dim:#8fa69d;
+  --ink-faint:#5f746d;
+  --edge:#22333a;
+  --edge-2:#2e454d;
+  --phos:#57f0a9;        /* 荧光 */
+  --phos-dim:rgba(87,240,169,.55);
+  --phos-soft:rgba(87,240,169,.12);
+  --amber:#f5b453;
+  --rust:#e26a55;
+  --cert-paper:#f6efdd;  /* 证书米色 */
+  --cert-ink:#2b2418;
+  --cert-dim:#6d6350;
+  --cert-red:#b3382c;
+  --serif:"Iowan Old Style","Palatino Linotype","Songti SC","SimSun",serif;
+  --sans:"Avenir Next","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{overflow-x:clip}
+body{margin:0;min-width:320px;color:var(--ink);background:radial-gradient(ellipse at 18% -6%,rgba(87,240,169,.05),transparent 34rem),radial-gradient(ellipse at 88% 12%,rgba(245,180,83,.04),transparent 30rem),var(--case);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+button,input,output{font:inherit}
+button,input{-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible,output:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* ---------------- 铭牌 ---------------- */
+.masthead{padding:54px 0 6px}
+.mast-eyebrow{display:flex;align-items:center;gap:9px;margin:0;color:var(--amber);font-size:11px;font-weight:700;letter-spacing:.18em}
+.mast-eyebrow::before{content:"";width:26px;height:1px;background:var(--amber)}
+.masthead h1{margin:16px 0 14px;font-family:var(--serif);font-weight:500;font-size:clamp(46px,7vw,78px);line-height:1.1;letter-spacing:.02em;color:#eef6f1;text-shadow:0 0 26px rgba(87,240,169,.22)}
+.mast-lede{max-width:660px;margin:0;font-size:15px;line-height:2;color:var(--ink-dim)}
+.mast-lede em{color:var(--phos);font-style:normal;font-weight:700}
+.mast-state{margin:18px 0 0;padding:8px 0 8px 14px;border-left:3px solid var(--phos-dim);color:var(--phos);font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+.mast-note{margin:10px 0 0;color:var(--ink-faint);font-size:12px;line-height:1.8}
+
+/* ---------------- 面板通用 ---------------- */
+.panel{margin-top:26px;padding:clamp(18px,3vw,30px);background:var(--plate);border:1px solid var(--edge);border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.28)}
+.panel h2{display:flex;align-items:baseline;gap:12px;margin:0 0 10px;font-family:var(--serif);font-weight:500;font-size:21px;color:#edf5f0}
+.panel h2::before{content:"";align-self:center;width:8px;height:8px;border-radius:50%;background:var(--phos);box-shadow:0 0 10px var(--phos-dim)}
+.sec-lede{margin:0 0 16px;max-width:720px;color:var(--ink-dim);font-size:13px;line-height:2}
+.sec-lede strong{color:var(--amber);font-weight:700}
+.cap{margin:10px 0 0;color:var(--ink-faint);font-size:12px}
+
+/* ---------------- 读数表 ---------------- */
+.readlist{margin:0}
+.readlist dt{margin-top:9px;color:var(--ink-faint);font-size:11px;letter-spacing:.1em}
+.readlist dt:first-child{margin-top:0}
+.readlist dd{margin:3px 0 0;font-family:var(--mono);font-size:19px;color:var(--phos);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+
+/* ---------------- 余辉屏 ---------------- */
+.scope-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(210px,1fr);gap:18px;align-items:start}
+.scope-side{min-width:0;padding:14px;background:var(--plate-2);border:1px solid var(--edge);border-radius:10px}
+#scopeCanvas,#histCanvas{display:block;width:100%;height:auto;background:var(--dial);border:1px solid var(--edge);border-radius:8px}
+#histCanvas{margin-top:14px}
+
+/* ---------------- 探针台 ---------------- */
+.bench-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(188px,1fr));gap:14px}
+.probe{min-width:0;padding:14px 15px;background:var(--plate-2);border:1px solid var(--edge);border-radius:10px}
+.probe h3{margin:0 0 10px;font-size:13px;font-weight:700;color:var(--ink);letter-spacing:.04em}
+.probe-val{margin:0;min-height:32px;font-family:var(--mono);font-size:22px;line-height:1.25;color:var(--phos);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.probe-state{margin:7px 0 0;font-size:11px;color:var(--amber);letter-spacing:.06em}
+.probe.ok .probe-state{color:var(--phos)}
+.probe.na .probe-state{color:var(--rust)}
+.probe-detail{margin:7px 0 0;color:var(--ink-dim);font-size:12px;line-height:1.85}
+
+/* ---------------- 校准台 ---------------- */
+.clock-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.clockface{min-width:0;padding:16px 18px;background:var(--dial);border:1px solid var(--edge-2);border-radius:10px;text-align:center}
+.clock-label{display:block;color:var(--ink-faint);font-size:11px;letter-spacing:.22em}
+.clock-dial{display:block;margin:8px 0 6px;font-family:var(--mono);font-size:clamp(28px,5vw,42px);color:var(--phos);font-variant-numeric:tabular-nums}
+.clockface.fake .clock-dial{color:var(--amber)}
+.clock-sub{display:block;color:var(--ink-faint);font-size:11px}
+.calib-controls{display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px;margin-top:18px}
+.slider-line{display:grid;grid-template-columns:auto minmax(120px,1fr) auto;align-items:center;gap:12px;flex:1 1 320px;min-width:0}
+.slider-name{color:var(--ink-dim);font-size:12px;letter-spacing:.08em}
+.slider-line output{min-width:86px;text-align:right;font-family:var(--mono);font-size:15px;color:var(--amber);font-variant-numeric:tabular-nums}
+.calib-btns{display:flex;flex-wrap:wrap;gap:10px}
+.panel button{min-height:44px;min-width:96px;padding:10px 20px;color:var(--ink);background:transparent;border:1px solid var(--edge-2);border-radius:9px;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+.panel button:hover{border-color:var(--phos-dim);color:var(--phos);background:var(--phos-soft)}
+.panel button:active{transform:translateY(1px)}
+input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:44px;background:transparent;cursor:pointer;margin:0}
+input[type="range"]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--edge-2)}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;margin-top:-11px;border-radius:50%;background:var(--case);border:2px solid var(--phos);box-shadow:0 0 10px var(--phos-dim)}
+input[type="range"]::-moz-range-track{height:4px;border-radius:2px;background:var(--edge-2)}
+input[type="range"]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--case);border:2px solid var(--phos)}
+.calib-metrics{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;margin-top:18px;padding:14px;background:var(--plate-2);border:1px solid var(--edge);border-radius:10px}
+.verdict{margin:0;padding-left:12px;border-left:3px solid var(--phos-soft);color:var(--ink);font-size:13px;line-height:1.95}
+.calib-log{margin:16px 0 0;padding:0;list-style:none;font-family:var(--mono);font-size:12px;color:var(--ink-dim)}
+.calib-log li{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:10px;padding:6px 2px;border-bottom:1px dashed var(--edge);overflow-wrap:anywhere}
+.calib-log li b{color:var(--amber);font-weight:400}
+
+/* ---------------- 人肉节拍器 ---------------- */
+.pulse-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:center}
+.tap-btn{width:136px;height:136px;min-width:136px;min-height:136px;padding:0;border-radius:50%;border:2px solid var(--phos);color:var(--phos);background:var(--phos-soft);font-size:19px;letter-spacing:.2em;cursor:pointer;transition:transform .08s,box-shadow .2s;box-shadow:0 0 24px rgba(87,240,169,.15)}
+.tap-btn:hover{box-shadow:0 0 34px rgba(87,240,169,.3)}
+.tap-btn:active{transform:scale(.95)}
+.pulse-side .readlist dd{font-size:17px}
+.pulse-side button{margin-top:12px}
+.pulse-side .verdict{margin-top:12px}
+
+/* ---------------- 检定证书 ---------------- */
+.cert-card{position:relative;padding:clamp(18px,3vw,30px);background:var(--cert-paper);color:var(--cert-ink);border-radius:6px;box-shadow:0 14px 34px rgba(0,0,0,.4),inset 0 0 0 1px rgba(43,36,24,.25)}
+.cert-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:2px solid var(--cert-ink);font-family:var(--mono);font-size:12px;color:var(--cert-ink)}
+.cert-head b{letter-spacing:.06em}
+.cert-stamp{position:absolute;right:20px;top:52px;width:96px;height:96px;display:flex;align-items:center;justify-content:center;text-align:center;border:3px solid var(--cert-red);border-radius:50%;color:var(--cert-red);font-family:var(--serif);font-size:16px;line-height:1.35;letter-spacing:.3em;transform:rotate(-12deg);opacity:.82;pointer-events:none}
+#certRows{margin-top:6px}
+.cert-row{display:grid;grid-template-columns:minmax(6.5em,9em) minmax(0,1.15fr) minmax(0,1fr);gap:4px 14px;align-items:baseline;padding:8px 0;border-bottom:1px solid rgba(43,36,24,.16)}
+.cr-name{font-family:var(--serif);font-size:13px;font-weight:700}
+.cr-val{font-family:var(--mono);font-size:13px;color:var(--cert-ink);overflow-wrap:anywhere}
+.cr-basis{font-size:11px;color:var(--cert-dim);line-height:1.7;overflow-wrap:anywhere}
+.cert-row.na .cr-val,.cert-row.na .cr-basis{color:var(--cert-red)}
+.cert-verdict{margin:14px 0 0;font-size:13px;line-height:1.95}
+.cert-eff{margin:14px 0 0;padding-top:12px;border-top:2px solid var(--cert-ink);font-family:var(--serif);font-size:13.5px;line-height:1.95;letter-spacing:.02em}
+.selfcheck{margin:12px 0 0;color:var(--ink-faint);font-family:var(--mono);font-size:11px;line-height:1.8;overflow-wrap:anywhere}
+
+/* ---------------- 边界段 ---------------- */
+.edges p{margin:0 0 12px;max-width:760px;color:var(--ink);font-size:13.5px;line-height:2.05}
+.edges strong{color:var(--amber)}
+.edges em{color:var(--phos);font-style:normal}
+.edges p:last-child{margin-bottom:0}
+.colophon{margin:36px 0 22px;text-align:center;color:var(--ink-faint);font-family:var(--mono);font-size:10px;letter-spacing:.14em}
+
+/* ---------------- 窄屏（媒体查询一律置底） ---------------- */
+@media (max-width:720px){
+  .scope-grid{grid-template-columns:1fr}
+  .clock-row{grid-template-columns:1fr}
+  .calib-metrics{grid-template-columns:1fr}
+  .pulse-row{grid-template-columns:1fr;justify-items:center}
+  .pulse-side{width:100%}
+  .cert-row{grid-template-columns:minmax(0,1fr)}
+  .cert-row .cr-name{margin-top:2px}
+  .cert-stamp{width:84px;height:84px;top:auto;bottom:16px;right:14px;font-size:14px}
+}
+@media (max-width:640px){
+  .masthead{padding-top:40px}
+  .panel{border-radius:11px}
+  .calib-log li{grid-template-columns:minmax(0,1fr);gap:2px}
+  .calib-log li b{margin-right:8px}
+  .bench-grid{grid-template-columns:1fr 1fr}
+  .panel button{width:100%}
+  .calib-btns{width:100%}
+  .tap-btn{width:128px;height:128px;min-width:128px;min-height:128px}
+}
+@media (max-width:380px){
+  .bench-grid{grid-template-columns:1fr}
+  .slider-line{grid-template-columns:auto minmax(90px,1fr) auto;gap:8px}
+}
+@media (prefers-reduced-motion:reduce){
+  .tap-btn,.panel button{transition:none}
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<!-- ============================================================================
+《以身作尺》—— 测量学 · 仪器检定与不确定度
+
+系列身份策略（动工前决定，完整版见 以身作尺/build.js 头注「切分声明」）：
+  · 页内不自称「第 X 件」：本库展项编号由目录页卡片按登记序派生（FIELD NN），
+    页内再写编号会与目录打架。本件的身份锚点是标题 + 「检定证书」这一形态本身。
+  · 阅读路线：加入既有路线 field「量出来的，是真的吗？」作第 4 站，不另立路线。
+
+本作与近邻展项的切分（文案与 build.js 守卫双重落实）：
+  · 半信半疑(kalman)：已知真值模型内的滤波仿真——有仿真对象；
+    本件没有仿真对象，被测的就是观众眼前的这台浏览器。
+  · 长浪抵岸 / 震源的坐标 / 星光留痕：测外部对象（海啸、震源、恒星）；
+    本件测的是仪器本身。
+  · 同影异物：由测量反推对象；本件不反推任何对象，只出「仪器检定证书」。
+
+铁律的适用边界（页面边界段同文）：模拟须可复现，测量只能记录现场。
+============================================================================ -->
+<header class="masthead">
+  <p class="mast-eyebrow">测量学 · 仪器检定与不确定度</p>
+  <h1>以身作尺</h1>
+  <p class="mast-lede">这一页没有一份预置数据。接下来出现的每个数字，都是你手里这台设备——这块屏、这颗处理器、这套浏览器——在刚才几秒钟里被现场测出来的。你不是在看展品：<em>展品在检定你。</em></p>
+  <p class="mast-state" id="mastState">检定中 · 探针就位……</p>
+  <p class="mast-note">读数规则：每个数字标注来源与区间；样本不足时如实写「量测不可用」，绝不编数。</p>
+</header>
+
+<section class="panel" id="scope">
+  <h2>余辉屏 · 你的帧循环在发光</h2>
+  <p class="sec-lede">浏览器每画一帧，屏上就落一个光点，横轴是这一帧与上一帧的间隔。辉光会衰减——光点越聚越亮的地方，就是你的机器最稳的节奏；散开的雾，就是抖动本身。</p>
+  <div class="scope-grid">
+    <canvas id="scopeCanvas" width="900" height="260" aria-label="帧间隔余辉示波屏"></canvas>
+    <div class="scope-side">
+      <dl class="readlist">
+        <dt>帧间隔中位数</dt><dd id="v-raf-med">—</dd>
+        <dt>95% 区间</dt><dd id="v-raf-ci">—</dd>
+        <dt>抖动 σ</dt><dd id="v-raf-sd">—</dd>
+        <dt>样本</dt><dd id="v-raf-n">0 帧</dd>
+      </dl>
+      <p class="probe-state" id="scopeStatus">采样中……</p>
+      <p class="probe-detail" id="d-raf">等待帧循环提供读数。</p>
+    </div>
+  </div>
+  <canvas id="histCanvas" width="900" height="130" aria-label="帧间隔直方图"></canvas>
+  <p class="cap">上：每一帧的落点，余辉即分布。下：帧间隔直方图——峰越尖，帧钟越精。</p>
+</section>
+
+<section class="panel" id="bench">
+  <h2>探针台 · 五路现场测量</h2>
+  <p class="sec-lede">五支探针各测仪器的一处脾性。有的量是统计量（要给区间），有的是定义值（本机上不漂，标「定值」）。</p>
+  <div class="bench-grid">
+    <article class="probe" data-probe="clock" id="probe-clock">
+      <h3>时钟步长</h3>
+      <p class="probe-val" id="v-clock">待检</p>
+      <p class="probe-state" id="st-clock">探针就位</p>
+      <p class="probe-detail" id="d-clock">同一调用里两次读钟的最小可分辨间隔。</p>
+    </article>
+    <article class="probe" data-probe="loop" id="probe-loop">
+      <h3>事件循环与钳制线</h3>
+      <p class="probe-val" id="v-loop">待检</p>
+      <p class="probe-state" id="st-loop">探针就位</p>
+      <p class="probe-detail" id="d-loop">排一个 0 毫秒的任务，实际多久才轮到它。</p>
+    </article>
+    <article class="probe" data-probe="geo" id="probe-geo">
+      <h3>屏幕几何</h3>
+      <p class="probe-val" id="v-geo">待检</p>
+      <p class="probe-state" id="st-geo">探针就位</p>
+      <p class="probe-detail" id="d-geo">这台设备的身份证：像素密度与几何。</p>
+    </article>
+    <article class="probe" data-probe="glyph" id="probe-glyph">
+      <h3>文字栅格</h3>
+      <p class="probe-val" id="v-glyph">待检</p>
+      <p class="probe-state" id="st-glyph">探针就位</p>
+      <p class="probe-detail" id="d-glyph">同一个字落在 8 个亚像素位置，会出现几种墨迹。</p>
+    </article>
+    <article class="probe" data-probe="audio" id="probe-audio">
+      <h3>声道采样率</h3>
+      <p class="probe-val" id="v-audio">待检</p>
+      <p class="probe-state" id="st-audio">探针就位</p>
+      <p class="probe-detail" id="d-audio">声卡时钟的标称速率，问一句就知道。</p>
+    </article>
+  </div>
+</section>
+
+<section class="panel" id="calib">
+  <h2>校准台 · 对一台会晃的表</h2>
+  <p class="sec-lede">左边是本机基准钟（尽量当它真值），右边是待检表。待检表的晃动不是模拟噪声——它直接取自上面「事件循环」探针测到的本机真实延迟序列。拧动系统偏差，亲手分清两件事：<strong>准确度</strong>是能拧走的部分，<strong>精密度</strong>是拧不掉的部分。</p>
+  <div class="clock-row">
+    <div class="clockface">
+      <span class="clock-label">基准钟</span>
+      <span class="clock-dial" id="refClock">0.000 s</span>
+      <span class="clock-sub">本机计时起点起算</span>
+    </div>
+    <div class="clockface fake">
+      <span class="clock-label">待检表</span>
+      <span class="clock-dial" id="fakeClock">0.000 s</span>
+      <span class="clock-sub" id="jitterNote">抖动序列：等待事件循环探针……</span>
+    </div>
+  </div>
+  <div class="calib-controls">
+    <label class="slider-line" for="biasSlider">
+      <span class="slider-name">系统偏差</span>
+      <input type="range" id="biasSlider" min="-400" max="400" step="1" value="0" aria-label="系统偏差调节，单位毫秒">
+      <output id="biasVal">±0 ms</output>
+    </label>
+    <div class="calib-btns">
+      <button type="button" id="takeRead">读一次</button>
+      <button type="button" id="calibReset">清空记录</button>
+    </div>
+  </div>
+  <div class="calib-metrics">
+    <dl class="readlist">
+      <dt>平均差（准确度误差）</dt><dd id="accVal">—</dd>
+      <dt>重复性 σ（精密度）</dt><dd id="preVal">—</dd>
+      <dt>已读次数</dt><dd id="calibN">0</dd>
+    </dl>
+    <p class="verdict" id="calibVerdict">两块表并排走着。按「读一次」，把它们拍在同一瞬间。</p>
+  </div>
+  <ol class="calib-log" id="calibLog" aria-label="读数记录"></ol>
+</section>
+
+<section class="panel" id="pulse">
+  <h2>人肉节拍器 · 让误差变成你自己的心跳</h2>
+  <p class="sec-lede">试着稳在每秒一下，点满 8 次。你的手指是一台差劲的钟——但它是一台会自我校准的钟。</p>
+  <div class="pulse-row">
+    <button type="button" class="tap-btn" id="tapBtn" aria-label="节拍点按区，每秒点一下">点我</button>
+    <div class="pulse-side">
+      <dl class="readlist">
+        <dt>节拍重复性 σ</dt><dd id="tapStats">未测</dd>
+        <dt>对比：机器帧钟 σ</dt><dd id="tapMachine">—</dd>
+      </dl>
+      <p class="verdict" id="tapVerdict">跟着呼吸的节奏，一秒一下。</p>
+      <button type="button" id="tapReset">重新来</button>
+    </div>
+  </div>
+</section>
+
+<section class="panel cert-panel" id="cert">
+  <h2>检定证书</h2>
+  <div class="cert-card">
+    <div class="cert-stamp" aria-hidden="true">现场<br>检定</div>
+    <header class="cert-head">
+      <span>证书号 <b id="certNo">YZC-########</b></span>
+      <span id="certTime">签发中……</span>
+    </header>
+    <div id="certRows"></div>
+    <p class="cert-verdict" id="certVerdict">探针还在跑，证书正在长出来……</p>
+    <p class="cert-eff">本证书只对此设备此刻有效。换一台机器，证书就不是这一份；刷新重来，读数也会毫厘之间移动——这不是缺陷，是测量的本性。</p>
+  </div>
+  <p class="selfcheck" id="selfCheckLine">自检：待检定完成后出具。</p>
+</section>
+
+<section class="panel edges" id="edges">
+  <h2>边界 · 模拟须可复现，测量只能记录现场</h2>
+  <p>这个展柜里的大多数展项是<strong>模拟</strong>：同一组输入必须算出同一个输出，源码禁用随机数，实验随时可重放。本件不是模拟，是<strong>测量</strong>——它的输入不是参数，是你这台设备的此刻物理状态。两台机器打开它，会得到两份不同的证书；这正是它要展出的东西。</p>
+  <p>但确定性纪律的精神没有破例：本件源码同样<strong>零随机数</strong>。你看到的一切晃动——帧间隔的雾、待检表的抖、你自己节拍的散——全部来自现场测到的真实序列，没有一个是编出来的。<em>模拟件等值断言，测量件有界断言</em>：这份口径写进了本作构建脚本的注释里。</p>
+  <p>与近邻的界线：〈半信半疑〉在已知真值的模型里练滤波；〈长浪抵岸〉〈震源的坐标〉〈星光留痕〉拿仪器去测外部世界；〈同影异物〉从测量反推对象。本件把关系倒过来——<strong>仪器不动，被检的是你。</strong></p>
+  <p>诚实的留白：在无头浏览器、省电模式或后台标签里，帧循环与定时器会被系统钳制。遇到样本不足，对应读数会直接写「量测不可用」，证书上留白，而不是填一个编造的数。</p>
+</section>
+
+<footer class="colophon">单文件科学装置 · 全部数字现场测得 · 零网络请求 · 源码在 以身作尺/ 目录，由其 build.js 拼装</footer>
+
+</div>
+<script>/* ============================================================================
+ * 以身作尺/core.js —— 统计与计量原语（纯函数层，node 可直接 require 自检）
+ *
+ * 本作铁律（完整口径见 build.js 头注）：
+ *   ① 源码零 Math.random —— 本作测量真实噪声，不制造模拟噪声；
+ *      所有"晃动"都必须能追溯到某次浏览器现场读数；
+ *   ② core 里没有任何预设的"文献真值"数据块 —— 全部数字由 ui.js 的探针
+ *      在浏览器里现场测出（全库第一件零内联数据展项）；
+ *   ③ 样本不足必须走"量测不可用"文案路径，绝不把非有限数放进 DOM；
+ *   ④ 与全库确定性纪律的关系写在页面边界段：模拟须可复现，测量只能记录现场。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { module.exports = factory(); }
+  else { root.YZC = factory(); }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  /* ------------------------------------------------------------ 散列 */
+  /* FNV-1a 32 位：给"检定证书号"用 —— 证书号必须是读数的确定函数，
+     绝不允许随机生成。标准测试向量：'' → 811C9DC5，'a' → E40C292C。
+     乘法必须走 Math.imul：h*素数可达 7e16，普通乘法会丢 2^53 以外的精度。 */
+  var FNV_OFFSET = 0x811c9dc5;
+  var FNV_PRIME = 0x01000193;
+  function fnv1a(str) {
+    var h = FNV_OFFSET >>> 0;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i) & 0xff;
+      h = Math.imul(h, FNV_PRIME) >>> 0;
+    }
+    h = h >>> 0;
+    var s = h.toString(16).toUpperCase();
+    while (s.length < 8) s = '0' + s;
+    return s;
+  }
+
+  /* ------------------------------------------------------------ Welford 在线统计 */
+  /* 单遍均值/方差：流量探针这种"边来边算"的场景只能在线算。
+     数值稳定性优于朴素累加，这是选它而不是 sum/n 的原因。 */
+  function makeStats() {
+    return {
+      n: 0, mean: 0, M2: 0,
+      push: function (x) {
+        if (!isFinite(x)) return; /* 非有限值直接丢弃，不让坏数进统计 */
+        this.n += 1;
+        var d = x - this.mean;
+        this.mean += d / this.n;
+        this.M2 += d * (x - this.mean);
+      },
+      variance: function () {
+        return this.n > 1 ? this.M2 / (this.n - 1) : null;
+      },
+      sd: function () {
+        var v = this.variance();
+        return v === null ? null : Math.sqrt(v);
+      }
+    };
+  }
+
+  /* ------------------------------------------------------------ 带存储的样本 */
+  /* 中位数/分位数需要原始样本；CAP 封顶防止长开页面内存增长。
+     超过 CAP 后停止入库（n 即入库数，诚实反映统计口径）。 */
+  var CAP = 2048;
+  function makeSample(cap) {
+    var vals = [];
+    var stats = makeStats();
+    var limit = cap || CAP;
+    return {
+      push: function (x) {
+        stats.push(x);
+        if (vals.length < limit && isFinite(x)) vals.push(x);
+      },
+      get n() { return stats.n; },
+      stored: function () { return vals.length; },
+      mean: function () { return stats.n > 0 ? stats.mean : null; },
+      sd: function () { return stats.sd(); },
+      min: function () { return vals.length ? Math.min.apply(null, vals) : null; },
+      max: function () { return vals.length ? Math.max.apply(null, vals) : null; },
+      sorted: function () { return vals.slice().sort(function (a, b) { return a - b; }); },
+      median: function () { return quantile(this.sorted(), 0.5); },
+      iqr: function () {
+        var s = this.sorted();
+        return s.length ? [quantile(s, 0.25), quantile(s, 0.75)] : null;
+      },
+      values: function () { return vals.slice(); }
+    };
+  }
+
+  /* 线性插值分位数（与多数统计软件一致的 Type-7 口径） */
+  function quantile(sorted, q) {
+    if (!sorted.length) return null;
+    if (sorted.length === 1) return sorted[0];
+    var idx = (sorted.length - 1) * q;
+    var lo = Math.floor(idx), hi = Math.ceil(idx);
+    if (lo === hi) return sorted[lo];
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  }
+
+  function median(arr) {
+    return quantile(arr.slice().sort(function (a, b) { return a - b; }), 0.5);
+  }
+
+  /* ------------------------------------------------------------ 在线直方图 */
+  function makeHistogram(lo, hi, bins) {
+    var counts = new Array(bins);
+    for (var i = 0; i < bins; i++) counts[i] = 0;
+    var out = 0, total = 0;
+    return {
+      push: function (x) {
+        total += 1;
+        if (!isFinite(x) || x < lo || x >= hi) { out += 1; return; }
+        var b = Math.floor((x - lo) / (hi - lo) * bins);
+        if (b < 0) b = 0; if (b >= bins) b = bins - 1;
+        counts[b] += 1;
+      },
+      counts: function () { return counts.slice(); },
+      total: function () { return total; },
+      outside: function () { return out; },
+      lo: lo, hi: hi, bins: bins
+    };
+  }
+
+  /* ------------------------------------------------------------ 置信区间 */
+  /* t 分位数表（双尾 95%，即 t_{0.975}），df = n-1。
+     测量件的小样本（读 5 次表）必须用 t 而不是 1.96 —— 这里的诚实
+     体现在：区间随样本量收窄的速率是真实的，不是装出来的。 */
+  var T975 = [null, 12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306,
+    2.262, 2.228, 2.201, 2.179, 2.160, 2.145, 2.131, 2.120, 2.110, 2.101,
+    2.093, 2.086, 2.080, 2.074, 2.069, 2.064, 2.060, 2.056, 2.052, 2.048,
+    2.045, 2.042];
+  function t975(n) {
+    var df = n - 1;
+    if (df <= 0) return null;
+    if (df <= 30) return T975[df];
+    if (df < 40) return 2.021;
+    if (df < 60) return 2.000;
+    if (df < 120) return 1.980;
+    return 1.960;
+  }
+  /* 返回 {lo,hi,half,t}；n<2 或 sd 缺失返回 null（调用方落"定值/区间不可给"文案） */
+  function ci95(mean, sd, n) {
+    if (!(n >= 2) || sd === null || !isFinite(sd) || !isFinite(mean)) return null;
+    var t = t975(n);
+    var half = t * sd / Math.sqrt(n);
+    return { lo: mean - half, hi: mean + half, half: half, t: t };
+  }
+
+  /* ------------------------------------------------------------ 时钟量化步长 */
+  /* 输入一串正的相邻时间差，估计这台钟的"格点"：
+     从小到大试候选步长，取第一个能让 ≥85% 的差值落在其整数倍上的；
+     找不到就如实返回最小观测步长并标 weak。
+     这是"分辨率是测出来的，不是查参数表抄来的"这条原则的实现。 */
+  function quantizeResolution(deltas) {
+    var pos = [];
+    for (var i = 0; i < deltas.length; i++) {
+      if (isFinite(deltas[i]) && deltas[i] > 0) pos.push(deltas[i]);
+    }
+    if (!pos.length) return { ok: false, reason: 'no-positive-delta', n: deltas.length };
+    var seen = {}, distinct = [];
+    for (var j = 0; j < pos.length; j++) {
+      var key = pos[j].toFixed(9);
+      if (!seen[key]) { seen[key] = 1; distinct.push(+key); }
+    }
+    distinct.sort(function (a, b) { return a - b; });
+    var cands = distinct.slice(0, 16);
+    for (var k = 0; k < cands.length; k++) {
+      var c = cands[k];
+      if (c <= 0) continue;
+      var hit = 0;
+      for (var m = 0; m < pos.length; m++) {
+        var q = pos[m] / c;
+        if (Math.abs(q - Math.round(q)) < 0.02) hit += 1;
+      }
+      if (hit / pos.length >= 0.85) {
+        return { ok: true, res: c, share: hit / pos.length, distinct: distinct.length, n: pos.length };
+      }
+    }
+    return { ok: true, res: distinct[0], share: 0, distinct: distinct.length, n: pos.length, weak: true };
+  }
+
+  /* ------------------------------------------------------------ 有界断言登记表 */
+  /* 双轨口径的唯一真源：模拟件用等值断言（本件的结构断言走 build.js），
+     测量件只能用"有界/分布"断言 —— 边界在这里集中登记，
+     页面自检与 verify.js 都从这里取，避免两处口径漂移。 */
+  var BOUNDS = {
+    rafMedian: [2, 100],      /* 帧间隔中位数，ms；宽到能容 5–200Hz 与虚拟时间环境 */
+    rafMinN: 30,              /* 帧样本量下限，低于即"量测不可用"而非硬给结论 */
+    loopDeepMedian: [0, 60],  /* 深层定时器实际延迟中位，ms */
+    loopMinN: 40,             /* 定时器样本量下限 */
+    clockRes: [0.001, 20],    /* 观测时钟步长，ms（0.1ms 钳制与更粗的虚拟钟都该落进来） */
+    glyphPatterns: [1, 8],    /* 亚像素墨迹图案种数 */
+    glyphWidth: [1, 300],     /* measureText 字宽 px */
+    audioRate: [8000, 384000],/* 声道采样率 Hz */
+    dpr: [0.5, 10]            /* 设备像素比（几何守卫；缺键会让页面自检当场炸——build 有键完整性断言） */
+  };
+  function inRange(v, range) {
+    return isFinite(v) && v >= range[0] && v <= range[1];
+  }
+
+  /* ------------------------------------------------------------ 格式化 */
+  /* 所有 DOM 数值出口都从这里走：非有限值一律落破折号，
+     这是"可见文本永不漏出坏值"的最后一道闸。 */
+  function fmtNum(x, digits) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    var d = digits === undefined ? 1 : digits;
+    return (+x).toFixed(d);
+  }
+  function fmtSigned(x, digits) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    var d = digits === undefined ? 1 : digits;
+    return (x >= 0 ? '+' : '') + (+x).toFixed(d);
+  }
+
+  return {
+    fnv1a: fnv1a,
+    makeStats: makeStats,
+    makeSample: makeSample,
+    quantile: quantile,
+    median: median,
+    makeHistogram: makeHistogram,
+    t975: t975,
+    ci95: ci95,
+    quantizeResolution: quantizeResolution,
+    BOUNDS: BOUNDS,
+    inRange: inRange,
+    fmtNum: fmtNum,
+    fmtSigned: fmtSigned
+  };
+});
+</script>
+<script>/* ============================================================================
+ * 以身作尺/ui.js —— 探针调度、余辉屏、校准台、节拍器、证书、有界自检
+ *
+ * 铁律（与 core.js 一致）：
+ *   ① 零 Math.random：一切"晃动"都来自浏览器现场测到的真实序列；
+ *   ② 任何非有限数都不许进 DOM —— 数值出口一律过 core 的 fmtNum/fmtSigned；
+ *   ③ 样本不足的探针走「量测不可用」文案，证书留白不编数；
+ *   ④ 本文件不含任何预设数据 —— 证书上的每个数都出自 state.probes。
+ * ==========================================================================*/
+(function () {
+  'use strict';
+  var C = window.YZC;
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* 运行期错误登记（不吞错：返回 false 让默认报错照常发生，体检能看到） */
+  window.__err = [];
+  window.onerror = function (m, s, l) {
+    window.__err.push(String(m) + ' @' + l);
+    return false;
+  };
+
+  var state = {
+    t0: performance.now(),
+    bias: 0,
+    lastRef: 0,
+    lastFake: 0,
+    jj: 0,
+    pool: [],
+    poolNote: '等待事件循环探针……',
+    probes: {},
+    ready: false,
+    startedAt: Date.now(),
+    selfCheck: null,
+    longtask: { n: 0, ms: 0, ok: false },
+    reduced: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  };
+
+  /* ======================================================== 余辉示波屏 */
+  var SCOPE = { LO: 2, HI: 34 };
+  var scope = { cv: $('scopeCanvas'), ctx: null, w: 0, h: 0, last: 0, frames: 0 };
+  var rafSample = C.makeSample(400);
+  var rafHist = C.makeHistogram(0, 64, 32);
+  var MONO = 'ui-monospace, Consolas, monospace';
+
+  /* ratio 显式传入：canvas.width 属性会被改写成背衬尺寸，
+     靠属性重算宽高比会在 resize 后漂移（踩过的坑） */
+  function fitCanvas(cv, ratio) {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = cv.clientWidth || 600;
+    cv.width = Math.max(300, Math.round(w * dpr));
+    cv.height = Math.round(cv.width * ratio);
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx: ctx, w: w, h: w * ratio };
+  }
+
+  function scopeInit() {
+    var f = fitCanvas(scope.cv, 260 / 900);
+    scope.ctx = f.ctx; scope.w = f.w; scope.h = f.h; scope.last = 0;
+  }
+
+  function scopeX(ms, w) {
+    var pad = 14;
+    var v = Math.max(SCOPE.LO, Math.min(SCOPE.HI, ms));
+    return pad + (v - SCOPE.LO) / (SCOPE.HI - SCOPE.LO) * (w - 2 * pad);
+  }
+
+  function scopeGrid(ctx, w, h) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(110,150,140,0.11)';
+    ctx.lineWidth = 1;
+    [8.333, 16.667, 25].forEach(function (ms) {
+      var x = scopeX(ms, w);
+      ctx.beginPath(); ctx.moveTo(x, 8); ctx.lineTo(x, h - 24); ctx.stroke();
+    });
+    ctx.beginPath(); ctx.moveTo(0, h * 0.56); ctx.lineTo(w, h * 0.56); ctx.stroke();
+    ctx.fillStyle = 'rgba(143,166,157,0.55)';
+    ctx.font = '10px ' + MONO;
+    ctx.textAlign = 'center';
+    ctx.fillText('120Hz', scopeX(8.333, w), h - 8);
+    ctx.fillText('60Hz', scopeX(16.667, w), h - 8);
+    ctx.fillText('25ms', scopeX(25, w), h - 8);
+    ctx.textAlign = 'left';
+    ctx.fillText('2ms', 4, h - 8);
+    ctx.restore();
+  }
+
+  function scopeDot(ctx, w, h, delta) {
+    var x = scopeX(delta, w), y = h * 0.56;
+    var clamped = delta > SCOPE.HI;
+    var col = clamped ? 'rgba(245,180,83,' : 'rgba(87,240,169,';
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = col + '0.10)';
+    ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = col + '0.28)';
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = clamped ? 'rgba(255,224,178,0.95)' : 'rgba(214,255,234,0.95)';
+    ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function scopeFrame(ts) {
+    var delta = scope.last ? (ts - scope.last) : 0;
+    scope.last = ts;
+    scope.frames += 1;
+    if (delta > 0 && delta < 5000) {
+      rafSample.push(delta);
+      rafHist.push(delta);
+    }
+    var ctx = scope.ctx, w = scope.w, h = scope.h;
+    if (ctx) {
+      if (state.reduced) {
+        /* 用户偏好减动效：不做余辉衰减，改为整屏重绘（数据照常采集） */
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = '#0a0f12'; ctx.fillRect(0, 0, w, h);
+      } else {
+        /* 余辉的核心：每帧半透明罩让旧光点指数衰减，新点用 lighter 叠加 */
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(8,13,16,0.16)'; ctx.fillRect(0, 0, w, h);
+      }
+      scopeGrid(ctx, w, h);
+      if (delta > 0 && delta < 5000) scopeDot(ctx, w, h, delta);
+      ctx.fillStyle = 'rgba(190,230,215,0.62)';
+      ctx.font = '11px ' + MONO;
+      ctx.fillText(delta > 0 ? ('Δ ' + C.fmtNum(delta, 1) + ' ms · n=' + rafSample.n) : '等待帧循环……', 12, 18);
+    }
+    requestAnimationFrame(scopeFrame);
+  }
+
+  /* ---------------- 帧间隔直方图（先画骨架，保证画布永不空白） ---------------- */
+  var hist = { cv: $('histCanvas'), ctx: null, w: 0, h: 0 };
+
+  function histInit() {
+    var f = fitCanvas(hist.cv, 130 / 900);
+    hist.ctx = f.ctx; hist.w = f.w; hist.h = f.h;
+    histDraw();
+  }
+
+  function histDraw() {
+    var ctx = hist.ctx, w = hist.w, h = hist.h;
+    if (!ctx) return;
+    var padL = 14, padR = 14, base = h - 22, top = 18;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#0a0f12'; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(110,150,140,0.25)';
+    ctx.beginPath(); ctx.moveTo(padL, base); ctx.lineTo(w - padR, base); ctx.stroke();
+    var counts = rafHist.counts();
+    var bins = counts.length, bw = (w - padL - padR) / bins;
+    var mx = 1;
+    for (var i = 0; i < bins; i++) if (counts[i] > mx) mx = counts[i];
+    ctx.fillStyle = 'rgba(87,240,169,0.5)';
+    for (var j = 0; j < bins; j++) {
+      if (!counts[j]) continue;
+      var bh = counts[j] / mx * (base - top);
+      ctx.fillRect(padL + j * bw + 1, base - bh, Math.max(1, bw - 2), bh);
+    }
+    ctx.fillStyle = 'rgba(143,166,157,0.6)';
+    ctx.font = '10px ' + MONO; ctx.textAlign = 'center';
+    [0, 16, 32, 48, 64].forEach(function (ms) {
+      var x = padL + ms / 64 * (w - padL - padR);
+      ctx.fillText(String(ms) + (ms === 64 ? '+' : ''), x, base + 14);
+    });
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(190,230,215,0.7)';
+    ctx.fillText('帧间隔分布（ms）· n=' + rafHist.total() + (rafHist.outside() ? ' · 界外 ' + rafHist.outside() : ''), 12, 14);
+  }
+
+  /* ======================================================== 探针 */
+  function naResult(key, reason) {
+    return { key: key, status: 'na', reason: reason };
+  }
+
+  function withTimeout(promise, ms) {
+    return Promise.race([
+      promise,
+      new Promise(function (resolve) { setTimeout(function () { resolve({ timedOut: true }); }, ms); })
+    ]);
+  }
+
+  /* ---- 探针 raf：帧间隔（采样由余辉屏的 rAF 循环代劳，这里只等够数） ---- */
+  function pRaf(deadline) {
+    var start = performance.now();
+    return withTimeout(new Promise(function (resolve) {
+      (function poll() {
+        if (rafSample.n >= 120 || performance.now() - start >= deadline) return resolve({});
+        setTimeout(poll, 150);
+      })();
+    }), deadline + 800).then(function (r) {
+      if (r && r.timedOut) return naResult('raf', '帧循环迟迟不给样本（本环境帧循环受限）');
+      var n = rafSample.n;
+      if (n < C.BOUNDS.rafMinN) {
+        return { key: 'raf', status: 'na', reason: '帧循环样本不足（n=' + n + '）——本环境帧循环受限' };
+      }
+      var med = rafSample.median(), sd = rafSample.sd(), mean = rafSample.mean();
+      var ci = C.ci95(mean, sd, n);
+      var hz = med > 0 ? 1000 / med : null;
+      var story = '这台仪器的帧钟走的是 ≈' + C.fmtNum(hz, 0) + 'Hz 的节奏。';
+      if (med >= 15 && med <= 18.5) story = '典型的 60Hz 节奏：帧钟每 16.7ms 打一拍。';
+      else if (med >= 7 && med <= 9.5) story = '典型的 120Hz 节奏：帧钟每 8.3ms 打一拍。';
+      story += ' σ 是抖动的尺寸——雾有多厚，帧钟就有多不稳。';
+      return {
+        key: 'raf', status: 'ok',
+        value: { med: med, sd: sd, mean: mean, ci: ci, n: n, hz: hz },
+        story: story
+      };
+    });
+  }
+
+  /* ---- 探针 clock：时钟量化步长（两段策略，同步忙等优先） ---- */
+  function pClock(deadline) {
+    return withTimeout(new Promise(function (resolve) {
+      var deltas = [];
+      var prev = performance.now();
+      for (var i = 0; i < 4000; i++) {
+        var t = performance.now();
+        var d = t - prev;
+        prev = t;
+        if (d > 0) deltas.push(d);
+      }
+      var strategy = '同调用忙等';
+      if (deltas.length >= 8) { resolve({ deltas: deltas, strategy: strategy }); return; }
+      /* 虚拟时间等环境里同步循环内时钟不前进——改用定时器链观测 */
+      strategy = '定时器链';
+      var done = 0;
+      function tick() {
+        var t0 = performance.now();
+        setTimeout(function () {
+          var dd = performance.now() - t0;
+          if (dd > 0) deltas.push(dd);
+          done += 1;
+          if (done >= 120) resolve({ deltas: deltas, strategy: strategy });
+        }, 0);
+      }
+      for (var k = 0; k < 120; k++) tick();
+    }), deadline).then(function (r) {
+      if (r && r.timedOut) return naResult('clock', '探针超时');
+      var q = C.quantizeResolution(r.deltas);
+      if (!q.ok) return naResult('clock', '时钟在本次探测里没有可观测的前进（同调用内不前进、定时器链也未拉开）');
+      var res = q.res;
+      var tag;
+      if (res < 0.008) tag = '微秒级——可能处于跨源隔离（允许更高精度计时）';
+      else if (res < 0.2) tag = '≈0.1ms 档——抗 Spectre 钳制：2018 年起的安全疤，刻在每台现代浏览器上';
+      else if (res < 1) tag = '亚毫秒档——比典型钳制略粗';
+      else tag = '毫秒级步长——本环境的钟比较粗（虚拟时间/降级计时常见）';
+      return {
+        key: 'clock', status: 'ok',
+        value: { res: res, share: q.share, distinct: q.distinct, n: q.n, strategy: r.strategy, tag: tag },
+        story: tag + '。'
+      };
+    });
+  }
+
+  /* ---- 探针 loop：事件循环延迟与钳制线 ---- */
+  function pLoop(deadline) {
+    return withTimeout(new Promise(function (resolve) {
+      var deep = [], shallow = [], arrived = 0, total = 80;
+      function maybe() { arrived += 1; if (arrived >= total) resolve({ deep: deep, shallow: shallow }); }
+      /* 深层链：每一步都在上一步的回调里再排——嵌套深度 >5，会吃到 4ms 钳制 */
+      function chain(i) {
+        if (i >= 60) return;
+        var t0 = performance.now();
+        setTimeout(function () {
+          deep.push(performance.now() - t0);
+          maybe();
+          chain(i + 1);
+        }, 0);
+      }
+      /* 浅层：20 个互相独立、从任务顶层直接排的 0ms 定时器 */
+      for (var k = 0; k < 20; k++) {
+        (function () {
+          var t0 = performance.now();
+          setTimeout(function () {
+            shallow.push(performance.now() - t0);
+            maybe();
+          }, 0);
+        })();
+      }
+      chain(0);
+    }), deadline).then(function (r) {
+      if (r && r.timedOut) return naResult('loop', '定时器迟迟不回（本环境事件循环受限）');
+      var deep = r.deep, shallow = r.shallow;
+      if (deep.length < 40) {
+        return { key: 'loop', status: 'na', reason: '定时器样本不足（深层 n=' + deep.length + '）' };
+      }
+      var deepMed = C.median(deep), shalMed = shallow.length ? C.median(shallow) : null;
+      var deepMean = deep.reduce(function (a, b) { return a + b; }, 0) / deep.length;
+      var sd = 0;
+      if (deep.length > 1) {
+        var acc = 0;
+        for (var i = 0; i < deep.length; i++) { var dd = deep[i] - deepMean; acc += dd * dd; }
+        sd = Math.sqrt(acc / (deep.length - 1));
+      }
+      var ci = C.ci95(deepMean, sd, deep.length);
+      var clampGap = (shalMed === null) ? null : deepMed - shalMed;
+      var story = (clampGap !== null && clampGap >= 2)
+        ? '深层嵌套的 0ms 定时器被钳到明显更慢——这是浏览器压后台滥用的防线，第 5 层嵌套起生效。'
+        : '本环境未观察到深浅钳制差（虚拟时间或节流关闭的环境常见）。';
+      /* 抖动池：把深层延迟去中线后喂给校准台——待检表的晃动是真实测到的 */
+      state.pool = deep.map(function (d) { return d - deepMed; });
+      state.poolNote = '抖动序列：本机事件循环实测 ' + deep.length + ' 个延迟（去中线）· 已就绪';
+      $('jitterNote').textContent = state.poolNote;
+      return {
+        key: 'loop', status: 'ok',
+        value: { deepMed: deepMed, shalMed: shalMed, deepMean: deepMean, sd: sd, ci: ci, n: deep.length, shallowN: shallow.length, clampGap: clampGap },
+        story: story
+      };
+    });
+  }
+
+  /* ---- 探针 geo：屏幕几何（定义值，同步可得） ---- */
+  function pGeo() {
+    return Promise.resolve().then(function () {
+      var dpr = window.devicePixelRatio || 1;
+      var sw = screen.width, sh = screen.height;
+      if (!(sw > 0 && sh > 0)) return naResult('geo', '屏幕几何读取失败');
+      return {
+        key: 'geo', status: 'ok',
+        value: {
+          dpr: dpr, w: sw, h: sh,
+          colorDepth: screen.colorDepth || 0,
+          coarse: window.matchMedia && window.matchMedia('(pointer: coarse)').matches
+        },
+        story: ''
+      };
+    });
+  }
+
+  /* ---- 探针 glyph：文字栅格指纹（离屏量杯，不进 DOM） ---- */
+  function pGlyph(deadline) {
+    return withTimeout(new Promise(function (resolve) {
+      try {
+        var cv = document.createElement('canvas');
+        cv.width = 140; cv.height = 80;
+        var ctx = cv.getContext('2d');
+        if (!ctx) return resolve({ fail: '画布后端不可用' });
+        ctx.font = '48px serif';
+        ctx.textBaseline = 'alphabetic';
+        var w0 = ctx.measureText('测').width;
+        if (!(w0 > 0)) return resolve({ fail: '文字度量返回无效宽度' });
+        var widths = {};
+        for (var r = 0; r < 50; r++) widths[ctx.measureText('测').width.toFixed(6)] = 1;
+        var seen = {}, patterns = 0;
+        for (var k = 0; k < 8; k++) {
+          ctx.clearRect(0, 0, 140, 80);
+          ctx.fillStyle = '#000';
+          ctx.fillText('测', k * 0.25, 60);
+          var data = ctx.getImageData(0, 0, 140, 80).data;
+          var bin = '';
+          for (var p = 3; p < data.length; p += 4) bin += data[p] > 72 ? '1' : '0';
+          var h = C.fnv1a(bin);
+          if (!seen[h]) { seen[h] = 1; patterns += 1; }
+        }
+        resolve({ w0: w0, widthKinds: Object.keys(widths).length, patterns: patterns });
+      } catch (e) {
+        resolve({ fail: '栅格探针异常：' + (e && e.name ? e.name : '未知') });
+      }
+    }), deadline).then(function (r) {
+      if (r && r.timedOut) return naResult('glyph', '栅格探针超时');
+      if (r && r.fail) return naResult('glyph', r.fail);
+      var kinds = r.widthKinds;
+      return {
+        key: 'glyph', status: 'ok',
+        value: { patterns: r.patterns, width: r.w0, widthKinds: kinds },
+        story: '同一个「测」字落在 8 个亚像素位置，出现 ' + r.patterns + ' 种墨迹——字形光栅化与抗锯齿是渲染器的指纹。' +
+          (kinds === 1 ? '度量值稳定（50 次测量 1 种宽度）。' : '度量值有 ' + kinds + ' 种（少见）。')
+      };
+    });
+  }
+
+  /* ---- 探针 audio：声道采样率 ---- */
+  function pAudio(deadline) {
+    return withTimeout(new Promise(function (resolve) {
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return resolve({ fail: '本环境没有音频上下文' });
+        var ac = new AC();
+        var rate = ac.sampleRate;
+        if (ac && ac.close) { try { ac.close(); } catch (e2) { /* 关闭失败不影响读数 */ } }
+        if (!rate) return resolve({ fail: '音频后端没有给出采样率' });
+        resolve({ rate: rate });
+      } catch (e) {
+        resolve({ fail: '音频后端不可用（无头/静音环境常见）' });
+      }
+    }), deadline).then(function (r) {
+      if (r && r.timedOut) return naResult('audio', '音频后端迟迟不应');
+      if (r && r.fail) return naResult('audio', r.fail);
+      var fam = (r.rate % 48000 === 0) ? '48kHz 家族' : (r.rate % 44100 === 0) ? '44.1kHz 家族' : '非标准档';
+      return {
+        key: 'audio', status: 'ok',
+        value: { rate: r.rate, family: fam },
+        story: '声卡时钟的标称速率，' + fam + '。它决定了音频时间轴的最小格。'
+      };
+    });
+  }
+
+  /* ---- 长任务观测（尽力而为，不计入证书行） ---- */
+  function observeLongtasks() {
+    try {
+      if (typeof PerformanceObserver !== 'function') return;
+      var po = new PerformanceObserver(function (list) {
+        var es = list.getEntries() || [];
+        for (var i = 0; i < es.length; i++) {
+          state.longtask.n += 1;
+          state.longtask.ms += es[i].duration || 0;
+        }
+        state.longtask.ok = true;
+      });
+      po.observe({ type: 'longtask', buffered: true });
+    } catch (e) { /* 本环境不支持 longtask：静默，读数处会写"未捕获到" */ }
+  }
+
+  /* ======================================================== 探针结果上卡 */
+  var PROBE_KEYS = ['clock', 'loop', 'geo', 'glyph', 'audio'];
+
+  function fmtCI(ci, digits) {
+    return ci ? ('95% 区间 ±' + C.fmtNum(ci.half, digits) + ' ms') : '定值（样本不足给区间）';
+  }
+
+  function applyProbeResult(r) {
+    state.probes[r.key] = r;
+    if (r.key === 'raf') {
+      if (r.status === 'ok') {
+        $('v-raf-med').textContent = C.fmtNum(r.value.med, 2) + ' ms';
+        $('v-raf-ci').textContent = r.value.ci ? ('±' + C.fmtNum(r.value.ci.half, 2) + ' ms') : '—';
+        $('v-raf-sd').textContent = r.value.sd === null ? '—' : ('±' + C.fmtNum(r.value.sd, 2) + ' ms');
+        $('v-raf-n').textContent = r.value.n + ' 帧 · ≈' + C.fmtNum(r.value.hz, 1) + 'Hz';
+        $('scopeStatus').textContent = '已检定 · 帧钟在走';
+        $('d-raf').textContent = r.story;
+      } else {
+        $('scopeStatus').textContent = '量测不可用';
+        $('d-raf').textContent = '原因：' + r.reason + '。屏上只留刻度，不编读数。';
+      }
+      return;
+    }
+    var card = $('probe-' + r.key);
+    if (!card) return;
+    card.classList.remove('ok', 'na');
+    if (r.status === 'ok') {
+      card.classList.add('ok');
+      $('st-' + r.key).textContent = '已检定 · 此设备此刻实测';
+      if (r.key === 'clock') {
+        $('v-' + r.key).textContent = C.fmtNum(r.value.res, 3) + ' ms/步';
+        $('d-' + r.key).textContent = r.value.tag + '。策略：' + r.value.strategy +
+          '；观测到 ' + r.value.distinct + ' 种差值，' + (Math.round(r.value.share * 100)) + '% 落在步长的整数倍上。';
+      } else if (r.key === 'loop') {
+        $('v-' + r.key).textContent = '深层 ' + C.fmtNum(r.value.deepMed, 1) + ' / 浅层 ' +
+          (r.value.shalMed === null ? '—' : C.fmtNum(r.value.shalMed, 1)) + ' ms';
+        $('d-' + r.key).textContent = r.story + '长任务观测：' +
+          (state.longtask.ok ? (state.longtask.n + ' 次 / 共 ' + C.fmtNum(state.longtask.ms, 0) + ' ms') : '未捕获到');
+      } else if (r.key === 'geo') {
+        var v = r.value;
+        $('v-' + r.key).textContent = 'DPR ' + C.fmtNum(v.dpr, 2) + ' · ' + v.w + '×' + v.h;
+        $('d-' + r.key).textContent = '色深 ' + v.colorDepth + ' 位 · ' + (v.coarse ? '触控指针' : '精细指针') +
+          '。几何是定义值——本机上不漂，所以不带误差棒。';
+      } else if (r.key === 'glyph') {
+        $('v-' + r.key).textContent = r.value.patterns + ' 种墨迹';
+        $('d-' + r.key).textContent = r.story;
+      } else if (r.key === 'audio') {
+        $('v-' + r.key).textContent = r.value.rate + ' Hz';
+        $('d-' + r.key).textContent = r.story;
+      }
+    } else {
+      card.classList.add('na');
+      $('st-' + r.key).textContent = '量测不可用';
+      $('v-' + r.key).textContent = '未获证';
+      $('d-' + r.key).textContent = '原因：' + r.reason + '。探针如实留白，不编数。';
+    }
+  }
+
+  /* ======================================================== 校准台 */
+  var calibSample = C.makeSample(600);
+
+  function jitterNext() {
+    if (!state.pool.length) return 0;
+    var j = state.pool[state.jj % state.pool.length];
+    state.jj += 1;
+    return j;
+  }
+
+  function wireCalib() {
+    var slider = $('biasSlider');
+    var out = $('biasVal');
+    function paintBias() {
+      state.bias = +slider.value;
+      out.textContent = C.fmtSigned(state.bias, 0) + ' ms';
+    }
+    slider.addEventListener('input', function () {
+      paintBias();
+      paintCalibVerdict();
+    });
+    paintBias();
+
+    $('takeRead').addEventListener('click', takeRead);
+    $('calibReset').addEventListener('click', function () {
+      calibSample = C.makeSample(600);
+      $('calibLog').textContent = '';
+      paintCalibMetrics();
+      paintCalibVerdict();
+    });
+  }
+
+  function takeRead() {
+    var d = state.lastFake - state.lastRef;
+    calibSample.push(d);
+    var li = document.createElement('li');
+    li.innerHTML = '基准 <span>' + C.fmtNum(state.lastRef / 1000, 3) + ' s</span>' +
+      '｜待检 <span>' + C.fmtNum(state.lastFake / 1000, 3) + ' s</span>' +
+      '｜差 <b>' + C.fmtSigned(d, 1) + ' ms</b>';
+    var log = $('calibLog');
+    log.insertBefore(li, log.firstChild);
+    while (log.children.length > 6) log.removeChild(log.lastChild);
+    paintCalibMetrics();
+    paintCalibVerdict();
+  }
+
+  function paintCalibMetrics() {
+    var n = calibSample.n;
+    var acc = calibSample.mean(), sd = calibSample.sd();
+    var ci = n >= 2 ? C.ci95(acc, sd, n) : null;
+    $('accVal').textContent = acc === null ? '—' : (C.fmtSigned(acc, 1) + ' ms' + (ci ? '（±' + C.fmtNum(ci.half, 1) + '）' : ''));
+    $('preVal').textContent = sd === null ? '—' : ('±' + C.fmtNum(sd, 1) + ' ms');
+    $('calibN').textContent = String(n);
+  }
+
+  function paintCalibVerdict() {
+    var n = calibSample.n;
+    var el = $('calibVerdict');
+    if (n === 0) { el.textContent = '两块表并排走着。按「读一次」，把它们拍在同一瞬间。'; return; }
+    if (n < 3) { el.textContent = '已读 ' + n + ' 次。多读几次——系统误差要从随机抖动底下显形，靠的是次数。'; return; }
+    var acc = calibSample.mean(), sd = calibSample.sd() || 0;
+    if (acc !== null && Math.abs(acc) > Math.max(15, 4 * sd)) {
+      el.textContent = '平均差 ' + C.fmtSigned(acc, 1) + ' ms：这台表整体' + (acc > 0 ? '快' : '慢') +
+        '——这是系统误差，拧「系统偏差」就能带走它。注意看下面的重复性：它不跟着滑块走。';
+    } else if (sd < 0.5) {
+      el.textContent = '偏差已对准（平均差 ' + C.fmtSigned(acc, 1) + ' ms），且重复性接近完美（σ≈' + C.fmtNum(sd, 2) +
+        ' ms）——本环境的调度延迟几乎恒定。又准又精。';
+    } else {
+      el.textContent = '偏差已基本对准（平均差 ' + C.fmtSigned(acc, 1) + ' ms），但每次读数仍在 ±' + C.fmtNum(sd, 1) +
+        ' ms 里晃——这就是精密度：拧不掉的随机误差。准 ≠ 精，好的测量两条都要。';
+    }
+  }
+
+  /* ======================================================== 人肉节拍器 */
+  var pulse = { last: 0, sample: C.makeSample(600) };
+
+  function performTap(t) {
+    if (pulse.last > 0) {
+      var iv = t - pulse.last;
+      if (iv > 0 && iv < 60000) pulse.sample.push(iv);
+    }
+    pulse.last = t;
+    paintPulse();
+  }
+
+  function paintPulse() {
+    var n = pulse.sample.n;
+    var mean = pulse.sample.mean(), sd = pulse.sample.sd();
+    $('tapStats').textContent = n === 0 ? '未测' : ('±' + C.fmtNum(sd, 0) + ' ms（n=' + n + '，均 ' + C.fmtNum(mean, 0) + ' ms）');
+    var rafR = state.probes.raf;
+    $('tapMachine').textContent = (rafR && rafR.status === 'ok' && rafR.value.sd !== null)
+      ? ('±' + C.fmtNum(rafR.value.sd, 1) + ' ms') : '—';
+    var el = $('tapVerdict');
+    if (n === 0) el.textContent = '跟着呼吸的节奏，一秒一下。';
+    else if (n < 8) el.textContent = '已点 ' + n + ' 拍——再点 ' + (8 - n) + ' 拍，重复性才有意义。';
+    else {
+      var mSd = (rafR && rafR.status === 'ok' && rafR.value.sd !== null) ? rafR.value.sd : null;
+      var base = '你的节拍重复性 σ≈±' + C.fmtNum(sd, 0) + ' ms。';
+      el.textContent = base + (mSd === null
+        ? '机器帧钟在本环境不可用，少了那半句对比——但你的 σ 是真的。'
+        : '同场机器帧钟 σ≈±' + C.fmtNum(mSd, 1) + ' ms。人是很差劲的钟——但人是唯一会自己校准自己的钟。');
+    }
+  }
+
+  function wirePulse() {
+    $('tapBtn').addEventListener('click', function () { performTap(performance.now()); });
+    $('tapReset').addEventListener('click', function () {
+      pulse = { last: 0, sample: C.makeSample(600) };
+      paintPulse();
+    });
+    paintPulse();
+  }
+
+  /* ======================================================== 检定证书 */
+  function certNoOf() {
+    var p = state.probes;
+    function r2(x) { return (x === null || x === undefined || !isFinite(x)) ? '-' : (Math.round(x * 100) / 100); }
+    var key = [
+      'YZC1',
+      r2(p.geo && p.geo.status === 'ok' ? p.geo.value.dpr : null),
+      p.clock && p.clock.status === 'ok' ? r2(p.clock.value.res) : '-',
+      p.raf && p.raf.status === 'ok' ? r2(p.raf.value.med) : '-',
+      p.loop && p.loop.status === 'ok' ? r2(p.loop.value.deepMed) : '-',
+      p.glyph && p.glyph.status === 'ok' ? String(p.glyph.value.patterns) : '-',
+      p.audio && p.audio.status === 'ok' ? String(p.audio.value.rate) : '-'
+    ].join('|');
+    return 'YZC-' + C.fnv1a(key);
+  }
+
+  function certRowEl(name, val, basis, isNa) {
+    var row = document.createElement('div');
+    row.className = 'cert-row' + (isNa ? ' na' : '');
+    var s1 = document.createElement('span'); s1.className = 'cr-name'; s1.textContent = name;
+    var s2 = document.createElement('span'); s2.className = 'cr-val'; s2.textContent = val;
+    var s3 = document.createElement('span'); s3.className = 'cr-basis'; s3.textContent = basis;
+    row.appendChild(s1); row.appendChild(s2); row.appendChild(s3);
+    return row;
+  }
+
+  function buildCert() {
+    var p = state.probes;
+    var rows = $('certRows');
+    rows.textContent = '';
+    var measured = 0, defined = 0, unavail = 0;
+    function add(name, val, basis, kind) {
+      rows.appendChild(certRowEl(name, val, basis, kind === 'na'));
+      if (kind === 'na') unavail += 1;
+      else if (kind === 'def') defined += 1;
+      else measured += 1;
+    }
+    if (p.raf && p.raf.status === 'ok') {
+      var rv = p.raf.value;
+      add('帧间隔', C.fmtNum(rv.med, 2) + ' ms（≈' + C.fmtNum(rv.hz, 1) + 'Hz）',
+        fmtCI(rv.ci, 2) + ' · σ=' + C.fmtNum(rv.sd, 2) + ' ms · n=' + rv.n + ' 帧 · 此设备此刻实测', 'meas');
+    } else {
+      add('帧间隔', '未获证', '量测不可用：' + (p.raf ? p.raf.reason : '未运行'), 'na');
+    }
+    if (p.clock && p.clock.status === 'ok') {
+      var cv = p.clock.value;
+      add('时钟步长', C.fmtNum(cv.res, 3) + ' ms/步',
+        '策略：' + cv.strategy + ' · ' + cv.distinct + ' 种差值 · 整数倍吻合 ' + Math.round(cv.share * 100) + '% · 观测定值', 'def');
+    } else {
+      add('时钟步长', '未获证', '量测不可用：' + (p.clock ? p.clock.reason : '未运行'), 'na');
+    }
+    if (p.loop && p.loop.status === 'ok') {
+      var lv = p.loop.value;
+      add('事件循环延迟', '深层 ' + C.fmtNum(lv.deepMed, 1) + ' / 浅层 ' +
+        (lv.shalMed === null ? '—' : C.fmtNum(lv.shalMed, 1)) + ' ms',
+        fmtCI(lv.ci, 1) + ' · n=' + lv.n + ' · 此设备此刻实测', 'meas');
+    } else {
+      add('事件循环延迟', '未获证', '量测不可用：' + (p.loop ? p.loop.reason : '未运行'), 'na');
+    }
+    if (p.geo && p.geo.status === 'ok') {
+      var gv = p.geo.value;
+      add('屏幕几何', 'DPR ' + C.fmtNum(gv.dpr, 2) + ' · ' + gv.w + '×' + gv.h,
+        '色深 ' + gv.colorDepth + ' 位 · ' + (gv.coarse ? '触控指针' : '精细指针') + ' · 定义值', 'def');
+    } else {
+      add('屏幕几何', '未获证', '量测不可用：' + (p.geo ? p.geo.reason : '未运行'), 'na');
+    }
+    if (p.glyph && p.glyph.status === 'ok') {
+      var gv2 = p.glyph.value;
+      add('文字栅格', gv2.patterns + ' 种墨迹图案',
+        '「测」字 8 个亚像素位 · 字宽 ' + C.fmtNum(gv2.width, 1) + ' px · 渲染指纹，定值', 'def');
+    } else {
+      add('文字栅格', '未获证', '量测不可用：' + (p.glyph ? p.glyph.reason : '未运行'), 'na');
+    }
+    if (p.audio && p.audio.status === 'ok') {
+      add('声道采样率', p.audio.value.rate + ' Hz', p.audio.value.family + ' · 定义值（声卡标称）', 'def');
+    } else {
+      add('声道采样率', '未获证', '量测不可用：' + (p.audio ? p.audio.reason : '未运行'), 'na');
+    }
+    var cn = calibSample.n;
+    if (cn >= 5) {
+      var cAcc = calibSample.mean(), cSd = calibSample.sd();
+      add('校准残差', C.fmtSigned(cAcc, 1) + ' ms',
+        '重复性 σ=' + C.fmtNum(cSd, 1) + ' ms · n=' + cn + ' 次拍表 · 此设备此刻实测', 'meas');
+    } else {
+      add('校准残差', '未校准', '在校准台读满 5 次后出具', 'na');
+    }
+    var pn = pulse.sample.n;
+    if (pn >= 8) {
+      add('人肉节拍', 'σ=' + C.fmtNum(pulse.sample.sd(), 0) + ' ms',
+        'n=' + pn + ' 拍 · 你的手此刻的重复性 · 实测', 'meas');
+    } else {
+      add('人肉节拍', '未测', '在人肉节拍器点满 8 拍后出具', 'na');
+    }
+
+    $('certNo').textContent = certNoOf();
+    var dt = new Date();
+    function pad(x) { return (x < 10 ? '0' : '') + x; }
+    $('certTime').textContent = pad(dt.getFullYear()) + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) +
+      ' ' + pad(dt.getHours()) + ':' + pad(dt.getMinutes()) + ':' + pad(dt.getSeconds()) + ' · 本机时钟';
+
+    var elapsed = (performance.now() - state.t0) / 1000;
+    var parts = [];
+    parts.push('本证书列 ' + (measured + defined + unavail) + ' 项：' + measured + ' 项现场实测（附区间）、' +
+      defined + ' 项为定义值' + (unavail ? '、' + unavail + ' 项量测不可用（留白而非编数）' : '') + '。');
+    parts.push('检定历时 ' + C.fmtNum(elapsed, 1) + ' s。证书号是各项读数的散列——换台机器，号就不是这个号。');
+    if (cn >= 5) parts.push('校准台已出数：准确度是你拧走的部分，精密度是拧不掉的部分。');
+    $('certVerdict').textContent = parts.join('');
+  }
+
+  /* ======================================================== 有界自检 */
+  function selfCheckRun() {
+    var p = state.probes;
+    var items = [];
+    function bound(name, available, cond, extra) {
+      items.push({ name: name, verdict: available ? (cond ? 'pass' : 'fail') : 'waived', extra: extra || '' });
+    }
+    bound('帧间隔中位数∈[2,100]ms', p.raf && p.raf.status === 'ok',
+      !!(p.raf && p.raf.status === 'ok' && C.inRange(p.raf.value.med, C.BOUNDS.rafMedian)));
+    bound('帧样本量≥30', p.raf && p.raf.status === 'ok',
+      !!(p.raf && p.raf.status === 'ok' && p.raf.value.n >= C.BOUNDS.rafMinN));
+    bound('时钟步长∈[0.001,20]ms', p.clock && p.clock.status === 'ok',
+      !!(p.clock && p.clock.status === 'ok' && C.inRange(p.clock.value.res, C.BOUNDS.clockRes)));
+    bound('事件循环中位∈[0,60]ms', p.loop && p.loop.status === 'ok',
+      !!(p.loop && p.loop.status === 'ok' && C.inRange(p.loop.value.deepMed, C.BOUNDS.loopDeepMedian)));
+    bound('几何 DPR∈[0.5,10]', true,
+      !!(p.geo && p.geo.status === 'ok' && C.inRange(p.geo.value.dpr, C.BOUNDS.dpr)));
+    bound('栅格图案∈[1,8]种', p.glyph && p.glyph.status === 'ok',
+      !!(p.glyph && p.glyph.status === 'ok' && C.inRange(p.glyph.value.patterns, C.BOUNDS.glyphPatterns)));
+    bound('字宽∈[1,300]px', p.glyph && p.glyph.status === 'ok',
+      !!(p.glyph && p.glyph.status === 'ok' && C.inRange(p.glyph.value.width, C.BOUNDS.glyphWidth)));
+    bound('采样率∈[8000,384000]Hz', p.audio && p.audio.status === 'ok',
+      !!(p.audio && p.audio.status === 'ok' && C.inRange(p.audio.value.rate, C.BOUNDS.audioRate)));
+    bound('直方图总数=帧样本数', p.raf && p.raf.status === 'ok',
+      !!(p.raf && p.raf.status === 'ok' && rafHist.total() >= p.raf.value.n));
+    /* 结构断言（等值口径） */
+    var struct = [];
+    function seq(name, cond) { struct.push({ name: name, verdict: cond ? 'pass' : 'fail' }); }
+    seq('按钮 4 个', document.querySelectorAll('button').length === 4);
+    seq('滑杆 1 支', document.querySelectorAll('input[type="range"]').length === 1);
+    seq('探针卡 5 张', document.querySelectorAll('.probe').length === 5);
+    seq('可见画布 2 面', document.querySelectorAll('canvas').length === 2);
+    seq('证书行 8 行', $('certRows').children.length === 8);
+    var badFixed = scanBadText();
+    seq('可见文本无坏值', badFixed === 0);
+    var bp = 0, bw2 = 0, bf = 0, sp = 0, sf = 0;
+    items.forEach(function (it) {
+      if (it.verdict === 'pass') bp += 1; else if (it.verdict === 'waived') bw2 += 1; else bf += 1;
+    });
+    struct.forEach(function (it) { if (it.verdict === 'pass') sp += 1; else sf += 1; });
+    state.selfCheck = {
+      items: items.concat(struct),
+      boundPass: bp, boundWaived: bw2, boundFail: bf,
+      structPass: sp, structFail: sf, badTextFixed: badFixed
+    };
+    $('selfCheckLine').textContent = '自检：结构 ' + sp + '/' + (sp + sf) + (sf ? ' ✗' : ' ✓') +
+      ' · 有界断言 ' + bp + ' 通过 / ' + bw2 + ' 豁免（量测不可用）/ ' + bf + ' 未过' +
+      ' —— 口径：模拟件等值、测量件有界（见 以身作尺/build.js 头注）';
+  }
+
+  /* 可见文本坏值扫描（兜底闸：理论上 fmt 层已拦，这里双保险） */
+  function scanBadText() {
+    var bad = 0;
+    try {
+      var walker = document.createTreeWalker(document.body, window.NodeFilter.SHOW_TEXT, null, false);
+      var node;
+      while ((node = walker.nextNode())) {
+        var t = node.nodeValue;
+        if (!t || !t.trim()) continue;
+        if (/NaN|undefined|Infinity/.test(t)) {
+          var hits = t.match(/NaN|undefined|Infinity/g) || [];
+          bad += hits.length;
+          node.nodeValue = t.replace(/NaN|undefined|Infinity/g, '—');
+        }
+      }
+    } catch (e) { /* 扫描本身不该挡住检定 */ }
+    return bad;
+  }
+
+  /* ======================================================== 时钟走针与总调度 */
+  function startTickers() {
+    setInterval(function () {
+      var nowMs = performance.now();
+      var tRef = nowMs - state.t0;
+      state.lastRef = tRef;
+      state.lastFake = tRef + state.bias + jitterNext();
+      $('refClock').textContent = C.fmtNum(state.lastRef / 1000, 3) + ' s';
+      $('fakeClock').textContent = C.fmtNum(state.lastFake / 1000, 3) + ' s';
+    }, 100);
+    setInterval(function () {
+      if (state.ready) return;
+      $('mastState').textContent = '检定中 · 已用 ' + C.fmtNum((performance.now() - state.t0) / 1000, 1) + ' s · 探针 ' +
+        Object.keys(state.probes).length + '/6 路已回';
+    }, 250);
+    setInterval(histDraw, 600);
+  }
+
+  function finish() {
+    buildCert();
+    selfCheckRun();
+    var elapsed = (performance.now() - state.t0) / 1000;
+    var sc = state.selfCheck;
+    $('mastState').textContent = '检定完成 · 证书已签发（历时 ' + C.fmtNum(elapsed, 1) + ' s · 自检 ' +
+      sc.structPass + '/' + (sc.structPass + sc.structFail) + ' 结构 · ' +
+      sc.boundPass + '+' + sc.boundWaived + '豁免/' + (sc.boundPass + sc.boundWaived + sc.boundFail) + ' 有界）';
+    state.ready = true;
+    window.__ready = true;
+    histDraw();
+  }
+
+  function boot() {
+    wireCalib();
+    wirePulse();
+    scopeInit();
+    histInit();
+    startTickers();
+    observeLongtasks();
+    requestAnimationFrame(scopeFrame);
+    var jobs = [
+      pRaf(3200),
+      pClock(2800),
+      pLoop(4200),
+      pGeo(),
+      pGlyph(1800),
+      pAudio(1600)
+    ];
+    Promise.all(jobs).then(function (results) {
+      try {
+        results.forEach(applyProbeResult);
+        finish();
+      } catch (e) {
+        /* 检定链上的异常不允许静默吞掉：写进证书区并如实降级 */
+        $('selfCheckLine').textContent = '自检异常：' + (e && e.message ? e.message : String(e)) +
+          (e && e.stack ? ' ｜ ' + String(e.stack).replace(/\s+/g, ' ').slice(0, 600) : '');
+        $('mastState').textContent = '检定异常（详见证书区自检行）';
+        state.ready = true;
+        window.__ready = true;
+      }
+    });
+    window.addEventListener('resize', function () {
+      scopeInit();
+      histInit();
+    });
+  }
+
+  /* ======================================================== 验证探针（verify.js 走语义值，不 grep 源码） */
+  window.__probe = {
+    ready: function () { return !!state.ready; },
+    counts: function () {
+      return {
+        buttons: document.querySelectorAll('button').length,
+        sliders: document.querySelectorAll('input[type="range"]').length,
+        probeCards: document.querySelectorAll('.probe').length,
+        canvases: document.querySelectorAll('canvas').length,
+        panels: document.querySelectorAll('.panel').length,
+        certRows: $('certRows') ? $('certRows').children.length : 0,
+        title: document.title
+      };
+    },
+    semantic: function () {
+      var out = { ready: state.ready, probes: {}, cert: {}, calib: {}, pulse: {}, selfCheck: state.selfCheck };
+      Object.keys(state.probes).forEach(function (k) {
+        var r = state.probes[k];
+        out.probes[k] = {
+          status: r.status,
+          reason: r.reason || null,
+          value: r.status === 'ok' ? r.value : null,
+          story: r.story || (r.reason || '')
+        };
+      });
+      out.cert = {
+        no: $('certNo').textContent,
+        rows: $('certRows').children.length,
+        time: $('certTime').textContent,
+        unavailable: $('certRows').querySelectorAll('.cert-row.na').length
+      };
+      var acc = calibSample.mean(), sd = calibSample.sd();
+      out.calib = { n: calibSample.n, bias: state.bias, acc: acc, sd: sd, poolSize: state.pool.length };
+      out.pulse = { n: pulse.sample.n, mean: pulse.sample.mean(), sd: pulse.sample.sd() };
+      return out;
+    },
+    bounds: function () { return { bounds: C.BOUNDS, selfCheck: state.selfCheck }; },
+    touch: function () {
+      var els = document.querySelectorAll('button, input[type="range"]');
+      var all = [], small = [];
+      els.forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) return;
+        all.push(el.id || el.className);
+        if (Math.min(r.width, r.height) < 44) small.push((el.id || 'no-id') + ':' + Math.round(Math.min(r.width, r.height)));
+      });
+      return { count: all.length, small: small };
+    },
+    overflow: function () {
+      var de = document.documentElement;
+      return {
+        scrollW: de.scrollWidth, clientW: de.clientWidth,
+        innerW: window.innerWidth, over: de.scrollWidth - Math.max(de.clientWidth, window.innerWidth)
+      };
+    },
+    canvases: function () {
+      var out = [];
+      document.querySelectorAll('canvas').forEach(function (cv) {
+        var rec = { id: cv.id || '(anonymous)', w: cv.width, h: cv.height, colors: 0, note: '' };
+        try {
+          var ctx = cv.getContext('2d');
+          var d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+          var seen = {};
+          var step = Math.max(4, Math.floor(d.length / 4 / 4096) * 4);
+          for (var i = 0; i < d.length; i += step) {
+            var key = d[i] + ',' + d[i + 1] + ',' + d[i + 2];
+            seen[key] = 1;
+          }
+          var count = 0; for (var kk in seen) count++;
+          rec.colors = count;
+        } catch (e) { rec.colors = -1; rec.note = '无法取像素'; }
+        out.push(rec);
+      });
+      return out;
+    },
+    errors: function () { return window.__err.slice(); },
+    /* 驱动接口：verify 用它们推校准台与节拍器，读的是产品真实代码 */
+    setBias: function (v) {
+      var s = $('biasSlider');
+      s.value = String(Math.max(-400, Math.min(400, +v)));
+      s.dispatchEvent(new Event('input'));
+      return state.bias;
+    },
+    takeRead: function () { takeRead(); return { d: state.lastFake - state.lastRef, n: calibSample.n }; },
+    resetCalib: function () { $('calibReset').click(); return calibSample.n; },
+    tap: function () { performTap(performance.now()); return { n: pulse.sample.n }; },
+    resetPulse: function () { $('tapReset').click(); return pulse.sample.n; }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>

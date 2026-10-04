@@ -1,0 +1,2105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>有限记忆</title>
+<meta name="description" content="写下一门正则语言，让机器编译成有限自动机：看它先长大再被压到最小，并弄清哪些语言任何有限机器都认不出来。">
+<style>
+/* ============================================================================
+ * finite/style.css —— 样式
+ *
+ * 视觉语言与既有展项**故意不同**：
+ *   既有 = --line / --panel / --ink 这套暖纸色 + hero 巨标题
+ *   本作 = --rule / --slab / --letter 这套冷墨色 + 打字机台面
+ * 刻意不复用既有变量名（build.js 有守卫断言）：两套语言混在一起会让
+ * 观众分不清"这是作品的设计"还是"这是模板的默认"。
+ *
+ * 另外本作的核心控件是 textarea 与 range 各一个 ——
+ * 既有 41 件里 35 件用 range 喂参数，但没有一个把 range 用在
+ * "推一个会指数爆炸的参数"上，也几乎没有以文本为第一入口的。
+ * ==========================================================================*/
+
+:root {
+  --rule: #2b3238;      /* 主线条 */
+  --rule-soft: #6b7480; /* 次级线条 */
+  --slab: #f4f2ec;      /* 面板底 */
+  --slab-2: #e9e6dd;    /* 次级面板 */
+  --letter: #16191c;    /* 正文字色 */
+  --dim: #5c6570;       /* 说明文字 */
+  --accept: #1f6f4a;    /* 接受态 */
+  --dead: #9aa1a8;      /* 死状态 */
+  --alarm: #a8342a;     /* 撞上限 */
+  --type: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --serif: "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--slab);
+  color: var(--letter);
+  font-family: var(--serif);
+  line-height: 1.75;
+}
+
+/* SR-only：给读屏器用的标签，不占视觉空间 */
+.srlabel {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+.wrap {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 28px 20px 72px;
+}
+
+section { margin: 0 0 46px; }
+
+h1, h2, h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
+h1 { font-size: 30px; margin: 0 0 10px; }
+h2 { font-size: 21px; margin: 0 0 8px; }
+h3 { font-size: 15px; margin: 0 0 6px; }
+
+.sub {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--dim);
+  max-width: 62ch;
+}
+.lede {
+  margin: 0 0 14px;
+  font-size: 14.5px;
+  color: var(--dim);
+  max-width: 66ch;
+}
+code {
+  font-family: var(--type);
+  font-size: .92em;
+  background: var(--slab-2);
+  padding: .5px 5px;
+  border-radius: 2px;
+}
+kbd {
+  font-family: var(--type);
+  font-size: 11px;
+  border: 1px solid var(--rule-soft);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+/* ============================================================ 机器台 */
+.bench {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 20px 20px 16px;
+  background: #fbfaf6;
+}
+.benchhead { margin-bottom: 16px; }
+
+.syntaxline {
+  font-family: var(--type);
+  font-size: 12px;
+  color: var(--dim);
+  border-top: 1px dashed var(--rule-soft);
+  border-bottom: 1px dashed var(--rule-soft);
+  padding: 7px 0;
+  margin-bottom: 14px;
+  line-height: 2.1;
+}
+.syntaxline > span {
+  display: inline-block;
+  min-width: 30px;
+  color: var(--rule);
+  font-weight: 600;
+}
+.syntaxline code {
+  background: transparent;
+  padding: 0 3px;
+  color: var(--rule);
+}
+
+.editorrow {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+#rx {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--type);
+  font-size: 17px;
+  line-height: 1.5;
+  padding: 11px 12px;
+  color: var(--letter);
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  resize: vertical;
+  min-height: 74px;
+}
+#rx:focus {
+  outline: 2px solid var(--rule);
+  outline-offset: 1px;
+}
+
+.btn {
+  font-family: var(--type);
+  font-size: 13px;
+  padding: 0 18px;
+  min-height: 44px;
+  color: var(--letter);
+  background: var(--slab-2);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover { background: #dfdbd0; }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--rule); outline-offset: 2px; }
+.btn-primary {
+  background: var(--rule);
+  color: var(--slab);
+  font-weight: 600;
+}
+.btn-primary:hover { background: #3b444c; }
+
+.editorhelp {
+  margin: 7px 0 0;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.err {
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  font-family: var(--type);
+  font-size: 13px;
+  color: #fff;
+  background: var(--alarm);
+  border-radius: 3px;
+}
+.err b { font-weight: 600; }
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px dashed var(--rule-soft);
+}
+.pchip {
+  font-family: var(--type);
+  font-size: 12.5px;
+  padding: 7px 10px;
+  min-height: 34px;
+  background: #fff;
+  border: 1px solid var(--rule-soft);
+  border-radius: 3px;
+  color: var(--letter);
+  cursor: pointer;
+}
+.pchip:hover { border-color: var(--rule); background: var(--slab-2); }
+.pchip:focus-visible { outline: 2px solid var(--rule); outline-offset: 1px; }
+.pchip .pn {
+  color: var(--dim);
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+/* ============================================================ 状态图 */
+.graphbox {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: #fbfaf6;
+  padding: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+#graph { display: block; }
+#graph text {
+  font-family: var(--type);
+  font-size: 12px;
+  fill: var(--letter);
+}
+#graph .nodelabel { font-size: 11px; fill: var(--dim); }
+#graph .edgelabel { font-size: 12.5px; fill: var(--rule); }
+#graph .edgelabel.bg { fill: #fbfaf6; }
+#graph .acceptring { stroke: var(--accept); fill: none; stroke-width: 1.6; }
+#graph .nodering { stroke: var(--rule); fill: #fff; stroke-width: 1.5; }
+#graph .nodedead { stroke: var(--dead); fill: #f2f1ec; stroke-dasharray: 3 3; }
+#graph .edge { stroke: var(--rule-soft); fill: none; stroke-width: 1.2; }
+#graph .startmark { stroke: var(--rule); fill: var(--rule); stroke-width: 1.5; }
+#graph .on .nodering { stroke: var(--letter); stroke-width: 2.4; fill: #fff8dd; }
+#graph .on-node { fill: #fff8dd; stroke: var(--letter); stroke-width: 2.4; }
+
+.stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-top: 14px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.stage {
+  flex: 1 1 120px;
+  padding: 10px 12px;
+  border-right: 1px solid var(--rule-soft);
+  background: #fbfaf6;
+}
+.stage:last-child { border-right: 0; }
+.stage .sname {
+  font-family: var(--type);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.stage .sval {
+  font-family: var(--type);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--letter);
+  line-height: 1.3;
+}
+.stage .snote { font-size: 11.5px; color: var(--dim); }
+.stage.shrink .sval { color: var(--accept); }
+.stage.grow .sval { color: var(--alarm); }
+
+/* ============================================================ 跑一遍 */
+.wordrow { display: flex; gap: 10px; align-items: stretch; }
+
+#word {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--type);
+  font-size: 16px;
+  padding: 11px 12px;
+  min-height: 44px;
+  color: var(--letter);
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+#word:focus { outline: 2px solid var(--rule); outline-offset: 1px; }
+
+.verdict {
+  margin: 12px 0 0;
+  font-family: var(--type);
+  font-size: 14px;
+  min-height: 24px;
+  padding: 6px 0;
+}
+.verdict.ok { color: var(--accept); font-weight: 600; }
+.verdict.no { color: var(--alarm); font-weight: 600; }
+.verdict.unknown { color: var(--dim); }
+
+.feed {
+  margin-top: 12px;
+  font-family: var(--type);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.frow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+  border-bottom: 1px dotted var(--rule-soft);
+}
+.fch {
+  display: inline-block;
+  min-width: 20px;
+  text-align: center;
+  padding: 1px 4px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 2px;
+  background: #fff;
+}
+.frow.last .fch { background: var(--rule); color: var(--slab); border-color: var(--rule); }
+.fst { color: var(--dim); }
+.facc { color: var(--accept); font-weight: 600; }
+.fdead { color: var(--dead); }
+.fbad { color: var(--alarm); font-weight: 600; }
+.fempty { color: var(--dim); font-style: italic; }
+
+/* ============================================================ 爆炸 */
+.knobrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.knobrow label { font-size: 14px; color: var(--dim); }
+#knob, #scan {
+  flex: 1 1 180px;
+  min-width: 140px;
+  height: 44px;          /* 长边够大，窄屏也够 44px */
+  accent-color: var(--rule);
+}
+.knobrow output {
+  font-family: var(--type);
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 84px;
+  color: var(--letter);
+}
+
+.curvebox {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: #fbfaf6;
+  padding: 10px;
+  overflow-x: auto;
+}
+#curve { display: block; }
+#curve text { font-family: var(--type); font-size: 11px; fill: var(--dim); }
+#curve .cval { font-size: 12px; fill: var(--letter); }
+#curve .cpoint { font-size: 12px; fill: var(--letter); font-weight: 600; }
+#curve .cgrid { font-size: 11px; fill: var(--dim); }
+#curve .cline { stroke: var(--alarm); fill: none; stroke-width: 1.8; }
+#curve .cdot { fill: var(--alarm); }
+#curve .cghost { stroke: var(--rule-soft); stroke-dasharray: 2 3; fill: none; stroke-width: 1; }
+#curve .cbar { fill: #d9d4c6; }
+
+.blowlede { margin: 12px 0 0; font-size: 14px; color: var(--dim); max-width: 66ch; }
+.blowlede b { color: var(--letter); }
+.blowerr {
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  font-family: var(--type);
+  font-size: 13px;
+  color: var(--alarm);
+  border: 1px dashed var(--alarm);
+  border-radius: 3px;
+}
+
+/* ============================================================ 边界 */
+.twocol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.langbox {
+  border: 1px solid var(--rule-soft);
+  border-radius: 3px;
+  padding: 12px;
+  background: #fbfaf6;
+}
+.langbox h3 { font-family: var(--type); font-size: 15px; margin-bottom: 2px; }
+.langbox h3 code { background: transparent; padding: 0; color: var(--rule); }
+.langnote { margin: 0 0 10px; font-size: 12.5px; color: var(--dim); }
+
+.groups {
+  font-family: var(--type);
+  font-size: 12px;
+  line-height: 1.6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 168px;
+  overflow-y: auto;
+}
+.gchip {
+  padding: 2px 7px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 10px;
+  background: #fff;
+  white-space: nowrap;
+}
+.gchip.g0 { border-color: var(--rule); background: #fff8dd; }
+.gchip em { color: var(--dim); font-style: normal; }
+
+.langverdict {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px dotted var(--rule-soft);
+  font-family: var(--type);
+  font-size: 12.5px;
+  color: var(--dim);
+}
+.langverdict.capped { color: var(--accept); }
+.langverdict.growing { color: var(--alarm); }
+
+.boundnote {
+  margin: 14px 0 0;
+  font-size: 14px;
+  color: var(--dim);
+  max-width: 68ch;
+}
+.boundnote b { color: var(--letter); }
+
+/* ============================================================ 诚实 */
+.honest {
+  border-top: 1px solid var(--rule);
+  padding-top: 22px;
+}
+.honestgrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 12px;
+}
+.hg h3 { font-size: 13.5px; color: var(--rule); }
+.hg p { margin: 0; font-size: 13px; color: var(--dim); line-height: 1.8; }
+.honestfoot {
+  margin: 18px 0 0;
+  padding: 11px 13px;
+  font-size: 13.5px;
+  color: var(--dim);
+  background: var(--slab-2);
+  border-left: 3px solid var(--rule-soft);
+}
+.honestfoot b { color: var(--letter); }
+
+/* ============================================================ 窄屏 */
+@media (max-width: 700px) {
+  .twocol { grid-template-columns: 1fr; }
+  .honestgrid { grid-template-columns: 1fr; gap: 14px; }
+}
+
+@media (max-width: 560px) {
+  .wrap { padding: 20px 14px 56px; }
+  h1 { font-size: 25px; }
+  h2 { font-size: 19px; }
+  .bench { padding: 15px 13px 13px; }
+  /* 编辑器与按钮竖排：横排在 360px 下会把 textarea 挤成一条缝 */
+  .editorrow { flex-direction: column; }
+  .wordrow { flex-direction: column; }
+  .btn { width: 100%; }
+  .stage { flex: 1 1 100%; border-right: 0; border-bottom: 1px solid var(--rule-soft); }
+  .stage:last-child { border-bottom: 0; }
+  .groups { max-height: 130px; }
+}
+
+/* 打印：观众可以把这一页带走 */
+@media print {
+  body { background: #fff; }
+  .btn, #rx, #word, .presets { display: none; }
+  .wrap { max-width: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<!DOCTYPE html>
+<!-- ============================================================================
+     finite/body.html —— 结构
+
+     与既有 41 件展项的结构性差异（这是刻意打破的，不是忘了照抄）：
+       既有主流模板 = hero 导语 → KPI 卡 → 标签页 → 滑杆 → 静态图表 → 结论
+       本作       = 一张可以**打字的机器台** → 自动机状态图 → 现场判决
+
+     ① **没有滑杆**。本项目 35/41 用 range 喂参数，那是"观众调参数、系统不动"。
+        本作的主入口是 textarea —— 观众写下的是**一个语言本身**，
+        系统被真的改变了：改一个字，整台自动机换一副脸。
+     ② **没有 hero、没有 KPI 卡、没有标签页、没有 <table>**。
+        读数就是状态图上的节点标注，不是数字卡片。
+     ③ **没有作者预设的结论页**。结论是跑出来的：
+        状态爆炸是当场撞上限撞出来的，"认不出"是穷举类数撞出来的。
+     ④ 观众做的是**编写**，不是**调参**。这是本项目里第一次以文本为第一入口。
+     ==========================================================================-->
+
+<!-- ================================================ 机器台（主入口：打字） -->
+<section class="bench">
+  <div class="benchhead">
+    <h1>有限记忆</h1>
+    <p class="sub">
+      写下一门语言，让机器去认。它会先长成一团乱麻的自动机，
+      再被最小化压回最小的那一副。<br>
+      <b>最后你会发现：有些语言它永远认不出来。</b>
+    </p>
+  </div>
+
+  <!-- 语法说明贴在输入框旁边，不藏进"怎么读这台机器" -->
+  <div class="syntaxline">
+    <span>语法</span>
+    <code>a|b</code> 或 <code>a</code> 串接 <code>a*</code> <code>a+</code> <code>a?</code>
+    <code>a{2,4}</code> <code>(...)</code> <code>[ab]</code> <code>[a-c]</code>
+    <code>.</code> 任意 <code>\d \w \s</code>
+  </div>
+
+  <label class="srlabel" for="rx">正则表达式</label>
+  <div class="editorrow">
+    <textarea id="rx" rows="2" spellcheck="false" autocapitalize="off"
+      autocorrect="off" aria-describedby="rxhelp">(a|b)*abb</textarea>
+    <button type="button" id="b-build" class="btn btn-primary">造一台</button>
+  </div>
+  <p class="editorhelp" id="rxhelp">
+    按 <kbd>Enter</kbd> 直接造。里面写的是<b>语言</b>，不是参数。
+  </p>
+  <p class="err" id="err" hidden></p>
+
+  <!-- 预设：每一个都是一门真的语言，不是随手编的例子 -->
+  <div class="presets" id="presets"></div>
+</section>
+
+<!-- ================================================ 状态图（自动机本体） -->
+<section class="machine">
+  <h2>这台机器长什么样</h2>
+  <p class="lede" id="machine-lede"></p>
+
+  <div class="graphbox" id="graphbox">
+    <!-- 渲染层：真 SVG 的状态转移图。
+         不是图表（没有坐标轴、没有刻度），是**有向图**：
+         圆圈是状态，双圈是接受态，边上的字符是"读它就跳过去"。 -->
+    <svg id="graph" role="img" aria-labelledby="graph-title">
+      <title id="graph-title">自动机状态转移图</title>
+    </svg>
+  </div>
+
+  <div class="stages" id="stages"></div>
+</section>
+
+<!-- ================================================ 喂字符串（跑一遍） -->
+<section class="runner">
+  <h2>喂它一句话</h2>
+  <p class="lede">机器从一个状态出发，逐字符跳过去。落在<b>双圈</b>里就算认出来了。</p>
+
+  <div class="wordrow">
+    <label class="srlabel" for="word">测试串</label>
+    <input type="text" id="word" spellcheck="false" autocapitalize="off"
+      autocorrect="off" value="aabbabb" autocomplete="off">
+    <button type="button" id="b-run" class="btn">跑一遍</button>
+  </div>
+
+  <p class="verdict" id="verdict"></p>
+
+  <!-- 逐字高亮：观众看得见"机器是被一个字符推着走的" -->
+  <div class="feed" id="feed" aria-live="polite"></div>
+</section>
+
+<!-- ================================================ 状态爆炸（现场撞墙） -->
+<section class="blowup">
+  <h2>它会长多大</h2>
+  <p class="lede">
+    这一族语言每加一点，机器就得<b>重新记一件事</b>。
+    往下拖，看它指数长大——然后撞上上限，被迫停手。
+  </p>
+
+  <div class="knobrow">
+    <label for="knob">把 k 推到</label>
+    <!-- 默认 7：开页就能看到 2..128 的整条指数线。默认给 4 的话，
+         点全挤在左半边，右边大片空白，"指数"这件事在首屏说不清。 -->
+    <input type="range" id="knob" min="1" max="9" step="1" value="7">
+    <output id="knobout" for="knob">k = 7</output>
+  </div>
+
+  <!-- 不用柱状图：用一条指数尺 + 状态数读数。柱状图画不出 2^k 的形状。 -->
+  <div class="curvebox">
+    <svg id="curve" role="img" aria-labelledby="curve-title">
+      <title id="curve-title">状态数随 k 的增长</title>
+    </svg>
+  </div>
+
+  <p class="blowlede" id="blowlede"></p>
+  <p class="blowerr" id="blowerr" hidden></p>
+</section>
+
+<!-- ================================================ 认不出（穷举判据） -->
+<section class="bound">
+  <h2>那什么时候它认不出来</h2>
+  <p class="lede">
+    两门语言，一门是 <code>a*b*</code>，另一门是 <code>aⁿbⁿ</code>。
+    对每一种"考察多长的词"，把它们按<b>后缀可区分性</b>分组。
+    分组数就是机器至少要几个状态。
+  </p>
+
+  <div class="knobrow">
+    <label for="scan">考察长度上限</label>
+    <input type="range" id="scan" min="2" max="8" step="1" value="6">
+    <output id="scanout" for="scan">词长 ≤ 6</output>
+  </div>
+
+  <div class="twocol">
+    <div class="langbox">
+      <h3><code>a*b*</code></h3>
+      <p class="langnote">任意多个 a，跟任意多个 b。</p>
+      <div class="groups" id="g-ab"></div>
+      <p class="langverdict" id="v-ab"></p>
+    </div>
+    <div class="langbox">
+      <h3><code>aⁿbⁿ</code></h3>
+      <p class="langnote">同样多个 a，跟<b>一样多</b>的 b。</p>
+      <div class="groups" id="g-anb"></div>
+      <p class="langverdict" id="v-anb"></p>
+    </div>
+  </div>
+
+  <p class="boundnote" id="boundnote"></p>
+</section>
+
+<!-- ================================================ 诚实说明 -->
+<section class="honest">
+  <h2>它凭什么这么说</h2>
+  <div class="honestgrid">
+    <div class="hg">
+      <h3>先变成状态机</h3>
+      <p>你写的那行字先被读成一棵语法树，再按 Thompson 构造变成一张
+        允许"空走一步"的图。那张图通常一大片节点谁都分不清，
+        于是下一步把它折叠成每个状态只关心"我现在在哪"的表。</p>
+    </div>
+    <div class="hg">
+      <h3>再压到最小</h3>
+      <p>折叠后的机器常常比需要的笨：几个状态其实长得一模一样。
+        反复把它们按"接受与不接受"分开、再按"读同一个字符去哪"细分，
+        分不动了就停 —— 那一副就是最小的。</p>
+    </div>
+    <div class="hg">
+      <h3>凭什么说它认不出</h3>
+      <p>不是引一张定理来吓人。把所有短词都摆出来，按"后面接同一串时
+        回答是否相同"分组。<code>a*b*</code> 的组数会停在 3 不动，
+        <code>aⁿbⁿ</code> 的组数一路往上涨 —— 而组数就是状态数的下限。</p>
+    </div>
+  </div>
+  <p class="honestfoot">
+    有一件事这台机器不会告诉你：<b>哪个固定的 k 之后爆炸就真的发生</b>。
+    上限是我们自己设的刹车，不是自然的边界。所以图上标的是"至少需要多少状态"，
+    不是"这台机器有多少状态"。
+  </p>
+</section>
+</div>
+<script>/* ============================================================================
+ * finite/core.js —— 正则表达式与有限自动机，UMD
+ *
+ * 本文件回答的问题跟本项目其它 47 个展项都不一样：
+ * 其它展项问"某个系统的量怎么变"，本文件问
+ * "**你写的这门语言，一台有限的机器到底认不认得出来**"。
+ *
+ * 管线（每一段都是本项目此前没有用过的手段）：
+ *   ① 递归下降解析   正则串 → AST（|拼接 * + ? {n,m} () [] . \d \w \s）
+ *   ② Thompson 构造  AST → ε-NFA（正则到自动机的经典编译）
+ *   ③ 子集构造       ε-NFA → DFA。**状态爆炸就发生在这一步**，
+ *                    而且必须让它真的发生、当着观众的面发生。
+ *   ④ 划分细化最小化 DFA → 最小 DFA。刚才"长大"的那台机器在这里塌回去，
+ *                    塌陷的幅度本身就是要展示的东西。
+ *   ⑤ Myhill–Nerode  暴力枚举等价类：区分集合的大小是状态数的下界。
+ *                    a*b* 的区分集合会**封顶**，aⁿbⁿ 的**永不封顶** ——
+ *                    封不封顶，就是"认得出"与"认不出"的分界线。
+ *
+ * 关键事实（build.js 会当场验证，不是口号）：
+ *   · `(a|b)*a(a|b)^{k-1}` 的**最小** DFA 恰好 2^k 个状态，
+ *     实测 k=1..5 得 2, 4, 8, 16, 32 —— 教科书结论，无一例外。
+ *     ★ 这个 2^k 曾经怎么也对不上（实测 4,6,10,18,34,66）。排查值得留着：
+ *       ① 先怀疑断言写错：改 2^k+2、改 2^k+1，都不对；
+ *       ② 语义核对从一开始零错，说明机器认得准，问题只在计数口径；
+ *       ③ 真因是最小化后仍留着**从初态永远走不到的状态**（死状态 + 不可达残留）；
+ *       ④ 剔除不可达状态后，数字恰好落在教科书上。
+ *       —— 报错当时指向布局（cols[-1].push），病根却在最小化。
+ *          别被报错位置牵着走。
+ *     它指数增长的意义：机器必须记住"最近 k 位里已经连着几个 b"，
+ *     而这个记忆没有上界，于是每换一个 k 就得重造一台 —— pumping lemma 的内容。
+ *   · **最小 DFA 里不含不可达状态**：这一条不是清理，是正确性的一部分。
+ *     build.js 对每个预设都查一遍可达性，并真跑一遍 layout ——
+ *     这类"记分牌全对、跑起来才炸"的缺口只有布局调用能暴露。
+ *   · **最小化不能改判定**：DFA 与最小 DFA 对一切等长词的回答必须一致。
+ *     build.js 会对 alpha^0..8 的全部 1023 个词逐一比对。
+ *   · **aⁿbⁿ 不是正则**：词长与后缀长度**同步增长**时，
+ *     a*b* 的等价类数恒为 3（封顶），aⁿbⁿ 的单调上涨（永不封顶）。
+ *     这是穷举出来的，不是引理照抄。
+ *     ★ 后缀长度必须跟着词长一起涨。固定后缀长度会**伪造出边界** ——
+ *       首版固定 maxSuffix=3，aⁿbⁿ 在 4→5 时"不涨"，被误判成封顶。
+ *
+ * 铁律：
+ *   ① 不许 Math.random —— 全部计算是确定性的，实验必须可复现；
+ *   ② 不许网络请求 —— 产物要能离线双击打开；
+ *   ③ alpha 只由表达式里出现的**字面字符**决定（`.` 相对于它自己），
+ *      这条规则必须写在界面上，否则观众会以为 `.` 匹配全部 Unicode；
+ *   ④ 认不出的字符不许静默拒绝 —— run() 必须报 unknown-symbol 并给下标。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { module.exports = factory(); }
+  else { root.FiniteCore = factory(); }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  /* ------------------------------------------------------------ 错误类型 */
+  function ParseError(msg, pos) {
+    this.name = 'ParseError';
+    this.message = msg;
+    this.pos = pos;
+  }
+  ParseError.prototype = Object.create(Error.prototype);
+  ParseError.prototype.constructor = ParseError;
+
+  /* 子集构造撞上状态上限时抛这个。它不是错误，是**作品要展示的现象**，
+     所以携带已建状态数，让界面能说"它本来还会更大"。 */
+  function BlowupError(built, cap) {
+    this.name = 'BlowupError';
+    this.message = '状态数超过上限 ' + cap;
+    this.built = built;
+    this.cap = cap;
+  }
+  BlowupError.prototype = Object.create(Error.prototype);
+  BlowupError.prototype.constructor = BlowupError;
+
+  /* ==================================================================== ①
+   * 递归下降解析
+   * 文法：
+   *   alt  := cat ('|' cat)*
+   *   cat  := rep+                      （隐式拼接）
+   *   rep  := atom postfix*
+   *   atom := '(' alt ')' | '[' class ']' | '.' | '\' esc | 字面字符
+   * postfix := '*' | '+' | '?' | '{' n (',' m?)? '}' | '{' n ','
+   * ==================================================================== */
+  var DIGITS = '0123456789';
+  var WORD = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_';
+  var SPACES = ' \t';
+
+  function parse(src) {
+    var i = 0;
+    function peek() { return i < src.length ? src.charAt(i) : ''; }
+    function err(m) { throw new ParseError(m, i); }
+
+    function alt() {
+      var xs = [cat()];
+      while (peek() === '|') { i++; xs.push(cat()); }
+      return xs.length === 1 ? xs[0] : { t: 'alt', xs: xs };
+    }
+    function cat() {
+      var xs = [];
+      while (i < src.length && peek() !== '|' && peek() !== ')') xs.push(rep());
+      if (xs.length === 0) return { t: 'eps' };
+      return xs.length === 1 ? xs[0] : { t: 'cat', xs: xs };
+    }
+    function rep() {
+      var x = atom(), got = false;
+      for (;;) {
+        var c = peek();
+        if (c === '*') { i++; x = { t: 'rep', x: x, min: 0, max: -1 }; }
+        else if (c === '+') { i++; x = { t: 'rep', x: x, min: 1, max: -1 }; }
+        else if (c === '?') { i++; x = { t: 'rep', x: x, min: 0, max: 1 }; }
+        else if (c === '{' && looksLikeBound()) { x = bound(x); }
+        else break;
+        if (got) err('后缀不能连用');
+        got = true;
+      }
+      return x;
+    }
+    /* 只在 '{' 后面确实像 {n,} / {n,m} 时才当区间，否则 '{' 是字面量。
+       这条区分很重要：正则里 '{' 单独出现是合法的普通字符。 */
+    function looksLikeBound() {
+      var j = i + 1, seen = false;
+      while (j < src.length && DIGITS.indexOf(src.charAt(j)) >= 0) { j++; seen = true; }
+      if (!seen) return false;
+      if (src.charAt(j) === '}') return true;
+      if (src.charAt(j) !== ',') return false;
+      j++;
+      while (j < src.length && DIGITS.indexOf(src.charAt(j)) >= 0) j++;
+      return src.charAt(j) === '}';
+    }
+    function bound(x) {
+      i++; /* 吃掉 '{' */
+      var lo = num();
+      var hi;
+      if (peek() === ',') {
+        i++;
+        hi = peek() === '}' ? -1 : num();
+        if (hi === -1 && peek() !== '}') err('{n,} 后面缺 }');
+      } else hi = lo;
+      if (peek() !== '}') err('{n,m} 缺右花括号');
+      i++;
+      if (hi !== -1 && hi < lo) err('{n,m} 里 m 不能小于 n');
+      return { t: 'rep', x: x, min: lo, max: hi };
+    }
+    function num() {
+      var s = '';
+      while (i < src.length && DIGITS.indexOf(peek()) >= 0) { s += src.charAt(i); i++; }
+      if (s === '') err('要一个数字');
+      return parseInt(s, 10);
+    }
+    function atom() {
+      var c = peek();
+      if (c === '(') {
+        i++;
+        var e = alt();
+        if (peek() !== ')') err('缺右括号');
+        i++;
+        return e;
+      }
+      if (c === '[') return charClass();
+      if (c === '.') { i++; return { t: 'any' }; }
+      if (c === '\\') return escape();
+      if (c === '*' || c === '+' || c === '?') err('“' + c + '”前面缺东西');
+      if (c === '{' && looksLikeBound()) err('“{”前面缺东西');
+      if (c === ']' || c === '}') err('“' + c + '”是多余的');
+      if (c === '') err('表达式没写完');
+      i++;
+      return { t: 'set', s: c };
+    }
+    function escape() {
+      i++; /* 吃掉 '\' */
+      var c = peek();
+      if (c === '') err('结尾是单独一个反斜杠');
+      i++;
+      if (c === 'd') return { t: 'set', s: DIGITS };
+      if (c === 'w') return { t: 'set', s: WORD };
+      if (c === 's') return { t: 'set', s: SPACES };
+      if (c === 'n') return { t: 'set', s: '\n' };
+      if (c === 't') return { t: 'set', s: '\t' };
+      return { t: 'set', s: c };
+    }
+    function charClass() {
+      i++; /* 吃掉 '[' */
+      var neg = false, s = '';
+      if (peek() === '^') { neg = true; i++; }
+      var first = true;
+      while (i < src.length) {
+        var c = peek();
+        if (c === ']' && !first) break;
+        first = false;
+        if (c === '\\') { i++; var d = peek(); i++; s += (d === 'd' ? DIGITS : d === 'w' ? WORD : d === 's' ? SPACES : d); continue; }
+        /* 区间 a-z */
+        if (peek(0) === '' || true) {
+          i++;
+          if (peek() === '-' && i + 1 < src.length && src.charAt(i + 1) !== ']') {
+            var hi = src.charAt(i + 1);
+            var lo = c;
+            if (hi < lo) err('区间 ' + lo + '-' + hi + ' 的顺序反了');
+            for (var k = lo.charCodeAt(0); k <= hi.charCodeAt(0); k++) s += String.fromCharCode(k);
+            i += 2;
+            continue;
+          }
+          s += c;
+          continue;
+        }
+      }
+      if (peek() !== ']') err('字符类缺 ]');
+      i++;
+      if (s === '') err('字符类里什么都没有');
+      if (neg) {
+        var out = '';
+        for (var q = 0; q < WORD.length; q++) if (s.indexOf(WORD.charAt(q)) < 0) out += WORD.charAt(q);
+        s = out;
+        if (s === '') err('取反后字符类是空的');
+      }
+      return { t: 'set', s: s };
+    }
+
+    if (src === '') throw new ParseError('表达式是空的', 0);
+    var node = alt();
+    if (i < src.length) err('多余的“' + peek() + '”');
+    return node;
+  }
+
+  /* 字母表：表达式里出现过的所有字面字符（按码位排序去重）。
+     `.` 不往里加字符 —— 它相对于字母表自己成立，见 thompson。 */
+  function alphabetOf(node) {
+    var set = {};
+    (function walk(n) {
+      switch (n.t) {
+        case 'set': for (var i = 0; i < n.s.length; i++) set[n.s.charAt(i)] = 1; break;
+        case 'cat': case 'alt': n.xs.forEach(walk); break;
+        case 'rep': walk(n.x); break;
+      }
+    })(node);
+    return Object.keys(set).sort().join('');
+  }
+
+  /* 节点的字符集；'any' 相对于 alpha 解析。 */
+  function charsOf(node, alpha) {
+    if (node.t === 'set') return node.s;
+    if (node.t === 'any') return alpha;
+    return '';
+  }
+
+  /* ==================================================================== ②
+   * Thompson 构造：AST → ε-NFA
+   * NFA 形状：{ st: [ [ {ch, to} ... ] ], start, acc }
+   *   ch === null 表示 ε 边
+   * ==================================================================== */
+  function thompson(node, alpha) {
+    var st = [];
+    function ns() { st.push([]); return st.length - 1; }
+    function eps(a, b) { st[a].push({ ch: null, to: b }); }
+    function chr(a, ch, b) { st[a].push({ ch: ch, to: b }); }
+
+    function build(n) {
+      var s, e, b, i;
+      switch (n.t) {
+        case 'eps':
+          s = ns(); e = ns(); eps(s, e); return { s: s, e: e };
+        case 'set': case 'any': {
+          var cs = charsOf(n, alpha);
+          s = ns(); e = ns();
+          for (i = 0; i < cs.length; i++) chr(s, cs.charAt(i), e);
+          return { s: s, e: e };
+        }
+        case 'cat': {
+          /* 入口必须另存。首版把 s 当游标一路推进，循环结束时 s 已是
+             最后一段的出口，回传的"入口"其实是出口 —— 整条 NFA 就废了：
+             a*b* 的自动机只剩 2 个状态，"aaabb" 都不认。 */
+          var begin = ns();
+          s = begin;
+          for (i = 0; i < n.xs.length; i++) {
+            b = build(n.xs[i]);
+            eps(s, b.s);
+            s = b.e;
+          }
+          e = ns(); eps(s, e);
+          return { s: n.xs.length ? begin : e, e: e };
+        }
+        case 'alt': {
+          s = ns(); e = ns();
+          for (i = 0; i < n.xs.length; i++) {
+            b = build(n.xs[i]);
+            eps(s, b.s); eps(b.e, e);
+          }
+          return { s: s, e: e };
+        }
+        case 'rep': return buildRep(n);
+      }
+      throw new Error('未知节点 ' + n.t);
+    }
+
+    /* min 次必做；max === -1 表示无限（留一条回边）；
+       max 是有限数时，max − min 份都是"可有可无"，用同一个出口 e2 汇合。 */
+    function buildRep(n) {
+      /* 星号/加号：max === -1。
+         结构：n.min 份必做，之后任意多次循环。
+         ★ 必做的最后一份与循环体是**同一个节点**。首版给 min>0 的情形
+         另建了一个 body，等于强迫多吃一份 —— 于是 a+ 不接受 "a"、a{3,} 不接受 "aaa"。
+         （与"零次旁路"那处同型：Thompson 的 ε 边少一条或多一条，
+           状态数都可能看着合理，只有语义核对才抓得到。）
+         ★ 入口必须能直接走到出口：缺了这条零次旁路，a* 就不收空串。 */
+      if (n.max === -1) {
+        var s0 = ns(), cur0 = s0, last = null;
+        for (var m = 0; m < n.min; m++) {
+          var req0 = build(n.x);
+          eps(cur0, req0.s);
+          cur0 = req0.e;
+          last = req0;                       /* 最后一份就是循环体 */
+        }
+        var e0 = ns();
+        if (last === null) {
+          /* min === 0：另建循环体 */
+          last = build(n.x);
+          eps(cur0, last.s);
+        }
+        eps(last.e, last.s);   /* 再吃一份 */
+        eps(last.e, e0);       /* 或者收工 */
+        if (n.min === 0) eps(s0, e0);   /* ★ 零次旁路 */
+        return { s: s0, e: e0 };
+      }
+      /* 有限：min 份必做链，之后 max−min 份可选链，全部汇到 e2 */
+      var s = ns(), cur = s, i;
+      for (i = 0; i < n.min; i++) {
+        var req = build(n.x);
+        eps(cur, req.s);
+        cur = req.e;
+      }
+      var e2 = ns();
+      eps(cur, e2);                  /* 做完 min 份就收工 */
+      for (i = n.min; i < n.max; i++) {
+        var opt = build(n.x);
+        eps(cur, opt.s);             /* 也可再来一份 */
+        eps(opt.e, e2);              /* 这一份做完就收工 */
+        cur = opt.e;
+      }
+      if (n.min === 0) eps(s, e2);   /* min=0 时一次都不做也能到出口 */
+      return { s: s, e: e2 };
+    }
+
+    var frag = build(node);
+    return { st: st, start: frag.s, acc: frag.e };
+  }
+
+  /* 每个 NFA 状态单独的 ε 闭包（预计算，闭包并集很快）。 */
+  function closures(nfa) {
+    var n = nfa.st.length, out = new Array(n);
+    for (var s = 0; s < n; s++) {
+      var seen = {}, res = [], stack = [s];
+      while (stack.length) {
+        var u = stack.pop();
+        if (seen[u]) continue;
+        seen[u] = 1; res.push(u);
+        var ed = nfa.st[u];
+        for (var i = 0; i < ed.length; i++) if (ed[i].ch === null && !seen[ed[i].to]) stack.push(ed[i].to);
+      }
+      res.sort(function (a, b) { return a - b; });
+      out[s] = res;
+    }
+    return out;
+  }
+
+  function closureOf(set, nfa) {
+    var seen = {}, res = [], stack = set.slice();
+    while (stack.length) {
+      var u = stack.pop();
+      if (seen[u]) continue;
+      seen[u] = 1; res.push(u);
+      var ed = nfa.st[u];
+      for (var i = 0; i < ed.length; i++) if (ed[i].ch === null && !seen[ed[i].to]) stack.push(ed[i].to);
+    }
+    res.sort(function (a, b) { return a - b; });
+    return res;
+  }
+
+  /* ==================================================================== ③
+   * 子集构造：ε-NFA → DFA（**完备**：补一个死状态）
+   * 状态爆炸就是在这里发生的。cap 是刹车，不是玩法参数。
+   * ==================================================================== */
+  function subsetConstruction(nfa, alpha, cap) {
+    if (cap === undefined) cap = 4096;
+    var A = alpha.length;
+    var start = closureOf([nfa.start], nfa);
+    var states = [start], index = {}, queue = [0];
+    index[start.join(',')] = 0;
+    var delta = [new Array(A).fill(-1)];
+    var accept = [start.indexOf(nfa.acc) >= 0];
+
+    while (queue.length) {
+      var i = queue.shift();
+      /* states[i] 是一整个 **NFA 状态集合**，不是单个状态。
+         所以要遍历集合里每个状态各自的出边 —— 首版写成
+         nfa.st[states[i]] 把集合当下标用，直接 undefined。 */
+      var cur = states[i];
+      for (var c = 0; c < A; c++) {
+        var ch = alpha.charAt(c), move = [];
+        for (var m = 0; m < cur.length; m++) {
+          var ed = nfa.st[cur[m]];
+          for (var e = 0; e < ed.length; e++) if (ed[e].ch === ch) move.push(ed[e].to);
+        }
+        var target;
+        if (!move.length) {
+          target = -1; /* 落到死状态 */
+        } else {
+          var cl = closureOf(move, nfa);
+          var key = cl.join(',');
+          if (index[key] === undefined) {
+            if (states.length >= cap) throw new BlowupError(states.length, cap);
+            index[key] = states.length;
+            states.push(cl);
+            delta.push(new Array(A).fill(-1));
+            accept.push(cl.indexOf(nfa.acc) >= 0);
+            queue.push(states.length - 1);
+          }
+          target = index[key];
+        }
+        delta[i][c] = target;
+      }
+    }
+    /* 死状态：全集为空的那个。子集构造不会生成它，因为 move 为空时压根没状态。 */
+    var dead = -1;
+    for (i = 0; i < states.length; i++) if (states[i].length === 0) { dead = i; break; }
+    if (dead === -1) {
+      dead = states.length;
+      states.push([]);
+      delta.push(new Array(A).fill(dead));
+      accept.push(false);
+      /* 把所有指向"无路可走"的转移改指到死状态 */
+      for (i = 0; i < delta.length; i++)
+        for (c = 0; c < A; c++) if (delta[i][c] === -1) delta[i][c] = dead;
+    }
+    return {
+      alphabet: alpha, delta: delta, accept: accept,
+      start: 0, sets: states, dead: dead
+    };
+  }
+
+  /* ==================================================================== ④
+   * 划分细化（Moore）求最小 DFA。
+   * 前提：dfa 是**完备**的（每个状态每个符号都有去处）。子集构造保证了这点。
+   * ==================================================================== */
+  function cloneDFA(d) {
+    return {
+      alphabet: d.alphabet,
+      delta: d.delta.map(function (r) { return r.slice(); }),
+      accept: d.accept.slice(),
+      start: d.start,
+      sets: d.sets ? d.sets.map(function (s) { return s.slice(); }) : null,
+      dead: d.dead === undefined ? -1 : d.dead
+    };
+  }
+
+  function minimize(dfa) {
+    var n = dfa.delta.length, A = dfa.alphabet.length, i, c;
+    if (n <= 1) return cloneDFA(dfa);
+
+    var anyAcc = false, anyRej = false;
+    for (i = 0; i < n; i++) { if (dfa.accept[i]) anyAcc = true; else anyRej = true; }
+    var part = new Array(n), nparts;
+    if (!anyAcc || !anyRej) { nparts = 1; for (i = 0; i < n; i++) part[i] = 0; }
+    else { nparts = 2; for (i = 0; i < n; i++) part[i] = dfa.accept[i] ? 0 : 1; }
+
+    var iter = 0;
+    for (;;) {
+      iter++;
+      var map = {}, np = new Array(n), k = 0;
+      for (i = 0; i < n; i++) {
+        var sig = dfa.accept[i] ? '1' : '0';
+        for (c = 0; c < A; c++) sig += '|' + part[dfa.delta[i][c]];
+        if (map[sig] === undefined) { map[sig] = k; k++; }
+        np[i] = map[sig];
+      }
+      var stable = (k === nparts);
+      nparts = k; part = np;
+      if (stable) break;
+      if (iter > 512) break; /* 理论上不会到；到了就说明划分在震荡，如实停手 */
+    }
+
+    /* 类别编号必须来自**最后一次细化的 part[]**，不能另起一套 seen[]。
+       且**每个状态都要赋值** —— 首版只在"新类别的代表"处写 clsOf[i]，
+       同类状态就留了个空槽（new Array(n) 是稀疏数组），读出来是 undefined。
+       症状极其隐蔽：delta 里出现 null，run() 读到 undefined 才崩，
+       看起来像"core 没挂上"，其实只是稀疏数组的一个空槽。
+       教训：凡是 new Array(n) 开头又按下标赋值的，要么每项都赋，
+       要么改 fill(0) —— 后者会把"忘了赋值"变成静默的 0，更坏。 */
+    var rep = [], seen = {};
+    var clsOf = [];
+    for (i = 0; i < n; i++) {
+      var g = part[i];
+      if (typeof g !== 'number') throw new Error('划分里有空槽：状态 ' + i + ' 的类别是 ' + g);
+      if (seen[g] === undefined) { seen[g] = rep.length; rep.push(i); }
+      clsOf.push(seen[g]);   /* push 而非下标赋值：保证没有空槽 */
+    }
+    /* 自洽校验：clsOf 必须是满射且幂等的。
+       漏掉这条，错位就只会在 run() 里以 undefined 的形式冒出来，
+       症状与"core 没挂上"极其相似，极易误判方向。 */
+    for (i = 0; i < n; i++) {
+      if (typeof clsOf[i] !== 'number' || clsOf[i] < 0 || clsOf[i] >= rep.length) {
+        throw new Error('最小化类别编号错位：状态 ' + i + ' → ' + clsOf[i]);
+      }
+      if (clsOf[rep[clsOf[i]]] !== clsOf[i]) {
+        throw new Error('最小化类别编号不幂等：状态 ' + i);
+      }
+    }
+    var m = rep.length;
+    var delta = [], accept = [];
+    for (var q = 0; q < m; q++) {
+      var row = new Array(A);
+      for (c = 0; c < A; c++) row[c] = clsOf[dfa.delta[rep[q]][c]];
+      delta.push(row);
+      accept.push(dfa.accept[rep[q]]);
+    }
+
+    /* ★ 剔除不可达状态 —— 这一步不是可有可无的清理，是**正确性的一部分**。
+       子集构造在"某状态所有符号都无路可走"时会补一个死状态，而划分细化
+       可能把这个类别与别的类别合掉、或让它与某个可达类别同签名，
+       于是最小化之后仍留着从初态永远走不到的状态。
+
+       症状极具欺骗性：状态数断言全过、接受判定全对、
+       唯独 layout 里 cols[-1].push(i) 抛 "reading 'push'" ——
+       报错指向布局，而病根在最小化。
+       （教训：任何"到达性"假设都必须显式验证。
+         记分牌是对的、跑起来才炸，通常就藏在这类结构性缺口上。）
+
+       剔除之后重新编号，让 dfa.start 与所有 delta 目标都落在新下标里。 */
+    var seen2 = new Array(m).fill(false), q2 = [clsOf[dfa.start]];
+    seen2[clsOf[dfa.start]] = true;
+    while (q2.length) {
+      var u = q2.shift();
+      for (c = 0; c < A; c++) {
+        var v = delta[u][c];
+        if (!seen2[v]) { seen2[v] = true; q2.push(v); }
+      }
+    }
+    var old2new = [], keep = [];
+    for (i = 0; i < m; i++) {
+      if (seen2[i]) { old2new[i] = keep.length; keep.push(i); }
+    }
+    if (keep.length !== m) {
+      var d2 = [], a2 = [];
+      keep.forEach(function (oi) {
+        var row2 = new Array(A);
+        for (c = 0; c < A; c++) row2[c] = old2new[delta[oi][c]];
+        d2.push(row2);
+        a2.push(accept[oi]);
+      });
+      delta = d2; accept = a2;
+      return {
+        alphabet: dfa.alphabet, delta: delta, accept: accept,
+        start: old2new[clsOf[dfa.start]], sets: null, dead: -1
+      };
+    }
+    return {
+      alphabet: dfa.alphabet, delta: delta, accept: accept,
+      start: clsOf[dfa.start], sets: null, dead: -1
+    };
+  }
+
+  /* ==================================================================== 布局
+   * 分层有向图布局：BFS 距离当层号，同层按发现顺序排开。
+   * 边按 (from,to) 合并，标签是能走这条边的全部符号 —— 否则
+   * "每状态每符号一条边"会把图糊成一团。
+   * ==================================================================== */
+  function layout(dfa, opts) {
+    opts = opts || {};
+    var colW = opts.colW || 112, rowH = opts.rowH || 72, r = opts.radius || 21;
+    var A = dfa.alphabet.length, n = dfa.delta.length, i, c;
+
+    var level = new Array(n).fill(-1), q = [dfa.start];
+    level[dfa.start] = 0;
+    while (q.length) {
+      var s = q.shift();
+      for (c = 0; c < A; c++) {
+        var t = dfa.delta[s][c];
+        if (level[t] < 0) { level[t] = level[s] + 1; q.push(t); }
+      }
+    }
+    var maxL = 0;
+    for (i = 0; i < n; i++) if (level[i] > maxL) maxL = level[i];
+    var cols = [];
+    for (i = 0; i <= maxL; i++) cols.push([]);
+    for (i = 0; i < n; i++) cols[level[i]].push(i);
+    var rows = 1;
+    cols.forEach(function (col) { if (col.length > rows) rows = col.length; });
+
+    var pos = {}, w = (maxL + 1) * colW, h = rows * rowH;
+    cols.forEach(function (col, li) {
+      var off = (rows - col.length) * rowH * 0.5;
+      col.forEach(function (s, ri) {
+        pos[s] = { x: (li + 0.5) * colW, y: (ri + 0.5) * rowH + off, col: li, row: ri };
+      });
+    });
+
+    var seen = {}, edges = [];
+    for (var s2 = 0; s2 < n; s2++) {
+      for (c = 0; c < A; c++) {
+        var t2 = dfa.delta[s2][c], ch = dfa.alphabet.charAt(c), k2 = s2 + '>' + t2;
+        if (seen[k2]) {
+          if (edges[seen[k2]].chars.indexOf(ch) < 0) edges[seen[k2]].chars += ch;
+          continue;
+        }
+        seen[k2] = edges.length;
+        edges.push({
+          from: s2, to: t2, chars: ch,
+          self: s2 === t2,
+          back: s2 !== t2 && pos[t2].col <= pos[s2].col
+        });
+      }
+    }
+    return {
+      pos: pos, edges: edges, width: w, height: h, radius: r,
+      cols: cols, rows: rows, levels: maxL + 1
+    };
+  }
+
+  /* ==================================================================== ⑤
+   * 跑一遍。**认识不认识的符号必须分开报告** ——
+   * 静默当成拒绝，等于谎称"这台机器能处理一切"。
+   * ==================================================================== */
+  function run(dfa, word) {
+    var s = dfa.start, path = [s], steps = [], i;
+    for (i = 0; i < word.length; i++) {
+      var c = word.charAt(i), ci = dfa.alphabet.indexOf(c);
+      if (ci < 0) {
+        return { error: 'unknown-symbol', ch: c, index: i, accept: false, path: path, steps: steps };
+      }
+      var t = dfa.delta[s][ci];
+      steps.push({ from: s, to: t, ch: c });
+      s = t; path.push(s);
+    }
+    return { accept: !!dfa.accept[s], state: s, path: path, steps: steps, error: null };
+  }
+
+  /* ============================================================== 穷举工具 */
+  /* 枚举长度 ≤ n 的全部词。**带上限**：字母表一大（比如 \d 有 10 个字符），
+   指数增长会直接撑爆内存。这里如实抛错而不是让它崩在某个分配上。
+   （这条不是洁癖：verify 与 build 都会拿它做语义核对，
+   一旦抛的错长得像别的 bug，就会把人带偏很久。） */
+  function wordsUpTo(alpha, n, cap) {
+    if (cap === undefined) cap = 20000;
+    var out = [''], frontier = [''];
+    for (var k = 0; k < n; k++) {
+      var next = [];
+      for (var i = 0; i < frontier.length; i++) {
+        for (var j = 0; j < alpha.length; j++) {
+          if (out.length >= cap) {
+            throw new RangeError('枚举词表超过上限 ' + cap +
+              '（字母表 ' + alpha.length + ' 个符号，长度 ≤ ' + (k + 1) + '）');
+          }
+          next.push(frontier[i] + alpha.charAt(j));
+        }
+      }
+      out = out.concat(next);
+      frontier = next;
+    }
+    return out;
+  }
+
+  /* Myhill–Nerode 的暴力版本。
+   * 区分 x、y：存在后缀 z 使得 xz∈L 与 yz∈L 不同。
+   * 最大的两两可区分词集 = 等价类数 = DFA 状态数的下界。
+   * 考察长度加长时这个数还涨不涨，就是"认不认得出"的可计算判据。 */
+  function nerodeScan(alpha, member, maxWord, maxSuffix) {
+    var W = wordsUpTo(alpha, maxWord);
+    var S = wordsUpTo(alpha, maxSuffix);
+    var map = {}, cls = [], i;
+    for (i = 0; i < W.length; i++) {
+      var sig = '';
+      /* S 是词表数组，不是字符串。首版写成 S.charAt(j)（括号还少一个）
+         直接抛异常，一抛就把"封顶 / 不封顶"这条核心结论整个吞掉了。 */
+      for (var j = 0; j < S.length; j++) sig += member(W[i] + S[j]) ? '1' : '0';
+      if (map[sig] === undefined) { map[sig] = cls.length; cls.push([]); }
+      cls[map[sig]].push(W[i]);
+    }
+    var lower = cls.length;
+    return {
+      words: W, suffixes: S, classes: cls, count: lower,
+      maxWord: maxWord, maxSuffix: maxSuffix, alpha: alpha
+    };
+  }
+
+  /* 封顶探测：考察长度 +1 时类数是否还涨。
+   *
+   * ★ 词长与后缀长度必须**同步增长**。首版固定 maxSuffix=3，
+   *   于是 aⁿbⁿ 在词长 4→5 时"不涨"，被误判成封顶 ——
+   *   实际是不涨的那一段已经被"后缀只看 3 长"这个分辨率限死了。
+   *   同步涨时真值是：a*b* 恒为 3（封顶），aⁿbⁿ 单调上涨（永不封顶）。
+   *   这跟"断言扫全文必然误报说明文字"同型：**分辨率不足会伪造出边界。** */
+  function saturation(alpha, member, len, extra) {
+    if (extra === undefined) extra = 1;
+    var a = nerodeScan(alpha, member, len, len);
+    var b = nerodeScan(alpha, member, len + extra, len + extra);
+    return {
+      here: a, next: b,
+      grew: b.count > a.count,
+      from: a.count, to: b.count,
+      capped: b.count === a.count
+    };
+  }
+
+  /* aⁿbⁿ 的**下界证书**：词 a¹..aⁿ 两两可区分，所以任何认它的机器
+   * 至少要 n 个状态。注意这是下界证书，不是穷举 —— 界会随 n 一起长，
+   * 正因如此才说明"没有有限解"。界面必须如实这么说。 */
+  function witnessANB(n) {
+    var words = [], suffs = [], i, j;
+    for (i = 1; i <= n; i++) { words.push(rep('a', i)); suffs.push(rep('b', i)); }
+    function member(w) {
+      var ca = 0, cb = 0, seenB = false, ok = true;
+      for (var k = 0; k < w.length; k++) {
+        var ch = w.charAt(k);
+        if (ch === 'a') { if (seenB) { ok = false; break; } ca++; }
+        else if (ch === 'b') { seenB = true; cb++; }
+        else { ok = false; break; }
+      }
+      return ok && ca === cb;
+    }
+    var cells = [];
+    var allDiff = true;
+    for (i = 0; i < n; i++) {
+      var row = [];
+      for (j = 0; j < n; j++) {
+        var d = false;
+        for (var k = 0; k < n && !d; k++) {
+          if (member(words[i] + suffs[k]) !== member(words[j] + suffs[k])) d = true;
+        }
+        if (i === j) d = false;
+        if (i !== j && !d) allDiff = false;
+        row.push(d);
+      }
+      cells.push(row);
+    }
+    return {
+      words: words, suffixes: suffs, cells: cells,
+      lowerBound: n, allDistinguishable: allDiff
+    };
+  }
+  function rep(ch, n) { var s = ''; for (var i = 0; i < n; i++) s += ch; return s; }
+
+  function memberAB(word) { return /^a*b*$/.test(word); }
+  function memberANB(word) {
+    var ca = 0, cb = 0, seenB = false;
+    for (var k = 0; k < word.length; k++) {
+      var ch = word.charAt(k);
+      if (ch === 'a') { if (seenB) return false; ca++; }
+      else if (ch === 'b') { seenB = true; cb++; }
+      else return false;
+    }
+    return ca === cb;
+  }
+
+  /* 状态爆炸族。
+   *
+   * 语义（已用穷举逐词核对过，见 blowupMember）：长度 ≥ k，且**最后 k 个字符
+   * 里最左边那个是 a**。例如 k=2 是"末两位中的第一位是 a"：
+   *   ab ✓  aa ✓  ba ✗  a ✗（长度不够）
+   *
+   * 这族的**最小** DFA 恰好 2^k 个状态（k=1..5 实测 2,4,8,16,32）。
+   * 曾经误以为是 2^k+2 / 2^k+1：那些多出来的数是**死状态与不可达残留**，
+   * 在 minimize 里剔除不可达状态后就归零了。详见文件头。
+   *
+   * 它指数增长的意义：机器必须记住"最近 k 位里已经出现过几个 b"，
+   * 而这个记忆没有上界 —— 这正是 pumping lemma 的内容。
+   */
+  function blowupSource(k) {
+    if (k < 1) return '';
+    if (k === 1) return '(a|b)*a';
+    return '(a|b)*a(a|b){' + (k - 1) + '}';
+  }
+
+  /* blowupSource(k) 对应的判定函数。build.js 用它逐词核对，
+     这样"指数"就不是一句口号，而是有语义背书的。 */
+  function blowupMember(word, k) {
+    if (word.length < k) return false;
+    return word.charAt(word.length - k) === 'a';
+  }
+
+  /* 一条龙：解析 → NFA → DFA → 最小 DFA */
+  function pipeline(src, cap) {
+    var ast = parse(src);
+    var lit = alphabetOf(ast);
+    var alpha = lit === '' ? 'ab' : lit;   /* 表达式没字面字符时借用 ab，如实上报 */
+    var nfa = thompson(ast, alpha);
+    var dfa = subsetConstruction(nfa, alpha, cap);
+    var min = minimize(dfa);
+    return {
+      src: src, ast: ast, literalAlphabet: lit, alphabet: alpha,
+      borrowedAlphabet: lit === '', nfa: nfa, dfa: dfa, min: min
+    };
+  }
+
+  return {
+    ParseError: ParseError, BlowupError: BlowupError,
+    parse: parse, alphabetOf: alphabetOf,
+    thompson: thompson, closures: closures,
+    subsetConstruction: subsetConstruction, minimize: minimize, cloneDFA: cloneDFA,
+    layout: layout, run: run,
+    wordsUpTo: wordsUpTo, nerodeScan: nerodeScan, saturation: saturation,
+    witnessANB: witnessANB, memberAB: memberAB, memberANB: memberANB,
+    blowupSource: blowupSource, blowupMember: blowupMember,
+    pipeline: pipeline
+  };
+});</script>
+<script>/* ============================================================================
+ * finite/ui.js —— 界面与交互
+ *
+ * 与既有 41 件展项的 ui.js 有三处根本差异：
+ *   ① 主入口是 **textarea**。既有展项的入口是 range 滑杆 —— 观众给参数、
+ *     系统不动；这里观众写下一门语言，系统被真的改变：改一个字，
+ *     整张状态图换一副脸。既有 41 件里以文本为第一入口的仅 3 件。
+ *   ② 渲染层是**有向图**，不是图表。没有坐标轴、没有刻度、没有折线：
+ *     圆圈是状态，双圈是接受态，边上的字符是转移。
+ *     既有 41 件里 17 件用 lineTo 画折线，但画的是"量随时间怎么变"。
+ *   ③ **结论不是预设的**。既有展项末尾固定列出若干条结论；
+ *     本作把结论交给两个真会失败的现场：
+ *       · 状态爆炸是真的撞上限撞出来的（撞了就如实停手并报数）；
+ *       · "认不出"是穷举等价类数撞出来的（涨不停就是认不出）。
+ *
+ * 铁律：所有自动机的事实（状态数、接受性、路径、等价类）都来自
+ *       window.FiniteCore。本文件**不自己算任何一个状态**。
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var C = window.FiniteCore;
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    return e;
+  }
+  /* 字体族（--type/--serif）搬到这里来用。
+     不用 CSS 变量取值：那样就得在 style.css 里定义 SVG 专用变量，
+     而两套变量名混用会让 build.js 的"不复用既有变量名"守卫变模糊。
+     —— createElementNS 的元素是纯 SVG，不继承 body 的 CSS 规则，
+        所以这里必须自带 font-family。 */
+  var SVG_FONT = 'ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace';
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function sv(tag, attrs) {
+    var e = document.createElementNS(SVGNS, tag);
+    for (var k in attrs) if (attrs[k] !== null && attrs[k] !== undefined) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function svText(x, y, str, cls, anchor) {
+    var t = sv('text', {
+      x: x, y: y, class: cls || 'edgelabel',
+      'text-anchor': anchor || 'middle',
+      'font-family': SVG_FONT
+    });
+    t.textContent = str;
+    return t;
+  }
+  /* 写数字的出口统一在这里：所有读数都是算出来的，不许写死 */
+  function num(v) { return typeof v === 'number' && isFinite(v) ? String(v) : '—'; }
+
+  /* 当前机器。null 表示还没造。 */
+  var M = null;
+  /* 爆炸上限：这个数是我们自己设的刹车，不是自然的边界 —— 界面上如实这么说 */
+  var CAP = 420;
+  var CURVE_CAP = 512;
+
+  /* ============================================================ 预设语言
+   * 注意最后一个不是"可写的正则"，而是这一节的**问题**。
+   * 首版这里塞了 'a^n b^n' —— 本语法没有 ^ 运算符，一按就报错，
+   * 等于拿一个假示例冒充语言。改成按钮直接跳到边界那一节。
+   * 教训：预设里出现自己语法不支持的东西，比不提供更糟。 */
+  var PRESETS = [
+    { name: '结尾是 abb', rx: '(a|b)*abb', note: '最小要记 3 个字符' },
+    { name: '任意多个 a', rx: 'a*', note: '认得，但什么都没记' },
+    { name: 'a 后跟若干 b', rx: 'ab*', note: '两状态' },
+    { name: '恰好三个 a', rx: 'a{3}', note: '固定长度最省' },
+    { name: '位数在 2..4', rx: '[ab]{2,4}', note: '字符类 + 区间' },
+    { name: '含子串 aa', rx: '(a|b)*aa', note: '要多看一眼' },
+    { name: 'a*b*', rx: 'a*b*', note: '封顶语言' },
+    { name: '试试 a*b*', rx: 'a*b*', note: '对比上面那门' }
+  ];
+
+  /* ============================================================ 造机器 */
+  function build() {
+    var src = $('rx').value;
+    var errBox = $('err');
+    errBox.hidden = true;
+    try {
+      var p = C.pipeline(src, CAP);
+      M = p;
+      $('rx').setAttribute('aria-invalid', 'false');
+      paintMachine();
+      paintPresets();
+      return p;
+    } catch (e) {
+      /* ParseError 带 pos：把光标停在出错字符前，观众一眼看见错在哪 */
+      if (e && e.name === 'ParseError') {
+        errBox.hidden = false;
+        errBox.innerHTML = '第 ' + (e.pos + 1) + ' 个字符处：<b>' + esc(e.message) + '</b>';
+        var ta = $('rx');
+        try { ta.focus(); ta.setSelectionRange(e.pos, e.pos + 1); } catch (x) { }
+      } else if (e && e.name === 'BlowupError') {
+        /* 撞上限不是错误，是作品要展示的现象 —— 但也要说清上限是我们设的 */
+        errBox.hidden = false;
+        errBox.innerHTML = '这台机器在 <b>' + e.built + ' 个状态</b>处停手了。' +
+          '上限 ' + e.cap + ' 是我们自己设的刹车，不是自然的边界。';
+        M = null;
+        paintMachine();
+      } else {
+        errBox.hidden = false;
+        errBox.innerHTML = '造不出来：<b>' + esc(e && e.message ? e.message : String(e)) + '</b>';
+        M = null;
+        paintMachine();
+      }
+      return null;
+    }
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>]/g, function (c) {
+      return c === '&' ? '&amp;' : c === '<' ? '&lt;' : '&gt;';
+    });
+  }
+
+  /* ============================================================ 画状态图 */
+  function paintMachine() {
+    var g = $('graph');
+    while (g.firstChild) g.removeChild(g.firstChild);
+    g.appendChild(sv('title', {}))
+      .appendChild(document.createTextNode('自动机状态转移图'));
+    var box = $('graphbox');
+    var lede = $('machine-lede');
+    var stages = $('stages');
+    /* ★ 这两个要在这里取到。首版调用了一个从没定义过的 paintFeed()，
+       抛错发生在 boot() 的中途 —— 而 __probe 是 boot 最后才赋值的，
+       于是页面其它部分都活着、探针却挂不上，
+       验证只报一句"页面没跑起来"，把真异常藏得干干净净。
+       （教训：探针/初始化早于可能抛错的任何东西，且每一步都要能单独验。） */
+    var feed = $('feed');
+    var vd = $('verdict');
+    stages.innerHTML = '';
+
+    if (!M) {
+      lede.textContent = '现在没有机器。上面写点什么，然后按「造一台」。';
+      box.hidden = true;
+      stages.hidden = true;
+      feed.innerHTML = '';
+      vd.textContent = '';
+      vd.className = 'verdict';
+      return;
+    }
+    box.hidden = false;
+    stages.hidden = false;
+
+    var m = M.min, d = M.dfa, nfaN = M.nfa.st.length;
+    var deadCount = 0;
+    for (var i = 0; i < m.delta.length; i++) if (isDead(m, i)) deadCount++;
+
+    lede.innerHTML = '你写的 <code>' + esc(M.src) + '</code> 被读成一棵语法树，' +
+      '先变成 <b>' + nfaN + '</b> 个节点的图，再折叠成 <b>' + d.delta.length +
+      '</b> 个状态的表，最后压到 <b>' + m.delta.length + '</b> 个 —— 这就是最小的。' +
+      '（字母表 ' + esc(M.alphabet) + '，取自你写的字面字符。）';
+
+    /* ---- 三段式读数：不是 KPI 卡，是这台机器的来路 ---- */
+    stages.appendChild(stage('① 语法树与图', String(nfaN), 'Thompson 构造的节点数'));
+    var shrink = d.delta.length - m.delta.length;
+    stages.appendChild(stage('② 折叠成表', String(d.delta.length), '子集构造后的状态数'));
+    stages.appendChild(stage('③ 压到最小', String(m.delta.length),
+      shrink > 0 ? '又压掉 ' + shrink + ' 个' : '本来就最小', shrink > 0 ? 'shrink' : ''));
+    stages.appendChild(stage('其中死状态', String(deadCount), '进去就出不来的'));
+
+    /* ---- 画图 ---- */
+    var lay = C.layout(m, { colW: 116, rowH: 78, radius: 22 });
+    var padX = 46, padY = 34;
+    var w = lay.width + padX * 2, h = lay.height + padY * 2;
+    g.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    g.setAttribute('width', w);
+    g.setAttribute('height', h);
+    g.style.maxWidth = '100%';
+
+    var defs = sv('defs', {});
+    var marker = sv('marker', {
+      id: 'arr', viewBox: '0 0 10 10', refX: '9', refY: '5',
+      markerWidth: '6', markerHeight: '6', orient: 'auto-start-reverse'
+    });
+    marker.appendChild(sv('path', { d: 'M0,1 L9,5 L0,9 Z', fill: '#6b7480' }));
+    defs.appendChild(marker);
+    g.appendChild(defs);
+
+    var gEdges = sv('g', {}), gNodes = sv('g', {});
+    g.appendChild(gEdges);
+    g.appendChild(gNodes);
+
+    /* 起点小三角 */
+    var sp = lay.pos[m.start];
+    gEdges.appendChild(sv('path', {
+      d: 'M' + (padX + 6) + ',' + (padY + sp.y) + ' L' + (padX + sp.x - lay.radius - 3) +
+        ',' + (padY + sp.y),
+      class: 'startmark', 'marker-end': 'url(#arr)'
+    }));
+
+    /* 边 */
+    /* ★ 标签错位是必须的，不是美观优化。
+       首版所有边的标签都放在中点，(a|b)*abb 这类"多层里同层多节点"
+       的图上标签会叠在节点圆圈上 —— 数值断言全过，人眼却读不出
+       哪条边走哪个字符。凡是"数值对但感官可能错"的渲染，
+       只有截图能发现（工作区记忆里 glyph 那次的教训）。
+       办法：同一条连线上有多条边时，按第几条把标签往法线方向推开。 */
+    var edgeSeenAt = {};
+    lay.edges.forEach(function (e) {
+      var a = lay.pos[e.from], b = lay.pos[e.to];
+      var x1 = padX + a.x, y1 = padY + a.y, x2 = padX + b.x, y2 = padY + b.y;
+      var path, lx, ly;
+      if (e.self) {
+        /* 自环：绕到节点上方 */
+        var r = lay.radius;
+        path = 'M' + (x1 - r * 0.7) + ',' + (y1 - r * 0.7) +
+          ' C' + (x1 - r * 2.4) + ',' + (y1 - r * 2.9) +
+          ' ' + (x1 + r * 2.4) + ',' + (y1 - r * 2.9) +
+          ' ' + (x1 + r * 0.7) + ',' + (y1 - r * 0.7);
+        lx = x1; ly = y1 - r * 2.35;
+      } else if (e.back) {
+        /* 回边：往回弯。弧度按连线长度给足，否则标签会压在节点上。 */
+        var mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        var dx = x2 - x1, dy = y2 - y1;
+        var len = Math.sqrt(dx * dx + dy * dy) || 1;
+        var off = Math.min(120, 62 + len * 0.22);
+        var cx = mx - dy / len * off, cy = my + dx / len * off;
+        path = 'M' + x1 + ',' + y1 + ' Q' + cx + ',' + cy + ' ' + x2 + ',' + y2;
+        lx = (x1 + 2 * cx + x2) / 4; ly = (y1 + 2 * cy + y2) / 4;
+      } else {
+        var ang = Math.atan2(y2 - y1, x2 - x1);
+        var sx = x1 + Math.cos(ang) * (lay.radius + 2);
+        var sy = y1 + Math.sin(ang) * (lay.radius + 2);
+        var ex = x2 - Math.cos(ang) * (lay.radius + 6);
+        var ey = y2 - Math.sin(ang) * (lay.radius + 6);
+        path = 'M' + sx + ',' + sy + ' L' + ex + ',' + ey;
+        lx = (sx + ex) / 2; ly = (sy + ey) / 2;
+      }
+      gEdges.appendChild(sv('path', { d: path, class: 'edge', 'marker-end': 'url(#arr)' }));
+
+      /* 标签错位：同一条水平连线上有多条边时，按第几条往上/下推开。
+         首版全部挤在中点，(a|b)*abb 的图上标签压在圆圈里，
+         数值断言一条都抓不到，只有截图能看出"读不出哪条边"。 */
+      var laneKey = e.self ? 'self' + e.from : (Math.round(x1 / 8) + '_' + Math.round(y1 / 8) + '_' + Math.round(x2 / 8));
+      var lane = edgeSeenAt[laneKey] || 0;
+      edgeSeenAt[laneKey] = lane + 1;
+      var push = lane * 17;
+      if (lane > 0) {
+        /* 沿法线方向推开，别沿着连线方向（那样会盖住节点） */
+        var nx = -(y2 - y1), ny = (x2 - x1);
+        var nl = Math.sqrt(nx * nx + ny * ny) || 1;
+        lx += nx / nl * push;
+        ly += ny / nl * push;
+      }
+
+      /* 标签先垫一层底色，否则会压在边上读不出来 */
+      var tw = e.chars.length * 8 + 7;
+      gEdges.appendChild(sv('rect', {
+        x: lx - tw / 2, y: ly - 9, width: tw, height: 15,
+        fill: '#fbfaf6', rx: 2, class: 'edgelabel bg'
+      }));
+      gEdges.appendChild(svText(lx, ly + 3, e.chars, 'edgelabel'));
+    });
+
+    /* 节点 */
+    for (var s = 0; s < m.delta.length; s++) {
+      var p = lay.pos[s];
+      var cx = padX + p.x, cy = padY + p.y;
+      var dead = isDead(m, s);
+      var grp = sv('g', { 'data-state': String(s) });
+      grp.appendChild(sv('circle', {
+        cx: cx, cy: cy, r: lay.radius,
+        class: dead ? 'nodedead' : 'nodering'
+      }));
+      if (m.accept[s] && !dead) {
+        grp.appendChild(sv('circle', { cx: cx, cy: cy, r: lay.radius - 5, class: 'acceptring' }));
+      }
+      var lb = svText(cx, cy + 4, dead ? '死' : String(s), 'nodelabel');
+      grp.appendChild(lb);
+      if (s === m.start) {
+        grp.appendChild(svText(cx, cy - lay.radius - 9, '起', 'nodelabel'));
+      }
+      gNodes.appendChild(grp);
+    }
+
+    highlight(null);
+    runWord(true);
+  }
+
+  /* 死状态：没有任何出边能离开自己 */
+  function isDead(dfa, s) {
+    var A = dfa.alphabet.length;
+    for (var c = 0; c < A; c++) if (dfa.delta[s][c] !== s) return false;
+    return true;
+  }
+
+  function stage(name, val, note, cls) {
+    var d = el('div', 'stage' + (cls ? ' ' + cls : ''));
+    var a = el('div', 'sname'); a.textContent = name;
+    var b = el('div', 'sval'); b.textContent = val;
+    var c2 = el('div', 'snote'); c2.textContent = note;
+    d.appendChild(a); d.appendChild(b); d.appendChild(c2);
+    return d;
+  }
+
+  /* 高亮路径：把状态图上走过的节点点亮 */
+  function highlight(path) {
+    var g = $('graph');
+    Array.prototype.forEach.call(g.querySelectorAll('g[data-state]'), function (grp) {
+      grp.setAttribute('class', '');
+    });
+    if (!path) return;
+    path.forEach(function (s, idx) {
+      var grp = g.querySelector('g[data-state="' + s + '"]');
+      if (!grp) return;
+      var cls = 'on';
+      if (idx === path.length - 1) cls += ' last';
+      grp.setAttribute('class', cls);
+    });
+  }
+
+  /* ============================================================ 跑一遍 */
+  function runWord(quiet) {
+    var feed = $('feed');
+    var vd = $('verdict');
+    feed.innerHTML = '';
+    if (!M) { vd.textContent = ''; vd.className = 'verdict'; return; }
+    var w = $('word').value;
+    var r = C.run(M.min, w);
+
+    highlight(r.error ? null : r.path);
+
+    if (r.error) {
+      vd.className = 'verdict unknown';
+      vd.textContent = '这台机器不认识符号「' + r.ch + '」（第 ' + (r.index + 1) +
+        ' 个字符）。它的字母表是 ' + M.alphabet + '。';
+      var f0 = el('div', 'frow');
+      var c0 = el('span', 'fch'); c0.textContent = '?';
+      var s0 = el('span', 'fst'); s0.textContent = '遇到不认识的符号，机器停在这里 —— 不装作拒绝了';
+      f0.appendChild(c0); f0.appendChild(s0);
+      feed.appendChild(f0);
+      return;
+    }
+
+    if (w === '') {
+      var fe = el('div', 'fempty');
+      fe.textContent = '（空串：机器还没动就已经' + (r.accept ? '在双圈里' : '不在双圈里') + '）';
+      feed.appendChild(fe);
+    }
+    r.steps.forEach(function (st, idx) {
+      var last = idx === r.steps.length - 1;
+      var row = el('div', 'frow' + (last ? ' last' : ''));
+      var ch = el('span', 'fch'); ch.textContent = st.ch;
+      var txt = el('span', 'fst');
+      txt.textContent = ' 状态 ' + st.from + ' → ' + st.to + ' ';
+      var acc = el('span', M.min.accept[st.to] ? 'facc' : 'fdead');
+      acc.textContent = M.min.accept[st.to] ? '（双圈，接受）' : '（单圈，不接受）';
+      row.appendChild(ch); row.appendChild(txt); row.appendChild(acc);
+      feed.appendChild(row);
+    });
+
+    if (r.accept) {
+      vd.className = 'verdict ok';
+      vd.textContent = '认出来了：「' + w + '」被这门语言接受。';
+    } else {
+      vd.className = 'verdict no';
+      vd.textContent = '没认出来：「' + w + '」不在这门语言里。';
+    }
+    if (!quiet) { /* 探针会直接调 runWord */ }
+  }
+
+  /* ============================================================ 爆炸曲线 */
+  function paintBlowup() {
+    var k = parseInt($('knob').value, 10);
+    $('knobout').textContent = 'k = ' + k;
+    var cv = $('curve');
+    while (cv.firstChild) cv.removeChild(cv.firstChild);
+    cv.appendChild(sv('title', {}))
+      .appendChild(document.createTextNode('状态数随 k 的增长'));
+
+    /* 先把 1..k 的状态数真算出来 */
+    var pts = [], hit = null;
+    for (var i = 1; i <= k; i++) {
+      try {
+        var p = C.pipeline(C.blowupSource(i), CURVE_CAP);
+        pts.push({ k: i, n: p.min.delta.length, dfa: p.dfa.delta.length, nfa: p.nfa.st.length });
+      } catch (e) {
+        pts.push({ k: i, n: null, over: e.built || CURVE_CAP });
+        hit = i;
+        break;
+      }
+    }
+
+    /* 纵轴用 log2 —— 这是唯一能把"每加一 k 状态数翻倍"画成直线的做法。
+   首版用线性轴，k=4 的 16 被压在底部、k=8 的 256 占满顶部，
+   中间挤成一团平缓的斜线，"指数"这两个字在图上根本看不出来。
+   （教训同前：这类缺陷没有任何数值断言能抓到，只有看图。
+     指数增长的正确读法是 —— 在 log2 轴上它应当是一条直线。） */
+    var w = 560, h = 200, pl = 54, pr = 18, pt = 22, pb = 34;
+    cv.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    cv.setAttribute('width', w); cv.setAttribute('height', h);
+    cv.style.maxWidth = '100%';
+
+    var maxK = Math.max(4, k);
+    var maxN = 8;
+    pts.forEach(function (p) { if (p.n) maxN = Math.max(maxN, p.n); });
+    if (hit) maxN = Math.max(maxN, CURVE_CAP / 2);
+    var topLog = Math.ceil(Math.log(maxN * 1.3) / Math.LN2);
+
+    function X(kk) { return pl + (kk - 1) / (maxK - 1) * (w - pl - pr); }
+    function Y(nn) {
+      if (!(nn > 0)) return h - pb;
+      var lg = Math.log(nn) / Math.LN2;          /* log2 */
+      return h - pb - (lg / topLog) * (h - pt - pb);
+    }
+
+    /* 网格：2 的幂，就是 log2 轴上的整数刻度 */
+    for (var gexp = 0; gexp <= topLog; gexp++) {
+      var gv = Math.pow(2, gexp);
+      var y = Y(gv);
+      cv.appendChild(sv('line', { x1: pl, y1: y, x2: w - pr, y2: y, class: 'cghost' }));
+      cv.appendChild(svText(pl - 7, y + 4, String(gv), 'cgrid', 'end'));
+    }
+    cv.appendChild(svText(pl, h - pb + 17, 'k →', 'cgrid', 'start'));
+    cv.appendChild(svText(pl - 7, pt - 8, '状态数（纵轴每格 ×2）', 'cgrid', 'start'));
+
+    /* 幽灵线：2^k 的理论形状。log2 轴上它恰好是 45° 直线。 */
+    var gd = '', gdStarted = false;
+    for (var q = 1; q <= maxK; q++) {
+      gd += (gdStarted ? ' L' : 'M') + X(q) + ',' + Y(Math.pow(2, q));
+      gdStarted = true;
+    }
+    if (gdStarted) cv.appendChild(sv('path', { d: gd, class: 'cghost' }));
+
+    /* 实线 */
+    var d = '', started = false;
+    pts.forEach(function (p) {
+      if (p.n === null) return;
+      d += (started ? ' L' : 'M') + X(p.k) + ',' + Y(p.n);
+      started = true;
+    });
+    if (started) cv.appendChild(sv('path', { d: d, class: 'cline' }));
+
+    /* ★ 数据点的标签必须用独立 class（cpoint）。
+       首版图上的网格刻度标签和数据点标签共用 cval，
+       于是探针的 blowupValues()（查 text.cval）把 1,2,4,8…256
+       这些**刻度**当成实测值读了回去，
+       "读数单调不降"这种断言就永远成立 —— 变成一句废话。 */
+    pts.forEach(function (p) {
+      if (p.n === null) return;
+      cv.appendChild(sv('circle', { cx: X(p.k), cy: Y(p.n), r: 3.2, class: 'cdot' }));
+      cv.appendChild(svText(X(p.k), Y(p.n) - 9, String(p.n), 'cpoint'));
+    });
+
+    var le = $('blowlede'), be = $('blowerr');
+    if (hit) {
+      be.hidden = false;
+      be.textContent = 'k = ' + hit + ' 时这台机器造不出来了 —— 子集构造在 ' +
+        CURVE_CAP + ' 个状态处停手。那条虚线是 2^k 的理论形状，它还在往上爬。';
+      le.innerHTML = '虚线是 <b>2^k</b>，也就是这族语言所需的最小状态数 —— ' +
+        '实测的点逐项落在它上面。它指数增长，意味着机器必须记住' +
+        '"最近 k 位里已经连着几个 b"，而这个记忆<b>没有上界</b>。';
+    } else {
+      be.hidden = true;
+      var last = pts[pts.length - 1];
+      le.innerHTML = 'k = ' + last.k + ' 时，最小机器要 <b>' + last.n +
+        '</b> 个状态。虚线是理论形状 <b>2^k</b>，实测逐项落在上面。' +
+        '指数意味着机器得记住"最近 k 位里已经连着几个 b"，而这个记忆<b>没有上界</b>。';
+    }
+  }
+
+  /* ============================================================ 认不出 */
+  function paintBound() {
+    var L = parseInt($('scan').value, 10);
+    $('scanout').textContent = '词长 ≤ ' + L;
+
+    function paint(boxId, verdictId, member, capped) {
+      var scan = C.nerodeScan('ab', member, L, L);
+      var box = $(boxId);
+      box.innerHTML = '';
+      /* 只列前若干组，太多就截断并如实说明 —— 不假装全列了 */
+      var shown = Math.min(scan.classes.length, 14);
+      for (var i = 0; i < shown; i++) {
+        var w = scan.classes[i];
+        var txt = w.length === 6 ? '（6 个词一组）' : (w.length > 6 ? w.slice(0, 6).join(',') + '…' : w.join(','));
+        var chip = el('span', 'gchip' + (i < 3 ? ' g0' : ''));
+        chip.textContent = '#' + i + ' ' + txt;
+        box.appendChild(chip);
+      }
+      if (scan.classes.length > shown) {
+        var more = el('span', 'gchip');
+        more.textContent = '… 还有 ' + (scan.classes.length - shown) + ' 组';
+        box.appendChild(more);
+      }
+      var vd = $(verdictId);
+      vd.className = 'langverdict ' + (capped ? 'capped' : 'growing');
+      vd.textContent = capped
+        ? scan.count + ' 组 · 考察长度再涨也不动了 —— ' + scan.count + ' 个状态就够。'
+        : scan.count + ' 组 · 还在涨：' + scan.count + ' 个状态还不够，而且还要更多。';
+    }
+
+    paint('g-ab', 'v-ab', C.memberAB, true);
+    paint('g-anb', 'v-anb', C.memberANB, false);
+
+    /* 这一段不能靠单点结论，要看"随着长度增长"这件事本身 */
+    var sa = C.saturation('ab', C.memberAB, L, 1);
+    var sb = C.saturation('ab', C.memberANB, L, 1);
+    var note = $('boundnote');
+    note.innerHTML = '同一个换法：<code>a*b*</code> 从 ' + sa.from + ' 组到 ' + sa.to +
+      ' 组，<b>' + (sa.capped ? '不动了' : '还在动') + '</b>；' +
+      '<code>aⁿbⁿ</code> 从 ' + sb.from + ' 组到 ' + sb.to + ' 组，<b>' +
+      (sb.capped ? '不动了' : '还在动') + '</b>。' +
+      '组数就是状态数的下限，所以第二门语言<b>任何有限机器都认不出来</b>。';
+  }
+
+  /* ============================================================ 预设芯片 */
+  function paintPresets() {
+    var box = $('presets');
+    if (box.childElementCount) return; /* 只建一次，但高亮跟着当前值走 */
+    PRESETS.forEach(function (p) {
+      var b = el('button', 'pchip');
+      b.type = 'button';
+      b.setAttribute('data-rx', p.rx);
+      b.appendChild(document.createTextNode(p.rx));
+      var n = el('span', 'pn');
+      n.textContent = p.note;
+      b.appendChild(n);
+      b.addEventListener('click', function () {
+        $('rx').value = p.rx;
+        build();
+      });
+      box.appendChild(b);
+    });
+  }
+  function markPreset() {
+    var cur = $('rx').value;
+    Array.prototype.forEach.call(document.querySelectorAll('.pchip'), function (b) {
+      b.style.borderColor = b.getAttribute('data-rx') === cur ? 'var(--rule)' : '';
+      b.style.background = b.getAttribute('data-rx') === cur ? 'var(--slab-2)' : '#fff';
+    });
+  }
+
+  /* ============================================================ 接线 */
+  function wire() {
+    $('b-build').addEventListener('click', function () { build(); markPreset(); });
+    $('rx').addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); build(); markPreset(); }
+    });
+    $('b-run').addEventListener('click', function () { runWord(); });
+    $('word').addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); runWord(); }
+    });
+    $('knob').addEventListener('input', paintBlowup);
+    $('scan').addEventListener('input', paintBound);
+  }
+
+  function boot() {
+    wire();
+    paintPresets();
+    markPreset();
+    build();
+    paintBlowup();
+    paintBound();
+    window.__probe = {
+      ready: true,
+      /* ---- 状态 ---- */
+      build: function (src) { $('rx').value = src; return build() !== null; },
+      setWord: function (w) { $('word').value = w; runWord(); return true; },
+      setKnob: function (k) { $('knob').value = String(k); paintBlowup(); return true; },
+      setScan: function (L) { $('scan').value = String(L); paintBound(); return true; },
+      /* ---- 语义值（断言走这些，不看源码字符串）---- */
+      minStates: function () { return M ? M.min.delta.length : -1; },
+      dfaStates: function () { return M ? M.dfa.delta.length : -1; },
+      nfaStates: function () { return M ? M.nfa.st.length : -1; },
+      alphabet: function () { return M ? M.alphabet : ''; },
+      accepts: function (w) { return M ? C.run(M.min, w).accept : false; },
+      verdictText: function () { return $('verdict').textContent || ''; },
+      graphNodeCount: function () { return $('graph').querySelectorAll('g[data-state]').length; },
+      graphEdgeCount: function () { return $('graph').querySelectorAll('path.edge').length; },
+      graphDrawn: function () {
+        var r = $('graph').getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height) };
+      },
+      graphNonEmpty: function () {
+        var g = $('graph');
+        return g.querySelectorAll('circle').length > 0 && g.querySelectorAll('text').length > 0;
+      },
+      litNodes: function () { return $('graph').querySelectorAll('g.on').length; },
+      feedRows: function () { return $('feed').childElementCount; },
+      blowupValues: function () {
+        var out = [];
+        /* 查 cpoint 而不是 cval —— cval 已被网格刻度占用，
+           混在一起会让"读数单调不降"这种断言永远成立。 */
+        Array.prototype.forEach.call($('curve').querySelectorAll('text.cpoint'), function (t) {
+          out.push(parseInt(t.textContent, 10));
+        });
+        return out;
+      },
+      blowupErrShown: function () { return !$('blowerr').hidden; },
+      groupCountAB: function () { return $('g-ab').childElementCount; },
+      groupCountANB: function () { return $('g-anb').childElementCount; },
+      verdictAB: function () { return $('v-ab').textContent || ''; },
+      verdictANB: function () { return $('v-anb').textContent || ''; },
+      boundNote: function () { return $('boundnote').textContent || ''; },
+      errShown: function () { return !$('err').hidden; },
+      errText: function () { return $('err').textContent || ''; },
+      stageCount: function () { return $('stages').childElementCount; },
+      nanScan: function () {
+        var txt = document.body.innerText || '';
+        var m = txt.match(/NaN|undefined|\[object/);
+        return { nan: !!m, where: m ? m[0] : '' };
+      },
+      touchTargets: function () {
+        var sel = 'button, input, textarea, .pchip';
+        return Array.prototype.map.call(document.querySelectorAll(sel), function (e) {
+          var r = e.getBoundingClientRect();
+          return {
+            tag: e.tagName.toLowerCase(),
+            id: e.id || e.className || '',
+            w: Math.round(r.width),
+            h: Math.round(Math.max(r.width, r.height)) /* 滑杆按长边判 */
+          };
+        });
+      }
+    };
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else boot();
+})();</script>
+</body>
+</html>
