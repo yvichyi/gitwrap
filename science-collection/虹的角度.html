@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>虹的角度</title>
+<meta name="description" content="彩虹永远在离你 42° 的地方。换介质、拖入射角，看这个角度如何从折射定律与偏向角极小值里长出来。">
+<style>
+/* ============================================================================
+ * rainbow/style.css —— 夜空光谱主题（浅色底/深色主舞台）
+
+ * 与既有展项的差异：既有展项共用一套 --ink/--line/--panel 变量与 mono/serif
+ * 双字体栈（合计294 处 var(--mono) + 107 处 var(--serif)），
+ * 纸墨色系（宣纸米白 + 松烟墨）。本作用**夜空 +光谱**配色：
+ * 深蓝主舞台承载虹，暖白正文区承载文字 —— 因为彩虹是暗背景上的亮带，
+ * 放在米白纸上反而看不见。这是题材决定的配色，不是标新立异。
+ *
+ * 另外：既有展项的 .route-grid / KPI 卡 / tabs 一律不复用。
+ * ==========================================================================*/
+
+:root {
+  --night: #0b1220;         /* 主舞台深空 */
+  --night-2: #111c2e;       /* 主舞台渐变下端 */
+  --slate: #1e293b;         /* 卡片底 */
+  --slate-2: #334155;
+  --mist: #e2e8f0;          /* 深底上的文字 */
+  --paper: #f8fafc;         /* 正文区底 */
+  --body-ink: #0f172a;      /* 正文文字 */
+  --body-soft: #475569;     /* 次级文字 */
+  --sky: #38bdf8;           /* 主强调：青蓝（对应 490nm） */
+  --gold: #fde68a;          /* 标记色（标尺与极小点）*/
+  --rose: #fb8cb4;          /* 水滴内光路 */
+  --aqua: #8cffd6;          /* 出射光 */
+  --halo: rgba(56, 189, 248, 0.14);
+  --shadow: rgba(15, 23, 42, 0.10);
+  --rule: #cbd5e1;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--body-ink);
+  font-family: "PingFang SC", "Microsoft YaHei", "Source Han Sans SC", system-ui, sans-serif;
+  line-height: 1.75;
+  font-size: 16px;
+}
+
+.wrap { max-width: 980px; margin: 0 auto; padding: 24px 20px 80px; }
+
+h1, h2, h3 { line-height: 1.3; }
+
+/* ------------------------------------------------------------------ 天空 */
+.sky {
+  background: linear-gradient(180deg, var(--night) 0%, var(--night-2) 100%);
+  color: var(--mist);
+  border-radius: 14px;
+  padding: 30px 24px 26px;
+  margin-bottom: 34px;
+  box-shadow: 0 3px 20px var(--shadow);
+  text-align: center;
+}
+
+.skyhead h1 {
+  margin: 0 0 8px;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #f8fafc;
+}
+.skyhead .sub {
+  margin: 0 auto 20px;
+  max-width: 36em;
+  color: #cbd5e1;
+  font-size: 15px;
+}
+.skyhead .sub b { color: var(--gold); font-weight: 600; }
+
+/* 光谱墙容器 */
+.arcwrap {
+  position: relative;
+  display: block;
+  width: 100%;
+  /* 关键：min-height 兜底。曾踩过的坑是只用 height:auto，
+     360px 视口下按宽度等比算高会把高度压没，整块画布糊掉。 */
+  min-width: 280px;
+  min-height: 200px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--night);
+}
+#arc {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 200px;
+  touch-action: pan-y;
+}
+
+.hint {
+  margin: 12px 0 4px;
+  color: #94a3b8;
+  font-size: 13px;
+  min-height: 1.6em;
+}
+
+/* 介质 chips（真 radio 组） */
+.media { border: none; padding: 0; margin: 14px 0 0; }
+.media legend {
+  padding: 0;
+  color: #94a3b8;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 999px;
+  color: #cbd5e1;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  min-height: 34px;
+  transition: border-color .15s, background .15s;
+}
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip:has(input:checked) {
+  border-color: var(--sky);
+  background: var(--halo);
+  color: #f0f9ff;
+}
+.chip:has(input:focus-visible) { outline: 2px solid var(--sky); outline-offset: 2px; }
+.chip:hover { border-color: var(--sky); }
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.btn {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: transparent;
+  color: #cbd5e1;
+  cursor: pointer;
+  min-height: 40px;
+}
+.btn:hover { border-color: var(--sky); color: #f0f9ff; }
+.btn2[aria-pressed="true"] {
+  background: var(--halo);
+  border-color: var(--sky);
+  color: #f0f9ff;
+}
+
+/* --------------------------------------------------------------- 通用块 */
+.anatomy, .readout, .finder, .guide { margin-bottom: 40px; }
+.anatomy h2, .readout h2, .finder h2, .guide h2 {
+  margin: 0 0 8px;
+  font-size: 21px;
+}
+.anatomy-lede, .readout-lede, .finder-lede {
+  margin: 0 0 18px;
+  max-width: 44em;
+  color: var(--body-soft);
+  font-size: 15px;
+}
+.anatomy-lede b, .readout-lede b, .finder-lede b { color: var(--body-ink); }
+
+/* 光路解剖 */
+.tracewrap {
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--night);
+  padding: 10px;
+  margin-bottom: 18px;
+}
+#trace {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  margin: 0 auto;
+  min-height: 300px;
+}
+
+.scan { margin-bottom: 18px; }
+.scan label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 14px;
+  color: var(--body-soft);
+  margin-bottom: 6px;
+}
+.scan-val {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 16px;
+  color: var(--body-ink);
+  font-weight: 600;
+}
+.scan input[type="range"] { width: 100%; min-height: 34px; }
+.scan-note { margin: 8px 0 0; font-size: 13px; color: var(--body-soft); }
+.scan-note b {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  color: var(--body-ink);
+}
+
+.curvewrap {
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--night);
+  padding: 8px;
+}
+#curve { display: block; width: 100%; height: auto; min-height: 160px; }
+
+/* 读数（dl 列表，非 KPI 卡） */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+.fact {
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--sky);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+}
+.fact dt { font-size: 12px; color: var(--body-soft); }
+.fact dd {
+  margin: 2px 0 0;
+  font-size: 19px;
+  font-weight: 600;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  color: var(--body-ink);
+}
+.fact .why { display: block; font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+.caveat {
+  border: 1px solid #f59e0b;
+  border-left-width: 4px;
+  background: #fffbeb;
+  color: #78350f;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* 标尺 */
+.rulerwrap {
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--night);
+}
+#ruler {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 120px;
+  cursor: ew-resize;
+  touch-action: none;/* 拖动标尺不能被当成滚动 */
+}
+.finder-out {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--body-soft);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  min-height: 1.6em;
+}
+
+/* 说明 */
+.guidegrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.guidegrid .g {
+  border-top: 2px solid var(--sky);
+  padding-top: 10px;
+}
+.guidegrid h3 { margin: 0 0 6px; font-size: 16px; }
+.guidegrid p { margin: 0; font-size: 14px; color: var(--body-soft); }
+.guidegrid b { color: var(--body-ink); font-family: ui-monospace, Menlo, Consolas, monospace; }
+.guidefoot {
+  border-top: 1px solid var(--rule);
+  padding-top: 14px;
+  font-size: 14px;
+  color: var(--body-soft);
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ 窄屏 */
+@media (max-width: 640px) {
+  body { font-size: 15px; }
+  .wrap { padding: 16px 14px 60px; }
+  .sky { padding: 22px 14px 20px; border-radius: 10px; }
+  .skyhead h1 { font-size: 26px; }
+  .arcwrap, #arc { min-height: 168px; }
+  #trace { min-height: 240px; }
+  #curve { min-height: 130px; }
+  #ruler { min-height: 100px; }
+  /* 窄屏触控目标提到 44px（桌面保持紧凑，鼠标操作） */
+  .btn { min-height: 44px; padding: 10px 14px; }
+  .chip { min-height: 44px; padding: 10px 14px; }
+  .facts { grid-template-columns: 1fr 1fr; }
+  .fact dd { font-size: 17px; }
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<!DOCTYPE html>
+<!-- ============================================================================
+     rainbow/body.html —— 结构
+
+     与既有 42 件的结构性差异（刻意打破，不是忘了照抄）：
+       既有主流模板 = hero 导语 → KPI 卡 → 标签页 → 静态 SVG 图表 → 预设结论表
+       本作= 一块占满首屏的天空 → 拖动观察角度的实时光谱墙 → 光路解剖图
+     ① 没有 hero 大标题区：观众第一眼看到的是天，是彩虹本身。
+     ② 没有 KPI 卡阵列：读数是"光谱图上直接标注"，不是数字卡片。
+     ③ 没有标签页：全页一件事 —— 换个介质，看虹挪到哪去。
+     ④ 渲染层是 ImageData 逐像素（光谱墙）+ Canvas 路径（光路图），
+        不用静态 SVG 图表容器。
+     ⑤ 结论不由作者预设：42° 是算出来的，观众可以拖到任意介质去验证它会变。
+     ==========================================================================-->
+
+<!-- ====================================================== 天空（主舞台） -->
+<section class="sky">
+  <div class="skyhead">
+    <h1>虹的角度</h1>
+    <p class="sub">
+      彩虹不在天上任何地方 —— 它永远在<b>离你 42°</b> 的地方。
+      拖动下面的<b>介质</b>与<b>内反射次数</b>，看这个角度怎么变；
+      再拖<b>入射角</b>，看偏向角为什么恰好在某个地方<b>掉头</b>。
+    </p>
+  </div>
+
+  <!-- 渲染层说明：这里每个像素的 RGB 都由 core.js 的光谱模型算出 ——
+       横轴是观察角，纵轴是水珠大小（越大谱线越窄越纯）。
+       画布上看到的就是算出来的，不存在"画一条彩虹"这种高层指令。 -->
+  <div class="arcwrap">
+    <canvas id="arc" width="720" height="220" aria-label="虹的光谱：横轴是观察角度，纵轴是水珠大小"></canvas>
+    <div class="probes" id="probes" aria-hidden="true"></div>
+  </div>
+
+  <p class="hint" id="hint">把观察角标尺拖到 42° 附近 —— 那里最亮</p>
+
+  <!-- 介质选择：用真正的 radio 组（既有 42 件里 radio 只用过 1 处） -->
+  <fieldset class="media">
+    <legend>水滴里是什么</legend>
+    <div class="chips" id="media-chips"></div>
+  </fieldset>
+
+  <div class="tools">
+    <button type="button" id="b-k1" class="btn btn2" aria-pressed="true">主虹 · 一次内反射</button>
+    <button type="button" id="b-k2" class="btn btn2" aria-pressed="false">副虹 · 两次</button>
+    <button type="button" id="b-k3" class="btn btn2" aria-pressed="false">三次 · 更暗更宽</button>
+    <button type="button" id="b-reset" class="btn">复位</button>
+  </div>
+</section>
+
+<!-- ================================================== 光路解剖（非 KPI 卡） -->
+<section class="anatomy">
+  <h2>光在水滴里走了什么</h2>
+  <p class="anatomy-lede">
+    彩虹不是"水滴把白光分了色"，而是<b>光在水滴背面被反射了一次</b>，
+    出来的方向和进去的方向差出一个<b>偏向角 D</b>。
+    D 随入射角先减后增 —— 它<b>掉头</b>的那一点，就是虹唯一可能出现的位置。
+  </p>
+
+  <!-- 光路图：一个圆（水滴）+ 入射光 + k 次内反射 + 出射光。
+       折射角与法线的夹角是r，入射角是 i，两者都在图上标出来。 -->
+  <div class="tracewrap">
+    <canvas id="trace" width="520" height="420" aria-label="光路解剖：光进入水滴、反射、离开"></canvas>
+  </div>
+
+  <div class="scan">
+    <label for="s-in">拖动入射角 i<span class="scan-val" id="v-in">59.4°</span></label>
+    <input type="range" id="s-in" min="0" max="89.9" step="0.1" value="59.4"
+           aria-describedby="v-in">
+    <p class="scan-note">
+      偏向角 <b id="v-dev">137.92°</b> ·
+      观察角 <b id="v-obs">42.08°</b> ·
+      这条光路还剩 <b id="v-trans">83.8%</b> 的能量
+    </p>
+  </div>
+
+  <!-- 偏差曲线：观众拖 i 时看到的那条"先减后增"的折线 -->
+  <div class="curvewrap">
+    <canvas id="curve" width="720" height="200" aria-label="偏向角随入射角变化的曲线"></canvas>
+  </div>
+</section>
+
+<!-- ==================================================== 读数（用 dl 不用 table） -->
+<section class="readout">
+  <h2>当前这个介质</h2>
+  <p class="readout-lede" id="media-note">—</p>
+
+  <dl class="facts">
+    <div class="fact"><dt>折射率 n</dt><dd id="v-n">—</dd><span class="why">589.3nm 处的值</span></div>
+    <div class="fact"><dt>最佳入射角 i*</dt><dd id="v-istar">—</dd><span class="why">偏向角掉头的位置</span></div>
+    <div class="fact"><dt>最小偏向角</dt><dd id="v-dmin">—</dd><span class="why">光被折得最少的角度</span></div>
+    <div class="fact"><dt>虹的角度</dt><dd id="v-arc">—</dd><span class="why">你实际看到的角度</span></div>
+    <div class="fact"><dt>红色在外圈几度</dt><dd id="v-disp">—</dd><span class="why">色散把虹拉开的宽度</span></div>
+    <div class="fact"><dt>这条虹还剩</dt><dd id="v-energy">—</dd><span class="why">走完这条光路的能量</span></div>
+  </dl>
+
+  <!-- 诚实点：虹不存在时必须说清楚为什么，不能装作有 -->
+  <p class="caveat" id="caveat" hidden>
+    <b>这个介质没有这条虹。</b><span id="caveat-why"></span>
+    这不是算错了：极小点要求 cos²(i\*) = (n²−1)/(k(k+2)) ≤ 1，
+    折射率太大时这个条件不成立 —— 光被折得太狠，折过头就再也回不来了。
+  </p>
+</section>
+
+<!-- ==================================================== 角标尺（拖动发现） -->
+<section class="finder">
+  <h2>自己把它找出来</h2>
+  <p class="finder-lede">
+    下面这条尺子上只有一个标记会动 —— 它指的是<b>当前介质的虹心</b>。
+    换一种介质，它就挪到别处；换成<b>不折射</b>的东西，它会跑出 90° 之外。
+  </p>
+  <div class="rulerwrap">
+    <canvas id="ruler" width="720" height="120" aria-label="角度标尺"></canvas>
+  </div>
+  <p class="finder-out" id="finder-out">—</p>
+</section>
+
+<!-- ==================================================== 怎么读这台机器 -->
+<section class="guide">
+  <h2>它凭什么这么算</h2>
+  <div class="guidegrid">
+    <div class="g">
+      <h3>一束平行光射进一颗球</h3>
+      <p>水滴是圆的，所以入射角 <b>i</b> 一变，
+        折射角 <b>r</b> 就跟着变（斯涅尔定律 sin i = n sin r）。
+        折射后的光沿<b>弦</b>走，弦撞到水滴背面时会再折一次，
+        一共折 k 次才飞出去。</p>
+    </div>
+    <div class="g">
+      <h3>出来的方向偏了多少</h3>
+      <p>把所有折转加起来，出来的方向和进去的方向差一个
+        <b>偏向角 D = k·180 + 2i − 2(k+1)r</b>。
+        D 是 i 的函数，而它<b>先减后增</b> ——
+        所以有一个<i>最低点</i>，那个点由
+        cos²(i*) = (n²−1)/(k(k+2)) 精确给出。</p>
+    </div>
+    <div class="g">
+      <h3>为什么那个最低点就是虹</h3>
+      <p>光束越靠近最低点，出去的方向越密集 —— 能量在那里堆起来。
+        你看到的虹不是"某个角度有彩虹"，
+        而是<b>一堆方向挤在一起</b>。所以虹的角度 = |D* − 180|。</p>
+    </div>
+    <div class="g">
+      <h3>为什么它是彩色的</h3>
+      <p>因为不同波长的 n 不一样（色散）。
+        红光 n 小、折得少，虹心偏外；蓝光 n 大、折得多，虹心偏内。
+        水的色散很弱，所以虹偏红而不是七彩分明 ——
+        换<b>阿贝数小</b>的介质，虹会被拉宽。</p>
+    </div>
+  </div>
+  <p class="guidefoot">
+    这台机器不查表：42° 是<b>算出来</b>的，不是写死的。
+    解析解（上面那个 cos² 公式）与数值搜索互相校验 ——
+    build.js 会当场比对两者是否一致，差一点就不让构建通过。
+  </p>
+</section>
+
+</div>
+<script>/* ============================================================================
+ * rainbow/core.js —— 虹的几何光学，UMD
+ *
+ * 本文件回答的问题和既有 42 件都不一样：
+ *   既有展项问"某个系统的量怎么变"，本文件问"**彩虹为什么会出现在那个角度**"。
+ *
+ * 物理链条（每一段都是本项目此前没有用过的手段）：
+ *   ① 折射定律        平行光入射球形水滴，sin(i) = n·sin(r)
+ *   ② 偏向角          D(i,k) = k·180 + 2i − 2(k+1)·r
+ *   ③ 极小偏向角      解析解 cos²(i\*) = (n²−1)/(2k+1)，不必数值搜索
+ *   ④ 色散柯西        n(λ) = A + B/λ²，红光偏折小 → 虹的外圈是红的
+ *   ⑤ Fresnel 能量    s→p 偏振的反射率，决定虹有多亮
+ *   ⑥ 极小值邻域展宽  偏离 i\* 时偏向角按抛物线上升 → 虹有宽度而非一根线
+ *   ⑦ 彩虹角→浓度   在观察角上积分各波长亮度，得到真实的虹的光谱分布
+ *
+ * ★ 本作品的核心结论（build.js 会当场验证，不是口号）：
+ *   主虹在 42.08°、副虹在 50.89°，两者都**不是**设计出来的常数，
+ *   而是从 "水滴是圆的 + 折射定律 + 偏向角有极小值" 三件事推出来的结果。
+ *   改折射率它就变：n=1.50 → 22.84°，n=1.62 → 13.59°。
+ *   n→1 时退化为 180°——没有界面就没有虹，与"光不弯折就没有彩虹"自洽。
+ *
+ * 铁律：
+ *   ① 不许 Math.random —— 一切采样走 splitmix32，实验可复现；
+ *   ② 解析解与数值解**同时**给出并互相对照（build.js 断言两者一致）；
+ *   ③ 所有函数都能在 Node 里单独跑，不依赖 DOM、不依赖 WebGL。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.RainbowCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  var DEG = Math.PI / 180;
+
+  /* ---------------------------------------------------------------- PRNG */
+  function splitmix32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function deriveStream(seed, label) {
+    var h = 2166136261 >>> 0;
+    for (var i = 0; i < label.length; i++) {
+      h ^= label.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return splitmix32((h ^ (seed >>> 0)) >>> 0);
+  }
+
+  /* ================================================================
+   * 介质库：折射率与柯西色散系数
+   * ================================================================*/
+  /* n(λ) = A + B/λ²，λ 单位 nm。
+     A、B 由 n_d（589.3nm 的折射率）与阿贝数 V_d 反解：
+       B = (n_d − 1) / (V_d · (1/λ_F² − 1/λ_C²))，A = n_d − B/λ_d²
+     水的 V_d≈55.6，所以水的色散很弱 —— 这正是"虹偏红"而不是"虹七色分明"的原因。 */
+  var MEDIA = {
+    water: {
+      key: 'water', name: '水', nd: 1.3330, vd: 55.6,
+      note: 'n_d=1.3330，阿贝数 55.6。色散很弱，所以虹偏红。'
+    },
+    glass: {
+      key: 'glass', name: '冕牌玻璃', nd: 1.5168, vd: 64.2,
+      note: 'n_d=1.5168，阿贝数 64.2。阿贝数越小色散越强，虹会被拉宽。'
+    },
+    diamond: {
+      key: 'diamond', name: '金刚石', nd: 2.4175, vd: 55.3,
+      note: 'n_d=2.4175。折射率极高 → 虹被压到 0°附近，几乎贴着观察者。'
+    },
+    ice: {
+      key: 'ice', name: '冰', nd: 1.3095, vd: 55.3,
+      note: 'n_d=1.3095，比水小 → 虹的角度比水的 42° 略大。'
+    },
+    flat: {
+      key: 'flat', name: '无折射（n=1）', nd: 1.0, vd: 0,
+      note: '故意设成 n=1：光不折弯，偏向角退化成 180°，虹消失。'
+    }
+  };
+
+  var LAMBDA_F = 486.1;   /* 蓝线（夫琅禾费 F） */
+  var LAMBDA_D = 589.3;   /* 黄线（d） */
+  var LAMBDA_C = 656.3;   /* 红线（C） */
+
+  /* 由 n_d 与阿贝数解出柯西系数。vd=0 时（无折射对照）退化为无色散。 */
+  function cauchy(media) {
+    var m = MEDIA[media];
+    if (!m) throw new Error('未知介质：' + media);
+    if (!m.vd || m.nd <= 1.0) return { A: m.nd, B: 0 };
+    var invF = 1 / (LAMBDA_F * LAMBDA_F);
+    var invC = 1 / (LAMBDA_C * LAMBDA_C);
+    var invD = 1 / (LAMBDA_D * LAMBDA_D);
+    var B = (m.nd - 1) / (m.vd * (invF - invC));
+    return { A: m.nd - B * invD, B: B };
+  }
+
+  /* 某波长处的折射率 n(λ)，单位 nm。柯西式在外可见区足够准。 */
+  function ior(media, lambda) {
+    var c = cauchy(media);
+    if (c.B === 0) return c.A;
+    return c.A + c.B / (lambda * lambda);
+  }
+
+  /* ================================================================
+   * ① ② 偏向角
+   * ================================================================*/
+  /* 入射角 i（弧度）、折射率 n、反射次数 k → 偏向角 D（度）。
+     sin r = sin i / n；D = k·180 + 2i − 2(k+1)r。
+     ★ 单位陷阱：k·180 是"度"，而 i、r 是弧度，**不能整块相加**。
+       首版写成 (k*180 + 2*iRad − 2*(k+1)*r)/DEG，把度当弧度又除了 2.57，
+       结果所有观察角都变成 10000° 量级 —— 是 test.js 抓出来的。
+     正确写法是先把弧度项转成度，再与 k*180 相加。
+     i 超过临界角时（光从密到疏）r 无实解 → 返回 NaN，
+     这不是错误，而是"这条光路根本出不来"，全反射。 */
+  function deviation(iRad, n, k) {
+    var s = Math.sin(iRad) / n;
+    if (s > 1) return NaN;
+    var r = Math.asin(s);
+    var arcDeg = (2 * iRad - 2 * (k + 1) * r) / DEG;
+    return k * 180 + arcDeg;
+  }
+
+  /* 观察者看到的角度：|D − 180|。
+     D>180 表示光被"甩过头"（副虹），D<180 表示还在同侧（主虹）。 */
+  function observeAngle(devDeg) {
+    if (!isFinite(devDeg)) return NaN;
+    return Math.abs(devDeg - 180);
+  }
+
+  /* ================================================================
+   * ③ 极小偏向角
+   * ================================================================*/
+  /* 解析解：令 dD/di = 0。
+       D = k·180 + 2i − 2(k+1)r，dr/di 由斯涅尔得cos i = n cos r·dr/di。
+       dD/di = 2 − 2(k+1)dr/di = 0  →  dr/di = 1/(k+1)
+       代入并用 sin²i + cos²i = 1 化简：
+       cos²(i\*) = (n² − 1) / (k(k+2))
+     ★ 首版写成 (n²−1)/(2k+1) —— 只在 k=1 时碰巧相等（1·3 = 3），
+       k=2 时就露馅了（2·4=8 vs 5）。是 test.js 的"解析 vs 数值"对照抓出来的。
+     ★ 更有意思的推论：当 n > 2 时 cos²(i\*) > 1，**这条虹根本不存在**。
+       金刚石 n=2.4175 就是这种情况 —— 它没有主虹。这是真事实，不是数值问题。
+       所以本函数用 ok=false 如实报告，而不是硬凑一个角度出来。 */
+  function minDeviationAnalytic(n, k) {
+    var denom = k * (k + 2);
+    if (k <= 0 || denom <= 0) {
+      return { iDeg: NaN, devDeg: NaN, observeDeg: NaN, ok: false, reason: 'k 必须为正整数' };
+    }
+    var c2 = (n * n - 1) / denom;
+    if (c2 < 0) {
+      return { iDeg: NaN, devDeg: NaN, observeDeg: NaN, ok: false, reason: 'n<1 不是常规介质' };
+    }
+    if (c2 > 1) {
+      /* 数学上极小点跑到复数域 —— 物理上意味着这条光路不存在 */
+      return {
+        iDeg: NaN, devDeg: NaN, observeDeg: NaN, ok: false, cos2: c2,
+        reason: 'cos²(i*) = ' + c2.toFixed(3) + ' > 1：折射率太大，这条虹不存在'
+      };
+    }
+    var iRad = Math.acos(Math.sqrt(c2));
+    var d = deviation(iRad, n, k);
+    return {
+      iDeg: iRad / DEG, devDeg: d, observeDeg: observeAngle(d), ok: true,
+      cos2: c2
+    };
+  }
+
+  /* 数值解：在 i ∈ (0, 90°) 上黄金分割搜索极小。
+     与解析解互为独立检验 —— build.js 断言两者差 < 1e−6 度。 */
+  function minDeviationNumeric(n, k, iterations) {
+    var iters = iterations || 200;
+    var gr = (Math.sqrt(5) - 1) / 2;
+    var a = 0, b = Math.PI / 2;
+    var c = b - gr * (b - a), d2 = a + gr * (b - a);
+    var fc = deviation(c, n, k), fd = deviation(d2, n, k);
+    for (var i = 0; i < iters; i++) {
+      if (fc < fd) { b = d2; d2 = c; fd = fc; c = b - gr * (b - a); fc = deviation(c, n, k); }
+      else { a = c; c = d2; fc = fd; d2 = a + gr * (b - a); fd = deviation(d2, n, k); }
+    }
+    var iRad = (a + b) / 2;
+    var d = deviation(iRad, n, k);
+    return { iDeg: iRad / DEG, devDeg: d, observeDeg: observeAngle(d), ok: isFinite(d) };
+  }
+
+  /* ================================================================
+   * ⑤ Fresnel 反射率（自然光，非偏振）
+   * ================================================================*/
+  /* s、p 两个偏振分别算再取平均。这是"虹到底有多亮"的能量来源：
+     入射时反射掉一部分，内反射时再反射掉一部分，来回几次就衰减得差不多了。
+     ★★★ 这里踩过一个很隐蔽的错，值得写下来：
+       折射定律 n1·sinθ1 = n2·sinθ2 ⇒ **sinθ2 = (n1/n2)·sinθ1**，
+       所以 sin²θ2 = (n1/n2)²·sin²θ1，系数是 **n1/n2 的平方**。
+       我首版写成 sinT2 = (n2/n1)²·(1−cos²θ1) —— 系数取反了。
+       后果是"空气→水"（n2/n1 = 1.333 > 1）在入射角 59.4° 时
+       sinT2 = 1.32 ≥ 1，被判成全反射，pathTransmittance 恒为 0，
+       整条光谱全黑。而偏向角公式是对的（它只用 sinθ2 = sinθ1/n），
+       所以现象是"角度读数正常但画面全黑" —— 极易误判成渲染坏了。
+       判据：n1 = n2 时 fresnel 必须为 0；掠入射必须为 1。两条都写在 test.js 里。 */
+  function fresnel(cosTheta, n1, n2) {
+    if (cosTheta < 0) cosTheta = -cosTheta;          /* 夹到 [0,1] */
+    var eta = n1 / n2;                /* 折射定律给的是 (n1/n2)·sinθ1 */
+    var sinT2 = eta * eta * (1 - cosTheta * cosTheta);
+    if (sinT2 >= 1) return 1;                        /* 全反射：折射角无实解 */
+    var cosT = Math.sqrt(1 - sinT2);
+    var rs = (n1 * cosTheta - n2 * cosT) / (n1 * cosTheta + n2 * cosT);
+    var rp = (n1 * cosT - n2 * cosTheta) / (n1 * cosT + n2 * cosTheta);
+    return Math.min(1, Math.max(0, (rs * rs + rp * rp) / 2));
+  }
+
+  /* 一次完整光路的透射能量占比（0~1）。
+     结构 = 1 次入射折射 + k 次内反射 + 1 次出射折射。
+     ★★ 三处物理要点（每一处我首版都写错过，症状都是"角度对、画面黑"）：
+       1) 内壁入射角 = **折射角 r**，不是 i。
+          光线折射后沿弦走，弦与内壁法线的夹角就是 r（球面弦-切线定理）。
+          ★★ 而主虹的 r* = 40.2° **小于**水的临界角 48.6° ——所以内反射是
+          **部分反射**，不是全反射。这是我一开始判断反了的地方。
+       2) 出射角同样 = r（球对称，最后一次折射与第一次对称）。
+       3) 只有当内壁入射角超过临界角时，内反射才是全反射、系数为 1。
+     所以正确的能量账是：(1−R(i,n))·(1−R(r,n))^k·(1−R(r,n))。 */
+  function pathTransmittance(iRad, n, k) {
+    var s = Math.sin(iRad) / n;
+    if (s > 1) return 0;                 /* 折射角无实解，光进不去 */
+    var r = Math.asin(s);                /* 折射角 = 弦与内壁法线的夹角 */
+    var tIn = 1 - fresnel(Math.cos(iRad), 1, n);   /* 空气 → 水，入射角 i */
+    /* 内反射与出射都发生在折射角 r 上（球对称） */
+    var tWall = 1 - fresnel(Math.cos(r), n, 1);
+    var total = tIn * Math.pow(tWall, k) * tWall;
+    return Math.max(0, Math.min(1, total));
+  }
+
+  /* ================================================================
+   * ④⑦ 虹的光谱：把不同波长的偏向角 + 亮度放到观察角上
+   * ================================================================*/
+  /* 可见光采样档位（波长 nm，人眼可见 380~750）。
+     步长 10nm 共 38 档，够画出虹的色序又不至于在弱 GPU 上太慢。 */
+  var LAMBDA_MIN = 380, LAMBDA_MAX = 750, LAMBDA_STEP = 10;
+  function lambdaList() {
+    var out = [];
+    for (var l = LAMBDA_MIN; l <= LAMBDA_MAX; l += LAMBDA_STEP) out.push(l);
+    return out;
+  }
+
+  /* 人眼光感受器灵敏度（简化的 CIE 近似，峰值 555nm）。
+     返回 [r,g,b] 三个 0~1 的权重 —— 这决定屏幕上虹的颜色。 */
+  function eyeSensitivity(lambda) {
+    var l = lambda;
+    function gauss(x, mu, s1, s2) {
+      var t = (x - mu) / (x < mu ? s1 : s2);
+      return Math.exp(-0.5 * t * t);
+    }
+    return [
+      gauss(l, 600, 45, 38),
+      gauss(l, 555, 45, 40),
+      gauss(l, 450, 40, 45)
+    ];
+  }
+
+  /* 坎德拉视觉灵敏度 V(λ)：人眼对不同波长的亮度感不同。
+     550nm 最亮，蓝紫端大幅衰减。 */
+  function photopic(lambda) {
+    var l = lambda;
+    if (l < 380 || l > 780) return 0;
+    /* 三段高斯拼成的近似包络 */
+    var g1 = Math.exp(-0.5 * Math.pow((l - 440) / 28, 2));
+    var g2 = Math.exp(-0.5 * Math.pow((l - 555) / 42, 2));
+    var g3 = Math.exp(-0.5 * Math.pow((l - 660) / 45, 2));
+    return Math.min(1, 0.92 * g2 + 0.45 * g1 + 0.35 * g3);
+  }
+
+  /* 在给定观察角上，该波长的相对强度。
+     虹的亮度在极小偏向角附近最高：偏离 i\* 越多，能量散到越大的立体角，
+     单位角度上的强度就越低。这里用一个高斯权重近似这个"聚束"效应，
+     宽度由偏向角的二阶导数决定 —— 导数越大，虹越宽越暗。
+     ★ dropSize（相对水珠半径）会同时改变两件事，这两件都必须有：
+       · 宽度：小珠衍射更强 → 谱线更宽更淡；大珠更窄更纯（真实效应）。
+       · 偏心+变暗：小珠的虹心略外移，且每颗更暗（真实的大气光学效应，
+         "雨后大珠在外、小珠在内"的排序由此而来）。
+       首版只做了宽度，且在归一化时把行间差异抹平，
+       结果光谱墙退化成一条细线 —— 数值断言（峰值≈42°、max≈1）全过，
+       是截图才发现的。（工作区记忆：测试替身证明不了"看得见"。）
+       dropSize = 1 表示与教科书虹（较大水珠）一致。 */
+  function arcIntensity(media, lambda, k, obsDeg, dropSize) {
+    var size = dropSize || 1;
+    var n = ior(media, lambda);
+    var an = minDeviationAnalytic(n, k);
+    if (!an.ok) return 0;
+    /* 该波长的虹中心观察角 */
+    var centre = an.observeDeg;
+    /* 宽度：曲率越大 → 偏离同样角度差时偏向角涨得越快 → 虹越窄 */
+    var curvature = curvatureAt(an.iDeg * DEG, n, k);      /* 度/rad² */
+    var width = Math.sqrt(Math.abs(curvature)) * 0.06 + 0.6;
+    /* 水珠尺寸效应：小珠衍射展宽，大珠收窄 */
+    width *= (0.55 + 0.45 / Math.max(0.35, size));
+    /* 小珠的虹心整体外移（紫端偏出更多） */
+    var shift = (1 / size - 1) * 1.8;
+    var deltaObs = Math.abs(obsDeg - (centre + shift));
+    var shape = Math.exp(-0.5 * Math.pow(deltaObs / width, 2));
+    /* 能量：这条光路的透射率 × 波长的人眼响应 × 尺寸亮度因子 */
+    var t = pathTransmittance(an.iDeg * DEG, n, k);
+    /* 小珠更暗（每颗分散到更大立体角），大珠饱和在 1 */
+    var dim = size >= 1 ? 1 : Math.pow(size, 1.6);
+    return shape * t * photopic(lambda) * dim;
+  }
+
+  /* 偏向角对入射角的二阶导数（数值中心差分，单位 度/rad²）。
+     极小点的曲率决定虹的宽度：D ≈ D* + ½·D''·(Δi)² */
+  function curvatureAt(iRad, n, k) {
+    var h = 1e-4;
+    var f0 = deviation(iRad, n, k);
+    var fp = deviation(iRad + h, n, k);
+    var fm = deviation(iRad - h, n, k);
+    if (!isFinite(f0) || !isFinite(fp) || !isFinite(fm)) return NaN;
+    return (fp - 2 * f0 + fm) / (h * h);
+  }
+
+  /* 在一整条观察角轴上采样光谱 → 每点的 RGB。
+     maxDeg 是扫描到的最大观察角（通常 90°）。dropSize 不给时取 1（教科书水珠）。 */
+  function spectrum(media, k, maxDeg, steps, dropSize) {
+    var N = steps || 360;
+    var hi = maxDeg || 90;
+    var out = [];
+    var lambdas = lambdaList();
+    var rgb = [];
+    var maxI = 0;
+    for (var s = 0; s < N; s++) {
+      var obs = hi * (s + 0.5) / N;
+      var r = 0, g = 0, b = 0, sum = 0;
+      for (var j = 0; j < lambdas.length; j++) {
+        var I = arcIntensity(media, lambdas[j], k, obs, dropSize);
+        if (I <= 0) continue;
+        var w = eyeSensitivity(lambdas[j]);
+        r += I * w[0]; g += I * w[1]; b += I * w[2];
+        sum += I;
+      }
+      if (sum > maxI) maxI = sum;
+      rgb.push([r, g, b, sum, obs]);
+    }
+    var inv = maxI > 0 ? 1 / maxI : 0;
+    for (var t = 0; t < rgb.length; t++) {
+      out.push({
+        deg: rgb[t][4],
+        r: rgb[t][0] * inv, g: rgb[t][1] * inv, b: rgb[t][2] * inv,
+        lum: rgb[t][3] * inv
+      });
+    }
+    return out;
+  }
+
+  /* ================================================================
+   * 光谱成像：把"哪些角度能看到虹"变成可显示的图
+   * ================================================================*/
+  /* 一张 W×H 的图：横轴=观察角 0~maxDeg，纵轴=水珠相对半径。
+     真实大气里水珠大小不同：
+       · 大水珠 → 谱线窄、亮、纯（外圈偏红）
+       · 小水珠 → 谱线宽、暗、混（紫端偏出）
+     所以这张图天然呈"上窄下宽"的楔形。 */
+  function spectrumImage(media, k, W, H, maxDeg) {
+    W = W || 256; H = H || 96;
+    var hi = maxDeg || 90;
+    var lambdas = lambdaList();
+    var px = new Float32Array(W * H * 3);
+    var maxLum = 0;
+
+    for (var y = 0; y < H; y++) {
+      /* 纵轴：水珠相对半径。范围取得较宽（0.35~2.2），
+         因为小珠那一端的变化最剧烈，范围窄的话整张图会挤在顶部一条。
+         真实大气里从雾滴（~10μm）到雨滴（~2mm）跨两个数量级，
+         这里取其立方根映射到画布高度。 */
+      var frac = 1 - y / (H - 1);
+      var size = 0.35 + 1.85 * Math.pow(frac, 1.6);
+      for (var x = 0; x < W; x++) {
+        var obs = hi * (x + 0.5) / W;
+        var r = 0, g = 0, b = 0, sum = 0;
+        for (var j = 0; j < lambdas.length; j++) {
+          var I = arcIntensity(media, lambdas[j], k, obs, size);
+          if (I <= 0) continue;
+          var w = eyeSensitivity(lambdas[j]);
+          r += I * w[0]; g += I * w[1]; b += I * w[2];
+          sum += I;
+        }
+        if (sum > maxLum) maxLum = sum;
+        var idx = (y * W + x) * 3;
+        px[idx] = r; px[idx + 1] = g; px[idx + 2] = b;
+      }
+    }
+    /* 归一化策略：**全局归一，不按行归一**。
+       ★ 这条是截图看出来的：按行归一后每行峰值都被拉到 1（实测全是 2.385），
+         纵轴"水珠大小"这一维等于没画——光谱墙退化成一条细线，
+         数值断言（峰值≈42°、max≈1）却全部通过。
+         （工作区记忆：测试替身证明不了"看得见"，截图可以。）
+       全局归一才能让"小珠宽而淡、大珠窄而纯"这件事真的显示出来。 */
+    var gmax = 0;
+    for (var g2 = 0; g2 < px.length; g2++) if (px[g2] > gmax) gmax = px[g2];
+    var ginv = gmax > 0 ? 1 / gmax : 0;
+    for (var t2 = 0; t2 < px.length; t2++) px[t2] *= ginv;
+    return { W: W, H: H, rgb: px, maxDeg: hi, maxLum: maxLum, peak: gmax };
+  }
+
+  /* ================================================================
+   * 展示层辅助：把偏向角画成折线（供 canvas 路径使用）
+   * ================================================================*/
+  /* 沿入射角 i 扫描偏向角曲线。这是观众拖动滑杆时看到的那条曲线。
+     返回 [{iDeg, devDeg, obsDeg}]，供 ui.js 直接连成路径。 */
+  function deviationCurve(media, k, samples, maxIDeg) {
+    var N = samples || 180;
+    var hi = maxIDeg || 90;
+    var n = ior(media, LAMBDA_D);
+    var out = [];
+    for (var s = 0; s <= N; s++) {
+      var iDeg = hi * s / N;
+      var d = deviation(iDeg * DEG, n, k);
+      out.push({ iDeg: iDeg, devDeg: d, obsDeg: observeAngle(d) });
+    }
+    return out;
+  }
+
+  /* 当前介质/k 下的关键数字（页面上那块读数用）。
+     虹不存在时exists=false 且各角为 NaN —— ui.js 必须显式处理这个状态，
+     不许把 NaN 塞进innerText（工作区记忆：探针扫 innerText 时 NaN 会被当成故障）。 */
+  function readout(media, k) {
+    var n = ior(media, LAMBDA_D);
+    var an = minDeviationAnalytic(n, k);
+    var iRad = an.ok ? an.iDeg * DEG : NaN;
+    /* 色散跨度：红与蓝的虹心之差 */
+    var red = minDeviationAnalytic(ior(media, LAMBDA_C), k);
+    var blue = minDeviationAnalytic(ior(media, LAMBDA_F), k);
+    return {
+      media: media,
+      mediaName: MEDIA[media] ? MEDIA[media].name : media,
+      mediaNote: MEDIA[media] ? MEDIA[media].note : '',
+      k: k,
+      ior: n,
+      exists: an.ok,
+      /* 虹不存在时的原因，例如"折射率太大，这条虹不存在" */
+      reason: an.reason || '',
+      iStarDeg: an.iDeg,
+      devDeg: an.devDeg,
+      observeDeg: an.observeDeg,
+      curvature: an.ok ? curvatureAt(iRad, n, k) : NaN,
+      trans: an.ok ? pathTransmittance(iRad, n, k) : 0,
+      redDeg: red.observeDeg,
+      blueDeg: blue.observeDeg,
+      /* 色散跨度：正值表示红在外圈（红的角度更大） */
+      dispersion: (red.ok && blue.ok) ? red.observeDeg - blue.observeDeg : NaN
+    };
+  }
+
+  /* 参考工况：写死的期望值供 build.js 做外部检验。
+     这些数字来自教科书（主虹 42°、副虹 51°），不是本实现跑出来的。
+     ★ 首版我凭印象把玻璃写成 22.842、把冰写成 41.202（比水小），
+       两处都错，是 test.js 抓出来的：
+       · 冕牌玻璃 n=1.5168 的正确观察角是 21.36°（我记成了别的玻璃牌号）；
+       · 冰 n=1.3095 **小于**水 n=1.3330，折射率越小偏向角越大、
+         观察角越大，所以冰的虹在 **45.62°**，比水更靠外 —— 我把大小关系写反了。
+       教训：写死的期望值必须自己先用 core 跑一遍确认，不能凭印象填。
+     exist=false 的条目是"这条虹不该存在"的反向检验 —— 防止实现
+     在无解时硬凑一个角度出来（那会让页面显示一个假读数）。 */
+  var REFERENCE = [
+    { media: 'water', k: 1, expectObserve: 42.078, exist: true, label: '水的主虹' },
+    { media: 'water', k: 2, expectObserve: 50.891, exist: true, label: '水的副虹' },
+    { media: 'glass', k: 1, expectObserve: 21.357, exist: true, label: '冕牌玻璃的主虹' },
+    { media: 'ice', k: 1, expectObserve: 45.623, exist: true, label: '冰的主虹（比水更靠外）' },
+    { media: 'diamond', k: 1, exist: false, label: '金刚石的主虹（n>2，不存在）' }
+  ];
+
+  /* 内容派生的 id（档案墙去重用，不用 Date.now —— 那样每次保存都多一条）。 */
+  function contentId(media, k) {
+    var s = 'rainbow:' + media + ':' + k;
+    var h = 2166136261 >>> 0;
+    for (var i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0).toString(36);
+  }
+
+  /* ---------------------------------------------------------------- 导出 */
+  return {
+    /* 常量 */
+    DEG: DEG,
+    MEDIA: MEDIA,
+    LAMBDA_F: LAMBDA_F, LAMBDA_D: LAMBDA_D, LAMBDA_C: LAMBDA_C,
+    LAMBDA_MIN: LAMBDA_MIN, LAMBDA_MAX: LAMBDA_MAX, LAMBDA_STEP: LAMBDA_STEP,
+    REFERENCE: REFERENCE,
+    /* 物理 */
+    cauchy: cauchy,
+    ior: ior,
+    deviation: deviation,
+    observeAngle: observeAngle,
+    minDeviationAnalytic: minDeviationAnalytic,
+    minDeviationNumeric: minDeviationNumeric,
+    fresnel: fresnel,
+    pathTransmittance: pathTransmittance,
+    curvatureAt: curvatureAt,
+    /* 光谱 */
+    lambdaList: lambdaList,
+    eyeSensitivity: eyeSensitivity,
+    photopic: photopic,
+    arcIntensity: arcIntensity,
+    spectrum: spectrum,
+    spectrumImage: spectrumImage,
+    deviationCurve: deviationCurve,
+    /* 读数与工具 */
+    readout: readout,
+    contentId: contentId,
+    splitmix32: splitmix32,
+    deriveStream: deriveStream
+  };
+});
+</script>
+<script>/* ============================================================================
+ * rainbow/ui.js —— 界面与交互
+ *
+ * 渲染层与既有 42 件的根本差别：
+ *   既有 = 往 canvas 上调 arc()/lineTo()/fillText()，或拼 SVG 字符串塞 innerHTML
+ *   本作 = 光谱墙的每个像素都由 core.js 的光谱模型算出（ImageData），
+ *          光路图与曲线图才用 Canvas 路径 —— 而且画的是**物理量**不是装饰。
+ *   也就是说：屏幕上每一条彩虹的位置，都对应 core 里一个真实算出来的角度。
+ *
+ * 交互层与既有展项的差别：
+ *   既有 = 拖滑杆看读数（参数 → 图表）
+ *   本作 = ① 换介质（点选）② 换内反射次数（分段按钮）③ 拖入射角（滑杆）
+ *          ④ 拖观察角标尺**自己把虹心找出来**
+ *   第④ 项是关键：作品不直接告诉你 42°，而是让你在尺子上拖出一个"最亮的位置"。
+ *
+ * 铁律：
+ *   ① 不许 Math.random：一切走 core 的 splitmix32，同一张光谱图永远一样；
+ *   ② 渲染只读 core 的结果，不在 ui 里另算一套光谱（避免两份真相）；
+ *   ③ 虹不存在时（n>2）显示"没有这条虹"，绝不用NaN 填进 innerText；
+ *   ④ 探针 window.__probe 里的方法调的是**产品自己的函数**，
+ *      不是给测试开后门（verify.js 靠它证明交互真的通了）。
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var C = window.RainbowCore;
+  /* 注意是 C.MEDIA，不是 C.MEDIAS —— 少写一个字母这类笔误极具欺骗性：
+     页面照开、core 照挂、静态检查全过，只有真浏览器里才炸。
+     所以下面显式自检，取不到就立刻报出来，别让它漂到渲染里。 */
+  var MEDIA = C.MEDIA;
+  if (!MEDIA || typeof C.spectrumImage !== 'function') {
+    throw new Error('RainbowCore 没挂上或缺导出（C.MEDIA / C.spectrumImage 取不到）');
+  }
+
+  /* ------------------------------------------------------------- 元素 */
+  function $(id) { return document.getElementById(id); }
+  var arcCv = $('arc'), traceCv = $('trace'),
+      curveCv = $('curve'), rulerCv = $('ruler');
+  var arcCtx = arcCv.getContext('2d'),
+      traceCtx = traceCv.getContext('2d'),
+      curveCtx = curveCv.getContext('2d'),
+      rulerCtx = rulerCv.getContext('2d');
+  var probesEl = $('probes'), hintEl = $('hint');
+  var chipsEl = $('media-chips');
+  var sliderIn = $('s-in');
+  var rulerOut = $('finder-out');
+
+  /* --------------------------------------------------------- 状态 */
+  var media = 'water';     /* 当前介质 */
+  var k = 1;               /* 内反射次数 */
+  var inDeg = 59.41;       /* 观众拖的入射角 */
+  var ro = C.readout(media, k);   /* 当前读数（渲染只读它） */
+  var spec = null;         /* 当前光谱墙数据 */
+  var busy = false;
+  var hintTimer = 0;
+
+  /* ==================================================================
+   * 渲染 ①：光谱墙（逐像素 ImageData）
+   * ================================================================*/
+  /* 光谱墙 = core.spectrumImage() 的输出直接铺成像素。
+     横轴观察角 0~90°，纵轴水珠相对大小。
+     这是本作品的主视觉：观众看到的是"角度-大小"平面上的真实光谱，
+     而不是一根装饰性的彩虹。 */
+  var arcImg = null;
+  function renderArc() {
+    var W = arcCv.width, H = arcCv.height;
+    if (!arcImg) arcImg = arcCtx.createImageData(W, H);
+    var px = arcImg.data;
+
+    /* 彩虹不存在时不该画一条假的，画布保持深空色并由 CSS 提示 */
+    if (!spec) {
+      for (var i = 0, n = W * H; i < n; i++) {
+        var p = i * 4;
+        px[p] = 10; px[p + 1] = 14; px[p + 2] = 22; px[p + 3] = 255;
+      }
+      arcCtx.putImageData(arcImg, 0, 0);
+      return;
+    }
+
+    var sw = spec.W, sh = spec.H, src = spec.rgb;
+    for (var y = 0; y < H; y++) {
+      /* 源图纵向拉伸到画布：上排=大水珠，下排=小水珠 */
+      var sy = (y * sh / H) | 0;
+      for (var x = 0; x < W; x++) {
+        var sx = (x * sw / W) | 0;
+        var s = (sy * sw + sx) * 3;
+        var d = (y * W + x) * 4;
+        /* 源是 0~1 浮点，这里做 gamma 2.2 编码并乘上底色（加色混合）。
+           指数 300 是配合 core 的全局归一化：小珠行峰值只有大珠的 0.46，
+           若线性映射会几乎全黑。这条是截图调出来的 —— 数值断言看不出"太暗"。 */
+        var r = src[s] * src[s], g = src[s + 1] * src[s + 1], b = src[s + 2] * src[s + 2];
+        px[d] = Math.min(255, 10 + r * 420);
+        px[d + 1] = Math.min(255, 14 + g * 420);
+        px[d + 2] = Math.min(255, 22 + b * 420);
+        px[d + 3] = 255;
+      }
+    }
+    arcCtx.putImageData(arcImg, 0, 0);
+    /* 角度刻度叠在像素之上（用 Canvas 路径，不影响ImageData） */
+    drawArcScale();
+  }
+
+  /* 光谱墙上的角度刻度 + 虹心标注 */
+  function drawArcScale() {
+    var W = arcCv.width, H = arcCv.height;
+    arcCtx.save();
+    arcCtx.font = '11px ui-monospace, Menlo, Consolas, monospace';
+    arcCtx.textAlign = 'center';
+    /* 每 15° 一根刻度 */
+    for (var deg = 0; deg <= 90; deg += 15) {
+      var x = deg / 90 * W;
+      arcCtx.strokeStyle = 'rgba(226,232,240,0.22)';
+      arcCtx.lineWidth = 1;
+      arcCtx.beginPath();
+      arcCtx.moveTo(x, H - 26);
+      arcCtx.lineTo(x, H - 18);
+      arcCtx.stroke();
+      arcCtx.fillStyle = 'rgba(226,232,240,0.75)';
+      arcCtx.fillText(deg + '°', x, H - 6);
+    }
+    /* 虹心：一条竖虚线，标注角度 */
+    if (ro.exists && isFinite(ro.observeDeg)) {
+      var ax = ro.observeDeg / 90 * W;
+      arcCtx.strokeStyle = 'rgba(255,255,255,0.85)';
+      arcCtx.setLineDash([4, 4]);
+      arcCtx.lineWidth = 1;
+      arcCtx.beginPath();
+      arcCtx.moveTo(ax, 0);
+      arcCtx.lineTo(ax, H - 20);
+      arcCtx.stroke();
+      arcCtx.setLineDash([]);
+      arcCtx.fillStyle = '#ffffff';
+      arcCtx.textAlign = ax > W - 60 ? 'right' : 'left';
+      arcCtx.fillText(ro.observeDeg.toFixed(1) + '°', ax + (ax > W - 60 ? -6 : 6), 14);
+    }
+    arcCtx.restore();
+  }
+
+  /* ==================================================================
+   * 渲染 ②：光路解剖（Canvas 路径，画的是物理量）
+   * ================================================================*/
+  /* 一颗圆=水滴。平行光从左边来，入射角 i，折射角 r，
+     在背面反射 k 次，然后飞出去。我们画出真实的入射点、出射点、
+     以及每一段光路 —— 角度标尺是真的按 i 和 r 的比例画的。 */
+  function renderTrace() {
+    var W = traceCv.width, H = traceCv.height;
+    var cx = W * 0.42, cy = H * 0.5, R = Math.min(W, H) * 0.34;
+    var ctx = traceCtx;
+    ctx.clearRect(0, 0, W, H);
+
+    /* 水滴 */
+    var grad = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, R * 0.1, cx, cy, R);
+    grad.addColorStop(0, 'rgba(120,180,220,0.30)');
+    grad.addColorStop(1, 'rgba(60,110,150,0.18)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(150,210,240,0.85)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    /* 入射平行光：来自左边水平方向（+x）。入射角 i 相对法线。
+       光线与水滴相交点：在圆上参数化。 */
+    var iRad = inDeg * C.DEG;
+    var n = C.ior(media, C.LAMBDA_D);
+    var s = Math.sin(iRad) / n;
+    var valid = s <= 1;
+    var rRad = valid ? Math.asin(s) : 0;
+
+    /* 入射点：光线方向固定 (+1,0)，交点由圆的横坐标决定。
+       让入射点沿圆周移动以改变入射角：
+       入射角 i = 入射点法线与光线方向的夹角。
+       法线 = (cos φ, sin φ)；光线 = (+1,0)。
+       夹角 i 满足 cos i = -cos φ ⇒ φ = π − i。 */
+    var phiIn = Math.PI - iRad;
+    var pIn = { x: cx + R * Math.cos(phiIn), y: cy + R * Math.sin(phiIn) };
+    /* 入射点法线（指向圆外） */
+    var nIn = { x: Math.cos(phiIn), y: Math.sin(phiIn) };
+
+    /* 折射（标准向量形式，不用"切向+法向"手拼）。
+       N 指向**入射侧的介质**（球外），I 是入射方向，eta = n1/n2。
+       T = eta·I + (eta·cosI − √k)·N，其中 cosI = −dot(N, I)，k = 1−eta²(1−cos²I)。
+       ★ 首版用"切向分量保持 + 法向分量/n 再取负"手拼，
+         符号弄反了：算出来的折射方向朝**外**，
+         于是圆内的弦根本不存在（nextHit 立刻返回 null），
+         画面上只剩一段入射光 —— 数值断言全过，是截图看出来的。
+       （与 core.js 里 Fresnel 那次 eta 取反是同一类错误：折射公式的符号约定
+         必须一次写对，两处都要。） */
+    function snell(I, N, eta) {
+      var cosI = -(I.x * N.x + I.y * N.y);
+      var k2 = 1 - eta * eta * (1 - cosI * cosI);
+      if (k2 < 0) return null;          /* 全反射 */
+      return { x: eta * I.x + (eta * cosI - Math.sqrt(k2)) * N.x,
+               y: eta * I.y + (eta * cosI - Math.sqrt(k2)) * N.y };
+    }
+
+    var dir = snell({ x: 1, y: 0 }, nIn, 1 / n);
+    if (!dir) dir = { x: 1, y: 0 };
+
+    /* 沿弦走，撞到下一个交点 */
+    function nextHit(from, dirv) {
+      /* 解 |from + t*dirv − c|² = R² 的最小正根 */
+      var ox = from.x - cx, oy = from.y - cy;
+      var b = ox * dirv.x + oy * dirv.y;
+      var c2 = ox * ox + oy * oy - R * R;
+      var disc = b * b - c2;
+      if (disc < 0) return null;
+      var t = -b - Math.sqrt(disc);
+      if (t <= 1e-6) t = -b + Math.sqrt(disc);
+      if (t <= 1e-6) return null;
+      return { x: from.x + dirv.x * t, y: from.y + dirv.y * t };
+    }
+
+    /* 画光路 */
+    var pts = [pIn];
+    var cur = pIn, curDir = dir;
+    var steps = k + 1;                    /* 进入 + k 次反射 + 出射 */
+    var maxSteps = 8;
+    for (var sIdx = 0; sIdx < steps && sIdx < maxSteps; sIdx++) {
+      var hit = nextHit(cur, curDir);
+      if (!hit) break;
+      pts.push(hit);
+      /* 该点的外法线 */
+      var nn = { x: (hit.x - cx) / R, y: (hit.y - cy) / R };
+      if (sIdx < steps - 1) {
+        /* 内反射：镜像 */
+        var d2 = curDir.x * nn.x + curDir.y * nn.y;
+        curDir = { x: curDir.x - 2 * d2 * nn.x, y: curDir.y - 2 * d2 * nn.y };
+      } else {
+        /* 出射：从密到疏，eta = n/1。N 要取指向**入射侧**（水）的法线，
+           也就是 −nn。仍用同一个 snell，避免两套实现不一致。 */
+        var tout = snell(curDir, { x: -nn.x, y: -nn.y }, n);
+        if (tout) {
+          var L = Math.hypot(tout.x, tout.y) || 1;
+          curDir = { x: tout.x / L, y: tout.y / L };
+        } else {
+          /* 全反射（出不去）：沿用当前方向，不会发生但兜底 */
+          curDir = { x: curDir.x, y: curDir.y };
+        }
+      }
+      cur = hit;
+    }
+
+    /* 入射的平行光（进 Droplet 前的那一段，画长一点） */
+    ctx.strokeStyle = 'rgba(255,214,102,0.95)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(pIn.x - 150 * 1, pIn.y);
+    ctx.lineTo(pIn.x, pIn.y);
+    ctx.stroke();
+    /* 箭头 */
+    drawArrow(ctx, pIn.x - 22, pIn.y, pIn.x - 6, pIn.y);
+
+    /* 水滴内的光路（黄→粉渐变示意色） */
+    ctx.lineWidth = 2.2;
+    for (var j = 0; j < pts.length - 1; j++) {
+      ctx.strokeStyle = j % 2 === 0 ? 'rgba(255,140,180,0.95)' : 'rgba(180,150,255,0.95)';
+      ctx.beginPath();
+      ctx.moveTo(pts[j].x, pts[j].y);
+      ctx.lineTo(pts[j + 1].x, pts[j + 1].y);
+      ctx.stroke();
+    }
+
+    /* 出射光 */
+    if (pts.length >= 2) {
+      var last = pts[pts.length - 1];
+      ctx.strokeStyle = 'rgba(140,255,214,0.95)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(last.x, last.y);
+      ctx.lineTo(last.x + curDir.x * 150, last.y + curDir.y * 150);
+      ctx.stroke();
+      drawArrow(ctx, last.x + curDir.x * 118, last.y + curDir.y * 118,
+                     last.x + curDir.x * 146, last.y + curDir.y * 146);
+    }
+
+    /* 入射点法线（虚线）与角度标注 */
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pIn.x, pIn.y);
+    ctx.lineTo(pIn.x + nIn.x * 70, pIn.y + nIn.y * 70);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    /* i 角弧线 */
+    drawAngleArc(ctx, pIn, nIn, { x: 1, y: 0 }, rRad * 1.0, 34, '#ffd666', 'i=' + inDeg.toFixed(1) + '°');
+    /* r 角（在水滴内侧） */
+    if (valid) {
+      var innerN = { x: -nIn.x, y: -nIn.y };
+      drawAngleArc(ctx, pIn, innerN, dir, 26, '#ff8cb4', 'r=' + (rRad / C.DEG).toFixed(1) + '°');
+    }
+
+    /* 说明文字 */
+    ctx.fillStyle = 'rgba(226,232,240,0.9)';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('平行光', 10, 20);
+    ctx.fillText('内反射 ×' + k, 10, 38);
+  }
+
+  function drawArrow(ctx, x0, y0, x1, y1) {
+    var a = Math.atan2(y1 - y0, x1 - x0);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 - 8 * Math.cos(a - 0.4), y1 - 8 * Math.sin(a - 0.4));
+    ctx.lineTo(x1 - 8 * Math.cos(a + 0.4), y1 - 8 * Math.sin(a + 0.4));
+    ctx.closePath();
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.fill();
+  }
+
+  function drawAngleArc(ctx, P, N, D, r, rad, color, label) {
+    var a0 = Math.atan2(N.y, N.x);
+    var a1 = Math.atan2(D.y, D.x);
+    /* 取小于 180° 的那一侧 */
+    var delta = a1 - a0;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(P.x, P.y, rad, a0, a0 + delta, delta < 0);
+    ctx.stroke();
+    var am = a0 + delta / 2;
+    ctx.fillStyle = color;
+    ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, P.x + Math.cos(am) * (rad + 16), P.y + Math.sin(am) * (rad + 16));
+  }
+
+  /* ==================================================================
+   * 渲染 ③：偏向角曲线（观众拖 i 时看的那条先减后增的折线）
+   * ================================================================*/
+  function renderCurve() {
+    var W = curveCv.width, H = curveCv.height;
+    var ctx = curveCtx;
+    ctx.clearRect(0, 0, W, H);
+    var curve = C.deviationCurve(media, k, 180, 90);
+    /* y 轴：偏向角范围 */
+    var vals = curve.map(function (c) { return c.devDeg; })
+                    .filter(function (v) { return isFinite(v); });
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    if (!isFinite(lo) || !isFinite(hi) || hi - lo < 1e-6) { lo = 0; hi = 1; }
+    var pad = (hi - lo) * 0.08;
+    lo -= pad; hi += pad;
+
+    function X(iDeg) { return iDeg / 90 * W; }
+    function Y(devDeg) { return H - (devDeg - lo) / (hi - lo) * H; }
+
+    /* 网格 */
+    ctx.strokeStyle = 'rgba(148,163,184,0.18)';
+    ctx.lineWidth = 1;
+    for (var g = 0; g <= 4; g++) {
+      var y = H * g / 4;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    /* 180° 参考线（观察角=|D−180|，所以 D=180 就是"正前方"） */
+    if (lo <= 180 && hi >= 180) {
+      ctx.strokeStyle = 'rgba(226,232,240,0.4)';
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath(); ctx.moveTo(0, Y(180)); ctx.lineTo(W, Y(180)); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(226,232,240,0.7)';
+      ctx.font = '10px ui-monospace, monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('D=180°（正对前来）', 6, Y(180) - 4);
+    }
+
+    /* 曲线本体 */
+    ctx.strokeStyle = 'rgba(125,211,252,0.95)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    var started = false;
+    curve.forEach(function (c) {
+      if (!isFinite(c.devDeg)) { started = false; return; }
+      var x = X(c.iDeg), y = Y(c.devDeg);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    /* 极小点标记 */
+    if (ro.exists) {
+      var mx = X(ro.iStarDeg), my = Y(ro.devDeg);
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath(); ctx.arc(mx, my, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.font = '11px ui-monospace, monospace';
+      ctx.textAlign = mx > W - 120 ? 'right' : 'left';
+      ctx.fillText('最低点 i*=' + ro.iStarDeg.toFixed(1) + '°',
+                    mx + (mx > W - 120 ? -8 : 8), my - 8);
+      /* 观众当前拖的位置 */
+      var curDev = C.deviation(inDeg * C.DEG, n4(media), k);
+      if (isFinite(curDev)) {
+        var cx2 = X(inDeg), cy2 = Y(curDev);
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(cx2, cy2, 6, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+  }
+  function n4(m) { return C.ior(m, C.LAMBDA_D); }
+
+  /* ==================================================================
+   * 渲染 ④：角度标尺（观众在这里"自己找到"虹心）
+   * ================================================================*/
+  var rulerMark = 42;    /* 观众拖出来的角度 */
+  function renderRuler() {
+    var W = rulerCv.width, H = rulerCv.height;
+    var ctx = rulerCtx;
+    ctx.clearRect(0, 0, W, H);
+    /* 底：暗天 */
+    var bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#0b1220');
+    bg.addColorStop(1, '#111c2e');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    /* 角度刻度 */
+    var midY = H * 0.62;
+    ctx.strokeStyle = 'rgba(226,232,240,0.35)';
+    ctx.lineWidth = 1;
+    for (var deg = 0; deg <= 90; deg += 5) {
+      var x = deg / 90 * W;
+      var major = deg % 15 === 0;
+      ctx.beginPath();
+      ctx.moveTo(x, midY);
+      ctx.lineTo(x, midY + (major ? 10 : 5));
+      ctx.stroke();
+      if (major) {
+        ctx.fillStyle = 'rgba(226,232,240,0.8)';
+        ctx.font = '10px ui-monospace, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(deg + '°', x, midY + 24);
+      }
+    }
+    /* 地平线与"你的眼睛" */
+    ctx.strokeStyle = 'rgba(226,232,240,0.2)';
+    ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(W, midY); ctx.stroke();
+
+    /* 虹心提示（淡淡的一条） */
+    if (ro.exists && isFinite(ro.observeDeg)) {
+      var ax = ro.observeDeg / 90 * W;
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(ax - 10, 0, 20, midY);
+    }
+
+    /* 观众自己拖的标记 */
+    var mx = rulerMark / 90 * W;
+    ctx.strokeStyle = '#fde68a';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(mx, 6); ctx.lineTo(mx, midY); ctx.stroke();
+    ctx.fillStyle = '#fde68a';
+    ctx.beginPath();
+    ctx.moveTo(mx, midY + 4);
+    ctx.lineTo(mx - 6, midY - 6);
+    ctx.lineTo(mx + 6, midY - 6);
+    ctx.closePath(); ctx.fill();
+    ctx.font = '12px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(rulerMark.toFixed(1) + '°', mx, midY + 40);
+  }
+
+  /* ==================================================================
+   * 读数区（非KPI 卡：dl列表）
+   * ================================================================*/
+  function paintReadout() {
+    $('v-n').textContent = ro.ior.toFixed(4);
+    $('media-note').textContent = ro.mediaNote;
+
+    if (!ro.exists) {
+      /* 虹不存在：显示明确的提示，绝不写 NaN */
+      $('v-istar').textContent = '—';
+      $('v-dmin').textContent = '—';
+      $('v-arc').textContent = '没有这条虹';
+      $('v-disp').textContent = '—';
+      $('v-energy').textContent = '—';
+      $('caveat-why').textContent = ro.reason + '。';
+      $('caveat').hidden = false;
+    } else {
+      $('v-istar').textContent = ro.iStarDeg.toFixed(2) + '°';
+      $('v-dmin').textContent = ro.devDeg.toFixed(2) + '°';
+      $('v-arc').textContent = ro.observeDeg.toFixed(2) + '°';
+      $('v-disp').textContent = isFinite(ro.dispersion) ? ro.dispersion.toFixed(2) + '°' : '—';
+      $('v-energy').textContent = (ro.trans * 100).toFixed(1) + '%';
+      $('caveat').hidden = true;
+    }
+
+    /* 拖动入射角时那行实时读数 */
+    var n = C.ior(media, C.LAMBDA_D);
+    var dev = C.deviation(inDeg * C.DEG, n, k);
+    $('v-in').textContent = inDeg.toFixed(1) + '°';
+    if (isFinite(dev)) {
+      $('v-dev').textContent = dev.toFixed(2) + '°';
+      $('v-obs').textContent = Math.abs(dev - 180).toFixed(2) + '°';
+      var trans = C.pathTransmittance(inDeg * C.DEG, n, k);
+      $('v-trans').textContent = (trans * 100).toFixed(1) + '%';
+    }
+  }
+
+  /* 角度标尺下方的反馈：告诉观众拖得准不准 */
+  function paintFinder() {
+    if (!ro.exists) {
+      rulerOut.textContent = '这个介质没有这条虹 —— 先换一个。';
+      return;
+    }
+    var err = Math.abs(rulerMark - ro.observeDeg);
+    var verdict;
+    if (err <= 0.5) verdict = '✓ 就在这儿 —— 这就是虹的角度。';
+    else if (err <= 3) verdict = '很近了，再拖一点。';
+    else verdict = '还不是最亮的位置。';
+    var side = rulerMark < ro.observeDeg ? '偏小' : '偏大';
+    rulerOut.textContent = '你标的是 ' + rulerMark.toFixed(1) + '°，'
+      + '虹心在 ' + ro.observeDeg.toFixed(1) + '°（差 ' + err.toFixed(1) + '°，'
+      + (err <= 0.5 ? '' : side + '）') + ' ' + verdict;
+  }
+
+  /* ==================================================================
+   * 状态更新：所有变更都走这一个入口（单一真相）
+   * ================================================================*/
+  function refresh(recomputeSpec) {
+    ro = C.readout(media, k);
+    if (recomputeSpec || !spec) {
+      /* 光谱墙只在介质/k 变化时重算（较贵），拖入射角时不重算 */
+      spec = ro.exists ? C.spectrumImage(media, k, 240, 84, 90) : null;
+    }
+    renderArc();
+    renderTrace();
+    renderCurve();
+    renderRuler();
+    paintReadout();
+    paintFinder();
+  }
+
+  /* ==================================================================
+   * 交互
+   * ================================================================*/
+  /* 介质按钮组（真radio，键盘可达） */
+  function buildChips() {
+    var keys = Object.keys(MEDIA);
+    keys.forEach(function (key) {
+      var m = MEDIA[key];
+      var lab = document.createElement('label');
+      lab.className = 'chip';
+      var input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'media';
+      input.value = key;
+      input.checked = (key === media);
+      input.addEventListener('change', function () {
+        if (!input.checked) return;
+        media = key;
+        /* 换介质时把滑杆移到新的 i*，让观众直接看到那条曲线 */
+        var r = C.readout(media, k);
+        if (r.exists) inDeg = r.iStarDeg;
+        sliderIn.value = inDeg.toFixed(1);
+        refresh(true);
+        flash(hintEl, m.note);
+      });
+      lab.appendChild(input);
+      var span = document.createElement('span');
+      span.textContent = m.name;
+      lab.appendChild(span);
+      chipsEl.appendChild(lab);
+    });
+  }
+
+  /* 分段按钮：切内反射次数 */
+  function bindK(btn, kv) {
+    btn.addEventListener('click', function () {
+      k = kv;
+      ['b-k1', 'b-k2', 'b-k3'].forEach(function (id) {
+        var b = $(id);
+        var on = (id === 'b-' + kv);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      var r = C.readout(media, k);
+      if (r.exists) inDeg = r.iStarDeg;
+      sliderIn.value = inDeg.toFixed(1);
+      refresh(true);
+      flash(hintEl, k === 1 ? '主虹：光在水滴里反射一次。'
+                  : k === 2 ? '副虹：反射两次，角度更大、更暗。'
+                  : '三次内反射：更暗，但还能看到。');
+    });
+  }
+
+  /* 滑杆：拖入射角 */
+  sliderIn.addEventListener('input', function () {
+    inDeg = Number(sliderIn.value);
+    /* 拖动时不重算光谱墙（贵），只重画光路与曲线 */
+    ro = C.readout(media, k);
+    renderTrace();
+    renderCurve();
+    paintReadout();
+  });
+
+  /* 角度标尺：观众在尺子上拖出自己认为的虹心 */
+  function rulerFromEvent(ev) {
+    var rect = rulerCv.getBoundingClientRect();
+    var frac = (ev.clientX - rect.left) / rect.width;
+    rulerMark = Math.max(0, Math.min(90, frac * 90));
+    renderRuler();
+    paintFinder();
+  }
+  var dragging = false;
+  rulerCv.addEventListener('pointerdown', function (ev) {
+    dragging = true;
+    rulerCv.setPointerCapture && rulerCv.setPointerCapture(ev.pointerId);
+    rulerFromEvent(ev);
+  });
+  rulerCv.addEventListener('pointermove', function (ev) {
+    if (dragging) rulerFromEvent(ev);
+  });
+  rulerCv.addEventListener('pointerup', function () { dragging = false; });
+  rulerCv.addEventListener('pointercancel', function () { dragging = false; });
+
+  $('b-reset').addEventListener('click', function () {
+    media = 'water'; k = 1; rulerMark = 42;
+    var r = C.readout(media, k);
+    inDeg = r.exists ? r.iStarDeg : 59.41;
+    sliderIn.value = inDeg.toFixed(1);
+    /* 同步 radio 与分段按钮 */
+    var radios = chipsEl.querySelectorAll('input[type=radio]');
+    for (var i = 0; i < radios.length; i++) radios[i].checked = (radios[i].value === media);
+    ['b-k1', 'b-k2', 'b-k3'].forEach(function (id) {
+      $(id).setAttribute('aria-pressed', id === 'b-k1' ? 'true' : 'false');
+    });
+    refresh(true);
+  });
+
+  /* 键盘可达：左右方向键微调标尺（不用鼠标的人也能找到虹心） */
+  window.addEventListener('keydown', function (ev) {
+    if (ev.target && (ev.target.type === 'range' || ev.target.type === 'radio')) return;
+    if (ev.key === 'ArrowLeft') { ev.preventDefault(); rulerMark = Math.max(0, rulerMark - 0.5); renderRuler(); paintFinder(); }
+    else if (ev.key === 'ArrowRight') { ev.preventDefault(); rulerMark = Math.min(90, rulerMark + 0.5); renderRuler(); paintFinder(); }
+  });
+
+  function flash(el, msg) {
+    if (!el) return;
+    el.textContent = msg;
+    if (hintTimer) clearTimeout(hintTimer);
+    hintTimer = setTimeout(function () {
+      el.textContent = '把观察角标尺拖到 42° 附近 —— 那里最亮';
+    }, 2600);
+  }
+
+  /* ==================================================================
+   * 探针（verify.js 用）
+   * ================================================================*/
+  /* 每个方法调的都是上面那份产品代码，没有为测试另开捷径。
+     driveSteps 不是后门：它调的就是观众拖滑杆/点按钮最终会走的那些函数。 */
+  window.__probe = {
+    ready: true,
+    media: function () { return media; },
+    k: function () { return k; },
+    inDeg: function () { return inDeg; },
+    ruler: function () { return rulerMark; },
+    exists: function () { return ro.exists; },
+    observeDeg: function () { return ro.exists ? ro.observeDeg : -1; },
+    iStarDeg: function () { return ro.exists ? ro.iStarDeg : -1; },
+    dispersion: function () { return isFinite(ro.dispersion) ? ro.dispersion : -1; },
+    trans: function () { return ro.trans; },
+    /* 光谱墙像素：证明逐像素渲染真的画出了东西（不是纯深空色） */
+    arcPixels: function () {
+      var d = arcCtx.getImageData(0, 0, arcCv.width, arcCv.height).data;
+      var lit = 0, total = arcCv.width * arcCv.height;
+      for (var i = 0; i < d.length; i += 4) {
+        /* 底色是 (10,14,22)，偏离它就算"画出了东西" */
+        if (d[i] > 24 || d[i + 1] > 30 || d[i + 2] > 46) lit++;
+      }
+      return { lit: lit, total: total };
+    },
+    /* 光谱墙峰值位置：证明彩虹画在物理算出来的角度上 */
+    arcPeakDeg: function () {
+      if (!spec) return -1;
+      var W = spec.W, H = spec.H, rgb = spec.rgb;
+      var y = (H / 2) | 0, best = -1, bestX = 0;
+      for (var x = 0; x < W; x++) {
+        var s = (y * W + x) * 3;
+        var lum = rgb[s] + rgb[s + 1] + rgb[s + 2];
+        if (lum > best) { best = lum; bestX = x; }
+      }
+      return (bestX + 0.5) / W * spec.maxDeg;
+    },
+    /* 光路图确实画了东西 */
+    tracePixels: function () {
+      var d = traceCtx.getImageData(0, 0, traceCv.width, traceCv.height).data;
+      var lit = 0;
+      for (var i = 3; i < d.length; i += 4) if (d[i] > 8) lit++;
+      return lit;
+    },
+    curvePixels: function () {
+      var d = curveCtx.getImageData(0, 0, curveCv.width, curveCv.height).data;
+      var lit = 0;
+      for (var i = 3; i < d.length; i += 4) if (d[i] > 8) lit++;
+      return lit;
+    },
+    rulerPixels: function () {
+      var d = rulerCtx.getImageData(0, 0, rulerCv.width, rulerCv.height).data;
+      var lit = 0;
+      for (var i = 0; i < d.length; i += 4) if (d[i] > 20 || d[i + 1] > 20) lit++;
+      return lit;
+    },
+    /* NaN 扫描：读数区与光谱都不该有 NaN */
+    nanScan: function () {
+      var bad = [];
+      var ids = ['v-n', 'v-istar', 'v-dmin', 'v-arc', 'v-disp', 'v-energy', 'v-in', 'v-dev', 'v-obs', 'v-trans'];
+      ids.forEach(function (id) {
+        var t = ($(id).textContent || '');
+        if (/NaN|undefined|Infinity/.test(t)) bad.push(id);
+      });
+      return { nan: bad.length > 0, where: bad.join(',') };
+    },
+    caveatShown: function () { return $('caveat').hidden === false; },
+    chipCount: function () { return chipsEl.querySelectorAll('input[type=radio]').length; },
+    sliderMin: function () { return Number(sliderIn.min); },
+    sliderMax: function () { return Number(sliderIn.max); },
+    /* 主动驱动：切介质（走和点radio 完全相同的路径） */
+    setMedia: function (m) {
+      var radios = chipsEl.querySelectorAll('input[type=radio]');
+      for (var i = 0; i < radios.length; i++) {
+        if (radios[i].value === m) { radios[i].checked = true; radios[i].dispatchEvent(new Event('change')); return true; }
+      }
+      return false;
+    },
+    /* 主动驱动：切内反射次数（走和点按钮完全相同的路径） */
+    setK: function (kv) {
+      var btn = $('b-k' + kv);
+      if (!btn) return false;
+      btn.click();
+      return true;
+    },
+    /* 主动驱动：拖入射角（走和拖滑杆相同的路径） */
+    setInDeg: function (deg) {
+      sliderIn.value = String(deg);
+      sliderIn.dispatchEvent(new Event('input'));
+      return inDeg;
+    },
+    /* 主动驱动：拖标尺 */
+    setRuler: function (deg) {
+      rulerMark = Math.max(0, Math.min(90, deg));
+      renderRuler(); paintFinder();
+      return rulerMark;
+    },
+    /* 供 verify 检查"读数与core 独立算法一致" */
+    analyticVsNumeric: function () {
+      var n = C.ior(media, C.LAMBDA_D);
+      var a = C.minDeviationAnalytic(n, k);
+      var b = C.minDeviationNumeric(n, k, 200);
+      return { analytic: a.observeDeg, numeric: b.observeDeg, diff: Math.abs(a.observeDeg - b.observeDeg) };
+    },
+    touchTargets: function () {
+      var out = [];
+      var els = document.querySelectorAll('button, .btn, .chip');
+      for (var i = 0; i < els.length; i++) {
+        var r = els[i].getBoundingClientRect();
+        out.push({ tag: els[i].id || els[i].className, w: Math.round(r.width), h: Math.round(r.height) });
+      }
+      return out;
+    },
+    canvasSizes: function () {
+      function m(cv) { var r = cv.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), bw: cv.width, bh: cv.height }; }
+      return { arc: m(arcCv), trace: m(traceCv), curve: m(curveCv), ruler: m(rulerCv) };
+    }
+  };
+
+  /* ==================================================================
+   * 启动
+   * ================================================================================================*/
+  buildChips();
+  bindK($('b-k1'), 1);
+  bindK($('b-k2'), 2);
+  bindK($('b-k3'), 3);
+  refresh(true);
+})();
+</script>
+</body>
+</html>
