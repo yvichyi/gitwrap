@@ -6,7 +6,9 @@
   "scripts": {
     "catalog": "python3 scripts/build_catalog.py",
     "check": "python3 scripts/check.py",
-    "test:browser": "node scripts/browser-check.cjs"
+    "test:browser": "node scripts/browser-check.cjs",
+    "test:weave": "node scripts/weave-check.cjs",
+    "test:weave:browser": "node scripts/weave-check.cjs --browser"
   },
   "devDependencies": {
     "playwright": "1.63.0"
