@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>洞的生灭 · 持续同调</title>
+<meta name="description" content="持续同调（persistent homology）：亲手在一块整数格点纸上落点，算法把点云在全部尺度上的洞一次性算出来，摊成一张条形码。洞在什么尺度上出生、什么尺度上被填死——欧拉–庞加莱恒等式、β0 并查集双路对账、稳定性定理三条尺子当场可验。">
+<style>
+/* ============================================================================
+ * topo/style.css —— 视觉方言：靛蓝夜工（indigo night-work）
+ *
+ * 取材于"暗房里显影一张卡"：深靛底、冷青的格线、两个高饱和的对撞色
+ * （洞用琥珀、连通分量用青），像在黑房里看一张正在显影的相纸。
+ * 与既有展项的纸底/墨底/晒图青蓝三族完全互斥（35 色禁用清单见 build.js，
+ * --paper/--panel/--line 变量名亦不复用）。字体等宽主导（读数密集）。
+ * 正文对比度 ≥7:1（--ink 对 --bg 实测约 13:1，--mute 约 7:1）。
+ * ==========================================================================*/
+
+:root {
+  --bg: #141a33;          /* 页面深靛底 */
+  --bg2: #1c2444;         /* 面板底 */
+  --bg3: #232d52;         /* 画布衬底 */
+  --ink: #eef1fb;         /* 正文 */
+  --mute: #a9b2d6;        /* 次级说明 */
+  --rule: rgba(154, 170, 226, 0.26);   /* 细规线 */
+  --rule-soft: rgba(154, 170, 226, 0.13);
+  --grid: rgba(120, 200, 220, 0.10);   /* 格点纸的格线 */
+  --h0: #3fd0c9;           /* 0 维：冷青（连通分量） */
+  --h1: #ffb03a;           /* 1 维：琥珀（洞） */
+  --h2: #ff6b8a;           /* 2 维：品红（高维洞） */
+  --accent: #ffd166;       /* 强调 / 选中 */
+  --dot: #f7f9ff;          /* 落点 */
+  --mono: ui-monospace, 'Cascadia Mono', Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --sans: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background:
+    radial-gradient(1100px 620px at 78% -12%, rgba(255, 176, 58, 0.09), transparent 62%),
+    radial-gradient(900px 520px at 6% 4%, rgba(63, 208, 201, 0.08), transparent 58%),
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15.5px;
+  line-height: 1.85;
+  overflow-x: hidden;
+}
+
+.wrap {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 30px 20px 70px;
+}
+
+/* ------------------------------------------------------------------ 头版 */
+.masthead {
+  border: 1px solid var(--rule);
+  border-top: 3px solid var(--h1);
+  padding: 22px 24px 18px;
+  background: linear-gradient(180deg, rgba(154, 170, 226, 0.07), transparent 60%), var(--bg2);
+}
+
+.mast-eyebrow {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.32em;
+  color: var(--mute);
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-family: var(--mono);
+  font-size: 44px;
+  letter-spacing: 0.12em;
+  line-height: 1.15;
+  color: #f7f9ff;
+  font-weight: 700;
+}
+
+.mast-lede {
+  margin: 0 0 14px;
+  max-width: 46em;
+}
+
+.mast-lede em {
+  font-style: normal;
+  color: var(--h1);
+  border-bottom: 1px dashed rgba(255, 176, 58, 0.5);
+}
+
+.mast-lede strong {
+  color: var(--h0);
+  font-weight: 600;
+}
+
+.mast-state {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  border: 1px dashed var(--rule);
+  display: inline-block;
+  padding: 5px 12px;
+}
+
+.mast-note {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--mute);
+  max-width: 48em;
+}
+
+.mast-note strong { color: var(--ink); }
+
+/* ------------------------------------------------------------------ 面板 */
+.panel {
+  border: 1px solid var(--rule);
+  background: var(--bg2);
+  padding: 20px 22px 18px;
+  margin-top: 18px;
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-family: var(--mono);
+  font-size: 19px;
+  letter-spacing: 0.06em;
+  color: #f7f9ff;
+  font-weight: 700;
+}
+
+.sec-lede {
+  margin: 0 0 14px;
+  max-width: 50em;
+  color: var(--mute);
+  font-size: 14.5px;
+}
+
+.sec-lede em {
+  font-style: normal;
+  color: var(--h0);
+}
+
+.sec-lede strong { color: var(--ink); }
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  color: var(--mute);
+}
+
+/* ------------------------------------------------------------------ 工具条 */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.toolbtn {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  padding: 9px 15px;
+  min-height: 38px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.toolbtn:hover {
+  background: #2b3766;
+  border-color: var(--h0);
+}
+
+.toolbtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.toolbtn[aria-pressed='true'] {
+  background: var(--h0);
+  border-color: var(--h0);
+  color: #0a1a24;
+  font-weight: 700;
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+
+.btn-row button {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  padding: 9px 15px;
+  min-height: 38px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-row button:hover {
+  background: #2b3766;
+  border-color: var(--h1);
+}
+
+.btn-row button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn-row button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------ 画布 */
+.draw-wrap {
+  border: 1px solid var(--rule);
+  background: var(--bg3);
+  padding: 12px;
+}
+
+#padCanvas {
+  display: block;
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  cursor: crosshair;
+  touch-action: none;      /* 触屏上别让浏览器抢走手势，落点才准 */
+  background: #182046;
+}
+
+#padCanvas:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.cap {
+  margin: 10px 2px 0;
+  font-size: 13px;
+  color: var(--mute);
+}
+
+#barCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 900 / 330;
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#barCanvas:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ 图例 */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-family: var(--mono);
+}
+
+.lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--mute);
+}
+
+.lg::before {
+  content: '';
+  width: 16px;
+  height: 3px;
+  background: currentColor;
+  display: inline-block;
+}
+
+.lg0 { color: var(--h0); }
+.lg1 { color: var(--h1); }
+.lg2 { color: var(--h2); }
+.lgz { color: var(--mute); }
+.lgz::before { background: repeating-linear-gradient(90deg, currentColor 0 3px, transparent 3px 6px); }
+
+/* ------------------------------------------------------------------ 滑杆 */
+.slider-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 0;
+  flex-wrap: wrap;
+}
+
+.slider-name {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--mute);
+  min-width: 76px;
+}
+
+input[type='range'] {
+  flex: 1 1 220px;
+  min-width: 160px;
+  height: 34px;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type='range']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  background: var(--h1);
+  border: 1px solid #f7f9ff;
+}
+
+input[type='range']::-moz-range-track {
+  height: 6px;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--h1);
+  border: 1px solid #f7f9ff;
+  border-radius: 0;
+}
+
+output {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--accent);
+  min-width: 108px;
+  text-align: right;
+}
+
+/* ------------------------------------------------------------------ 读数 */
+.readlist {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 16px;
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--rule-soft);
+  background: var(--bg3);
+  font-size: 14px;
+}
+
+.readlist dt {
+  color: var(--mute);
+  font-family: var(--mono);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.readlist dd {
+  margin: 0;
+  font-family: var(--mono);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.lawlist {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 18px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule-soft);
+  background: var(--bg3);
+  font-size: 14px;
+}
+
+.lawlist dt {
+  color: var(--mute);
+  font-family: var(--mono);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.lawlist dd {
+  margin: 0;
+  font-family: var(--mono);
+  color: var(--accent);
+}
+
+.verdict {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  color: var(--mute);
+  font-family: var(--mono);
+}
+
+.selfcheck {
+  margin: 12px 0 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--h0);
+  border-top: 1px dashed var(--rule-soft);
+  padding-top: 10px;
+}
+
+.mono {
+  font-family: var(--mono);
+  color: var(--h0);
+  font-size: 0.94em;
+}
+
+/* ------------------------------------------------------------------ 边界章 */
+.panel.edges {
+  border-left: 3px solid var(--h2);
+}
+
+.panel.edges p {
+  margin: 0 0 12px;
+  font-size: 14.5px;
+  color: var(--mute);
+  max-width: 50em;
+}
+
+.panel.edges p:last-child { margin-bottom: 0; }
+.panel.edges strong { color: var(--ink); }
+
+.colophon {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule-soft);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--mute);
+}
+
+/* ------------------------------------------------------------------ 窄屏 */
+@media (max-width: 640px) {
+  body { font-size: 15px; }
+
+  .wrap { padding: 18px 12px 48px; }
+
+  h1 { font-size: 30px; letter-spacing: 0.06em; }
+
+  .masthead { padding: 16px 15px 14px; }
+
+  .panel { padding: 15px 14px 14px; }
+
+  .panel h2 { font-size: 17px; }
+
+  /* 触控硬线：窄屏所有可点元素 ≥44px */
+  .toolbtn,
+  .btn-row button {
+    min-height: 44px;
+    padding: 11px 14px;
+    font-size: 14px;
+  }
+
+  input[type='range'] { height: 44px; }
+
+  .readlist,
+  .lawlist {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    padding: 11px 12px;
+  }
+
+  .readlist dt,
+  .lawlist dt { margin-top: 7px; }
+  .readlist dt:first-child,
+  .lawlist dt:first-child { margin-top: 0; }
+
+  .readlist dd { margin-bottom: 3px; }
+
+  .slider-line { gap: 8px; }
+  .slider-name { min-width: 100%; }
+  output { text-align: left; min-width: 100%; }
+
+  .draw-wrap { padding: 8px; }
+
+  .legend { font-size: 12.5px; gap: 6px 12px; }
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<!-- ============================================================================
+ * 《洞的生灭》—— 计算拓扑 · 持续同调（persistent homology）
+
+ 系列身份策略（动工前决定，完整版见 topo/build.js 头注「切分声明」）：
+  · 页内不自称「第 X 件」：本库编号由目录页卡片按登记序派生，页内再写编号
+    会与目录打架。本件的身份锚点是标题 + 「落点即算法输入」这一交互本身。
+  · 与最近邻的正区隔：〈骨架之下〉(glyph) 也是"把像素当输入"，但它问的是
+    「这个字长什么样」——答案是一张拓扑指纹；本作问的是「**洞在什么尺度上
+    出生、什么尺度上死掉**」——答案是一整条条形码，且观众能拖动阈值逐帧看
+    洞生灭。glyph 的输入是手写字形，本作的输入是观众自己撒的点。
+  · 与〈临界的形状〉(ising) 的正区隔：ising 有一个温度旋钮，逼近 Tc 是主动
+    调参；本作没有任何旋钮控制"拓扑"，洞的生死完全由点集的**几何**决定。
+
+ 本作的确定性契约：整数量子化（坐标→GRID×GRID 整数格点，距离→距离平方），
+ 拓扑计算全程零浮点；预设在 GRID=100 的格点上、坐标钉成整数表（不调三角
+ 函数——Math.cos 的末位在不同引擎可能差 1 格，那 1 格就够推翻"逐位一致"）。
+============================================================================ -->
+<header class="masthead">
+  <p class="mast-eyebrow">计算拓扑 · 持续同调</p>
+  <h1>洞的生灭</h1>
+  <p class="mast-lede">一张纸上有几个洞，是个数；<em>这些洞分别在什么粗细的尺度上出生、又在哪一档被填死</em>，是另一回事，而且后者信息量大得多——它把一张静止的图变成了一部有先后的影片。本作让你亲手在一块整数格点纸上落点，然后由算法把这堆点的<strong>全部尺度下的洞</strong>一次性算出来，摊成一张条形码。</p>
+  <p class="mast-state" id="mastState">正在铺格点纸……</p>
+  <p class="mast-note">读数规则：点落在 100×100 的整数格上，算法只用<strong>距离平方</strong>（整数）判断"够不够近"，所以同一堆点在哪台机器上算，条形码都逐位相同。页面与离线标定对账，差一位都不算通过。</p>
+</header>
+
+<section class="panel" id="drawPanel">
+  <h2>图一 · 落点（这是你唯一的输入）</h2>
+  <p class="sec-lede">在方格纸上点几下，把点摆成你想要的形状。算法不看你摆得好不好看，只看<em>点与点之间的距离</em>——距离决定了哪些点之间会连上线，而线连成环的那一刻，洞就出生了。</p>
+  <div class="toolbar" role="group" aria-label="落点工具">
+    <button type="button" id="presetBtn" class="toolbtn" aria-pressed="false">放一个正八边形</button>
+    <button type="button" id="clearBtn" class="toolbtn">清空重来</button>
+    <button type="button" id="undoBtn" class="toolbtn">退回一点</button>
+  </div>
+  <div class="draw-wrap">
+    <canvas id="padCanvas" width="600" height="600"
+      aria-label="格点落点画布：点一下就在该格放一个点。也可点预设按钮放一个正八边形。"></canvas>
+    <p class="cap" id="padHint">画布上任意位置点一下即落一点。琥珀色的连线是<strong>当前 τ 下的 1-骨架</strong>——每一条线都是一对"距离刚好不超过 τ"的点，连线成环的那一刻，洞就出生了。上限 14 点：单纯形数按 n³ 涨，14 点是"点得动"与"算得完"之间实测的平衡点。</p>
+  </div>
+  <dl class="readlist" id="cardPoints" data-probe="points">
+    <dt>点数</dt><dd id="ro-n">0</dd>
+    <dt>单纯形总数</dt><dd id="ro-simplex">0</dd>
+    <dt>条形码指纹</dt><dd id="ro-fp">—</dd>
+    <dt>落点状态</dt><dd id="pv-points">等待落点</dd>
+  </dl>
+</section>
+
+<section class="panel" id="barcodePanel">
+  <h2>图二 · 条形码（全部尺度的洞，一次摊开）</h2>
+  <p class="sec-lede">横轴是距离（格），一条横杠就是一个洞的<strong>一生</strong>：左端是它出生的尺度，右端是它被填死的尺度。右端顶到边界的，表示在这个点集上它<em>一直没死</em>。上下两栏分别是 0 维（连通分量）和 1 维（洞）；2 维那一栏是 Rips 复形自己的高维洞，多数形状上是空的。</p>
+  <div class="legend" aria-hidden="true">
+    <span class="lg lg0">0 维 · 连通分量</span>
+    <span class="lg lg1">1 维 · 洞</span>
+    <span class="lg lg2">2 维 · 高维洞</span>
+    <span class="lg lgz">零长条（生灭同刻）</span>
+  </div>
+  <canvas id="barCanvas" width="900" height="330"
+    aria-label="条形码图：横轴为距离，每条横杠是一个洞的生存区间。"></canvas>
+  <label class="slider-line" for="tauSlider">
+    <span class="slider-name">阈值 τ</span>
+    <input type="range" id="tauSlider" min="0" max="600" step="1" value="0" aria-label="观察尺度阈值，控制复形里显形多少边与三角">
+    <output id="tauOut">0.0 格</output>
+  </label>
+  <p class="hint">拖动 τ 就是在时间轴上走：复形随着 τ 增大不断长出新的边和三角，条形码上"此刻还活着"的横杠，就是当前真实存在的洞。</p>
+  <dl class="readlist" id="cardCensus" data-probe="census">
+    <dt>此尺度 V / E / F</dt><dd id="ro-vef">0 / 0 / 0</dd>
+    <dt>β0 · β1 · β2</dt><dd id="ro-betti">0 / 0 / 0</dd>
+    <dt>欧拉示性数 χ</dt><dd id="ro-chi">0</dd>
+    <dt>β0−β1+β2</dt><dd id="ro-alt">0</dd>
+    <dt>恒等式</dt><dd id="pv-census">对账中</dd>
+  </dl>
+</section>
+
+<section class="panel" id="inspectPanel">
+  <h2>图三 · 点一条横杠，看它的账</h2>
+  <p class="sec-lede">条形码上每条横杠都可以点。点中哪一条，下面就把它的一生摊开：出生在第几格、死于第几格、活了多少格；本征类（右端顶边）则注明"从未被填死"。</p>
+  <div class="btn-row">
+    <button type="button" id="pickLongest">挑最长的一条 1 维洞</button>
+    <button type="button" id="pickNone">取消选中</button>
+  </div>
+  <dl class="readlist" id="cardPick" data-probe="pick">
+    <dt>选中</dt><dd id="ro-pickName">尚未选中</dd>
+    <dt>维数</dt><dd id="ro-pickDim">—</dd>
+    <dt>出生尺度</dt><dd id="ro-pickBorn">—</dd>
+    <dt>死亡尺度</dt><dd id="ro-pickDied">—</dd>
+    <dt>寿命（格）</dt><dd id="ro-pickLen">—</dd>
+    <dt>类型</dt><dd id="pv-pick">—</dd>
+  </dl>
+</section>
+
+<section class="panel" id="lawsPanel">
+  <h2>三块基石 · 这件展品敢把话说死的三条理由</h2>
+  <p class="sec-lede">下面每一条都在页面上真的跑，而不是写在注释里。三条互相独立：任何一条错了，另外两条不会跟着一起错。</p>
+  <dl class="lawlist" id="lawNumbers"></dl>
+  <p><strong>第一块是欧拉–庞加莱恒等式</strong> <span class="mono">χ = V − E + F = β0 − β1 + β2</span>。左边是"复形里到底有几个点、几条边、几个三角"，纯数数；右边是"洞有几个"，由边界矩阵的秩算出来。两条路互不相干，却在每个阈值上都必须严格相等——归约过程错一个比特，等式立刻不成立。</p>
+  <p><strong>第二块是 β0 的双路对账</strong>。0 维的洞就是连通分量，它可以用并查集算，完全不碰边界矩阵。条形码数出来的 β0 与并查集数出来的，必须在每个阈值上逐点相等。</p>
+  <p><strong>第三块是稳定性定理</strong>（Cohen-Steiner–Edelsbrunner–Harer, 2007）：如果两个点集的 Hausdorff 距离不超过 δ，那么原来长度大于 2δ 的洞，在扰动后的点集里必然还在。页面上真的会按种子把点抖动一下，然后检查每条长寿条是不是都还在——这条定理是<em>可证伪的断言</em>，不是修辞。</p>
+  <p class="selfcheck" id="selfCheckLine">自检：启动即跑，随每次落点重算。</p>
+</section>
+
+<section class="panel edges" id="edges">
+  <h2>模型边界 · 在哪里诚实</h2>
+  <p><strong>只到 2 维。</strong>本作只枚举 0/1/2 维单纯形，所以 β3 及以上恒为 0。代价是：2 维那一栏在点全连时<strong>并不空</strong>——五个点两两相连时，它们的 2 维骨架是一个四面体的边界，那是个货真价实的 2 维洞。看不到高于 2 维的东西，不是那里没有洞，是我们没算。</p>
+  <p><strong>格点量化。</strong>距离用<strong>距离平方</strong>（整数）参与一切判断，好处是全流程零浮点、逐位可复现、"距离不超过阈值"永远不会因浮点误差翻车。代价是观众点的位置被吸附到 100×100 的格上：两次落点差半格，算法眼里就是差一格。这是本页"逐位一致"承诺的交换条件，不是免费的。</p>
+  <p><strong>阈值是离散的。</strong>滤值只取"某个单纯形的距离平方"这些离散值，夹在两个滤值之间的 τ 不会产生任何新信息。所以拖动 τ 时，条形码只会在这些断点上发生变化，别处是平的——这不是渲染偷懒，是复形本来就没变。另外，同一滤值层内生灭的横杠（零长条）在任何 τ 上都不可见，页面把它们单列计数，不混进条形图冒充"洞"。</p>
+  <p><strong>稳定性检验的力度。</strong>δ 越大，能被定理担保的"长寿条"就越少，检验越接近空转。页面用固定的 δ=2 格，只在真的有长寿条的预设上才把这一项算作"有力量"；没有长寿条的点集会照实说"此例定理空转"，不计入通过统计。</p>
+</section>
+
+<footer class="colophon">单文件科学装置 · 全部结论数字来自离线标定 <span id="calStamp"></span> · 零网络请求 · 源码在 topo/ 目录，由其 build.js 拼装</footer>
+
+</div>
+<script>window.__DATA__ = {results: 
+{"generated":"topo/calibrate.js · 固定种子标定","canon":{"GRID":100,"maxPts":14,"seed":20261005,"minGap":3,"sweepCount":96,"calDelta":2},"reproduceFp":"E609EFA8","reproduction":{"byteEqual":true,"rounds":2,"items":36},"presets":{"one":{"label":"一个圈","hint":"正八边形：1 个洞","n":8,"nSimplex":92,"maxSq":4232,"maxDist":65.05,"ptsFp":"65B95BB5","barsFp":"A83A75E5","counts":{"h0":8,"h1":21,"h2":35},"zeroLen":20,"anomaly":0,"peakB1":1,"peakTau":610,"maxB0":8,"maxB2":35,"h1bars":[{"b":610,"d":3554,"ess":false,"len":2944,"lenEuclid":35},{"b":2048,"d":2048,"ess":false,"len":0,"lenEuclid":0},{"b":2048,"d":2048,"ess":false,"len":0,"lenEuclid":0},{"b":2048,"d":2048,"ess":false,"len":0,"lenEuclid":0},{"b":2048,"d":2048,"ess":false,"len":0,"lenEuclid":0},{"b":2116,"d":2116,"ess":false,"len":0,"lenEuclid":0},{"b":2116,"d":2116,"ess":false,"len":0,"lenEuclid":0},{"b":2116,"d":2116,"ess":false,"len":0,"lenEuclid":0},{"b":2116,"d":2116,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":4096,"d":4096,"ess":false,"len":0,"lenEuclid":0},{"b":4096,"d":4096,"ess":false,"len":0,"lenEuclid":0},{"b":4232,"d":4232,"ess":false,"len":0,"lenEuclid":0},{"b":4232,"d":4232,"ess":false,"len":0,"lenEuclid":0}],"census":[{"tau":0,"V":8,"E":0,"F":0,"chi":8,"b0":8,"b1":0,"b2":0},{"tau":610,"V":8,"E":8,"F":0,"chi":0,"b0":1,"b1":1,"b2":0},{"tau":2048,"V":8,"E":12,"F":4,"chi":0,"b0":1,"b1":1,"b2":0},{"tau":2116,"V":8,"E":16,"F":8,"chi":0,"b0":1,"b1":1,"b2":0},{"tau":3554,"V":8,"E":24,"F":32,"chi":16,"b0":1,"b1":0,"b2":15},{"tau":4096,"V":8,"E":26,"F":44,"chi":26,"b0":1,"b1":0,"b2":25},{"tau":4232,"V":8,"E":28,"F":56,"chi":36,"b0":1,"b1":0,"b2":35}]},"two":{"label":"两个圈","hint":"两个分离的正六边形：2 个洞","n":12,"nSimplex":298,"maxSq":7744,"maxDist":88,"ptsFp":"4039CB65","barsFp":"6C5B7C1F","counts":{"h0":12,"h1":55,"h2":165},"zeroLen":53,"anomaly":0,"peakB1":2,"peakTau":400,"maxB0":12,"maxB2":165,"h1bars":[{"b":400,"d":1189,"ess":false,"len":789,"lenEuclid":14},{"b":400,"d":1189,"ess":false,"len":789,"lenEuclid":14},{"b":613,"d":613,"ess":false,"len":0,"lenEuclid":0},{"b":613,"d":613,"ess":false,"len":0,"lenEuclid":0},{"b":613,"d":613,"ess":false,"len":0,"lenEuclid":0},{"b":613,"d":613,"ess":false,"len":0,"lenEuclid":0},{"b":784,"d":784,"ess":false,"len":0,"lenEuclid":0},{"b":784,"d":784,"ess":false,"len":0,"lenEuclid":0},{"b":1156,"d":1156,"ess":false,"len":0,"lenEuclid":0},{"b":1156,"d":1156,"ess":false,"len":0,"lenEuclid":0},{"b":1156,"d":1156,"ess":false,"len":0,"lenEuclid":0},{"b":1156,"d":1156,"ess":false,"len":0,"lenEuclid":0},{"b":1189,"d":1189,"ess":false,"len":0,"lenEuclid":0},{"b":1189,"d":1189,"ess":false,"len":0,"lenEuclid":0},{"b":1189,"d":1189,"ess":false,"len":0,"lenEuclid":0},{"b":1189,"d":1189,"ess":false,"len":0,"lenEuclid":0},{"b":1189,"d":1189,"ess":false,"len":0,"lenEuclid":0},{"b":1189,"d":1189,"ess":false,"len":0,"lenEuclid":0},{"b":1189,"d":1189,"ess":false,"len":0,"lenEuclid":0},{"b":1189,"d":1189,"ess":false,"len":0,"lenEuclid":0},{"b":1556,"d":1556,"ess":false,"len":0,"lenEuclid":0},{"b":1556,"d":1556,"ess":false,"len":0,"lenEuclid":0},{"b":1556,"d":1556,"ess":false,"len":0,"lenEuclid":0},{"b":1556,"d":1556,"ess":false,"len":0,"lenEuclid":0},{"b":1600,"d":1600,"ess":false,"len":0,"lenEuclid":0},{"b":1600,"d":1600,"ess":false,"len":0,"lenEuclid":0},{"b":1733,"d":1733,"ess":false,"len":0,"lenEuclid":0},{"b":1733,"d":1733,"ess":false,"len":0,"lenEuclid":0},{"b":1733,"d":1733,"ess":false,"len":0,"lenEuclid":0},{"b":1733,"d":1733,"ess":false,"len":0,"lenEuclid":0},{"b":1940,"d":1940,"ess":false,"len":0,"lenEuclid":0},{"b":1940,"d":1940,"ess":false,"len":0,"lenEuclid":0},{"b":2304,"d":2304,"ess":false,"len":0,"lenEuclid":0},{"b":2304,"d":2304,"ess":false,"len":0,"lenEuclid":0},{"b":2304,"d":2304,"ess":false,"len":0,"lenEuclid":0},{"b":2304,"d":2304,"ess":false,"len":0,"lenEuclid":0},{"b":2304,"d":2304,"ess":false,"len":0,"lenEuclid":0},{"b":2304,"d":2304,"ess":false,"len":0,"lenEuclid":0},{"b":3460,"d":3460,"ess":false,"len":0,"lenEuclid":0},{"b":3460,"d":3460,"ess":false,"len":0,"lenEuclid":0},{"b":3460,"d":3460,"ess":false,"len":0,"lenEuclid":0},{"b":3460,"d":3460,"ess":false,"len":0,"lenEuclid":0},{"b":3653,"d":3653,"ess":false,"len":0,"lenEuclid":0},{"b":3653,"d":3653,"ess":false,"len":0,"lenEuclid":0},{"b":3653,"d":3653,"ess":false,"len":0,"lenEuclid":0},{"b":3653,"d":3653,"ess":false,"len":0,"lenEuclid":0},{"b":4624,"d":4624,"ess":false,"len":0,"lenEuclid":0},{"b":4624,"d":4624,"ess":false,"len":0,"lenEuclid":0},{"b":5780,"d":5780,"ess":false,"len":0,"lenEuclid":0},{"b":5780,"d":5780,"ess":false,"len":0,"lenEuclid":0},{"b":6373,"d":6373,"ess":false,"len":0,"lenEuclid":0},{"b":6373,"d":6373,"ess":false,"len":0,"lenEuclid":0},{"b":6373,"d":6373,"ess":false,"len":0,"lenEuclid":0},{"b":6373,"d":6373,"ess":false,"len":0,"lenEuclid":0},{"b":7744,"d":7744,"ess":false,"len":0,"lenEuclid":0}],"census":[{"tau":0,"V":12,"E":0,"F":0,"chi":12,"b0":12,"b1":0,"b2":0},{"tau":64,"V":12,"E":1,"F":0,"chi":11,"b0":11,"b1":0,"b2":0},{"tau":389,"V":12,"E":9,"F":0,"chi":3,"b0":3,"b1":0,"b2":0},{"tau":400,"V":12,"E":13,"F":0,"chi":-1,"b0":1,"b1":2,"b2":0},{"tau":613,"V":12,"E":17,"F":4,"chi":-1,"b0":1,"b1":2,"b2":0},{"tau":784,"V":12,"E":19,"F":8,"chi":1,"b0":1,"b1":2,"b2":2},{"tau":1156,"V":12,"E":23,"F":14,"chi":3,"b0":1,"b1":2,"b2":4},{"tau":1189,"V":12,"E":31,"F":26,"chi":7,"b0":1,"b1":0,"b2":6},{"tau":1556,"V":12,"E":35,"F":42,"chi":19,"b0":1,"b1":0,"b2":18},{"tau":1600,"V":12,"E":37,"F":50,"chi":25,"b0":1,"b1":0,"b2":24},{"tau":1733,"V":12,"E":41,"F":64,"chi":35,"b0":1,"b1":0,"b2":34},{"tau":1940,"V":12,"E":43,"F":72,"chi":41,"b0":1,"b1":0,"b2":40},{"tau":2304,"V":12,"E":49,"F":98,"chi":61,"b0":1,"b1":0,"b2":60},{"tau":3460,"V":12,"E":53,"F":122,"chi":81,"b0":1,"b1":0,"b2":80},{"tau":3653,"V":12,"E":57,"F":148,"chi":103,"b0":1,"b1":0,"b2":102},{"tau":4624,"V":12,"E":59,"F":160,"chi":113,"b0":1,"b1":0,"b2":112},{"tau":5780,"V":12,"E":61,"F":176,"chi":127,"b0":1,"b1":0,"b2":126},{"tau":6373,"V":12,"E":65,"F":210,"chi":157,"b0":1,"b1":0,"b2":156},{"tau":7744,"V":12,"E":66,"F":220,"chi":166,"b0":1,"b1":0,"b2":165}]},"pin":{"label":"圈心落钉","hint":"八边形 + 正中心：洞被一圈三角形填死","n":9,"nSimplex":129,"maxSq":10658,"maxDist":103.24,"ptsFp":"306AE025","barsFp":"E843D43A","counts":{"h0":9,"h1":28,"h2":56},"zeroLen":27,"anomaly":0,"peakB1":1,"peakTau":610,"maxB0":9,"maxB2":56,"h1bars":[{"b":610,"d":3554,"ess":false,"len":2944,"lenEuclid":35},{"b":2048,"d":2048,"ess":false,"len":0,"lenEuclid":0},{"b":2048,"d":2048,"ess":false,"len":0,"lenEuclid":0},{"b":2048,"d":2048,"ess":false,"len":0,"lenEuclid":0},{"b":2048,"d":2048,"ess":false,"len":0,"lenEuclid":0},{"b":2116,"d":2116,"ess":false,"len":0,"lenEuclid":0},{"b":2116,"d":2116,"ess":false,"len":0,"lenEuclid":0},{"b":2116,"d":2116,"ess":false,"len":0,"lenEuclid":0},{"b":2116,"d":2116,"ess":false,"len":0,"lenEuclid":0},{"b":2824,"d":2824,"ess":false,"len":0,"lenEuclid":0},{"b":2824,"d":2824,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":3554,"d":3554,"ess":false,"len":0,"lenEuclid":0},{"b":4096,"d":4096,"ess":false,"len":0,"lenEuclid":0},{"b":4096,"d":4096,"ess":false,"len":0,"lenEuclid":0},{"b":4232,"d":4232,"ess":false,"len":0,"lenEuclid":0},{"b":4232,"d":4232,"ess":false,"len":0,"lenEuclid":0},{"b":6058,"d":6058,"ess":false,"len":0,"lenEuclid":0},{"b":6058,"d":6058,"ess":false,"len":0,"lenEuclid":0},{"b":9224,"d":9224,"ess":false,"len":0,"lenEuclid":0},{"b":9224,"d":9224,"ess":false,"len":0,"lenEuclid":0},{"b":10658,"d":10658,"ess":false,"len":0,"lenEuclid":0}],"census":[{"tau":0,"V":9,"E":0,"F":0,"chi":9,"b0":9,"b1":0,"b2":0},{"tau":610,"V":9,"E":8,"F":0,"chi":1,"b0":2,"b1":1,"b2":0},{"tau":1458,"V":9,"E":9,"F":0,"chi":0,"b0":1,"b1":1,"b2":0},{"tau":2048,"V":9,"E":13,"F":4,"chi":0,"b0":1,"b1":1,"b2":0},{"tau":2116,"V":9,"E":17,"F":8,"chi":0,"b0":1,"b1":1,"b2":0},{"tau":2824,"V":9,"E":19,"F":11,"chi":1,"b0":1,"b1":1,"b2":1},{"tau":3554,"V":9,"E":27,"F":35,"chi":17,"b0":1,"b1":0,"b2":16},{"tau":4096,"V":9,"E":29,"F":47,"chi":27,"b0":1,"b1":0,"b2":26},{"tau":4232,"V":9,"E":31,"F":59,"chi":37,"b0":1,"b1":0,"b2":36},{"tau":6058,"V":9,"E":33,"F":66,"chi":42,"b0":1,"b1":0,"b2":41},{"tau":9224,"V":9,"E":35,"F":77,"chi":51,"b0":1,"b1":0,"b2":50},{"tau":10658,"V":9,"E":36,"F":84,"chi":57,"b0":1,"b1":0,"b2":56}]},"disc":{"label":"实心方块","hint":"3×3 格点：β0=1，β1=0，但 β2≠0","n":9,"nSimplex":129,"maxSq":3200,"maxDist":56.57,"ptsFp":"D5719075","barsFp":"91C51521","counts":{"h0":9,"h1":28,"h2":56},"zeroLen":24,"anomaly":0,"peakB1":4,"peakTau":400,"maxB0":9,"maxB2":56,"h1bars":[{"b":400,"d":800,"ess":false,"len":400,"lenEuclid":8},{"b":400,"d":800,"ess":false,"len":400,"lenEuclid":8},{"b":400,"d":800,"ess":false,"len":400,"lenEuclid":8},{"b":400,"d":800,"ess":false,"len":400,"lenEuclid":8},{"b":800,"d":800,"ess":false,"len":0,"lenEuclid":0},{"b":800,"d":800,"ess":false,"len":0,"lenEuclid":0},{"b":800,"d":800,"ess":false,"len":0,"lenEuclid":0},{"b":800,"d":800,"ess":false,"len":0,"lenEuclid":0},{"b":800,"d":800,"ess":false,"len":0,"lenEuclid":0},{"b":800,"d":800,"ess":false,"len":0,"lenEuclid":0},{"b":800,"d":800,"ess":false,"len":0,"lenEuclid":0},{"b":800,"d":800,"ess":false,"len":0,"lenEuclid":0},{"b":1600,"d":1600,"ess":false,"len":0,"lenEuclid":0},{"b":1600,"d":1600,"ess":false,"len":0,"lenEuclid":0},{"b":1600,"d":1600,"ess":false,"len":0,"lenEuclid":0},{"b":1600,"d":1600,"ess":false,"len":0,"lenEuclid":0},{"b":1600,"d":1600,"ess":false,"len":0,"lenEuclid":0},{"b":1600,"d":1600,"ess":false,"len":0,"lenEuclid":0},{"b":2000,"d":2000,"ess":false,"len":0,"lenEuclid":0},{"b":2000,"d":2000,"ess":false,"len":0,"lenEuclid":0},{"b":2000,"d":2000,"ess":false,"len":0,"lenEuclid":0},{"b":2000,"d":2000,"ess":false,"len":0,"lenEuclid":0},{"b":2000,"d":2000,"ess":false,"len":0,"lenEuclid":0},{"b":2000,"d":2000,"ess":false,"len":0,"lenEuclid":0},{"b":2000,"d":2000,"ess":false,"len":0,"lenEuclid":0},{"b":2000,"d":2000,"ess":false,"len":0,"lenEuclid":0},{"b":3200,"d":3200,"ess":false,"len":0,"lenEuclid":0},{"b":3200,"d":3200,"ess":false,"len":0,"lenEuclid":0}],"census":[{"tau":0,"V":9,"E":0,"F":0,"chi":9,"b0":9,"b1":0,"b2":0},{"tau":400,"V":9,"E":12,"F":0,"chi":-3,"b0":1,"b1":4,"b2":0},{"tau":800,"V":9,"E":20,"F":16,"chi":5,"b0":1,"b1":0,"b2":4},{"tau":1600,"V":9,"E":26,"F":30,"chi":13,"b0":1,"b1":0,"b2":12},{"tau":2000,"V":9,"E":34,"F":70,"chi":45,"b0":1,"b1":0,"b2":44},{"tau":3200,"V":9,"E":36,"F":84,"chi":57,"b0":1,"b1":0,"b2":56}]},"line":{"label":"一条线","hint":"8 个共线格点：任何尺度都是 0 个洞","n":8,"nSimplex":92,"maxSq":7056,"maxDist":84,"ptsFp":"60363665","barsFp":"2AF5276D","counts":{"h0":8,"h1":21,"h2":35},"zeroLen":21,"anomaly":0,"peakB1":0,"peakTau":0,"maxB0":8,"maxB2":35,"h1bars":[{"b":576,"d":576,"ess":false,"len":0,"lenEuclid":0},{"b":576,"d":576,"ess":false,"len":0,"lenEuclid":0},{"b":576,"d":576,"ess":false,"len":0,"lenEuclid":0},{"b":576,"d":576,"ess":false,"len":0,"lenEuclid":0},{"b":576,"d":576,"ess":false,"len":0,"lenEuclid":0},{"b":576,"d":576,"ess":false,"len":0,"lenEuclid":0},{"b":1296,"d":1296,"ess":false,"len":0,"lenEuclid":0},{"b":1296,"d":1296,"ess":false,"len":0,"lenEuclid":0},{"b":1296,"d":1296,"ess":false,"len":0,"lenEuclid":0},{"b":1296,"d":1296,"ess":false,"len":0,"lenEuclid":0},{"b":1296,"d":1296,"ess":false,"len":0,"lenEuclid":0},{"b":2304,"d":2304,"ess":false,"len":0,"lenEuclid":0},{"b":2304,"d":2304,"ess":false,"len":0,"lenEuclid":0},{"b":2304,"d":2304,"ess":false,"len":0,"lenEuclid":0},{"b":2304,"d":2304,"ess":false,"len":0,"lenEuclid":0},{"b":3600,"d":3600,"ess":false,"len":0,"lenEuclid":0},{"b":3600,"d":3600,"ess":false,"len":0,"lenEuclid":0},{"b":3600,"d":3600,"ess":false,"len":0,"lenEuclid":0},{"b":5184,"d":5184,"ess":false,"len":0,"lenEuclid":0},{"b":5184,"d":5184,"ess":false,"len":0,"lenEuclid":0},{"b":7056,"d":7056,"ess":false,"len":0,"lenEuclid":0}],"census":[{"tau":0,"V":8,"E":0,"F":0,"chi":8,"b0":8,"b1":0,"b2":0},{"tau":144,"V":8,"E":7,"F":0,"chi":1,"b0":1,"b1":0,"b2":0},{"tau":576,"V":8,"E":13,"F":6,"chi":1,"b0":1,"b1":0,"b2":0},{"tau":1296,"V":8,"E":18,"F":16,"chi":6,"b0":1,"b1":0,"b2":5},{"tau":2304,"V":8,"E":22,"F":28,"chi":14,"b0":1,"b1":0,"b2":13},{"tau":3600,"V":8,"E":25,"F":40,"chi":23,"b0":1,"b1":0,"b2":22},{"tau":5184,"V":8,"E":27,"F":50,"chi":31,"b0":1,"b1":0,"b2":30},{"tau":7056,"V":8,"E":28,"F":56,"chi":36,"b0":1,"b1":0,"b2":35}]},"scatter":{"label":"撒一把","hint":"种子派生的 12 个格点","n":12,"nSimplex":298,"maxSq":10090,"maxDist":100.45,"ptsFp":"E571B9C3","barsFp":"12EACF92","counts":{"h0":12,"h1":55,"h2":165},"zeroLen":54,"anomaly":0,"peakB1":1,"peakTau":3562,"maxB0":12,"maxB2":165,"h1bars":[{"b":170,"d":170,"ess":false,"len":0,"lenEuclid":0},{"b":409,"d":409,"ess":false,"len":0,"lenEuclid":0},{"b":585,"d":585,"ess":false,"len":0,"lenEuclid":0},{"b":794,"d":794,"ess":false,"len":0,"lenEuclid":0},{"b":1073,"d":1073,"ess":false,"len":0,"lenEuclid":0},{"b":1153,"d":1153,"ess":false,"len":0,"lenEuclid":0},{"b":1181,"d":1181,"ess":false,"len":0,"lenEuclid":0},{"b":1213,"d":1213,"ess":false,"len":0,"lenEuclid":0},{"b":1258,"d":1258,"ess":false,"len":0,"lenEuclid":0},{"b":1322,"d":1322,"ess":false,"len":0,"lenEuclid":0},{"b":1522,"d":1522,"ess":false,"len":0,"lenEuclid":0},{"b":1538,"d":1538,"ess":false,"len":0,"lenEuclid":0},{"b":1604,"d":1604,"ess":false,"len":0,"lenEuclid":0},{"b":1721,"d":1721,"ess":false,"len":0,"lenEuclid":0},{"b":1737,"d":1737,"ess":false,"len":0,"lenEuclid":0},{"b":1877,"d":1877,"ess":false,"len":0,"lenEuclid":0},{"b":1924,"d":1924,"ess":false,"len":0,"lenEuclid":0},{"b":1972,"d":1972,"ess":false,"len":0,"lenEuclid":0},{"b":2290,"d":2290,"ess":false,"len":0,"lenEuclid":0},{"b":2378,"d":2378,"ess":false,"len":0,"lenEuclid":0},{"b":2405,"d":2405,"ess":false,"len":0,"lenEuclid":0},{"b":2440,"d":2440,"ess":false,"len":0,"lenEuclid":0},{"b":2980,"d":2980,"ess":false,"len":0,"lenEuclid":0},{"b":2989,"d":2989,"ess":false,"len":0,"lenEuclid":0},{"b":3026,"d":3026,"ess":false,"len":0,"lenEuclid":0},{"b":3037,"d":3037,"ess":false,"len":0,"lenEuclid":0},{"b":3530,"d":3530,"ess":false,"len":0,"lenEuclid":0},{"b":3562,"d":4210,"ess":false,"len":648,"lenEuclid":5},{"b":3625,"d":3625,"ess":false,"len":0,"lenEuclid":0},{"b":3625,"d":3625,"ess":false,"len":0,"lenEuclid":0},{"b":3796,"d":3796,"ess":false,"len":0,"lenEuclid":0},{"b":3986,"d":3986,"ess":false,"len":0,"lenEuclid":0},{"b":4210,"d":4210,"ess":false,"len":0,"lenEuclid":0},{"b":4232,"d":4232,"ess":false,"len":0,"lenEuclid":0},{"b":4346,"d":4346,"ess":false,"len":0,"lenEuclid":0},{"b":4346,"d":4346,"ess":false,"len":0,"lenEuclid":0},{"b":4365,"d":4365,"ess":false,"len":0,"lenEuclid":0},{"b":4450,"d":4450,"ess":false,"len":0,"lenEuclid":0},{"b":4594,"d":4594,"ess":false,"len":0,"lenEuclid":0},{"b":4705,"d":4705,"ess":false,"len":0,"lenEuclid":0},{"b":4705,"d":4705,"ess":false,"len":0,"lenEuclid":0},{"b":5165,"d":5165,"ess":false,"len":0,"lenEuclid":0},{"b":5517,"d":5517,"ess":false,"len":0,"lenEuclid":0},{"b":5625,"d":5625,"ess":false,"len":0,"lenEuclid":0},{"b":5729,"d":5729,"ess":false,"len":0,"lenEuclid":0},{"b":5882,"d":5882,"ess":false,"len":0,"lenEuclid":0},{"b":6056,"d":6056,"ess":false,"len":0,"lenEuclid":0},{"b":6068,"d":6068,"ess":false,"len":0,"lenEuclid":0},{"b":6245,"d":6245,"ess":false,"len":0,"lenEuclid":0},{"b":6280,"d":6280,"ess":false,"len":0,"lenEuclid":0},{"b":6500,"d":6500,"ess":false,"len":0,"lenEuclid":0},{"b":7208,"d":7208,"ess":false,"len":0,"lenEuclid":0},{"b":7301,"d":7301,"ess":false,"len":0,"lenEuclid":0},{"b":7717,"d":7717,"ess":false,"len":0,"lenEuclid":0},{"b":10090,"d":10090,"ess":false,"len":0,"lenEuclid":0}],"census":[{"tau":0,"V":12,"E":0,"F":0,"chi":12,"b0":12,"b1":0,"b2":0},{"tau":41,"V":12,"E":1,"F":0,"chi":11,"b0":11,"b1":0,"b2":0},{"tau":72,"V":12,"E":2,"F":0,"chi":10,"b0":10,"b1":0,"b2":0},{"tau":125,"V":12,"E":3,"F":0,"chi":9,"b0":9,"b1":0,"b2":0},{"tau":145,"V":12,"E":4,"F":0,"chi":8,"b0":8,"b1":0,"b2":0},{"tau":170,"V":12,"E":5,"F":1,"chi":8,"b0":8,"b1":0,"b2":0},{"tau":365,"V":12,"E":6,"F":1,"chi":7,"b0":7,"b1":0,"b2":0},{"tau":409,"V":12,"E":8,"F":2,"chi":6,"b0":6,"b1":0,"b2":0},{"tau":410,"V":12,"E":9,"F":2,"chi":5,"b0":5,"b1":0,"b2":0},{"tau":585,"V":12,"E":10,"F":3,"chi":5,"b0":5,"b1":0,"b2":0},{"tau":720,"V":12,"E":11,"F":3,"chi":4,"b0":4,"b1":0,"b2":0},{"tau":794,"V":12,"E":12,"F":5,"chi":5,"b0":4,"b1":0,"b2":1},{"tau":925,"V":12,"E":13,"F":5,"chi":4,"b0":3,"b1":0,"b2":1},{"tau":941,"V":12,"E":14,"F":5,"chi":3,"b0":2,"b1":0,"b2":1},{"tau":1073,"V":12,"E":15,"F":6,"chi":3,"b0":2,"b1":0,"b2":1},{"tau":1153,"V":12,"E":16,"F":7,"chi":3,"b0":2,"b1":0,"b2":1},{"tau":1181,"V":12,"E":17,"F":8,"chi":3,"b0":2,"b1":0,"b2":1},{"tau":1213,"V":12,"E":18,"F":9,"chi":3,"b0":2,"b1":0,"b2":1},{"tau":1258,"V":12,"E":19,"F":11,"chi":4,"b0":2,"b1":0,"b2":2},{"tau":1289,"V":12,"E":20,"F":11,"chi":3,"b0":1,"b1":0,"b2":2},{"tau":1322,"V":12,"E":21,"F":13,"chi":4,"b0":1,"b1":0,"b2":3},{"tau":1522,"V":12,"E":22,"F":15,"chi":5,"b0":1,"b1":0,"b2":4},{"tau":1538,"V":12,"E":23,"F":17,"chi":6,"b0":1,"b1":0,"b2":5},{"tau":1604,"V":12,"E":24,"F":18,"chi":6,"b0":1,"b1":0,"b2":5},{"tau":1721,"V":12,"E":25,"F":21,"chi":8,"b0":1,"b1":0,"b2":7},{"tau":1737,"V":12,"E":26,"F":24,"chi":10,"b0":1,"b1":0,"b2":9},{"tau":1877,"V":12,"E":27,"F":25,"chi":10,"b0":1,"b1":0,"b2":9},{"tau":1924,"V":12,"E":28,"F":26,"chi":10,"b0":1,"b1":0,"b2":9},{"tau":1972,"V":12,"E":29,"F":28,"chi":11,"b0":1,"b1":0,"b2":10},{"tau":2290,"V":12,"E":30,"F":30,"chi":12,"b0":1,"b1":0,"b2":11},{"tau":2378,"V":12,"E":31,"F":32,"chi":13,"b0":1,"b1":0,"b2":12},{"tau":2405,"V":12,"E":32,"F":34,"chi":14,"b0":1,"b1":0,"b2":13},{"tau":2440,"V":12,"E":33,"F":37,"chi":16,"b0":1,"b1":0,"b2":15},{"tau":2980,"V":12,"E":34,"F":40,"chi":18,"b0":1,"b1":0,"b2":17},{"tau":2989,"V":12,"E":35,"F":43,"chi":20,"b0":1,"b1":0,"b2":19},{"tau":3026,"V":12,"E":36,"F":46,"chi":22,"b0":1,"b1":0,"b2":21},{"tau":3037,"V":12,"E":37,"F":50,"chi":25,"b0":1,"b1":0,"b2":24},{"tau":3530,"V":12,"E":38,"F":54,"chi":28,"b0":1,"b1":0,"b2":27},{"tau":3562,"V":12,"E":39,"F":54,"chi":27,"b0":1,"b1":1,"b2":27},{"tau":3625,"V":12,"E":41,"F":62,"chi":33,"b0":1,"b1":1,"b2":33},{"tau":3796,"V":12,"E":42,"F":66,"chi":36,"b0":1,"b1":1,"b2":36},{"tau":3986,"V":12,"E":43,"F":70,"chi":39,"b0":1,"b1":1,"b2":39},{"tau":4210,"V":12,"E":44,"F":73,"chi":41,"b0":1,"b1":0,"b2":40},{"tau":4232,"V":12,"E":45,"F":78,"chi":45,"b0":1,"b1":0,"b2":44},{"tau":4346,"V":12,"E":47,"F":87,"chi":52,"b0":1,"b1":0,"b2":51},{"tau":4365,"V":12,"E":48,"F":93,"chi":57,"b0":1,"b1":0,"b2":56},{"tau":4450,"V":12,"E":49,"F":96,"chi":59,"b0":1,"b1":0,"b2":58},{"tau":4594,"V":12,"E":50,"F":101,"chi":63,"b0":1,"b1":0,"b2":62},{"tau":4705,"V":12,"E":52,"F":111,"chi":71,"b0":1,"b1":0,"b2":70},{"tau":5165,"V":12,"E":53,"F":116,"chi":75,"b0":1,"b1":0,"b2":74},{"tau":5517,"V":12,"E":54,"F":124,"chi":82,"b0":1,"b1":0,"b2":81},{"tau":5625,"V":12,"E":55,"F":132,"chi":89,"b0":1,"b1":0,"b2":88},{"tau":5729,"V":12,"E":56,"F":139,"chi":95,"b0":1,"b1":0,"b2":94},{"tau":5882,"V":12,"E":57,"F":146,"chi":101,"b0":1,"b1":0,"b2":100},{"tau":6056,"V":12,"E":58,"F":154,"chi":108,"b0":1,"b1":0,"b2":107},{"tau":6068,"V":12,"E":59,"F":161,"chi":114,"b0":1,"b1":0,"b2":113},{"tau":6245,"V":12,"E":60,"F":167,"chi":119,"b0":1,"b1":0,"b2":118},{"tau":6280,"V":12,"E":61,"F":175,"chi":126,"b0":1,"b1":0,"b2":125},{"tau":6500,"V":12,"E":62,"F":184,"chi":134,"b0":1,"b1":0,"b2":133},{"tau":7208,"V":12,"E":63,"F":192,"chi":141,"b0":1,"b1":0,"b2":140},{"tau":7301,"V":12,"E":64,"F":201,"chi":149,"b0":1,"b1":0,"b2":148},{"tau":7717,"V":12,"E":65,"F":210,"chi":157,"b0":1,"b1":0,"b2":156},{"tau":10090,"V":12,"E":66,"F":220,"chi":166,"b0":1,"b1":0,"b2":165}]}},"rulers":{"one":{"eulerChecked":96,"eulerFails":0,"eulerOk":true,"beta0Checked":96,"beta0Mismatch":0,"beta0Ok":true,"stabLongBase":1,"stabMatched":1,"stabMissed":0,"stabThresh":5.657,"stabHasLong":true,"stabMinGapSq":461,"stabMaxMoveSq":8},"two":{"eulerChecked":96,"eulerFails":0,"eulerOk":true,"beta0Checked":96,"beta0Mismatch":0,"beta0Ok":true,"stabLongBase":2,"stabMatched":2,"stabMissed":0,"stabThresh":5.657,"stabHasLong":true,"stabMinGapSq":49,"stabMaxMoveSq":8},"pin":{"eulerChecked":96,"eulerFails":0,"eulerOk":true,"beta0Checked":96,"beta0Mismatch":0,"beta0Ok":true,"stabLongBase":1,"stabMatched":1,"stabMissed":0,"stabThresh":5.657,"stabHasLong":true,"stabMinGapSq":461,"stabMaxMoveSq":8},"disc":{"eulerChecked":96,"eulerFails":0,"eulerOk":true,"beta0Checked":96,"beta0Mismatch":0,"beta0Ok":true,"stabLongBase":4,"stabMatched":4,"stabMissed":0,"stabThresh":5.657,"stabHasLong":true,"stabMinGapSq":257,"stabMaxMoveSq":8},"line":{"eulerChecked":96,"eulerFails":0,"eulerOk":true,"beta0Checked":96,"beta0Mismatch":0,"beta0Ok":true,"stabLongBase":0,"stabMatched":0,"stabMissed":0,"stabThresh":5.657,"stabHasLong":false,"stabMinGapSq":64,"stabMaxMoveSq":8},"scatter":{"eulerChecked":96,"eulerFails":0,"eulerOk":true,"beta0Checked":96,"beta0Mismatch":0,"beta0Ok":true,"stabLongBase":0,"stabMatched":0,"stabMissed":0,"stabThresh":5.657,"stabHasLong":false,"stabMinGapSq":52,"stabMaxMoveSq":8}},"scene":{"name":"one","fp":"A83A75E5","ptsFp":"65B95BB5","nSimplex":92,"maxSq":4232,"at610":{"b0":1,"b1":1,"b2":0},"eulerOk":true,"eulerChecked":96,"beta0Ok":true,"stabHasLong":true,"stabLongBase":1}}
+, analysis: 
+{"note":"页面「模型边界」章的三个口径都出自这里，页面不重述结论","truncation":{"maxDim":2,"note":"只枚举到 2 维，故 β3 及以上恒为 0；β2 在点全连时非零（四面体边界）","discMaxB2":56,"oneMaxB2":35},"quantization":{"grid":100,"maxSq":4232,"note":"滤值取距离平方（整数），代价是格点量化；好处是逐位可复现、无浮点翻车"},"stability":{"delta":2,"factor":2,"hasLongCases":["one","two","pin","disc"],"missedTotal":0},"scale":{"maxPts":14,"maxSimplex":469,"matrixKB":27}}
+};</script>
+<script>
+/* ============================================================================
+ * 洞的生灭/core.js —— 持续同调（persistent homology）的整数量子化模型层
+ *
+ * 题材锚点（与本库另外 50 件的正区隔见 build.js 头注「切分声明」）：
+ *   形状不是"长什么样"，而是"**洞在什么尺度上出生、什么尺度上死掉**"。
+ *   本作不问某个量怎么随参数变，而是让观众亲手画一堆点，然后由算法把这堆
+ *   点的**全部尺度下的洞**一次性算出来，摊成一张条形码。
+ *
+ * 管线（每段都是本项目此前没有用过的手段）：
+ *   ① 整数量子化      连续坐标 → GRID×GRID 整数格点；距离 → **距离平方**。
+ *                      滤值（出生/死亡尺度）全是整数 → 整个复形是纯整数对象，
+ *                      逐位可复现，且"距离 ≤ 阈值"永不因浮点误差翻车。
+ *   ② Vietoris–Rips   枚举 0/1/2 维单纯形（点/边/三角），滤值 = 该单纯形
+ *                      内所有点对距离平方的最大值。这是 flag 复形（clique
+ *                      complex）：一个三角出现，当且仅当它三条边都在。
+ *   ③ 单纯形序        按 (滤值, 维数, 顶点字典序) 排序 —— 单纯形序是
+ *                      归约算法的前提：面必须排在余面之前。
+ *   ④ 边界矩阵        GF(2) 上的位集矩阵，M[i][j]=1 ⟺ σ_j 是 σ_i 的余面。
+ *                      因单纯形序，M 严格上三角。
+ *   ⑤ 列归约          标准 persistence 归约：逐列用"已归约列"消元，
+ *                      low[i] 记录与第 i 行配对的列 → **持久配对**。
+ *   ⑥ 条形码          按维数归类：H0（连通分量）、H1（洞）、H2（Rips 复形
+ *                      的高维洞）+ **零长条**（同一滤值内生灭，尺度上不可见）。
+ *
+ * 三条自查尺子（互相独立，逐条在 build.js / verify.js 里当真）：
+ *   A. 欧拉–庞加莱恒等式  χ = V − E + F  必须恒等于  β0 − β1 + β2。
+ *      纯组合学，与边界矩阵一点关系没有 —— 归约写错一个比特，这里立刻炸。
+ *   B. β0 的并查集复核   连通分量数用 union-find 算，完全不碰边界矩阵。
+ *   C. 稳定性定理实测     Cohen-Steiner–Edelsbrunner–Harer (2007)：
+ *      若 d_H(P,Q) ≤ δ，则 P 中每个长度 > 2δ 的条 [b,d) 在 Q 里都有
+ *      一条 [b',d') 满足 b ≤ b' < d ≤ d'。本页把它当可证伪的断言跑。
+ *
+ * 铁律：
+ *   ① 零 Math.random —— 一切"随机"（撒点、扰动）走 splitmix32 位置索引派生；
+ *   ② 零浮点参与拓扑 —— 坐标、距离、滤值、格点全是整数，浮点只用于画图；
+ *   ③ core 不碰 DOM，node 可直接 require 自检（build.js / test.js 共用）；
+ *   ④ 边界矩阵按位集存（Uint8Array），maxPts=14 → 469 单纯形 → 27KB。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.TopoCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* ---------------------------------------------------------------- 场景常量 */
+  /* CANON：页面默认场景 = 标定场景 = 验证场景，三方必须一致（单一真源）。
+     这些是模型参数，不是实验结论 —— 结论数字一律由 calibrate.js 现场算出
+     写进 results.json / analysis.json，页面零手写数字。 */
+  var CANON = {
+    GRID: 100,        /* 格点边长：坐标整数化到 [0, GRID]² */
+    maxPts: 14,       /* Rips 复形规模上限：14 点 → 469 单纯形，交互才跟手 */
+    seed: 20261005,   /* 固定种子：全链路可复现的根 */
+    minGap: 3,        /* 落点最小间距（格）：小于它不落，避免退化零长边 */
+    sweepCount: 96,   /* 欧拉恒等式自检的采样点数 */
+    calDelta: 2       /* 稳定性检验的扰动幅度（格） */
+  };
+
+  /* ------------------------------------------------------------ 散列与派生 */
+  /* FNV-1a 32 位。乘法走 Math.imul：普通乘法在 2^53 之外丢精度，
+     指纹就不"逐位"了。标准向量 '' → 811C9DC5、'a' → E40C292C。 */
+  var FNV_OFFSET = 0x811c9dc5;
+  var FNV_PRIME = 0x01000193;
+  function fnv1a(str) {
+    var h = FNV_OFFSET >>> 0;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i) & 0xff;
+      h = Math.imul(h, FNV_PRIME) >>> 0;
+    }
+    h = h >>> 0;
+    var s = h.toString(16).toUpperCase();
+    while (s.length < 8) s = '0' + s;
+    return s;
+  }
+  function fnv1aBytes(bytes) {
+    var h = FNV_OFFSET >>> 0;
+    for (var i = 0; i < bytes.length; i++) {
+      h ^= bytes[i] & 0xff;
+      h = Math.imul(h, FNV_PRIME) >>> 0;
+    }
+    h = h >>> 0;
+    var s = h.toString(16).toUpperCase();
+    while (s.length < 8) s = '0' + s;
+    return s;
+  }
+  /* splitmix32 一族：与 lastgrain / zeta 等展项同源。位置索引式派生 ——
+     第 k 个值只依赖 (seed, tag, k)，与之前发生过什么无关。 */
+  function hashSeed(seed, tag) {
+    var h = (Number(seed) >>> 0) ^ 0x9e3779b9;
+    var s = String(tag == null ? '' : tag);
+    for (var i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 0x85ebca6b) >>> 0;
+      h = (h ^ (h >>> 13)) >>> 0;
+    }
+    return h >>> 0;
+  }
+  function splitmix32(a) {
+    a = a >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 16), 0x21f0aaad) >>> 0;
+      t = Math.imul(t ^ (t >>> 15), 0x735a2d97) >>> 0;
+      return ((t ^ (t >>> 15)) >>> 0) >>> 0;
+    };
+  }
+  /* 位置索引式派生：第 k 个 uint32。 */
+  function deriveU32(seed, tag, k) {
+    return splitmix32(hashSeed(seed, tag + '#' + k))();
+  }
+  /* 在 [0, m) 上取一个整数。取模偏置在本用途下无害（格点选取不是密码学）。 */
+  function deriveInt(seed, tag, k, m) {
+    return deriveU32(seed, tag, k) % m;
+  }
+
+  /* ------------------------------------------------------------ 预设点云 */
+  /* 全部是**手写整数格点**，不调用三角函数。
+     理由（也是本库反复栽过的坑的同类）：Math.cos 的最后一位在不同 JS 引擎
+     可能不同，浮点三角函数算出来的圆周坐标会差 1 格 —— 对"逐位一致"的
+     承诺来说，那 1 格就是全部。圆周坐标是**输入**，钉成整数表最干净。 */
+  function ring8(cx, cy, r) {
+    /* 正八边形：轴向 (±r,0)(0,±r) 与斜向 (±0.707r,±0.707r)，后者取整 */
+    var d = Math.round(r * 0.7071);
+    return [
+      cx + r, cy, cx + d, cy + d, cx, cy + r, cx - d, cy + d,
+      cx - r, cy, cx - d, cy - d, cx, cy - r, cx + d, cy - d
+    ];
+  }
+  function ring6(cx, cy, r) {
+    /* 正六边形：横纵轴 ±r 与 ±(r/2, 0.866r) */
+    var h = Math.round(r * 0.5), t = Math.round(r * 0.866);
+    return [
+      cx + r, cy, cx + h, cy + t, cx - h, cy + t,
+      cx - r, cy, cx - h, cy - t, cx + h, cy - t
+    ];
+  }
+  function ring4(cx, cy, r) {
+    return [cx + r, cy, cx, cy + r, cx - r, cy, cx, cy - r];
+  }
+
+  var PRESETS = {
+    /* 一个圈：正八边形，观众最熟悉的"1 个洞" */
+    one: { label: '一个圈', hint: '正八边形：1 个洞', pts: ring8(50, 50, 32) },
+    /* 两个圈：两个远离的正六边形 —— 洞可以不止一个 */
+    two: {
+      label: '两个圈', hint: '两个分离的正六边形：2 个洞',
+      pts: ring6(26, 50, 20).concat(ring6(74, 50, 20))
+    },
+    /* 中心落一枚钉：一个圈 + 正中心点 —— 加一个点就能杀掉一个洞 */
+    pin: { label: '圈心落钉', hint: '八边形 + 正中心：洞被一圈三角形填死', pts: ring8(50, 50, 32).concat([100, 100]) },
+    /* 实心方块：3×3 格点 —— 看着"填满了"，H2 却不为 0（Rips 的高维洞） */
+    disc: {
+      label: '实心方块', hint: '3×3 格点：β0=1，β1=0，但 β2≠0',
+      pts: [30, 30, 50, 30, 70, 30, 30, 50, 50, 50, 70, 50, 30, 70, 50, 70, 70, 70]
+    },
+    /* 一条线：8 个共线格点 —— 负对照，永远 0 个洞 */
+    line: { label: '一条线', hint: '8 个共线格点：任何尺度都是 0 个洞', pts: [8, 50, 20, 50, 32, 50, 44, 50, 56, 50, 68, 50, 80, 50, 92, 50] },
+    /* 撒一把：位置索引派生的 12 个格点 */
+    scatter: { label: '撒一把', hint: '种子派生的 12 个格点', pts: scatterPts(CANON.seed, 12) }
+  };
+
+  function scatterPts(seed, count) {
+    var out = [];
+    for (var k = 0; k < count; k++) {
+      out.push(6 + deriveInt(seed, 'scatter-x', k, CANON.GRID - 12));
+      out.push(6 + deriveInt(seed, 'scatter-y', k, CANON.GRID - 12));
+    }
+    return out;
+  }
+
+  /* ================================================== ① 距离平方（整数量子化） */
+  /* 全流程唯一算距离的地方。整数 in、整数 out；不存在 sqrt，因此不存在
+     "本该 ≤ 阈值却因为浮点误差 > 了"的翻车。渲染时才开方（视觉需要）。 */
+  function dist2(pts, i, j) {
+    var dx = pts[2 * i] - pts[2 * j];
+    var dy = pts[2 * i + 1] - pts[2 * j + 1];
+    return dx * dx + dy * dy;
+  }
+
+  /* ============================================ ② 单纯形枚举 + ③ 单纯形序 */
+  /* 枚举 0/1/2 维单纯形。滤值 = 该单纯形内所有点对距离平方的最大值
+     （0 维没有点对，规定为 0）。排序键 (滤值, 维数, 顶点字典序)：
+       · 面 ⊂ 余面 ⟹ 滤值(面) ≤ 滤值(余面)（max over 更小的集合）；
+       · 滤值相等时维数小的在前（面维数严格小于余面）；
+       · 再同维同值才用顶点字典序 —— 这是确定性 tiebreak，
+         保证同一台机器上单纯形编号逐个相同。
+     前两条合起来保证"面排在余面之前"，这正是归约算法要的前提。 */
+  function enumerateSimplices(pts, n) {
+    var list = [];
+    var i, j, k;
+    for (i = 0; i < n; i++) list.push([0, 0, i, -1, -1]);
+    for (i = 0; i < n; i++) {
+      for (j = i + 1; j < n; j++) list.push([1, dist2(pts, i, j), i, j, -1]);
+    }
+    for (i = 0; i < n; i++) {
+      for (j = i + 1; j < n; j++) {
+        var dij = dist2(pts, i, j);
+        for (k = j + 1; k < n; k++) {
+          var dik = dist2(pts, i, k), djk = dist2(pts, j, k);
+          /* 滤值取三条边距离平方的最大值：Rips（=clique）复形里，
+             一个三角出现当且仅当它三条边都出现，即最晚的那条边到达时。 */
+          list.push([2, Math.max(dij, dik, djk), i, j, k]);
+        }
+      }
+    }
+    list.sort(function (p, q) {
+      if (p[1] !== q[1]) return p[1] - q[1];
+      if (p[0] !== q[0]) return p[0] - q[0];
+      if (p[2] !== q[2]) return p[2] - q[2];
+      if (p[3] !== q[3]) return p[3] - q[3];
+      return p[4] - q[4];
+    });
+
+    var N = list.length;
+    var dim = new Uint8Array(N), filt = new Int32Array(N);
+    var v0 = new Int32Array(N), v1 = new Int32Array(N), v2 = new Int32Array(N);
+    var maxSq = 0;
+    for (var s = 0; s < N; s++) {
+      dim[s] = list[s][0]; filt[s] = list[s][1];
+      v0[s] = list[s][2]; v1[s] = list[s][3]; v2[s] = list[s][4];
+      if (filt[s] > maxSq) maxSq = filt[s];
+    }
+    return {
+      N: N, n: n, dim: dim, filt: filt, v0: v0, v1: v1, v2: v2,
+      maxSq: maxSq, words: (N + 7) >> 3
+    };
+  }
+
+  /* ============================================================== ④ 边界矩阵 */
+  /* GF(2) 上的边界矩阵，**第 j 列存放 σ_j 的余面**（去掉一个顶点得到的
+     d−1 维面），行号即面编号。由单纯形序（面恒在余面之前），
+     第 j 列的置位全部 < j，矩阵严格上三角。
+
+     ★ 这一栏的「列 = 余面、不是列 = 余面之集」是本项目踩得最贵的一处。
+       写成 cof[j] = { i : σ_j 是 σ_i 的余面 }（把面存成行）也能跑通，
+       3 点全连、四点方形这种小例子上结果**完全正确**，但一般点集上
+       配对的生死方向整个反过来 —— 实测欧拉恒等式从 τ=624 起开始失败，
+       β0 与并查集对不上（4-环报 β0=3 而并查集说 1）。
+       判定方法不是推理，是拿能手算的例子（三角形 / 4-环）跑
+       「两种存法 × 两种主元取法」四种组合，只有「列存余面 + 取最大行主元」
+       给出正确的条形码。这条已写进 scratch-conv.js 的对照实验里。 */
+  function buildBoundary(simp) {
+    var n = simp.n, N = simp.N, words = simp.words;
+    var col = new Uint8Array(N * words);
+    var edgeIdx = new Int32Array(n * n);
+    var i;
+    for (i = 0; i < n * n; i++) edgeIdx[i] = -1;
+    for (i = 0; i < N; i++) if (simp.dim[i] === 1) edgeIdx[simp.v0[i] * n + simp.v1[i]] = i;
+    var triIdx = new Int32Array(n * n * n);
+    for (i = 0; i < n * n * n; i++) triIdx[i] = -1;
+    for (i = 0; i < N; i++) {
+      if (simp.dim[i] === 2) triIdx[(simp.v0[i] * n + simp.v1[i]) * n + simp.v2[i]] = i;
+    }
+    function addFace(colIdx, face) {
+      col[colIdx * words + (face >> 3)] |= (1 << (face & 7));
+    }
+    for (i = 0; i < N; i++) {
+      var d = simp.dim[i];
+      /* 0 维没有余面：0 单纯形是链的源头，其列整列为零。 */
+      if (d === 1) { addFace(i, simp.v0[i]); addFace(i, simp.v1[i]); }
+      else if (d === 2) {
+        var a = simp.v0[i], b = simp.v1[i], c = simp.v2[i];
+        var ab = edgeIdx[a * n + b], ac = edgeIdx[a * n + c], bc = edgeIdx[b * n + c];
+        /* 三角出现 ⟺ 三条边都在（flag/clique 复形的定义）。理论上恒真，
+           但仍逐个查 —— 若为 -1 说明枚举与索引表脱节，必须炸出来。 */
+        if (ab < 0 || ac < 0 || bc < 0) {
+          throw new Error('边界矩阵：单纯形 ' + i + ' 的某条边不在复形里（枚举与索引脱节）');
+        }
+        addFace(i, ab); addFace(i, ac); addFace(i, bc);
+      }
+    }
+    return { col: col, edgeIdx: edgeIdx, triIdx: triIdx };
+  }
+
+  /* ============================================================== ⑤ 列归约 */
+  /* 最高置位：返回字节内最高 1 的下标。x !== 0 时 31 − clz32(x) 正好是它。 */
+  function topBit(buf, words) {
+    for (var w = words - 1; w >= 0; w--) {
+      var x = buf[w];
+      if (x !== 0) return (w << 3) + (31 - Math.clz32(x));
+    }
+    return -1;
+  }
+  /* 标准 persistence 归约（GF(2)，列归约）。逐列扫：取该列**编号最大的非零行** m
+     （列 j 的置位全 < j，故 m 是本列最靠下的一行）；
+     若 low[m] 还没主元，就由本列担任（low[m] = j），本列归约完毕；
+     否则把 low[m] 那条**已归约**的列异或进来，消掉第 m 行，继续。
+     归约结果必须写回 col[j]：后续列要异或的正是这些已归约列。
+
+     ★ 配对语义（实测确定，写下来免得再搞反）：
+       low[m] = j 意味着「第 m 行的主元由第 j 列担任」，此时 **m > j**（实测：
+       三角形 low = [-1,3,4,-1,-1,6,-1]，m=1 时 j=3，j 反而更大）。
+       正确的读法是：σ_j 是**低维的余面**（被消掉的那一方）→ 它**诞生**于 filt[j]；
+       σ_m 是**高维的余面**（发起消元的那一方）→ 它**杀死**这个类于 filt[m]。
+       于是维数关系恒为 dim[j] + 1 === dim[m]（不是反过来！）。
+       三角形：j=3(边,filt2)、m=1(点,filt0)?? 不 —— dim[3]=1 > dim[1]=0，
+       所以正确的配对是 σ_1(点) 生、σ_3(边) 死，即 b=filt[1]=0、d=filt[3]=2，
+       H0 条 [0,2)，与手算一致。low 的下标 m 指的是**列**（死亡方 σ_j），
+       值 j 指的是**行**… 唯一不会搞混的办法是下面 extractBars 里那条
+       「按 dim 差判定 + 断言相等」的写法，它不依赖下标大小关系。 */
+  function reduceColumns(col, N, words) {
+    var low = new Int32Array(N);
+    var i;
+    for (i = 0; i < N; i++) low[i] = -1;
+    var scratch = new Uint8Array(words);
+    for (var j = 0; j < N; j++) {
+      var base = j * words, w, w2;
+      for (w = 0; w < words; w++) scratch[w] = col[base + w];
+      for (;;) {
+        var m = topBit(scratch, words);
+        if (m < 0) break;
+        var prev = low[m];
+        if (prev < 0) { low[m] = j; break; }
+        var pb = prev * words;
+        for (w2 = 0; w2 < words; w2++) scratch[w2] ^= col[pb + w2];
+      }
+      for (w = 0; w < words; w++) col[base + w] = scratch[w];
+    }
+    return low;
+  }
+
+  /* ============================================================== ⑥ 条形码 */
+  /* 从 low[] 出条形码。**不依赖下标大小关系**，只依赖维数关系 ——
+     low[m] = j 表示第 j 列在第 m 行取了主元。第 j 列存的是 σ_j 的余面，
+     主元行 m 必是其中维数最低者，即 dim[j] = dim[m] + 1。所以：
+       · σ_m（维数 k）**诞生**于 filt[m]；
+       · σ_j（维数 k+1）**杀死**它于 filt[j]；
+       · 这是一个第 k 维的类，区间 [filt[m], filt[j])。
+     三角形实测：low = [-1,3,4,-1,-1,6,-1]
+       m=1,j=3 → 点生(0) 边死(2) → H0 条 [0,2)
+       m=2,j=4 → 点生(0) 边死(2) → H0 条 [0,2)
+       m=5,j=6 → 边生(4) 三角死(4) → H1 条 [4,4)（零长）
+       加上顶点 0 的本征条 [0,∞) ＝ 手算真值，一字不差。
+
+     分类：
+       dim[j] = dim[m] + 1 → 真条（k = dim[m] 维）。b === d 的叫**零长条**：
+            同一滤值层内生灭，任何 τ 都满足不了「b ≤ τ < d」，条形图上不可见，
+            但必须计数并如实报给观众（"有多少个洞生下来就死了"）。
+       其它维数差            → 结构异常，计入 anomaly，由欧拉恒等式当场抓出来。
+     本征类（无穷条）= 满足两条的单纯形 s：low[s] = −1（没被任何列取过主元），
+     且 s 不出现在任何 low[m] 的取值里（没当过"杀死方"）。
+     ★ 第二个条件不能省：一个单纯形完全可能「在某条有限条里当死亡方」而
+     low 自身为 −1（三角形里的边 3、4 就是）。只判 low[s] === −1 会把
+     它们全算成额外本征类，β0 直接多 1（实测 H0 报 2 而真值是 1）。 */
+  function extractBars(simp, low) {
+    var N = simp.N;
+    var isDeath = {};                       /* s 当过杀死方？ */
+    var x;
+    for (x = 0; x < N; x++) if (low[x] >= 0) isDeath[low[x]] = 1;
+    var h0 = [], h1 = [], h2 = [], zeroLen = 0, anomaly = 0;
+    for (var m = 0; m < N; m++) {
+      var j = low[m];
+      if (j < 0) continue;
+      var dBorn = simp.dim[m], dDied = simp.dim[j];
+      if (dDied !== dBorn + 1) { anomaly++; continue; }
+      var bar = { b: simp.filt[m], d: simp.filt[j], si: m, sj: j, ess: false };
+      if (bar.b === bar.d) zeroLen++;
+      if (dBorn === 0) h0.push(bar);
+      else if (dBorn === 1) h1.push(bar);
+      else h2.push(bar);
+    }
+    for (m = 0; m < N; m++) {
+      if (low[m] === -1 && !isDeath[m]) {
+        var ess = { b: simp.filt[m], d: -1, si: m, sj: -1, ess: true };
+        if (simp.dim[m] === 0) h0.push(ess);
+        else if (simp.dim[m] === 1) h1.push(ess);
+        else h2.push(ess);
+      }
+    }
+    /* 条形图按出生尺度排序；同出生按死亡、再按单纯形编号 —— 确定性排序，
+       渲染与指纹都依赖它。
+       ★ 本征条（d = −1，表示"永不死亡"）在同出生尺度里必须排在**最后**。
+         早先直接按 d 数值比，−1 < 2 会把本征条排到最前，签名与页面图例
+         的"有限条 → 本征条"阅读顺序对不上。取巧：把 d = −1 映射成 +∞ 再比。 */
+    function byBar(p, q) {
+      if (p.b !== q.b) return p.b - q.b;
+      var dp = p.d < 0 ? Infinity : p.d;
+      var dq = q.d < 0 ? Infinity : q.d;
+      if (dp !== dq) return dp - dq;
+      if (p.si !== q.si) return p.si - q.si;
+      return p.sj - q.sj;
+    }
+    h0.sort(byBar); h1.sort(byBar); h2.sort(byBar);
+    return { h0: h0, h1: h1, h2: h2, zeroLen: zeroLen, anomaly: anomaly,
+      flatPair: zeroLen + anomaly };
+  }
+
+  /* 在阈值 τ 处的 Betti 数：数"活着"的条。d === -1 表示无穷（右端到边）。 */
+  function census(bars, tau) {
+    function alive(list) {
+      var c = 0;
+      for (var i = 0; i < list.length; i++) {
+        var b = list[i];
+        if (b.b <= tau && (b.d < 0 || tau < b.d)) c++;
+      }
+      return c;
+    }
+    return { b0: alive(bars.h0), b1: alive(bars.h1), b2: alive(bars.h2) };
+  }
+
+  /* ---------------------------------------------------------- 条形码指纹 */
+  /* 把条形码压成一个 uint32 序列再取 FNV：出生、死亡（-1 记作 0xffffffff）。
+     两条形状不同的点云若条形码逐位相同，指纹就相同 —— 这正是我们要的
+     "拓扑相同"含义；而指纹不同则拓扑必不同。 */
+  function barsFingerprint(bars) {
+    var buf = [];
+    var groups = [bars.h0, bars.h1, bars.h2];
+    for (var g = 0; g < 3; g++) {
+      var list = groups[g];
+      for (var i = 0; i < list.length; i++) {
+        var b = list[i];
+        buf.push(b.b & 0xff, (b.b >>> 8) & 0xff, (b.b >>> 16) & 0xff, (b.b >>> 24) & 0xff);
+        var dd = b.d < 0 ? 0xffffffff : b.d;
+        buf.push(dd & 0xff, (dd >>> 8) & 0xff, (dd >>> 16) & 0xff, (dd >>> 24) & 0xff);
+      }
+      buf.push(0xfe, 0xfe, 0xfe, 0xfe);   /* 组间分隔，避免 [a][b] 与 [ab][] 撞指纹 */
+    }
+    return fnv1aBytes(buf);
+  }
+  /* 点云指纹：坐标逐个入 FNV。与条形码指纹分开 —— 形状不同但拓扑相同的
+     两个点云，点云指纹必不同而条形码指纹相同，这组对照在页面上要摆出来。 */
+  function ptsFingerprint(pts) {
+    return fnv1aBytes(pts);
+  }
+
+  /* ============================================================ 装配：全流程 */
+  function buildBarcode(pts) {
+    var n = pts.length >> 1;
+    if (n === 0) {
+      return { n: 0, simp: null, bars: { h0: [], h1: [], h2: [], flatPair: 0 },
+        maxSq: 0, fp: fnv1a(''), nSimplex: 0, ok: true };
+    }
+    var simp = enumerateSimplices(pts, n);
+    var bnd = buildBoundary(simp);
+    var low = reduceColumns(bnd.col, simp.N, simp.words);
+    var bars = extractBars(simp, low);
+    return {
+      n: n, simp: simp, bars: bars, low: low, maxSq: simp.maxSq,
+      nSimplex: simp.N, fp: barsFingerprint(bars), ok: true
+    };
+  }
+
+  /* ================================================= 自查尺子 A：欧拉–庞加莱 */
+  /* 单纯形计数（V/E/F）与 Betti 数都来自同一次归约，但恒等式本身是
+     纯组合学的：χ = V − E + F，χ = β0 − β1 + β2。两条等式相减得
+        β0 − β1 + β2 = V − E + F
+     它把"归约算出的 Betti 数"与"复形里到底有几个点几条边几个面"绑在
+     了一起 —— 归约错一个比特，等式立刻不成立。 */
+  function countsAt(simp, tau) {
+    var V = 0, E = 0, F = 0;
+    for (var s = 0; s < simp.N; s++) {
+      if (simp.filt[s] > tau) continue;
+      if (simp.dim[s] === 0) V++;
+      else if (simp.dim[s] === 1) E++;
+      else F++;
+    }
+    return { V: V, E: E, F: F, chi: V - E + F };
+  }
+  function eulerAt(built, tau) {
+    var c = countsAt(built.simp, tau);
+    var b = census(built.bars, tau);
+    return {
+      tau: tau, V: c.V, E: c.E, F: c.F, chi: c.chi,
+      b0: b.b0, b1: b.b1, b2: b.b2,
+      alt: b.b0 - b.b1 + b.b2,
+      ok: (b.b0 - b.b1 + b.b2) === c.chi
+    };
+  }
+  /* 沿整条滤值扫一遍（步长按 maxSq 均分），逐点验欧拉恒等式。 */
+  function eulerSweep(built, count) {
+    count = count || CANON.sweepCount;
+    var maxSq = built.maxSq;
+    var fails = [], firstFail = null, checked = 0;
+    var seen = {};
+    for (var s = 0; s < count; s++) {
+      var tau = Math.round(maxSq * s / Math.max(1, count - 1));
+      if (seen[tau]) continue;
+      seen[tau] = 1;
+      var r = eulerAt(built, tau);
+      checked++;
+      if (!r.ok) {
+        fails.push({ tau: tau, alt: r.alt, chi: r.chi });
+        if (!firstFail) firstFail = r;
+      }
+    }
+    return { checked: checked, fails: fails.length, firstFail: firstFail, allOk: fails.length === 0 };
+  }
+
+  /* ====================================================== 自查尺子 B：并查集 */
+  /* β0 = 阈值下 1-骨架的连通分量数。整条路径只用 union-find，
+     一次边界矩阵都不碰 —— 与条形码完全独立。 */
+  function componentsAt(pts, n, tau) {
+    var parent = new Int32Array(n);
+    var i;
+    for (i = 0; i < n; i++) parent[i] = i;
+    function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+    for (i = 0; i < n; i++) {
+      for (var j = i + 1; j < n; j++) {
+        if (dist2(pts, i, j) <= tau) {
+          var a = find(i), b = find(j);
+          if (a !== b) parent[a] = b;
+        }
+      }
+    }
+    var roots = {};
+    for (i = 0; i < n; i++) roots[find(i)] = 1;
+    return Object.keys(roots).length;
+  }
+  /* β0 的双路对账：条形码数的 vs 并查集数的。 */
+  function censusRecheck(built, pts, count) {
+    count = count || CANON.sweepCount;
+    var maxSq = built.maxSq, seen = {}, mismatch = 0, checked = 0, first = null;
+    for (var s = 0; s < count; s++) {
+      var tau = Math.round(maxSq * s / Math.max(1, count - 1));
+      if (seen[tau]) continue;
+      seen[tau] = 1;
+      var fromBars = census(built.bars, tau).b0;
+      var fromUf = componentsAt(pts, built.n, tau);
+      checked++;
+      if (fromBars !== fromUf) {
+        mismatch++;
+        if (!first) first = { tau: tau, fromBars: fromBars, fromUf: fromUf };
+      }
+    }
+    return { checked: checked, mismatch: mismatch, first: first, allOk: mismatch === 0 };
+  }
+
+  /* ==================================================== 自查尺子 C：稳定性 */
+  /* 逐点独立位移，位移量整数且 ≤ delta 格。派生子流保证可复现。 */
+  function perturb(pts, delta, seed, tag) {
+    var n = pts.length >> 1, out = new Array(n * 2);
+    for (var k = 0; k < n; k++) {
+      var dx = deriveInt(seed, tag || 'perturb-dx', k, 2 * delta + 1) - delta;
+      var dy = deriveInt(seed, tag || 'perturb-dy', k, 2 * delta + 1) - delta;
+      out[2 * k] = pts[2 * k] + dx;
+      out[2 * k + 1] = pts[2 * k + 1] + dy;
+    }
+    return out;
+  }
+  /* 扰动后的点集必须仍是互不重合的格点（否则 Hausdorff 前提谈不上去）。
+     返回最小间距（格）与最大位移（格），供页面如实报出。 */
+  function perturbGeometry(pts, moved) {
+    var n = pts.length >> 1, minGap = Infinity, maxMove = 0;
+    for (var k = 0; k < n; k++) {
+      var dx = moved[2 * k] - pts[2 * k], dy = moved[2 * k + 1] - pts[2 * k + 1];
+      if (dx * dx + dy * dy > maxMove) maxMove = dx * dx + dy * dy;
+      for (var j = k + 1; j < n; j++) {
+        var ex = moved[2 * k] - moved[2 * j], ey = moved[2 * k + 1] - moved[2 * j + 1];
+        var g = ex * ex + ey * ey;
+        if (g < minGap) minGap = g;
+      }
+    }
+    return { minGapSq: minGap === Infinity ? 0 : minGap, maxMoveSq: maxMove };
+  }
+  /* 定理实测：若 d_H(P,Q) ≤ δ，则 P 中每条长度 > 2δ 的条 [b,d)
+     在 Q 的条形码里都能找到 [b',d') 使 b ≤ b' 且 d ≤ d'。
+     这不是"重述定理"，是把定理的结论当成可证伪的断言逐条跑。
+
+     ★ 单位陷阱（本项目栽过同类坑的加强版）：定理里的 δ 与"长度"都是
+     **欧氏距离**，而本页滤值是**距离平方**。两者不能直接比。
+       · 逐点扰动 dx,dy ∈ [−δ, δ] ⟹ 实际最大位移 = √2·δ，
+         所以 d_H ≤ √2·δ，阈值必须按 √2·δ 取，否则断言会假失败；
+       · 长度 likewise：平方差 (d−b) 开方后才是欧氏长度，
+         √d − √b 才是定理说的那个"长度"。
+     包含关系 b ≤ b' ∧ d ≤ d' 在平方域与欧氏域等价（都是正数上的单调序），
+     所以匹配那一半不需要换算。 */
+  function euclidLen(bar) {
+    if (bar.d < 0) return Infinity;
+    return Math.sqrt(bar.d) - Math.sqrt(bar.b);
+  }
+  function stabilityReport(pts, delta, seed) {
+    var base = buildBarcode(pts);
+    var moved = perturb(pts, delta, seed);
+    var geom = perturbGeometry(pts, moved);
+    var other = buildBarcode(moved);
+    /* d_H 的上界：逐轴 ±δ ⟹ 每点位移 ≤ √2·δ */
+    var thresh = VERIFY.stabilityFactor * Math.SQRT2 * delta;
+    var long0 = base.bars.h1.filter(function (x) { return euclidLen(x) > thresh; });
+    var long1 = other.bars.h1;
+    var matched = 0, missed = [];
+    for (var i = 0; i < long0.length; i++) {
+      var b = long0[i], bd = b.d < 0 ? Infinity : b.d;
+      var hit = false;
+      for (var j = 0; j < long1.length; j++) {
+        var c = long1[j], cd = c.d < 0 ? Infinity : c.d;
+        if (b.b <= c.b && cd >= bd) { hit = true; break; }
+      }
+      if (hit) matched++;
+      else missed.push({ b: b.b, d: b.d, len: euclidLen(b) });
+    }
+    return {
+      delta: delta, thresh: thresh,
+      minGapSq: geom.minGapSq, maxMoveSq: geom.maxMoveSq,
+      longBase: long0.length, longOther: long1.length,
+      matched: matched, missed: missed.length, missedList: missed,
+      allOk: missed.length === 0 && long0.length > 0
+    };
+  }
+
+  /* ============================================== 观众交互用的落点准入 */
+  /* 距离既有落点太近就拒绝：Rips 复形里会出现距离平方为 0 或极小的退化
+     边，把零长条搅得难以解释。返回 true 表示可以落。 */
+  function canPlace(pts, n, x, y) {
+    if (x < 0 || y < 0 || x > CANON.GRID || y > CANON.GRID) return false;
+    var g2 = CANON.minGap * CANON.minGap;
+    for (var k = 0; k < n; k++) {
+      var dx = x - pts[2 * k], dy = y - pts[2 * k + 1];
+      if (dx * dx + dy * dy < g2) return false;
+    }
+    return true;
+  }
+
+  /* ------------------------------------------------- 落点吸附到格点（整数） */
+  /* 观众的指针坐标是浮点（CSS 像素），这里按比例吸到最近格点。
+     取整用"四舍五入远离零"，不依赖 Math.round 的负数半值行为。 */
+  function snap(v) {
+    return v >= 0 ? Math.floor(v + 0.5) : -Math.floor(-v + 0.5);
+  }
+  function snapFromPointer(px, py, rectW, rectH) {
+    if (!(rectW > 0 && rectH > 0)) return null;
+    var gx = snap(px / rectW * CANON.GRID);
+    var gy = snap(py / rectH * CANON.GRID);
+    if (gx < 0) gx = 0; if (gx > CANON.GRID) gx = CANON.GRID;
+    if (gy < 0) gy = 0; if (gy > CANON.GRID) gy = CANON.GRID;
+    return [gx, gy];
+  }
+
+  /* ------------------------------------------------------------ 验收容差表 */
+  /* 页面自检与 verify.js 同源取用，防止两处口径漂移。
+     这里只登记"验收口径"的容差，不含任何实验结论数字。 */
+  var VERIFY = {
+    eulerTol: 0,           /* 欧拉恒等式：整数恒等，容差只能是 0 */
+    censusTol: 0,          /* β0 双路对账：并查集 vs 条形码，必须逐点相等 */
+    stabilityFactor: 2,    /* 定理系数：长度 > 2δ 的条必须存活 */
+    maxPts: CANON.maxPts,
+    sweepCount: CANON.sweepCount,
+    touchNarrowMin: 44,    /* 窄屏（≤640px）触控目标最小边 */
+    touchWideMin: 24,      /* 桌面触控目标最小边 */
+    overflowTolNarrow: 1,  /* 窄屏横向溢出容差 px */
+    overflowTolWide: 2,    /* 桌面横向溢出容差 px */
+    minTextLen: 200,       /* 可见文本下限 */
+    maxSimplex: 469        /* maxPts=14 时的单纯形总数（14+91+364），规模护栏 */
+  };
+
+  /* ------------------------------------------------------------ 格式化闸 */
+  /* 所有 DOM 数值出口都从这里走：非有限值一律落破折号（坏值不进 DOM）。 */
+  function fmtInt(x) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return String(Math.round(x));
+  }
+  function fmtFixed(x, d) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return (+x).toFixed(d === undefined ? 2 : d);
+  }
+  /* 距离（格）→ 人话：滤值是距离平方，显示时才开方。 */
+  function fmtLen(sq) {
+    if (sq === null || sq === undefined || !isFinite(sq)) return '—';
+    if (sq < 0) return '∞';
+    return fmtFixed(Math.sqrt(sq), 1);
+  }
+
+  return {
+    CANON: CANON,
+    PRESETS: PRESETS,
+    VERIFY: VERIFY,
+    fnv1a: fnv1a,
+    fnv1aBytes: fnv1aBytes,
+    hashSeed: hashSeed,
+    splitmix32: splitmix32,
+    deriveU32: deriveU32,
+    deriveInt: deriveInt,
+    dist2: dist2,
+    enumerateSimplices: enumerateSimplices,
+    buildBoundary: buildBoundary,
+    reduceColumns: reduceColumns,
+    extractBars: extractBars,
+    census: census,
+    barsFingerprint: barsFingerprint,
+    ptsFingerprint: ptsFingerprint,
+    buildBarcode: buildBarcode,
+    countsAt: countsAt,
+    eulerAt: eulerAt,
+    eulerSweep: eulerSweep,
+    componentsAt: componentsAt,
+    censusRecheck: censusRecheck,
+    perturb: perturb,
+    perturbGeometry: perturbGeometry,
+    stabilityReport: stabilityReport,
+    canPlace: canPlace,
+    snap: snap,
+    snapFromPointer: snapFromPointer,
+    fmtInt: fmtInt,
+    fmtFixed: fmtFixed,
+    fmtLen: fmtLen
+  };
+});
+
+</script>
+<script>
+/* ============================================================================
+ * topo/ui.js —— 落点交互、条形码绘制、逐尺度普查、页面自检、验证探针
+ *
+ * 铁律（与 core.js 一致）：
+ *   ① 零随机数：一切"随机"（撒点、扰动）走 core 的位置索引派生；
+ *   ② 任何非有限数都不进 DOM —— 数值出口一律过 core 的 fmtInt/fmtFixed/fmtLen；
+ *   ③ 断言与读数只依赖**同步计算**：核心计算全是同步的，没有帧循环依赖。
+ *      本 family's 验证环境（chrome-headless-shell + --virtual-time-budget）
+ *      实测 rAF 不推进（lastgrain 的教训：RAF_FRAMES=0），故本页干脆不用 rAF；
+ *      重绘只在事件里同步发生，断言值不随时间漂移。
+ *   ④ 页面不携带任何结论数字 —— 全部出自 window.__DATA__（离线标定内联），
+ *      页面只负责用自己的点云复算并与标定对账。
+ * ==========================================================================*/
+(function () {
+  'use strict';
+  var C = window.TopoCore;
+  var D = window.__DATA__;   /* build.js 内联 */
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* 运行期错误登记（不吞错：返回 false 让默认报错照常发生） */
+  window.__err = [];
+  window.onerror = function (m, s, l) {
+    window.__err.push(String(m) + ' @line ' + l);
+    return false;
+  };
+
+  var CANON = C.CANON;
+  var VERIFY = C.VERIFY;
+  var GRID = CANON.GRID;
+
+  /* 调色板：从样式表取变量，取不到时用同一族兜底（表现层常量，非结论数字） */
+  var css = getComputedStyle(document.documentElement);
+  function cssVar(name, fallback) {
+    var v = css.getPropertyValue(name);
+    return (v && v.trim()) || fallback;
+  }
+  var PAL = {
+    bg3: cssVar('--bg3', '#232d52'),
+    grid: cssVar('--grid', 'rgba(120,200,220,0.10)'),
+    rule: cssVar('--rule', 'rgba(154,170,226,0.26)'),
+    mute: cssVar('--mute', '#a9b2d6'),
+    ink: cssVar('--ink', '#eef1fb'),
+    dot: cssVar('--dot', '#f7f9ff'),
+    h0: cssVar('--h0', '#3fd0c9'),
+    h1: cssVar('--h1', '#ffb03a'),
+    h2: cssVar('--h2', '#ff6b8a'),
+    accent: cssVar('--accent', '#ffd166')
+  };
+
+  /* ---------------------------------------------------------------- 状态 */
+  var state = {
+    pts: [],            /* 当前点集：扁平 [x0,y0,x1,y1,...]，整数格坐标 */
+    built: null,        /* core.buildBarcode 的产物 */
+    tau: 0,             /* 当前观察尺度（距离平方，整数） */
+    maxSq: 0,           /* 当前点集的最大滤值 */
+    pick: null,         /* 选中条：{dim, b, d, ess, si, sj} */
+    reduced: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+    selfCheck: { pass: 0, fail: 0, lines: [] }
+  };
+
+  function setText(id, s) { var el = $(id); if (el) el.textContent = s; }
+
+  /* ------------------------------------------------------------ 小工具 */
+  /* 距离平方 → 像素横坐标。条形码横轴用**开方后的距离**（人话），
+     但所有阈值判断仍在平方域做，两者只差一个单调映射，不影响任何断言。 */
+  function tauToX(tau, x0, w) {
+    if (!(state.maxSq > 0)) return x0;
+    /* 开方映射让"近处"的刻度展开一些；仍是单调的，不引入新信息 */
+    var t = Math.sqrt(Math.max(0, tau)) / Math.sqrt(state.maxSq);
+    return x0 + t * w;
+  }
+  function xToTau(px, x0, w) {
+    if (!(w > 0) || !(state.maxSq > 0)) return 0;
+    var t = (px - x0) / w;
+    if (t < 0) t = 0; if (t > 1) t = 1;
+    /* 逆映射后取整到最近的合法滤值，保证落回整数域 */
+    return Math.round(t * t * state.maxSq);
+  }
+  /* 把任意 τ 吸附到"合法滤值"（某个单纯形的距离平方）——见模型边界章的声明 */
+  function snapTau(tau) {
+    if (!state.built || !state.built.simp) return 0;
+    var f = state.built.simp.filt, best = 0, bestD = Infinity;
+    var seen = {};
+    for (var i = 0; i < f.length; i++) {
+      if (seen[f[i]]) continue;
+      seen[f[i]] = 1;
+      var d = Math.abs(f[i] - tau);
+      if (d < bestD) { bestD = d; best = f[i]; }
+      if (f[i] === tau) return tau;
+    }
+    return best;
+  }
+
+  /* ============================================================ 画布：格点纸 */
+  var padCv = $('padCanvas');
+  var pctx = padCv ? padCv.getContext('2d') : null;
+  var PAD = 600;   /* 画布内部分辨率（与 CSS 尺寸解耦，按 devicePixelRatio 不放大逻辑尺寸） */
+
+  /* 把格点坐标换算到画布像素 */
+  function gx(x) { return (x / GRID) * (PAD - 40) + 20; }
+  function gy(y) { return (y / GRID) * (PAD - 40) + 20; }
+  /* 画布像素 → 格点（整数吸附） */
+  function pxToGrid(px, py) {
+    var inner = PAD - 40;
+    var fx = (px - 20) / inner * GRID;
+    var fy = (py - 20) / inner * GRID;
+    return [C.snap(fx), C.snap(fy)];
+  }
+
+  function drawPad() {
+    if (!pctx) return;
+    pctx.clearRect(0, 0, PAD, PAD);
+    pctx.fillStyle = '#182046';
+    pctx.fillRect(0, 0, PAD, PAD);
+
+    /* 格点纸：每 10 格一条线（GRID=100 → 10×10 格），最外框加粗 */
+    pctx.lineWidth = 1;
+    for (var k = 0; k <= GRID; k += 10) {
+      var major = (k % 50 === 0);
+      pctx.strokeStyle = major ? PAL.rule : PAL.grid;
+      pctx.beginPath();
+      pctx.moveTo(gx(k), gy(0)); pctx.lineTo(gx(k), gy(GRID));
+      pctx.stroke();
+      pctx.beginPath();
+      pctx.moveTo(gx(0), gy(k)); pctx.lineTo(gx(GRID), gy(k));
+      pctx.stroke();
+    }
+
+    /* 当前 τ 下的 1-骨架：把"够近的点对"直接连上线。
+       ★ 早先这里画的是一个以**第一个点**为圆心、半径 √τ 的虚线圈 ——
+         看着像"哪些点在 τ 邻域内"，但 Vietoris–Rips 连的是**所有**点对，
+         不是"离某一个点近的那些"。那个圈毫无几何意义，纯误导。
+         改画真实 1-骨架：每条 dist2 ≤ τ 的边一条线，与条形码、
+         普查读数看的是同一件事。 */
+    var n = state.pts.length >> 1;
+    if (state.maxSq > 0 && state.tau > 0 && n >= 2) {
+      pctx.strokeStyle = 'rgba(255,176,58,0.62)';
+      pctx.lineWidth = 1.6;
+      pctx.beginPath();
+      for (var a = 0; a < n; a++) {
+        for (var b = a + 1; b < n; b++) {
+          if (C.dist2(state.pts, a, b) <= state.tau) {
+            pctx.moveTo(gx(state.pts[2 * a]), gy(state.pts[2 * a + 1]));
+            pctx.lineTo(gx(state.pts[2 * b]), gy(state.pts[2 * b + 1]));
+          }
+        }
+      }
+      pctx.stroke();
+    }
+
+    /* 落点 */
+    for (var i = 0; i < n; i++) {
+      var x = gx(state.pts[2 * i]), y = gy(state.pts[2 * i + 1]);
+      pctx.fillStyle = PAL.dot;
+      pctx.beginPath();
+      pctx.arc(x, y, 5, 0, Math.PI * 2);
+      pctx.fill();
+      /* 序号：便于观众口头指认"第几个点" */
+      pctx.fillStyle = PAL.mute;
+      pctx.font = '11px ui-monospace, Consolas, monospace';
+      pctx.fillText(String(i + 1), x + 8, y - 7);
+    }
+  }
+
+  /* ====================================================== 画布：条形码 */
+  var barCv = $('barCanvas');
+  var bctx = barCv ? barCv.getContext('2d') : null;
+  var BW = 900, BH = 330;
+  var BX0 = 78, BX1 = BW - 18;          /* 横轴绘图区 */
+  var ROWS = [
+    { key: 'h0', label: '0 维 · 连通分量', color: PAL.h0, y: 74 },
+    { key: 'h1', label: '1 维 · 洞', color: PAL.h1, y: 168 },
+    { key: 'h2', label: '2 维 · 高维洞', color: PAL.h2, y: 262 }
+  ];
+  var BARH = 13;
+  /* 条形图上的可点区域（供命中测试）：存每条杠的像素矩形 */
+  var hitBoxes = [];
+
+  function drawBarcode() {
+    if (!bctx) return;
+    hitBoxes = [];
+    bctx.clearRect(0, 0, BW, BH);
+    bctx.fillStyle = PAL.bg3;
+    bctx.fillRect(0, 0, BW, BH);
+
+    var built = state.built;
+    var w = BX1 - BX0;
+
+    /* 横向刻度：每 20 格（开方后）一根 */
+    bctx.strokeStyle = PAL.grid;
+    bctx.lineWidth = 1;
+    bctx.fillStyle = PAL.mute;
+    bctx.font = '11px ui-monospace, Consolas, monospace';
+    if (state.maxSq > 0) {
+      var maxD = Math.sqrt(state.maxSq);
+      for (var d = 0; d <= maxD; d += 20) {
+        var t2 = (d / maxD) * (d / maxD);       /* 开方轴 → 平方域 */
+        var px = BX0 + t2 * w;
+        bctx.beginPath();
+        bctx.moveTo(px, 40); bctx.lineTo(px, BH - 26);
+        bctx.stroke();
+        bctx.textAlign = 'center';
+        bctx.fillText(String(Math.round(d)), px, BH - 10);
+      }
+    }
+    bctx.textAlign = 'left';
+    bctx.fillText('距离（格）', BX1 - 66, BH - 10);
+
+    ROWS.forEach(function (row) {
+      /* 行标签 */
+      bctx.fillStyle = row.color;
+      bctx.font = '12px ui-monospace, Consolas, monospace';
+      bctx.fillText(row.label, 8, row.y - 8);
+      bctx.strokeStyle = PAL.grid;
+      bctx.beginPath();
+      bctx.moveTo(BX0, row.y - 4); bctx.lineTo(BX1, row.y - 4);
+      bctx.stroke();
+
+      if (!built || !built.bars) return;
+      var list = built.bars[row.key];
+      if (!list || !list.length) {
+        bctx.fillStyle = PAL.mute;
+        bctx.font = '11px ui-monospace, Consolas, monospace';
+        bctx.fillText('（无）', BX0 + 8, row.y + BARH);
+        return;
+      }
+      /* 只画"活着"或有寿命的条：零长条（b===d）不画，但要计数（见模型边界章） */
+      list.forEach(function (bar) {
+        var x1 = tauToX(bar.b, BX0, w);
+        var x2 = bar.d < 0 ? BX1 : tauToX(bar.d, BX0, w);
+        var isZero = (bar.d >= 0 && bar.d === bar.b);
+        var isPicked = state.pick && state.pick.dim === row.dimOf && state.pick.si === bar.si;
+        if (isZero) {
+          /* 零长条画成一个 3px 的短刻痕，放在轴上，不冒充"洞" */
+          bctx.fillStyle = PAL.mute;
+          bctx.fillRect(x1 - 1, row.y, 3, BARH - 4);
+          return;
+        }
+        bctx.fillStyle = isPicked ? PAL.accent : row.color;
+        bctx.globalAlpha = isPicked ? 1 : 0.86;
+        bctx.fillRect(x1, row.y, Math.max(2, x2 - x1), BARH);
+        bctx.globalAlpha = 1;
+        /* 命中盒：稍微加高，好点 */
+        hitBoxes.push({
+          x: x1, y: row.y - 3, w: Math.max(8, x2 - x1), h: BARH + 6,
+          dim: row.dimOf, si: bar.si, b: bar.b, d: bar.d
+        });
+      });
+    });
+
+    /* τ 游标 */
+    if (state.tau > 0) {
+      var cx = tauToX(state.tau, BX0, w);
+      bctx.strokeStyle = PAL.accent;
+      bctx.lineWidth = 2;
+      bctx.beginPath();
+      bctx.moveTo(cx, 36); bctx.lineTo(cx, BH - 26);
+      bctx.stroke();
+      bctx.fillStyle = PAL.accent;
+      bctx.beginPath();
+      bctx.moveTo(cx, 30); bctx.lineTo(cx - 5, 22); bctx.lineTo(cx + 5, 22);
+      bctx.closePath(); bctx.fill();
+    }
+
+    /* 空状态 */
+    if (!built || !(state.pts.length >> 1)) {
+      bctx.fillStyle = PAL.mute;
+      bctx.font = '14px ui-monospace, Consolas, monospace';
+      bctx.textAlign = 'center';
+      bctx.fillText('先在图一落几个点 —— 条形码是点云算出来的，不是预先画好的', BW / 2, BH / 2);
+      bctx.textAlign = 'left';
+    }
+  }
+  /* 行的维数（点选时用） */
+  ROWS[0].dimOf = 0; ROWS[1].dimOf = 1; ROWS[2].dimOf = 2;
+
+  /* ==================================================== 落点 → 重算 → 重绘 */
+  function recompute(why) {
+    var n = state.pts.length >> 1;
+    if (n === 0) {
+      state.built = null;
+      state.maxSq = 0; state.tau = 0; state.pick = null;
+      syncTauSlider();
+      drawPad(); drawBarcode(); refreshAll(why);
+      return;
+    }
+    var built = C.buildBarcode(state.pts);
+    state.built = built;
+    var oldMax = state.maxSq;
+    state.maxSq = built.maxSq;
+    /* 落点变了 → τ 夹到新范围；同一批点里只拖 τ 时保持相对位置 */
+    if (oldMax !== state.maxSq && state.tau > state.maxSq) state.tau = state.maxSq;
+    state.tau = C.snap(Math.min(state.tau, state.maxSq));
+    /* 选中的条若已不存在（点集变了），清掉 */
+    if (state.pick && state.built) {
+      var list = state.pick.dim === 0 ? built.bars.h0 : (state.pick.dim === 1 ? built.bars.h1 : built.bars.h2);
+      var still = false;
+      for (var i = 0; i < list.length; i++) if (list[i].si === state.pick.si) { still = true; break; }
+      if (!still) state.pick = null;
+    }
+    syncTauSlider();
+    drawPad(); drawBarcode(); refreshAll(why);
+  }
+
+  function syncTauSlider() {
+    var sl = $('tauSlider');
+    if (!sl) return;
+    sl.max = String(Math.max(1, state.maxSq));
+    if (+sl.value > state.maxSq) sl.value = String(state.maxSq);
+  }
+
+  /* ============================================================ 读数刷新 */
+  function refreshAll(why) {
+    var built = state.built;
+    var n = state.pts.length >> 1;
+
+    /* 图一读数 */
+    setText('ro-n', C.fmtInt(n));
+    setText('ro-simplex', built ? C.fmtInt(built.nSimplex) : '0');
+    setText('ro-fp', built ? built.fp : '—');
+    /* 落点状态。
+       ★ 早先这里写成 `else if (!C.canPlace(state.pts, n, -1, -1))` 想"探测异常"，
+         那是把**准入函数**当状态查询用，而且是拿必越界的 (-1,-1) 去问 ——
+         canPlace 第一条就判越界返回 false，于是页面永远显示"状态异常"（红色）。
+         截图才看出来：数字全对、断言全绿，感官上是错的。
+         状态只由"有没有点 / 满不满"决定；越界与过近由 tryPlace 自己拒绝。 */
+    var pvP = $('pv-points');
+    if (pvP) {
+      if (n === 0) { pvP.textContent = '等待落点'; pvP.style.color = PAL.mute; }
+      else if (n >= CANON.maxPts) { pvP.textContent = '已达上限 ' + CANON.maxPts + ' 点'; pvP.style.color = PAL.h1; }
+      else { pvP.textContent = '可继续落点（还可落 ' + (CANON.maxPts - n) + ' 点）'; pvP.style.color = PAL.h0; }
+    }
+
+    /* 图二读数：此尺度的 V/E/F、β、χ */
+    if (built) {
+      var c = C.countsAt(built.simp, state.tau);
+      var bet = C.census(built.bars, state.tau);
+      setText('ro-vef', C.fmtInt(c.V) + ' / ' + C.fmtInt(c.E) + ' / ' + C.fmtInt(c.F));
+      setText('ro-betti', C.fmtInt(bet.b0) + ' / ' + C.fmtInt(bet.b1) + ' / ' + C.fmtInt(bet.b2));
+      setText('ro-chi', C.fmtInt(c.chi));
+      setText('ro-alt', C.fmtInt(bet.b0 - bet.b1 + bet.b2));
+      var pvC = $('pv-census');
+      if (pvC) {
+        var ok = (bet.b0 - bet.b1 + bet.b2) === c.chi;
+        pvC.textContent = ok ? 'χ 恒等式成立' : '✗ 恒等式破了';
+        pvC.style.color = ok ? PAL.h0 : PAL.h2;
+      }
+    } else {
+      setText('ro-vef', '0 / 0 / 0');
+      setText('ro-betti', '0 / 0 / 0');
+      setText('ro-chi', '0');
+      setText('ro-alt', '0');
+      var pvC0 = $('pv-census');
+      if (pvC0) { pvC0.textContent = '等待点云'; pvC0.style.color = PAL.mute; }
+    }
+
+    /* τ 回显：距离是开方后的量，fmtLen 内部已按 1 位小数格式化 */
+    var out = $('tauOut');
+    if (out) out.textContent = C.fmtLen(state.tau) + ' 格';
+
+    /* 头版状态行 */
+    var ms = $('mastState');
+    if (ms) {
+      if (!built) ms.textContent = '格点纸已铺好（100×100 整数格）· 等你落点';
+      else {
+        var b2 = C.census(built.bars, state.tau);
+        ms.textContent = '此刻 τ=' + C.fmtLen(state.tau) + ' 格：' +
+          C.fmtInt(b2.b0) + ' 个连通块 · ' + C.fmtInt(b2.b1) + ' 个洞 · 复杂形 ' +
+          C.fmtInt(built.nSimplex) + ' 个';
+      }
+    }
+
+    refreshPick();
+    runSelfCheck();
+  }
+
+  /* ---------------------------------------------------------- 选中条的账 */
+  function refreshPick() {
+    var p = state.pick;
+    if (!p) {
+      setText('ro-pickName', '尚未选中');
+      setText('ro-pickDim', '—');
+      setText('ro-pickBorn', '—');
+      setText('ro-pickDied', '—');
+      setText('ro-pickLen', '—');
+      var pv0 = $('pv-pick');
+      if (pv0) { pv0.textContent = '—'; pv0.style.color = PAL.mute; }
+      return;
+    }
+    var nameMap = { 0: '0 维 · 连通分量', 1: '1 维 · 洞', 2: '2 维 · 高维洞' };
+    setText('ro-pickName', nameMap[p.dim] || '未知维数');
+    setText('ro-pickDim', C.fmtInt(p.dim));
+    setText('ro-pickBorn', C.fmtLen(p.b) + ' 格（滤值 ' + C.fmtInt(p.b) + '）');
+    setText('ro-pickDied', p.ess ? '从未被填死' : C.fmtLen(p.d) + ' 格（滤值 ' + C.fmtInt(p.d) + '）');
+    setText('ro-pickLen', p.ess ? '∞' : C.fmtLen(p.d - p.b) + ' 格');
+    var pv = $('pv-pick');
+    if (pv) {
+      if (p.ess) { pv.textContent = '本征类（条形码里一直延伸）'; pv.style.color = PAL.h2; }
+      else if (p.d === p.b) { pv.textContent = '零长条（生灭同刻，不可见）'; pv.style.color = PAL.mute; }
+      else { pv.textContent = '有限条'; pv.style.color = PAL.h0; }
+    }
+  }
+
+  /* ==================================================== 页面自检（三条尺子） */
+  function runSelfCheck() {
+    var sc = { pass: 0, fail: 0, lines: [] };
+    var built = state.built;
+    var n = state.pts.length >> 1;
+    if (!built) {
+      sc.lines.push('未落点：三条尺子待命');
+      state.selfCheck = sc;
+      paintSelfCheck();
+      return;
+    }
+    /* 尺子 A：欧拉–庞加莱恒等式 */
+    var eul = C.eulerSweep(built, CANON.sweepCount);
+    if (eul.allOk) { sc.pass++; sc.lines.push('欧拉恒等式 ' + eul.checked + ' 个阈值全对'); }
+    else { sc.fail++; sc.lines.push('✗ 欧拉恒等式 ' + eul.fails + ' 处失败'); }
+
+    /* 尺子 B：β0 并查集双路对账 */
+    var cRe = C.censusRecheck(built, state.pts, CANON.sweepCount);
+    if (cRe.allOk) { sc.pass++; sc.lines.push('β0 双路 ' + cRe.checked + ' 点一致'); }
+    else { sc.fail++; sc.lines.push('✗ β0 双路 ' + cRe.mismatch + ' 点不一致'); }
+
+    /* 尺子 C：稳定性（无长条时如实说空转，不计入 pass） */
+    var stab = C.stabilityReport(state.pts, CANON.calDelta, CANON.seed);
+    if (stab.longBase > 0) {
+      if (stab.missed === 0) {
+        sc.pass++;
+        sc.lines.push('稳定性：' + C.fmtInt(stab.longBase) + ' 条长寿条（> ' +
+          C.fmtFixed(stab.thresh, 1) + ' 格）全部存活');
+      } else {
+        sc.fail++;
+        sc.lines.push('✗ 稳定性漏 ' + C.fmtInt(stab.missed) + ' 条');
+      }
+    } else {
+      sc.lines.push('稳定性：此点集无长寿条，定理空转（如实不计通过）');
+    }
+
+    /* 与离线标定的对账由 checkAgainstCalibration() 单独负责（只在当前点集
+       恰好等于某个预设时才比对，观众乱撒的点不与标定比） */
+    state.selfCheck = sc;
+    paintSelfCheck();
+  }
+  function paintSelfCheck() {
+    var el = $('selfCheckLine');
+    if (!el) return;
+    var sc = state.selfCheck;
+    el.textContent = '自检（' + C.fmtInt(state.pts.length >> 1) + ' 点）：' +
+      C.fmtInt(sc.pass) + ' 通过 / ' + C.fmtInt(sc.fail) + ' 失败 —— ' + sc.lines.join('；');
+    el.style.color = sc.fail > 0 ? PAL.h2 : PAL.h0;
+  }
+
+  /* 与离线标定逐位对账（仅在当前点集恰好等于某个预设时） */
+  function checkAgainstCalibration() {
+    if (!D || !D.results || !D.results.presets) return null;
+    var n = state.pts.length >> 1;
+    if (n === 0) return null;
+    var fp = C.ptsFingerprint(state.pts);
+    for (var k = 0; k < Object.keys(D.results.presets).length; k++) {
+      var name = Object.keys(D.results.presets)[k];
+      if (D.results.presets[name].ptsFp === fp) {
+        var built = C.buildBarcode(state.pts);
+        var barsOk = built.fp === D.results.presets[name].barsFp;
+        return { preset: name, barsOk: barsOk };
+      }
+    }
+    return null;
+  }
+
+  /* ======================================================= 交互：落点 */
+  function tryPlace(gxI, gyI) {
+    var n = state.pts.length >> 1;
+    if (n >= CANON.maxPts) {
+      setText('pv-points', '已达上限 ' + CANON.maxPts + ' 点');
+      var pv = $('pv-points'); if (pv) pv.style.color = PAL.h1;
+      return false;
+    }
+    /* canPlace 已挡越界与过近（minGap 内不落，避免退化零长边） */
+    var cand = state.pts.concat([gxI, gyI]);
+    if (!C.canPlace(cand, n, gxI, gyI)) {
+      setText('padHint', '这一格离已有点太近（小于 ' + CANON.minGap + ' 格）——算法会把它们当成同一个点，落下也没有意义，换个位置。');
+      return false;
+    }
+    state.pts = cand;
+    setText('padHint', '已落第 ' + (n + 1) + ' 点。离得近的点之间会连上线，线成环的那一刻洞就出生了。');
+    recompute('place');
+    return true;
+  }
+  function onPadClick(e) {
+    if (!padCv) return;
+    var rect = padCv.getBoundingClientRect();
+    if (!(rect.width > 0)) return;
+    /* CSS 尺寸 → 画布内部分辨率 */
+    var px = (e.clientX - rect.left) / rect.width * PAD;
+    var py = (e.clientY - rect.top) / rect.height * PAD;
+    var g = pxToGrid(px, py);
+    tryPlace(g[0], g[1]);
+  }
+
+  /* ================================================ 交互：条形码点选 */
+  function onBarClick(e) {
+    if (!barCv || !state.built) return;
+    var rect = barCv.getBoundingClientRect();
+    if (!(rect.width > 0)) return;
+    var px = (e.clientX - rect.left) / rect.width * BW;
+    var py = (e.clientY - rect.top) / rect.height * BH;
+    var hit = null;
+    for (var i = 0; i < hitBoxes.length; i++) {
+      var b = hitBoxes[i];
+      if (px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h) { hit = b; break; }
+    }
+    if (!hit) { state.pick = null; drawBarcode(); refreshPick(); return; }
+    var list = hit.dim === 0 ? state.built.bars.h0 : (hit.dim === 1 ? state.built.bars.h1 : state.built.bars.h2);
+    for (i = 0; i < list.length; i++) {
+      if (list[i].si === hit.si) {
+        state.pick = { dim: hit.dim, si: hit.si, b: list[i].b, d: list[i].d, ess: !!list[i].ess };
+        break;
+      }
+    }
+    drawBarcode(); refreshPick();
+  }
+
+  /* ================================================= 交互：预设 / 清空 / 撤销 */
+  function loadPreset(name) {
+    var pre = C.PRESETS[name];
+    if (!pre) return;
+    var pts = pre.pts.slice();
+    if ((pts.length >> 1) > CANON.maxPts) pts = pts.slice(0, CANON.maxPts * 2);
+    state.pts = pts;
+    state.pick = null;
+    /* 预设是"当前形状"的真实来源，按钮的 aria-pressed 必须跟着它走 ——
+       否则视觉上装了一堆点，按钮却还停在"未按下"，读屏与视觉对不上。
+       boot() 直接调本函数，所以这里也要负责同步按钮态。 */
+    var btn = $('presetBtn');
+    if (btn) btn.setAttribute('aria-pressed', 'true');
+    /* 落在"洞最多"的那个尺度上：让观众一眼看到条形码最有信息量的地方 */
+    var target = D && D.results && D.results.presets && D.results.presets[name]
+      ? D.results.presets[name].peakTau : 0;
+    recompute('preset');
+    if (target > 0) { state.tau = target; recompute('preset-tau'); }
+    setText('padHint', pre.hint + '（预设坐标是钉死的整数格点，条形码可逐位复现）');
+  }
+  function clearAll() {
+    state.pts = [];
+    state.pick = null;
+    var btn = $('presetBtn');
+    if (btn) btn.setAttribute('aria-pressed', 'false');
+    recompute('clear');
+    setText('padHint', '已清空。画布上点一下即落一点；上限 ' + CANON.maxPts + ' 点。');
+  }
+  function undoOne() {
+    if (state.pts.length < 2) return;
+    state.pts = state.pts.slice(0, state.pts.length - 2);
+    recompute('undo');
+  }
+
+  /* ================================================= 交互：挑最长的洞 */
+  function pickLongest() {
+    if (!state.built) return;
+    var list = state.built.bars.h1;
+    var best = null;
+    for (var i = 0; i < list.length; i++) {
+      var L = list[i].d < 0 ? Infinity : (list[i].d - list[i].b);
+      if (list[i].d === list[i].b) continue;      /* 零长条不算"最长的洞" */
+      if (!best) { best = { i: i, L: L }; continue; }
+      var curBestL = best.i < list.length
+        ? (list[best.i].d < 0 ? Infinity : (list[best.i].d - list[best.i].b)) : -1;
+      if (L > curBestL) best = { i: i, L: L };
+    }
+    if (!best) {
+      setText('ro-pickName', '这个点集没有 1 维洞');
+      var pv = $('pv-pick'); if (pv) { pv.textContent = '无可选'; pv.style.color = PAL.mute; }
+      return;
+    }
+    var bar = list[best.i];
+    state.pick = { dim: 1, si: bar.si, b: bar.b, d: bar.d, ess: !!bar.ess };
+    drawBarcode(); refreshPick();
+  }
+
+  /* ========================================================= 事件绑定 */
+  function on(id, ev, fn) { var el = $(id); if (el) el.addEventListener(ev, fn); }
+
+  on('padCanvas', 'click', onPadClick);
+  on('barCanvas', 'click', onBarClick);
+  on('presetBtn', 'click', function () {
+    var btn = $('presetBtn');
+    var pressed = btn.getAttribute('aria-pressed') === 'true';
+    btn.setAttribute('aria-pressed', pressed ? 'false' : 'true');
+    if (pressed) { clearAll(); } else { loadPreset('one'); }
+  });
+  on('clearBtn', 'click', clearAll);
+  on('undoBtn', 'click', undoOne);
+  on('pickLongest', 'click', pickLongest);
+  on('pickNone', 'click', function () { state.pick = null; drawBarcode(); refreshPick(); });
+  on('tauSlider', 'input', function (e) {
+    var raw = +e.target.value;
+    /* 吸附到合法滤值：见模型边界章「阈值是离散的」 */
+    state.tau = state.maxSq > 0 ? snapTau(raw) : 0;
+    drawPad(); drawBarcode(); refreshAll('tau');
+  });
+
+  /* ============================================================ 基石数字 */
+  function paintLaws() {
+    var el = $('lawNumbers');
+    if (!el || !D) return;
+    var r = D.results, a = D.analysis;
+    var sc = r.scene;
+    var rows = [
+      ['欧拉恒等式 · 开屏正八边形',
+        (sc.eulerOk ? '✓ ' : '✗ ') + C.fmtInt(sc.eulerChecked) + ' 个阈值全对'],
+      ['β0 并查集复核 · 同一形状',
+        (sc.beta0Ok ? '✓ ' : '✗ ') + '逐点一致'],
+      ['稳定性 · 长寿条检出',
+        sc.stabHasLong ? (C.fmtInt(sc.stabLongBase) + ' 条，δ=' + C.fmtInt(a.stability.delta) + ' 格内一条没丢')
+                       : '此形状无长寿条（定理空转，如实说明）'],
+      ['条形码复现指纹',
+        r.reproduceFp + '（两次标定' + (r.reproduction.byteEqual ? '逐字节一致' : '不一致') + '）'],
+      ['规模护栏',
+        C.fmtInt(a.scale.maxPts) + ' 点 → ' + C.fmtInt(a.scale.maxSimplex) +
+        ' 单纯形，矩阵约 ' + C.fmtInt(a.scale.matrixKB) + ' KB'],
+      ['维度截断',
+        '只到 2 维：实心方块的 β2 峰值 = ' + C.fmtInt(a.truncation.discMaxB2) + '（不是 0）']
+    ];
+    el.innerHTML = rows.map(function (row) {
+      return '<dt>' + row[0] + '</dt><dd>' + row[1] + '</dd>';
+    }).join('');
+  }
+  function paintStamp() {
+    var el = $('calStamp');
+    if (el && D && D.results) {
+      el.textContent = '· 标定种子 ' + D.results.canon.seed +
+        ' · 复现指纹 ' + D.results.reproduceFp;
+    }
+  }
+
+  /* ============================================================ 验证探针 */
+  /* verify.js 的全部语义值都从这里取。整段包 try：探针抛错 ≠ 判负，
+     但要让 verify 看得出是"页面没跑起来"还是"值不对"（glyph 的教训）。 */
+  window.__probe = (function () {
+    return {
+      counts: function () {
+        var pressed = ($('presetBtn') || {}).getAttribute
+          ? $('presetBtn').getAttribute('aria-pressed') : null;
+        return {
+          title: document.title,
+          canvases: document.querySelectorAll('canvas').length,
+          buttons: document.querySelectorAll('button').length,
+          sliders: document.querySelectorAll('input[type=range]').length,
+          outputs: document.querySelectorAll('output').length,
+          pressed: pressed,
+          panels: document.querySelectorAll('section.panel').length,
+          textLen: (document.body.innerText || '').replace(/\s+/g, '').length
+        };
+      },
+      semantic: function () {
+        var built = state.built;
+        var n = state.pts.length >> 1;
+        var sem = {
+          n: n, tau: state.tau, maxSq: state.maxSq,
+          pick: state.pick ? { dim: state.pick.dim, b: state.pick.b, d: state.pick.d, ess: state.pick.ess } : null,
+          selfCheck: { pass: state.selfCheck.pass, fail: state.selfCheck.fail },
+          badText: /(^|[^A-Za-z0-9_$])(NaN|Infinity|undefined)([^A-Za-z0-9_$]|$)/.test(document.body.innerText || '')
+        };
+        if (built) {
+          sem.fp = built.fp;
+          sem.ptsFp = C.ptsFingerprint(state.pts);
+          sem.nSimplex = built.nSimplex;
+          sem.zeroLen = built.bars.zeroLen;
+          sem.anomaly = built.bars.anomaly;
+          var c = C.countsAt(built.simp, state.tau);
+          var bet = C.census(built.bars, state.tau);
+          sem.V = c.V; sem.E = c.E; sem.F = c.F; sem.chi = c.chi;
+          sem.b0 = bet.b0; sem.b1 = bet.b1; sem.b2 = bet.b2;
+          sem.alt = bet.b0 - bet.b1 + bet.b2;
+          sem.eulerOkHere = (sem.alt === c.chi);
+          sem.uf = C.componentsAt(state.pts, n, state.tau);
+          sem.beta0OkHere = (sem.uf === bet.b0);
+          var cal = checkAgainstCalibration();
+          if (cal) { sem.calPreset = cal.preset; sem.calBarsOk = cal.barsOk; }
+        }
+        return sem;
+      },
+      bounds: function () { return VERIFY; },
+      canvases: function () {
+        /* 画布"画出了东西"检查：采样非背景像素的比例 */
+        function sample(id) {
+          var cv = $(id);
+          if (!cv) return { id: id, ok: false, ratio: 0 };
+          var rect = cv.getBoundingClientRect();
+          if (!(rect.width > 0 && rect.height > 0)) return { id: id, ok: false, ratio: 0, hidden: true };
+          var ctx = cv.getContext('2d');
+          var d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+          var bg = [d[0], d[1], d[2]];
+          var diff = 0, total = 0;
+          for (var i = 0; i < d.length; i += 4 * 37) {   /* 稀疏采样，够用且快 */
+            total++;
+            if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 18) diff++;
+          }
+          var ratio = total ? diff / total : 0;
+          return { id: id, ok: ratio > 0.0005, ratio: Math.round(ratio * 100000) / 100000 };
+        }
+        return [sample('padCanvas'), sample('barCanvas')];
+      },
+      /* 驱动：模拟观众动作（verify 用，不依赖 rAF） */
+      place: function (x, y) { return tryPlace(x | 0, y | 0); },
+      loadPreset: function (name) { loadPreset(String(name)); return state.pts.length >> 1; },
+      clear: function () { clearAll(); return 0; },
+      setTau: function (t) {
+        state.tau = state.maxSq > 0 ? snapTau(+t || 0) : 0;
+        syncTauSlider();
+        drawPad(); drawBarcode(); refreshAll('probe-tau');
+        return state.tau;
+      },
+      pickLongest: function () { pickLongest(); return state.pick; },
+      pickNone: function () { state.pick = null; drawBarcode(); refreshPick(); return null; },
+      selfcheck: function () { return state.selfCheck; },
+      calibrat: checkAgainstCalibration
+    };
+  })();
+
+  /* ================================================================ 启动 */
+  function boot() {
+    paintLaws();
+    paintStamp();
+    /* 开屏就落一个正八边形：空画布什么都证明不了，先给一个有洞的形状 */
+    loadPreset('one');
+    /* 探针挂上后置标志：verify 用它判断 boot 是否完成（早于 boot 抛错的教训） */
+    window.__ready = true;
+  }
+
+  try {
+    boot();
+  } catch (e) {
+    window.__err.push('boot: ' + (e && e.message ? e.message : e));
+    window.__ready = false;
+    throw e;
+  }
+})();
+
+</script>
+</body>
+</html>

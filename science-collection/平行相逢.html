@@ -1,0 +1,1965 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#050811">
+  <meta name="description" content="庞加莱双曲圆盘模型交互实验装置：探索非欧几何、默比乌斯群刚体平移、高斯-博内角亏与罗巴切夫斯基第五公设相变分界。">
+  <title>平行相逢 · 庞加莱双曲圆盘与对称镶嵌</title>
+  <style>
+/* ============================================================================
+ * hyperbolic/style.css —— 庞加莱双曲圆盘现代科学仪器视觉体系
+ *
+ * 视觉纪律与反固化守卫：
+ *   - 严禁使用任何既有 35 种米黄宣纸底色
+ *   - 采用深邃星际高对比度深色面板（#050811 / #0d1322 / #131b2e）
+ *   - 移动端 (≤640px) 触控热区强制 ≥44px，桌面端 ≥24px
+ *   - 严禁横向溢出，自适应兼容 1400px、480px、360px 视口
+ * ==========================================================================*/
+
+:root {
+  --bg-deep: #050811;
+  --bg-surface: #0b1120;
+  --panel-bg: #10192e;
+  --card-bg: #16223d;
+  --border-subtle: #202f52;
+  --border-focus: #00e5ff;
+  --text-main: #f0f4fc;
+  --text-dim: #9eb1d4;
+  --text-dark: #62769c;
+  --glow-cyan: #00e5ff;
+  --glow-amber: #ffb300;
+  --glow-emerald: #00e676;
+  --glow-crimson: #ff3d71;
+  --font-mono: "SF Mono", Menlo, Consolas, "Liberation Mono", Courier, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --touch-min: 44px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-deep);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ------------------------------------------------------------ 顶栏标头 */
+.app-masthead {
+  padding: 24px 32px 16px;
+  background: linear-gradient(180deg, #090f1d 0%, var(--bg-deep) 100%);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.masthead-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.badge-index {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 2px 8px;
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--glow-cyan);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+.badge-domain {
+  font-size: 12px;
+  color: var(--text-dark);
+  letter-spacing: 0.04em;
+}
+
+.masthead-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fcfdff;
+  margin-bottom: 6px;
+  text-shadow: 0 0 20px rgba(0, 229, 255, 0.25);
+}
+
+.masthead-subtitle {
+  font-size: 14px;
+  color: var(--text-dim);
+  max-width: 720px;
+  margin-bottom: 12px;
+}
+
+.masthead-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meta-tag {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dark);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+/* ------------------------------------------------------------ 视口容器 */
+.hyperbolic-viewport {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 32px 48px;
+}
+
+/* ------------------------------------------------------------ 模式控制栏 */
+.control-deck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+}
+
+.mode-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn-mode {
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-dim);
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+}
+
+.btn-mode:hover {
+  color: var(--text-main);
+  border-color: var(--border-focus);
+}
+
+.btn-mode.active {
+  background: rgba(0, 229, 255, 0.15);
+  color: var(--glow-cyan);
+  border-color: var(--glow-cyan);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.2);
+}
+
+.btn-glyph {
+  font-size: 15px;
+}
+
+.deck-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-action {
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-dim);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+}
+
+.btn-action:hover {
+  color: #fff;
+  border-color: var(--glow-cyan);
+}
+
+.btn-action.active {
+  background: rgba(0, 230, 118, 0.15);
+  color: var(--glow-emerald);
+  border-color: var(--glow-emerald);
+}
+
+/* ------------------------------------------------------------ 主布局 */
+.instrument-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+  gap: 28px;
+  align-items: start;
+}
+
+/* ------------------------------------------------------------ 仪器画布舞台 */
+.stage-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.canvas-mount {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 680px;
+  margin: 0 auto;
+  background: radial-gradient(circle at center, #090e1a 0%, #03060c 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(0, 229, 255, 0.05);
+  overflow: hidden;
+  touch-action: none;
+}
+
+#diskCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+#diskCanvas:active {
+  cursor: grabbing;
+}
+
+.hud-overlay {
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.hud-metric {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dark);
+  background: rgba(5, 8, 17, 0.75);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(32, 47, 82, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.stage-hint {
+  font-size: 13px;
+  color: var(--text-dark);
+  text-align: center;
+  padding: 4px 8px;
+}
+
+/* ------------------------------------------------------------ 右侧分析读数面板 */
+.telemetry-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 24px;
+}
+
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fcfdff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 16px;
+  background: var(--glow-cyan);
+  border-radius: 2px;
+}
+
+.section-desc {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* 预设药丸按钮群 */
+.preset-pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn-preset {
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-dim);
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 32px;
+}
+
+.btn-preset:hover {
+  border-color: var(--border-focus);
+  color: var(--text-main);
+}
+
+.btn-preset.active {
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--glow-cyan);
+  border-color: var(--glow-cyan);
+}
+
+/* 指标网格列表 */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric-item {
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-item.highlight {
+  border-color: rgba(0, 229, 255, 0.4);
+  background: rgba(0, 229, 255, 0.06);
+}
+
+.metric-item.highlight-alt {
+  border-color: rgba(255, 179, 0, 0.4);
+  background: rgba(255, 179, 0, 0.06);
+}
+
+.metric-item dt {
+  font-size: 11px;
+  color: var(--text-dark);
+}
+
+.metric-item dd {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.metric-item.highlight dd {
+  color: var(--glow-cyan);
+}
+
+.metric-item.highlight-alt dd {
+  color: var(--glow-amber);
+}
+
+/* 滑杆交互区 */
+.control-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slider-label {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+input[type="range"] {
+  flex: 1;
+  height: 6px;
+  background: var(--card-bg);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  accent-color: var(--glow-cyan);
+}
+
+output {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--glow-cyan);
+  min-width: 48px;
+  text-align: right;
+}
+
+.callout-note {
+  font-size: 12px;
+  color: var(--text-dim);
+  background: rgba(0, 229, 255, 0.05);
+  border-left: 3px solid var(--glow-cyan);
+  padding: 8px 12px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  line-height: 1.5;
+}
+
+/* 理论卡片 */
+.theory-card {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.theory-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fcfdff;
+}
+
+.theory-paragraph {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.theory-paragraph strong {
+  color: var(--text-main);
+}
+
+/* ------------------------------------------------------------ 响应式适配与触控守卫 */
+@media (max-width: 1024px) {
+  .instrument-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .canvas-mount {
+    max-width: 520px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-masthead {
+    padding: 16px 16px 12px;
+  }
+
+  .masthead-title {
+    font-size: 22px;
+  }
+
+  .hyperbolic-viewport {
+    padding: 14px 14px 32px;
+  }
+
+  .control-deck {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px;
+  }
+
+  .mode-switcher {
+    flex-direction: column;
+  }
+
+  /* 移动端触控热区强制 ≥44px */
+  .btn-mode,
+  .btn-action,
+  .btn-preset {
+    min-height: var(--touch-min);
+    padding: 10px 14px;
+    font-size: 14px;
+    justify-content: center;
+  }
+
+  .deck-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .canvas-mount {
+    max-width: 100%;
+    border-radius: var(--radius-md);
+  }
+}
+
+@media (max-width: 380px) {
+  .app-masthead {
+    padding: 12px 10px;
+  }
+
+  .hyperbolic-viewport {
+    padding: 10px 8px 24px;
+  }
+
+  .telemetry-panel {
+    padding: 14px 10px;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <div class="hyperbolic-app">
+<header class="app-masthead">
+  <div class="masthead-badge">
+    <span class="badge-index">FIELD 53</span>
+    <span class="badge-domain">数学与边界 · 非欧几何</span>
+  </div>
+  <h1 class="masthead-title">平行相逢</h1>
+  <p class="masthead-subtitle">庞加莱双曲圆盘模型中的默比乌斯群变换、非欧测地线与高斯-博内角亏</p>
+  <div class="masthead-meta">
+    <span class="meta-tag">常负曲率 K = -1</span>
+    <span class="meta-tag">保角庞加莱模型 ℍ²</span>
+    <span class="meta-tag">第五公设相变</span>
+  </div>
+</header>
+
+<main class="hyperbolic-viewport" data-probe="hyperbolic">
+  <!-- 模式切换与全局状态工具栏 -->
+  <section class="control-deck" aria-label="交互实验模式切换">
+    <div class="mode-switcher" role="group" aria-label="双曲几何实验模式">
+      <button type="button" class="btn-mode active" id="btnModeTess" aria-pressed="true" data-mode="tessellation">
+        <span class="btn-glyph">◈</span> 双曲正镶嵌
+      </button>
+      <button type="button" class="btn-mode" id="btnModeTriangle" aria-pressed="false" data-mode="triangle">
+        <span class="btn-glyph">△</span> 三角形与角亏
+      </button>
+      <button type="button" class="btn-mode" id="btnModeParallel" aria-pressed="false" data-mode="parallel">
+        <span class="btn-glyph">∥</span> 第五公设与平行
+      </button>
+    </div>
+
+    <div class="deck-actions">
+      <button type="button" class="btn-action" id="btnResetTransform" title="重置默比乌斯平移回圆盘中心">
+        <span class="action-icon">⟲</span> 归零平移
+      </button>
+      <button type="button" class="btn-action" id="btnToggleAnim" aria-pressed="false" title="开启双曲测地漂移演示">
+        <span class="action-icon">▶</span> 缓速巡航
+      </button>
+    </div>
+  </section>
+
+  <!-- 主交互操作区：左侧仪器画板，右侧分析读数面板 -->
+  <div class="instrument-layout">
+    <div class="stage-container">
+      <div class="canvas-mount">
+        <canvas id="diskCanvas" width="600" height="600" aria-label="庞加莱双曲圆盘高分辨率主画板"></canvas>
+        <div class="hud-overlay" id="hudOverlay" aria-live="polite">
+          <span class="hud-metric" id="hudOrigin">原点平移: (0.00, 0.00)</span>
+          <span class="hud-metric" id="hudMetricScale">局部尺度: 1.000</span>
+        </div>
+      </div>
+      <p class="stage-hint" id="stageHint">在圆盘内拖拽可直接施加默比乌斯双曲刚体平移；外围无穷瓦片将平滑滑向中心。</p>
+    </div>
+
+    <aside class="telemetry-panel" aria-label="双曲几何度量与计算数据">
+      <!-- 模式一参数：镶嵌群 -->
+      <div class="panel-section" id="sectionTess">
+        <h2 class="section-title">双曲施莱夫利符号 {p, q}</h2>
+        <p class="section-desc">每个面由正 p 边形构成，每个顶点汇聚 q 个面。仅当 (p-2)(q-2) &gt; 4 时可在双曲平面上平铺。</p>
+        <div class="preset-pill-group" role="group" aria-label="双曲镶嵌预设">
+          <button type="button" class="btn-preset active" data-preset="7,3" id="preset73">克莱因七边形 {7, 3}</button>
+          <button type="button" class="btn-preset" data-preset="5,4" id="preset54">直角五边形 {5, 4}</button>
+          <button type="button" class="btn-preset" data-preset="8,3" id="preset83">八角星花瓣 {8, 3}</button>
+          <button type="button" class="btn-preset" data-preset="3,7" id="preset37">埃舍尔三角网 {3, 7}</button>
+        </div>
+        <dl class="metric-grid">
+          <div class="metric-item">
+            <dt>当前生成瓦片总数</dt>
+            <dd id="readoutTileCount">57</dd>
+          </div>
+          <div class="metric-item">
+            <dt>基底多边形外接双曲半径</dt>
+            <dd id="readoutPolygonR">1.085</dd>
+          </div>
+          <div class="metric-item">
+            <dt>单瓦片双曲面积</dt>
+            <dd id="readoutTileArea">0.7854</dd>
+          </div>
+          <div class="metric-item">
+            <dt>保距群行列式 Det(M)</dt>
+            <dd id="readoutIsometryDet">1.00000</dd>
+          </div>
+        </dl>
+      </div>
+
+      <!-- 模式二参数：高斯-博内三角形 -->
+      <div class="panel-section" id="sectionTriangle" hidden>
+        <h2 class="section-title">高斯-博内角亏定理</h2>
+        <p class="section-desc">在常负曲率 K = -1 下，双曲三角形的内角和严格小于 180°。其角亏（180° - Σ）精确等于双曲面积。</p>
+        <div class="preset-pill-group" role="group" aria-label="三角形预设">
+          <button type="button" class="btn-preset active" id="triPresetStandard">中尺度三角形</button>
+          <button type="button" class="btn-preset" id="triPresetIdeal">理想渐近三角形 (0°内角)</button>
+          <button type="button" class="btn-preset" id="triPresetInfinitesimal">无穷小近似 (趋近欧氏)</button>
+        </div>
+        <dl class="metric-grid">
+          <div class="metric-item highlight">
+            <dt>双曲内角和 (α + β + γ)</dt>
+            <dd id="readoutAngleSum">151.93°</dd>
+          </div>
+          <div class="metric-item highlight-alt">
+            <dt>角亏面积 Area = π - Σ</dt>
+            <dd id="readoutDefectArea">0.4899 rad²</dd>
+          </div>
+          <div class="metric-item">
+            <dt>三顶点内角 α, β, γ</dt>
+            <dd id="readoutAngles">90.0°, 30.9°, 30.9°</dd>
+          </div>
+          <div class="metric-item">
+            <dt>双曲边长 a, b, c</dt>
+            <dd id="readoutSides">1.68, 1.10, 1.10</dd>
+          </div>
+        </dl>
+        <p class="callout-note">拖拽圆盘内的绿色、青色、橙色控制顶点，可实时观察测地线圆弧的弯曲与内角自适应重算。</p>
+      </div>
+
+      <!-- 模式三参数：平行相逢 -->
+      <div class="panel-section" id="sectionParallel" hidden>
+        <h2 class="section-title">第五公设相变分界</h2>
+        <p class="section-desc">欧几里得第五公设在双曲空间分裂：过线外一点 P，存在无数条与基准线不相交的直线。</p>
+        <div class="control-row">
+          <label for="sliderParallelAngle" class="slider-label">过点 P 探测光束发射角 θ</label>
+          <div class="slider-wrap">
+            <input type="range" id="sliderParallelAngle" min="0" max="360" value="70" step="1">
+            <output id="outputParallelAngle" for="sliderParallelAngle">70°</output>
+          </div>
+        </div>
+        <dl class="metric-grid">
+          <div class="metric-item highlight">
+            <dt>相交状态判定</dt>
+            <dd id="readoutParallelState">超平行 (永不相交)</dd>
+          </div>
+          <div class="metric-item">
+            <dt>点线双曲垂线距离 d</dt>
+            <dd id="readoutParallelDist">1.250</dd>
+          </div>
+          <div class="metric-item highlight-alt">
+            <dt>罗巴切夫斯基临界平行角 Π(d)</dt>
+            <dd id="readoutLobachevskyAngle">32.74°</dd>
+          </div>
+          <div class="metric-item">
+            <dt>超平行角域跨度</dt>
+            <dd id="readoutUltraSpan">114.52°</dd>
+          </div>
+        </dl>
+        <p class="callout-note">滑动上方角度调节探测光束：当夹角在临界角 ±Π(d) 之外时，直线完全分道扬镳，在庞加莱圆盘边缘外永不相遇。</p>
+      </div>
+
+      <!-- 科学机理与几何边界 -->
+      <article class="theory-card">
+        <h3 class="theory-title">几何本体与模型边界</h3>
+        <p class="theory-paragraph">
+          <strong>保角性与保距性：</strong>庞加莱圆盘是双曲平面的共形投影（Conformal Model），它在局部保持了相交角的不变性，但欧氏长度被度量张量 <em>g = 4/(1 - |z|²)²</em> 严重非线性扭曲。越靠近边界单位圆 <em>|z| = 1</em>，微小的欧氏距离实际上对应着趋于无限的双曲真距离。
+        </p>
+        <p class="theory-paragraph">
+          <strong>默比乌斯群与刚体等距：</strong>我们在圆盘内平移几何图案时，并未改变其任何双曲内在性质（双曲长度、面积与角度严格守恒）。这种看似变形的流动本质上是高维双曲旋转在复平面射影上的正交展开。
+        </p>
+      </article>
+    </aside>
+  </div>
+</main>
+
+  </div>
+  <script>
+/* ============================================================================
+ * hyperbolic/core.js —— 庞加莱双曲圆盘模型与非欧对称群纯模型层
+ *
+ * 数学与物理内核：
+ *   1. 庞加莱圆盘度量 ds^2 = 4|dz|^2 / (1 - |z|^2)^2 与双曲距离解析求值
+ *   2. 默比乌斯变换群 SU(1,1)/{±I} 作为庞加莱圆盘的保距同构（Isometries）
+ *   3. 任意两点双曲测地线（正交于边界的欧氏圆弧）的解析反演求解
+ *   4. {p, q} 双曲正镶嵌（Poincaré Tessellation）生成元群递推算法
+ *   5. 高斯-博内定理（Gauss-Bonnet）双曲三角形角亏 Area = π - (α + β + γ)
+ *   6. 罗巴切夫斯基平行角 Π(d) = 2 arctan(e^-d) 与第五公设相变分界
+ *
+ * 铁律约束：
+ *   - 纯算法逻辑，零 DOM 依赖，支持 Node.js (CommonJS) 与浏览器 (UMD)
+ *   - 剥除注释后严禁包含 Math.random（受控 PRNG 机制）
+ *   - 零 NaN / undefined / Infinity，数值误差通过辛归一化校正
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.HyperbolicCore = factory();
+  }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  /* ------------------------------------------------------------ 基础常量与受控 PRNG */
+  var EPS = 1e-10;
+  var PI = Math.PI;
+  var TWO_PI = Math.PI * 2;
+
+  function splitmix32(seed) {
+    var a = (seed >>> 0) || 19990314;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 16), 0x21f0aaad) >>> 0;
+      t = Math.imul(t ^ (t >>> 15), 0x735a2d97) >>> 0;
+      return ((t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ------------------------------------------------------------ 复数运算工具类 */
+  function cComplex(re, im) {
+    return { re: Number(re) || 0, im: Number(im) || 0 };
+  }
+
+  function cAdd(a, b) {
+    return { re: a.re + b.re, im: a.im + b.im };
+  }
+
+  function cSub(a, b) {
+    return { re: a.re - b.re, im: a.im - b.im };
+  }
+
+  function cMul(a, b) {
+    return {
+      re: a.re * b.re - a.im * b.im,
+      im: a.re * b.im + a.im * b.re
+    };
+  }
+
+  function cDiv(a, b) {
+    var denom = b.re * b.re + b.im * b.im;
+    if (denom < EPS * EPS) denom = EPS * EPS;
+    return {
+      re: (a.re * b.re + a.im * b.im) / denom,
+      im: (a.im * b.re - a.re * b.im) / denom
+    };
+  }
+
+  function cScale(a, s) {
+    return { re: a.re * s, im: a.im * s };
+  }
+
+  function cConj(a) {
+    return { re: a.re, im: -a.im };
+  }
+
+  function cAbs(a) {
+    return Math.sqrt(a.re * a.re + a.im * a.im);
+  }
+
+  function cAbsSq(a) {
+    return a.re * a.re + a.im * a.im;
+  }
+
+  function cArg(a) {
+    return Math.atan2(a.im, a.re);
+  }
+
+  function cExp(theta) {
+    return { re: Math.cos(theta), im: Math.sin(theta) };
+  }
+
+  /* ------------------------------------------------------------ 默比乌斯变换与 SU(1,1) 群 */
+  /* 矩阵形式: M = [a, b, c, d]，满足 M(z) = (a*z + b)/(c*z + d)
+   * 对于保单位圆盘的自同构，有 c = conj(b), d = conj(a)，det = |a|^2 - |b|^2 = 1 */
+  function createMatrix(a, b, c, d) {
+    return { a: a, b: b, c: c, d: d };
+  }
+
+  function identityMatrix() {
+    return createMatrix(cComplex(1, 0), cComplex(0, 0), cComplex(0, 0), cComplex(1, 0));
+  }
+
+  function normalizeMatrix(M) {
+    var detReal = (M.a.re * M.d.re - M.a.im * M.d.im - M.b.re * M.c.re + M.b.im * M.c.im);
+    var detIm = (M.a.re * M.d.im + M.a.im * M.d.re - M.b.re * M.c.im - M.b.im * M.c.re);
+    var detMag = Math.sqrt(detReal * detReal + detIm * detIm);
+    if (detMag < EPS) return identityMatrix();
+    var s = 1.0 / Math.sqrt(detMag);
+    return createMatrix(cScale(M.a, s), cScale(M.b, s), cScale(M.c, s), cScale(M.d, s));
+  }
+
+  /* 产生将点 z0 移动到原点 0 的平移矩阵: T(z) = (z - z0)/(1 - conj(z0)*z) */
+  function translationMatrix(z0) {
+    var r2 = cAbsSq(z0);
+    if (r2 >= 1.0) {
+      var scale = 0.999 / Math.sqrt(r2);
+      z0 = cScale(z0, scale);
+      r2 = cAbsSq(z0);
+    }
+    var denom = Math.sqrt(Math.max(1.0 - r2, 1e-12));
+    var a = cScale(cComplex(1, 0), 1.0 / denom);
+    var b = cScale(cComplex(-z0.re, -z0.im), 1.0 / denom);
+    var c = cScale(cConj(cComplex(-z0.re, -z0.im)), 1.0 / denom);
+    var d = cScale(cComplex(1, 0), 1.0 / denom);
+    return createMatrix(a, b, c, d);
+  }
+
+  /* 纯旋转矩阵: R(theta)(z) = exp(i*theta) * z */
+  function rotationMatrix(theta) {
+    var half = theta * 0.5;
+    var a = cExp(half);
+    var d = cExp(-half);
+    return createMatrix(a, cComplex(0, 0), cComplex(0, 0), d);
+  }
+
+  /* 矩阵乘法 M1 * M2 */
+  function mulMatrix(m1, m2) {
+    var a = cAdd(cMul(m1.a, m2.a), cMul(m1.b, m2.c));
+    var b = cAdd(cMul(m1.a, m2.b), cMul(m1.b, m2.d));
+    var c = cAdd(cMul(m1.c, m2.a), cMul(m1.d, m2.c));
+    var d = cAdd(cMul(m1.c, m2.b), cMul(m1.d, m2.d));
+    return normalizeMatrix(createMatrix(a, b, c, d));
+  }
+
+  /* 矩阵求逆 M^-1 */
+  function invertMatrix(M) {
+    return normalizeMatrix(createMatrix(M.d, cScale(M.b, -1), cScale(M.c, -1), M.a));
+  }
+
+  /* 应用默比乌斯变换到点 z */
+  function applyMobius(M, z) {
+    var num = cAdd(cMul(M.a, z), M.b);
+    var den = cAdd(cMul(M.c, z), M.d);
+    var res = cDiv(num, den);
+    var r = cAbs(res);
+    if (r >= 0.9999999) {
+      res = cScale(res, 0.9999999 / r);
+    }
+    return res;
+  }
+
+  /* ------------------------------------------------------------ 双曲度量与距离 */
+  /* 庞加莱圆盘两点间双曲距离: d_H(z1, z2) = 2 artanh |(z1 - z2)/(1 - conj(z1)*z2)| */
+  function hyperbolicDist(z1, z2) {
+    var diff = cSub(z1, z2);
+    var denom = cSub(cComplex(1, 0), cMul(cConj(z1), z2));
+    var ratio = cDiv(diff, denom);
+    var u = cAbs(ratio);
+    if (u >= 1.0) u = 0.999999999;
+    return 2.0 * Math.atanh(u);
+  }
+
+  /* ------------------------------------------------------------ 双曲测地线解析计算 */
+  /* 给定两点 z1, z2，求过这两点的双曲测地线（正交于单位圆盘边界 |z|=1 的圆弧） */
+  function getGeodesicArc(z1, z2) {
+    var dist = hyperbolicDist(z1, z2);
+    var r1Sq = cAbsSq(z1);
+    var r2Sq = cAbsSq(z2);
+
+    /* 判断是否共线过原点 (通过叉积模) */
+    var cross = z1.re * z2.im - z1.im * z2.re;
+    if (Math.abs(cross) < 1e-7 || r1Sq < 1e-8 || r2Sq < 1e-8) {
+      /* 直径线段（欧氏直线） */
+      var dir = cSub(z2, z1);
+      var mag = cAbs(dir);
+      var unitDir = mag > EPS ? cScale(dir, 1 / mag) : cComplex(1, 0);
+      return {
+        isStraight: true,
+        p1: z1,
+        p2: z2,
+        dist: dist,
+        idealP1: cScale(unitDir, -1),
+        idealP2: unitDir
+      };
+    }
+
+    /* 利用几何圆反演定理：正交圆必过 z1 的反演点 z1* = z1 / |z1|^2
+     * 因此该圆为过三点 z1, z2, z1* 的欧氏外接圆 */
+    var inv1 = cScale(z1, 1.0 / r1Sq);
+
+    /* 设三点 (x1, y1), (x2, y2), (x3, y3) 求圆心 (xc, yc) 与半径 R */
+    var x1 = z1.re, y1 = z1.im;
+    var x2 = z2.re, y2 = z2.im;
+    var x3 = inv1.re, y3 = inv1.im;
+
+    var D = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2));
+    if (Math.abs(D) < 1e-9) {
+      return { isStraight: true, p1: z1, p2: z2, dist: dist };
+    }
+
+    var sq1 = x1 * x1 + y1 * y1;
+    var sq2 = x2 * x2 + y2 * y2;
+    var sq3 = x3 * x3 + y3 * y3;
+
+    var xc = (sq1 * (y2 - y3) + sq2 * (y3 - y1) + sq3 * (y1 - y2)) / D;
+    var yc = (sq1 * (x3 - x2) + sq2 * (x1 - x3) + sq3 * (x2 - x1)) / D;
+    var center = cComplex(xc, yc);
+    var R = Math.sqrt((xc - x1) * (xc - x1) + (yc - y1) * (yc - y1));
+
+    /* 计算与理想边界 |z|=1 的两个交点（正交圆性质：d_center^2 = R^2 + 1） */
+    var dCenter = Math.sqrt(xc * xc + yc * yc);
+    var idealAngleOffset = Math.acos(Math.max(-1, Math.min(1, 1.0 / dCenter)));
+    var centerAngle = Math.atan2(yc, xc);
+    var idealP1 = cComplex(Math.cos(centerAngle - idealAngleOffset), Math.sin(centerAngle - idealAngleOffset));
+    var idealP2 = cComplex(Math.cos(centerAngle + idealAngleOffset), Math.sin(centerAngle + idealAngleOffset));
+
+    /* 弧线在圆上的起止角 */
+    var a1 = Math.atan2(y1 - yc, x1 - xc);
+    var a2 = Math.atan2(y2 - yc, x2 - xc);
+
+    /* 保证弧段沿着短圆弧或连接两点 */
+    var sweep = a2 - a1;
+    while (sweep < -PI) sweep += TWO_PI;
+    while (sweep > PI) sweep -= TWO_PI;
+
+    return {
+      isStraight: false,
+      center: center,
+      radius: R,
+      startAngle: a1,
+      endAngle: a1 + sweep,
+      p1: z1,
+      p2: z2,
+      dist: dist,
+      idealP1: idealP1,
+      idealP2: idealP2
+    };
+  }
+
+  /* ------------------------------------------------------------ 双曲三角形与高斯-博内定理 */
+  /* 计算三点在各顶点的内角与角亏面积 Area = π - (α + β + γ) */
+  function analyzeTriangle(A, B, C) {
+    var a = hyperbolicDist(B, C);
+    var b = hyperbolicDist(A, C);
+    var c = hyperbolicDist(A, B);
+
+    /* 双曲第一余弦定理: cosh(c) = cosh(a)*cosh(b) - sinh(a)*sinh(b)*cos(gamma)
+     * cos(gamma) = (cosh(a)*cosh(b) - cosh(c)) / (sinh(a)*sinh(b)) */
+    function calcAngle(sideLeft, sideRight, sideOpp) {
+      var cosVal = (Math.cosh(sideLeft) * Math.cosh(sideRight) - Math.cosh(sideOpp)) /
+                   (Math.sinh(sideLeft) * Math.sinh(sideRight) + 1e-15);
+      cosVal = Math.max(-1.0, Math.min(1.0, cosVal));
+      return Math.acos(cosVal);
+    }
+
+    var alpha = calcAngle(b, c, a);
+    var beta = calcAngle(a, c, b);
+    var gamma = calcAngle(a, b, c);
+
+    var angleSum = alpha + beta + gamma;
+    var defectArea = Math.max(0, PI - angleSum);
+
+    /* 欧氏内角和与对照 */
+    var euclidSum = 180.0;
+    var hypSumDeg = (angleSum * 180.0) / PI;
+    var defectDeg = 180.0 - hypSumDeg;
+
+    return {
+      sideA: a,
+      sideB: b,
+      sideC: c,
+      alpha: alpha,
+      beta: beta,
+      gamma: gamma,
+      angleSumRad: angleSum,
+      angleSumDeg: hypSumDeg,
+      defectArea: defectArea,
+      defectDeg: defectDeg,
+      gaussBonnetMatch: Math.abs(defectArea - (PI - angleSum)) < 1e-12
+    };
+  }
+
+  /* ------------------------------------------------------------ 罗巴切夫斯基平行角与第五公设 */
+  /* 给定线外点到测地线的双曲垂线距离 d，计算极限平行角 Π(d) = 2 arctan(e^-d) */
+  function angleOfParallelism(dist) {
+    var d = Math.max(0, dist);
+    return 2.0 * Math.atan(Math.exp(-d));
+  }
+
+  /* ------------------------------------------------------------ {p, q} 双曲正镶嵌生成 */
+  /* 支持经典配置: {7, 3}, {5, 4}, {8, 3}, {4, 5}, {3, 7} */
+  var TESSELLATION_PRESETS = {
+    '7,3': { p: 7, q: 3, name: '克莱因七边形 {7, 3}', maxDepth: 3 },
+    '5,4': { p: 5, q: 4, name: '正方形直角五边形 {5, 4}', maxDepth: 4 },
+    '8,3': { p: 8, q: 3, name: '八角星花瓣 {8, 3}', maxDepth: 3 },
+    '4,5': { p: 4, q: 5, name: '五重直角正方形 {4, 5}', maxDepth: 4 },
+    '3,7': { p: 3, q: 7, name: '埃舍尔三角网 {3, 7}', maxDepth: 4 }
+  };
+
+  /* 计算正 p 边形的外接圆半径 r0（庞加莱双曲坐标）: cosh(r0) = cos(π/q) / sin(π/p) */
+  function computePolygonCircumradius(p, q) {
+    var cosQ = Math.cos(PI / q);
+    var sinP = Math.sin(PI / p);
+    var coshR = cosQ / sinP;
+    if (coshR <= 1.0) return 0.5; /* 必须满足 (p-2)(q-2) > 4 双曲条件 */
+    var rHyp = Math.acosh(coshR);
+    return Math.tanh(rHyp * 0.5); /* 庞加莱圆盘欧氏坐标 */
+  }
+
+  /* 构建初始中心正多边形图元 */
+  function createBasePolygon(p, q) {
+    var r = computePolygonCircumradius(p, q);
+    var vertices = [];
+    var step = TWO_PI / p;
+    for (var i = 0; i < p; i++) {
+      var th = i * step;
+      vertices.push(cComplex(r * Math.cos(th), r * Math.sin(th)));
+    }
+    return vertices;
+  }
+
+  /* 围绕一条边做双曲圆反演求反射变换 */
+  function reflectAcrossGeodesic(edgeP1, edgeP2) {
+    /* 构造几何变换将 edge 映射到实轴，在实轴做共轭反射，再逆变换回去 */
+    var mid = cScale(cAdd(edgeP1, edgeP2), 0.5);
+    var arc = getGeodesicArc(edgeP1, edgeP2);
+    return {
+      p1: edgeP1,
+      p2: edgeP2,
+      arc: arc
+    };
+  }
+
+  /* 广度优先生成双曲镶嵌瓦片集合 */
+  function generateTessellation(p, q, maxDepth) {
+    if (!maxDepth) maxDepth = 3;
+    var baseVerts = createBasePolygon(p, q);
+    var tiles = [];
+    var visitedCenters = [];
+
+    function isCenterVisited(c) {
+      for (var i = 0; i < visitedCenters.length; i++) {
+        var vc = visitedCenters[i];
+        var d2 = (vc.re - c.re) * (vc.re - c.re) + (vc.im - c.im) * (vc.im - c.im);
+        if (d2 < 0.0004) return true;
+      }
+      return false;
+    }
+
+    /* 种子瓦片：位于原点 */
+    var initialTile = {
+      depth: 0,
+      center: cComplex(0, 0),
+      vertices: baseVerts,
+      isEven: true
+    };
+    tiles.push(initialTile);
+    visitedCenters.push(initialTile.center);
+
+    var queue = [initialTile];
+
+    /* 逐边生成相邻瓦片并应用默比乌斯反射 */
+    while (queue.length > 0 && tiles.length < 240) {
+      var current = queue.shift();
+      if (current.depth >= maxDepth) continue;
+
+      var v = current.vertices;
+      var numV = v.length;
+      for (var i = 0; i < numV; i++) {
+        var pA = v[i];
+        var pB = v[(i + 1) % numV];
+
+        /* 计算跨过边 AB 的新瓦片中心（利用双曲中点向外延展） */
+        var edgeMid = cScale(cAdd(pA, pB), 0.5);
+        var curCenter = current.center;
+        var diff = cSub(edgeMid, curCenter);
+        var diffMag = cAbs(diff);
+        if (diffMag < 1e-5) continue;
+
+        var stepDir = cScale(diff, 1.0 / diffMag);
+        var distToEdge = hyperbolicDist(curCenter, edgeMid);
+        var targetDist = distToEdge * 2.0;
+        var rTarget = Math.tanh(targetDist * 0.5);
+        var newCenter = cScale(stepDir, Math.min(0.96, rTarget));
+
+        if (cAbs(newCenter) >= 0.98 || isCenterVisited(newCenter)) continue;
+
+        /* 利用平移矩阵从中心构建新多边形 */
+        var M = translationMatrix(cScale(newCenter, -1));
+        var newVerts = [];
+        for (var k = 0; k < numV; k++) {
+          newVerts.push(applyMobius(invertMatrix(M), baseVerts[k]));
+        }
+
+        var newTile = {
+          depth: current.depth + 1,
+          center: newCenter,
+          vertices: newVerts,
+          isEven: !current.isEven
+        };
+
+        visitedCenters.push(newCenter);
+        tiles.push(newTile);
+        queue.push(newTile);
+      }
+    }
+
+    return {
+      p: p,
+      q: q,
+      tilesCount: tiles.length,
+      tiles: tiles
+    };
+  }
+
+  /* ------------------------------------------------------------ 导出单例 */
+  return {
+    EPS: EPS,
+    PI: PI,
+    TWO_PI: TWO_PI,
+    splitmix32: splitmix32,
+    cComplex: cComplex,
+    cAdd: cAdd,
+    cSub: cSub,
+    cMul: cMul,
+    cDiv: cDiv,
+    cScale: cScale,
+    cConj: cConj,
+    cAbs: cAbs,
+    cAbsSq: cAbsSq,
+    cArg: cArg,
+    cExp: cExp,
+    createMatrix: createMatrix,
+    identityMatrix: identityMatrix,
+    translationMatrix: translationMatrix,
+    rotationMatrix: rotationMatrix,
+    mulMatrix: mulMatrix,
+    invertMatrix: invertMatrix,
+    normalizeMatrix: normalizeMatrix,
+    applyMobius: applyMobius,
+    hyperbolicDist: hyperbolicDist,
+    getGeodesicArc: getGeodesicArc,
+    analyzeTriangle: analyzeTriangle,
+    angleOfParallelism: angleOfParallelism,
+    computePolygonCircumradius: computePolygonCircumradius,
+    createBasePolygon: createBasePolygon,
+    generateTessellation: generateTessellation,
+    TESSELLATION_PRESETS: TESSELLATION_PRESETS
+  };
+});
+
+  </script>
+  <script>
+/* ============================================================================
+ * hyperbolic/ui.js —— 庞加莱双曲圆盘视图渲染、直接操纵交互与状态引擎
+ *
+ * 核心职责：
+ *   1. 集中式不可变状态机（state）管理模式切换与默比乌斯群累积同构
+ *   2. 基于 HTML5 Canvas 2D 高精度渲染庞加莱圆盘、双曲测地线圆弧与镶嵌网格
+ *   3. Pointer Events 全端交互：支持直接拖拽平移圆盘、顶点拾取与多指触控
+ *   4. 暴露 window.__probe 与 window.__ready 供自动化验证与审计工具自检
+ *   5. 全面防御性编程：零未受控随机数、零未处理坏值 (NaN/undefined)
+ * ==========================================================================*/
+(function (root) {
+  'use strict';
+
+  var C = root.HyperbolicCore;
+  if (!C && typeof require === 'function') {
+    C = require('./core.js');
+  }
+
+  /* ------------------------------------------------------------ 集中式全局状态 */
+  var state = {
+    mode: 'tessellation',       /* 'tessellation' | 'triangle' | 'parallel' */
+    tessPreset: '7,3',
+    tessData: null,
+    isometry: C.identityMatrix(),
+    isDragging: false,
+    dragTarget: null,          /* 'disk' | 'vertex-0' | 'vertex-1' | 'vertex-2' */
+    dragStartPos: null,
+    dragStartIsometry: null,
+    animating: false,
+    animTimer: null,
+    animStep: 0,
+    triVerts: [
+      C.cComplex(0.0, 0.45),
+      C.cComplex(-0.48, -0.32),
+      C.cComplex(0.48, -0.32)
+    ],
+    parallelDist: 1.15,
+    parallelAngleDeg: 70
+  };
+
+  /* 缓存当前预设的瓦片数据 */
+  state.tessData = C.generateTessellation(7, 3, 3);
+
+  /* ------------------------------------------------------------ DOM 元素句柄 */
+  var canvas = document.getElementById('diskCanvas');
+  var ctx = canvas.getContext('2d');
+
+  var btnModeTess = document.getElementById('btnModeTess');
+  var btnModeTriangle = document.getElementById('btnModeTriangle');
+  var btnModeParallel = document.getElementById('btnModeParallel');
+  var btnResetTransform = document.getElementById('btnResetTransform');
+  var btnToggleAnim = document.getElementById('btnToggleAnim');
+
+  var sectionTess = document.getElementById('sectionTess');
+  var sectionTriangle = document.getElementById('sectionTriangle');
+  var sectionParallel = document.getElementById('sectionParallel');
+
+  var stageHint = document.getElementById('stageHint');
+  var hudOrigin = document.getElementById('hudOrigin');
+  var hudMetricScale = document.getElementById('hudMetricScale');
+
+  /* 模式一读数 */
+  var readoutTileCount = document.getElementById('readoutTileCount');
+  var readoutPolygonR = document.getElementById('readoutPolygonR');
+  var readoutTileArea = document.getElementById('readoutTileArea');
+  var readoutIsometryDet = document.getElementById('readoutIsometryDet');
+
+  /* 模式二读数 */
+  var readoutAngleSum = document.getElementById('readoutAngleSum');
+  var readoutDefectArea = document.getElementById('readoutDefectArea');
+  var readoutAngles = document.getElementById('readoutAngles');
+  var readoutSides = document.getElementById('readoutSides');
+
+  /* 模式三读数 */
+  var sliderParallelAngle = document.getElementById('sliderParallelAngle');
+  var outputParallelAngle = document.getElementById('outputParallelAngle');
+  var readoutParallelState = document.getElementById('readoutParallelState');
+  var readoutParallelDist = document.getElementById('readoutParallelDist');
+  var readoutLobachevskyAngle = document.getElementById('readoutLobachevskyAngle');
+  var readoutUltraSpan = document.getElementById('readoutUltraSpan');
+
+  /* 预设按钮 */
+  var presetButtons = {
+    '7,3': document.getElementById('preset73'),
+    '5,4': document.getElementById('preset54'),
+    '8,3': document.getElementById('preset83'),
+    '3,7': document.getElementById('preset37')
+  };
+
+  var triPresetButtons = {
+    standard: document.getElementById('triPresetStandard'),
+    ideal: document.getElementById('triPresetIdeal'),
+    infinitesimal: document.getElementById('triPresetInfinitesimal')
+  };
+
+  /* ------------------------------------------------------------ 坐标换算辅助 */
+  function getCanvasCenterAndRadius() {
+    var rect = canvas.getBoundingClientRect();
+    var w = canvas.width;
+    var h = canvas.height;
+    var cx = w * 0.5;
+    var cy = h * 0.5;
+    var r = Math.min(cx, cy) * 0.94;
+    return { cx: cx, cy: cy, r: r };
+  }
+
+  /* 庞加莱复数坐标 [-1, 1] 转换为 Canvas 像素坐标 */
+  function toCanvas(z, geo) {
+    return {
+      x: geo.cx + z.re * geo.r,
+      y: geo.cy - z.im * geo.r
+    };
+  }
+
+  /* Canvas 像素坐标转换为庞加莱复数坐标 */
+  function fromCanvas(x, y, geo) {
+    var re = (x - geo.cx) / geo.r;
+    var im = (geo.cy - y) / geo.r;
+    var d2 = re * re + im * im;
+    if (d2 >= 0.999999) {
+      var s = 0.99999 / Math.sqrt(d2);
+      re *= s;
+      im *= s;
+    }
+    return C.cComplex(re, im);
+  }
+
+  /* 格式化数字，严格防御 NaN */
+  function fmt(val, digits) {
+    if (val === undefined || isNaN(val)) return '0.00';
+    return Number(val).toFixed(digits !== undefined ? digits : 2);
+  }
+
+  /* ------------------------------------------------------------ 绘制管线 */
+  function render() {
+    var geo = getCanvasCenterAndRadius();
+    var w = canvas.width;
+    var h = canvas.height;
+
+    /* 清屏 */
+    ctx.clearRect(0, 0, w, h);
+
+    /* 绘制庞加莱圆盘背景与发光边界圆 |z| = 1 */
+    ctx.save();
+
+    /* 圆盘内部深邃微光渐变 */
+    var grad = ctx.createRadialGradient(geo.cx, geo.cy, 0, geo.cx, geo.cy, geo.r);
+    grad.addColorStop(0, '#0c162d');
+    grad.addColorStop(0.7, '#070d1d');
+    grad.addColorStop(1, '#02050b');
+    ctx.beginPath();
+    ctx.arc(geo.cx, geo.cy, geo.r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    /* 边界圆 */
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#00e5ff';
+    ctx.shadowColor = 'rgba(0, 229, 255, 0.45)';
+    ctx.shadowBlur = 12;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    /* 辅助微弱正交十字十字准线 */
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(32, 47, 82, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.moveTo(geo.cx - geo.r, geo.cy);
+    ctx.lineTo(geo.cx + geo.r, geo.cy);
+    ctx.moveTo(geo.cx, geo.cy - geo.r);
+    ctx.lineTo(geo.cx, geo.cy + geo.r);
+    ctx.stroke();
+
+    /* 设置圆盘剪裁区域，确保一切测地线与图元不溢出单位圆盘 */
+    ctx.beginPath();
+    ctx.arc(geo.cx, geo.cy, geo.r - 0.5, 0, Math.PI * 2);
+    ctx.clip();
+
+    /* 分模式绘制内容 */
+    if (state.mode === 'tessellation') {
+      renderTessellation(geo);
+    } else if (state.mode === 'triangle') {
+      renderTriangleMode(geo);
+    } else if (state.mode === 'parallel') {
+      renderParallelMode(geo);
+    }
+
+    ctx.restore();
+
+    /* 更新 HUD 与读数输出 */
+    updateReadouts(geo);
+  }
+
+  /* ------------------------------------------------------------ 模式一：双曲正镶嵌渲染 */
+  function renderTessellation(geo) {
+    if (!state.tessData || !state.tessData.tiles) return;
+
+    var tiles = state.tessData.tiles;
+    var numTiles = tiles.length;
+    var M = state.isometry;
+
+    for (var i = 0; i < numTiles; i++) {
+      var tile = tiles[i];
+      var rawVerts = tile.vertices;
+      var nv = rawVerts.length;
+
+      /* 对多边形每个顶点应用当前的默比乌斯群变换 */
+      var transVerts = [];
+      for (var k = 0; k < nv; k++) {
+        transVerts.push(C.applyMobius(M, rawVerts[k]));
+      }
+
+      /* 绘制多边形面 */
+      ctx.beginPath();
+      for (var j = 0; j < nv; j++) {
+        var p1 = transVerts[j];
+        var p2 = transVerts[(j + 1) % nv];
+        var arc = C.getGeodesicArc(p1, p2);
+
+        if (j === 0) {
+          var ptStart = toCanvas(p1, geo);
+          ctx.moveTo(ptStart.x, ptStart.y);
+        }
+
+        if (arc.isStraight) {
+          var ptEnd = toCanvas(p2, geo);
+          ctx.lineTo(ptEnd.x, ptEnd.y);
+        } else {
+          var centerPx = toCanvas(arc.center, geo);
+          var radiusPx = arc.radius * geo.r;
+          /* 顺逆时针判定 */
+          var a1 = Math.atan2(toCanvas(p1, geo).y - centerPx.y, toCanvas(p1, geo).x - centerPx.x);
+          var a2 = Math.atan2(toCanvas(p2, geo).y - centerPx.y, toCanvas(p2, geo).x - centerPx.x);
+          var diff = a2 - a1;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          ctx.arc(centerPx.x, centerPx.y, radiusPx, a1, a1 + diff, diff < 0);
+        }
+      }
+      ctx.closePath();
+
+      /* 交替着色与透明度衰减 */
+      var depthAlpha = Math.max(0.15, 1.0 - tile.depth * 0.22);
+      if (tile.isEven) {
+        ctx.fillStyle = 'rgba(0, 229, 255, ' + (0.16 * depthAlpha) + ')';
+      } else {
+        ctx.fillStyle = 'rgba(255, 179, 0, ' + (0.12 * depthAlpha) + ')';
+      }
+      ctx.fill();
+
+      /* 边框测地线 */
+      ctx.strokeStyle = tile.isEven ?
+        'rgba(0, 229, 255, ' + (0.7 * depthAlpha) + ')' :
+        'rgba(255, 179, 0, ' + (0.6 * depthAlpha) + ')';
+      ctx.lineWidth = Math.max(0.8, 1.8 - tile.depth * 0.35);
+      ctx.stroke();
+    }
+  }
+
+  /* ------------------------------------------------------------ 模式二：高斯-博内三角形与角亏 */
+  function renderTriangleMode(geo) {
+    var v = state.triVerts;
+    /* 应用当前平移后的三顶点位置 */
+    var tA = C.applyMobius(state.isometry, v[0]);
+    var tB = C.applyMobius(state.isometry, v[1]);
+    var tC = C.applyMobius(state.isometry, v[2]);
+
+    var pts = [tA, tB, tC];
+    var colors = ['#00e676', '#00e5ff', '#ffb300'];
+
+    /* 绘制三角形内部填充（由 3 条测地线圆弧闭合围成） */
+    ctx.beginPath();
+    for (var i = 0; i < 3; i++) {
+      var p1 = pts[i];
+      var p2 = pts[(i + 1) % 3];
+      var arc = C.getGeodesicArc(p1, p2);
+
+      if (i === 0) {
+        var startPx = toCanvas(p1, geo);
+        ctx.moveTo(startPx.x, startPx.y);
+      }
+
+      if (arc.isStraight) {
+        var endPx = toCanvas(p2, geo);
+        ctx.lineTo(endPx.x, endPx.y);
+      } else {
+        var cPx = toCanvas(arc.center, geo);
+        var rPx = arc.radius * geo.r;
+        var a1 = Math.atan2(toCanvas(p1, geo).y - cPx.y, toCanvas(p1, geo).x - cPx.x);
+        var a2 = Math.atan2(toCanvas(p2, geo).y - cPx.y, toCanvas(p2, geo).x - cPx.x);
+        var sweep = a2 - a1;
+        while (sweep < -Math.PI) sweep += Math.PI * 2;
+        while (sweep > Math.PI) sweep -= Math.PI * 2;
+        ctx.arc(cPx.x, cPx.y, rPx, a1, a1 + sweep, sweep < 0);
+      }
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.18)';
+    ctx.fill();
+
+    /* 绘制三条发光测地线边 */
+    for (var j = 0; j < 3; j++) {
+      var arcLine = C.getGeodesicArc(pts[j], pts[(j + 1) % 3]);
+      ctx.beginPath();
+      if (arcLine.isStraight) {
+        var ptA = toCanvas(pts[j], geo);
+        var ptB = toCanvas(pts[(j + 1) % 3], geo);
+        ctx.moveTo(ptA.x, ptA.y);
+        ctx.lineTo(ptB.x, ptB.y);
+      } else {
+        var centerLine = toCanvas(arcLine.center, geo);
+        var radLine = arcLine.radius * geo.r;
+        var ang1 = Math.atan2(toCanvas(pts[j], geo).y - centerLine.y, toCanvas(pts[j], geo).x - centerLine.x);
+        var ang2 = Math.atan2(toCanvas(pts[(j + 1) % 3], geo).y - centerLine.y, toCanvas(pts[(j + 1) % 3], geo).x - centerLine.x);
+        var diffAng = ang2 - ang1;
+        while (diffAng < -Math.PI) diffAng += Math.PI * 2;
+        while (diffAng > Math.PI) diffAng -= Math.PI * 2;
+        ctx.arc(centerLine.x, centerLine.y, radLine, ang1, ang1 + diffAng, diffAng < 0);
+      }
+      ctx.lineWidth = 2.4;
+      ctx.strokeStyle = '#00e5ff';
+      ctx.shadowColor = 'rgba(0, 229, 255, 0.5)';
+      ctx.shadowBlur = 8;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    /* 绘制三顶点及其交互手柄 */
+    var names = ['A', 'B', 'C'];
+    for (var k = 0; k < 3; k++) {
+      var nodePx = toCanvas(pts[k], geo);
+
+      /* 外圈触摸指示环 */
+      ctx.beginPath();
+      ctx.arc(nodePx.x, nodePx.y, 14, 0, Math.PI * 2);
+      ctx.strokeStyle = colors[k];
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      /* 实心圆心 */
+      ctx.beginPath();
+      ctx.arc(nodePx.x, nodePx.y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = colors[k];
+      ctx.fill();
+
+      /* 标签文案 */
+      ctx.font = 'bold 12px "SF Mono", monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(names[k], nodePx.x + 12, nodePx.y - 10);
+    }
+  }
+
+  /* ------------------------------------------------------------ 模式三：第五公设与平行相逢 */
+  function renderParallelMode(geo) {
+    /* 构造基准测地线 L：水平穿过 y = -0.3 处的双曲直线 */
+    var pL1 = C.cComplex(-0.85, -0.30);
+    var pL2 = C.cComplex(0.85, -0.30);
+    var arcL = C.getGeodesicArc(pL1, pL2);
+
+    /* 基准线 L 延伸至两端边界 */
+    ctx.beginPath();
+    if (arcL.isStraight) {
+      var pt1 = toCanvas(arcL.idealP1, geo);
+      var pt2 = toCanvas(arcL.idealP2, geo);
+      ctx.moveTo(pt1.x, pt1.y);
+      ctx.lineTo(pt2.x, pt2.y);
+    } else {
+      var cPx = toCanvas(arcL.center, geo);
+      var rPx = arcL.radius * geo.r;
+      var ang1 = Math.atan2(toCanvas(arcL.idealP1, geo).y - cPx.y, toCanvas(arcL.idealP1, geo).x - cPx.x);
+      var ang2 = Math.atan2(toCanvas(arcL.idealP2, geo).y - cPx.y, toCanvas(arcL.idealP2, geo).x - cPx.x);
+      var diff = ang2 - ang1;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      ctx.arc(cPx.x, cPx.y, rPx, ang1, ang1 + diff, diff < 0);
+    }
+    ctx.lineWidth = 3.0;
+    ctx.strokeStyle = '#00e5ff';
+    ctx.stroke();
+
+    /* 基准点 P 位于 y = 0.35 处 */
+    var ptP = C.cComplex(0.0, 0.35);
+    var ptPPx = toCanvas(ptP, geo);
+
+    /* 垂线足点 */
+    var ptFoot = C.cComplex(0.0, -0.30);
+    var footArc = C.getGeodesicArc(ptP, ptFoot);
+    ctx.beginPath();
+    var footP1 = toCanvas(ptP, geo);
+    var footP2 = toCanvas(ptFoot, geo);
+    ctx.moveTo(footP1.x, footP1.y);
+    ctx.lineTo(footP2.x, footP2.y);
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    /* 计算点 P 到基准线的双曲垂线距离 d */
+    var d = C.hyperbolicDist(ptP, ptFoot);
+    state.parallelDist = d;
+    var lobAngle = C.angleOfParallelism(d);
+
+    /* 绘制两条极限平行线（在无穷远处与 L 相切） */
+    var limitAngle1 = -Math.PI * 0.5 - lobAngle;
+    var limitAngle2 = -Math.PI * 0.5 + lobAngle;
+
+    function drawRay(ang, style, width, dash) {
+      /* 沿角度 ang 发射的测地线 */
+      var dir = C.cComplex(Math.cos(ang), Math.sin(ang));
+      var target = C.cAdd(ptP, C.cScale(dir, 0.4));
+      var rayArc = C.getGeodesicArc(ptP, target);
+
+      ctx.beginPath();
+      if (rayArc.isStraight) {
+        var r1 = toCanvas(rayArc.idealP1, geo);
+        var r2 = toCanvas(rayArc.idealP2, geo);
+        ctx.moveTo(r1.x, r1.y);
+        ctx.lineTo(r2.x, r2.y);
+      } else {
+        var rcPx = toCanvas(rayArc.center, geo);
+        var rrPx = rayArc.radius * geo.r;
+        var a1 = Math.atan2(toCanvas(rayArc.idealP1, geo).y - rcPx.y, toCanvas(rayArc.idealP1, geo).x - rcPx.x);
+        var a2 = Math.atan2(toCanvas(rayArc.idealP2, geo).y - rcPx.y, toCanvas(rayArc.idealP2, geo).x - rcPx.x);
+        var sw = a2 - a1;
+        while (sw < -Math.PI) sw += Math.PI * 2;
+        while (sw > Math.PI) sw -= Math.PI * 2;
+        ctx.arc(rcPx.x, rcPx.y, rrPx, a1, a1 + sw, sw < 0);
+      }
+      ctx.lineWidth = width;
+      ctx.strokeStyle = style;
+      if (dash) ctx.setLineDash(dash);
+      ctx.stroke();
+      if (dash) ctx.setLineDash([]);
+    }
+
+    /* 极限平行线（金色虚线） */
+    drawRay(limitAngle1, '#ffb300', 1.8, [6, 4]);
+    drawRay(limitAngle2, '#ffb300', 1.8, [6, 4]);
+
+    /* 用户当前发射的探测光束 */
+    var userAngleRad = (state.parallelAngleDeg * Math.PI) / 180.0;
+    var userColor = '#00e676';
+
+    /* 判断当前角度与垂线 (-90°) 的夹角差距 */
+    var deltaFromNormal = Math.abs(userAngleRad - (-Math.PI * 0.5));
+    while (deltaFromNormal > Math.PI) deltaFromNormal = Math.abs(deltaFromNormal - Math.PI * 2);
+
+    var classification = '超平行 (永不相交)';
+    if (Math.abs(deltaFromNormal - lobAngle) < 0.035) {
+      classification = '极限平行 (无穷远渐近)';
+      userColor = '#ffb300';
+    } else if (deltaFromNormal < lobAngle) {
+      classification = '相交线 (有限距离相交)';
+      userColor = '#ff3d71';
+    }
+
+    drawRay(userAngleRad, userColor, 2.5, null);
+
+    /* 绘制点 P */
+    ctx.beginPath();
+    ctx.arc(ptPPx.x, ptPPx.y, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#00e676';
+    ctx.fill();
+    ctx.font = 'bold 12px "SF Mono", monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('P (线外点)', ptPPx.x + 10, ptPPx.y - 8);
+
+    /* 状态写回 */
+    readoutParallelState.textContent = classification;
+    readoutParallelState.style.color = userColor;
+  }
+
+  /* ------------------------------------------------------------ 读数与遥测更新 */
+  function updateReadouts(geo) {
+    /* HUD 原点位移与尺度 */
+    var originMapped = C.applyMobius(state.isometry, C.cComplex(0, 0));
+    var rOrigin = C.cAbs(originMapped);
+    var metricScale = 2.0 / (1.0 - Math.min(0.999, rOrigin * rOrigin));
+
+    hudOrigin.textContent = '原点平移: (' + fmt(originMapped.re, 2) + ', ' + fmt(originMapped.im, 2) + ')';
+    hudMetricScale.textContent = '局部尺度: ' + fmt(metricScale, 2);
+
+    /* 模式一读数 */
+    if (state.mode === 'tessellation') {
+      var p = state.tessData ? state.tessData.p : 7;
+      var q = state.tessData ? state.tessData.q : 3;
+      var polyR = C.computePolygonCircumradius(p, q);
+      var polyArea = (p - 2) * Math.PI - (2 * Math.PI * p) / q; /* 高斯博内正多边形面积 */
+      if (polyArea < 0) polyArea = Math.abs(polyArea);
+
+      readoutTileCount.textContent = String(state.tessData.tilesCount);
+      readoutPolygonR.textContent = fmt(polyR, 3);
+      readoutTileArea.textContent = fmt(polyArea, 4);
+
+      /* 保距群行列式 Det(M) 必须维持 1.00000 */
+      var detVal = (state.isometry.a.re * state.isometry.d.re - state.isometry.b.re * state.isometry.c.re);
+      readoutIsometryDet.textContent = fmt(detVal, 5);
+    }
+
+    /* 模式二读数 */
+    if (state.mode === 'triangle') {
+      var v = state.triVerts;
+      var tA = C.applyMobius(state.isometry, v[0]);
+      var tB = C.applyMobius(state.isometry, v[1]);
+      var tC = C.applyMobius(state.isometry, v[2]);
+      var tri = C.analyzeTriangle(tA, tB, tC);
+
+      readoutAngleSum.textContent = fmt(tri.angleSumDeg, 2) + '°';
+      readoutDefectArea.textContent = fmt(tri.defectArea, 4) + ' rad²';
+      readoutAngles.textContent = fmt((tri.alpha * 180) / Math.PI, 1) + '°, ' +
+                                 fmt((tri.beta * 180) / Math.PI, 1) + '°, ' +
+                                 fmt((tri.gamma * 180) / Math.PI, 1) + '°';
+      readoutSides.textContent = fmt(tri.sideA, 2) + ', ' + fmt(tri.sideB, 2) + ', ' + fmt(tri.sideC, 2);
+    }
+
+    /* 模式三读数 */
+    if (state.mode === 'parallel') {
+      var d = state.parallelDist;
+      var lobAngle = C.angleOfParallelism(d);
+      var lobDeg = (lobAngle * 180.0) / Math.PI;
+      var ultraSpan = 180.0 - 2 * lobDeg;
+
+      readoutParallelDist.textContent = fmt(d, 3);
+      readoutLobachevskyAngle.textContent = fmt(lobDeg, 2) + '°';
+      readoutUltraSpan.textContent = fmt(Math.max(0, ultraSpan), 2) + '°';
+    }
+
+    /* 更新自动化验证探针 window.__probe */
+    updateProbe();
+  }
+
+  /* ------------------------------------------------------------ 暴露自动化验证探针 */
+  function updateProbe() {
+    var origin = C.applyMobius(state.isometry, C.cComplex(0, 0));
+    var tri = C.analyzeTriangle(state.triVerts[0], state.triVerts[1], state.triVerts[2]);
+    var lobAngle = C.angleOfParallelism(state.parallelDist);
+
+    root.__probe = {
+      mode: state.mode,
+      tessPreset: state.tessPreset,
+      tilesCount: state.tessData ? state.tessData.tilesCount : 0,
+      isometryOrigin: { re: origin.re, im: origin.im },
+      triangleAngleSumDeg: tri.angleSumDeg,
+      triangleDefectArea: tri.defectArea,
+      gaussBonnetHolds: tri.gaussBonnetMatch,
+      parallelDist: state.parallelDist,
+      lobachevskyAngleDeg: (lobAngle * 180) / Math.PI,
+      parallelClassification: readoutParallelState.textContent,
+      canvasDimensions: { width: canvas.width, height: canvas.height }
+    };
+  }
+
+  /* ------------------------------------------------------------ 模式切换与交互事件绑定 */
+  function setMode(newMode) {
+    state.mode = newMode;
+    btnModeTess.classList.toggle('active', newMode === 'tessellation');
+    btnModeTess.setAttribute('aria-pressed', String(newMode === 'tessellation'));
+    btnModeTriangle.classList.toggle('active', newMode === 'triangle');
+    btnModeTriangle.setAttribute('aria-pressed', String(newMode === 'triangle'));
+    btnModeParallel.classList.toggle('active', newMode === 'parallel');
+    btnModeParallel.setAttribute('aria-pressed', String(newMode === 'parallel'));
+
+    sectionTess.hidden = newMode !== 'tessellation';
+    sectionTriangle.hidden = newMode !== 'triangle';
+    sectionParallel.hidden = newMode !== 'parallel';
+
+    if (newMode === 'tessellation') {
+      stageHint.textContent = '在圆盘内拖拽可直接施加默比乌斯双曲刚体平移；外围无穷瓦片将平滑滑向中心。';
+    } else if (newMode === 'triangle') {
+      stageHint.textContent = '拖拽 A、B、C 三个圆点手柄，实时推演非欧测地三角形与高斯-博内角亏 Area = π - Σ。';
+    } else if (newMode === 'parallel') {
+      stageHint.textContent = '调节右侧角度滑杆或拖拽点 P，观察极限平行与超平行相变分界。';
+    }
+
+    render();
+  }
+
+  btnModeTess.addEventListener('click', function () { setMode('tessellation'); });
+  btnModeTriangle.addEventListener('click', function () { setMode('triangle'); });
+  btnModeParallel.addEventListener('click', function () { setMode('parallel'); });
+
+  /* 重置变换 */
+  btnResetTransform.addEventListener('click', function () {
+    state.isometry = C.identityMatrix();
+    render();
+  });
+
+  /* 巡航漂移动画 */
+  function toggleAnimation() {
+    state.animating = !state.animating;
+    btnToggleAnim.classList.toggle('active', state.animating);
+    btnToggleAnim.setAttribute('aria-pressed', String(state.animating));
+
+    if (state.animating) {
+      var stepAnim = function () {
+        if (!state.animating) return;
+        state.animStep += 0.015;
+        var r = 0.008;
+        var dZ = C.cComplex(r * Math.cos(state.animStep), r * Math.sin(state.animStep));
+        var trans = C.translationMatrix(dZ);
+        state.isometry = C.mulMatrix(state.isometry, trans);
+        render();
+        state.animTimer = setTimeout(stepAnim, 20);
+      };
+      stepAnim();
+    } else {
+      if (state.animTimer) clearTimeout(state.animTimer);
+    }
+  }
+
+  btnToggleAnim.addEventListener('click', toggleAnimation);
+
+  /* 模式一镶嵌预设切换 */
+  Object.keys(presetButtons).forEach(function (key) {
+    var btn = presetButtons[key];
+    btn.addEventListener('click', function () {
+      Object.keys(presetButtons).forEach(function (k) { presetButtons[k].classList.remove('active'); });
+      btn.classList.add('active');
+      state.tessPreset = key;
+      var parts = key.split(',');
+      var p = parseInt(parts[0], 10);
+      var q = parseInt(parts[1], 10);
+      state.tessData = C.generateTessellation(p, q, p >= 7 ? 3 : 4);
+      render();
+    });
+  });
+
+  /* 模式二三角形预设 */
+  triPresetButtons.standard.addEventListener('click', function () {
+    triPresetButtons.standard.classList.add('active');
+    triPresetButtons.ideal.classList.remove('active');
+    triPresetButtons.infinitesimal.classList.remove('active');
+    state.triVerts = [
+      C.cComplex(0.0, 0.45),
+      C.cComplex(-0.48, -0.32),
+      C.cComplex(0.48, -0.32)
+    ];
+    render();
+  });
+
+  triPresetButtons.ideal.addEventListener('click', function () {
+    triPresetButtons.standard.classList.remove('active');
+    triPresetButtons.ideal.classList.add('active');
+    triPresetButtons.infinitesimal.classList.remove('active');
+    /* 理想三角形三顶点紧贴单位边界 */
+    state.triVerts = [
+      C.cComplex(0.0, 0.985),
+      C.cComplex(-0.853, -0.492),
+      C.cComplex(0.853, -0.492)
+    ];
+    render();
+  });
+
+  triPresetButtons.infinitesimal.addEventListener('click', function () {
+    triPresetButtons.standard.classList.remove('active');
+    triPresetButtons.ideal.classList.remove('active');
+    triPresetButtons.infinitesimal.classList.add('active');
+    /* 微小三角形集中在原点微元区域（内角和趋近 180°） */
+    state.triVerts = [
+      C.cComplex(0.0, 0.08),
+      C.cComplex(-0.07, -0.05),
+      C.cComplex(0.07, -0.05)
+    ];
+    render();
+  });
+
+  /* 模式三滑杆与发射角 */
+  sliderParallelAngle.addEventListener('input', function () {
+    state.parallelAngleDeg = parseInt(sliderParallelAngle.value, 10);
+    outputParallelAngle.value = state.parallelAngleDeg + '°';
+    render();
+  });
+
+  /* ------------------------------------------------------------ Pointer Events 统一拖拽交互 */
+  function onPointerDown(e) {
+    var rect = canvas.getBoundingClientRect();
+    var clientX = e.clientX - rect.left;
+    var clientY = e.clientY - rect.top;
+    var geo = getCanvasCenterAndRadius();
+
+    var scaleX = canvas.width / rect.width;
+    var scaleY = canvas.height / rect.height;
+    var px = clientX * scaleX;
+    var py = clientY * scaleY;
+
+    var z = fromCanvas(px, py, geo);
+    if (C.cAbsSq(z) >= 0.999) return;
+
+    canvas.setPointerCapture(e.pointerId);
+    state.isDragging = true;
+    state.dragStartPos = z;
+    state.dragStartIsometry = state.isometry;
+
+    /* 在三角形模式下检查是否命中了顶点手柄 */
+    state.dragTarget = 'disk';
+    if (state.mode === 'triangle') {
+      var invM = C.invertMatrix(state.isometry);
+      var currentZInBase = C.applyMobius(invM, z);
+      for (var i = 0; i < 3; i++) {
+        var v = state.triVerts[i];
+        var dist = C.hyperbolicDist(currentZInBase, v);
+        if (dist < 0.35) {
+          state.dragTarget = 'vertex-' + i;
+          break;
+        }
+      }
+    }
+  }
+
+  function onPointerMove(e) {
+    if (!state.isDragging) return;
+    var rect = canvas.getBoundingClientRect();
+    var clientX = e.clientX - rect.left;
+    var clientY = e.clientY - rect.top;
+    var geo = getCanvasCenterAndRadius();
+
+    var scaleX = canvas.width / rect.width;
+    var scaleY = canvas.height / rect.height;
+    var px = clientX * scaleX;
+    var py = clientY * scaleY;
+
+    var z = fromCanvas(px, py, geo);
+
+    if (state.dragTarget.indexOf('vertex-') === 0) {
+      /* 拖拽顶点 */
+      var vIdx = parseInt(state.dragTarget.split('-')[1], 10);
+      var invM = C.invertMatrix(state.isometry);
+      var newPos = C.applyMobius(invM, z);
+      if (C.cAbs(newPos) < 0.985) {
+        state.triVerts[vIdx] = newPos;
+        render();
+      }
+    } else {
+      /* 拖拽整个圆盘施加平移 */
+      var delta = C.cSub(z, state.dragStartPos);
+      var mag = C.cAbs(delta);
+      if (mag > 1e-4) {
+        /* 计算微小增量平移并乘以起始矩阵 */
+        var stepTrans = C.translationMatrix(C.cScale(delta, 0.7));
+        state.isometry = C.mulMatrix(state.dragStartIsometry, stepTrans);
+        render();
+      }
+    }
+  }
+
+  function onPointerUp(e) {
+    if (state.isDragging) {
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        /* ignore */
+      }
+      state.isDragging = false;
+      state.dragTarget = null;
+    }
+  }
+
+  canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerup', onPointerUp);
+  canvas.addEventListener('pointercancel', onPointerUp);
+
+  /* ------------------------------------------------------------ 画布自适应尺寸管理 */
+  function resizeCanvas() {
+    var rect = canvas.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    var sz = Math.min(rect.width, 680) || 600;
+    canvas.width = Math.round(sz * dpr);
+    canvas.height = Math.round(sz * dpr);
+    render();
+  }
+
+  window.addEventListener('resize', resizeCanvas);
+
+  /* 初始化启动 */
+  resizeCanvas();
+  render();
+
+  /* 标记全局就绪 */
+  root.__ready = true;
+
+})(typeof window !== 'undefined' ? window : this);
+
+  </script>
+</body>
+</html>
+

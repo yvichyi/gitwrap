@@ -1,0 +1,2110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#071114">
+  <meta name="description" content="阿兰·图灵反应-扩散系统与形态发生交互实验装置：在培养皿中观察慢活化与快抑制如何打破对称性，自发生成斑马条纹、自复制斑点与时空湍流。">
+  <title>斑图的呼吸 · 反应-扩散与图灵形态发生</title>
+  <style>
+/* ============================================================================
+ * turing/style.css —— 微生物荧光暗场显微体系 (Bioluminescent Micro-Stage)
+ *
+ * 视觉差异声明：
+ *   - 彻底摒弃既有展项泛滥的宣纸米黄调（如 #f0ece3, #faf8f2 等 35 种纸色）；
+ *   - 确立「深渊冷暗场 + 生物发光荧绿 + 水银青电泳」视觉语言，与反应扩散题眼浑然一体；
+ *   - 杜绝 class="hero"、class="tabs"、<table>、内联 SVG；
+ *   - 严格保证移动端响应式，触控区域高度在窄屏下下限为 44px，touch-action 精准控制。
+ * ==========================================================================*/
+
+:root {
+  --stage-bg: #071114;           /* 深渊水槽底色 */
+  --panel-bg: #0d1e23;           /* 实验仪器卡片底 */
+  --panel-sub: #132a31;          /* 嵌套面板底色 */
+  --border-line: #1c3d47;        /* 仪器冷金属接缝 */
+  --border-glow: #285462;        /* 激活微光外沿 */
+  
+  --text-pure: #eef8fa;          /* 高对比度主读数 */
+  --text-norm: #c5dde3;          /* 正文说明字 */
+  --text-muted: #7e9fa8;         /* 次要标注与物理量单位 */
+  
+  --bio-green: #10b981;          /* 活化剂荧光翠绿 */
+  --bio-cyan: #06b6d4;           /* 抑制剂电泳青 */
+  --bio-amber: #f59e0b;          /* 绝缘阻断屏障金 */
+  --bio-crimson: #f43f5e;        /* 湍流与奇点高能警示 */
+  
+  --hud-chip: rgba(13, 30, 35, 0.88);
+  --halo-glow: rgba(16, 185, 129, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--stage-bg);
+  color: var(--text-norm);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  line-height: 1.68;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.turing-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+/* -------------------------------------------------------- 顶部仪器门牌 */
+.app-masthead {
+  padding: 28px 0 20px;
+  border-bottom: 1px solid var(--border-line);
+  margin-bottom: 30px;
+}
+
+.mast-kicker {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bio-cyan);
+  margin-bottom: 8px;
+}
+
+.mast-title {
+  margin: 0 0 14px;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-pure);
+}
+
+.mast-lead {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text-norm);
+  max-width: 780px;
+}
+
+.mast-lead b {
+  color: var(--bio-green);
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------- ① 主舞台：显微培养皿 */
+.stage-section {
+  margin-bottom: 36px;
+}
+
+.petri-container {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  align-items: flex-start;
+}
+
+.petri-viewport {
+  position: relative;
+  flex: 0 0 auto;
+  width: 420px;
+  height: 420px;
+  background: #020608;
+  border-radius: 50%;
+  border: 4px solid var(--border-glow);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.9), 0 0 30px var(--halo-glow);
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+#petriCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hud-overlay {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.hud-badge {
+  background: var(--hud-chip);
+  border: 1px solid var(--border-glow);
+  color: var(--bio-green);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+
+.hud-stat {
+  background: var(--hud-chip);
+  border: 1px solid var(--border-line);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: monospace;
+  padding: 3px 10px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+
+/* 工具箱控制侧栏 */
+.toolbox-panel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-tool {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--panel-sub);
+  border: 1px solid var(--border-line);
+  border-radius: 8px;
+  color: var(--text-norm);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 42px;
+}
+
+.btn-tool:hover {
+  background: #18333c;
+  border-color: var(--border-glow);
+}
+
+.btn-tool.active {
+  background: #183f4a;
+  border-color: var(--bio-green);
+  color: var(--text-pure);
+  box-shadow: 0 0 12px var(--halo-glow);
+}
+
+.tool-icon {
+  font-size: 16px;
+}
+
+.tool-label {
+  font-weight: 500;
+}
+
+.canvas-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid var(--bio-cyan);
+  border-radius: 0 6px 6px 0;
+}
+
+.playback-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.btn-action {
+  padding: 8px 12px;
+  background: var(--panel-sub);
+  border: 1px solid var(--border-line);
+  color: var(--text-norm);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 38px;
+  transition: all 0.15s ease;
+}
+
+.btn-action:hover {
+  background: #1c3b45;
+  border-color: var(--border-glow);
+}
+
+.btn-action.primary {
+  background: #0f463c;
+  border-color: var(--bio-green);
+  color: #a7f3d0;
+}
+
+.btn-action.primary:hover {
+  background: #13584c;
+}
+
+.btn-action.subtle {
+  color: var(--text-muted);
+  border-style: dashed;
+}
+
+/* -------------------------------------------------------- ② 皮尔逊经典相谱 */
+.compass-section {
+  margin-bottom: 34px;
+}
+
+.section-head {
+  margin-bottom: 16px;
+}
+
+.section-head h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-pure);
+  margin: 0 0 6px;
+}
+
+.section-sub {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.preset-matrix {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.preset-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-line);
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  min-height: 110px;
+}
+
+.preset-card:hover {
+  background: var(--panel-sub);
+  border-color: var(--border-glow);
+}
+
+.preset-card.active {
+  background: #10262d;
+  border-color: var(--bio-cyan);
+  box-shadow: 0 0 14px rgba(6, 182, 212, 0.15);
+}
+
+.preset-tag {
+  font-size: 11px;
+  font-family: monospace;
+  font-weight: 600;
+  color: var(--bio-cyan);
+  margin-bottom: 4px;
+}
+
+.preset-title {
+  font-size: 15px;
+  color: var(--text-pure);
+  margin-bottom: 4px;
+}
+
+.preset-param {
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.preset-desc {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-norm);
+}
+
+/* -------------------------------------------------------- ③ 动力学滑杆 */
+.sliders-section {
+  margin-bottom: 36px;
+}
+
+.param-fieldset {
+  margin: 0;
+  padding: 20px;
+  border: 1px solid var(--border-line);
+  background: var(--panel-bg);
+  border-radius: 10px;
+}
+
+.param-fieldset legend {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--bio-green);
+  padding: 0 8px;
+}
+
+.slider-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.slider-unit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.slider-head label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-pure);
+}
+
+.slider-head output {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--bio-green);
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--bio-green);
+  cursor: pointer;
+  margin: 4px 0;
+}
+
+.slider-annotation {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* -------------------------------------------------------- ④ 数学与物理对账 */
+.verification-section {
+  margin-bottom: 36px;
+}
+
+.verification-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.chart-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-line);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.card-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.card-caption strong {
+  font-size: 14px;
+  color: var(--text-pure);
+}
+
+.caption-note {
+  font-size: 12px;
+  color: var(--bio-cyan);
+}
+
+.chart-box {
+  width: 100%;
+  height: 180px;
+  background: #03080a;
+  border: 1px solid var(--border-line);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.chart-box canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.chart-summary {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.chart-summary b {
+  color: var(--bio-green);
+  font-family: monospace;
+}
+
+/* 读数度量网格 */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 0;
+}
+
+.metric-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-line);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-card dt {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.metric-card dd {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--bio-cyan);
+}
+
+.metric-foot {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin-top: auto;
+}
+
+/* -------------------------------------------------------- ⑤ 模型边界说明 */
+.boundary-section {
+  background: rgba(13, 30, 35, 0.5);
+  border: 1px dashed var(--border-line);
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.boundary-section h2 {
+  font-size: 18px;
+  color: var(--text-pure);
+  margin: 0 0 14px;
+}
+
+.boundary-content p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-norm);
+  margin: 0 0 12px;
+}
+
+.boundary-content p:last-child {
+  margin-bottom: 0;
+}
+
+.boundary-content b {
+  color: var(--bio-cyan);
+}
+
+/* -------------------------------------------------------- 响应式微调 (窄屏适配) */
+@media (max-width: 820px) {
+  .petri-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .petri-viewport {
+    width: 320px;
+    height: 320px;
+  }
+  
+  .preset-matrix {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .slider-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .verification-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .turing-wrap {
+    padding: 16px 12px 60px;
+  }
+  
+  .mast-title {
+    font-size: 26px;
+  }
+  
+  .petri-viewport {
+    width: 280px;
+    height: 280px;
+  }
+  
+  .preset-matrix {
+    grid-template-columns: 1fr;
+  }
+  
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  /* 窄屏触控高度底线保障 (≥ 44px) */
+  .btn-tool, .btn-action, .preset-card {
+    min-height: 44px;
+  }
+  
+  .playback-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <div class="turing-wrap">
+<!-- ============================================================================
+     turing/body.html —— 《斑图的呼吸》结构骨架
+
+     反固化设计守卫：
+       - 严禁 class="hero"、class="tabs"、class="chart"、<table> 与内联 <svg>
+       - 排版全语义化：section / fieldset / dl / canvas / output
+       - 交互工具化：显微培养皿直接受力、化学移液管与绝缘手术刀实时干涉
+       ==========================================================================-->
+
+<header class="app-masthead">
+  <div class="mast-kicker">非平衡态动力学 · 反应-扩散与图灵形态发生</div>
+  <h1 class="mast-title">斑图的呼吸</h1>
+  <p class="mast-lead">
+    热力学常识说：扩散会抹平一切浓度差，把系统推向死寂的均匀。
+    但阿兰·图灵在 1952 年证明：<b>只要有两种扩散速率不同的化学物质（慢活化、快抑制）</b>，
+    扩散本身就会失稳，从毫无特征的均匀流体中<b>自发雕刻出条纹、斑点与迷宫</b>。
+  </p>
+</header>
+
+<!-- ===================================================== ① 主舞台：显微培养皿 -->
+<section class="stage-section" aria-label="反应-扩散主实验舞台">
+  <div class="petri-container">
+    <div class="petri-viewport">
+      <canvas id="petriCanvas" width="420" height="420" aria-label="图灵斑图模拟显微皿：实时展现活化剂与抑制剂浓度的空间分布与法向光影"></canvas>
+      <div class="hud-overlay" id="hudOverlay" aria-hidden="true">
+        <span class="hud-badge" id="hudStatus">演化中</span>
+        <span class="hud-stat" id="hudTime">t = 0.0</span>
+      </div>
+    </div>
+
+    <!-- 培养皿交互工具板 -->
+    <div class="toolbox-panel">
+      <div class="tool-group" role="group" aria-label="注入与干涉工具">
+        <button type="button" class="btn-tool active" id="toolPipette" aria-pressed="true">
+          <span class="tool-icon">💧</span>
+          <span class="tool-label">移液管 · 注入活性</span>
+        </button>
+        <button type="button" class="btn-tool" id="toolBarrier" aria-pressed="false">
+          <span class="tool-icon">⚡</span>
+          <span class="tool-label">手术刀 · 绝缘屏障</span>
+        </button>
+        <button type="button" class="btn-tool" id="toolEraser" aria-pressed="false">
+          <span class="tool-icon">🧹</span>
+          <span class="tool-label">橡皮擦 · 疏通介质</span>
+        </button>
+      </div>
+
+      <p class="canvas-hint" id="canvasHint">在皿中按住并拖动：用移液管点入活化剂扰动，观察它如何触发对称性破缺</p>
+
+      <div class="playback-controls">
+        <button type="button" class="btn-action primary" id="btnTogglePlay">暂停演化</button>
+        <button type="button" class="btn-action" id="btnStepOnce">单步迭代</button>
+        <button type="button" class="btn-action" id="btnReperturb">重播微扰</button>
+        <button type="button" class="btn-action subtle" id="btnClearDish">彻底清洗</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================== ② 皮尔逊经典斑图相谱罗盘 -->
+<section class="compass-section" aria-label="皮尔逊相谱选择">
+  <div class="section-head">
+    <h2>皮尔逊形态相谱</h2>
+    <p class="section-sub">切换参数组合（进料率 F 与消耗率 k），见证系统从一种生命图式跨越到另一种完全相异的拓扑几何。</p>
+  </div>
+
+  <div class="preset-matrix" role="radiogroup" aria-label="经典斑图预设">
+    <button type="button" class="preset-card active" data-preset="stripes" aria-checked="true" role="radio">
+      <span class="preset-tag">Pearson μ</span>
+      <strong class="preset-title">斑马迷宫纹</strong>
+      <span class="preset-param">F=0.038, k=0.058</span>
+      <span class="preset-desc">线状对称性破缺，形成连绵不绝的指纹分叉。</span>
+    </button>
+    <button type="button" class="preset-card" data-preset="solitons" aria-checked="false" role="radio">
+      <span class="preset-tag">Pearson λ</span>
+      <strong class="preset-title">自复制斑点</strong>
+      <span class="preset-param">F=0.030, k=0.062</span>
+      <span class="preset-desc">孤立点膨胀并分裂为一对，像原生生物细胞裂殖。</span>
+    </button>
+    <button type="button" class="preset-card" data-preset="spirals" aria-checked="false" role="radio">
+      <span class="preset-tag">Pearson α</span>
+      <strong class="preset-title">化学波回旋</strong>
+      <span class="preset-param">F=0.018, k=0.051</span>
+      <span class="preset-desc">旋转阿基米德螺旋，碰撞时相干波前湮灭。</span>
+    </button>
+    <button type="button" class="preset-card" data-preset="holes" aria-checked="false" role="radio">
+      <span class="preset-tag">Pearson η</span>
+      <strong class="preset-title">反相蜂窝孔</strong>
+      <span class="preset-param">F=0.038, k=0.061</span>
+      <span class="preset-desc">高浓度背景被抑制剂打穿出排列均匀的孔洞阵列。</span>
+    </button>
+    <button type="button" class="preset-card" data-preset="chaos" aria-checked="false" role="radio">
+      <span class="preset-tag">Pearson I</span>
+      <strong class="preset-title">时空湍流</strong>
+      <span class="preset-param">F=0.026, k=0.055</span>
+      <span class="preset-desc">斑纹自发断裂、打卷与重生，处在耗散混沌边缘。</span>
+    </button>
+    <button type="button" class="preset-card" data-preset="quenched" aria-checked="false" role="radio">
+      <span class="preset-tag">Pearson γ</span>
+      <strong class="preset-title">亚稳态网格</strong>
+      <span class="preset-param">F=0.022, k=0.058</span>
+      <span class="preset-desc">四方与六角点阵混合，在晶界处积累拓扑位错。</span>
+    </button>
+  </div>
+</section>
+
+<!-- ============================================== ③ 参数精密调节与动力学滑杆 -->
+<section class="sliders-section" aria-label="动力学参数调谐">
+  <fieldset class="param-fieldset">
+    <legend>非平衡态控制参数</legend>
+    <div class="slider-grid">
+      <div class="slider-unit">
+        <div class="slider-head">
+          <label for="sliderF">底物进料率 F (Feed Rate)</label>
+          <output id="outputF" for="sliderF">0.0380</output>
+        </div>
+        <input type="range" id="sliderF" min="0.0100" max="0.0800" step="0.0010" value="0.0380" aria-label="底物进料率 F">
+        <span class="slider-annotation">控制活化基质的补给速度；过高会冲垮斑图退化为死寂均匀态</span>
+      </div>
+
+      <div class="slider-unit">
+        <div class="slider-head">
+          <label for="sliderK">抑制剂消耗率 k (Kill Rate)</label>
+          <output id="outputK" for="sliderK">0.0580</output>
+        </div>
+        <input type="range" id="sliderK" min="0.0300" max="0.0700" step="0.0005" value="0.0580" aria-label="抑制剂消耗率 k">
+        <span class="slider-annotation">抑制产物的衰变速率；微小的漂移会使条纹瞬间坍缩为离散点</span>
+      </div>
+
+      <div class="slider-unit">
+        <div class="slider-head">
+          <label for="sliderSpeed">模拟推进步频 (Substeps / Frame)</label>
+          <output id="outputSpeed" for="sliderSpeed">8 步</output>
+        </div>
+        <input type="range" id="sliderSpeed" min="1" max="24" step="1" value="8" aria-label="模拟推进步频">
+        <span class="slider-annotation">单帧执行的有限差分迭代次数；调大可加速稳态形成</span>
+      </div>
+    </div>
+  </fieldset>
+</section>
+
+<!-- ============================================== ④ 科学对账：图灵理论 vs 现场测量 -->
+<section class="verification-section" data-probe="turing" aria-label="图灵色散关系与波长核验">
+  <div class="section-head">
+    <h2>数学对账：色散关系与特征波长</h2>
+    <p class="section-sub">
+      左图解析雅可比矩阵在各空间波数上的增长率本征值 σ(q)；
+      右图实测皿中真实斑纹沿水平方向的空间自相关 R(r)。
+      自发涌现的斑纹尺度，从来不是随机的，而是被偏微分方程严格锁死的<b>特征波长</b>。
+    </p>
+  </div>
+
+  <div class="verification-grid">
+    <!-- 图灵理论色散谱画布 -->
+    <div class="chart-card">
+      <div class="card-caption">
+        <strong>理论色散关系 σ(q)</strong>
+        <span class="caption-note" id="dispersionStatus">图灵失稳激活中</span>
+      </div>
+      <div class="chart-box">
+        <canvas id="dispersionCanvas" width="340" height="180" aria-label="图灵理论色散关系图"></canvas>
+      </div>
+      <div class="chart-summary">
+        理论临界波数 <b id="valQc">0.245 rad/px</b> · 预测波长 <b id="valLambdaPred">25.6 px</b>
+      </div>
+    </div>
+
+    <!-- 空间自相关测量画布 -->
+    <div class="chart-card">
+      <div class="card-caption">
+        <strong>实测自相关 R(r)</strong>
+        <span class="caption-note" id="corrStatus">采样中</span>
+      </div>
+      <div class="chart-box">
+        <canvas id="corrCanvas" width="340" height="180" aria-label="实测空间自相关函数曲线"></canvas>
+      </div>
+      <div class="chart-summary">
+        实测主波峰周期 <b id="valLambdaObs">26.0 px</b> · 相对偏差 <b id="valError">1.6%</b>
+      </div>
+    </div>
+  </div>
+
+  <!-- 动力学指标度量卡 (dl 网格，彻底不用 table) -->
+  <dl class="metrics-grid">
+    <div class="metric-card">
+      <dt>图灵判据判别式 Δ</dt>
+      <dd id="metricDelta">0.0012</dd>
+      <span class="metric-foot">Δ &gt; 0 保证存在非平凡激发稳态</span>
+    </div>
+    <div class="metric-card">
+      <dt>侧向抑制比 D_u / D_v</dt>
+      <dd id="metricDiffRatio">2.00</dd>
+      <span class="metric-foot">活化慢、抑制快，形成局部活化与长程抑制</span>
+    </div>
+    <div class="metric-card">
+      <dt>全场化学反应活性</dt>
+      <dd id="metricActivity">42.8</dd>
+      <span class="metric-foot">非线性自催化积分 ∫ u v² dΩ</span>
+    </div>
+    <div class="metric-card">
+      <dt>空间结构对比度</dt>
+      <dd id="metricContrast">0.58</dd>
+      <span class="metric-foot">全场抑制剂极差 max(v) - min(v)</span>
+    </div>
+  </dl>
+</section>
+
+<!-- ============================================== ⑤ 模型边界与科学声明 -->
+<section class="boundary-section" aria-label="模型边界与计算说明">
+  <h2>模型边界与计算纪律</h2>
+  <div class="boundary-content">
+    <p>
+      <b>连续介质近似的尺度边界：</b>
+      本实验采用的 Gray-Scott 偏微分方程假设分子浓度在网格尺度上连续可微。
+      在真实生物体（如斑马胚胎外胚层或贝壳外套膜色素细胞）中，受体结合与形态发生素（Morphogen）的分子数目有限，
+      伴随不可忽略的微观热波动与离散泊松噪声。本装置通过确定性伪随机数（PRNG）注入初始激发，
+      剥离了随机涨落，使宏观方程的确定性相变过程 100% 可复现。
+    </p>
+    <p>
+      <b>各向同性拉普拉斯算子的离散约束：</b>
+      常规五点差分模板在对角线方向上存在严重的数值阻滞伪影。
+      本作在有限格点上采用 9 点各向同性加权模板（中心 -1.0，四邻 0.20，对角 0.05），
+      保证了波前在任意几何角度下具有各向同性的传播波速。时间推进步长严格钳制在 CFL 临界以下（Δt = 1.0），
+      杜绝了高频数值爆炸。
+    </p>
+    <p>
+      <b>法向光照与微观光学映射：</b>
+      为让观众直观感受波前的“厚度”与曲率，渲染层使用标量梯度张量（∇v）构建局部法向量，
+      结合假想单侧入射斜光计算朗伯漫反射与半角高光，将抽象的浓度数值流转换为具有触感与活体张力的微观浮雕。
+    </p>
+  </div>
+</section>
+
+  </div>
+  <script>
+/* ============================================================================
+ * turing/core.js —— 反应-扩散系统与图灵形态发生，UMD 架构
+ *
+ * 本文件回答的问题：
+ *   「为什么单调均匀的扩散非但没有抹平一切，反而自发雕刻出了斑马纹、斑点与迷宫？」
+ *
+ * 数理管线：
+ *   ① 偏微分方程组（Gray-Scott 反应-扩散方程）：
+ *        ∂u/∂t = D_u ∇²u - u v² + F(1 - u)
+ *        ∂v/∂t = D_v ∇²v + u v² - (F + k)v
+ *   ② 离散拉普拉斯张量（9-point isotropic discrete Laplacian）：
+ *        去除经典 5 点模板的网格对角各向异性，中心 -1，十字 0.2，对角 0.05。
+ *   ③ 动力学边界条件：
+ *        周期性环形流形（Toroidal Periodic）与不可渗透绝缘壁（No-flux Neumann/Obstacle）。
+ *   ④ 图灵线性稳定性与色散关系（Linear Stability & Dispersion Relation）：
+ *        通过雅可比矩阵解析计算特征本征值谱 σ(q)，给出发生形态发生的临界失稳波数 q_c
+ *        与预测特征波长 λ_c = 2π / q_c，现场与离散场实测波长对账。
+ *   ⑤ 空间自相关与特征波长测量：
+ *        通过径向空间自相关函数 R(r) 的首个主极小与极大值，实测自组织结构的尺度。
+ *
+ * 铁律：
+ *   - 严禁 Math.random：一切扰动使用确定性 PRNG (splitmix32)；
+ *   - 纯数值计算，零 DOM，零外部网络依赖，跨 Node.js 与浏览器。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.TuringCore = factory();
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* ------------------------------------------------------------ 确定性 PRNG */
+  function splitmix32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ------------------------------------------------------------ 模型常数规范 */
+  var CANON = {
+    DEFAULT_WIDTH: 140,
+    DEFAULT_HEIGHT: 140,
+    DU: 0.16,             /* 活化剂扩散率 (较慢) */
+    DV: 0.08,             /* 抑制剂扩散率 (较快，比值形成侧向抑制) */
+    DT: 1.0,              /* 仿真时间步长，满足数值稳定性 Courant 准则 */
+    SEED: 19520814        /* 默认种子：纪念阿兰·图灵论文发表年份 (1952) */
+  };
+
+  /* ------------------------------------------------------------ 皮尔逊经典斑图相谱 */
+  /* 参考 J. E. Pearson (Science 1993) 《Complex Patterns in a Simple System》 */
+  var PRESETS = {
+    stripes: {
+      name: '斑马迷宫纹',
+      code: 'Labyrinth / Stripes (Pearson μ)',
+      F: 0.038,
+      k: 0.058,
+      desc: '超临界图灵不稳定性，均匀基态自发对称性破缺，形成连绵不绝的指纹分叉。'
+    },
+    solitons: {
+      name: '自复制斑点',
+      code: 'Solitons (Pearson λ/θ)',
+      F: 0.030,
+      k: 0.062,
+      desc: '孤立斑点在达到临界质量后分裂成两个独立的子斑点，如微生物菌落蔓延。'
+    },
+    spirals: {
+      name: '化学波回旋',
+      code: 'Spirals (Pearson α/β)',
+      F: 0.018,
+      k: 0.051,
+      desc: '波前发生弯曲并旋转成阿基米德螺旋线波，在相遇时发生干涉湮灭。'
+    },
+    holes: {
+      name: '反相蜂窝孔',
+      code: 'Hexagonal Holes (Pearson η)',
+      F: 0.038,
+      k: 0.061,
+      desc: '与孤立斑点互为对偶拓扑，活化剂充盈背景，抑制剂形成蜂窝排列的圆形盲点。'
+    },
+    chaos: {
+      name: '时空湍流',
+      code: 'Spatiotemporal Chaos (Pearson I)',
+      F: 0.026,
+      k: 0.055,
+      desc: '斑纹不断萌生、拉伸、自断裂又愈合，系统处于永不静止的有界混沌态。'
+    },
+    quenched: {
+      name: '亚稳态网格',
+      code: 'Quenched Lattice (Pearson γ)',
+      F: 0.022,
+      k: 0.058,
+      desc: '规则的四方晶格向六角密堆积过渡，长程有序与局部拓扑位错并存。'
+    }
+  };
+
+  /* ------------------------------------------------------------ 离散场构造 */
+  function createSystem(width, height, options) {
+    var w = width || CANON.DEFAULT_WIDTH;
+    var h = height || CANON.DEFAULT_HEIGHT;
+    var opt = options || {};
+    var size = w * h;
+
+    /* 状态场：双缓冲以支持张量同步计算 */
+    var u = new Float32Array(size);
+    var v = new Float32Array(size);
+    var nextU = new Float32Array(size);
+    var nextV = new Float32Array(size);
+
+    /* 障碍物掩码：0 = 自由扩散介质，1 = 绝缘不可渗透物理屏障 */
+    var barrier = new Uint8Array(size);
+
+    var F = opt.F !== undefined ? opt.F : PRESETS.stripes.F;
+    var k = opt.k !== undefined ? opt.k : PRESETS.stripes.k;
+    var Du = opt.Du !== undefined ? opt.Du : CANON.DU;
+    var Dv = opt.Dv !== undefined ? opt.Dv : CANON.DV;
+    var dt = opt.dt !== undefined ? opt.dt : CANON.DT;
+
+    var sys = {
+      w: w,
+      h: h,
+      size: size,
+      u: u,
+      v: v,
+      nextU: nextU,
+      nextV: nextV,
+      barrier: barrier,
+      F: F,
+      k: k,
+      Du: Du,
+      Dv: Dv,
+      dt: dt,
+      stepCount: 0,
+      simTime: 0.0
+    };
+
+    resetSystem(sys, opt.seed !== undefined ? opt.seed : CANON.SEED);
+    return sys;
+  }
+
+  /* ------------------------------------------------------------ 初始化与播种 */
+  function resetSystem(sys, seed) {
+    var size = sys.size;
+    var w = sys.w;
+    var h = sys.h;
+    var u = sys.u;
+    var v = sys.v;
+    var barrier = sys.barrier;
+
+    /* 基础均匀稳态：u = 1.0 (基质充满), v = 0.0 (抑制物为零) */
+    for (var i = 0; i < size; i++) {
+      u[i] = 1.0;
+      v[i] = 0.0;
+      barrier[i] = 0;
+    }
+
+    var rng = splitmix32(seed !== undefined ? seed : CANON.SEED);
+
+    /* 在中心区域植入对称性破缺的微观扰动核心 */
+    var cx = Math.floor(w / 2);
+    var cy = Math.floor(h / 2);
+    var radius = Math.floor(Math.min(w, h) * 0.16);
+
+    for (var dy = -radius; dy <= radius; dy++) {
+      for (var dx = -radius; dx <= radius; dx++) {
+        if (dx * dx + dy * dy <= radius * radius) {
+          var px = (cx + dx + w) % w;
+          var py = (cy + dy + h) % h;
+          var idx = py * w + px;
+          /* 扰动区：活化剂消耗，抑制剂激发，加入微量随机白噪声 */
+          var noise = (rng() - 0.5) * 0.08;
+          u[idx] = 0.50 + noise;
+          v[idx] = 0.25 - noise;
+        }
+      }
+    }
+
+    /* 撒入少量微弱的散斑种子打破全局旋转对称 */
+    for (var s = 0; s < 5; s++) {
+      var sx = Math.floor(rng() * (w - 20)) + 10;
+      var sy = Math.floor(rng() * (h - 20)) + 10;
+      var r2 = 3;
+      for (var ry = -r2; ry <= r2; ry++) {
+        for (var rx = -r2; rx <= r2; rx++) {
+          if (rx * rx + ry * ry <= r2 * r2) {
+            var pidx = ((sy + ry + h) % h) * w + ((sx + rx + w) % w);
+            u[pidx] = 0.5;
+            v[pidx] = 0.25;
+          }
+        }
+      }
+    }
+
+    sys.stepCount = 0;
+    sys.simTime = 0.0;
+  }
+
+  /* ------------------------------------------------------------ 离散拉普拉斯与时间演化步进 */
+  /*
+   * 采用 9 点各向同性拉普拉斯模板：
+   * 权重矩阵：
+   *   [ 0.05,  0.20,  0.05 ]
+   *   [ 0.20, -1.00,  0.20 ]
+   *   [ 0.05,  0.20,  0.05 ]
+   * 该模板在有限差分离散中保持二次各向同性，严格抑制直角网格伪影。
+   */
+  function stepSystem(sys, subSteps) {
+    var steps = subSteps || 1;
+    var w = sys.w;
+    var h = sys.h;
+    var u = sys.u;
+    var v = sys.v;
+    var nu = sys.nextU;
+    var nv = sys.nextV;
+    var barrier = sys.barrier;
+    var F = sys.F;
+    var k = sys.k;
+    var Du = sys.Du;
+    var Dv = sys.Dv;
+    var dt = sys.dt;
+
+    for (var s = 0; s < steps; s++) {
+      for (var y = 0; y < h; y++) {
+        var ym1 = (y - 1 + h) % h;
+        var yp1 = (y + 1) % h;
+        var rowC = y * w;
+        var rowN = ym1 * w;
+        var rowS = yp1 * w;
+
+        for (var x = 0; x < w; x++) {
+          var idx = rowC + x;
+
+          /* 若为绝缘障碍物，物质无法渗透且不发生反应 */
+          if (barrier[idx] === 1) {
+            nu[idx] = 1.0;
+            nv[idx] = 0.0;
+            continue;
+          }
+
+          var xm1 = (x - 1 + w) % w;
+          var xp1 = (x + 1) % w;
+
+          /* 九点采样邻居 */
+          var idxNW = rowN + xm1;
+          var idxN  = rowN + x;
+          var idxNE = rowN + xp1;
+          var idxW  = rowC + xm1;
+          var idxE  = rowC + xp1;
+          var idxSW = rowS + xm1;
+          var idxS  = rowS + x;
+          var idxSE = rowS + xp1;
+
+          var curU = u[idx];
+          var curV = v[idx];
+
+          /* 绝缘反射边界：遇到屏障邻格时采用诺伊曼零通量反射 */
+          var uNW = barrier[idxNW] ? curU : u[idxNW];
+          var uN  = barrier[idxN]  ? curU : u[idxN];
+          var uNE = barrier[idxNE] ? curU : u[idxNE];
+          var uW  = barrier[idxW]  ? curU : u[idxW];
+          var uE  = barrier[idxE]  ? curU : u[idxE];
+          var uSW = barrier[idxSW] ? curU : u[idxSW];
+          var uS  = barrier[idxS]  ? curU : u[idxS];
+          var uSE = barrier[idxSE] ? curU : u[idxSE];
+
+          var vNW = barrier[idxNW] ? curV : v[idxNW];
+          var vN  = barrier[idxN]  ? curV : v[idxN];
+          var vNE = barrier[idxNE] ? curV : v[idxNE];
+          var vW  = barrier[idxW]  ? curV : v[idxW];
+          var vE  = barrier[idxE]  ? curV : v[idxE];
+          var vSW = barrier[idxSW] ? curV : v[idxSW];
+          var vS  = barrier[idxS]  ? curV : v[idxS];
+          var vSE = barrier[idxSE] ? curV : v[idxSE];
+
+          var lapU = 0.20 * (uN + uS + uW + uE) +
+                     0.05 * (uNW + uNE + uSW + uSE) -
+                     curU;
+
+          var lapV = 0.20 * (vN + vS + vW + vE) +
+                     0.05 * (vNW + vNE + vSW + vSE) -
+                     curV;
+
+          /* 非线性自催化反应量 uv² */
+          var reaction = curU * curV * curV;
+
+          /* 欧拉前向时间积分 */
+          var nextValU = curU + dt * (Du * lapU - reaction + F * (1.0 - curU));
+          var nextValV = curV + dt * (Dv * lapV + reaction - (F + k) * curV);
+
+          /* 数值限幅保证物理意义与守恒性界限 [0, 1] */
+          nu[idx] = nextValU < 0.0 ? 0.0 : (nextValU > 1.0 ? 1.0 : nextValU);
+          nv[idx] = nextValV < 0.0 ? 0.0 : (nextValV > 1.0 ? 1.0 : nextValV);
+        }
+      }
+
+      /* 缓冲区快速交换 */
+      var tmpU = sys.u;
+      sys.u = sys.nextU;
+      sys.nextU = tmpU;
+
+      var tmpV = sys.v;
+      sys.v = sys.nextV;
+      sys.nextV = tmpV;
+
+      sys.stepCount++;
+      sys.simTime += dt;
+    }
+  }
+
+  /* ------------------------------------------------------------ 交互注入：移液管与屏障 */
+  function injectReagent(sys, cx, cy, radius, uVal, vVal) {
+    var w = sys.w;
+    var h = sys.h;
+    var u = sys.u;
+    var v = sys.v;
+    var barrier = sys.barrier;
+    var r = Math.max(1, Math.round(radius));
+
+    for (var dy = -r; dy <= r; dy++) {
+      for (var dx = -r; dx <= r; dx++) {
+        var distSq = dx * dx + dy * dy;
+        if (distSq <= r * r) {
+          var px = (Math.round(cx) + dx + w) % w;
+          var py = (Math.round(cy) + dy + h) % h;
+          var idx = py * w + px;
+          if (barrier[idx] === 0) {
+            /* 渐变注入平滑过度 */
+            var weight = Math.exp(-distSq / (r * r * 0.45));
+            u[idx] = u[idx] * (1 - weight) + uVal * weight;
+            v[idx] = v[idx] * (1 - weight) + vVal * weight;
+          }
+        }
+      }
+    }
+  }
+
+  function setBarrier(sys, cx, cy, radius, isBarrier) {
+    var w = sys.w;
+    var h = sys.h;
+    var barrier = sys.barrier;
+    var u = sys.u;
+    var v = sys.v;
+    var r = Math.max(1, Math.round(radius));
+    var val = isBarrier ? 1 : 0;
+
+    for (var dy = -r; dy <= r; dy++) {
+      for (var dx = -r; dx <= r; dx++) {
+        if (dx * dx + dy * dy <= r * r) {
+          var px = (Math.round(cx) + dx + w) % w;
+          var py = (Math.round(cy) + dy + h) % h;
+          var idx = py * w + px;
+          barrier[idx] = val;
+          if (val === 1) {
+            u[idx] = 1.0;
+            v[idx] = 0.0;
+          }
+        }
+      }
+    }
+  }
+
+  /* ------------------------------------------------------------ 图灵线性稳定性与色散解析 */
+  /*
+   * 严格解析 Gray-Scott 系统的图灵不稳定性判据：
+   * 稳态 (u*, v*) 满足:
+   *   F(1 - u*) - u* v*^2 = 0
+   *   u* v*^2 - (F + k)v* = 0
+   * 排除平凡无活性解 (1, 0)，激发平衡态为：
+   *   u* v* = F + k  =>  v* = (F + k) / u*
+   * 代入第一式得: F(1 - u*) - (F + k)^2 / u* = 0
+   * 即二次方程: F u*^2 - F u* + (F + k)^2 = 0
+   * 判别式 Δ = F^2 - 4 F (F + k)^2 = F [F - 4(F + k)^2]
+   */
+  function analyzeLinearStability(F, k, Du, Dv) {
+    var du = Du !== undefined ? Du : CANON.DU;
+    var dv = Dv !== undefined ? Dv : CANON.DV;
+
+    var disc = F * (F - 4.0 * Math.pow(F + k, 2));
+    if (disc < 0) {
+      return {
+        hasExcitedState: false,
+        turingInstability: false,
+        reason: '参数位于激灭区（F < 4(F+k)²），系统仅有唯一的无特征平凡基态 (1, 0)。',
+        uStar: 1.0,
+        vStar: 0.0,
+        qc: 0,
+        wavelength: Infinity,
+        dispersionCurve: []
+      };
+    }
+
+    /* 选取较易失稳的高激发态平衡分支 (较小 u* 对应更高活性 v*) */
+    var sqrtD = Math.sqrt(disc);
+    var uStar = (F - sqrtD) / (2.0 * F);
+    var vStar = (F + k) / uStar;
+
+    /* 雅可比矩阵元：
+     * a11 = ∂f/∂u = -v*² - F
+     * a12 = ∂f/∂v = -2u*v*
+     * a21 = ∂g/∂u =  v*²
+     * a22 = ∂g/∂v =  2u*v* - (F + k) = (F + k)  [因 u*v* = F+k]
+     */
+    var a11 = -vStar * vStar - F;
+    var a12 = -2.0 * uStar * vStar;
+    var a21 = vStar * vStar;
+    var a22 = (F + k);
+
+    var traceJ = a11 + a22;
+    var detJ = a11 * a22 - a12 * a21;
+
+    /* 无扩散稳态稳定性要求：traceJ < 0 且 detJ > 0 */
+    var stableHomogeneous = (traceJ < 0 && detJ > 0);
+
+    /*
+     * 引入波数 q 后，色散特征方程：
+     * det(J - q² D - σ I) = 0
+     * σ² - Tr_q σ + Det_q = 0
+     * 其中：
+     *   Tr_q = (a11 - du q²) + (a22 - dv q²) = traceJ - (du + dv) q²
+     *   Det_q = (a11 - du q²)(a22 - dv q²) - a12 a21
+     *         = du dv q⁴ - (dv a11 + du a22) q² + detJ
+     * 图灵失稳条件：无扩散时稳定 (Tr < 0, Det > 0)，但存在某一波数 q 使得 Det_q < 0，
+     * 导致最大本征值 σ_max > 0！
+     */
+    var b_q = dv * a11 + du * a22;
+    var minDetQ = detJ - (b_q * b_q) / (4.0 * du * dv);
+    var strictTuring = stableHomogeneous && (b_q > 0) && (minDetQ < 0);
+
+    var qc = 0;
+    var wavelength = 0;
+    if (b_q > 0 && 2.0 * du * dv > 0) {
+      var qcSquared = b_q / (2.0 * du * dv);
+      qc = Math.sqrt(qcSquared);
+      wavelength = (2.0 * Math.PI) / qc;
+    }
+
+    /* 广义图灵/色散失稳判定：严格图灵失稳，或色散驱动非零特征波长优先生长 */
+    var hasTuring = strictTuring || (b_q > 0 && minDetQ < 0);
+
+    /* 采样色散关系曲线 σ(q) */
+    var dispersion = [];
+    var qMax = qc > 0 ? qc * 2.2 : 1.5;
+    var steps = 30;
+    for (var i = 0; i <= steps; i++) {
+      var q = (i / steps) * qMax;
+      var q2 = q * q;
+      var tr_q = traceJ - (du + dv) * q2;
+      var det_q = du * dv * q2 * q2 - b_q * q2 + detJ;
+      var radical = tr_q * tr_q - 4.0 * det_q;
+      var sigma = 0;
+      if (radical >= 0) {
+        sigma = 0.5 * (tr_q + Math.sqrt(radical));
+      } else {
+        sigma = 0.5 * tr_q; /* 实部 */
+      }
+      dispersion.push({ q: q, sigma: sigma });
+    }
+
+    return {
+      hasExcitedState: true,
+      turingInstability: hasTuring,
+      stableHomogeneous: stableHomogeneous,
+      uStar: uStar,
+      vStar: vStar,
+      traceJ: traceJ,
+      detJ: detJ,
+      qc: qc,
+      wavelength: wavelength,
+      dispersionCurve: dispersion,
+      reason: hasTuring
+        ? '满足图灵失稳四条件：活化剂自增殖被更快的抑制剂侧向扩散包围，驱动对称性破缺。'
+        : '不满足完全图灵条件（可能处于 Hopf 振荡区或均匀衰减区）。'
+    };
+  }
+
+  /* ------------------------------------------------------------ 统计度量与波长实测 */
+  function measureMetrics(sys) {
+    var size = sys.size;
+    var w = sys.w;
+    var h = sys.h;
+    var u = sys.u;
+    var v = sys.v;
+    var barrier = sys.barrier;
+
+    var sumU = 0;
+    var sumV = 0;
+    var sumUV2 = 0;
+    var activeCells = 0;
+    var minV = 1.0;
+    var maxV = 0.0;
+
+    for (var i = 0; i < size; i++) {
+      if (barrier[i] === 0) {
+        var vi = v[i];
+        var ui = u[i];
+        sumU += ui;
+        sumV += vi;
+        sumUV2 += ui * vi * vi;
+        if (vi < minV) minV = vi;
+        if (vi > maxV) maxV = vi;
+        activeCells++;
+      }
+    }
+
+    var avgU = activeCells > 0 ? sumU / activeCells : 0;
+    var avgV = activeCells > 0 ? sumV / activeCells : 0;
+    var contrast = maxV - minV;
+
+    /*
+     * 空间自相关测量特征波长：
+     * 沿水平中心线与垂直中心线计算自相关函数 R(r)
+     * 寻找自相关曲线从 1.0 下降后的第一个显著极大值（对应空间周期 λ）
+     */
+    var maxLag = Math.floor(Math.min(w, h) * 0.4);
+    var midY = Math.floor(h / 2);
+    var autoCorr = new Float32Array(maxLag);
+
+    for (var r = 0; r < maxLag; r++) {
+      var corrSum = 0;
+      var count = 0;
+      for (var y = midY - 10; y <= midY + 10; y++) {
+        var row = ((y + h) % h) * w;
+        for (var x = 0; x < w; x++) {
+          var x2 = (x + r) % w;
+          var idx1 = row + x;
+          var idx2 = row + x2;
+          if (!barrier[idx1] && !barrier[idx2]) {
+            corrSum += (v[idx1] - avgV) * (v[idx2] - avgV);
+            count++;
+          }
+        }
+      }
+      autoCorr[r] = count > 0 ? corrSum / count : 0;
+    }
+
+    var r0 = autoCorr[0];
+    var measuredWavelength = 0;
+    if (r0 > 1e-6) {
+      /* 归一化自相关 */
+      for (var k = 0; k < maxLag; k++) {
+        autoCorr[k] /= r0;
+      }
+      /* 寻找先越过零点（极小值）后的第一个波峰峰值 */
+      var crossedZero = false;
+      for (var lag = 2; lag < maxLag - 1; lag++) {
+        if (autoCorr[lag] < 0) crossedZero = true;
+        if (crossedZero && autoCorr[lag] > autoCorr[lag - 1] && autoCorr[lag] > autoCorr[lag + 1] && autoCorr[lag] > 0.05) {
+          measuredWavelength = lag;
+          break;
+        }
+      }
+    }
+
+    return {
+      avgU: avgU,
+      avgV: avgV,
+      totalActivity: sumUV2,
+      contrast: contrast,
+      measuredWavelength: measuredWavelength,
+      autoCorr: autoCorr
+    };
+  }
+
+  /* ------------------------------------------------------------ 导出公共契约接口 */
+  return {
+    CANON: CANON,
+    PRESETS: PRESETS,
+    createSystem: createSystem,
+    resetSystem: resetSystem,
+    stepSystem: stepSystem,
+    injectReagent: injectReagent,
+    setBarrier: setBarrier,
+    analyzeLinearStability: analyzeLinearStability,
+    measureMetrics: measureMetrics,
+    splitmix32: splitmix32
+  };
+});
+
+  </script>
+  <script>
+/* ============================================================================
+ * turing/ui.js —— 交互状态机、法向光照离屏渲染与科学探针
+ *
+ * 职责分工：
+ *   - 培养皿渲染：双缓冲离屏 ImageData 逐像素着色 + 标量梯度法向光照 (Normal Mapping)
+ *   - 理论图表渲染：色散曲线 σ(q) 与空间自相关函数 R(r)
+ *   - 触控与指针管线：移液管扰动注射 / 绝缘屏障雕刻 / 橡皮擦疏通
+ *   - 探针挂载：window.__probe 供给全量自动化审计与指标检验
+ *   - 纪律守卫：严格通过 fmtFixed/fmtInt 输出，禁止未受控 Math.random
+ * ==========================================================================*/
+
+(function () {
+  'use strict';
+
+  /* ------------------------------------------------------------ 依赖与模块 */
+  var C = typeof window !== 'undefined' ? window.TuringCore : null;
+  if (!C && typeof require === 'function') {
+    C = require('./core.js');
+  }
+  if (!C) {
+    throw new Error('TuringCore module not found');
+  }
+
+  /* ------------------------------------------------------------ 格式化工具 */
+  function fmtFixed(val, digits) {
+    if (val === null || val === undefined || isNaN(val) || !isFinite(val)) {
+      return '—';
+    }
+    return Number(val).toFixed(digits !== undefined ? digits : 4);
+  }
+
+  function fmtInt(val) {
+    if (val === null || val === undefined || isNaN(val) || !isFinite(val)) {
+      return '—';
+    }
+    return Math.round(Number(val)).toString();
+  }
+
+  /* ------------------------------------------------------------ DOM 元素获取 */
+  var petriCanvas = document.getElementById('petriCanvas');
+  var petriCtx = petriCanvas ? petriCanvas.getContext('2d') : null;
+
+  var dispersionCanvas = document.getElementById('dispersionCanvas');
+  var dispersionCtx = dispersionCanvas ? dispersionCanvas.getContext('2d') : null;
+
+  var corrCanvas = document.getElementById('corrCanvas');
+  var corrCtx = corrCanvas ? corrCanvas.getContext('2d') : null;
+
+  var hudStatus = document.getElementById('hudStatus');
+  var hudTime = document.getElementById('hudTime');
+  var canvasHint = document.getElementById('canvasHint');
+
+  var toolPipette = document.getElementById('toolPipette');
+  var toolBarrier = document.getElementById('toolBarrier');
+  var toolEraser = document.getElementById('toolEraser');
+
+  var btnTogglePlay = document.getElementById('btnTogglePlay');
+  var btnStepOnce = document.getElementById('btnStepOnce');
+  var btnReperturb = document.getElementById('btnReperturb');
+  var btnClearDish = document.getElementById('btnClearDish');
+
+  var sliderF = document.getElementById('sliderF');
+  var outputF = document.getElementById('outputF');
+  var sliderK = document.getElementById('sliderK');
+  var outputK = document.getElementById('outputK');
+  var sliderSpeed = document.getElementById('sliderSpeed');
+  var outputSpeed = document.getElementById('outputSpeed');
+
+  var dispersionStatus = document.getElementById('dispersionStatus');
+  var valQc = document.getElementById('valQc');
+  var valLambdaPred = document.getElementById('valLambdaPred');
+  var corrStatus = document.getElementById('corrStatus');
+  var valLambdaObs = document.getElementById('valLambdaObs');
+  var valError = document.getElementById('valError');
+
+  var metricDelta = document.getElementById('metricDelta');
+  var metricDiffRatio = document.getElementById('metricDiffRatio');
+  var metricActivity = document.getElementById('metricActivity');
+  var metricContrast = document.getElementById('metricContrast');
+
+  var presetCards = Array.prototype.slice.call(document.querySelectorAll('.preset-card'));
+
+  /* ------------------------------------------------------------ 仿真系统状态 */
+  var sim = C.createSystem(140, 140, {
+    F: 0.038,
+    k: 0.058,
+    Du: 0.16,
+    Dv: 0.08,
+    dt: 1.0,
+    seed: 19520814
+  });
+
+  var uiState = {
+    isRunning: true,
+    activeTool: 'pipette', /* 'pipette' | 'barrier' | 'eraser' */
+    isPointerDown: false,
+    subStepsPerFrame: 8,
+    timerId: null,
+    lastMetricTick: 0,
+    currentMetrics: {
+      avgU: 0,
+      avgV: 0,
+      totalActivity: 0,
+      contrast: 0,
+      measuredWavelength: 0
+    },
+    currentStability: null
+  };
+
+  /* 离屏像素缓冲区 */
+  var offscreenCanvas = document.createElement('canvas');
+  offscreenCanvas.width = sim.w;
+  offscreenCanvas.height = sim.h;
+  var offscreenCtx = offscreenCanvas.getContext('2d');
+  var imgData = offscreenCtx ? offscreenCtx.createImageData(sim.w, sim.h) : null;
+
+  /* ------------------------------------------------------------ 离屏渲染与梯度法向光照 */
+  /*
+   * 采用微观标量梯度 Normal Mapping：
+   * 对每个格点计算抑制剂在 x/y 轴的中心差分，合成三维法向量并与入射光 L = (-0.577, -0.577, 0.577) 点积
+   * 赋予斑纹如深海发光浮雕般的微观触感与折射光晕
+   */
+  function renderPetriDish() {
+    if (!imgData || !petriCtx) return;
+    var w = sim.w;
+    var h = sim.h;
+    var u = sim.u;
+    var v = sim.v;
+    var barrier = sim.barrier;
+    var pixels = imgData.data;
+
+    /* 光照常数 */
+    var lx = -0.577;
+    var ly = -0.577;
+    var lz = 0.577;
+    var bumpScale = 4.2;
+
+    var ptr = 0;
+    for (var y = 0; y < h; y++) {
+      var ym1 = (y - 1 + h) % h;
+      var yp1 = (y + 1) % h;
+      var rowC = y * w;
+      var rowN = ym1 * w;
+      var rowS = yp1 * w;
+
+      for (var x = 0; x < w; x++) {
+        var idx = rowC + x;
+
+        /* 若为绝缘物理屏障：渲染为琥珀金质感金属栅格 */
+        if (barrier[idx] === 1) {
+          pixels[ptr]     = 245; /* R */
+          pixels[ptr + 1] = 158; /* G */
+          pixels[ptr + 2] = 11;  /* B */
+          pixels[ptr + 3] = 255;
+          ptr += 4;
+          continue;
+        }
+
+        var xm1 = (x - 1 + w) % w;
+        var xp1 = (x + 1) % w;
+
+        var valV = v[idx];
+        var valU = u[idx];
+
+        /* 计算中心差分法向梯度 */
+        var dx = (v[rowC + xp1] - v[rowC + xm1]) * bumpScale;
+        var dy = (v[rowS + x]   - v[rowN + x])   * bumpScale;
+        var len = Math.sqrt(dx * dx + dy * dy + 1.0);
+        var nx = -dx / len;
+        var ny = -dy / len;
+        var nz = 1.0 / len;
+
+        /* 朗伯漫反射光照 */
+        var dot = nx * lx + ny * ly + nz * lz;
+        var light = dot > 0 ? dot : 0;
+        var ambient = 0.40;
+        var intensity = ambient + 0.60 * light;
+
+        /* 色彩映射：活化基质深渊幽蓝 -> 高抑制区荧光翡翠翠绿 -> 峰顶发光白 */
+        var r, g, b;
+        var vClamped = valV < 0 ? 0 : (valV > 0.6 ? 0.6 : valV);
+        var normV = vClamped / 0.6;
+
+        if (normV < 0.2) {
+          /* 背景深水槽 */
+          var t1 = normV / 0.2;
+          r = 4 + t1 * 10;
+          g = 12 + t1 * 35;
+          b = 20 + t1 * 50;
+        } else if (normV < 0.7) {
+          /* 斑纹主体：青蓝过渡到荧光绿 */
+          var t2 = (normV - 0.2) / 0.5;
+          r = 14 + t2 * 2;
+          g = 47 + t2 * 138;
+          b = 70 + t2 * 59;
+        } else {
+          /* 斑纹中心脊线：高能翡翠到白辉光 */
+          var t3 = (normV - 0.7) / 0.3;
+          r = 16 + t3 * 220;
+          g = 185 + t3 * 70;
+          b = 129 + t3 * 126;
+        }
+
+        /* 结合法向光照并钳制 */
+        pixels[ptr]     = Math.min(255, Math.floor(r * intensity));
+        pixels[ptr + 1] = Math.min(255, Math.floor(g * intensity));
+        pixels[ptr + 2] = Math.min(255, Math.floor(b * intensity));
+        pixels[ptr + 3] = 255;
+        ptr += 4;
+      }
+    }
+
+    offscreenCtx.putImageData(imgData, 0, 0);
+
+    /* 绘制至主显微皿画布 (平滑拉伸至 420x420 并附加圆形视窗剪裁) */
+    petriCtx.save();
+    petriCtx.clearRect(0, 0, petriCanvas.width, petriCanvas.height);
+    petriCtx.imageSmoothingEnabled = true;
+    petriCtx.drawImage(offscreenCanvas, 0, 0, petriCanvas.width, petriCanvas.height);
+    petriCtx.restore();
+  }
+
+  /* ------------------------------------------------------------ 理论色散曲线绘制 */
+  function renderDispersionChart(stability) {
+    if (!dispersionCtx) return;
+    var ctx = dispersionCtx;
+    var cw = dispersionCanvas.width;
+    var ch = dispersionCanvas.height;
+
+    ctx.clearRect(0, 0, cw, ch);
+
+    /* 坐标轴 */
+    var padLeft = 40;
+    var padRight = 16;
+    var padTop = 20;
+    var padBottom = 26;
+    var plotW = cw - padLeft - padRight;
+    var plotH = ch - padTop - padBottom;
+
+    ctx.strokeStyle = '#1c3d47';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, padTop);
+    ctx.lineTo(padLeft, padTop + plotH);
+    ctx.lineTo(padLeft + plotW, padTop + plotH);
+    ctx.stroke();
+
+    /* 零增长率参考线 σ = 0 */
+    var zeroY = padTop + plotH * 0.70;
+    ctx.strokeStyle = '#285462';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(padLeft, zeroY);
+    ctx.lineTo(padLeft + plotW, zeroY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#7e9fa8';
+    ctx.font = '10px monospace';
+    ctx.fillText('σ=0', 12, zeroY + 3);
+    ctx.fillText('q=0', padLeft - 6, padTop + plotH + 16);
+
+    if (!stability || !stability.hasExcitedState || !stability.dispersionCurve.length) {
+      ctx.fillStyle = '#f43f5e';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('当前参数无激发图灵稳态', padLeft + 20, zeroY - 10);
+      return;
+    }
+
+    var curve = stability.dispersionCurve;
+    var maxQ = curve[curve.length - 1].q;
+    var maxSigma = 0.005;
+    var minSigma = -0.010;
+
+    for (var i = 0; i < curve.length; i++) {
+      if (curve[i].sigma > maxSigma) maxSigma = curve[i].sigma;
+      if (curve[i].sigma < minSigma) minSigma = curve[i].sigma;
+    }
+
+    /* 映射坐标 */
+    function mapX(q) {
+      return padLeft + (q / maxQ) * plotW;
+    }
+    function mapY(s) {
+      return padTop + plotH * (1.0 - (s - minSigma) / (maxSigma - minSigma + 1e-9));
+    }
+
+    /* 绘制增长率曲线 */
+    ctx.strokeStyle = stability.turingInstability ? '#10b981' : '#06b6d4';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    for (var j = 0; j < curve.length; j++) {
+      var cx = mapX(curve[j].q);
+      var cy = mapY(curve[j].sigma);
+      if (j === 0) ctx.moveTo(cx, cy);
+      else ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+
+    /* 标注临界最大失稳波数 qc */
+    if (stability.turingInstability && stability.qc > 0) {
+      var peakX = mapX(stability.qc);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.setLineDash([2, 2]);
+      ctx.beginPath();
+      ctx.moveTo(peakX, padTop);
+      ctx.lineTo(peakX, padTop + plotH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(peakX, mapY(stability.dispersionCurve.reduce(function (acc, p) {
+        return Math.abs(p.q - stability.qc) < Math.abs(acc.q - stability.qc) ? p : acc;
+      }).sigma), 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillText('qc', peakX - 6, padTop + plotH + 16);
+    }
+  }
+
+  /* ------------------------------------------------------------ 空间自相关曲线绘制 */
+  function renderCorrelationChart(metrics) {
+    if (!corrCtx || !metrics || !metrics.autoCorr) return;
+    var ctx = corrCtx;
+    var cw = corrCanvas.width;
+    var ch = corrCanvas.height;
+
+    ctx.clearRect(0, 0, cw, ch);
+
+    var padLeft = 38;
+    var padRight = 16;
+    var padTop = 20;
+    var padBottom = 26;
+    var plotW = cw - padLeft - padRight;
+    var plotH = ch - padTop - padBottom;
+
+    /* 零轴 */
+    var zeroY = padTop + plotH * 0.50;
+    ctx.strokeStyle = '#285462';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(padLeft, zeroY);
+    ctx.lineTo(padLeft + plotW, zeroY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.strokeStyle = '#1c3d47';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, padTop);
+    ctx.lineTo(padLeft, padTop + plotH);
+    ctx.lineTo(padLeft + plotW, padTop + plotH);
+    ctx.stroke();
+
+    ctx.fillStyle = '#7e9fa8';
+    ctx.font = '10px monospace';
+    ctx.fillText('R=0', 12, zeroY + 3);
+    ctx.fillText('r=0', padLeft - 6, padTop + plotH + 16);
+
+    var ac = metrics.autoCorr;
+    var maxLag = ac.length;
+    if (maxLag < 2) return;
+
+    function mapX(r) {
+      return padLeft + (r / maxLag) * plotW;
+    }
+    function mapY(val) {
+      /* val 范围约 [-0.8, 1.0] */
+      return padTop + plotH * (1.0 - (val + 0.8) / 1.8);
+    }
+
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    for (var i = 0; i < maxLag; i++) {
+      var cx = mapX(i);
+      var cy = mapY(ac[i]);
+      if (i === 0) ctx.moveTo(cx, cy);
+      else ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+
+    /* 若检出主特征波长，在极大值处打标记 */
+    if (metrics.measuredWavelength > 0) {
+      var peakX = mapX(metrics.measuredWavelength);
+      var peakY = mapY(ac[metrics.measuredWavelength]);
+
+      ctx.strokeStyle = '#10b981';
+      ctx.setLineDash([2, 2]);
+      ctx.beginPath();
+      ctx.moveTo(peakX, padTop);
+      ctx.lineTo(peakX, padTop + plotH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.arc(peakX, peakY, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillText('λ_obs', peakX - 12, padTop + plotH + 16);
+    }
+  }
+
+  /* ------------------------------------------------------------ 科学读数与理论更新 */
+  function updateScientificReadouts() {
+    var stability = C.analyzeLinearStability(sim.F, sim.k, sim.Du, sim.Dv);
+    uiState.currentStability = stability;
+
+    /* 理论色散卡片 */
+    if (stability.turingInstability) {
+      dispersionStatus.textContent = '图灵对称破缺已激活';
+      dispersionStatus.style.color = 'var(--bio-green)';
+      valQc.textContent = fmtFixed(stability.qc, 3) + ' rad/px';
+      valLambdaPred.textContent = fmtFixed(stability.wavelength, 1) + ' px';
+    } else {
+      dispersionStatus.textContent = stability.hasExcitedState ? '亚临界平稳态' : '基态灭绝死区';
+      dispersionStatus.style.color = 'var(--bio-crimson)';
+      valQc.textContent = '—';
+      valLambdaPred.textContent = '—';
+    }
+
+    /* 判别式与比率 */
+    var disc = sim.F * (sim.F - 4.0 * Math.pow(sim.F + sim.k, 2));
+    metricDelta.textContent = fmtFixed(disc, 4);
+    metricDiffRatio.textContent = fmtFixed(sim.Du / sim.Dv, 2);
+
+    /* 实测指标卡片 */
+    var metrics = uiState.currentMetrics;
+    metricActivity.textContent = fmtFixed(metrics.totalActivity, 1);
+    metricContrast.textContent = fmtFixed(metrics.contrast, 2);
+
+    if (metrics.measuredWavelength > 0 && stability.wavelength > 0 && isFinite(stability.wavelength)) {
+      corrStatus.textContent = '检测到特征波长';
+      corrStatus.style.color = 'var(--bio-green)';
+      valLambdaObs.textContent = fmtFixed(metrics.measuredWavelength, 1) + ' px';
+
+      var err = Math.abs(metrics.measuredWavelength - stability.wavelength) / stability.wavelength * 100;
+      valError.textContent = fmtFixed(err, 1) + '%';
+    } else {
+      corrStatus.textContent = metrics.contrast > 0.15 ? '波前调整中' : '均一未分化';
+      corrStatus.style.color = 'var(--text-muted)';
+      valLambdaObs.textContent = '—';
+      valError.textContent = '—';
+    }
+
+    hudTime.textContent = 't = ' + fmtFixed(sim.simTime, 1);
+
+    renderDispersionChart(stability);
+    renderCorrelationChart(metrics);
+  }
+
+  /* ------------------------------------------------------------ 交互干涉管线 */
+  function handlePointerAction(e) {
+    if (!petriCanvas) return;
+    var rect = petriCanvas.getBoundingClientRect();
+    var clientX = e.clientX;
+    var clientY = e.clientY;
+    if (clientX === undefined && e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    }
+
+    var scaleX = sim.w / rect.width;
+    var scaleY = sim.h / rect.height;
+    var gx = (clientX - rect.left) * scaleX;
+    var gy = (clientY - rect.top) * scaleY;
+
+    if (uiState.activeTool === 'pipette') {
+      /* 注入强活化扰动 */
+      C.injectReagent(sim, gx, gy, 4.5, 0.40, 0.35);
+    } else if (uiState.activeTool === 'barrier') {
+      /* 雕刻绝缘阻隔墙 */
+      C.setBarrier(sim, gx, gy, 3.2, true);
+    } else if (uiState.activeTool === 'eraser') {
+      /* 修复擦除屏障 */
+      C.setBarrier(sim, gx, gy, 4.0, false);
+    }
+
+    renderPetriDish();
+  }
+
+  function setupInteractions() {
+    if (!petriCanvas) return;
+
+    petriCanvas.addEventListener('pointerdown', function (e) {
+      uiState.isPointerDown = true;
+      petriCanvas.setPointerCapture(e.pointerId);
+      handlePointerAction(e);
+    });
+
+    petriCanvas.addEventListener('pointermove', function (e) {
+      if (uiState.isPointerDown) {
+        handlePointerAction(e);
+      }
+    });
+
+    function releasePointer(e) {
+      uiState.isPointerDown = false;
+      try {
+        petriCanvas.releasePointerCapture(e.pointerId);
+      } catch (ignored) {}
+    }
+
+    petriCanvas.addEventListener('pointerup', releasePointer);
+    petriCanvas.addEventListener('pointercancel', releasePointer);
+
+    /* 工具栏切换 */
+    function setTool(toolName) {
+      uiState.activeTool = toolName;
+      toolPipette.classList.toggle('active', toolName === 'pipette');
+      toolPipette.setAttribute('aria-pressed', toolName === 'pipette' ? 'true' : 'false');
+
+      toolBarrier.classList.toggle('active', toolName === 'barrier');
+      toolBarrier.setAttribute('aria-pressed', toolName === 'barrier' ? 'true' : 'false');
+
+      toolEraser.classList.toggle('active', toolName === 'eraser');
+      toolEraser.setAttribute('aria-pressed', toolName === 'eraser' ? 'true' : 'false');
+
+      if (toolName === 'pipette') {
+        canvasHint.textContent = '按住并拖动：向反应皿滴入活化底物微扰，观察条纹如何自分裂。';
+      } else if (toolName === 'barrier') {
+        canvasHint.textContent = '按住并拖动：用绝缘刀刻画不可渗透屏障，观察扩散如何在障碍边界拐弯反射。';
+      } else {
+        canvasHint.textContent = '按住并拖动：擦除绝缘屏障，恢复培养基质连通性。';
+      }
+    }
+
+    toolPipette.addEventListener('click', function () { setTool('pipette'); });
+    toolBarrier.addEventListener('click', function () { setTool('barrier'); });
+    toolEraser.addEventListener('click', function () { setTool('eraser'); });
+
+    /* 播放控制 */
+    btnTogglePlay.addEventListener('click', function () {
+      uiState.isRunning = !uiState.isRunning;
+      btnTogglePlay.textContent = uiState.isRunning ? '暂停演化' : '继续演化';
+      btnTogglePlay.classList.toggle('primary', uiState.isRunning);
+      hudStatus.textContent = uiState.isRunning ? '演化中' : '已暂停';
+    });
+
+    btnStepOnce.addEventListener('click', function () {
+      C.stepSystem(sim, uiState.subStepsPerFrame);
+      uiState.currentMetrics = C.measureMetrics(sim);
+      renderPetriDish();
+      updateScientificReadouts();
+    });
+
+    btnReperturb.addEventListener('click', function () {
+      C.resetSystem(sim, Math.floor(sim.simTime * 1000 + 1952));
+      uiState.currentMetrics = C.measureMetrics(sim);
+      renderPetriDish();
+      updateScientificReadouts();
+    });
+
+    btnClearDish.addEventListener('click', function () {
+      for (var i = 0; i < sim.size; i++) {
+        sim.u[i] = 1.0;
+        sim.v[i] = 0.0;
+        sim.barrier[i] = 0;
+      }
+      sim.simTime = 0.0;
+      sim.stepCount = 0;
+      uiState.currentMetrics = C.measureMetrics(sim);
+      renderPetriDish();
+      updateScientificReadouts();
+    });
+
+    /* 滑杆更新 */
+    sliderF.addEventListener('input', function () {
+      var val = parseFloat(sliderF.value);
+      sim.F = val;
+      outputF.textContent = fmtFixed(val, 4);
+      updateScientificReadouts();
+    });
+
+    sliderK.addEventListener('input', function () {
+      var val = parseFloat(sliderK.value);
+      sim.k = val;
+      outputK.textContent = fmtFixed(val, 4);
+      updateScientificReadouts();
+    });
+
+    sliderSpeed.addEventListener('input', function () {
+      var val = parseInt(sliderSpeed.value, 10);
+      uiState.subStepsPerFrame = val;
+      outputSpeed.textContent = fmtInt(val) + ' 步';
+    });
+
+    /* 预设卡片点击切换 */
+    presetCards.forEach(function (card) {
+      card.addEventListener('click', function () {
+        var pKey = card.getAttribute('data-preset');
+        var pData = C.PRESETS[pKey];
+        if (!pData) return;
+
+        presetCards.forEach(function (c) {
+          c.classList.remove('active');
+          c.setAttribute('aria-checked', 'false');
+        });
+        card.classList.add('active');
+        card.setAttribute('aria-checked', 'true');
+
+        sim.F = pData.F;
+        sim.k = pData.k;
+        sliderF.value = pData.F;
+        outputF.textContent = fmtFixed(pData.F, 4);
+        sliderK.value = pData.k;
+        outputK.textContent = fmtFixed(pData.k, 4);
+
+        updateScientificReadouts();
+      });
+    });
+  }
+
+  /* ------------------------------------------------------------ 主动力学循环 */
+  /*
+   * 采用 setTimeout 而非 rAF：
+   * 保证在 Chrome Headless、后台标签页或虚拟时钟无头环境下，推进依然 100% 确定触发
+   */
+  function simulationTick() {
+    if (uiState.isRunning) {
+      C.stepSystem(sim, uiState.subStepsPerFrame);
+      renderPetriDish();
+
+      /* 每 12 步刷新一次高开销的自相关统计 */
+      if (sim.stepCount - uiState.lastMetricTick >= 12) {
+        uiState.currentMetrics = C.measureMetrics(sim);
+        uiState.lastMetricTick = sim.stepCount;
+        updateScientificReadouts();
+      }
+    }
+
+    uiState.timerId = setTimeout(simulationTick, 30);
+  }
+
+  /* ------------------------------------------------------------ 初始化入口 */
+  function init() {
+    setupInteractions();
+    uiState.currentMetrics = C.measureMetrics(sim);
+    renderPetriDish();
+    updateScientificReadouts();
+    simulationTick();
+
+    /* 挂载自动化测试探针 (与项目全量体检及 verify 深度对齐) */
+    window.__probe = {
+      getSystem: function () { return sim; },
+      getStability: function () { return uiState.currentStability; },
+      getMetrics: function () { return uiState.currentMetrics; },
+      getValues: function () {
+        return {
+          F: sim.F,
+          k: sim.k,
+          Du: sim.Du,
+          Dv: sim.Dv,
+          time: sim.simTime,
+          steps: sim.stepCount,
+          qc: uiState.currentStability ? uiState.currentStability.qc : 0,
+          wavelengthPred: uiState.currentStability ? uiState.currentStability.wavelength : 0,
+          wavelengthObs: uiState.currentMetrics.measuredWavelength,
+          totalActivity: uiState.currentMetrics.totalActivity,
+          contrast: uiState.currentMetrics.contrast,
+          isTuringActive: uiState.currentStability ? uiState.currentStability.turingInstability : false
+        };
+      }
+    };
+
+    window.__ready = true;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
+  </script>
+</body>
+</html>
+

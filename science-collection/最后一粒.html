@@ -1,0 +1,2104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>最后一粒 · 自组织临界</title>
+<meta name="description" content="BTW 二维沙堆（Abelian sandpile，开放边界）：没有温度旋钮，慢驱动自己把系统送到崩溃边缘。雪崩规模呈幂律、沙量严格守恒、终态与 topple 顺序无关——三态时间机器（直播/回卷/分叉）把『重放逐位一致』变成可以亲手验证的确定性契约。">
+<style>
+/* ============================================================================
+ * 最后一粒/style.css —— 视觉方言：青蓝晒图
+ *
+ * 晒图（blueprint）的规矩：深普鲁士蓝底、制图白线、朱砂批注。
+ * 与既有展项的纸底/墨底两族完全互斥（35 色禁用清单见 build.js，
+ * --paper/--panel/--line 变量名亦不复用）。字体等宽主导、无衬线正文。
+ * 正文对比度 ≥7:1（--ink 对 --bg 实测约 12:1，--dim 约 8:1）。
+ * ==========================================================================*/
+
+:root {
+  --bg: #06263c;          /* 页面深底 */
+  --bg2: #08324f;         /* 面板底 */
+  --bg3: #072b44;         /* 画布衬底 */
+  --ink: #d9ecf7;         /* 正文 */
+  --dim: #a3c3da;         /* 次级说明 */
+  --wline: #e8f4fb;      /* 制图白线（非纯白） */
+  --rule: rgba(151, 193, 222, 0.24);   /* 细规线 */
+  --rule-soft: rgba(151, 193, 222, 0.12);
+  --mark: #c9463d;        /* 朱砂 */
+  --mark2: #e06a57;       /* 朱砂亮部 */
+  --pile0: #0b3d5c;       /* 高度 0 */
+  --pile1: #1b5f8a;       /* 高度 1 */
+  --pile2: #3f8fbf;       /* 高度 2 */
+  --pile3: #a8d4ec;       /* 高度 3 */
+  --mono: ui-monospace, 'Cascadia Mono', Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --sans: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background:
+    linear-gradient(rgba(151, 193, 222, 0.035) 1px, transparent 1px) 0 0 / 100% 26px,
+    linear-gradient(90deg, rgba(151, 193, 222, 0.035) 1px, transparent 1px) 0 0 / 26px 100%,
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15.5px;
+  line-height: 1.85;
+  overflow-x: hidden;
+}
+
+.wrap {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 30px 20px 70px;
+}
+
+/* ------------------------------------------------------------------ 头版 */
+.masthead {
+  border: 1px solid var(--rule);
+  border-top: 3px solid var(--mark);
+  padding: 22px 24px 18px;
+  background: linear-gradient(180deg, rgba(151, 193, 222, 0.06), transparent 60%), var(--bg2);
+}
+
+.mast-eyebrow {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.32em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-family: var(--mono);
+  font-size: 44px;
+  letter-spacing: 0.12em;
+  line-height: 1.15;
+  color: var(--wline);
+  font-weight: 700;
+}
+
+.mast-lede {
+  margin: 0 0 14px;
+  max-width: 46em;
+}
+
+.mast-lede em {
+  font-style: normal;
+  color: var(--mark2);
+  border-bottom: 1px dashed var(--mark);
+}
+
+.mast-state {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--wline);
+  border: 1px dashed var(--rule);
+  display: inline-block;
+  padding: 5px 12px;
+}
+
+.mast-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--dim);
+}
+
+/* ------------------------------------------------------------------ 面板 */
+.panel {
+  margin-top: 26px;
+  border: 1px solid var(--rule);
+  background: var(--bg2);
+  padding: 20px 22px 22px;
+  position: relative;
+}
+
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid var(--rule-soft);
+  pointer-events: none;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-family: var(--mono);
+  font-size: 19px;
+  letter-spacing: 0.06em;
+  color: var(--wline);
+}
+
+h2::after {
+  content: '';
+  display: block;
+  width: 72px;
+  height: 2px;
+  margin-top: 6px;
+  background: var(--mark);
+}
+
+.sec-lede, .mode-lede {
+  margin: 0 0 14px;
+  color: var(--dim);
+  font-size: 14px;
+  max-width: 52em;
+}
+
+.mode-lede { color: var(--ink); }
+
+/* ------------------------------------------------------- 三态切换器 */
+.modebar {
+  display: inline-flex;
+  border: 1px solid var(--rule);
+  margin-bottom: 12px;
+}
+
+.modebtn {
+  appearance: none;
+  border: 0;
+  border-right: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  padding: 7px 20px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.modebtn:last-child { border-right: 0; }
+
+.modebtn[aria-pressed="true"] {
+  background: var(--pile1);
+  color: var(--wline);
+  box-shadow: inset 0 -3px 0 var(--mark);
+}
+
+.modebtn:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--mark2);
+  outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------------ 画布 */
+.pile-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+.pile-grid.duo { grid-template-columns: 1fr 1fr; }
+
+.pane { min-width: 0; }
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  touch-action: manipulation;
+}
+
+.cap {
+  margin: 6px 0 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+
+/* ------------------------------------------------------------------ 控件 */
+.now-controls { margin-top: 16px; }
+
+.slider-line {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 10px 0;
+}
+
+.slider-name {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(90deg, var(--pile1), var(--pile3));
+  border-radius: 0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  background: var(--wline);
+  border: 2px solid var(--mark);
+  border-radius: 0;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: linear-gradient(90deg, var(--pile1), var(--pile3));
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--wline);
+  border: 2px solid var(--mark);
+  border-radius: 0;
+}
+
+input[type="range"]:disabled { opacity: 0.45; }
+
+output {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--wline);
+  min-width: 92px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+
+button {
+  appearance: none;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13.5px;
+  letter-spacing: 0.06em;
+  padding: 6px 16px;
+  min-height: 32px;
+  min-width: 24px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { border-color: var(--mark2); color: var(--wline); }
+
+button:disabled { opacity: 0.4; cursor: default; }
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--dim);
+}
+
+/* ------------------------------------------------------------------ 读数 */
+.readlist {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 18px;
+  margin: 16px 0 0;
+  padding: 12px 16px;
+  border: 1px dashed var(--rule);
+  background: rgba(11, 61, 92, 0.45);
+}
+
+.readlist dt {
+  font-size: 12.5px;
+  color: var(--dim);
+  align-self: baseline;
+}
+
+.readlist dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--wline);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.stat-grid .readlist { margin-top: 0; }
+
+.verdict {
+  margin: 14px 0 0;
+  border-left: 3px solid var(--mark);
+  padding: 8px 14px;
+  background: rgba(201, 70, 61, 0.08);
+  font-size: 14px;
+}
+
+/* 时间轴刻度尺：每格一幅快照锚点 */
+.ticks {
+  height: 10px;
+  margin: 2px 0 0;
+  background-image: repeating-linear-gradient(to right,
+    var(--rule) 0, var(--rule) 1px, transparent 1px, transparent var(--tickw, 12.5%));
+  border-bottom: 1px solid var(--rule);
+}
+
+/* ------------------------------------------------------------------ 抽屉 */
+.drawer-btn {
+  width: 100%;
+  text-align: left;
+  margin-bottom: 4px;
+}
+
+.drawer-btn::after {
+  content: '▾';
+  float: right;
+  color: var(--dim);
+}
+
+.drawer-btn[aria-expanded="false"]::after { content: '▸'; }
+
+.drawer-body { margin-top: 8px; }
+
+/* ------------------------------------------------------------------ 三定理 */
+.lawlist {
+  margin: 6px 0 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.law-row {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr;
+  gap: 4px 16px;
+  border-bottom: 1px solid var(--rule-soft);
+  padding-bottom: 8px;
+}
+
+.law-row dt {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--dim);
+}
+
+.law-row dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--wline);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ 边界 */
+.edges {
+  border-color: var(--mark);
+}
+
+.edges p {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.edges strong {
+  color: var(--mark2);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ 页脚 */
+.colophon {
+  margin-top: 30px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--dim);
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+/* ------------------------------------------------------------------ 窄屏 */
+@media (max-width: 640px) {
+  .wrap { padding: 18px 12px 54px; }
+
+  body { font-size: 14.5px; }
+
+  h1 { font-size: 32px; }
+
+  .panel { padding: 14px 12px 16px; }
+
+  .pile-grid.duo { grid-template-columns: 1fr; }
+
+  .stat-grid { grid-template-columns: 1fr; }
+
+  /* 触控硬线：主要交互控件与滑杆全部 ≥44px */
+  button, .modebtn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 14px;
+  }
+
+  input[type="range"] {
+    min-height: 44px;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+    margin-top: -10px;
+  }
+
+  .slider-line { gap: 10px; }
+
+  output { min-width: 78px; font-size: 12.5px; }
+
+  .readlist { padding: 10px 12px; }
+
+  .readlist dd { font-size: 12.5px; }
+
+  .law-row { grid-template-columns: 1fr; }
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<!-- ============================================================================
+《最后一粒》—— 统计物理 · 自组织临界（BTW 二维沙堆，开放边界）
+
+系列身份策略（动工前决定，完整版见 lastgrain/build.js 头注「切分声明」）：
+  · 页内不自称「第 X 件」：本库编号由目录页卡片按登记序派生，页内再写
+    编号会与目录打架。本件的身份锚点是标题 + 「时间机器」三态交互本身。
+  · 与〈临界的形状〉(ising) 的正面区隔：ising 的临界要靠拧温度逼近 Tc，
+    本作没有任何控制参数——慢驱动自己把系统送到崩溃边缘；ising 断言
+    有界分布，本作凭 Abelian 定理把「等值断言」全强度施展（逐位一致）。
+
+本作的确定性契约：事件溯源 + 位置索引派生落点 + 整数格点同步步进，
+重放逐位一致由 Abelian 性质作数学保票（口径见页尾「模型边界」）。
+============================================================================ -->
+<header class="masthead">
+  <p class="mast-eyebrow">统计物理 · 自组织临界</p>
+  <h1>最后一粒</h1>
+  <p class="mast-lede">一座沙堆不需要温度旋钮。沙粒一粒一粒落下，堆体自己长高、自己变陡，一直走到崩溃的边缘——却没有谁去拧过任何旋钮。而雪崩的规模不由<em>最后一粒</em>决定，由整座堆的蓄势决定：同一粒沙，落在不同的格子上，掀起的雪崩可以差出三个数量级。</p>
+  <p class="mast-state" id="mastState">蓄势中……</p>
+  <p class="mast-note">读数规则：落点由固定种子按序派生，每一粒都可重放；构型指纹与离线标定逐字对账，差一位都不算通过。</p>
+</header>
+
+<section class="panel" id="pilePanel">
+  <h2>图一 · 沙堆现场</h2>
+  <p class="sec-lede">四级色阶是高度，明暗是坡度：越亮越厚，越暗越陡。朱砂描出最近一次雪崩的足迹——它多数时候很小，偶尔席卷全盘。</p>
+  <div class="modebar" role="group" aria-label="时间机器三态切换">
+    <button type="button" id="modeNow" class="modebtn" aria-pressed="true">现在</button>
+    <button type="button" id="modeRewind" class="modebtn" aria-pressed="false">回卷</button>
+    <button type="button" id="modeBranch" class="modebtn" aria-pressed="false">分叉</button>
+  </div>
+  <p class="mode-lede" id="modeLede">直播：沙子正在落下。每一粒的落点由种子按序派生——你也可以亲手指定某一粒落进哪一格。</p>
+  <div class="pile-grid" id="pileGrid">
+    <div class="pane">
+      <canvas id="mainCanvas" width="768" height="768" aria-label="沙堆高度场主画布，主线世界"></canvas>
+      <p class="cap">主线 · 开放边界：走到缘外的那部分沙，记入流失账</p>
+    </div>
+    <div class="pane" id="branchPane" hidden>
+      <canvas id="branchCanvas" width="768" height="768" aria-label="分叉世界画布，与主线并排对照"></canvas>
+      <p class="cap">分叉 · 同一段后续事件流，第二座堆</p>
+    </div>
+  </div>
+  <div class="now-controls" id="nowControls">
+    <label class="slider-line" for="rateSlider">
+      <span class="slider-name">撒沙速率</span>
+      <input type="range" id="rateSlider" min="1" max="64" step="1" value="8" aria-label="每拍撒沙粒数">
+      <output id="rateOut">8 粒/拍</output>
+    </label>
+    <div class="btn-row">
+      <button type="button" id="pourBtn">开始撒沙</button>
+      <button type="button" id="resetBtn">重蓄一座堆</button>
+    </div>
+    <p class="hint" id="pileHint">点击画布：把某一粒亲手落进指定格。按住画布：连撒。</p>
+  </div>
+  <dl class="readlist" id="cardMachine" data-probe="machine">
+    <dt>事件序号</dt><dd id="ro-ordinal">0</dd>
+    <dt>末次雪崩</dt><dd id="ro-last">—</dd>
+    <dt>构型指纹</dt><dd id="ro-fp">—</dd>
+    <dt>状态</dt><dd id="pv-machine">直播</dd>
+  </dl>
+</section>
+
+<section class="panel" id="timelinePanel">
+  <h2>图二 · 时间轴</h2>
+  <p class="sec-lede">每一次落沙都记入事件流，每 128 粒存一幅全量快照。拖动时间轴，世界退回某一粒落下之前——刻度吸附快照，重放不超过 128 粒就能到位。</p>
+  <label class="slider-line" for="timeSlider">
+    <span class="slider-name">事件序号</span>
+    <input type="range" id="timeSlider" min="0" max="128" step="1" value="0" aria-label="回卷到指定事件序号，刻度吸附快照">
+    <output id="timeOut">第 0 粒之前</output>
+  </label>
+  <div class="ticks" id="timeTicks" aria-hidden="true"></div>
+  <dl class="readlist" id="timeRead">
+    <dt>上一粒的账</dt><dd id="ro-time">时间起点，尚无一粒。</dd>
+  </dl>
+  <div class="btn-row">
+    <button type="button" id="liveBtn">回到最新</button>
+  </div>
+</section>
+
+<section class="panel" id="branchPanel" hidden>
+  <h2>图三 · 分叉对照</h2>
+  <p class="sec-lede">从回卷点开第二座堆，把「这一粒」改落别处。两座堆并排跑完全相同的后续事件流——唯一的差别，是你亲手改写的那一次落点。</p>
+  <div class="btn-row">
+    <button type="button" id="branchBtn">把这一粒改落别处</button>
+    <button type="button" id="restoreBtn" disabled>把落点改回原处</button>
+  </div>
+  <dl class="readlist" id="branchRead">
+    <dt>这一粒</dt><dd id="ro-grainFate">—</dd>
+    <dt>原落点</dt><dd id="ro-origCell">—</dd>
+    <dt>现落点</dt><dd id="ro-altCell">—</dd>
+    <dt>主线指纹</dt><dd id="ro-baseFp">—</dd>
+    <dt>分叉指纹</dt><dd id="ro-branchFp">—</dd>
+  </dl>
+  <p class="verdict" id="branchStatus">两座堆都停在回卷点，尚未分叉。</p>
+</section>
+
+<section class="panel" id="statsPanel">
+  <h2>图四 · 规模分布与守恒账本</h2>
+  <p class="sec-lede">左图双对数：横轴是雪崩规模 s（坍塌次数），纵轴是单位规模的频数。点排成直线，就是幂律的形状——没有特征尺度，所以叫「无标度」。朱砂线是 20 万粒离线标定给出的斜率与带宽。</p>
+  <button type="button" class="drawer-btn" id="drawerBtn" aria-expanded="true" aria-controls="drawerBody">收起分布与账本</button>
+  <div class="drawer-body open" id="drawerBody">
+    <canvas id="histCanvas" width="768" height="300" aria-label="雪崩规模 log-log 分布直方图与标定线"></canvas>
+    <div class="stat-grid">
+      <dl class="readlist" id="cardPowerlaw" data-probe="powerlaw">
+        <dt>页面拟合 α（本会话）</dt><dd id="ro-alphaPage">样本未及</dd>
+        <dt>标定 α（离线 20 万粒）</dt><dd id="ro-alphaCal">—</dd>
+        <dt>标定带宽</dt><dd id="ro-band">—</dd>
+        <dt>非空数量级</dt><dd id="ro-decades">—</dd>
+        <dt>样本（s≥1）</dt><dd id="ro-sample">—</dd>
+        <dt>拟合状态</dt><dd id="pv-powerlaw">等待事件流</dd>
+      </dl>
+      <dl class="readlist" id="cardConservation" data-probe="conservation">
+        <dt>新增</dt><dd id="consAdded">—</dd>
+        <dt>边界流失</dt><dd id="consLost">—</dd>
+        <dt>当前存量</dt><dd id="consResident">—</dd>
+        <dt>账本状态</dt><dd id="pv-conservation">对账中</dd>
+      </dl>
+    </div>
+    <p class="verdict" id="consVerdict">沙量守恒：topple 只搬运，不生不灭——存量变化 = 新增 − 边界流失。</p>
+  </div>
+</section>
+
+<section class="panel" id="lawsPanel">
+  <h2>三块基石 · 这件展品敢许诺「逐位一致」的理由</h2>
+  <p class="sec-lede">下面的每个数字都出自固定种子的离线标定，页面只负责复算与对账，不携带任何一个手写的结论。</p>
+  <dl class="lawlist" id="lawNumbers"></dl>
+  <p>第一块是<strong>自组织临界</strong>：没有人调参，慢驱动自己把堆送到「几乎处处临界」的状态，于是雪崩规模呈幂律——大崩塌与小崩塌由同一条直线管着。第二块是<strong>沙量守恒</strong>：topple 只把沙从一格搬到邻格，走出边界的才记流失，账本逐事件可对。第三块是 <strong>Abelian 性质</strong>：最终构型与 topple 的先后顺序无关，雪崩规模由各格坍塌计数唯一决定——这就是时间机器敢承诺「重放逐位一致」的数学保票，也是它与「临界需要调温」的那件展品最深的分别。</p>
+  <p class="selfcheck" id="selfCheckLine">自检：启动即跑，随每次刷新重算。</p>
+</section>
+
+<section class="panel edges" id="edges">
+  <h2>模型边界 · 在哪里诚实</h2>
+  <p><strong>样本量口径。</strong>幂律指数由 20 万粒固定种子标定：剔除前 5000 粒暂态，对 0.25 个十进位的对数分箱做最小二乘。页面上的拟合独立复算自本会话的事件流（同样从第 5000 粒起算）——两条拟合的窗口长短不同，标定带宽已把二者的实测偏差覆盖在内；超出带宽即自检失败，页面不会替它圆场。</p>
+  <p><strong>快照与裁剪。</strong>事件流数组只保留最近 4096 条：每 128 粒存一幅全量快照作锚点，超限就从头部裁到锚点。观众亲手指定的落点钉在改写表里，永不随裁剪丢失；机器派生的落点可由「种子＋序号」随时重推——所以回卷能力不因裁剪而丧失。快照池至多存 256 幅，更早的回卷改走「从零重放」，逐位精度分毫不让。</p>
+  <p><strong>逐位一致的边界本身。</strong>重放一致依赖两件事：整数格点——高度是整数，topple 是整数搬运，全程没有浮点参与物理；同步步进——一切断言只依赖同步计算与定时器，画面帧循环只负责表现，快进、暂停、掉帧都不改变任何一个断言值。换一台机器打开本页，指纹必须逐字相同；做不到，就不是这条边界内的承诺。</p>
+</section>
+
+<footer class="colophon">单文件科学装置 · 全部结论数字来自离线标定 <span id="calStamp"></span> · 零网络请求 · 源码在 lastgrain/ 目录，由其 build.js 拼装</footer>
+
+</div>
+<script>window.__DATA__ = {results: 
+{"meta":{"generator":"lastgrain/calibrate.js","generatedAt":"2026-10-04T20:30:01.632Z","node":"v24.19.0","durationMs":{"calibrate":340,"reproduce":364}},"canon":{"L":48,"seed":20261005,"boot":3000,"pour":8000,"K":128,"maxEvents":4096,"rewindK":3200,"transient":5000,"calGrains":200000,"branchDelta":977,"spotCells":64},"powerlaw":{"grains":200000,"skipTransient":5000,"alpha":1.4209301105213936,"alphaHalfA":1.4385217330942952,"alphaHalfB":1.4087711204468147,"bandDelta":0.18003865536685712,"splitHalfDelta":0.03487530632374024,"pageDeviation":0.16003865536685713,"decades":4,"n":84450,"s0":110550,"s0Share":0.566923076923077,"smax":6865,"binWidthDecades":0.25,"bins":[{"lx":0.12499999999999999,"ly":4.139909175566724,"c":10741},{"lx":0.37500000000000006,"ly":3.8355353396078304,"c":9477},{"lx":0.625,"ly":3.320249838081471,"c":5145},{"lx":0.875,"ly":3.1634808759702744,"c":6377},{"lx":1.125,"ly":2.9629274708494404,"c":7146},{"lx":1.375,"ly":2.6847447579191988,"c":6697},{"lx":1.625,"ly":2.422044991569031,"c":6504},{"lx":1.875,"ly":2.148727089029401,"c":6164},{"lx":2.125,"ly":1.8897575676700984,"c":6038},{"lx":2.375,"ly":1.620566826524432,"c":5777},{"lx":2.625,"ly":1.321850692577402,"c":5164},{"lx":2.875,"ly":1.0255695951029182,"c":4642},{"lx":3.125,"ly":0.5782445948329444,"c":2947},{"lx":3.375,"ly":-0.021220130758989653,"c":1318},{"lx":3.625,"ly":-0.9272425520310734,"c":291},{"lx":3.875,"ly":-2.2987128601947746,"c":22}]},"conservationLedger":{"grains":200000,"identityCheckedEvery":1,"identityFails":0,"sumCheckedEvery":4096,"sumChecks":49,"driftFails":0,"added":200000,"lost":195128,"resident":4872},"abelian":{"grains":8000,"heightsEqual":true,"topplesEqual":true,"lostEqual":true,"totalEqual":true,"fpEqual":true,"orderA":{"fp":"5FCF8957","totalTopple":275769,"lost":3188},"orderB":{"fp":"5FCF8957","totalTopple":275769,"lost":3188}},"reproduction":{"runs":2,"fp":"8AFCB48C","byteEqual":true,"byteDiffAt":-1},"counterfactualScan":{"cells":2304,"sameGrain":true,"sZeroCells":1285,"sOneCells":85,"sMedian":34,"sMin":1,"sMinCell":5,"sMax":2901,"sMaxCell":1042},"pageScenario":{"grains":11000,"added":11000,"lost":6176,"resident":4824,"fpBoot":"AC4B2D82","bootAdded":3000,"bootLost":16,"bootResident":2984,"fpAll":"4968BCBA","fpAtRewind":"91AA7F40","fpRewound":"4968BCBA","rewindK":3200,"origCell":1432,"altCell":105,"branchFp":"0E0B8C58","branchRestoredFp":"4968BCBA","branchS":0,"alphaPage":1.2608914551545365,"alphaPageBandDelta":0.04029277907522054,"decadesPage":4,"nPage":2613,"smaxPage":5152}}
+, analysis: 
+{"alpha":1.4209301105213936,"alphaBand":[1.2408914551545365,1.6009687658882508],"bandDelta":0.18003865536685712,"decades":4,"grainsCalibrated":200000,"transientSkip":5000,"avalancheSample":84450,"s0Share":0.566923076923077,"s0":110550,"smax":6865,"sMedianScan":34,"scan":{"cells":2304,"sZeroCells":1285,"sOneCells":85,"sMax":2901,"sMaxCell":1042,"sMaxX":34,"sMaxY":21,"sMinPos":1,"sMinCell":5,"spreadDecades":3.46},"conservation":{"added":200000,"lost":195128,"resident":4872},"abelian":{"grains":8000,"totalToppleA":275769,"totalToppleB":275769,"lost":3188,"fpA":"5FCF8957","fpB":"5FCF8957"},"reproduction":{"fp":"8AFCB48C"},"page":{"total":11000,"alphaPage":1.2608914551545365,"decadesPage":4,"nPage":2613,"smaxPage":5152}}
+};</script>
+<script>
+/* ============================================================================
+ * 最后一粒/core.js —— BTW 二维沙堆（Abelian sandpile，开放边界）纯模型层
+ *
+ * 题材锚点（完整口径见 build.js 头注「切分声明」）：
+ *   · 自组织临界：没有温度旋钮可拧，慢驱动自己把系统送到崩溃边缘；
+ *   · 落点三定理 —— ① 雪崩规模分布幂律 P(s)∝s^−α；② 沙量守恒（topple 只
+ *     搬运：存量变化 = 新增 − 边界流失）；③ Abelian 性质（终态与 topple
+ *     顺序无关，雪崩规模由各格 topple 计数唯一决定）。
+ *   第③条是「重放逐位一致」的数学保票，也是与〈临界的形状〉(ising)
+ *   「临界需要调温」的正面区隔：本模型没有任何控制参数。
+ *
+ * 铁律：
+ *   ① 全文件零随机数 —— 落点由 splitmix32(seed, tag='grain-k') 确定，
+ *     位置索引式派生（不是流式状态），因此任意事件 k 的落点永远可重推导；
+ *   ② 串级松弛用 Int32Array 手写栈（禁递归、禁队列数组展开）；
+ *   ③ 事件溯源：事件数组 {tag:'grain-k', cell:x} 是唯一真源；每 K 个事件
+ *     存高度场快照；回卷 = 二分最近快照 + 重放 ≤K 事件；事件流超 maxEvents
+ *     按锚点快照裁剪头部（显式落点钉在 pinned 表，派生落点可重推导，
+ *     回卷能力不因裁剪而丧失）；
+ *   ④ core 不碰 DOM；node 可直接 require 自检（build.js / calibrate.js 共用）。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { module.exports = factory(); }
+  else { root.LastGrainCore = factory(); }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  /* ---------------------------------------------------------------- 版本与场景 */
+  /* CANON：页面默认场景 = 标定场景 = 验证场景，三方必须一致（单一真源）。
+     这些是模型参数，不是实验结论 —— 结论数字一律由 calibrate.js 现场算出
+     写进 results.json / analysis.json，页面零手写数字。 */
+  var CANON = {
+    L: 48,              /* 演示格边长（模型支持到 64；48 保 360px 视口性能） */
+    seed: 20261005,     /* 固定种子：全链路可复现的根 */
+    boot: 3000,         /* 开屏预撒粒数（同步完成，画布启动即非空） */
+    pour: 8000,         /* 验证驱动的追加粒数（boot + pour = total） */
+    K: 128,             /* 快照间隔（事件数） */
+    maxEvents: 4096,    /* 事件流数组留存上限，超出按锚点快照裁剪头部 */
+    rewindK: 3200,      /* 验证用回卷点（恰为 K 的 25 倍，落在快照上） */
+    transient: 5000,    /* 幂律统计剔除的暂态粒数（前 transient 粒不计入分布） */
+    calGrains: 200000,  /* 主标定粒数（≥20 万） */
+    branchDelta: 977,   /* 分叉「改落别处」的位移量（素数，保证跨格） */
+    spotCells: 64       /* 「同一粒沙」落点扫描的格数 */
+  };
+
+  /* ------------------------------------------------------------ 散列与派生 */
+  /* FNV-1a 32 位：构型指纹。标准向量 '' → 811C9DC5、'a' → E40C292C。
+     乘法走 Math.imul：普通乘法在 2^53 之外丢精度，指纹就不「逐位」了。 */
+  var FNV_OFFSET = 0x811c9dc5;
+  var FNV_PRIME = 0x01000193;
+  function fnv1a(str) {
+    var h = FNV_OFFSET >>> 0;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i) & 0xff;
+      h = Math.imul(h, FNV_PRIME) >>> 0;
+    }
+    h = h >>> 0;
+    var s = h.toString(16).toUpperCase();
+    while (s.length < 8) s = '0' + s;
+    return s;
+  }
+  function fnv1aBytes(bytes) {
+    var h = FNV_OFFSET >>> 0;
+    for (var i = 0; i < bytes.length; i++) {
+      h ^= bytes[i] & 0xff;
+      h = Math.imul(h, FNV_PRIME) >>> 0;
+    }
+    h = (h >>> 0);
+    var s = h.toString(16).toUpperCase();
+    while (s.length < 8) s = '0' + s;
+    return s;
+  }
+
+  /* splitmix32 一族：与 kalman/zeta 等展项同源。
+     hashSeed 把 (seed, tag) 混成一个 uint32 初态；同样的输入永远给出
+     同样的流 —— 逐位一致，与运行环境无关。 */
+  function hashSeed(seed, tag) {
+    var h = (Number(seed) >>> 0) ^ 0x9e3779b9;
+    var s = String(tag == null ? '' : tag);
+    for (var i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 0x85ebca6b) >>> 0;
+      h = (h ^ (h >>> 13)) >>> 0;
+    }
+    return h >>> 0;
+  }
+  function splitmix32(a) {
+    a = a >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 16), 0x21f0aaad) >>> 0;
+      t = Math.imul(t ^ (t >>> 15), 0x735a2d97) >>> 0;
+      return ((t ^ (t >>> 15)) >>> 0) >>> 0;
+    };
+  }
+  /* 事件 k 的派生落点：位置索引式（不是流式）—— 第 k 粒的落点只依赖
+     (seed, k)，与之前发生过什么无关。分叉、回卷、重放因此天然一致。 */
+  function deriveCell(seed, k, n) {
+    var next = splitmix32(hashSeed(seed, 'grain-' + k));
+    var u = next() / 4294967296;
+    return Math.floor(u * n) % n;
+  }
+
+  /* ------------------------------------------------------------ 串级松弛（唯一实现） */
+  /* 种子格入栈，弹栈 topple：h−=4、四邻各 +1、出界流失入账。
+     迭代而非递归；栈按需倍增；同一格可能被重复推栈，落空即弃。
+     h/tp/ld/fm 是外部状态（高度、topple 计数、守恒账本、足迹掩码），
+     世界与 Abelian 抽查共用这一个实现 —— 物理只有一份。
+     掩码纪律：只在 topple 处记格（种子不入栈时预标记——预标记会让
+     a 漏计落点格，还会让「单格雪崩 a=0」进而令 lastFootCell 不设、
+     掩码滞留污染后续事件。评审实测：空堆同格 4 粒 s=1 而 a=0）。 */
+  function runRelax(h, tp, ld, fm, stackHolder, seeds, nSeeds, L) {
+    var stack = stackHolder.a;
+    var sp = 0, i, s = 0, a = 0, x, y;
+    function push(idx) {
+      if (sp >= stack.length) {
+        var bigger = new Int32Array(stack.length * 2);
+        bigger.set(stack);
+        stack = bigger;
+        stackHolder.a = stack;
+      }
+      stack[sp++] = idx;
+    }
+    for (i = 0; i < nSeeds; i++) {
+      if (h[seeds[i]] >= 4) { push(seeds[i]); }
+    }
+    while (sp > 0) {
+      i = stack[--sp];
+      if (h[i] < 4) continue;
+      h[i] -= 4; tp[i] += 1; s += 1;
+      if (!fm[i]) { fm[i] = 1; a += 1; }
+      x = i % L; y = (i / L) | 0;
+      if (x > 0) { h[i - 1] += 1; if (h[i - 1] >= 4) push(i - 1); }
+      else { ld.lost += 1; ld.resident -= 1; }
+      if (x < L - 1) { h[i + 1] += 1; if (h[i + 1] >= 4) push(i + 1); }
+      else { ld.lost += 1; ld.resident -= 1; }
+      if (y > 0) { h[i - L] += 1; if (h[i - L] >= 4) push(i - L); }
+      else { ld.lost += 1; ld.resident -= 1; }
+      if (y < L - 1) { h[i + L] += 1; if (h[i + L] >= 4) push(i + L); }
+      else { ld.lost += 1; ld.resident -= 1; }
+      /* 高度一次越过 4 的倍数时，剩下的欠账在这里补推 */
+      if (h[i] >= 4) push(i);
+    }
+    return { s: s, a: a };
+  }
+
+  /* ------------------------------------------------------------ 世界（模型主体） */
+  /* 一个 world 装载一段历史。事件序号从 0 起；seek(m) = 第 m 粒尚未落下
+     时的状态（已消耗事件 0..m-1）。 */
+  function createWorld(opts) {
+    var L = (opts && opts.L) || CANON.L;
+    var seed = (opts && opts.seed != null) ? opts.seed : CANON.seed;
+    var K = (opts && opts.K) || CANON.K;
+    var maxEvents = (opts && opts.maxEvents) || CANON.maxEvents;
+    var N = L * L;
+
+    var heights = new Int32Array(N);       /* 高度场 */
+    var topples = new Int32Array(N);       /* 每格累计 topple 次数（Abelian 的账本） */
+    var stackHolder = { a: new Int32Array(1 << 16) };  /* 手写栈（按需倍增） */
+    var footMask = new Uint8Array(N);      /* 末次雪崩足迹掩码（表现层描线用） */
+    var seedsBuf = new Int32Array(4);      /* 单粒落沙的种子格缓冲 */
+    var ledger = { added: 0, lost: 0, resident: 0 };
+    var count = 0;                          /* 已消耗事件数 */
+    var firstK = 0;                         /* 事件数组里最老的事件序号 */
+    var events = [];                        /* 事件记录：{tag, cell} —— 唯一真源 */
+    var pinned = {};                        /* 显式落点 k → cell（裁剪也不丢） */
+    var snapshots = [];                     /* {k, h, tp, added, lost, resident} */
+    var snapHave = {};                      /* k → true（防重推快照） */
+    var sCap = 8192;
+    var sArr = new Int32Array(sCap);        /* 每事件雪崩规模（topple 次数） */
+    var aArr = new Int32Array(sCap);        /* 每事件牵连格数 */
+    var lastCell = -1;
+    var lastFootCell = -1;
+    var lastA = { s: 0, a: 0, cell: -1, k: -1 };
+
+    function ensureStats(k) {
+      if (k < sCap) return;
+      var cap = sCap;
+      while (cap <= k) cap *= 2;
+      var s2 = new Int32Array(cap); s2.set(sArr); sArr = s2;
+      var a2 = new Int32Array(cap); a2.set(aArr); aArr = a2;
+      sCap = cap;
+    }
+
+    function clearFoot() {
+      if (lastFootCell >= 0) { footMask.fill(0); lastFootCell = -1; }
+    }
+
+    /* 物理落粒（不含事件记账）：高度 +1、串级、每事件统计。
+       事件记录与物理推进在这里分开 —— 回卷重放只推进物理，
+       记录不重写（记录是历史，不是游标）。
+       掩码纪律：本事件先清上一场的足迹（clearFoot 依赖 lastFootCell
+       把门），本场真发生过雪崩（s>0）才置 lastFootCell —— s=0 的事件
+       本来就不留掩码位，但若不置门，前一场的滞留位会吞掉后续事件的 a
+       计数（评审实测：残掩码让 125 格的雪崩显示成 58 格）。 */
+    function applyGrain(cell) {
+      clearFoot();
+      heights[cell] += 1; ledger.added += 1; ledger.resident += 1;
+      seedsBuf[0] = cell;
+      var r = runRelax(heights, topples, ledger, footMask, stackHolder, seedsBuf, 1, L);
+      ensureStats(count);
+      sArr[count] = r.s; aArr[count] = r.a;
+      lastA = { s: r.s, a: r.a, cell: cell, k: count };
+      lastCell = cell;
+      if (r.s > 0) lastFootCell = cell;
+      count += 1;
+      if (count % K === 0) pushSnapshot();
+      return r;
+    }
+
+    /* 落一粒（显式 cell）：显式落点钉进 pinned（裁剪也不丢），
+       且只在连续前沿（count === firstK + events.length）追加事件记录 ——
+       记录数组的不变量 events[i] ↔ 序号 firstK+i 由此永真；
+       在更早的序号上落沙（深回卷后直播）只钉 pinned，不破坏记录。 */
+    function dropCell(cell, explicit) {
+      if (!(cell >= 0 && cell < N)) cell = 0;
+      if (explicit) pinned[count] = cell;
+      var atFrontier = (count === firstK + events.length);
+      var k = count;
+      var r = applyGrain(cell);
+      if (atFrontier) {
+        events.push({ tag: 'grain-' + k, cell: cell });
+        if (events.length > maxEvents) trimHead();
+      }
+      return r;
+    }
+
+    function pushSnapshot() {
+      if (snapHave[count]) return;
+      snapshots.push({
+        k: count,
+        h: heights.slice(),
+        tp: topples.slice(),
+        fm: footMask.slice(),          /* 足迹掩码一并入快照：回卷落点处的
+                                          「最近一次雪崩足迹」必须与直播逐位一致 */
+        lastA: { s: lastA.s, a: lastA.a, cell: lastA.cell, k: lastA.k },
+        added: ledger.added, lost: ledger.lost, resident: ledger.resident
+      });
+      snapHave[count] = true;
+      /* 快照池上限：超出丢弃最老的（更早的回卷走「从零重放」路径，仍然精确） */
+      if (snapshots.length > 256) {
+        var old = snapshots.shift();
+        delete snapHave[old.k];
+      }
+    }
+
+    /* 头部裁剪：事件数组只留最近 maxEvents 条，锚点 = 保留窗起点所在的
+       快照刻度。派生落点可由 (seed, k) 重推导，显式落点钉在 pinned ——
+       裁剪只省内存，不动任何语义。 */
+    function trimHead() {
+      var target = count - maxEvents;
+      var anchor = Math.max(0, Math.floor(target / K) * K);
+      while (firstK < anchor && events.length > 0) { events.shift(); firstK += 1; }
+    }
+
+    /* 第 k 粒的落点（唯一真源链）：留存事件 → pinned 表 → 位置索引派生 */
+    function cellOf(k) {
+      if (k >= firstK && k < firstK + events.length) return events[k - firstK].cell;
+      if (pinned[k] !== undefined) return pinned[k];
+      return deriveCell(seed, k, N);
+    }
+
+    /* 重放一段事件：只推进物理状态，事件记录不重写（记录是历史，不是游标）。
+       掩码纪律必须与 applyGrain 完全一致：每事件先 clearFoot，s>0 才置
+       lastFootCell —— 否则 clearFoot 在重放窗口内失效，footMask 跨事件
+       累积成「窗口内所有雪崩的并集」，aArr 两路漂移、主画布足迹失真
+       （评审实测：回卷重放后 footMask 残留 1860 位，125 格雪崩显示成 58 格）。 */
+    function replay(from, to) {
+      for (var k = from; k < to; k++) {
+        var cell = cellOf(k);
+        clearFoot();
+        heights[cell] += 1; ledger.added += 1; ledger.resident += 1;
+        seedsBuf[0] = cell;
+        var r = runRelax(heights, topples, ledger, footMask, stackHolder, seedsBuf, 1, L);
+        ensureStats(k);
+        sArr[k] = r.s; aArr[k] = r.a;
+        lastA = { s: r.s, a: r.a, cell: cell, k: k };
+        if (r.s > 0) lastFootCell = cell;
+      }
+      count = to;
+    }
+
+    /* 时间机器主入口：把世界精确置为「第 m 粒尚未落下」的状态。
+       前放（m ≥ count）：逐格 cellOf → 只推物理；只在连续前沿补记事件。
+       回卷（m < count）：二分最近快照 → 恢复 → 重放 ≤K 事件；
+       没有可用快照时从零重放（派生落点永远可重推导，仍然精确）。 */
+    function seek(m) {
+      m = Math.max(0, Math.floor(m));
+      if (m >= count) {
+        for (var kf = count; kf < m; kf++) {
+          var cellF = cellOf(kf);
+          var atFrontier = (kf === firstK + events.length);
+          applyGrain(cellF);
+          if (atFrontier) {
+            events.push({ tag: 'grain-' + kf, cell: cellF });
+            if (events.length > maxEvents) trimHead();
+          }
+        }
+        return count;
+      }
+      /* 二分最近快照（快照按 k 升序） */
+      var lo = 0, hi = snapshots.length - 1, best = -1;
+      while (lo <= hi) {
+        var mid = (lo + hi) >> 1;
+        if (snapshots[mid].k <= m) { best = mid; lo = mid + 1; }
+        else hi = mid - 1;
+      }
+      var from;
+      if (best >= 0) {
+        var snap = snapshots[best];
+        heights.set(snap.h); topples.set(snap.tp);
+        footMask.set(snap.fm);           /* 足迹随快照整组还原（见 pushSnapshot 注） */
+        ledger.added = snap.added; ledger.lost = snap.lost; ledger.resident = snap.resident;
+        lastA = { s: snap.lastA.s, a: snap.lastA.a, cell: snap.lastA.cell, k: snap.lastA.k };
+        lastCell = snap.lastA.cell;
+        /* clearFoot 的门：掩码有位 ⟺ 末次雪崩真实发生过 */
+        lastFootCell = snap.lastA.s > 0 ? snap.lastA.cell : -1;
+        from = snap.k;
+      } else {
+        heights.fill(0); topples.fill(0);
+        ledger.added = 0; ledger.lost = 0; ledger.resident = 0;
+        lastA = { s: 0, a: 0, cell: -1, k: -1 };
+        lastCell = -1;
+        lastFootCell = -1;
+        from = 0;
+      }
+      replay(from, m);
+      if (count % K === 0) pushSnapshot();
+      return count;
+    }
+
+    /* 构型指纹：L、种子、事件数、守恒账本、逐格高度（每格 4 字节）一并入撒盐。
+       高度是整数格点，指纹是逐位函数 —— 与运行环境、与 topple 顺序无关。 */
+    function fingerprint() {
+      var buf = new Uint8Array(16 + N * 4);
+      var v = 0, i;
+      buf[v++] = L & 0xff; buf[v++] = (L >> 8) & 0xff;
+      buf[v++] = seed & 0xff; buf[v++] = (seed >>> 8) & 0xff; buf[v++] = (seed >>> 16) & 0xff; buf[v++] = (seed >>> 24) & 0xff;
+      buf[v++] = count & 0xff; buf[v++] = (count >>> 8) & 0xff; buf[v++] = (count >>> 16) & 0xff; buf[v++] = (count >>> 24) & 0xff;
+      buf[v++] = ledger.added & 0xff; buf[v++] = (ledger.added >>> 8) & 0xff; buf[v++] = (ledger.added >>> 16) & 0xff; buf[v++] = (ledger.added >>> 24) & 0xff;
+      buf[v++] = ledger.lost & 0xff; buf[v++] = (ledger.lost >>> 8) & 0xff;
+      buf[v++] = 0; buf[v++] = 0;
+      for (i = 0; i < N; i++) {
+        var h = heights[i];
+        buf[v++] = h & 0xff; buf[v++] = (h >>> 8) & 0xff;
+        buf[v++] = (h >>> 16) & 0xff; buf[v++] = (h >>> 24) & 0xff;
+      }
+      return fnv1aBytes(buf);
+    }
+
+    /* 纯物理状态指纹（高度 + 每格 topple 计数）：不含事件数与账本。
+       Abelian 抽查用它对账 —— 两种顺序的事件记账方式不同（B 批量堆放
+       不逐粒记事件），但物理状态必须逐格逐位一致。 */
+    function fingerprintState() {
+      var buf = new Uint8Array(8 + N * 8);
+      var v = 0, i;
+      buf[v++] = L & 0xff; buf[v++] = (L >> 8) & 0xff;
+      buf[v++] = seed & 0xff; buf[v++] = (seed >>> 8) & 0xff; buf[v++] = (seed >>> 16) & 0xff; buf[v++] = (seed >>> 24) & 0xff;
+      buf[v++] = 0; buf[v++] = 0;
+      for (i = 0; i < N; i++) {
+        var h = heights[i], t = topples[i];
+        buf[v++] = h & 0xff; buf[v++] = (h >>> 8) & 0xff; buf[v++] = (h >>> 16) & 0xff; buf[v++] = (h >>> 24) & 0xff;
+        buf[v++] = t & 0xff; buf[v++] = (t >>> 8) & 0xff; buf[v++] = (t >>> 16) & 0xff; buf[v++] = (t >>> 24) & 0xff;
+      }
+      return fnv1aBytes(buf);
+    }
+
+    /* 守恒对账：Σ高度 与增量记账的存量必须相等（漂移恒为 0），
+       且满足增量恒等式 存量 = 新增 − 流失。 */
+    function conservationCheck() {
+      var sum = 0;
+      for (var i = 0; i < N; i++) sum += heights[i];
+      return { sum: sum, resident: ledger.resident, added: ledger.added, lost: ledger.lost,
+        drift: sum - ledger.resident, identityOk: ledger.resident === ledger.added - ledger.lost };
+    }
+
+    function stateAt(k) {
+      var cell = (k >= 0 && k < count) ? cellOf(k) : -1;
+      var s = k >= 0 && k < sCap ? sArr[k] : 0;
+      var a = k >= 0 && k < sCap ? aArr[k] : 0;
+      var x = cell >= 0 ? cell % L : -1, y = cell >= 0 ? (cell / L) | 0 : -1;
+      return { k: k, cell: cell, x: x, y: y, s: s, a: a };
+    }
+
+    return {
+      L: L, N: N, seed: seed, K: K,
+      heights: heights, topples: topples, footMask: footMask,
+      ledger: ledger,
+      get count() { return count; },
+      get firstK() { return firstK; },
+      get events() { return events; },
+      get eventsLength() { return events.length; },
+      pinned: pinned,
+      get snapshots() { return snapshots; },
+      /* sArr/aArr 会随容量倍增而整体换新数组：必须走 getter，
+         否则外部拿到的是增长前的旧缓冲（真实事故，calibrate 抓到） */
+      get sArr() { return sArr; },
+      get aArr() { return aArr; },
+      get lastAvalanche() { return lastA; },
+      get lastCell() { return lastCell; },
+      dropCell: dropCell,
+      seek: seek,
+      cellOf: cellOf,
+      deriveCell: function (k) { return deriveCell(seed, k, N); },
+      fingerprint: fingerprint,
+      fingerprintState: fingerprintState,
+      conservationCheck: conservationCheck,
+      stateAt: stateAt,
+      clearFoot: clearFoot
+    };
+  }
+
+  /* ------------------------------------------------------------ Abelian 抽查 */
+  /* 同一批落沙、两种 topple 顺序：
+     A —— 逐粒落、逐粒松弛（生产路径）；
+     B —— 先全部堆上，再一次总松弛（种子 = 全部超高度格）。
+     Abelian 定理预言：终态高度、各格 topple 计数、总 topple 数、边界流失
+     四者逐格逐位相等 —— 物理只有一份（runRelax），顺序只是语法。 */
+  function abelianPairCheck(cells) {
+    var L = CANON.L, N = L * L;
+    var wA = createWorld({ L: L, seed: 1 });
+    for (var i = 0; i < cells.length; i++) wA.dropCell(cells[i], false);
+    var wB = createWorld({ L: L, seed: 1 });
+    var heightsB = wB.heights, ledgerB = wB.ledger;
+    for (var j = 0; j < cells.length; j++) {
+      heightsB[cells[j]] += 1; ledgerB.added += 1; ledgerB.resident += 1;
+    }
+    var seeds = [];
+    for (var z = 0; z < N; z++) if (heightsB[z] >= 4) seeds.push(z);
+    var rB = runRelax(heightsB, wB.topples, ledgerB, wB.footMask, { a: new Int32Array(1 << 16) },
+      seeds, seeds.length, L);
+    var fA = wA.fingerprintState(), fB = wB.fingerprintState();
+    var hA = wA.heights, tA = wA.topples, tB = wB.topples;
+    var heightsEqual = true, topplesEqual = true;
+    for (var c = 0; c < N; c++) {
+      if (hA[c] !== heightsB[c]) heightsEqual = false;
+      if (tA[c] !== tB[c]) topplesEqual = false;
+    }
+    var lostA = wA.ledger.lost, lostB = wB.ledger.lost;
+    var totA = 0, totB = 0;
+    for (var d = 0; d < N; d++) { totA += tA[d]; totB += tB[d]; }
+    return {
+      grains: cells.length,
+      heightsEqual: heightsEqual,
+      topplesEqual: topplesEqual,
+      lostEqual: lostA === lostB,
+      totalEqual: totA === totB,
+      fpEqual: fA === fB,
+      orderA: { fp: fA, totalTopple: totA, lost: lostA },
+      orderB: { fp: fB, totalTopple: totB, lost: lostB },
+      batchS: rB.s,
+      allOk: heightsEqual && topplesEqual && lostA === lostB && totA === totB
+    };
+  }
+
+  /* ------------------------------------------------------------ 幂律拟合 */
+  /* 对数分箱拟合：0.25 个十进位一箱，密度 = 计数 / 箱宽（按 s 的真宽度），
+     在计数达标的箱上做 log10(密度) 对 log10(箱中点) 的最小二乘。
+     返回 α、两半样本各自的 α（带宽用）、非空十进位数量级数、画图箱。
+     口径：s=0（落定未坍）不计入分布，另记 s0Share。
+     窗口：[opts.skip, opts.end) —— end 缺省才是数组全长；调用方必须
+     传事件数当 end，否则 sArr 缓冲区里 count 之外的残值会污染拟合
+     （评审后的实测：前沿分叉写过 sArr[count]，回卷后残值混进窗口）。 */
+  function fitPowerLaw(sizes, opts) {
+    var skip = (opts && opts.skip) || 0;
+    var end = (opts && opts.end != null) ? opts.end : sizes.length;
+    var upto = Math.min(end, sizes.length);
+    var minCount = (opts && opts.minCount) != null ? opts.minCount : 3;
+    var n = 0, vals = [];
+    var s0 = 0;
+    for (var i = skip; i < upto; i++) {
+      var sv = sizes[i];
+      if (sv === 0) { s0 += 1; continue; }
+      vals.push(sv); n += 1;
+    }
+    if (n < 10) return { ok: false, reason: '样本不足', n: n };
+    var smax = 1;
+    for (var v1 = 0; v1 < vals.length; v1++) if (vals[v1] > smax) smax = vals[v1];
+    var W = 0.25;                                /* 每箱 0.25 个十进位 */
+    var nb = Math.max(1, Math.ceil(Math.log10(smax) / W));
+    var counts = new Array(nb);
+    for (var b = 0; b < nb; b++) counts[b] = 0;
+    for (var v2 = 0; v2 < vals.length; v2++) {
+      var bi = Math.floor(Math.log10(vals[v2]) / W);
+      if (bi < 0) bi = 0; if (bi >= nb) bi = nb - 1;
+      counts[bi] += 1;
+    }
+    function binPoints(list) {
+      var nb2 = Math.max(1, Math.ceil(Math.log10(smax) / W));
+      var cs = new Array(nb2);
+      for (var b3 = 0; b3 < nb2; b3++) cs[b3] = 0;
+      for (var v3 = 0; v3 < list.length; v3++) {
+        var bi2 = Math.floor(Math.log10(list[v3]) / W);
+        if (bi2 < 0) bi2 = 0; if (bi2 >= nb2) bi2 = nb2 - 1;
+        cs[bi2] += 1;
+      }
+      var ps = [];
+      for (var b4 = 0; b4 < nb2; b4++) {
+        if (cs[b4] < minCount) continue;
+        var lo2 = Math.pow(10, b4 * W), hi2 = Math.pow(10, (b4 + 1) * W);
+        ps.push({ lx: Math.log10(Math.sqrt(lo2 * hi2)), ly: Math.log10(cs[b4] / (hi2 - lo2)), c: cs[b4] });
+      }
+      return ps;
+    }
+    function ls(points) {
+      if (points.length < 2) return null;
+      var sx = 0, sy = 0, sxx = 0, sxy = 0, m = points.length;
+      for (var p = 0; p < m; p++) {
+        sx += points[p].lx; sy += points[p].ly;
+        sxx += points[p].lx * points[p].lx; sxy += points[p].lx * points[p].ly;
+      }
+      var denom = m * sxx - sx * sx;
+      if (denom === 0) return null;
+      var slope = (m * sxy - sx * sy) / denom;
+      var icept = (sy - slope * sx) / m;
+      return { slope: slope, intercept: icept };
+    }
+    var pts = binPoints(vals);
+    var fit = ls(pts);
+    if (!fit) return { ok: false, reason: '有效箱不足', n: n };
+    /* 两半样本：把时序对半分，各拟一次 —— 带宽反映标定自身的散布 */
+    var halfA = [], halfB = [];
+    for (var h = 0; h < vals.length; h++) (h < vals.length / 2 ? halfA : halfB).push(vals[h]);
+    var fA = ls(binPoints(halfA)), fB = ls(binPoints(halfB));
+    var aA = fA ? -fA.slope : null, aB = fB ? -fB.slope : null;
+    var bandDelta = (aA !== null && aB !== null) ? Math.abs(aA - aB) / 2 + 0.02 : 0.08;
+    var decades = {};
+    for (var b2 = 0; b2 < nb; b2++) {
+      if (counts[b2] > 0) decades[Math.floor(b2 * W)] = true;
+    }
+    var decadeCount = 0;
+    for (var dk in decades) if (Object.prototype.hasOwnProperty.call(decades, dk)) decadeCount += 1;
+    return {
+      ok: true,
+      alpha: -fit.slope,
+      intercept: fit.intercept,
+      alphaHalfA: aA, alphaHalfB: aB,
+      bandDelta: bandDelta,
+      decades: decadeCount,
+      n: n, s0: s0, s0Share: s0 / (s0 + n),
+      smax: smax,
+      bins: pts.map(function (p) { return { lx: p.lx, ly: p.ly, c: p.c }; })
+    };
+  }
+
+  /* ------------------------------------------------------------ 验收容差登记表 */
+  /* 页面自检与 verify.js 同源取用，防止两处口径漂移（family 建制）。
+     这里只登记「验收口径」的容差，不含任何实验结论数字 ——
+     结论（α、指纹、账本）一律由 calibrate.js 现算并经 build 内联。 */
+  var VERIFY = {
+    alphaTol: 0.05,          /* 页面拟合 α 与标定带宽的最大距离 */
+    decadesMin: 3,           /* 分布直方图非空十进位数量级下限 */
+    touchNarrowMin: 44,      /* 窄屏（≤640px）触控目标最小边 */
+    touchWideMin: 24,        /* 桌面触控目标最小边 */
+    overflowTolNarrow: 1,    /* 窄屏横向溢出容差 px */
+    overflowTolWide: 2,      /* 桌面横向溢出容差 px */
+    minTextLen: 200          /* 可见文本下限（体检硬线同口径） */
+  };
+
+  /* ------------------------------------------------------------ 格式化闸 */
+  /* 所有 DOM 数值出口都从这里走：非有限值一律落破折号（坏值不进 DOM）。 */
+  function fmtInt(x) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return String(Math.round(x));
+  }
+  function fmtFixed(x, d) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return (+x).toFixed(d === undefined ? 2 : d);
+  }
+
+  return {
+    CANON: CANON,
+    fnv1a: fnv1a,
+    fnv1aBytes: fnv1aBytes,
+    hashSeed: hashSeed,
+    splitmix32: splitmix32,
+    deriveCell: deriveCell,
+    createWorld: createWorld,
+    runRelax: runRelax,
+    abelianPairCheck: abelianPairCheck,
+    fitPowerLaw: fitPowerLaw,
+    VERIFY: VERIFY,
+    fmtInt: fmtInt,
+    fmtFixed: fmtFixed
+  };
+});
+
+</script>
+<script>
+/* ============================================================================
+ * 最后一粒/ui.js —— 三态时间机器、晒图渲染、守恒账本、页面自检、探针
+ *
+ * 铁律（与 core.js 一致）：
+ *   ① 零随机数：落点一律来自 core 的位置索引派生或观众亲手点选（显式钉存）；
+ *   ② 任何非有限数都不进 DOM —— 数值出口一律过 core 的 fmtInt/fmtFixed；
+ *   ③ 断言与读数只依赖同步步进 + setTimeout；requestAnimationFrame 一次
+ *     都不用 —— 帧循环在无头环境不执行，而断言值不允许随之波动；
+ *   ④ 页面不携带任何结论数字 —— 全部出自 window.__DATA__（离线标定内联）。
+ * ==========================================================================*/
+(function () {
+  'use strict';
+  var C = window.LastGrainCore;
+  var D = window.__DATA__;   /* build.js 内联（shannon 同制：双尾下划线） */
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* 运行期错误登记（不吞错：返回 false 让默认报错照常发生） */
+  window.__err = [];
+  window.onerror = function (m, s, l) {
+    window.__err.push(String(m) + ' @' + l);
+    return false;
+  };
+
+  var CANON = C.CANON;
+  var VERIFY = C.VERIFY;
+  var L = CANON.L, N = L * L;
+
+  /* 调色板：从样式表取变量，取不到时用同一族兜底（表现层常量，非结论数字） */
+  var css = getComputedStyle(document.documentElement);
+  function cssVar(name, fallback) {
+    var v = css.getPropertyValue(name);
+    return (v && v.trim()) || fallback;
+  }
+  var PAL = {
+    bg3: cssVar('--bg3', '#072b44'),
+    pile: [
+      cssVar('--pile0', '#0b3d5c'),
+      cssVar('--pile1', '#1b5f8a'),
+      cssVar('--pile2', '#3f8fbf'),
+      cssVar('--pile3', '#a8d4ec')
+    ],
+    shade: 'rgba(4,16,28,',          /* 坡度明暗：越陡越暗 */
+    foot: cssVar('--mark2', '#e06a57'),   /* 足迹朱砂 */
+    mark: cssVar('--mark', '#c9463d'),
+    lineW: cssVar('--wline', '#e8f4fb'),
+    dim: cssVar('--dim', '#a3c3da'),
+    grid: 'rgba(151,193,222,0.18)'
+  };
+
+  var state = {
+    mode: 'now',            /* now | rewind | branch */
+    rate: 8,
+    pouring: false,
+    pourTimer: null,
+    holdTimer: null,
+    holdRepeat: null,
+    world: null,
+    branch: null,
+    branchK: -1,
+    branchTarget: -1,
+    branchAltCell: null,
+    branchAltered: false,
+    branchRestored: false,
+    pageFit: null,
+    reduced: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+    footAnim: null,
+    selfCheck: { pass: 0, fail: 0, lines: [] }
+  };
+
+  /* ------------------------------------------------------------ 小工具 */
+  function setText(id, s) { var el = $(id); if (el) el.textContent = s; }
+  function cellName(cell) {
+    if (!(cell >= 0 && cell < N)) return '—';
+    return '(' + (cell % L) + ',' + ((cell / L) | 0) + ')';
+  }
+  function snapToSnapshot(raw) {
+    var k = Math.round(raw / CANON.K) * CANON.K;
+    return Math.max(0, Math.min(world.count, k));
+  }
+  function recordedFrontier(w) { return w.firstK + w.events.length; }
+
+  var world = null;   /* 主线世界的速记引用（state.world 同体） */
+
+  /* ------------------------------------------------------------ 画布：沙堆 */
+  var pileCv = $('mainCanvas');
+  var branchCv = $('branchCanvas');
+  var histCv = $('histCanvas');
+  var pctx = pileCv.getContext('2d');
+  var bctx = null, hctx = null;
+
+  function drawPile(cv, ctx, w, marks) {
+    if (!ctx) return;
+    var size = cv.width;
+    var cell = size / L;
+    var hs = w.heights, fm = w.footMask;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = PAL.bg3;
+    ctx.fillRect(0, 0, size, size);
+    var x, y, i, h;
+    /* 高度四级色阶 */
+    for (y = 0; y < L; y++) {
+      for (x = 0; x < L; x++) {
+        i = y * L + x;
+        h = hs[i];
+        ctx.fillStyle = PAL.pile[h > 3 ? 3 : (h < 0 ? 0 : h)];
+        ctx.fillRect(x * cell, y * cell, cell + 0.5, cell + 0.5);
+      }
+    }
+    /* 坡度明暗：与四邻的高差越大越暗 */
+    for (y = 0; y < L; y++) {
+      for (x = 0; x < L; x++) {
+        i = y * L + x;
+        h = hs[i];
+        var d = 0;
+        d = Math.max(d, x > 0 ? Math.abs(h - hs[i - 1]) : h);
+        d = Math.max(d, x < L - 1 ? Math.abs(h - hs[i + 1]) : h);
+        d = Math.max(d, y > 0 ? Math.abs(h - hs[i - L]) : h);
+        d = Math.max(d, y < L - 1 ? Math.abs(h - hs[i + L]) : h);
+        if (d > 0) {
+          ctx.fillStyle = PAL.shade + Math.min(0.62, d * 0.13) + ')';
+          ctx.fillRect(x * cell, y * cell, cell + 0.5, cell + 0.5);
+        }
+      }
+    }
+    /* 雪崩足迹：朱砂描线（掩码边界） */
+    ctx.strokeStyle = PAL.foot;
+    ctx.lineWidth = Math.max(1.5, cell * 0.14);
+    ctx.beginPath();
+    var drew = false;
+    for (y = 0; y < L; y++) {
+      for (x = 0; x < L; x++) {
+        i = y * L + x;
+        if (!fm[i]) continue;
+        var px = x * cell, py = y * cell;
+        if (y === 0 || !fm[i - L]) { ctx.moveTo(px, py); ctx.lineTo(px + cell, py); drew = true; }
+        if (y === L - 1 || !fm[i + L]) { ctx.moveTo(px, py + cell); ctx.lineTo(px + cell, py + cell); drew = true; }
+        if (x === 0 || !fm[i - 1]) { ctx.moveTo(px, py); ctx.lineTo(px, py + cell); drew = true; }
+        if (x === L - 1 || !fm[i + 1]) { ctx.moveTo(px + cell, py); ctx.lineTo(px + cell, py + cell); drew = true; }
+      }
+    }
+    if (drew) ctx.stroke();
+    /* 标记圈（分叉的原落点/现落点） */
+    if (marks && marks.length) {
+      for (var m = 0; m < marks.length; m++) {
+        var mk = marks[m];
+        if (!(mk.cell >= 0 && mk.cell < N)) continue;
+        var mx = (mk.cell % L) * cell + cell / 2;
+        var my = ((mk.cell / L) | 0) * cell + cell / 2;
+        ctx.strokeStyle = mk.color;
+        ctx.lineWidth = Math.max(1.5, cell * 0.16);
+        ctx.beginPath();
+        ctx.arc(mx, my, cell * 0.62, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  /* 足迹余辉：表现层动画，只走 setTimeout；断言从不读它。
+     偏好减动效时退化为一次静帧重绘。 */
+  function footPulse() {
+    if (state.reduced || state.footAnim) { drawAll(); return; }
+    var steps = 6, s = 0;
+    function tick() {
+      drawAll();
+      s += 1;
+      if (s < steps) state.footAnim = setTimeout(tick, 90);
+      else state.footAnim = null;
+    }
+    tick();
+  }
+
+  function drawAll() {
+    var marks = [];
+    if (state.mode === 'branch' && state.branchK >= 0) {
+      var orig = world.deriveCell(state.branchK);
+      marks.push({ cell: orig, color: PAL.lineW });
+      if (state.branchAltered) {
+        var pin = state.branch ? state.branch.pinned[state.branchK] : undefined;
+        if (pin !== undefined) marks.push({ cell: pin, color: PAL.mark });
+      }
+    }
+    drawPile(pileCv, pctx, world, marks);
+    if (state.mode === 'branch' && state.branch) {
+      if (!bctx) bctx = branchCv.getContext('2d');
+      drawPile(branchCv, bctx, state.branch, marks);
+    }
+  }
+
+  /* ------------------------------------------------------------ 画布：分布图 */
+  function drawHist() {
+    if (!hctx) hctx = histCv.getContext('2d');
+    var ctx = hctx, W = histCv.width, H = histCv.height;
+    var padL = 46, padR = 16, padT = 18, padB = 34;
+    var iw = W - padL - padR, ih = H - padT - padB;
+    ctx.fillStyle = PAL.bg3;
+    ctx.fillRect(0, 0, W, H);
+    var XMAX = 4;   /* 十进位：s 从 1 到 10^4（覆盖标定实测 s_max） */
+    function xp(lx) { return padL + (lx / XMAX) * iw; }
+    var fit = state.pageFit;
+    var lyMin = 0, lyMax = 3.6;
+    var bins = fit ? fit.bins : [];
+    if (bins.length) {
+      lyMin = Math.floor(Math.min.apply(null, bins.map(function (b) { return b.ly; })) * 2) / 2 - 0.1;
+      lyMax = Math.ceil(Math.max.apply(null, bins.map(function (b) { return b.ly; })) * 2) / 2 + 0.1;
+      if (lyMax - lyMin < 1.5) lyMax = lyMin + 1.5;
+    }
+    function yp(ly) { return padT + (lyMax - ly) / (lyMax - lyMin) * ih; }
+    /* 网格与轴 */
+    ctx.strokeStyle = PAL.grid;
+    ctx.lineWidth = 1;
+    ctx.fillStyle = PAL.dim;
+    ctx.font = '10px ' + cssVar('--mono', 'monospace');
+    ctx.textAlign = 'center';
+    for (var d = 0; d <= XMAX; d++) {
+      var gx = xp(d);
+      ctx.beginPath(); ctx.moveTo(gx, padT); ctx.lineTo(gx, padT + ih); ctx.stroke();
+      ctx.fillText(d === 0 ? '1' : '1e' + d, gx, H - padB + 14);
+    }
+    for (var g = lyMin; g <= lyMax + 0.001; g += 0.5) {
+      var gy = yp(g);
+      ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(padL + iw, gy); ctx.stroke();
+    }
+    ctx.textAlign = 'left';
+    ctx.fillText('log 频数密度', 6, padT - 4);
+    ctx.textAlign = 'right';
+    ctx.fillText('雪崩规模 s（对数）', padL + iw, H - 6);
+    ctx.strokeStyle = PAL.dim;
+    ctx.beginPath(); ctx.moveTo(padL, padT + ih); ctx.lineTo(padL + iw, padT + ih); ctx.stroke();
+    /* 页面样本直方（白线阶梯） */
+    if (bins.length) {
+      ctx.strokeStyle = PAL.lineW;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      var first = true;
+      for (var b = 0; b < bins.length; b++) {
+        var bx = xp(bins[b].lx), by = yp(bins[b].ly);
+        if (first) { ctx.moveTo(bx, by); first = false; }
+        else ctx.lineTo(bx, by);
+      }
+      ctx.stroke();
+      ctx.fillStyle = PAL.lineW;
+      for (var b2 = 0; b2 < bins.length; b2++) {
+        ctx.fillRect(xp(bins[b2].lx) - 2, yp(bins[b2].ly) - 2, 4, 4);
+      }
+    }
+    /* 标定线：朱砂实线 = 标定斜率；虚线 = 带宽。锚在页面样本质心（无样本时锚在图心）。
+       绘制区先裁剪：直线延伸出绘图区会压到坐标标注上 */
+    var alpha = D.analysis.alpha, delta = D.analysis.bandDelta;
+    var cx = fit ? 0 : 2, cy = fit ? 0 : 1.6;
+    if (fit && bins.length) {
+      var sw = 0, swl = 0;
+      for (var b3 = 0; b3 < bins.length; b3++) { sw += bins[b3].c; swl += bins[b3].c * bins[b3].ly; }
+      cy = swl / sw;
+      var swx = 0;
+      for (var b4 = 0; b4 < bins.length; b4++) swx += bins[b4].c * bins[b4].lx;
+      cx = swx / sw;
+    }
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(padL, padT, iw, ih);
+    ctx.clip();
+    function calLine(slope, dash) {
+      ctx.strokeStyle = PAL.mark;
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash(dash ? [5, 4] : []);
+      ctx.beginPath();
+      ctx.moveTo(xp(0), yp(cy + slope * cx));
+      ctx.lineTo(xp(XMAX), yp(cy + slope * (cx - XMAX)));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    calLine(-alpha, false);
+    calLine(-(alpha - delta), true);
+    calLine(-(alpha + delta), true);
+    ctx.restore();
+    ctx.fillStyle = PAL.mark;
+    ctx.textAlign = 'right';
+    ctx.fillText('标定斜率 −' + C.fmtFixed(alpha, 3) + ' ± ' + C.fmtFixed(delta, 3),
+      padL + iw, padT + 12);
+    if (fit) {
+      ctx.fillStyle = PAL.lineW;
+      ctx.fillText('页面 −' + C.fmtFixed(fit.alpha, 3), padL + iw, padT + 26);
+    }
+  }
+
+  /* ------------------------------------------------------------ 读数刷新 */
+  function refreshReadouts() {
+    var w = world;
+    setText('ro-ordinal', C.fmtInt(w.count));
+    var la = w.lastAvalanche;
+    setText('ro-last', la && la.k >= 0
+      ? '第' + C.fmtInt(la.k) + '粒落格' + cellName(la.cell) + ' · 坍塌' + C.fmtInt(la.s) + '次 · 牵连' + C.fmtInt(la.a) + '格'
+      : '—');
+    setText('ro-fp', w.fingerprint());
+    /* 时间轴 */
+    var slider = $('timeSlider');
+    var max = Math.max(CANON.K, w.count);
+    slider.max = String(max);
+    slider.value = String(w.count);
+    slider.disabled = state.mode !== 'rewind';
+    $('timeTicks').style.setProperty('--tickw', (100 / (Math.floor(max / CANON.K) + 1)) + '%');
+    setText('timeOut', '第 ' + C.fmtInt(w.count) + ' 粒之前');
+    if (w.count === 0) setText('ro-time', '时间起点，尚无一粒。');
+    else {
+      var st = w.stateAt(w.count - 1);
+      setText('ro-time', '第' + C.fmtInt(st.k) + '粒 → 落格' + cellName(st.cell) +
+        ' · 雪崩' + C.fmtInt(st.s) + '次坍塌 · 牵连' + C.fmtInt(st.a) + '格');
+    }
+    /* 守恒账本 */
+    var cc = w.conservationCheck();
+    setText('consAdded', C.fmtInt(cc.added));
+    setText('consLost', C.fmtInt(cc.lost));
+    setText('consResident', C.fmtInt(cc.resident));
+    setText('pv-conservation', cc.identityOk && cc.drift === 0
+      ? '恒等式成立 · 漂移 0'
+      : '对账失败（见自检）');
+    setText('consVerdict', '沙量守恒：' + C.fmtInt(cc.resident) + '（存量）= ' +
+      C.fmtInt(cc.added) + '（新增）− ' + C.fmtInt(cc.lost) + '（边界流失）——topple 只搬运，不生不灭。');
+    /* 分布拟合：窗口 [transient, count) —— end 必须显式给到事件数，
+       缓冲区里 count 之外的残值不许混进样本 */
+    if (w.count >= CANON.transient + 1000) {
+      state.pageFit = C.fitPowerLaw(w.sArr, { skip: CANON.transient, end: w.count });
+    }
+    var fit = state.pageFit;
+    setText('ro-alphaCal', C.fmtFixed(D.analysis.alpha, 3) + ' ± ' + C.fmtFixed(D.analysis.bandDelta, 3));
+    $('restoreBtn').disabled = !(state.mode === 'branch' && state.branchAltered);
+    if (fit && fit.ok) {
+      setText('ro-alphaPage', C.fmtFixed(fit.alpha, 3));
+      setText('ro-alphaCal', C.fmtFixed(D.analysis.alpha, 3) + ' ± ' + C.fmtFixed(D.analysis.bandDelta, 3));
+      setText('ro-band', '[' + C.fmtFixed(D.analysis.alphaBand[0], 3) + ', ' + C.fmtFixed(D.analysis.alphaBand[1], 3) + ']');
+      setText('ro-decades', C.fmtInt(fit.decades) + ' 个十进位');
+      setText('ro-sample', C.fmtInt(fit.n) + ' 次（s=0 占 ' + C.fmtFixed(fit.s0Share * 100, 1) + '%）');
+      setText('pv-powerlaw', '已拟合 · 页面窗口 ' + C.fmtInt(w.count - CANON.transient) + ' 事件');
+    } else {
+      setText('ro-alphaPage', '样本未及');
+      setText('ro-sample', '—');
+      setText('pv-powerlaw', '等待事件流（第 ' + C.fmtInt(CANON.transient) + ' 粒起拟合）');
+    }
+    /* 分叉读数 */
+    if (state.mode === 'branch' && state.branch) {
+      var k = state.branchK;
+      var orig = world.deriveCell(k);
+      var pin = state.branch.pinned[k];
+      setText('ro-origCell', cellName(orig));
+      setText('ro-altCell', state.branchAltered && pin !== undefined ? cellName(pin) : '同原落点');
+      setText('ro-baseFp', world.fingerprint());
+      setText('ro-branchFp', state.branch.fingerprint());
+      if (state.branchAltered && world.count > k) {
+        setText('ro-grainFate', '第' + C.fmtInt(k) + '粒：原落点雪崩 ' + C.fmtInt(world.sArr[k]) +
+          ' 次 ↔ 改落后雪崩 ' + C.fmtInt(state.branch.sArr[k]) + ' 次');
+      } else {
+        setText('ro-grainFate', '第' + C.fmtInt(k) + '粒（两窗都停在它落下之前）');
+      }
+      var eq = world.fingerprint() === state.branch.fingerprint();
+      if (state.branchAltered && !eq) {
+        setText('branchStatus', '同一粒沙，两种命运：两窗指纹已经分开——这就是反事实。');
+      } else if (!state.branchAltered && state.branchRestored && eq) {
+        setText('branchStatus', '落点改回，指纹归零：两座堆再次逐位一致（对照归零）。');
+      } else if (eq) {
+        setText('branchStatus', '两座堆逐位一致，停在回卷点。');
+      } else {
+        setText('branchStatus', '两窗指纹不一致但未被标记为已改写——这是自检失败，不是叙事。');
+      }
+    }
+  }
+
+  function drawAndRefresh(pulse) {
+    drawAll();
+    drawHist();
+    refreshReadouts();
+    refreshSelfCheck();
+    if (pulse) footPulse(); else drawAll();
+  }
+
+  /* ------------------------------------------------------------ 页面自检 */
+  function refreshSelfCheck() {
+    var lines = [], fail = 0, pass = 0;
+    function check(name, ok, detail) {
+      if (ok) { pass += 1; lines.push('✓ ' + name); }
+      else { fail += 1; lines.push('✗ ' + name + (detail ? '：' + detail : '')); }
+    }
+    check('FNV 向量', C.fnv1a('') === '811C9DC5' && C.fnv1a('a') === 'E40C292C');
+    var cc = world.conservationCheck();
+    check('守恒恒等式（本会话）', cc.identityOk && cc.drift === 0,
+      '漂移 ' + cc.drift);
+    check('开机指纹与标定逐字一致', world.fingerprint() === D.results.pageScenario.fpBoot || world.count !== CANON.boot,
+      '见探针 semantic().fp');
+    var canonOk = ['L', 'seed', 'boot', 'pour', 'K', 'rewindK'].every(function (k2) {
+      return D.results.canon[k2] === CANON[k2];
+    });
+    check('CANON 与标定一致', canonOk);
+    if (state.mode === 'branch' && state.branch) {
+      var eq = world.fingerprint() === state.branch.fingerprint();
+      check('分叉语义（改开即异、改回即同）', state.branchAltered ? !eq : eq);
+    }
+    state.selfCheck = { pass: pass, fail: fail, lines: lines };
+    var el = $('selfCheckLine');
+    if (el) el.textContent = fail === 0
+      ? '自检：' + pass + ' 项断言全部通过（结构与语义同步在跑）'
+      : '自检失败 ' + fail + ' 项：' + lines.filter(function (l) { return l.charAt(0) === '✗'; }).join(' ／ ');
+  }
+
+  /* ------------------------------------------------------------ 撒沙 */
+  function afterGrains(pulse) {
+    drawAndRefresh(pulse);
+  }
+
+  function pourBatch(n) {
+    var target = world.count + Math.max(0, n | 0);
+    world.seek(target);
+    if (state.mode === 'branch' && state.branch) state.branch.seek(target);
+    afterGrains(true);
+  }
+
+  function stopPouring() {
+    state.pouring = false;
+    if (state.pourTimer) { clearTimeout(state.pourTimer); state.pourTimer = null; }
+    setText('pourBtn', state.mode === 'branch' ? '同撒两堆' : '开始撒沙');
+  }
+
+  function pourLoop() {
+    if (!state.pouring) return;
+    pourBatch(state.rate);
+    state.pourTimer = setTimeout(pourLoop, 120);
+  }
+
+  function togglePour() {
+    if (state.pouring) { stopPouring(); return; }
+    state.pouring = true;
+    setText('pourBtn', '暂停');
+    pourLoop();
+  }
+
+  /* 画布点选：把某一粒亲手落进指定格（显式事件，钉存不随裁剪丢失） */
+  function cellFromEvent(e, cv) {
+    var rect = cv.getBoundingClientRect();
+    var fx = (e.clientX - rect.left) / rect.width;
+    var fy = (e.clientY - rect.top) / rect.height;
+    var cx = Math.max(0, Math.min(L - 1, Math.floor(fx * L)));
+    var cy = Math.max(0, Math.min(L - 1, Math.floor(fy * L)));
+    return cy * L + cx;
+  }
+  function explicitDrop(cell) {
+    if (state.mode === 'rewind') return;
+    if (state.mode === 'branch') { branchAlterTo(cell); return; }
+    world.dropCell(cell, true);
+    afterGrains(true);
+  }
+  function holdStart(e, cv) {
+    if (state.mode === 'rewind') return;
+    if (e.pointerId !== undefined && cv.setPointerCapture) {
+      try { cv.setPointerCapture(e.pointerId); } catch (err) { /* 无头环境可忽略 */ }
+    }
+    explicitDrop(cellFromEvent(e, cv));
+    clearTimeout(state.holdTimer);
+    state.holdTimer = setTimeout(function () {
+      function repeat(pos) {
+        if (state.mode === 'rewind') return;
+        if (state.mode === 'branch') branchAlterTo(cellFromEvent(pos, branchCv));
+        else world.dropCell(cellFromEvent(pos, pileCv), true);
+        afterGrains(false);
+      }
+      state.holdRepeat = setInterval(function () { repeat(state.lastPointer); }, 90);
+    }, 350);
+    state.lastPointer = e;
+  }
+  function holdMove(e) { state.lastPointer = e; }
+  function holdEnd() {
+    clearTimeout(state.holdTimer);
+    clearInterval(state.holdRepeat);
+    state.holdTimer = null;
+    state.holdRepeat = null;
+  }
+
+  /* ------------------------------------------------------------ 三态切换 */
+  var MODE_LEDE = {
+    now: '直播：沙子正在落下。每一粒的落点由种子按序派生——你也可以亲手指定某一粒落进哪一格。',
+    rewind: '回卷：拖动时间轴，世界退回某一粒落下之前。每个刻度是一幅快照锚点，重放不超过 128 粒就能到位。',
+    branch: '分叉：从回卷点开第二座堆。点「改落别处」或在右侧画布上任点一格，把这一粒改写；两座堆并排跑同一段后续事件流。'
+  };
+  var MODE_STATE = { now: '直播', rewind: '回卷', branch: '分叉' };
+
+  function setMode(m) {
+    if (m === state.mode) return;
+    if (m === 'branch') {
+      stopPouring();
+      var k = snapToSnapshot(world.count);
+      state.branchK = k;
+      /* 反事实要跑完「整段后续事件流」：目标 = 记录前沿。
+         这样两窗指纹才能与离线标定（同在 frontier 对账）逐字相接。
+         但在直播前沿分叉时 k === frontier：core 的 seek 对 m===count
+         是 no-op，改写粒永远吃不到 —— 此时目标必须越过 k 至少一粒，
+         把改写的那粒真正落下去（评审实测：count=11000 时 rerun 四次
+         seek 全空转，branchAltered=true 而两窗指纹相等，页内自检翻红）。 */
+      state.branchTarget = Math.max(recordedFrontier(world), k + 1);
+      world.seek(k);
+      state.branch = C.createWorld({});
+      state.branch.seek(k);
+      state.branchAltered = false;
+      state.branchRestored = false;
+      $('branchPane').hidden = false;
+      $('pileGrid').classList.add('duo');
+      $('branchPanel').hidden = false;
+      if (!bctx) bctx = branchCv.getContext('2d');
+    } else if (state.mode === 'branch') {
+      state.branch = null;
+      $('branchPane').hidden = true;
+      $('pileGrid').classList.remove('duo');
+      $('branchPanel').hidden = true;
+    }
+    state.mode = m;
+    ['Now', 'Rewind', 'Branch'].forEach(function (suf) {
+      $('mode' + suf).setAttribute('aria-pressed', m === suf.toLowerCase() ? 'true' : 'false');
+    });
+    setText('modeLede', MODE_LEDE[m]);
+    setText('pv-machine', MODE_STATE[m]);
+    $('nowControls').hidden = (m === 'rewind');
+    if (m === 'now') setText('pourBtn', '开始撒沙');
+    if (m === 'branch') setText('pourBtn', '同撒两堆');
+    setText('pileHint', m === 'now'
+      ? '点击画布：把某一粒亲手落进指定格。按住画布：连撒。'
+      : (m === 'rewind' ? '回卷期间画布只读：拖时间轴扫描历史，每一粒的账都翻给你看。'
+        : '在右侧分叉画布上任意点一格：那一粒就改落那里。'));
+    drawAndRefresh(false);
+  }
+
+  /* 改写生效路径：主线先回卷到该粒之前、再前放到对照终点（seek 在原地
+     不动时是 no-op，不回卷就吃不到改写）；分叉世界则**从零重建**——
+     改写粒一旦被记入事件数组，删 pin 后 cellOf 仍会优先读到残留记录，
+     k 落在留存窗内时还原会静默失效（评审抓到的 no-op 变体），
+     重建是唯一不留歧义的还原方式。 */
+  function resetBranchWorld() {
+    state.branch = C.createWorld({});
+    if (state.branchAltered && state.branchAltCell !== null && state.branchAltCell !== undefined) {
+      state.branch.pinned[state.branchK] = state.branchAltCell;
+    }
+    state.branch.seek(state.branchTarget);
+  }
+  function branchAlterTo(cell) {
+    if (!state.branch) return;
+    var k = state.branchK;
+    var orig = world.deriveCell(k);
+    if (cell === orig) { branchRestore(); return; }   /* 点回原格 = 撤销改写 */
+    state.branchAltCell = cell;
+    state.branchAltered = true;
+    state.branchRestored = false;
+    world.seek(k);
+    world.seek(state.branchTarget);
+    resetBranchWorld();
+    afterGrains(true);
+  }
+
+  /* 「改落别处」的确定性出口：位移 branchDelta 的那一格（与标定同式） */
+  function branchAlterDefault() {
+    var orig = world.deriveCell(state.branchK);
+    branchAlterTo((orig + CANON.branchDelta) % N);
+  }
+
+  function branchRestore() {
+    if (!state.branch) return;
+    state.branchAltered = false;
+    state.branchRestored = true;
+    state.branchAltCell = null;
+    world.seek(state.branchK);
+    world.seek(state.branchTarget);
+    resetBranchWorld();     /* 从零重建：改写粒的残留记录一并消失 */
+    afterGrains(true);
+  }
+
+  /* ------------------------------------------------------------ 重置 */
+  function resetWorld() {
+    stopPouring();
+    holdEnd();
+    world = C.createWorld({});
+    state.world = world;
+    for (var g = 0; g < CANON.boot; g++) world.dropCell(world.deriveCell(g), false);
+    state.pageFit = null;
+    if (state.mode === 'branch') {
+      state.branch = null;
+      $('branchPane').hidden = true;
+      $('pileGrid').classList.remove('duo');
+      $('branchPanel').hidden = true;
+      state.mode = 'now';
+      $('modeNow').setAttribute('aria-pressed', 'true');
+      $('modeRewind').setAttribute('aria-pressed', 'false');
+      $('modeBranch').setAttribute('aria-pressed', 'false');
+      setText('modeLede', MODE_LEDE.now);
+      setText('pv-machine', MODE_STATE.now);
+      $('nowControls').hidden = false;
+    }
+    drawAndRefresh(false);
+  }
+
+  /* ------------------------------------------------------------ 三定理行 */
+  /* 只走 D.results. / D.analysis. 的直接路径 —— build.js 的契约检查
+     按这个前缀逐条对账（interf 的教训：别名会让引用检查漏接） */
+  function fillLaws() {
+    var rows = [
+      ['幂律指数 α', C.fmtFixed(D.analysis.alpha, 3) + ' ± ' + C.fmtFixed(D.analysis.bandDelta, 3) +
+        '（标定 ' + C.fmtInt(D.analysis.grainsCalibrated) + ' 粒 · s≥1 样本 ' + C.fmtInt(D.analysis.avalancheSample) + '）'],
+      ['无标度区间', C.fmtInt(D.analysis.decades) + ' 个非空十进位（页面样本 ' + C.fmtInt(D.analysis.page.decadesPage) + ' 个）'],
+      ['守恒总账', C.fmtInt(D.analysis.conservation.resident) + '（存量）= ' + C.fmtInt(D.analysis.conservation.added) +
+        '（新增）− ' + C.fmtInt(D.analysis.conservation.lost) + '（流失）· 逐事件核验零漂移'],
+      ['Abelian 抽查', C.fmtInt(D.analysis.abelian.grains) + ' 粒两种顺序 · 总坍塌 ' + C.fmtInt(D.analysis.abelian.totalToppleA) +
+        ' 次 == ' + C.fmtInt(D.analysis.abelian.totalToppleB) + ' 次 · 逐格相等'],
+      ['同一粒沙', C.fmtInt(D.analysis.scan.cells) + ' 个可能落点 · ' + C.fmtInt(D.analysis.scan.sZeroCells) +
+        ' 格无声落定 · 最大雪崩 ' + C.fmtInt(D.analysis.scan.sMax) + ' 次（格 ' + C.fmtInt(D.analysis.scan.sMaxX) + ',' +
+        C.fmtInt(D.analysis.scan.sMaxY) + '）· 跨 ' + C.fmtFixed(D.analysis.scan.spreadDecades, 2) + ' 个十进位'],
+      ['复现', '双跑指纹 ' + D.analysis.reproduction.fp + ' 逐字节一致']
+    ];
+    var el = $('lawNumbers');
+    el.textContent = '';
+    rows.forEach(function (r) {
+      var dt = document.createElement('dt');
+      var dd = document.createElement('dd');
+      dt.textContent = r[0];
+      dd.textContent = r[1];
+      el.appendChild(dt);
+      el.appendChild(dd);
+    });
+    setText('calStamp', '（' + String(D.results.meta.generatedAt).slice(0, 10) + ' · Node ' + D.results.meta.node + '）');
+  }
+
+  /* ------------------------------------------------------------ 探针 */
+  function visibleCanvases() {
+    var out = [];
+    [pileCv, branchCv, histCv].forEach(function (cv) {
+      var cs = window.getComputedStyle(cv);
+      if (cs.display === 'none' || cv.getClientRects().length === 0) return;
+      out.push(cv);
+    });
+    return out;
+  }
+
+  function canvasSample(cv) {
+    var w = cv.width, h = cv.height;
+    try {
+      var ctx = cv.getContext('2d');
+      /* 一次取全帧，内存里抽样 —— 逐点 getImageData 会慢两个数量级 */
+      var img = ctx.getImageData(0, 0, w, h).data;
+      var colors = {}, n = 0;
+      var sx = Math.max(1, Math.floor(w / 48)), sy = Math.max(1, Math.floor(h / 48));
+      for (var y = 0; y < h; y += sy) {
+        for (var x = 0; x < w; x += sx) {
+          var o = (y * w + x) * 4;
+          var key = img[o] + ',' + img[o + 1] + ',' + img[o + 2] + ',' + img[o + 3];
+          if (!colors[key]) { colors[key] = 1; n += 1; }
+        }
+      }
+      return { id: cv.id || '(no-id)', w: w, h: h, colors: n };
+    } catch (e) {
+      return { id: cv.id || '(no-id)', w: w, h: h, colors: -1, note: String(e && e.message) };
+    }
+  }
+
+  function measureTouch() {
+    var smallCtrl = [], ctrl44 = [], smallSlider = [], count = 0;
+    var sel = 'button, input[type=checkbox], input[type=radio], select, [role=button], summary';
+    var els = document.querySelectorAll(sel);
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.closest && el.closest('[aria-hidden="true"]')) continue;
+      var r = el.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) continue;
+      count += 1;
+      var minSide = Math.min(r.width, r.height);
+      if (minSide < VERIFY.touchWideMin) {
+        smallCtrl.push({ tag: el.tagName.toLowerCase(), id: el.id || '', w: Math.round(r.width), h: Math.round(r.height) });
+      }
+      if (minSide < VERIFY.touchNarrowMin) {
+        ctrl44.push({ tag: el.tagName.toLowerCase(), id: el.id || '', w: Math.round(r.width), h: Math.round(r.height) });
+      }
+    }
+    var sls = document.querySelectorAll('input[type=range]');
+    for (var j = 0; j < sls.length; j++) {
+      var r2 = sls[j].getBoundingClientRect();
+      if (r2.width <= 0 || r2.height <= 0) continue;
+      count += 1;
+      var longSide = Math.max(r2.width, r2.height);
+      if (longSide < VERIFY.touchNarrowMin) {
+        smallSlider.push({ id: sls[j].id || '', w: Math.round(r2.width), h: Math.round(r2.height) });
+      }
+    }
+    return { count: count, smallCtrl: smallCtrl, ctrl44: ctrl44, smallSlider: smallSlider };
+  }
+
+  function measureOverflow() {
+    var de = document.documentElement;
+    var clientW = de.clientWidth, innerW = window.innerWidth;
+    var scrollW = Math.max(de.scrollWidth, document.body.scrollWidth);
+    return { scrollW: scrollW, clientW: clientW, innerW: innerW, over: scrollW - Math.max(clientW, innerW) };
+  }
+
+  function badTextScan() {
+    var bad = [];
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+    var re = /(^|[^A-Za-z0-9_$])(NaN|Infinity|undefined)([^A-Za-z0-9_$]|$)/;
+    while (walker.nextNode()) {
+      var node = walker.currentNode;
+      var t = node.textContent || '';
+      if (re.test(t)) {
+        var el = node.parentElement;
+        var vis = true;
+        while (el) {
+          var cs = window.getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden') { vis = false; break; }
+          el = el.parentElement;
+        }
+        if (vis) bad.push(t.trim().slice(0, 40));
+      }
+    }
+    return bad;
+  }
+
+  function semantic() {
+    var w = world;
+    var cc = w.conservationCheck();
+    var fit = state.pageFit;
+    var band = D.analysis.alphaBand;
+    var dist = (fit && fit.ok) ? Math.max(0, band[0] - fit.alpha, fit.alpha - band[1]) : null;
+    var out = {
+      drivenBy: 'sync+setTimeout',
+      mode: state.mode,
+      count: w.count,
+      added: cc.added, lost: cc.lost, resident: cc.resident,
+      consIdentity: cc.identityOk && cc.drift === 0,
+      drift: cc.drift,
+      fp: w.fingerprint(),
+      fpBootOk: D.results.pageScenario.fpBoot === w.fingerprint() || w.count !== CANON.boot,
+      alphaPage: (fit && fit.ok) ? fit.alpha : null,
+      alphaCal: D.analysis.alpha,
+      band: band,
+      distToBand: dist,
+      alphaTol: VERIFY.alphaTol,
+      decades: (fit && fit.ok) ? fit.decades : 0,
+      sampleN: (fit && fit.ok) ? fit.n : 0,
+      badText: badTextScan(),
+      timeline: (function () {
+        var sl = $('timeSlider');
+        return { min: +sl.min, max: +sl.max, value: +sl.value, disabled: sl.disabled };
+      })(),
+      branch: {
+        active: state.mode === 'branch' && !!state.branch,
+        k: state.branchK,
+        target: state.branchTarget,
+        altered: state.branchAltered,
+        fpMain: state.branch ? w.fingerprint() : null,
+        fpBranch: state.branch ? state.branch.fingerprint() : null,
+        equal: state.branch ? w.fingerprint() === state.branch.fingerprint() : null,
+        sMain: (state.branch && w.count > state.branchK) ? w.sArr[state.branchK] : null,
+        sBranch: (state.branch && state.branch.count > state.branchK) ? state.branch.sArr[state.branchK] : null
+      },
+      /* 末次雪崩账与足迹规模：verify 用它们断言「回卷导航后掩码纪律与直播一致」
+         （replay 掩码漂移曾只骗过 sArr/指纹类断言，这里把 a 和足迹也纳入对账） */
+      lastA: { s: w.lastAvalanche.s, a: w.lastAvalanche.a, cell: w.lastAvalanche.cell, k: w.lastAvalanche.k },
+      footCells: (function () {
+        var n = 0, fm = w.footMask;
+        for (var i = 0; i < w.N; i++) if (fm[i]) n += 1;
+        return n;
+      })(),
+      selfCheck: state.selfCheck
+    };
+    return out;
+  }
+
+  window.__probe = {
+    counts: function () {
+      var pressed = [];
+      ['modeNow', 'modeRewind', 'modeBranch'].forEach(function (id) {
+        pressed.push($(id).getAttribute('aria-pressed'));
+      });
+      var bar = document.querySelector('.modebar');
+      return {
+        title: document.title,
+        canvases: visibleCanvases().length,
+        buttons: document.querySelectorAll('button').length,
+        sliders: document.querySelectorAll('input[type=range]').length,
+        outputs: document.querySelectorAll('output').length,
+        pressed: pressed,
+        pressedTrue: pressed.filter(function (p) { return p === 'true'; }).length,
+        groupAria: bar ? bar.getAttribute('aria-label') : null,
+        panels: document.querySelectorAll('section.panel').length,
+        textLen: (document.body.innerText || '').replace(/\s+/g, '').length
+      };
+    },
+    semantic: semantic,
+    bounds: function () { return VERIFY; },
+    touch: measureTouch,
+    overflow: measureOverflow,
+    canvases: function () {
+      return visibleCanvases().map(canvasSample);
+    },
+    setMode: function (m) { setMode(String(m)); return state.mode; },
+    pour: function (n) { pourBatch(+n || 0); return world.count; },
+    seekTo: function (k) {
+      var m = Math.max(0, Math.floor(+k || 0));
+      world.seek(m);
+      if (state.mode === 'branch' && state.branch) state.branch.seek(m);
+      drawAndRefresh(false);
+      return world.count;
+    },
+    branchAlter: function () { branchAlterDefault(); return semantic().branch; },
+    branchRestore: function () { branchRestore(); return semantic().branch; },
+    setDrawer: function (open) {
+      var body = $('drawerBody'), btn = $('drawerBtn');
+      body.classList.toggle('open', !!open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      setText('drawerBtn', open ? '收起分布与账本' : '展开分布与账本');
+      if (open) drawHist();
+      return open;
+    },
+    selfcheck: function () { return state.selfCheck; }
+  };
+
+  /* ------------------------------------------------------------ 事件绑定 */
+  $('modeNow').addEventListener('click', function () { stopPouring(); setMode('now'); });
+  $('modeRewind').addEventListener('click', function () { stopPouring(); setMode('rewind'); });
+  $('modeBranch').addEventListener('click', function () { stopPouring(); setMode('branch'); });
+  $('pourBtn').addEventListener('click', togglePour);
+  $('resetBtn').addEventListener('click', resetWorld);
+  $('liveBtn').addEventListener('click', function () {
+    stopPouring();
+    world.seek(recordedFrontier(world));
+    setMode('now');
+    drawAndRefresh(false);
+  });
+  $('branchBtn').addEventListener('click', branchAlterDefault);
+  $('restoreBtn').addEventListener('click', branchRestore);
+  $('rateSlider').addEventListener('input', function () {
+    state.rate = +this.value || 1;
+    setText('rateOut', C.fmtInt(state.rate) + ' 粒/拍');
+  });
+  $('timeSlider').addEventListener('input', function () {
+    if (state.mode !== 'rewind') return;
+    stopPouring();
+    world.seek(snapToSnapshot(+this.value));
+    drawAndRefresh(false);
+  });
+  $('drawerBtn').addEventListener('click', function () {
+    var open = !$('drawerBody').classList.contains('open');
+    window.__probe.setDrawer(open);
+  });
+  pileCv.addEventListener('pointerdown', function (e) { holdStart(e, pileCv); });
+  pileCv.addEventListener('pointermove', holdMove);
+  branchCv.addEventListener('pointerdown', function (e) { holdStart(e, branchCv); });
+  branchCv.addEventListener('pointermove', holdMove);
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+    pileCv.addEventListener(ev, holdEnd);
+    branchCv.addEventListener(ev, holdEnd);
+  });
+
+  /* ------------------------------------------------------------ 启动 */
+  function boot() {
+    world = C.createWorld({});
+    state.world = world;
+    for (var g = 0; g < CANON.boot; g++) world.dropCell(world.deriveCell(g), false);
+    var fp = world.fingerprint();
+    var bootOk = fp === D.results.pageScenario.fpBoot;
+    setText('mastState', bootOk
+      ? '已蓄势 ' + C.fmtInt(CANON.boot) + ' 粒 · 开机指纹 ' + fp + ' 与标定逐字一致 ✓ · 时间机器就位'
+      : '自检失败：开机指纹 ' + fp + ' ≠ 标定 ' + D.results.pageScenario.fpBoot);
+    setText('rateOut', C.fmtInt(state.rate) + ' 粒/拍');
+    fillLaws();
+    /* 窄屏默认收起抽屉，宽屏默认展开 */
+    var narrow = (window.innerWidth || 1024) <= 640;
+    window.__probe.setDrawer(!narrow);
+    drawAndRefresh(false);
+    window.__ready = true;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+
+</script>
+</body>
+</html>

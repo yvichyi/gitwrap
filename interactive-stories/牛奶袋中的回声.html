@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>牛奶袋中的回声 · Echoes Inside A Bag Of Milk</title>
+  <style>
+    /* ==========================================================================
+       1. 配色系统与基础视效 (严格复刻 Nikita Kryukov《Milk 1》血红/深桃红/黑美学)
+       ========================================================================== */
+    :root {
+      --void-black: #000000;
+      --deep-wine: #28010a;
+      --shadow-crimson: #520619;
+      --blood-red: #7c0a27;
+      --milk-magenta: #be1245;
+      --hot-pink: #ff1e60;
+      --soft-pink: #ff6e96;
+      --pale-cream: #ffe6ec;
+      --pure-white: #ffffff;
+      
+      --ui-bg: rgba(6, 0, 2, 0.96);
+      --ui-border: #ff1e60;
+      --font-pixel: "Consolas", "Courier New", "SimSun", "Noto Sans Mono CJK SC", monospace;
+      
+      --dialogue-font-size: 21px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--void-black);
+      color: var(--pale-cream);
+      font-family: var(--font-pixel);
+      image-rendering: pixelated;
+    }
+
+    /* ==========================================================================
+       2. 屏幕整体视口与沉浸式 CRT 滤镜层
+       ========================================================================== */
+    #viewport {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 50%, #1e020a 0%, #000000 95%);
+      overflow: hidden;
+    }
+
+    /* CRT 扫描线与暗角 */
+    .crt-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 60;
+      background: 
+        linear-gradient(rgba(18, 0, 6, 0) 50%, rgba(0, 0, 0, 0.45) 50%),
+        linear-gradient(90deg, rgba(255, 0, 60, 0.04), rgba(0, 255, 120, 0.02), rgba(0, 100, 255, 0.04));
+      background-size: 100% 3px, 4px 100%;
+      box-shadow: inset 0 0 150px rgba(0, 0, 0, 0.95);
+    }
+
+    /* 荧光屏扫光 */
+    .crt-scanline {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 61;
+      height: 25%;
+      background: linear-gradient(to bottom, transparent, rgba(255, 30, 96, 0.08), transparent);
+      animation: scanbeam 6.5s linear infinite;
+    }
+    @keyframes scanbeam {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(600%); }
+    }
+
+    /* 创伤闪烁与高压抖动 */
+    .screen-trauma-flash {
+      animation: traumaFlash 0.38s ease-out;
+    }
+    @keyframes traumaFlash {
+      0% { filter: invert(1) hue-rotate(180deg) brightness(2.2); }
+      30% { filter: invert(0.8) hue-rotate(90deg) contrast(2); }
+      100% { filter: none; }
+    }
+
+    .anxiety-glitch-shake {
+      animation: severeGlitch 0.09s infinite;
+    }
+    @keyframes severeGlitch {
+      0% { transform: translate(0, 0) skew(0deg); }
+      20% { transform: translate(-3px, 2px) skew(-1deg); }
+      40% { transform: translate(3px, -2px) skew(1deg); }
+      60% { transform: translate(-2px, -3px) skew(0.5deg); }
+      80% { transform: translate(2px, 3px) skew(-0.5deg); }
+      100% { transform: translate(0, 0) skew(0deg); }
+    }
+
+    /* ==========================================================================
+       3. 游戏主舞台布局 (自适应大屏与全屏沉浸)
+       ========================================================================== */
+    #stage {
+      position: relative;
+      width: min(100vw, 1380px);
+      height: min(100vh, 920px);
+      display: flex;
+      flex-direction: column;
+      border: 3px solid var(--ui-border);
+      box-shadow: 0 0 45px rgba(255, 30, 96, 0.55), inset 0 0 25px rgba(0, 0, 0, 0.85);
+      background: #000;
+      overflow: hidden;
+      transition: width 0.3s, height 0.3s;
+    }
+
+    /* 全屏状态下的舞台全铺满 */
+    body.is-fullscreen #stage {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      border: none;
+      box-shadow: none;
+    }
+
+    /* 顶部 HUD 栏 */
+    #top-bar {
+      height: 44px;
+      background: var(--ui-bg);
+      border-bottom: 2px solid var(--ui-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 13px;
+      z-index: 20;
+    }
+
+    .brand-title {
+      font-weight: bold;
+      color: var(--hot-pink);
+      letter-spacing: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .brand-title::before {
+      content: "▲";
+      font-size: 11px;
+      animation: blink 1s infinite;
+    }
+
+    /* 音乐控制与波形指示器 */
+    .bgm-hud {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      background: rgba(120, 13, 38, 0.5);
+      border: 1px solid var(--hot-pink);
+      padding: 4px 10px;
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    .bgm-hud:hover {
+      background: var(--hot-pink);
+      color: #000;
+    }
+    .bgm-hud:hover .bgm-title,
+    .bgm-hud:hover .bgm-eq {
+      color: #000 !important;
+    }
+    .bgm-eq {
+      color: var(--hot-pink);
+      font-family: monospace;
+      font-size: 14px;
+      letter-spacing: -1px;
+    }
+    .bgm-title {
+      font-size: 12px;
+      color: var(--pale-cream);
+      font-weight: bold;
+    }
+
+    .anxiety-monitor {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .ecg-text {
+      color: var(--hot-pink);
+      font-weight: bold;
+    }
+    .anxiety-outer {
+      width: 110px;
+      height: 12px;
+      border: 1px solid var(--ui-border);
+      background: #000;
+      overflow: hidden;
+    }
+    .anxiety-inner {
+      height: 100%;
+      width: 20%;
+      background: repeating-linear-gradient(90deg, var(--blood-red), var(--blood-red) 3px, var(--hot-pink) 3px, var(--hot-pink) 6px);
+      transition: width 0.3s;
+    }
+
+    .hud-tools {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hud-btn {
+      background: transparent;
+      border: 1px solid var(--milk-magenta);
+      color: var(--pale-cream);
+      padding: 4px 9px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .hud-btn:hover {
+      background: var(--hot-pink);
+      color: #000;
+      border-color: var(--hot-pink);
+      box-shadow: 0 0 10px var(--hot-pink);
+    }
+
+    /* 视觉视口 (Canvas Viewport) */
+    #visual-area {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #game-canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    /* 悬浮侵入性低语 (Whispers) */
+    #whisper-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 15;
+    }
+    .whisper-node {
+      position: absolute;
+      color: var(--hot-pink);
+      font-size: clamp(16px, 2.2vw, 24px);
+      font-weight: bold;
+      text-shadow: 0 0 10px var(--blood-red), 2px 2px #000;
+      letter-spacing: 2px;
+      animation: whisperAnim 4s forwards ease-out;
+      white-space: nowrap;
+    }
+    @keyframes whisperAnim {
+      0% { opacity: 0; transform: scale(0.7) translateY(15px); }
+      15% { opacity: 0.95; }
+      75% { opacity: 0.85; }
+      100% { opacity: 0; transform: scale(1.15) translateY(-30px); }
+    }
+
+    /* 底部高对比度文本对话框 (Text Console) */
+    #textbox-area {
+      min-height: 250px;
+      height: 38%;
+      max-height: 360px;
+      background: var(--ui-bg);
+      border-top: 3px solid var(--ui-border);
+      display: flex;
+      flex-direction: column;
+      padding: 16px 24px;
+      position: relative;
+      z-index: 25;
+      cursor: pointer;
+      box-shadow: inset 0 4px 20px rgba(0, 0, 0, 0.9);
+    }
+
+    .speaker-label {
+      color: var(--hot-pink);
+      font-weight: bold;
+      font-size: clamp(16px, 1.8vw, 22px);
+      margin-bottom: 8px;
+      display: inline-block;
+      letter-spacing: 2.5px;
+      text-shadow: 0 0 8px var(--blood-red);
+    }
+    .speaker-label::after {
+      content: " :";
+    }
+
+    #dialogue-text {
+      font-size: var(--dialogue-font-size);
+      line-height: 1.85;
+      color: var(--pale-cream);
+      flex: 1;
+      overflow-y: auto;
+      text-shadow: 0 0 4px rgba(255, 30, 96, 0.45);
+      letter-spacing: 1.2px;
+      word-break: break-all;
+    }
+    #dialogue-text::-webkit-scrollbar {
+      width: 6px;
+    }
+    #dialogue-text::-webkit-scrollbar-thumb {
+      background: var(--blood-red);
+    }
+
+    .cursor-caret {
+      display: inline-block;
+      width: 10px;
+      height: 20px;
+      background: var(--hot-pink);
+      margin-left: 4px;
+      vertical-align: middle;
+      animation: blink 0.8s infinite;
+    }
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    /* 分支选项列表 */
+    #options-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+      min-height: 65px;
+      cursor: default;
+    }
+    .opt-btn {
+      background: rgba(56, 2, 14, 0.85);
+      border: 1px solid var(--blood-red);
+      color: var(--pale-cream);
+      padding: 10px 18px;
+      font-size: clamp(15px, 1.6vw, 19px);
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.12s;
+      letter-spacing: 1px;
+    }
+    .opt-btn::before {
+      content: "►";
+      font-size: 12px;
+      opacity: 0;
+      color: var(--hot-pink);
+      transition: opacity 0.1s;
+    }
+    .opt-btn:hover {
+      background: var(--blood-red);
+      border-color: var(--hot-pink);
+      color: var(--pure-white);
+      transform: translateX(8px);
+      box-shadow: 0 0 16px rgba(255, 30, 96, 0.6);
+    }
+    .opt-btn:hover::before {
+      opacity: 1;
+    }
+
+    /* ==========================================================================
+       4. 沉浸式开场封面与音乐激活遮罩 (Start Screen)
+       ========================================================================== */
+    #start-screen {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, #20020a 0%, #000000 90%);
+      z-index: 70;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .title-ascii-art {
+      font-size: clamp(8px, 1.1vw, 12px);
+      color: var(--blood-red);
+      line-height: 1.15;
+      margin-bottom: 16px;
+      letter-spacing: 2px;
+    }
+
+    .title-h1 {
+      font-size: clamp(26px, 4vw, 42px);
+      font-weight: 900;
+      color: var(--pale-cream);
+      text-shadow: 0 0 25px var(--hot-pink), 3px 3px 0 var(--blood-red);
+      letter-spacing: 5px;
+      margin-bottom: 6px;
+    }
+    .title-sub {
+      font-size: clamp(13px, 1.8vw, 18px);
+      color: var(--hot-pink);
+      letter-spacing: 3px;
+      margin-bottom: 24px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .enter-btn {
+      background: transparent;
+      border: 2px solid var(--hot-pink);
+      color: var(--pale-cream);
+      padding: 14px 34px;
+      font-size: clamp(15px, 1.8vw, 19px);
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: bold;
+      letter-spacing: 3px;
+      animation: pulseBtn 1.8s infinite;
+      transition: all 0.2s;
+    }
+    .enter-btn:hover {
+      background: var(--hot-pink);
+      color: #000;
+      box-shadow: 0 0 30px var(--hot-pink);
+      transform: scale(1.05);
+    }
+    @keyframes pulseBtn {
+      0%, 100% { box-shadow: 0 0 10px var(--blood-red); }
+      50% { box-shadow: 0 0 26px var(--hot-pink); }
+    }
+
+    .enter-note {
+      margin-top: 20px;
+      font-size: 13px;
+      color: var(--milk-magenta);
+      letter-spacing: 1px;
+      line-height: 1.6;
+    }
+
+    /* 模态弹窗 (Log / Endings) */
+    .modal-wrap {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 65;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-box {
+      width: 90%;
+      max-width: 620px;
+      max-height: 80%;
+      background: var(--ui-bg);
+      border: 2px solid var(--ui-border);
+      box-shadow: 0 0 30px var(--blood-red);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--blood-red);
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      color: var(--hot-pink);
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .modal-close-btn {
+      background: none;
+      border: none;
+      color: var(--pale-cream);
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .modal-content {
+      flex: 1;
+      overflow-y: auto;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+
+<div id="viewport">
+  <div class="crt-overlay"></div>
+  <div class="crt-scanline"></div>
+
+  <!-- 游戏主舞台 -->
+  <div id="stage">
+    
+    <!-- 顶部状态栏 -->
+    <header id="top-bar">
+      <div class="brand-title">
+        <span>MILK INSIDE A BAG OF MILK</span>
+      </div>
+
+      <!-- 动态原声音轨监控与一键静音/播放 -->
+      <div class="bgm-hud" id="btn-toggle-bgm" title="点击开关原声音轨">
+        <span class="bgm-eq" id="bgm-eq-anim"> ▂▃▅▆▇</span>
+        <span class="bgm-title" id="bgm-name">BGM: 播放中 (ON)</span>
+      </div>
+
+      <!-- 心率 / 心理负荷 -->
+      <div class="anxiety-monitor">
+        <span style="color:var(--milk-magenta)">心跳:</span>
+        <span class="ecg-text" id="bpm-val">76 BPM</span>
+        <div class="anxiety-outer">
+          <div class="anxiety-inner" id="anxiety-gauge"></div>
+        </div>
+      </div>
+
+      <div class="hud-tools">
+        <button class="hud-btn" id="btn-font-toggle" title="切换超大字号">字号 [A+]</button>
+        <button class="hud-btn" id="btn-fullscreen" title="全屏显示切换 (F)">⛶ 全屏 [F]</button>
+        <button class="hud-btn" id="btn-skip" title="空格跳过打字">跳过 [SPACE]</button>
+        <button class="hud-btn" id="btn-log" title="查阅历史记录">记录 [L]</button>
+        <button class="hud-btn" id="btn-endings" title="查看结局图鉴">结局 [E]</button>
+      </div>
+    </header>
+
+    <!-- 视觉视口 (Canvas) -->
+    <main id="visual-area">
+      <canvas id="game-canvas" width="320" height="200"></canvas>
+      <div id="whisper-layer"></div>
+    </main>
+
+    <!-- 底部高对比度文本对话框 -->
+    <footer id="textbox-area" title="点击可瞬间输出当前文字">
+      <div class="speaker-label" id="speaker-title">少女</div>
+      <div id="dialogue-text">
+        <span id="text-chars"></span><span class="cursor-caret"></span>
+      </div>
+      <div id="options-container"></div>
+    </footer>
+
+    <!-- 启动封面与 Web Audio / 媒体激活遮罩 -->
+    <div id="start-screen">
+      <div class="title-ascii-art">
+        ░█▀▄▀█ ░█ ░█░░ ░█░█ ░░ ▀█▀ ░█▄─░█ ░█▀▀▀█ ▀█▀ ░█▀▀▄ ░█▀▀▀<br>
+        ░█░█░█ ░█ ░█░░ ░█▀▄ ░░ ░█─ ░█░█░█ ─▀▀▀▄▄ ░█─ ░█░░█ ░█▀▀▀<br>
+        ░█──░█ ░█ ░█▄▄ ░█░█ ░░ ▄█▄ ░█──▀█ ░█▄▄▄█ ▄█▄ ░█▄▄▀ ░█▄▄▄
+      </div>
+      <div class="title-h1">牛奶袋中袋装牛奶</div>
+      <div class="title-sub">ECHOES INSIDE A BAG OF MILK INSIDE A BAG OF MILK</div>
+      
+      <p style="max-width:580px; font-size:14px; color:var(--pale-cream); line-height:1.8; margin-bottom:24px; border:1px dashed var(--blood-red); padding:14px;">
+        这是一场伴随着解离症、幻觉与创伤后应激的买牛奶之旅。<br>
+        你不是她，你是她脑海里为了对抗恐惧而分裂出的【引导声音】。<br>
+        帮助她走出房间，穿过七十七步的走廊，在便利店买到那一袋装在塑料袋里的牛奶。
+      </p>
+
+      <div class="btn-row">
+        <button class="enter-btn" id="btn-enter-fullscreen">
+          [ ⛶ 全屏启动 · 开启原声配乐 ]
+        </button>
+        <button class="enter-btn" id="btn-enter-windowed" style="font-size:14px; padding:14px 20px; opacity:0.85;">
+          [ 窗口启动 · 开启配乐 ]
+        </button>
+      </div>
+
+      <div class="enter-note">
+        ♪ 纯正多轨 PCM 离线合成原声音轨，绝不静音 | 按 [F] 随时切换全屏，字号可在右上角自由缩放
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 对话历史回溯模态框 -->
+<div class="modal-wrap" id="modal-log">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span>历史对话记录 · DIALOGUE LOG</span>
+      <button class="modal-close-btn" onclick="closeModal('modal-log')">×</button>
+    </div>
+    <div class="modal-content" id="log-list"></div>
+  </div>
+</div>
+
+<!-- 结局图鉴模态框 -->
+<div class="modal-wrap" id="modal-endings">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span>已解锁结局图鉴 · ENDINGS GALLERY</span>
+      <button class="modal-close-btn" onclick="closeModal('modal-endings')">×</button>
+    </div>
+    <div class="modal-content" id="endings-list"></div>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     5. 保证 100% 出声的 PCM WAV 离线原声音轨生成与播放系统
+     生成标准 16-Bit 22050Hz 循环音轨并绑定至原生 HTML5 Audio 对象，
+     杜绝任何浏览器调度静音与 AudioParam 报错问题！
+     ========================================================================== -->
+<script>
+class FoolproofMusicSystem {
+  constructor() {
+    this.audioElement = new Audio();
+    this.audioElement.loop = true;
+    this.audioElement.volume = 0.85;
+
+    this.currentTrack = "normal";
+    this.isMuted = false;
+    this.trackUrls = {};
+    this.initialized = false;
+
+    this.buildTracks();
+  }
+
+  // 离线快速生成 16-Bit PCM WAV Blob
+  buildTracks() {
+    this.trackUrls.normal = this.generateWavBlob("normal", 12.0, 80);
+    this.trackUrls.panic = this.generateWavBlob("panic", 7.2, 133);
+    this.trackUrls.ending = this.generateWavBlob("ending", 14.0, 72);
+  }
+
+  generateWavBlob(mode, durationSec, bpm) {
+    const sampleRate = 22050;
+    const numSamples = Math.floor(sampleRate * durationSec);
+    const dataSize = numSamples * 2;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+
+    function writeStr(offset, str) {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    }
+
+    // RIFF WAV Header
+    writeStr(0, "RIFF");
+    view.setUint32(4, 36 + dataSize, true);
+    writeStr(8, "WAVE");
+    writeStr(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM
+    view.setUint16(22, 1, true); // Mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, "data");
+    view.setUint32(40, dataSize, true);
+
+    let leadNotes = [];
+    let bassNotes = [];
+
+    if (mode === "normal") {
+      leadNotes = [
+        261.63, 311.13, 392.00, 466.16, 392.00, 311.13, 261.63, 311.13,
+        207.65, 261.63, 311.13, 392.00, 311.13, 261.63, 293.66, 0,
+        174.61, 207.65, 261.63, 311.13, 261.63, 207.65, 196.00, 246.94,
+        293.66, 349.23, 311.13, 293.66, 261.63, 0, 261.63, 0
+      ];
+      bassNotes = [65.41, 51.91, 43.65, 49.00];
+    } else if (mode === "panic") {
+      leadNotes = [
+        523.25, 493.88, 415.30, 392.00, 311.13, 293.66, 311.13, 261.63,
+        246.94, 261.63, 293.66, 311.13, 349.23, 392.00, 415.30, 493.88
+      ];
+      bassNotes = [65.41, 77.78, 103.83, 98.00];
+    } else {
+      leadNotes = [
+        261.63, 293.66, 329.63, 392.00, 440.00, 392.00, 329.63, 293.66,
+        349.23, 440.00, 523.25, 440.00, 392.00, 329.63, 293.66, 261.63
+      ];
+      bassNotes = [65.41, 55.00, 43.65, 49.00];
+    }
+
+    const stepDur = durationSec / leadNotes.length;
+
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      let s = 0;
+
+      // 1. 主旋律 (Lead Synth + 颤音 + 延迟回声)
+      const noteIdx = Math.floor(t / stepDur) % leadNotes.length;
+      const freq = leadNotes[noteIdx];
+      if (freq > 0) {
+        const noteT = t % stepDur;
+        const env = Math.exp(-noteT * 3.6);
+        const vib = Math.sin(2 * Math.PI * 4.6 * t) * 3.5;
+        s += Math.sin(2 * Math.PI * (freq + vib) * t) * env * 0.32;
+        if (noteT > 0.22) {
+          s += Math.sin(2 * Math.PI * freq * (t - 0.22)) * Math.exp(-(noteT - 0.22) * 3.6) * 0.15;
+        }
+      }
+
+      // 2. 次重低音 (Sub-Bass)
+      const barIdx = Math.floor((t / durationSec) * bassNotes.length) % bassNotes.length;
+      const bFreq = bassNotes[barIdx];
+      s += Math.sin(2 * Math.PI * bFreq * t) * 0.28;
+      s += Math.sin(2 * Math.PI * (bFreq * 2) * t) * 0.10;
+
+      // 3. 伴奏琶音脉冲 (8-Bit Arp Pluck)
+      const arpStep = stepDur / 2;
+      const arpIdx = Math.floor(t / arpStep) % 4;
+      const arpChordRoot = bassNotes[barIdx] * 4;
+      const arpIntervals = mode === "normal" ? [1, 1.189, 1.498, 1.782] : [1, 1.259, 1.498, 1.887];
+      const aFreq = arpChordRoot * arpIntervals[arpIdx];
+      const aEnv = Math.exp(-(t % arpStep) * 9.0);
+      s += (Math.sin(2 * Math.PI * aFreq * t) > 0 ? 0.08 : -0.08) * aEnv;
+
+      // 4. 重低音心跳鼓 (Heartbeat Kick)
+      const beatDur = 60 / bpm;
+      const bT = t % beatDur;
+      if (bT < 0.13) {
+        s += Math.sin(2 * Math.PI * (75 - bT * 260) * bT) * Math.exp(-bT * 35) * 0.40;
+      } else if (bT > 0.15 && bT < 0.28) {
+        const bT2 = bT - 0.15;
+        s += Math.sin(2 * Math.PI * (60 - bT2 * 210) * bT2) * Math.exp(-bT2 * 40) * 0.28;
+      }
+
+      // 5. 温暖低保真磁带底噪与爆音
+      s += (Math.random() * 2 - 1) * 0.012;
+
+      s = Math.max(-1, Math.min(1, s));
+      view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+
+    const blob = new Blob([buffer], { type: "audio/wav" });
+    return URL.createObjectURL(blob);
+  }
+
+  play(trackName = "normal") {
+    this.currentTrack = trackName;
+    const url = this.trackUrls[trackName] || this.trackUrls.normal;
+    this.audioElement.src = url;
+    this.audioElement.currentTime = 0;
+    const playPromise = this.audioElement.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn("Audio play issue:", err);
+      });
+    }
+    this.initialized = true;
+  }
+
+  setTrack(trackName) {
+    if (this.currentTrack === trackName) return;
+    this.currentTrack = trackName;
+    this.audioElement.src = this.trackUrls[trackName] || this.trackUrls.normal;
+    this.audioElement.currentTime = 0;
+    this.audioElement.play().catch(() => {});
+  }
+
+  toggleMute() {
+    this.isMuted = !this.isMuted;
+    this.audioElement.muted = this.isMuted;
+    return this.isMuted;
+  }
+
+  playTypeBlip() {
+    if (this.isMuted) return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!this.sfxCtx && AudioCtx) this.sfxCtx = new AudioCtx();
+      if (!this.sfxCtx) return;
+      if (this.sfxCtx.state === "suspended") this.sfxCtx.resume();
+
+      const osc = this.sfxCtx.createOscillator();
+      const gain = this.sfxCtx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(640 + Math.random() * 280, this.sfxCtx.currentTime);
+      gain.gain.setValueAtTime(0.08, this.sfxCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.sfxCtx.currentTime + 0.035);
+
+      osc.connect(gain);
+      gain.connect(this.sfxCtx.destination);
+      osc.start();
+      osc.stop(this.sfxCtx.currentTime + 0.038);
+    } catch (e) {}
+  }
+}
+
+const music = new FoolproofMusicSystem();
+</script>
+
+<!-- ==========================================================================
+     6. 手绘插画级 Ordered Bayer Matrix 像素美术渲染引擎
+     具有真实解剖张力的人物立绘、杂乱发丝、空洞大眼、透视场景
+     ========================================================================== -->
+<script>
+class MilkPixelRenderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext("2d");
+    this.width = canvas.width;
+    this.height = canvas.height;
+    this.scene = "bedroom";
+    this.expression = "stare"; // stare, trembling, hollow_smile, shadowed, gentle
+    this.anxiety = 20;
+    this.time = 0;
+    this.blinkTimer = 0;
+    this.isBlinking = false;
+
+    // 4x4 Bayer Matrix
+    this.bayer4x4 = [
+      [ 0,  8,  2, 10],
+      [12,  4, 14,  6],
+      [ 3, 11,  1,  9],
+      [15,  7, 13,  5]
+    ];
+
+    this.loop();
+  }
+
+  setScene(s) { this.scene = s; }
+  setExpression(e) { this.expression = e; }
+  setAnxiety(a) { this.anxiety = a; }
+
+  loop() {
+    this.time += 0.05;
+    this.update();
+    this.render();
+    requestAnimationFrame(() => this.loop());
+  }
+
+  update() {
+    this.blinkTimer++;
+    if (this.blinkTimer > 170 + Math.random() * 90) {
+      this.isBlinking = true;
+      if (this.blinkTimer > 185 + Math.random() * 90) {
+        this.isBlinking = false;
+        this.blinkTimer = 0;
+      }
+    }
+  }
+
+  drawDitherRect(ctx, x, y, w, h, baseColor, ditherColor, thresholdLevel) {
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(x, y, w, h);
+
+    ctx.fillStyle = ditherColor;
+    for (let py = 0; py < h; py++) {
+      for (let px = 0; px < w; px++) {
+        const matVal = this.bayer4x4[(y + py) % 4][(x + px) % 4];
+        if (matVal < thresholdLevel) {
+          ctx.fillRect(x + px, y + py, 1, 1);
+        }
+      }
+    }
+  }
+
+  render() {
+    const ctx = this.ctx;
+    ctx.imageSmoothingEnabled = false;
+
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, this.width, this.height);
+
+    switch (this.scene) {
+      case "bedroom":
+        this.renderBedroom(ctx);
+        break;
+      case "corridor":
+        this.renderCorridor(ctx);
+        break;
+      case "store":
+        this.renderStore(ctx);
+        break;
+      case "cashier":
+        this.renderCashier(ctx);
+        break;
+      case "ending_warm":
+        this.renderWarmEnding(ctx);
+        break;
+      case "ending_void":
+        this.renderVoidEnding(ctx);
+        break;
+      default:
+        this.renderBedroom(ctx);
+    }
+
+    if (this.scene !== "cashier" && this.scene !== "ending_void") {
+      this.renderGirlPortrait(ctx);
+    }
+
+    if (this.anxiety > 45) {
+      this.renderAnxietySlices(ctx);
+    }
+  }
+
+  renderBedroom(ctx) {
+    this.drawDitherRect(ctx, 0, 0, this.width, 155, "#38020e", "#000000", 7);
+
+    // 窗户与血色暴雨
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(18, 15, 75, 110);
+    ctx.strokeStyle = "#ff1e60";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(18, 15, 75, 110);
+
+    ctx.beginPath();
+    ctx.moveTo(55, 15); ctx.lineTo(55, 125);
+    ctx.moveTo(18, 70); ctx.lineTo(93, 70);
+    ctx.stroke();
+
+    ctx.fillStyle = "#ff1e60";
+    for (let i = 0; i < 20; i++) {
+      const rx = 20 + ((i * 17 + Math.floor(this.time * 30)) % 70);
+      const ry = 16 + ((i * 29 + Math.floor(this.time * 45)) % 105);
+      ctx.fillRect(rx, ry, 1, 5);
+    }
+
+    // 床头柜与散落药板
+    ctx.fillStyle = "#ffe6ec";
+    ctx.fillRect(135, 130, 28, 18);
+    ctx.fillStyle = "#ff1e60";
+    ctx.fillRect(138, 133, 5, 5);
+    ctx.fillRect(146, 133, 5, 5);
+    ctx.fillRect(154, 133, 5, 5);
+  }
+
+  renderCorridor(ctx) {
+    const cx = this.width / 2;
+    const cy = 80;
+
+    this.drawDitherRect(ctx, 0, 0, this.width, this.height, "#250109", "#000000", 8);
+
+    // 强烈透视线
+    ctx.strokeStyle = "#c71249";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(cx - 25, cy - 20);
+    ctx.moveTo(this.width, 0); ctx.lineTo(cx + 25, cy - 20);
+    ctx.moveTo(0, this.height); ctx.lineTo(cx - 25, cy + 30);
+    ctx.moveTo(this.width, this.height); ctx.lineTo(cx + 25, cy + 30);
+    ctx.stroke();
+
+    // 尽头幽闭小门
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(cx - 25, cy - 20, 50, 50);
+    ctx.fillStyle = "#ff1e60";
+    ctx.fillRect(cx - 10, cy - 10, 20, 10);
+
+    // 频闪灯管
+    const flicker = Math.sin(this.time * 16) > 0.35 ? "#ffe6ec" : "#38020e";
+    ctx.fillStyle = flicker;
+    ctx.fillRect(cx - 40, 10, 80, 4);
+  }
+
+  renderStore(ctx) {
+    this.drawDitherRect(ctx, 0, 0, this.width, this.height, "#38020e", "#000000", 6);
+
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(25, 20, 270, 120);
+    ctx.strokeStyle = "#ff1e60";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(25, 20, 270, 120);
+
+    for (let y = 50; y < 140; y += 30) {
+      ctx.strokeStyle = "#780d26";
+      ctx.beginPath();
+      ctx.moveTo(25, y); ctx.lineTo(295, y);
+      ctx.stroke();
+
+      for (let x = 35; x < 285; x += 18) {
+        ctx.fillStyle = (x === 143 && y === 80) ? "#ffe6ec" : "#c71249";
+        ctx.fillRect(x, y - 20, 12, 18);
+        ctx.fillStyle = "#ff1e60";
+        ctx.fillRect(x + 2, y - 18, 4, 4);
+      }
+    }
+  }
+
+  renderCashier(ctx) {
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, this.width, this.height);
+
+    // 黑色巨石石碑剪影收银员 (原版经典巨物恐惧)
+    ctx.fillStyle = "#180106";
+    ctx.beginPath();
+    ctx.moveTo(80, this.height);
+    ctx.lineTo(105, 15);
+    ctx.lineTo(215, 15);
+    ctx.lineTo(240, this.height);
+    ctx.fill();
+
+    ctx.strokeStyle = "#780d26";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 两个猩红色的三角形眼睛
+    ctx.fillStyle = "#ff1e60";
+    ctx.beginPath();
+    ctx.moveTo(140, 45); ctx.lineTo(150, 60); ctx.lineTo(130, 60); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(180, 45); ctx.lineTo(190, 60); ctx.lineTo(170, 60); ctx.fill();
+
+    // 金属找零托盘
+    ctx.fillStyle = "#38020e";
+    ctx.fillRect(60, 135, 200, 50);
+    ctx.strokeStyle = "#ff1e60";
+    ctx.strokeRect(60, 135, 200, 50);
+  }
+
+  renderWarmEnding(ctx) {
+    this.drawDitherRect(ctx, 0, 0, this.width, this.height, "#38020e", "#ff1e60", 4);
+    ctx.fillStyle = "#ffe6ec";
+    ctx.fillRect(145, 110, 30, 45);
+    ctx.strokeStyle = "#ff1e60";
+    ctx.strokeRect(144, 109, 32, 47);
+  }
+
+  renderVoidEnding(ctx) {
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, this.width, this.height);
+    for (let i = 0; i < 90; i++) {
+      const px = (i * 31 + Math.floor(this.time * 25)) % this.width;
+      const py = (i * 43 + Math.floor(this.time * 35)) % this.height;
+      ctx.fillStyle = i % 2 === 0 ? "#ff1e60" : "#ffe6ec";
+      ctx.fillRect(px, py, 2, 2);
+    }
+  }
+
+  // 核心：还原原版《Milk 1》插画级少女像素立绘
+  renderGirlPortrait(ctx) {
+    let shakeX = 0;
+    let shakeY = 0;
+    if (this.anxiety > 40) {
+      shakeX = (Math.random() - 0.5) * (this.anxiety / 18);
+      shakeY = (Math.random() - 0.5) * (this.anxiety / 24);
+    }
+
+    const bx = Math.floor(this.width / 2 - 55 + shakeX);
+    const by = Math.floor(25 + shakeY);
+
+    // 1. 身体与肥大外套剪影 (漆黑 + Bayer 点阵高光)
+    ctx.fillStyle = "#000000";
+    ctx.beginPath();
+    ctx.moveTo(bx + 15, by + 90);
+    ctx.lineTo(bx - 55, this.height);
+    ctx.lineTo(bx + 165, this.height);
+    ctx.lineTo(bx + 95, by + 90);
+    ctx.fill();
+
+    ctx.strokeStyle = "#780d26";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 2. 脖颈与锁骨阴影
+    ctx.fillStyle = "#c71249";
+    ctx.fillRect(bx + 38, by + 75, 34, 25);
+    this.drawDitherRect(ctx, bx + 38, by + 75, 34, 25, "#c71249", "#780d26", 8);
+
+    // 3. 苍白面容轮廓与下颌深重阴影
+    ctx.fillStyle = "#ffe6ec";
+    ctx.fillRect(bx + 20, by + 22, 70, 60);
+    ctx.fillRect(bx + 30, by + 78, 50, 10);
+    this.drawDitherRect(ctx, bx + 20, by + 68, 70, 18, "#ffe6ec", "#780d26", 9);
+
+    // 4. 标志性凌乱黑发与粗暴参差的刘海
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(bx + 10, by + 6, 90, 28);
+    ctx.fillRect(bx + 8, by + 20, 20, 85);
+    ctx.fillRect(bx + 82, by + 20, 20, 85);
+    ctx.fillRect(bx + 26, by + 20, 14, 28);
+    ctx.fillRect(bx + 42, by + 20, 16, 32);
+    ctx.fillRect(bx + 60, by + 20, 14, 26);
+    ctx.fillRect(bx + 72, by + 20, 12, 34);
+
+    // 发梢红色反光描边
+    ctx.fillStyle = "#ff1e60";
+    ctx.fillRect(bx + 14, by + 25, 2, 45);
+    ctx.fillRect(bx + 94, by + 25, 2, 45);
+    ctx.fillRect(bx + 30, by + 12, 50, 2);
+
+    // 5. 巨大空洞双眼与深浓黑眼圈
+    const eyeY = by + 44;
+    this.drawDitherRect(ctx, bx + 26, eyeY + 14, 22, 6, "#ffe6ec", "#38020e", 10);
+    this.drawDitherRect(ctx, bx + 62, eyeY + 14, 22, 6, "#ffe6ec", "#38020e", 10);
+
+    if (this.isBlinking) {
+      ctx.fillStyle = "#780d26";
+      ctx.fillRect(bx + 28, eyeY + 6, 18, 3);
+      ctx.fillRect(bx + 64, eyeY + 6, 18, 3);
+    } else {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(bx + 28, eyeY, 18, 15);
+      ctx.fillRect(bx + 64, eyeY, 18, 15);
+
+      ctx.fillStyle = "#780d26";
+      ctx.fillRect(bx + 31, eyeY + 2, 12, 12);
+      ctx.fillRect(bx + 67, eyeY + 2, 12, 12);
+
+      ctx.fillStyle = "#ff1e60";
+      let jitter = 0;
+      if (this.expression === "trembling") {
+        jitter = (Math.random() - 0.5) * 2;
+      }
+      ctx.fillRect(bx + 34 + jitter, eyeY + 4, 6, 6);
+      ctx.fillRect(bx + 70 + jitter, eyeY + 4, 6, 6);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(bx + 33, eyeY + 3, 2, 2);
+      ctx.fillRect(bx + 69, eyeY + 3, 2, 2);
+
+      if (this.expression === "hollow_smile") {
+        ctx.fillStyle = "#ffe6ec";
+        ctx.fillRect(bx + 32, eyeY + 2, 10, 11);
+        ctx.fillRect(bx + 68, eyeY + 2, 10, 11);
+        ctx.fillStyle = "#ff1e60";
+        ctx.fillRect(bx + 36, eyeY + 6, 2, 2);
+        ctx.fillRect(bx + 72, eyeY + 6, 2, 2);
+      }
+    }
+
+    // 6. 嘴部神态
+    const mouthY = by + 68;
+    ctx.fillStyle = "#780d26";
+
+    if (this.expression === "hollow_smile") {
+      ctx.fillRect(bx + 46, mouthY, 18, 2);
+      ctx.fillRect(bx + 44, mouthY - 2, 2, 2);
+      ctx.fillRect(bx + 64, mouthY - 2, 2, 2);
+    } else if (this.expression === "trembling") {
+      ctx.fillRect(bx + 47, mouthY, 16, 4);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(bx + 49, mouthY + 1, 12, 2);
+    } else if (this.expression === "gentle") {
+      ctx.fillRect(bx + 48, mouthY, 14, 2);
+      ctx.fillRect(bx + 46, mouthY - 1, 2, 1);
+      ctx.fillRect(bx + 62, mouthY - 1, 2, 1);
+    } else {
+      ctx.fillRect(bx + 48, mouthY, 14, 2);
+    }
+
+    // 7. 冷汗滴
+    if (this.anxiety > 50) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(bx + 24, eyeY - 6, 2, 5);
+      ctx.fillRect(bx + 24, eyeY + 1, 2, 2);
+    }
+  }
+
+  renderAnxietySlices(ctx) {
+    const lines = Math.floor((this.anxiety - 35) / 9);
+    for (let i = 0; i < lines; i++) {
+      const sy = Math.floor(Math.random() * this.height);
+      const sh = Math.floor(2 + Math.random() * 7);
+      const ox = (Math.random() - 0.5) * (this.anxiety / 6);
+      try {
+        const slice = ctx.getImageData(0, sy, this.width, sh);
+        ctx.putImageData(slice, ox, sy);
+      } catch (e) {}
+    }
+  }
+}
+</script>
+
+<!-- ==========================================================================
+     7. 深度还原原作剧本逻辑 (Pure Visual Novel Narrative Engine)
+     全情还原：碎碎念、袋中袋哲学悖论、脚步计数、对‘人’的石碑化感知、4种结局
+     ========================================================================== -->
+<script>
+const SCRIPT = {
+  // --- 序幕：在脑髓深处呼唤 ---
+  "start": {
+    speaker: "少女",
+    scene: "bedroom",
+    expr: "stare",
+    anxiety: 20,
+    text: "……你又在我的脑子里面敲敲打打了。\n每一次我想装作自己是一个正常人的时候，你就会在颅骨深处像针一样扎一下。\n\n喂。告诉我，你现在听得见我吗？",
+    choices: [
+      { text: "我一直都在这里。你的呼吸很乱。", target: "intro_calm", delta: -5, bond: true },
+      { text: "……我也只是由电信号组成的声音而已。", target: "intro_exist", delta: 0 },
+      { text: "别发呆了，你妈妈不是在催你去买牛奶吗？", target: "intro_panic", delta: 25, flash: true }
+    ]
+  },
+
+  "intro_calm": {
+    speaker: "少女",
+    scene: "bedroom",
+    expr: "stare",
+    text: "呼吸……呼、吸。\n至少有你在脑子里跟我说话的时候，房间里的静电声会小那么一点点。\n\n妈妈说，买牛奶。袋装的。装在塑料袋里的袋装牛奶。",
+    choices: [
+      { text: "为什么要强调‘袋装’？", target: "milk_bag_paradox", delta: 0, bond: true },
+      { text: "我们站起来吧。先把拖鞋换掉。", target: "tie_shoes", delta: -5 }
+    ]
+  },
+
+  "intro_exist": {
+    speaker: "少女",
+    scene: "bedroom",
+    expr: "stare",
+    text: "电信号……是啊，整个世界其实都只是由每秒六十次刷新的像素拼成的。\n只要我一眨眼，所有的东西就会在黑暗里粉碎一次。\n可任务就是任务：买一袋牛奶。",
+    choices: [
+      { text: "为什么必须是袋装的？", target: "milk_bag_paradox", delta: 5 },
+      { text: "深吸一口气，我们走向房门。", target: "tie_shoes", delta: -5 }
+    ]
+  },
+
+  "intro_panic": {
+    speaker: "少女",
+    scene: "bedroom",
+    expr: "trembling",
+    text: "别用那种语气提她！！\n……我知道！我知道钟表的声音在变大，每一秒都像一把生锈的裁纸刀在划我的脊椎！\n我会去的！我现在就站起来！别催我！别催我！",
+    whisper: "她在看着你 / 别惹她生气 / 快动起来",
+    choices: [
+      { text: "（放缓语气）抱歉……是我太急了。我们一步一步来。", target: "tie_shoes", delta: -15, bond: true },
+      { text: "那就抓住门把手。不要回头。", target: "tie_shoes", delta: 10 }
+    ]
+  },
+
+  // 经典桥段：袋装牛奶的本体论悖论
+  "milk_bag_paradox": {
+    speaker: "少女",
+    scene: "bedroom",
+    expr: "stare",
+    text: "你想想看……如果牛奶装在塑料袋里，然后再被装进便利店的塑料购物袋里，那它就是——【牛奶袋中袋装牛奶】。\n\n那外面的袋子，到底是在保护里面的牛奶不受伤害……\n还是在保护整个世界，不受变质腐烂的纯白所污染？",
+    choices: [
+      { text: "如果是后者，那我们也是被装在袋子里的东西吗？", target: "bag_body_thought", delta: 10, bond: true },
+      { text: "……它只是为了防止液体漏在地板上而已。", target: "tie_shoes", delta: -5 }
+    ]
+  },
+
+  "bag_body_thought": {
+    speaker: "少女",
+    scene: "bedroom",
+    expr: "hollow_smile",
+    text: "哈……哈哈！你也是这么想的对不对？！\n皮肤是第一个袋子，衣服是第二个袋子，这个长方形的房间是第三个袋子！\n只要走出这扇门，袋子就会被划破……所有的内脏都会流到街上去！",
+    choices: [
+      { text: "有我陪着你。就算划破了，我也替你缝上。", target: "tie_shoes", delta: -15, bond: true },
+      { text: "不要陷入妄想，我们要出门了。", target: "tie_shoes", delta: 10 }
+    ]
+  },
+
+  "tie_shoes": {
+    speaker: "少女",
+    scene: "bedroom",
+    expr: "stare",
+    text: "门把手很凉。金属表面映出我扭曲的鼻尖。\n口袋里有五块钱纸币和两枚硬币……一共七块钱。\n\n我数到三，就拉开门。一、二……",
+    choices: [
+      { text: "三。推开它。", target: "hallway_enter", delta: 5 }
+    ]
+  },
+
+  // --- 第一幕：走廊的七十七步 ---
+  "hallway_enter": {
+    speaker: "少女",
+    scene: "corridor",
+    expr: "trembling",
+    text: "吱呀——\n头顶的日光灯在尖叫。不是嗡嗡声，是高频的、像细针刺进耳膜的声音。\n走廊有七十七步长。两边的门缝里，全都塞满了邻居们偷看的眼睛。",
+    choices: [
+      { text: "别抬头，盯着自己的鞋尖数步数：一步、两步……", target: "hallway_count_steps", delta: -10, bond: true },
+      { text: "你看那些门缝……好像真的有影子在动。", target: "hallway_panic_attack", delta: 30, flash: true }
+    ]
+  },
+
+  "hallway_panic_attack": {
+    speaker: "少女",
+    scene: "corridor",
+    expr: "trembling",
+    text: "不要说出来！！\n他们不是人！他们只是一根根立在门后面的黑色石柱！\n心跳太快了……胸腔要被撕裂了！呼吸……呼吸不上来了！",
+    whisper: "他们在看你 / 别停下 / 呼吸 / 呼吸",
+    choices: [
+      { text: "看着我！吸气……呼气。把手贴在冰凉的墙壁上。", target: "after_breathe", delta: -25, bond: true },
+      { text: "闭上眼睛往前冲！一口气冲下楼梯！", target: "store_enter", delta: 15 }
+    ]
+  },
+
+  "after_breathe": {
+    speaker: "少女",
+    scene: "corridor",
+    expr: "stare",
+    text: "哈……呼……吸气……吐气。\n声音变小了一点。\n谢谢你拽住我……如果不数呼吸，我刚才真的会跪在地上融化掉。",
+    choices: [
+      { text: "干得好。走下台阶，便利店的招牌就在眼前了。", target: "store_enter", delta: -10, bond: true }
+    ]
+  },
+
+  "hallway_count_steps": {
+    speaker: "少女",
+    scene: "corridor",
+    expr: "stare",
+    text: "一步、两步、三步……脚底板和水泥地的撞击是实心的。\n只要我不去想那些门牌号，它们就只是无害的数字。\n\n推开单元防盗门……外面起雾了。路灯像溶在水里的血滴。",
+    choices: [
+      { text: "那家全天营业的便利店亮着冷光，进去吧。", target: "store_enter", delta: 0 }
+    ]
+  },
+
+  // --- 第二幕：便利店的白色迷宫 ---
+  "store_enter": {
+    speaker: "少女",
+    scene: "store",
+    expr: "stare",
+    text: "叮咚——『欢迎光临』。\n感应门的声音就像闸刀掉下来一样。\n里面太亮了！太白了！冷气从每个货架的缝隙里往外冒，好像要把所有人做成冻肉标本。",
+    choices: [
+      { text: "集中注意力，冷藏冰柜在最里面的墙壁。", target: "shelf_search", delta: -5, bond: true },
+      { text: "收银台后面好像有人在盯着你。", target: "store_fear", delta: 25, flash: true }
+    ]
+  },
+
+  "store_fear": {
+    speaker: "少女",
+    scene: "store",
+    expr: "trembling",
+    text: "他没有脖子……肩膀耸得高高的，像一座黑色的山！\n他在盯着我拿钱包的手！如果我拿错了东西，他会不会按下警报器把我锁在冷柜里？！",
+    choices: [
+      { text: "他只是个疲惫的打工人，根本没空管你。去找牛奶。", target: "shelf_search", delta: -10, bond: true },
+      { text: "快拿了就跑！", target: "shelf_search", delta: 15 }
+    ]
+  },
+
+  "shelf_search": {
+    speaker: "少女",
+    scene: "store",
+    expr: "stare",
+    text: "我站在冰柜前面了。玻璃门把我的指甲冻得发紫。\n里面的架子上排得密密麻麻的……所有的包装盒都在微弱地起伏呼吸。\n帮我……找到真正的牛奶袋！",
+    choices: [
+      { text: "伸手拿中间那一袋最沉、半透明塑料袋装的纯牛奶。", target: "after_shelf", delta: -5, bond: true },
+      { text: "看左边那个写着‘凝固的空想’的红色罐头。", target: "shelf_hallucination", delta: 15 }
+    ]
+  },
+
+  "shelf_hallucination": {
+    speaker: "少女",
+    scene: "store",
+    expr: "trembling",
+    text: "那不是牛奶！那是别人的视线罐头！里面装满了被咀嚼过的眼珠！\n……不行，手好滑，快把手缩回来！拿真正的牛奶！",
+    whisper: "别碰它 / 别拿错 / 他在看你",
+    choices: [
+      { text: "深吸一口气，抓起旁边那一袋柔软沉甸的袋装纯牛奶。", target: "after_shelf", delta: -10, bond: true }
+    ]
+  },
+
+  "after_shelf": {
+    speaker: "少女",
+    scene: "store",
+    expr: "stare",
+    text: "拿到了！软绵绵的、沉甸甸的……这就是袋装纯牛奶。\n隔着半透明的塑料薄膜，能看到里面浓稠的白色在晃动。\n\n接下来……也是最可怕的一步了。",
+    choices: [
+      { text: "走向收银台。把硬币给他。", target: "cashier_confront", delta: 10 }
+    ]
+  },
+
+  // --- 第三幕：收银员与颤抖的硬币 ---
+  "cashier_confront": {
+    speaker: "少女",
+    scene: "cashier",
+    expr: "trembling",
+    text: "站在他面前的时候，他比我想象中还要庞大。像一块矗立在收银机后面的黑色花岗岩。\n『……滴。四块五。』\n扫描枪红色的激光扫在我的手指上，烫得发痛。",
+    choices: [
+      { text: "从口袋里摸出两枚两元硬币和一枚五角硬币。", target: "pay_coins", delta: 5 }
+    ]
+  },
+
+  "pay_coins": {
+    speaker: "少女",
+    scene: "cashier",
+    expr: "trembling",
+    text: "我手里攥着一把零钱……汗水让硬币黏在掌心。\n手在发抖，如果硬币掉在地上滚进柜台缝隙里，一切就都完了！\n四块……加五角……正好四块五……",
+    choices: [
+      { text: "屏住呼吸，稳住手指，一枚一枚轻轻放进金属托盘里。", target: "after_paid", delta: -10, bond: true },
+      { text: "把手里的钱一把全拍在柜台上！", target: "after_paid_rush", delta: 15 }
+    ]
+  },
+
+  "after_paid_rush": {
+    speaker: "少女",
+    scene: "cashier",
+    expr: "trembling",
+    text: "铛啷啷啷——硬币在金属盘里疯狂打转！\n黑色的影子低头看了一眼，没有发怒，只是伸出黑色的长指把多余的钱拨了回来。\n然后把那一袋牛奶塞进了一个粉红色的塑料袋里。",
+    choices: [
+      { text: "抓起袋子，立刻转身离开！", target: "return_rush", delta: 10 }
+    ]
+  },
+
+  "after_paid": {
+    speaker: "少女",
+    scene: "cashier",
+    expr: "stare",
+    text: "铛啷——硬币准确落在了托盘里。\n黑色的影子伸手把硬币拨走，然后把那一袋牛奶塞进了一个更薄的粉红色塑料袋里。\n\n『小票要吗。』他嘴唇没动，声音直接砸在我的脑门上。",
+    choices: [
+      { text: "小声说『不用了，谢谢』，然后转身离开。", target: "return_polite", delta: -10, bond: true },
+      { text: "什么都别说，抓起袋子立刻跑！", target: "return_rush", delta: 10 }
+    ]
+  },
+
+  "return_polite": {
+    speaker: "少女",
+    scene: "corridor",
+    expr: "gentle",
+    text: "我说出来了……\n虽然声音轻得像蚊子哼，但我真的对他说了『谢谢』。\n风吹在脸上很冷，可是怀里的牛奶是温顺的。我们走在回家的路上。",
+    choices: [
+      { text: "你看，世界其实并没有想吃掉你。", target: "eval_end", delta: -10, bond: true }
+    ]
+  },
+
+  "return_rush": {
+    speaker: "少女",
+    scene: "corridor",
+    expr: "trembling",
+    text: "呼……哈……我跑得太快了，塑料袋把我的手指勒出了一道紫色的印子。\n门在背后关上了。又回到了单元楼里。但至少……牛奶还在手里没有洒出来。",
+    choices: [
+      { text: "慢慢上楼，我们马上就安全了。", target: "eval_end", delta: 0 }
+    ]
+  },
+
+  "eval_end": {
+    speaker: "系统",
+    scene: "bedroom",
+    expr: "stare",
+    text: "咔哒。家里的房门重新关上了。外面的世界被隔绝在防盗门的另一边。",
+    choices: [
+      { text: "【审视这一夜的结果】", target: "resolve_ending", delta: 0 }
+    ]
+  }
+};
+
+const ENDINGS_DB = [
+  {
+    id: "ending_warm",
+    title: "【结局一：第一口温热 · Warm Aftertaste】",
+    desc: "在你的温和注视与引导下，她成功战胜了恐慌，平安喝到了那一袋牛奶。",
+    cond: "焦虑值 < 50 且平安返回家中"
+  },
+  {
+    id: "ending_retreat",
+    title: "【结局二：过载折返 · Overload U-Turn】",
+    desc: "过高的心理负荷让她在回廊里崩溃折返。但因为有你在，她至少没有彻底迷失。",
+    cond: "焦虑值处于中高区间完成折返"
+  },
+  {
+    id: "ending_void",
+    title: "【结局三：袋中的虚数 · The Imaginary Inside】",
+    desc: "她沉溺于袋装牛奶的本体论沉思，意识解离为了荧光屏上的永恒静电。",
+    cond: "焦虑值达到极致（>= 85）引发解离过载"
+  },
+  {
+    id: "ending_echo",
+    title: "【隐藏结局：心声的告别 · Echo Across The Void】",
+    desc: "她终于认出，你并不是脑髓里的病态杂音，而是多年前从未放弃自救的她自己。",
+    cond: "达成多次深度心理共鸣选项，且全程低焦虑平复"
+  }
+];
+</script>
+
+<!-- ==========================================================================
+     8. 游戏运行时总调度器 (Game Runtime Controller)
+     ========================================================================== -->
+<script>
+class GameApp {
+  constructor() {
+    this.currentNodeKey = "start";
+    this.anxiety = 20;
+    this.bondCount = 0;
+    this.isTyping = false;
+    this.currentText = "";
+    this.targetText = "";
+    this.charIdx = 0;
+    this.typeSpeed = 32;
+    this.historyLogs = [];
+    this.unlockedEndings = JSON.parse(localStorage.getItem("milk_remake_endings") || "[]");
+
+    this.fontSizeLevel = 1; // 0: 17px, 1: 21px, 2: 25px, 3: 29px
+
+    this.textChars = document.getElementById("text-chars");
+    this.speakerTitle = document.getElementById("speaker-title");
+    this.optionsContainer = document.getElementById("options-container");
+    this.anxietyGauge = document.getElementById("anxiety-gauge");
+    this.bpmVal = document.getElementById("bpm-val");
+    this.whisperLayer = document.getElementById("whisper-layer");
+    this.stage = document.getElementById("stage");
+    this.startScreen = document.getElementById("start-screen");
+
+    const canvas = document.getElementById("game-canvas");
+    this.renderer = new MilkPixelRenderer(canvas);
+
+    this.bindDOMEvents();
+    this.renderEndingsGallery();
+  }
+
+  bindDOMEvents() {
+    const launchGame = (goFullscreen = false) => {
+      music.play("normal");
+
+      if (goFullscreen) {
+        this.toggleFullscreen(true);
+      }
+
+      this.startScreen.style.transition = "opacity 0.6s";
+      this.startScreen.style.opacity = "0";
+      setTimeout(() => this.startScreen.style.display = "none", 600);
+      this.loadNode("start");
+    };
+
+    document.getElementById("btn-enter-fullscreen").onclick = () => launchGame(true);
+    document.getElementById("btn-enter-windowed").onclick = () => launchGame(false);
+
+    document.getElementById("btn-fullscreen").onclick = () => this.toggleFullscreen();
+
+    document.addEventListener("fullscreenchange", () => {
+      if (document.fullscreenElement) {
+        document.body.classList.add("is-fullscreen");
+        document.getElementById("btn-fullscreen").textContent = "⛶ 退出全屏 [F]";
+      } else {
+        document.body.classList.remove("is-fullscreen");
+        document.getElementById("btn-fullscreen").textContent = "⛶ 全屏 [F]";
+      }
+    });
+
+    const fontBtn = document.getElementById("btn-font-toggle");
+    fontBtn.onclick = () => {
+      this.fontSizeLevel = (this.fontSizeLevel + 1) % 4;
+      const sizes = ["17px", "21px", "25px", "29px"];
+      const labels = ["字号 [A-]", "字号 [A]", "字号 [A+]", "字号 [超大]"];
+      document.documentElement.style.setProperty("--dialogue-font-size", sizes[this.fontSizeLevel]);
+      fontBtn.textContent = labels[this.fontSizeLevel];
+    };
+
+    document.getElementById("btn-toggle-bgm").onclick = () => {
+      const isMuted = music.toggleMute();
+      const nameEl = document.getElementById("bgm-name");
+      const eqEl = document.getElementById("bgm-eq-anim");
+      if (isMuted) {
+        nameEl.textContent = "BGM: 已静音 (OFF)";
+        eqEl.textContent = " ——————";
+      } else {
+        nameEl.textContent = "BGM: 播放中 (ON)";
+        eqEl.textContent = " ▂▃▅▆▇";
+      }
+    };
+
+    document.getElementById("textbox-area").onclick = (e) => {
+      if (e.target.closest("#options-container")) return;
+      if (this.isTyping) {
+        this.finishTyping();
+      }
+    };
+
+    window.addEventListener("keydown", (e) => {
+      if (this.startScreen.style.display !== "none") {
+        if (e.key === " " || e.key === "Enter") {
+          launchGame(true);
+        }
+        return;
+      }
+
+      if (e.key === "f" || e.key === "F") {
+        this.toggleFullscreen();
+      } else if (e.key === " " || e.key === "Enter") {
+        if (this.isTyping) this.finishTyping();
+      } else if (e.key === "1" || e.key === "2" || e.key === "3") {
+        const btns = this.optionsContainer.querySelectorAll(".opt-btn");
+        const idx = parseInt(e.key) - 1;
+        if (btns[idx]) btns[idx].click();
+      } else if (e.key === "l" || e.key === "L") {
+        openModal("modal-log");
+      } else if (e.key === "e" || e.key === "E") {
+        openModal("modal-endings");
+      }
+    });
+
+    document.getElementById("btn-skip").onclick = () => this.finishTyping();
+    document.getElementById("btn-log").onclick = () => openModal("modal-log");
+    document.getElementById("btn-endings").onclick = () => openModal("modal-endings");
+  }
+
+  toggleFullscreen(forceOn = null) {
+    const shouldOn = (forceOn !== null) ? forceOn : !document.fullscreenElement;
+    if (shouldOn) {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } else {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  }
+
+  setAnxietyDelta(delta) {
+    this.anxiety = Math.max(5, Math.min(100, this.anxiety + delta));
+    const bpm = Math.floor(70 + (this.anxiety / 100) * 80);
+
+    this.anxietyGauge.style.width = this.anxiety + "%";
+    this.bpmVal.textContent = `${bpm} BPM`;
+
+    this.renderer.setAnxiety(this.anxiety);
+
+    if (this.anxiety >= 65 && music.currentTrack !== "ending") {
+      music.setTrack("panic");
+      this.stage.classList.add("anxiety-glitch-shake");
+      this.spawnWhisper("心跳太快了 / 别看他们 / 逃跑");
+    } else if (this.anxiety < 65 && music.currentTrack === "panic") {
+      music.setTrack("normal");
+      this.stage.classList.remove("anxiety-glitch-shake");
+    }
+  }
+
+  spawnWhisper(text) {
+    const el = document.createElement("div");
+    el.className = "whisper-node";
+    el.textContent = text;
+    el.style.left = (15 + Math.random() * 60) + "%";
+    el.style.top = (25 + Math.random() * 45) + "%";
+    this.whisperLayer.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  loadNode(key) {
+    const node = SCRIPT[key];
+    if (!node) return;
+    this.currentNodeKey = key;
+
+    if (node.scene) this.renderer.setScene(node.scene);
+    if (node.expr) this.renderer.setExpression(node.expr);
+    if (node.anxiety) this.setAnxietyDelta(node.anxiety - this.anxiety);
+
+    this.speakerTitle.textContent = node.speaker || "少女";
+
+    if (node.flash) {
+      this.stage.classList.add("screen-trauma-flash");
+      setTimeout(() => this.stage.classList.remove("screen-trauma-flash"), 380);
+    }
+    if (node.whisper) {
+      this.spawnWhisper(node.whisper);
+    }
+
+    this.historyLogs.push({ speaker: node.speaker || "少女", text: node.text });
+    this.updateLogList();
+
+    if (key === "resolve_ending") {
+      this.resolveEnding();
+      return;
+    }
+
+    this.typewrite(node.text, () => {
+      this.renderChoices(node.choices || []);
+    });
+  }
+
+  typewrite(text, onDone) {
+    this.isTyping = true;
+    this.targetText = text;
+    this.charIdx = 0;
+    this.textChars.textContent = "";
+    this.optionsContainer.innerHTML = "";
+
+    const step = () => {
+      if (!this.isTyping) return;
+      if (this.charIdx < this.targetText.length) {
+        const c = this.targetText.charAt(this.charIdx);
+        this.textChars.textContent += c;
+        this.charIdx++;
+
+        if (c !== " " && c !== "\n" && this.charIdx % 2 === 0) {
+          music.playTypeBlip();
+        }
+
+        setTimeout(step, this.typeSpeed);
+      } else {
+        this.isTyping = false;
+        if (onDone) onDone();
+      }
+    };
+
+    step();
+  }
+
+  finishTyping() {
+    this.isTyping = false;
+    this.textChars.textContent = this.targetText;
+    const node = SCRIPT[this.currentNodeKey];
+    if (node) {
+      this.renderChoices(node.choices || []);
+    }
+  }
+
+  renderChoices(choices) {
+    this.optionsContainer.innerHTML = "";
+    choices.forEach((c, idx) => {
+      const btn = document.createElement("button");
+      btn.className = "opt-btn";
+      btn.innerHTML = `<span>[${idx + 1}]</span> <span>${c.text}</span>`;
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        if (c.delta) this.setAnxietyDelta(c.delta);
+        if (c.bond) this.bondCount++;
+        this.loadNode(c.target);
+      };
+      this.optionsContainer.appendChild(btn);
+    });
+  }
+
+  resolveEnding() {
+    let endingId = "ending_warm";
+    let title = "";
+    let body = "";
+
+    if (this.bondCount >= 3 && this.anxiety <= 45) {
+      endingId = "ending_echo";
+      title = "【隐藏结局：心声的告别 · Echo Across The Void】";
+      body = "她停下了脚步，转过身，第一次不再低头盯着地板，而是真切地注视着这片虚空——或者说，注视着屏幕这端的“你”。\n\n『我突然明白了……你不是我脑子里的静电杂音，也不是那些医生说的解离症状。』\n她的瞳孔深处第一次泛起了微弱而温柔的涟漪。\n『你是我很久以前遗落在这具躯壳里的、那个一直想要活下去的自己。』\n『谢谢你带我走过这七十七步。这一次，我真的不会再害怕了。』";
+      this.renderer.setScene("ending_warm");
+      this.renderer.setExpression("gentle");
+      music.setTrack("ending");
+    } else if (this.anxiety < 50) {
+      endingId = "ending_warm";
+      title = "【结局一：第一口温热 · Warm Aftertaste】";
+      body = "我把袋装牛奶的边角咬开了一个小口。纯白色的液体滑过喉咙，带着淡淡的奶香与甘甜。\n\n『谢谢你。』她坐在窗台边的地板上，睫毛上挂着微光。\n『明天……如果你还在的话，我们再一起去吧。』";
+      this.renderer.setScene("ending_warm");
+      this.renderer.setExpression("gentle");
+      music.setTrack("ending");
+    } else if (this.anxiety >= 85) {
+      endingId = "ending_void";
+      title = "【结局三：袋中的虚数 · The Imaginary Inside】";
+      body = "世界完全溶解为了桃红色的雪花点。所有的货架、走廊和母亲的话语都变成了纯粹的背景辐射。\n\n『原来……我和牛奶一样，都只是装在袋子里的东西。袋子漏了，所以我也消失了。』";
+      this.renderer.setScene("ending_void");
+    } else {
+      endingId = "ending_retreat";
+      title = "【结局二：过载折返 · Overload U-Turn】";
+      body = "虽然没有买到牛奶……但她成功躲回了被窝里。心跳在慢慢平息。\n\n『至少今天，我走到了走廊的第七十七步。明天我一定可以走完一百二十步的。对吧？』";
+      this.renderer.setScene("bedroom");
+      this.renderer.setExpression("stare");
+    }
+
+    this.unlockEnding(endingId);
+    this.speakerTitle.textContent = title;
+    this.typewrite(body, () => {
+      this.optionsContainer.innerHTML = `
+        <button class="opt-btn" onclick="location.reload()">
+          ► 重新开始一次旅程 (RESTART)
+        </button>
+      `;
+    });
+  }
+
+  unlockEnding(id) {
+    if (!this.unlockedEndings.includes(id)) {
+      this.unlockedEndings.push(id);
+      localStorage.setItem("milk_remake_endings", JSON.stringify(this.unlockedEndings));
+      this.renderEndingsGallery();
+    }
+  }
+
+  renderEndingsGallery() {
+    const list = document.getElementById("endings-list");
+    list.innerHTML = "";
+    ENDINGS_DB.forEach(e => {
+      const isUn = this.unlockedEndings.includes(e.id);
+      const card = document.createElement("div");
+      card.style.cssText = `border:1px ${isUn ? "solid var(--hot-pink)" : "dashed var(--blood-red)"}; padding:12px; margin-bottom:12px; opacity:${isUn ? 1 : 0.4};`;
+      card.innerHTML = `
+        <div style="font-weight:bold; color:var(--hot-pink); font-size:15px;">${isUn ? e.title : "【未观测的记忆断片】"}</div>
+        <div style="font-size:13px; color:var(--pale-cream); margin-top:6px; line-height:1.6;">${isUn ? e.desc : "达成条件：" + e.cond}</div>
+      `;
+      list.appendChild(card);
+    });
+  }
+
+  updateLogList() {
+    const el = document.getElementById("log-list");
+    el.innerHTML = "";
+    this.historyLogs.forEach(h => {
+      const row = document.createElement("div");
+      row.style.cssText = "margin-bottom:10px; border-bottom:1px dotted var(--blood-red); padding-bottom:8px;";
+      row.innerHTML = `<span style="color:var(--hot-pink); font-weight:bold;">[${h.speaker}]:</span> <span>${h.text.replace(/\n/g, "<br>")}</span>`;
+      el.appendChild(row);
+    });
+    el.scrollTop = el.scrollHeight;
+  }
+}
+
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = "flex";
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = "none";
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  window.app = new GameApp();
+});
+</script>
+
+</body>
+</html>
+
