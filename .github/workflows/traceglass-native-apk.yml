@@ -29,7 +29,6 @@ jobs:
       - name: Prepare Android SDK 35
         shell: bash
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
 
@@ -42,19 +41,42 @@ jobs:
         shell: bash
         run: gradle -p traceglass-native --no-daemon :app:assembleDebug
 
-      - name: Inspect APK
+      - name: Verify APK signature and structure
         shell: bash
         run: |
           APK=traceglass-native/app/build/outputs/apk/debug/app-debug.apk
           test -f "$APK"
           unzip -t "$APK"
-          ls -lh "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
           sha256sum "$APK"
 
-      - name: Upload APK
+      - name: Emulator cold-start smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            set -euxo pipefail
+            APK=traceglass-native/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r "$APK"
+            adb logcat -c
+            adb shell am force-stop app.traceglass.mobile
+            adb shell am start -W -n app.traceglass.mobile/.MainActivity
+            sleep 4
+            PID="$(adb shell pidof app.traceglass.mobile | tr -d '\r')"
+            test -n "$PID"
+            adb shell dumpsys activity activities | grep -F "app.traceglass.mobile/.MainActivity"
+            adb exec-out screencap -p > traceglass-smoke.png
+            test -s traceglass-smoke.png
+
+      - name: Upload APK and smoke screenshot
         uses: actions/upload-artifact@v4
         with:
-          name: TRACEGLASS-v0.4-native-debug
-          path: traceglass-native/app/build/outputs/apk/debug/app-debug.apk
+          name: TRACEGLASS-v0.4-native-verified
+          path: |
+            traceglass-native/app/build/outputs/apk/debug/app-debug.apk
+            traceglass-smoke.png
           if-no-files-found: error
           retention-days: 7
