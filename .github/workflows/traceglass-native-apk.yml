@@ -1,0 +1,60 @@
+name: Build TRACEGLASS Native APK
+on:
+  push:
+    branches:
+      - build/traceglass-android-native-v04
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Reconstruct native Android project
+        shell: bash
+        run: |
+          cat traceglass-build-payload/part*.b64 | base64 -d > traceglass-native-project.zip
+          unzip -q traceglass-native-project.zip
+          test -f traceglass-native/app/src/main/java/app/traceglass/mobile/MainActivity.java
+          test -f traceglass-native/app/src/main/assets/index.html
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android 35
+        shell: bash
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Build native debug APK
+        shell: bash
+        run: gradle -p traceglass-native --no-daemon :app:assembleDebug
+
+      - name: Inspect APK
+        shell: bash
+        run: |
+          APK=traceglass-native/app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK"
+          unzip -t "$APK"
+          ls -lh "$APK"
+          sha256sum "$APK"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TRACEGLASS-v0.4-native-debug
+          path: traceglass-native/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
