@@ -32,11 +32,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Configure Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android platform
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install Android platform using runner SDK
+        run: |
+          echo "Android SDK: $ANDROID_HOME"
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
 
       - name: Configure Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
