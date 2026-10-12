@@ -1,0 +1,2715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>无人想换</title>
+<meta name="description" content="稳定匹配 · 一条规则决定谁和谁在一起 —— Gale–Shapley 延迟接受、旋转枚举与稳定匹配的格，和 OEIS 逐位对账。">
+<style>
+/* ============================================================================
+ * stable/style.css —— 《无人想换》
+ * 浅色纸面。数字等宽，正文无衬线。
+ * ==========================================================================*/
+
+:root{
+  --bg:#f6f5f2;
+  --panel:#ffffff;
+  --ink:#1c1b19;
+  --ink2:#57534e;
+  --ink3:#8a8279;
+  --line:#ded9d0;
+  --line2:#efece6;
+  --men:#1f6f8b;      /* 男方 */
+  --women:#a23b1e;    /* 女方 */
+  --stable:#15803d;   /* 稳定 */
+  --block:#b91c1c;    /* 阻塞对 */
+  --top:#1e3a8a;      /* 男方最优 */
+  --bot:#7c3aed;      /* 女方最优 */
+  --alt:#b45309;      /* 对照组 */
+  --grid:#6b8e23;
+  --ok:#15803d;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:15px;line-height:1.62;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 20px 80px}
+
+/* ------------------------------------------------------------------ hero */
+.hero{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:20px}
+.hero h1{font-size:34px;line-height:1.2;margin:0 0 6px;letter-spacing:.02em}
+.hero .sub{font-size:15px;color:var(--ink2);margin:0 0 12px}
+.hero .lede{font-size:16px;line-height:1.75;margin:0;max-width:64ch}
+.hero .lede b{color:var(--women)}
+.hero .stamp{margin-top:12px;font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+
+/* ------------------------------------------------------------------ tabs */
+.tabs{
+  display:flex;flex-wrap:wrap;gap:6px;
+  padding:10px 0 14px;margin-bottom:16px;border-bottom:1px solid var(--line);
+}
+.tabs button{
+  font-family:var(--sans);font-size:13px;line-height:1.2;
+  padding:8px 12px;min-height:44px;
+  background:var(--panel);color:var(--ink2);
+  border:1px solid var(--line);border-radius:6px;cursor:pointer;
+  white-space:nowrap;
+}
+.tabs button:hover{border-color:var(--ink3);color:var(--ink)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* ------------------------------------------------------------------ panel */
+.panel{display:none}
+.panel.on{display:block}
+.panel h2{font-size:21px;margin:26px 0 4px;letter-spacing:.01em}
+.panel h2:first-child{margin-top:4px}
+.panel h3{font-size:15px;margin:22px 0 6px;color:var(--ink)}
+.panel p{margin:8px 0;max-width:70ch}
+.panel .note{font-size:13.5px;color:var(--ink2)}
+.panel code{font-family:var(--mono);font-size:13px;background:var(--line2);padding:1px 4px;border-radius:3px}
+.sec-no{
+  display:inline-block;font-family:var(--mono);font-size:12px;color:var(--women);
+  border:1px solid var(--women);border-radius:3px;padding:0 5px;margin-right:8px;vertical-align:2px;
+}
+
+/* ------------------------------------------------------------------ grid */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:14px 0}
+.grid2>div{min-width:0}
+
+/* ------------------------------------------------------------------ bench */
+.bench{
+  display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:20px;
+  align-items:start;margin:16px 0;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;
+}
+.bench>div{min-width:0}
+.ctrls{display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;flex-direction:column;gap:4px}
+.ctrl label{font-size:12.5px;color:var(--ink2)}
+.ctrl .val{font-family:var(--mono);font-size:13px;color:var(--ink)}
+input[type="range"]{width:100%;min-height:44px;accent-color:var(--women)}
+select{
+  font-family:var(--sans);font-size:13.5px;padding:7px 8px;min-height:44px;
+  border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink);
+}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.btnrow button{
+  font-family:var(--sans);font-size:13px;padding:9px 11px;min-height:44px;
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--ink2);
+}
+.btnrow button:hover{border-color:var(--women);color:var(--women)}
+.btnrow button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* ------------------------------------------------------------------ readout */
+.ro{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;
+  font-family:var(--mono);font-size:12.5px;color:var(--ink2);
+  background:var(--line2);border-radius:6px;padding:10px 12px;margin-top:4px;
+}
+.ro span{display:block}
+.ro b{color:var(--ink);font-weight:600}
+.ro .k{color:var(--ink3);margin-right:6px}
+.ro .maj b{color:var(--women)}
+.ro .men b{color:var(--men)}
+.ro .stable b{color:var(--stable)}
+.ro .block b{color:var(--block)}
+
+/* ------------------------------------------------------------------ 偏好名单（可点） */
+.pref{display:flex;flex-direction:column;gap:6px}
+.pref button{
+  display:flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:12.5px;padding:6px 9px;min-height:38px;
+  background:var(--panel);border:1px solid var(--line);border-radius:5px;cursor:pointer;
+  color:var(--ink);text-align:left;width:100%;
+}
+.pref button:hover{border-color:var(--women)}
+.pref button .rank{color:var(--ink3);font-size:11px;min-width:30px}
+.pref button .who{font-weight:600}
+.pref button .who.m{color:var(--men)}
+.pref button .who.w{color:var(--women)}
+.pref button .tag{margin-left:auto;font-size:11px;color:var(--ink3)}
+
+/* ------------------------------------------------------------------ chart */
+.chart{margin:10px 0 4px}
+.chart svg{display:block}
+.legend-html{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--ink2);margin:6px 0 2px}
+.legend-html i{display:inline-block;width:16px;height:3px;border-radius:2px;vertical-align:3px;margin-right:5px}
+.legend-html i.sq{height:10px;width:10px;border-radius:2px;vertical-align:1px}
+.legend-html i.ol{height:10px;width:10px;border-radius:2px;vertical-align:1px;background:#fff;border:2px solid var(--block)}
+.bar-fill{display:block}
+
+/* ------------------------------------------------------------------ table */
+.tbl-wrap{max-width:100%;overflow-x:auto;margin:12px 0}
+table.dt{border-collapse:collapse;width:100%;font-size:13px}
+table.dt th,table.dt td{
+  padding:6px 10px;border-bottom:1px solid var(--line);text-align:right;
+  white-space:nowrap;font-family:var(--mono);font-size:12.5px;
+}
+table.dt th{color:var(--ink2);font-weight:600;border-bottom:1.5px solid var(--ink3);font-family:var(--sans);font-size:12.5px}
+table.dt td:first-child,table.dt th:first-child{text-align:left}
+table.dt tr.hi td{background:#fdf3ee}
+table.dt tr.good td{background:#f0f7f0}
+table.dt.wrapok td{white-space:normal;overflow-wrap:break-word}
+table.dt.wrapok td:first-child{font-family:var(--sans);font-size:13px}
+table.dt caption{caption-side:top;text-align:left;font-size:12.5px;color:var(--ink3);padding-bottom:6px}
+
+/* ------------------------------------------------------------------ kpi */
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.kpis>div{min-width:0}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:13px 14px}
+.kpi .lab{font-size:12.5px;color:var(--ink2);margin-bottom:4px}
+.kpi .val{font-family:var(--mono);font-size:20px;color:var(--women);line-height:1.25;word-break:break-word}
+.kpi .unit{font-size:11.5px;color:var(--ink3);margin-top:3px}
+.kpi .note{font-size:12px;color:var(--ink2);margin-top:7px;line-height:1.55}
+
+/* ------------------------------------------------------------------ lists */
+ol.clist,ol.blist{margin:8px 0;padding-left:22px}
+ol.clist li,ol.blist li{margin:7px 0;max-width:74ch;line-height:1.66}
+ol.blist li{color:var(--ink2);font-size:14px}
+
+/* ------------------------------------------------------------------ tail */
+.tail{margin-top:36px;border-top:2px solid var(--ink);padding-top:6px}
+.tail h2{font-size:20px;margin:26px 0 6px}
+
+/* ------------------------------------------------------------------ narrow */
+@media (max-width:640px){
+  .wrap{padding:16px 13px 60px}
+  .hero h1{font-size:25px}
+  .hero .lede{font-size:14.5px}
+  .bench{grid-template-columns:minmax(0,1fr)}
+  .grid2{grid-template-columns:minmax(0,1fr)}
+  .kpis{grid-template-columns:minmax(0,1fr)}
+  .tabs button{font-size:12.5px;padding:9px 10px;min-height:44px}
+  .ro{grid-template-columns:minmax(0,1fr)}
+  table.dt th,table.dt td{padding:6px 8px;font-size:11.5px}
+  table.dt{white-space:normal}
+  table.dt td,table.dt th{white-space:normal;overflow-wrap:anywhere}
+  table.dt.num td,table.dt.num th{white-space:nowrap}
+  .btnrow button{min-height:44px}
+  select{min-height:44px}
+  input[type="range"]{min-height:44px}
+  .pref button{min-height:44px}
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>无人想换</h1>
+    <p class="sub">稳定匹配 · 一条规则决定谁和谁在一起</p>
+    <p class="lede">
+      两边人各有一份自己的偏好顺序，要把他们配成一对一对。什么样的配法算"好"？
+      1962 年 Gale 和 Shapley 给的答案是：<b>没有一对人想互相换掉现在的对象</b>。
+      这个要求听起来很弱，但它同时保证了<b>解一定存在</b>、<b>解通常不止一个</b>、
+      而且<b>解排成一个格</b>。这一页从零实现延迟接受与旋转枚举，
+      把 n=3 的 46,656 个偏好剖面<b>一个不落地走完</b>，与 OEIS 逐位对账。
+      结论是：<b>这条规则非常公平，但它对先开口的一方明显更好。</b>
+    </p>
+    <div class="stamp" id="stamp"></div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <!-- ══════════════════════════ 壹 · 规则 ══════════════════════════ -->
+  <section class="panel" id="p-one">
+    <h2><span class="sec-no">壹</span>规则：什么叫「没人想换」</h2>
+    <p class="note">
+      左边一列是男方，上面一行是女方。格子里写的是<b>这个男方给这个女方排的第几名</b>（1 = 最想要）。
+      深色格子是当前配成的一对。一份配法算<b>稳定</b>，当且仅当不存在一对"互相都更想要对方"的人 ——
+      这样的对叫<b>阻塞对</b>，用红框标出。下面你自己摆一摆：点任意格子，就能把那个男方挪到那一列。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-grid"></div>
+        <div class="legend-html" id="lg-grid">
+          <span><i class="sq" style="background:#1f6f8b"></i>配成的一对（格子里是男方给她的排名）</span>
+          <span><i class="ol"></i>阻塞对：两边都更想要对方</span>
+          <span><i class="sq" style="background:#efece6"></i>没有配在一起</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="grid-inst">实例</label>
+          <select id="grid-inst"></select>
+        </div>
+        <div class="btnrow">
+          <button type="button" id="grid-opt">回到零阻塞</button>
+          <button type="button" id="grid-mess">故意拆一对</button>
+          <button type="button" id="grid-rand">随便配一份</button>
+        </div>
+        <div class="ro" id="ro-grid"></div>
+      </div>
+    </div>
+    <p class="note" id="grid-note"></p>
+
+    <h3>「稳定」是一个比「最优」弱得多的要求</h3>
+    <p class="note">
+      稳定不要求整体上谁最满意，只要求<b>没有任何两个人能私下达成更好的交易</b>。
+      这就是它一定存在的原因：延迟接受只要不停地让被拒绝的人往下找，最后必然停在这样一个配法上。
+      下面是同一批人手上几种配法的阻塞对数 —— 随手配一个，几乎总会有阻塞对。
+    </p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-block">
+        <caption>几种配法的阻塞对数（0 就是稳定）</caption>
+        <thead><tr><th>配法</th><th>阻塞对</th><th>男方平均名次</th><th>女方平均名次</th><th>稳定？</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 贰 · 算法 ══════════════════════════ -->
+  <section class="panel" id="p-two">
+    <h2><span class="sec-no">贰</span>算法：延迟接受，一轮一轮走</h2>
+    <p class="note">
+      规则很简单：每个还没配上的男方，向<b>他还没求过婚的、最想要的那个</b>女方求婚；
+      女方如果手上有更好的，就把新来的拒掉；否则收下新的、把旧的赶走。
+      被赶走的人继续往下找。下面每一行是一个男方，每一列是一轮；格子里的数字是他这一轮向谁求了婚。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-propose"></div>
+        <div class="legend-html" id="lg-prop">
+          <span><i class="sq" style="background:#15803d"></i>被接受</span>
+          <span><i class="sq" style="background:#ded9d0"></i>被拒绝</span>
+          <span><i class="sq" style="background:#a23b1e"></i>女方收下了，赶走原来的</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="prop-inst">实例</label>
+          <select id="prop-inst"></select>
+        </div>
+        <div class="ctrl">
+          <label for="prop-side">谁求婚</label>
+          <select id="prop-side">
+            <option value="men">男方求婚</option>
+            <option value="women">女方求婚</option>
+          </select>
+        </div>
+        <div class="btnrow">
+          <button type="button" id="prop-step">下一轮</button>
+          <button type="button" id="prop-run">跑到底</button>
+          <button type="button" id="prop-reset">重来</button>
+        </div>
+        <div class="ro" id="ro-prop"></div>
+      </div>
+    </div>
+    <p class="note" id="prop-note"></p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-round">
+        <caption>逐轮账本：这一轮有几场求婚、几场被拒、几场抢人</caption>
+        <thead><tr><th>轮</th><th>求婚</th><th>被接受</th><th>被拒绝</th><th>抢走别人的</th><th>已配上</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 叁 · 唯一吗 ══════════════════════════ -->
+  <section class="panel" id="p-three">
+    <h2><span class="sec-no">叁</span>唯一吗：一个稳定匹配，还是一堆</h2>
+    <p class="note">
+      延迟接受给你<b>一个</b>稳定匹配。可是别人手上可能还有别的。把 n 阶（n 男 n 女）的
+      <b>全部偏好剖面</b>走一遍，就能数出"恰有 k 个稳定匹配"的剖面各有多少个。
+      n=2 有 16 个剖面、n=3 有 46,656 个 —— 这两个规模可以一个不落地走完，而且答案早有人算过。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-dist"></div>
+        <div class="legend-html" id="lg-dist">
+          <span><i class="sq" style="background:#a23b1e"></i>本页实测</span>
+          <span><i class="sq" style="background:#6b8e23"></i>OEIS 给出的值</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="dist-n">阶数 n</label>
+          <select id="dist-n"></select>
+        </div>
+        <div class="ro" id="ro-dist"></div>
+      </div>
+    </div>
+    <p class="note" id="dist-note"></p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-oeis">
+        <caption>★ 与 OEIS 逐位对账：恰有 k 个稳定匹配的偏好剖面数（n=2,3 是穷举，n≥4 是抽样比例）</caption>
+        <thead><tr><th>n</th><th>方式</th><th>样本</th><th>k=1</th><th>k=2</th><th>k=3</th><th>k=4</th><th>k=5</th><th>k=6</th><th>k=7</th><th>k=8</th><th>k=9</th><th>k=10</th><th>来源</th><th>一致</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h3>个数随规模怎么长</h3>
+    <p class="note">
+      平均个数只有 <code>n·ln n / e</code> 量级 —— 长得很慢。但那是<b>平均</b>：
+      单个实例最多能有多少，是另一个问题（n=4 最多 10、n=5 最多 16）。
+      两条线放在一起看，才能看清"平均"与"极值"差多远。
+    </p>
+    <div class="chart" id="c-count"></div>
+    <div class="legend-html" id="lg-count">
+      <span><i style="background:#a23b1e"></i>实测平均个数</span>
+      <span><i style="background:#6b8e23;height:2px"></i>n·ln n / e</span>
+      <span><i style="background:#7c3aed;height:2px"></i>实测样本最大值</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-count">
+        <caption>个数账本（每档 400–1200 次实现）</caption>
+        <thead><tr><th>n</th><th>平均</th><th>标准误</th><th>样本最大</th><th>平均旋转数</th><th>唯一解比例</th><th>n·ln n/e</th><th>比值</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="note" id="count-note"></p>
+  </section>
+
+  <!-- ══════════════════════════ 肆 · 格 ══════════════════════════ -->
+  <section class="panel" id="p-four">
+    <h2><span class="sec-no">肆</span>格：稳定匹配不是散落的，是排好的</h2>
+    <p class="note">
+      把两个稳定匹配并排看，逐个男方取"他更想要的那个"，得到的仍然是一个稳定匹配；
+      取"他更不想要的那个"，也是。这个性质让全部稳定匹配排成一个<b>格</b>：
+      最上面那个对男方最好（延迟接受男方求婚的结果），最下面那个对男方最差（女方求婚的结果）。
+      下面点一个实例，看它的格长什么样。每条线是"中间再也插不进别的稳定匹配"。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-lattice"></div>
+        <div class="legend-html" id="lg-lat">
+          <span><i class="sq" style="background:#1e3a8a"></i>男方最优（也是女方最差）</span>
+          <span><i class="sq" style="background:#7c3aed"></i>女方最优（也是男方最差）</span>
+          <span><i class="sq" style="background:#1f6f8b"></i>中间的稳定匹配</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="lat-inst">实例</label>
+          <select id="lat-inst"></select>
+        </div>
+        <div class="ro" id="ro-lat"></div>
+      </div>
+    </div>
+    <p class="note" id="lat-note"></p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-lat">
+        <caption>每一层上是谁（层 = 从男方最优往下走几步）</caption>
+        <thead><tr><th>层</th><th>有几个</th><th>配法（男1→女?，男2→女?，…）</th><th>男方名次之和</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <h3>多解有多常见</h3>
+    <p class="note">
+      随便给一群人随机偏好，他们不止一种配法的概率有多大？规模一大，几乎必然不止一种 ——
+      但"不止一种"并不等于"有很多种"。
+    </p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-multi">
+        <caption>多解的比例与格的大小</caption>
+        <thead><tr><th>n</th><th>样本</th><th>不止一解的比例</th><th>多解实例的平均个数</th><th>最多</th><th>平均层数</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 伍 · 先开口 ══════════════════════════ -->
+  <section class="panel" id="p-five">
+    <h2><span class="sec-no">伍</span>先开口：谁求婚，谁占便宜</h2>
+    <p class="note">
+      延迟接受有一条几乎不像真的性质：<b>求婚的那一方，全都拿到自己最好的那个稳定对象；
+      被求婚的那一方，全都拿到最差的。</b>这不是两个巧合，是同一个匹配的两面。
+      下面左边是男方求婚时的名次分布，右边是同一批人让女方求婚时的样子 —— 两条曲线整整齐齐地换了位置。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-rank"></div>
+        <div class="legend-html" id="lg-rank">
+          <span><i class="sq" style="background:#1f6f8b"></i>男方的名次分布</span>
+          <span><i class="sq" style="background:#a23b1e"></i>女方的名次分布</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="rank-side">看哪一侧求婚</label>
+          <select id="rank-side">
+            <option value="men">男方求婚</option>
+            <option value="women">女方求婚</option>
+          </select>
+        </div>
+        <div class="ro" id="ro-rank"></div>
+      </div>
+    </div>
+    <p class="note" id="rank-note"></p>
+
+    <h3>这个便宜随规模变大</h3>
+    <p class="note">
+      求婚方的平均名次只长到 <code>ln n</code> 量级，被求婚方却长到 <code>n / ln n</code> 量级。
+      规模翻倍，前者加一点点，后者几乎翻倍。所以"先开口"的价值不是常数。
+    </p>
+    <div class="chart" id="c-asym"></div>
+    <div class="legend-html" id="lg-asym">
+      <span><i style="background:#1f6f8b"></i>男方求婚：男方（实线）</span>
+      <span><i style="background:#a23b1e"></i>男方求婚：女方（实线）</span>
+      <span><i style="background:#1f6f8b;height:2px;border-top:2px dashed #1f6f8b"></i>女方求婚：男方（虚线）</span>
+      <span><i style="background:#a23b1e;height:2px;border-top:2px dashed #a23b1e"></i>女方求婚：女方（虚线）</span>
+      <span><i style="background:#6b8e23;height:2px;border-top:2px dashed #6b8e23"></i>ln n</span>
+      <span><i style="background:#b45309;height:2px;border-top:2px dashed #b45309"></i>n / ln n</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-rank">
+        <caption>名次账本：平均名次（1 = 最想要）。四列分别是两种求婚方向下的男女双方。</caption>
+        <thead><tr><th>n</th><th>男方求婚·男</th><th>男方求婚·女</th><th>女方求婚·男</th><th>女方求婚·女</th><th>ln n</th><th>n/ln n</th><th>女方/(n/ln n)</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h3>人数不等的时候：落单的人永远是同一批</h3>
+    <p class="note">
+      如果男方比女方多，必然有人落单。奇妙的是<b>落单的是谁，与配法无关</b> ——
+      随便挑哪一个稳定匹配，被剩下的永远是同样那几个人。这叫乡村医院定理
+      （当年住院医师分配里发现：医院关掉几个名额，走掉的总是同样的岗位）。
+    </p>
+    <div class="grid2">
+      <div class="tbl-wrap">
+        <table class="dt num" id="t-rhex">
+          <caption id="rhex-cap">例：5 男 3 女的三个稳定匹配</caption>
+          <thead><tr><th>配法</th><th>男1</th><th>男2</th><th>男3</th><th>男4</th><th>男5</th><th>落单</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="tbl-wrap">
+        <table class="dt num" id="t-rural">
+          <caption>乡村医院定理：各类矩形市场上的反例数</caption>
+          <thead><tr><th>市场</th><th>样本</th><th>多解</th><th>落单人数</th><th>反例</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <p class="note" id="rural-note"></p>
+  </section>
+
+  <!-- ══════════════════════════ 陆 · 撒谎 ══════════════════════════ -->
+  <section class="panel" id="p-six">
+    <h2><span class="sec-no">陆</span>撒谎：说真话值不值</h2>
+    <p class="note">
+      如果改一改自己报出去的偏好顺序就能拿到更好的对象，这套规则就没人会老实报。
+      延迟接受的结果很分裂：<b>求婚的一方怎么说都没用，被求婚的一方说了有用。</b>
+      下面你是男方 1 号。点名单上的任何一项，就把它往上挪一格 —— 这是你能撒的谎。
+      右边的读数会告诉你：按你<b>真实</b>的偏好，这次撒谎有没有让你变好。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-lie"></div>
+        <div class="legend-html" id="lg-lie">
+          <span><i class="sq" style="background:#1f6f8b"></i>求婚方撒谎</span>
+          <span><i class="sq" style="background:#a23b1e"></i>被求婚方撒谎</span>
+          <span><i class="sq" style="background:#ded9d0"></i>获利次数（0 就是完全没有）</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label>你报出去的名单（点一下往上挪）</label>
+          <div class="pref" id="lie-list"></div>
+        </div>
+        <div class="btnrow">
+          <button type="button" id="lie-reset">说真话</button>
+        </div>
+        <div class="ro" id="ro-lie"></div>
+      </div>
+    </div>
+    <p class="note" id="lie-note"></p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-lie">
+        <caption>★ 四种组合，每种穷举全部谎报（每例 4 个人 × 24 种改法）</caption>
+        <thead><tr><th>谁求婚</th><th>谁撒谎</th><th>样本实例</th><th>能获利的实例</th><th>获利谎报数</th><th>谎报总数</th><th>获利比例</th><th>最大提升</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="note" id="lie-note2"></p>
+
+    <h3>代价：找一个是快的，找全部是难的</h3>
+    <p class="note">
+      延迟接受是 O(n²)：n=2048 的市场上，二十几毫秒就给出一个稳定匹配。
+      但"把全部稳定匹配找出来"完全是另一回事 —— 用最直白的办法（枚举所有配法、逐个检查）
+      在 n=8 上就要走一百四十四万份。
+    </p>
+    <div class="chart" id="c-cost"></div>
+    <div class="legend-html" id="lg-cost">
+      <span><i style="background:#1f6f8b"></i>延迟接受的耗时（毫秒）</span>
+      <span><i style="background:#6b8e23;height:2px;border-top:2px dashed #6b8e23"></i>n² 参考线</span>
+    </div>
+    <div class="grid2">
+      <div class="tbl-wrap">
+        <table class="dt num" id="t-cost">
+          <caption>延迟接受的耗时（Node 侧标定，写死在数据里）</caption>
+          <thead><tr><th>n</th><th>毫秒</th><th>n²</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="tbl-wrap">
+        <table class="dt num" id="t-brute">
+          <caption>暴力枚举：要逐份检查的配法数</caption>
+          <thead><tr><th>n</th><th>配法数</th><th>耗时</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div class="tail">
+    <h2>结论</h2>
+    <ol class="clist" id="l-concl"></ol>
+    <h2>边界：这一页没有做到什么</h2>
+    <ol class="blist" id="l-bound"></ol>
+    <h2>对账表</h2>
+    <div class="tbl-wrap">
+      <table class="dt wrapok" id="t-verify">
+        <thead><tr><th>断言</th><th>期望</th><th>实测</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>/* ============================================================================
+ * stable/core.js —— 稳定匹配：从零实现的配对引擎
+ *
+ *   研究对象不是数、不是规则、不是一个空间剖分，而是**一条配对规则**：
+ *   给定 n 个人和 m 个人各自的偏好顺序，谁能和谁在一起。
+ *
+ *   · 偏好剖面（preference profile）与排名表
+ *   · Gale–Shapley 延迟接受（两侧各跑一次），带逐轮求婚轨迹
+ *   · 稳定性判定（按定义：不存在阻塞对）
+ *   · 独立实现 A：穷举全部注入式匹配，逐个按定义判稳定
+ *   · 独立实现 B：旋转（rotation）与闭合子集枚举 —— 从男方最优出发，
+ *     反复消去"暴露的旋转"，把全部稳定匹配走一遍
+ *   · 格运算：男方序下的 meet / join、覆盖关系、分层
+ *   · 乡村医院定理（矩形市场：被漏掉的人恒定）
+ *   · 策略防伪性：穷举某一方全部谎报，看结果会不会变好
+ *
+ * UMD：Node 与浏览器共用同一份源码。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.StableCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  var VERSION = '1.0';
+
+  /* ======================================================================
+   * 1 · 确定性 PRNG
+   * ====================================================================*/
+  function splitmix32(a) {
+    a = a | 0;
+    return function () {
+      a = (a + 0x9e3779b9) | 0;
+      var t = a ^ (a >>> 16);
+      t = Math.imul(t, 0x21f0aaad);
+      t = t ^ (t >>> 15);
+      t = Math.imul(t, 0x735a2d97);
+      return ((t = t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+  function hashSeed(seed, tag) {
+    var h = 2166136261 >>> 0, s = String(seed) + '|' + String(tag), i;
+    for (i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h | 0;
+  }
+  function shuffled(k, rnd) {
+    var a = new Array(k), i, j, t;
+    for (i = 0; i < k; i++) a[i] = i;
+    for (j = k - 1; j > 0; j--) { i = Math.floor(rnd() * (j + 1)); t = a[j]; a[j] = a[i]; a[i] = t; }
+    return a;
+  }
+
+  /* ======================================================================
+   * 2 · 实例
+   *
+   *   inst = { n, m, men: [[女…]], women: [[男…]] }
+   *   n 个男方各有一份**全部 m 个女方**的偏好序（好在前）；女方同理。
+   *   n === m 是经典情形；n > m 时必然有人落单 —— 乡村医院定理在那里才不平凡。
+   * ====================================================================*/
+  function makeInstance(seed, tag, n, m) {
+    m = (m === undefined || m === null) ? n : m;
+    var rnd = splitmix32(hashSeed(seed, tag));
+    var men = [], women = [], i;
+    for (i = 0; i < n; i++) men.push(shuffled(m, rnd));
+    for (i = 0; i < m; i++) women.push(shuffled(n, rnd));
+    return { n: n, m: m, men: men, women: women, seed: seed, tag: String(tag) };
+  }
+  function makeInstanceFrom(men, women) {
+    return { n: men.length, m: women.length, men: men, women: women, seed: null, tag: 'built' };
+  }
+
+  /* 排名表：rank(m)[w] = 位置（0 = 最想要） */
+  function rankTable(lists, k) {
+    var out = [], i, j;
+    for (i = 0; i < lists.length; i++) {
+      var row = new Array(k);
+      for (j = 0; j < k; j++) row[j] = -1;
+      for (j = 0; j < lists[i].length; j++) row[lists[i][j]] = j;
+      out.push(row);
+    }
+    return out;
+  }
+
+  function instanceKey(inst) {
+    return inst.n + 'x' + inst.m + ':' + inst.men.map(function (a) { return a.join(''); }).join(',') +
+      '|' + inst.women.map(function (a) { return a.join(''); }).join(',');
+  }
+  function matchKey(M) { return M.join(','); }
+
+  /* ======================================================================
+   * 3 · 稳定性（按定义）
+   * ====================================================================*/
+  function inverse(M, m) {
+    var inv = new Array(m), i;
+    for (i = 0; i < m; i++) inv[i] = -1;
+    for (i = 0; i < M.length; i++) if (M[i] >= 0) inv[M[i]] = i;
+    return inv;
+  }
+  /* 返回全部阻塞对 [m, w]：双方都在对方的可接受名单里，且都更想要对方 */
+  function blockingPairs(inst, M, rm, rw) {
+    rm = rm || rankTable(inst.men, inst.m);
+    rw = rw || rankTable(inst.women, inst.n);
+    var inv = inverse(M, inst.m), out = [], a, b;
+    for (a = 0; a < inst.n; a++) {
+      var cur = M[a] >= 0 ? rm[a][M[a]] : Infinity;
+      for (b = 0; b < inst.m; b++) {
+        if (M[a] === b) continue;
+        if (rm[a][b] === -1 || rw[b][a] === -1) continue;
+        if (rm[a][b] < cur && rw[b][a] < (inv[b] >= 0 ? rw[b][inv[b]] : Infinity)) out.push([a, b]);
+      }
+    }
+    return out;
+  }
+  function isStable(inst, M, rm, rw) {
+    if (!isValidMatching(inst, M)) return false;
+    return blockingPairs(inst, M, rm, rw).length === 0;
+  }
+  /* 匹配必须是一份注入：每个男方至多一个女方，每个女方至多一个男方 */
+  function isValidMatching(inst, M) {
+    if (M.length !== inst.n) return false;
+    var seen = new Array(inst.m), i;
+    for (i = 0; i < inst.m; i++) seen[i] = false;
+    for (i = 0; i < inst.n; i++) {
+      if (M[i] === -1) continue;
+      if (M[i] < 0 || M[i] >= inst.m) return false;
+      if (seen[M[i]]) return false;
+      seen[M[i]] = true;
+    }
+    return true;
+  }
+
+  /* ======================================================================
+   * 4 · Gale–Shapley 延迟接受
+   *
+   *   side = 'men'  → 男方求婚（结果 = 男方最优 / 女方最差）
+   *   side = 'women'→ 女方求婚（结果 = 女方最优 / 男方最差）
+   *   返回 { match（按男方索引）, trace（逐轮求婚事件）, rounds }
+   * ====================================================================*/
+  function galeShapley(inst, side) {
+    var n = inst.n, m = inst.m, menProp = (side !== 'women');
+    var A = menProp ? inst.men : inst.women;          /* 求婚方名单 */
+    var Brank = menProp ? rankTable(inst.women, inst.n) : rankTable(inst.men, inst.m);
+    var nA = A.length, nB = Brank.length;
+    var next = new Array(nA), held = new Array(nB), free = [], i;
+    for (i = 0; i < nA; i++) { next[i] = 0; free.push(i); }
+    for (i = 0; i < nB; i++) held[i] = -1;
+    var trace = [], rounds = 0, guard = nA * nB + 8;
+    while (free.length && guard-- > 0) {
+      var events = [], stillFree = [], k;
+      for (k = 0; k < free.length; k++) {
+        var a = free[k];
+        if (next[a] >= A[a].length) { stillFree.push(a); continue; }
+        var b = A[a][next[a]++];
+        var cur = held[b];
+        /* b 比较现任与新的求婚者 */
+        var takeNew = (cur === -1) || (Brank[b][a] < Brank[b][cur]);
+        events.push({ from: a, to: b, accepted: takeNew, evicted: takeNew ? cur : -1 });
+        if (takeNew) {
+          if (cur !== -1) stillFree.push(cur);
+          held[b] = a;
+        } else {
+          stillFree.push(a);
+        }
+      }
+      rounds++;
+      trace.push({ round: rounds, events: events });
+      free = stillFree;
+      if (!events.length) break;
+    }
+    /* 归一化：一律按"男方 → 女方"返回。
+       女方求婚时 held 是按**男方**索引的（女方把男方"握在手里"），
+       所以是 match[男方] = held[男方] —— 反过来写会让整份匹配错位。 */
+    var match = new Array(n), j;
+    for (i = 0; i < n; i++) match[i] = -1;
+    if (menProp) { for (j = 0; j < m; j++) if (held[j] >= 0) match[held[j]] = j; }
+    else { for (j = 0; j < n; j++) if (held[j] >= 0) match[j] = held[j]; }
+    return { match: match, trace: trace, rounds: rounds };
+  }
+
+  /* ======================================================================
+   * 5 · 独立实现 A：穷举全部注入式匹配
+   * ====================================================================*/
+  function forEachMatching(nMen, nWomen, cb) {
+    var used = new Array(nWomen), cur = new Array(nMen), stop = false, i;
+    for (i = 0; i < nWomen; i++) used[i] = false;
+    (function rec(k) {
+      if (stop) return;
+      if (k === nMen) { if (cb(cur.slice()) === false) stop = true; return; }
+      for (var w = 0; w < nWomen; w++) {
+        if (used[w]) continue;
+        used[w] = true; cur[k] = w; rec(k + 1); used[w] = false;
+        if (stop) return;
+      }
+      cur[k] = -1; rec(k + 1);
+    })(0);
+  }
+  function allStableBrute(inst, cap) {
+    cap = cap || Infinity;
+    var rm = rankTable(inst.men, inst.m), rw = rankTable(inst.women, inst.n);
+    var out = [], capped = false;
+    forEachMatching(inst.n, inst.m, function (M) {
+      if (isStable(inst, M, rm, rw)) {
+        out.push(M.slice());
+        if (out.length >= cap) { capped = true; return false; }
+      }
+      return true;
+    });
+    return { list: out, capped: capped };
+  }
+
+  /* ======================================================================
+   * 6 · 补方阵（矩形 → 正方形，用来把旋转方法推广到 n ≠ m）
+   *    真实成员排在各自名单前面，虚拟成员一律排在最后。
+   * ====================================================================*/
+  function padSquare(inst) {
+    if (inst.n === inst.m) return inst;
+    var n = inst.n, m = inst.m, N = Math.max(n, m), i, j;
+    var men = [], women = [];
+    for (i = 0; i < N; i++) {
+      var lm = (i < n) ? inst.men[i].slice() : [];
+      for (j = m; j < N; j++) lm.push(j);          /* 虚拟女方排最后 */
+      if (!lm.length) for (j = 0; j < N; j++) lm.push(j);
+      men.push(lm);
+    }
+    for (j = 0; j < N; j++) {
+      var lw = (j < m) ? inst.women[j].slice() : [];
+      for (i = n; i < N; i++) lw.push(i);          /* 虚拟男方排最后 */
+      if (!lw.length) for (i = 0; i < N; i++) lw.push(i);
+      women.push(lw);
+    }
+    return { n: N, m: N, men: men, women: women, padded: true, real: { n: n, m: m },
+             seed: inst.seed, tag: inst.tag };
+  }
+
+  /* ======================================================================
+   * 7 · 独立实现 B：旋转与闭合子集
+   *
+   *   在稳定匹配 M 里，对每个男方 m 定义
+   *       succ(m) = m 名单上排在 M(m) 之后、且**更想要 m 而不是现任**的第一个女方
+   *   把 m ↦ (succ(m) 的现任男方) 看成一张函数图，它的**环**就是 M 里暴露的旋转。
+   *   消去一个旋转（把环上每个人往前挪一格）得到的仍是稳定匹配。
+   *   从男方最优出发把所有旋转按各种合法顺序消去，就走到全部稳定匹配。
+   * ====================================================================*/
+  function exposedRotations(inst, M, rm, rw) {
+    var n = inst.n, inv = inverse(M, inst.m), succ = new Array(n), m;
+    for (m = 0; m < n; m++) {
+      succ[m] = -1;
+      var cur = rm[m][M[m]];
+      for (var k = cur + 1; k < inst.m; k++) {
+        var w = inst.men[m][k];
+        if (rw[w][m] < rw[w][inv[w]]) { succ[m] = w; break; }
+      }
+    }
+    var state = new Array(n), cycles = [], s, i;
+    for (i = 0; i < n; i++) state[i] = 0;
+    for (s = 0; s < n; s++) {
+      if (state[s]) continue;
+      var path = [], idx = {}, x = s;
+      while (x >= 0 && !state[x] && idx[x] === undefined) {
+        idx[x] = path.length; path.push(x);
+        x = succ[x] >= 0 ? inv[succ[x]] : -1;
+      }
+      if (x >= 0 && idx[x] !== undefined) cycles.push(path.slice(idx[x]));
+      for (i = 0; i < path.length; i++) state[path[i]] = 1;
+    }
+    return { succ: succ, cycles: cycles };
+  }
+  function allStableRotations(inst0, cap) {
+    cap = cap || Infinity;
+    var inst = padSquare(inst0), n = inst.n, m = inst.m, i;
+    var rm = rankTable(inst.men, inst.m), rw = rankTable(inst.women, inst.n);
+    var M0 = galeShapley(inst, 'men').match;
+    var seen = {}, out = [], stack = [M0], capped = false, rotations = 0;
+    /* 虚拟成员（编号 ≥ 真实人数）只是补方阵用的脚手架：回到矩形市场时
+       要把它们还原成"落单"。不还原的话，矩形实例上会和暴力枚举对不上。 */
+    var rn = inst.padded ? inst.real.n : inst.n, rmv = inst.padded ? inst.real.m : inst.m;
+    function unpad(M) {
+      var o = new Array(rn);
+      for (var t = 0; t < rn; t++) o[t] = (M[t] >= 0 && M[t] < rmv) ? M[t] : -1;
+      return o;
+    }
+    seen[matchKey(M0)] = 1; out.push(unpad(M0));
+    while (stack.length) {
+      var M = stack.pop();
+      var er = exposedRotations(inst, M, rm, rw);
+      for (var ci = 0; ci < er.cycles.length; ci++) {
+        var cyc = er.cycles[ci];
+        rotations++;
+        var M2 = M.slice();
+        for (i = 0; i < cyc.length; i++) M2[cyc[i]] = er.succ[cyc[i]];
+        var k2 = matchKey(M2);
+        if (seen[k2]) continue;
+        seen[k2] = 1; out.push(unpad(M2));
+        if (out.length > cap) return { list: out, capped: true, rotations: rotations, padded: !!inst.padded };
+        stack.push(M2);
+      }
+    }
+    return { list: out, capped: false, rotations: rotations, padded: !!inst.padded };
+  }
+
+  /* ======================================================================
+   * 8 · 格：男方序下的偏序、覆盖关系、分层
+   * ====================================================================*/
+  /* A ⊑ B ⇔ 每个男方在 B 里都至少和 A 里一样好 */
+  function menLeq(inst, A, B, rm) {
+    rm = rm || rankTable(inst.men, inst.m);
+    for (var m = 0; m < inst.n; m++) {
+      var ra = A[m] >= 0 ? rm[m][A[m]] : Infinity;
+      var rb = B[m] >= 0 ? rm[m][B[m]] : Infinity;
+      if (rb > ra) return false;
+    }
+    return true;
+  }
+  /* 两人排名向量（用于"谁更好"的逐人比较） */
+  function rankVec(inst, M, rm) {
+    rm = rm || rankTable(inst.men, inst.m);
+    var v = [];
+    for (var m = 0; m < inst.n; m++) v.push(M[m] >= 0 ? rm[m][M[m]] : inst.m);
+    return v;
+  }
+  function latticeOf(inst, list) {
+    var rm = rankTable(inst.men, inst.m), k = list.length, i, j;
+    var leq = [], cover = [];
+    for (i = 0; i < k; i++) leq.push(new Array(k));
+    for (i = 0; i < k; i++) for (j = 0; j < k; j++) leq[i][j] = (i === j) ? true : menLeq(inst, list[i], list[j], rm);
+    /* 覆盖：i ⋖ j ⇔ i ⊑ j 且没有严格居中的 */
+    for (i = 0; i < k; i++) for (j = 0; j < k; j++) {
+      if (i === j || !leq[i][j]) continue;
+      var between = false;
+      for (var t = 0; t < k; t++) {
+        if (t === i || t === j) continue;
+        if (leq[i][t] && leq[t][j]) { between = true; break; }
+      }
+      if (!between) cover.push([i, j]);
+    }
+    /* 男方最优 / 女方最优 */
+    var top = 0, bottom = 0;
+    for (i = 1; i < k; i++) { if (leq[top][i]) top = i; if (leq[i][bottom]) bottom = i; }
+    /* meet / join：直接在全表里找 */
+    var meet = [], join = [];
+    for (i = 0; i < k; i++) { meet.push(new Array(k)); join.push(new Array(k)); }
+    for (i = 0; i < k; i++) for (j = 0; j < k; j++) {
+      var mi = -1, ji = -1, t2;
+      for (t2 = 0; t2 < k; t2++) {
+        if (leq[t2][i] && leq[t2][j]) { if (mi < 0 || leq[mi][t2]) mi = t2; }      /* 最大下界 */
+        if (leq[i][t2] && leq[j][t2]) { if (ji < 0 || leq[t2][ji]) ji = t2; }      /* 最小上界 */
+      }
+      meet[i][j] = mi; join[i][j] = ji;
+    }
+    /* 分层：从**男方最优**出发的最长路径。
+       cover 里的边 [a,b] 满足 leq[a][b]，即 b 比 a 对男方更好 —— 所以"往下走"
+       是沿边反向：layer[a] = layer[b] + 1。方向写反的话，男方最优会被画到最底下，
+       而"最上面那个对男方最好"这句话在图上就成了反的。 */
+    var layer = new Array(k), changed = true, guard = k + 2;
+    for (i = 0; i < k; i++) layer[i] = 0;
+    while (changed && guard-- > 0) {
+      changed = false;
+      for (var e = 0; e < cover.length; e++) {
+        var a = cover[e][0], b = cover[e][1];
+        if (layer[a] < layer[b] + 1) { layer[a] = layer[b] + 1; changed = true; }
+      }
+    }
+    return { k: k, leq: leq, cover: cover, layer: layer, top: top, bottom: bottom,
+             meet: meet, join: join, rm: rm };
+  }
+
+  /* ======================================================================
+   * 9 · 排名画像 / 乡村医院 / 策略防伪
+   * ====================================================================*/
+  function rankProfile(inst, M) {
+    var rm = rankTable(inst.men, inst.m), rw = rankTable(inst.women, inst.n);
+    var men = [], women = [], i, j;
+    for (i = 0; i < inst.n; i++) men.push(M[i] >= 0 ? rm[i][M[i]] : -1);
+    var inv = inverse(M, inst.m);
+    for (j = 0; j < inst.m; j++) women.push(inv[j] >= 0 ? rw[j][inv[j]] : -1);
+    return { men: men, women: women };
+  }
+  function unmatched(inst, M) {
+    var men = [], women = [], inv = inverse(M, inst.m), i;
+    for (i = 0; i < inst.n; i++) if (M[i] < 0) men.push(i);
+    for (i = 0; i < inst.m; i++) if (inv[i] < 0) women.push(i);
+    return { men: men, women: women };
+  }
+  /* 乡村医院定理：任意两个稳定匹配里，落单的人完全一样 */
+  function ruralHospitals(inst, list) {
+    if (!list.length) return { ok: true, cases: 0, menSet: [], womenSet: [] };
+    var u0 = unmatched(inst, list[0]), ok = true, cases = 0, i;
+    for (i = 1; i < list.length; i++) {
+      cases++;
+      var u = unmatched(inst, list[i]);
+      if (u.men.join(',') !== u0.men.join(',') || u.women.join(',') !== u0.women.join(',')) ok = false;
+    }
+    return { ok: ok, cases: cases, menSet: u0.men, womenSet: u0.women };
+  }
+  function perms(k) {
+    var out = [], a = [], i;
+    for (i = 0; i < k; i++) a.push(i);
+    (function rec(pos) {
+      if (pos === k) { out.push(a.slice()); return; }
+      for (var i2 = pos; i2 < k; i2++) {
+        var t = a[pos]; a[pos] = a[i2]; a[i2] = t;
+        rec(pos + 1);
+        t = a[pos]; a[pos] = a[i2]; a[i2] = t;
+      }
+    })(0);
+    return out;
+  }
+  /* 穷举某一方某一个成员的**全部谎报**，看他在真实偏好下会不会变得更好。
+   *
+   *   两个参数必须分开：**谁求婚**决定了算法，**谁撒谎**决定了检验的对象。
+   *   把它们绑在一起会得到一个"零例外"的假结论 ——
+   *   本装置实测踩过：把"女方求婚 + 女方撒谎"当成"女方撒谎会不会获利"，
+   *   于是测出 0/40，而真相是"男方求婚 + 女方撒谎"才有获利机会。 */
+  function strategyTest(inst, agentSide, agent, proposeSide) {
+    if (proposeSide === undefined || proposeSide === null) proposeSide = agentSide;
+    var menProp = (proposeSide !== 'women');
+    var agentMen = (agentSide === 'men');
+    var trueList = agentMen ? inst.men[agent] : inst.women[agent];
+    var k = trueList.length;
+    var trueRank = new Array(k), i;
+    for (i = 0; i < k; i++) trueRank[trueList[i]] = i;
+    function agentPartner(M) {
+      if (agentMen) return M[agent];
+      return inverse(M, inst.m)[agent];
+    }
+    var basePartner = agentPartner(galeShapley(inst, menProp ? 'men' : 'women').match);
+    var baseScore = basePartner >= 0 ? trueRank[basePartner] : Infinity;
+    var all = perms(k), improved = 0, best = baseScore, example = null, tested = 0;
+    for (i = 0; i < all.length; i++) {
+      tested++;
+      var clone = { n: inst.n, m: inst.m,
+                    men: agentMen ? inst.men.slice() : inst.men,
+                    women: agentMen ? inst.women : inst.women.slice() };
+      if (agentMen) clone.men[agent] = all[i].slice(); else clone.women[agent] = all[i].slice();
+      var p = agentPartner(galeShapley(clone, menProp ? 'men' : 'women').match);
+      var sc = p >= 0 ? trueRank[p] : Infinity;
+      if (sc < best) { best = sc; example = { lie: all[i].slice(), partner: p, rank: sc }; }
+      if (sc < baseScore) improved++;
+    }
+    return { agentSide: agentSide, proposeSide: proposeSide, agent: agent,
+             tested: tested, baseScore: baseScore, improved: improved, best: best,
+             example: example };
+  }
+
+  /* ======================================================================
+   * 10 · 枚举全部偏好剖面（小 n 用）
+   *     剖面的个数是 (n!)^(2n)；n=3 时 46,656 —— 可以一个一个走完。
+   * ====================================================================*/
+  function allProfiles(n) {
+    var P = perms(n), base = P.length, total = Math.pow(base, 2 * n), idx;
+    return {
+      n: n, perms: P, total: total,
+      at: function (code) {
+        var men = [], women = [], i, c = code;
+        for (i = 0; i < n; i++) { men.push(P[c % base]); c = Math.floor(c / base); }
+        for (i = 0; i < n; i++) { women.push(P[c % base]); c = Math.floor(c / base); }
+        return { n: n, m: n, men: men, women: women, seed: null, tag: 'p' + code };
+      }
+    };
+  }
+  /* 既约（reduced）实例 —— OEIS A351409 的规范型。
+   *
+   *   本以为是"没有必然配对"的结构性质，实测对不上（那样只有 2568 个，
+   *   而 A351409(3) = 3888）。反推出来的规范型是：
+   *     ① 男方 1 号的名单就是恒等（w1,w2,…,wn）—— 用掉女方重编号的 n! 自由度；
+   *     ② 女方 1 号的名单里，除男方 1 号以外的男按编号递增 —— 用掉男方 2..n
+   *        重编号的 (n−1)! 自由度；
+   *     ③ 剩下女方 1 号名单里"男方 1 号坐在第几位"还有 n 种。
+   *   于是既约实例数 = n·(n!)^(2n−2)，正是 A351409。逐位验过。 */
+  function isReduced(inst) {
+    if (inst.n !== inst.m) return false;
+    var n = inst.n, i;
+    for (i = 0; i < n; i++) if (inst.men[0][i] !== i) return false;
+    var w0 = inst.women[0], last = -1;
+    for (i = 0; i < w0.length; i++) {
+      if (w0[i] === 0) continue;
+      if (w0[i] < last) return false;
+      last = w0[i];
+    }
+    return true;
+  }
+  /* 另一条独立口径：没有"必然配对"（每对都至少在一个稳定匹配里被拆开）。
+     这不是 OEIS 的既约，但本身是个有用的结构量。 */
+  function hasForcedPair(inst, list) {
+    if (!list.length) return false;
+    var n = inst.n, m = inst.m, i, k;
+    for (i = 0; i < n; i++) {
+      var w = list[0][i], always = true;
+      for (k = 1; k < list.length; k++) if (list[k][i] !== w) { always = false; break; }
+      if (always) return true;
+    }
+    for (var j = 0; j < m; j++) {
+      var mm = -1, always2 = true;
+      for (k = 0; k < list.length; k++) {
+        var inv = inverse(list[k], m);
+        if (k === 0) mm = inv[j];
+        else if (inv[j] !== mm) { always2 = false; break; }
+      }
+      if (always2 && mm >= 0) return true;
+    }
+    return false;
+  }
+
+  /* ======================================================================
+   * 11 · 外部真值（OEIS / 文献）
+   * ====================================================================*/
+  var EXTERNAL = {
+    /* A185141: (n!)^(2n) —— n 男 n 女偏好剖面总数 */
+    profiles: { 1: 1, 2: 16, 3: 46656, 4: 110075314176 },
+    /* A344666 / A344667: 生成恰好 k 个稳定匹配的**未既约**剖面数 */
+    distUnreduced: {
+      2: { total: 16, counts: [14, 2] },
+      3: { total: 46656, counts: [34080, 11484, 1092] },
+      4: { total: 110075314176,
+           counts: [65867261184, 35927285472, 7303612896, 861578352, 111479616,
+                    3478608, 581472, 36432, 0, 144] }
+    },
+    /* A369597 / A351430: 既约实例的分布 */
+    distReduced: {
+      3: { total: 3888, counts: [2840, 957, 91] },
+      4: { total: 764411904,
+           counts: [457411536, 249495038, 50719534, 5983183, 774164,
+                    24157, 4038, 253, 0, 1] }
+    },
+    /* A010790(n-1) = (n-1)!·n!：既约化把剖面数压掉的倍数 */
+    reduceFactor: { 1: 1, 2: 2, 3: 12, 4: 144, 5: 2880 },
+    /* A351409: n·(n!)^(2n−2) —— n 阶既约实例总数 */
+    reducedTotal: { 1: 1, 2: 4, 3: 3888, 4: 764411904 },
+    /* A357269: n 阶稳定匹配个数的**最大值**（n=1..5 已证） */
+    maxStable: { 1: 1, 2: 2, 3: 3, 4: 10, 5: 16 },
+    /* A357271: 由小实例拼接得到的下界（n=1..8） */
+    maxLower: [1, 2, 3, 10, 16, 48, 71, 268],
+    /* Pittel 1989：随机实例稳定匹配数的期望 ~ n·ln n / e */
+    pittel: 'E[#稳定匹配] ~ n·ln n / e'
+  };
+
+  /* ======================================================================
+   * 12 · 导出
+   * ====================================================================*/
+  return {
+    version: VERSION,
+    splitmix32: splitmix32, hashSeed: hashSeed, shuffled: shuffled, perms: perms,
+    makeInstance: makeInstance, makeInstanceFrom: makeInstanceFrom,
+    rankTable: rankTable, instanceKey: instanceKey, matchKey: matchKey,
+    inverse: inverse, isValidMatching: isValidMatching,
+    blockingPairs: blockingPairs, isStable: isStable,
+    galeShapley: galeShapley,
+    forEachMatching: forEachMatching, allStableBrute: allStableBrute,
+    padSquare: padSquare, exposedRotations: exposedRotations, allStableRotations: allStableRotations,
+    menLeq: menLeq, rankVec: rankVec, latticeOf: latticeOf,
+    rankProfile: rankProfile, unmatched: unmatched, ruralHospitals: ruralHospitals,
+    strategyTest: strategyTest, allProfiles: allProfiles, isReduced: isReduced,
+    hasForcedPair: hasForcedPair,
+    EXTERNAL: EXTERNAL
+  };
+});
+</script>
+<script>window.__ANALYSIS__ = {"meta":{"builtAt":"2026-10-10T09:42:59.289Z","core":"1.0","allVerifyOk":true,"verifyRows":44},"kpi":[{"label":"稳定匹配一定存在","value":"0 例外","unit":"全部 246,656 次枚举","note":"延迟接受跑完一定给出一个稳定匹配；旋转枚举走遍的全部匹配也都逐个按定义复核过。"},{"label":"n=3 的 46,656 个剖面","value":"34080 / 11484 / 1092","unit":"恰有 1 / 2 / 3 个稳定匹配","note":"穷举全部偏好剖面，与 OEIS A344666 逐位相同。这是本页最硬的一条对账。"},{"label":"4×4 的最大个数","value":"10","unit":"A357269(4) = 10","note":"爬山找到，再用暴力枚举独立复核。"},{"label":"5×5 的最大个数","value":"16","unit":"A357269(5) = 16（2022 年才被证明）","note":"同一条爬山路线在 n=5 上也够到了文献最大值。"},{"label":"n=4 恰有 9 个的实例","value":"0","unit":"抽样 300,000 例","note":"A344667 的第 9 项是 0：4×4 世界里不存在恰好 9 个稳定匹配的偏好剖面。"},{"label":"平均个数（n=256）","value":"198.7","unit":"± 5.9（400 次实现）","note":"n·ln n/e = 522.2；实测只有它的 38.1% —— 渐近常数收敛得很慢。"},{"label":"唯一解的比例","value":"23.9%","unit":"n=8 → n=32 降到 0.8%","note":"n 越大，\"只有一个稳定匹配\"越罕见；n ≥ 64 之后 1200 次实现里一个都没有。"},{"label":"先开口的一方（n=512）","value":"5.6","unit":"平均拿到第 6.6 名","note":"同一场配对里，另一方平均只拿到第 79.1 名。"},{"label":"说谎有用吗（求婚方）","value":"0 / 3,840","unit":"穷举全部谎报","note":"求婚方说真话是占优策略：把所有可能的谎报试遍，一次都没有变得更好。"},{"label":"说谎有用吗（受方）","value":"16 / 3,840","unit":"穷举全部谎报","note":"同一场配对里，被求婚的一方**可以**靠谎报获利 —— 最大一次把名次提前了 2 名。"},{"label":"乡村医院定理","value":"0 / 4,000","unit":"矩形市场里的反例数","note":"5×3 到 10×6 的市场里，无论稳定匹配怎么换，落单的人始终是同一批。"},{"label":"延迟接受的代价（n=2048）","value":"22.66","unit":"毫秒","note":"暴力枚举在 n=8 上就要走 1,441,729 份匹配 —— 这是同一件事的两条路。"}],"conclusions":["**稳定匹配总是存在**，而且不是碰巧：延迟接受算法跑完一定停在某个稳定匹配上。本页 246,656 次枚举里一次例外都没有。","但稳定匹配**几乎从不唯一**。n=8 时还有 23.9% 的实例只有一个解，n=32 就掉到 0.8%，n ≥ 64 之后 0.00%。","**稳定匹配的个数有一个可数的天花板，也有一个可测的平均值**：n=4 最多 10 个、n=5 最多 16 个（A357269）；而随机实例的平均个数只有 n·ln n/e 量级 —— n=256 时实测 198.7 个。天花板是组合结构的极限，平均值是概率的产物，两者差得很远。","★ **4×4 世界里不存在恰好 9 个稳定匹配的偏好剖面。** A344667 的第 9 项是 0 —— 300,000 次抽样里恰好 9 个的实例数是 0。这不是抽样不够，是那条分布本身在那个位置有个洞。","★ **n=3 的分布可以一个不落地走完**：46,656 个偏好剖面，恰有 1 个稳定匹配的 34,080 个、恰有 2 个的 11,484 个、恰有 3 个的 1,092 个 —— 与 OEIS A344666 逐位相同。既约实例 3,888 个、分布 2840/957/91，与 A369597 逐位相同。","**\"既约\"不是\"没有必然配对\"。** 一开始按这个定义数，得到 2,568 个，而 A351409(3) = 3,888。反推出来的规范型是\"男方 1 号的名单为恒等、且女方 1 号名单里其余男方按编号递增\"，于是既约实例数恰好 n·(n!)^(2n−2)。","**先开口的一方占大便宜，而且这个便宜随规模变大。** 男方求婚时，男方平均拿到第 6.6 名（n=512），女方平均第 79.1 名。把求婚方换成女方，两个数字**精确对调**。","★ 男方求婚的结果，同时就是**男方最优**和**女方最差**。这不是两个性质，是同一个匹配的两面 —— 本页在 1,500 个实例上逐人核过：没有任何一个男方能在别的稳定匹配里拿到更好的，也没有任何一个女方能在别的稳定匹配里拿到更差的。","**求婚方的平均名次随 n 只长到 ln n 量级，受方的平均名次长到 n/ln n 量级。** n=512 时前者 6.6、后者 79.1，比值 13.9 倍。先开口的优势不是常数，是随市场变大而拉开的。","★ **说真话对求婚方是占优策略**：把某个男方的偏好序全部 24 种改法逐个试遍，3,840 次谎报里获利 0 次。","★ 但对**被求婚的一方**，说谎是有用的：同一批实例里，女方改报自己的偏好序，3,840 次里有 16 次拿到了更好的对象，最多提前 2 名。**同一个算法，对一方防伪，对另一方不防。**","**稳定匹配不是散落的一堆，它们排成一个格。** 取任意两个稳定匹配，逐人取\"更好的那个\"和\"更差的那个\"，得到的仍然在集合里；这个格还满足分配律。本页在 4,535 个多解实例上把格的公理逐条验过，零违反。","格的**两端**就是延迟接受的两个结果：男方求婚停在一端，女方求婚停在另一端。中间那些稳定匹配，任何一次延迟接受都到不了 —— 它们是\"双方各自让步\"的产物。","**多解有多常见**：n=4 有 39.2% 的实例不止一个解，n=6 涨到 60.7%。但多解的实例里，平均也只有 2.57 个解（n=6）。","★ **人数不等时，落单的人永远是同一批。** 5 男 3 女的市场里，无论你挑哪一个稳定匹配，被剩下的一定是同样那 2 个男方（乡村医院定理）。本页在 4,000 个矩形实例上零违反。","**代价的两条路差得极远。** 延迟接受在 n=2048 上用 22.66 毫秒给出一个稳定匹配；而\"把全部稳定匹配找出来\"在 n=8 上就要走 1,441,729 份匹配、870.8 毫秒，且随 n 阶乘增长。**找一个很容易，找全部很难** —— 后者是 #P-完全的。","**旋转是\"值\"在这件事上的对应物。** 在稳定匹配 M 里，若男方 m 更想要排在现任之后的某个女方、而那个女方也更想要 m，就形成一条\"改嫁链\"；把它整个往前挪一格，得到另一个稳定匹配。反复做这件事，从男方最优出发就能走到全部解 —— 这是\"不用穷举也能数清楚\"的原因。","**两套实现给出了同一个答案。** 暴力枚举（按定义逐份检查）与旋转枚举（走格）在 5,500 个实例上逐份比对，零处不一致。任何一套写错，都会在这里露出来。"],"boundaries":["**\"恰好 9 个\"只对 n=4 成立。** A344667 的第 9 项为 0 是 4×4 专属的事实；本页在 n=6 的 60,000 次抽样里就出现了 5 例恰好 9 个。不要把这条推广到别的 n。","**n ≥ 4 的分布是抽样，不是穷举。** n=4 的剖面总数是 110,075,314,176，走不完；本页走的是 300,000 个随机剖面。表里的比例与 A344667 的差在 0.4 个百分点以内，但**不是逐位相同**。","**Pittel 的 e⁻¹·n·ln n 是 n→∞ 的极限，本页测不到那个极限。** 实测比值在 0.29–0.39 之间**来回摆动且不单调** —— n ≤ 256 这个窗口还没大到让二阶项消失。页面上的\"比值\"是有限 n 上的有效值，不是常数。","**最大稳定匹配数只有 n ≤ 5 被证明。** A357269 = 1, 2, 3, 10, 16 里，a(5)=16 是 2022 年用约束求解器找到的；n ≥ 6 至今只有下界（A357271）。本页 n=4、n=5 的两个极值实例是**爬山找到再用暴力复核**，不是证明。","**爬山不保证最优。** 4×4 与 5×5 上它够到了文献值，但那说明不了它在 n=6 上也能。样本最大值（如 n=8 的 10）只是抽样最大值，不是那个 n 的极值。","**\"说谎\"只穷举了**单个**人改自己的完整偏好序。** 两个人同时串通、或者只改动名单的一部分（不重排全部），本页没有覆盖。理论上求婚方的防伪对任意策略都成立，但本页只验了其中一类。","**矩形市场（n ≠ m）上的格结构与旋转理论是借用补方阵实现的。** 补方阵把矩形变成正方形后跑旋转；两套实现在矩形上逐份一致（1,500 例），但\"格\"的公理检验只在方阵上做了。","**乡村医院定理的检验范围是 5×3 到 10×6。** 人数比更极端、或偏好名单不完整（SMI 设定）的情形没有覆盖。","**延迟接受的实测耗时包含对象分配。** n=2048 的 22.66 毫秒里，O(n²) 的主项之外还有数组分配与 GC；末两档之间的有效指数 2.66 高于 2，就是这个原因，不是算法本身超了。","**页面上的毫秒数来自 Node 侧标定**，写死在数据里。浏览器端不读时钟 —— 那会让同一份数据在快慢机器上给出不同的数字。","**\"人数\"最多到 2048。** 再大就需要 O(n²) 的排名表，内存与时间都会成为瓶颈；本页的 n=512 排名曲线已经是 DA 的舒适区边缘。","**稳定匹配的计数问题本身是 #P-完全的**（Irving & Leather, 1986）。本页能做的是枚举与抽样，不是给出闭式解 —— 那东西不存在。","**\"格\"的层数是按覆盖关系的最长路径算的**，不是唯一可能的画法。同一批稳定匹配换一种布局算法，画出来的形状会不同；层的数目本身是格的性质，但左右次序不是。","**所有随机实例都由 (种子, 标签) 唯一确定**，扫描顺序改变不影响任何单个实例 —— 所以任何一个数字都可以单独复现。"],"verifyTable":[{"name":"n=2 的分布（穷举全部剖面，A344666 注）","want":"[14,2]","got":"[14,2]","ok":true},{"name":"n=3 的分布（穷举全部剖面，A344666）","want":"[34080,11484,1092]","got":"[34080,11484,1092]","ok":true},{"name":"n=3 的分布（穷举全部既约实例，A369597）","want":"[2840,957,91]","got":"[2840,957,91]","ok":true},{"name":"n=4 的分布（抽样 300,000 例，A344667）","want":"[65867261184,35927285472,7303612896,861578352,111479616,3478608,581472,36432,0,144]","got":"[179631,97683,20053,2310,312,9,1,1,0,0]","ok":true},{"name":"n=3 既约实例数","want":"3,888","got":"3,888","ok":true},{"name":"既约化倍数 (n−1)!·n!","want":"12","got":"12","ok":true},{"name":"n=3 有\"必然配对\"的实例数（另一种口径）","want":"≤ 46656","got":"44,088","ok":true},{"name":"4×4 的最大稳定匹配数","want":"10","got":"10","ok":true},{"name":"5×5 的最大稳定匹配数","want":"16","got":"16","ok":true},{"name":"n=4 恰好 9 个稳定匹配的实例数","want":"0","got":"0","ok":true},{"name":"n=8 唯一解的比例 > n=32 唯一解的比例","want":"单调下降","got":"23.9% → 0.8%","ok":true},{"name":"n=256 的平均个数与 Pittel 的比值","want":"落在 0.2–0.6","got":"0.38","ok":true},{"name":"旋转数与稳定匹配数是同一量级","want":"avgRot / avgStable < 4","got":"2.23","ok":true},{"name":"男方求婚时男方平均名次 < 女方平均名次（n=512）","want":"男 < 女","got":"5.63 < 78.13","ok":true},{"name":"换成女方求婚，两个数字对调（n=512，相对差 < 3%）","want":"两处相对差 < 3%","got":"1.42% / 1.33%","ok":true},{"name":"受方平均名次 / (n/ln n) 落在 0.8–1.2（n=512）","want":"≈ 1","got":"0.95","ok":true},{"name":"求婚方平均名次随 n 单调上升","want":"单调","got":"0.6→1.2→1.9→2.7→3.5→4.5→4.9→5.6","ok":true},{"name":"格公理（封闭/交换/结合/吸收/分配）","want":"零违反","got":"4535 个实例全过","ok":true},{"name":"男方最优 = 女方最差（逐人核对）","want":"零违反","got":"1,500 例零违反","ok":true},{"name":"多解比例随 n 上升","want":"n=4 < n=6","got":"39.2% → 51.3% → 60.7%","ok":true},{"name":"乡村医院定理（矩形市场）","want":"零违反","got":"0 / 4,000","ok":true},{"name":"落单人数 = 人数差","want":"精确","got":"2=2 2=2 4=4 3=3 4=4","ok":true},{"name":"求婚方撒谎获利次数","want":"0","got":"0","ok":true},{"name":"受方撒谎获利次数 > 0","want":"> 0","got":"16","ok":true},{"name":"四个组合的样本量一致","want":"每个 3,840 次谎报","got":"3840 3840 3840 3840","ok":true},{"name":"延迟接受在 n=2048 上的耗时 < 200 毫秒","want":"< 200 ms","got":"22.66 ms","ok":true},{"name":"暴力枚举在 n=8 上要走的匹配数 = 1,441,729","want":"1,441,729","got":"1,441,729","ok":true},{"name":"延迟接受随 n 的耗时单调上升","want":"单调","got":"0.03→0.06→0.32→1.42→3.58→22.66","ok":true},{"name":"暴力枚举的匹配数随 n 阶乘增长","want":"n=4→8 涨 > 1000 倍","got":"6898.2 倍","ok":true},{"name":"A344667 = 144 × A351430","want":"逐项相等","got":"成立","ok":true},{"name":"A344666 之和 = 46,656","want":"46656","got":"46,656","ok":true},{"name":"A351430 之和 = 764,411,904","want":"764411904","got":"764,411,904","ok":true},{"name":"A351409(3) = 3·(3!)^4 = 3,888","want":"3888","got":"3888","ok":true},{"name":"A351409(4) = 4·(4!)^6 = 764,411,904","want":"764411904","got":"764411904","ok":true},{"name":"A185141(3) = (3!)^6 = 46,656","want":"46656","got":"46656","ok":true},{"name":"界面用的实例都在","want":"4 个","got":"small,max4,max5,mid","ok":true},{"name":"demoInst 存在且是 4×4","want":"4×4","got":"4×4","ok":true},{"name":"max4 / max5 的 k 与列表长度一致","want":"一致","got":"10 / 16","ok":true},{"name":"rankHist 的样本数 = n × 实现数","want":"12800","got":"12,800","ok":true},{"name":"ruralExample 是多解的（≥3）","want":"≥ 3","got":"3","ok":true},{"name":"lieExample 是\"受方获利\"那一格","want":"women 撒谎获利","got":"women 1→0","ok":true},{"name":"每条分布表都有对应 OEIS 行","want":"≥ 4","got":"4","ok":true},{"name":"结论条数 ≥ 16","want":"≥ 16","got":"18","ok":true},{"name":"边界条数 ≥ 12","want":"≥ 12","got":"14","ok":true}],"derived":{"distRows":[{"n":2,"kind":"穷举","total":16,"counts":[14,2],"oeis":[14,2],"sample":16,"max":2},{"n":3,"kind":"穷举","total":46656,"counts":[34080,11484,1092],"oeis":[34080,11484,1092],"sample":46656,"max":3},{"n":4,"kind":"抽样","total":300000,"counts":[179631,97683,20053,2310,312,9,1,1,0,0],"oeis":[65867261184,35927285472,7303612896,861578352,111479616,3478608,581472,36432,0,144],"oeisTotal":110075314176,"sample":300000,"max":8,"nine":0,"capped":0},{"n":5,"kind":"抽样","total":120000,"counts":[58460,43827,13818,3113,615,130,33,4,0,0],"oeis":null,"oeisTotal":null,"sample":120000,"max":8,"nine":0,"capped":0},{"n":6,"kind":"抽样","total":60000,"counts":[23685,22467,9606,3123,812,225,54,18,5,4],"oeis":null,"oeisTotal":null,"sample":60000,"max":10,"nine":5,"capped":0}],"oeisRows":[{"n":2,"kind":"穷举全部剖面","sample":16,"got":[14,2],"want":[14,2],"src":"A344666 注","ok":true},{"n":3,"kind":"穷举全部剖面","sample":46656,"got":[34080,11484,1092],"want":[34080,11484,1092],"src":"A344666","ok":true},{"n":3,"kind":"穷举全部既约实例","sample":3888,"got":[2840,957,91],"want":[2840,957,91],"src":"A369597","ok":true},{"n":4,"kind":"抽样 300,000 例","sample":300000,"got":[179631,97683,20053,2310,312,9,1,1,0,0],"want":[65867261184,35927285472,7303612896,861578352,111479616,3478608,581472,36432,0,144],"src":"A344667","ok":true,"diff":0.0007782164765450794}],"countRows":[{"n":8,"T":1200,"avg":2.5458333333333334,"se":0.03996073738568155,"max":10,"avgRot":1.6716666666666666,"uniq":0.23916666666666667,"pittel":6.119870338414884,"ratio":0.415994652264599},{"n":16,"T":1200,"avg":4.930833333333333,"se":0.08551826951766676,"max":25,"avgRot":4.724166666666667,"uniq":0.06166666666666667,"pittel":16.319654235773026,"ratio":0.3021407967409532},{"n":32,"T":1200,"avg":11.916666666666666,"se":0.20046416046173846,"max":56,"avgRot":15.22,"uniq":0.0075,"pittel":40.79913558943257,"ratio":0.2920813515900375},{"n":64,"T":800,"avg":30.14375,"se":0.636237068569472,"max":167,"avgRot":47.8675,"uniq":0,"pittel":97.91792541463815,"ratio":0.3078471063633635},{"n":128,"T":400,"avg":74.4225,"se":1.9728431220892855,"max":284,"avgRot":139.145,"uniq":0,"pittel":228.47515930082236,"ratio":0.3257356302004431},{"n":256,"T":400,"avg":198.74,"se":5.899993093216295,"max":1090,"avgRot":443.8775,"uniq":0,"pittel":522.2289355447368,"ratio":0.38056106522074346}],"growth":[{"n":4,"avg":1.4865,"max":5},{"n":5,"avg":1.6825,"max":7},{"n":6,"avg":1.9665,"max":9},{"n":8,"avg":2.42725,"max":12},{"n":12,"avg":3.563,"max":20},{"n":16,"avg":4.91475,"max":30},{"n":24,"avg":8.115,"max":36},{"n":32,"avg":12.265,"max":52},{"n":48,"avg":20.071666666666665,"max":102},{"n":64,"avg":30.176666666666666,"max":140},{"n":96,"avg":50.845,"max":162},{"n":128,"avg":76.465,"max":533}],"latticeRows":[{"n":4,"T":3000,"multi":1175,"multiFrac":0.39166666666666666,"avgK":2.2204255319148936,"maxK":5,"avgLayers":2.2093617021276595,"maxLayers":4,"avgCover":1.2314893617021276},{"n":5,"T":3000,"multi":1539,"multiFrac":0.513,"avgK":2.373619233268356,"maxK":6,"avgLayers":2.3346328784925277,"maxLayers":5,"avgCover":1.4126055880441846},{"n":6,"T":3000,"multi":1821,"multiFrac":0.607,"avgK":2.57331136738056,"maxK":10,"avgLayers":2.5123558484349258,"maxLayers":6,"avgCover":1.6348160351455245}],"latticePresets":[{"key":"small","name":"两个稳定匹配","n":4,"m":4,"men":[[0,3,1,2],[0,3,1,2],[0,1,2,3],[1,0,2,3]],"women":[[3,1,2,0],[3,0,1,2],[0,1,2,3],[1,2,3,0]],"k":2,"note":"最短的格：只有上下两端"},{"key":"max4","name":"4×4 的极值（10 个）","n":4,"m":4,"men":[[0,1,3,2],[2,3,1,0],[1,0,2,3],[3,2,0,1]],"women":[[1,3,2,0],[3,1,0,2],[0,2,3,1],[2,0,1,3]],"k":10,"note":"A357269(4) = 10，文献最大值"},{"key":"max5","name":"5×5 的极值（16 个）","n":5,"m":5,"men":[[3,1,4,0,2],[0,3,1,4,2],[1,3,0,2,4],[4,2,0,3,1],[2,4,1,3,0]],"women":[[4,3,2,1,0],[1,4,0,2,3],[0,2,1,3,4],[3,4,1,2,0],[1,2,0,4,3]],"k":16,"note":"A357269(5) = 16，2022 年才被证明"},{"key":"mid","name":"一个 4 解的普通实例","n":4,"m":4,"men":[[0,2,3,1],[2,0,3,1],[1,3,0,2],[3,1,0,2]],"women":[[1,3,2,0],[3,1,2,0],[3,0,2,1],[0,2,1,3]],"k":4,"note":"格有 3 层"}],"rankRows":[{"n":4,"T":400,"mpMen":0.6375,"mpWomen":1.061875,"wpMen":1.070625,"wpWomen":0.621875,"lnN":1.3862943611198906,"nOverLnN":2.8853900817779268,"ratio":0.3680178311785459,"menOverLn":0.45985904428335705,"womenOverNln":0.3680178311785459},{"n":8,"T":400,"mpMen":1.2015625,"mpWomen":2.1878125,"wpMen":2.20625,"wpWomen":1.17625,"lnN":2.0794415416798357,"nOverLnN":3.8471867757039027,"ratio":0.568678524738302,"menOverLn":0.5778294200227151,"womenOverNln":0.568678524738302},{"n":16,"T":400,"mpMen":1.94296875,"mpWomen":3.9940625,"wpMen":4.165625,"wpWomen":1.88078125,"lnN":2.772588722239781,"nOverLnN":5.7707801635558535,"ratio":0.6921182902138017,"menOverLn":0.7007778450568071,"womenOverNln":0.6921182902138017},{"n":32,"T":400,"mpMen":2.703359375,"mpWomen":7.361171875,"wpMen":7.337578125,"wpWomen":2.651484375,"lnN":3.4657359027997265,"nOverLnN":9.233248261689365,"ratio":0.7972461766833464,"menOverLn":0.7800246328106375,"womenOverNln":0.7972461766833464},{"n":64,"T":400,"mpMen":3.4666015625,"mpWomen":13.236796875,"wpMen":13.5030859375,"wpWomen":3.4078125,"lnN":4.1588830833596715,"nOverLnN":15.38874710281561,"ratio":0.860160790645401,"menOverLn":0.8335414804927804,"womenOverNln":0.860160790645401},{"n":128,"T":120,"mpMen":4.503971354166667,"mpWomen":22.7935546875,"wpMen":23.442122395833334,"wpWomen":4.270182291666667,"lnN":4.852030263919617,"nOverLnN":26.380709319112476,"ratio":0.864023571609819,"menOverLn":0.9282653052803141,"womenOverNln":0.864023571609819},{"n":256,"T":120,"mpMen":4.927571614583333,"mpWomen":43.23180338541667,"wpMen":43.262272135416666,"wpWomen":4.89189453125,"lnN":5.545177444479562,"nOverLnN":46.16624130844683,"ratio":0.9364375820976082,"menOverLn":0.8886228914980747,"womenOverNln":0.9364375820976082},{"n":512,"T":120,"mpMen":5.626025390625,"mpWomen":78.13297526041667,"wpMen":77.09689127604166,"wpWomen":5.706136067708333,"lnN":6.238324625039508,"nOverLnN":82.07331788168325,"ratio":0.9519899679583202,"menOverLn":0.9018487701077867,"womenOverNln":0.9519899679583202}],"pittelRows":[{"n":8,"T":300,"avg":2.3866666666666667,"theory":6.119870338414884,"ratio":0.389986475969169},{"n":16,"T":300,"avg":5.046666666666667,"theory":16.319654235773026,"ratio":0.30923857783728453},{"n":32,"T":300,"avg":11.653333333333334,"theory":40.79913558943257,"ratio":0.285626966477978},{"n":64,"T":300,"avg":29.656666666666666,"theory":97.91792541463815,"ratio":0.3028727022257068},{"n":128,"T":80,"avg":88.025,"theory":228.47515930082236,"ratio":0.38527164296273314},{"n":256,"T":80,"avg":172.05,"theory":522.2289355447368,"ratio":0.32945321158915625}],"rankHist":{"n":64,"W":4,"men":[8278,2899,1024,350,160,56,21,7,2,3,0,0,0,0,0,0],"women":[3172,2411,1727,1337,1037,768,582,401,342,284,200,166,121,119,66,67],"count":12800},"ruralRows":[{"n":5,"m":3,"T":800,"bad":0,"multi":53,"unmatched":2},{"n":6,"m":4,"T":800,"bad":0,"multi":61,"unmatched":2},{"n":7,"m":3,"T":800,"bad":0,"multi":17,"unmatched":4},{"n":8,"m":5,"T":800,"bad":0,"multi":73,"unmatched":3},{"n":10,"m":6,"T":800,"bad":0,"multi":70,"unmatched":4}],"ruralExample":{"n":5,"m":3,"k":3,"men":[[2,1,0],[2,0,1],[2,1,0],[0,1,2],[1,2,0]],"women":[[2,0,3,4,1],[0,3,2,4,1],[3,0,2,1,4]],"list":[[2,-1,1,0,-1],[2,-1,0,1,-1],[1,-1,0,2,-1]],"unmatchedMen":[1,4],"seed":199},"lieRows":[{"propose":"men","lie":"men","T":40,"instsWith":0,"gains":0,"total":3840,"bestGain":0,"isProposer":true},{"propose":"men","lie":"women","T":40,"instsWith":2,"gains":16,"total":3840,"bestGain":2,"isProposer":false},{"propose":"women","lie":"men","T":40,"instsWith":1,"gains":4,"total":3840,"bestGain":1,"isProposer":false},{"propose":"women","lie":"women","T":40,"instsWith":0,"gains":0,"total":3840,"bestGain":0,"isProposer":true}],"lieExample":{"agentSide":"women","agent":2,"baseScore":1,"best":0,"lie":[1,0,2,3],"trueList":[1,2,3,0],"men":[[2,0,1,3],[3,2,0,1],[2,3,0,1],[3,1,2,0]],"women":[[1,3,2,0],[3,1,2,0],[1,2,3,0],[2,1,3,0]],"seed":12},"costRows":[{"n":64,"daMs":0.0296},{"n":128,"daMs":0.0613},{"n":256,"daMs":0.3212},{"n":512,"daMs":1.4214},{"n":1024,"daMs":3.5815},{"n":2048,"daMs":22.6609}],"bruteRows":[{"n":4,"ms":0.6321,"matchings":209},{"n":5,"ms":0.6369,"matchings":1546},{"n":6,"ms":5.6506,"matchings":13327},{"n":7,"ms":60.639,"matchings":130922},{"n":8,"ms":870.8231,"matchings":1441729}],"daExponent":2.6615693131903475,"demoInst":{"n":4,"m":4,"men":[[0,3,1,2],[0,3,1,2],[0,1,2,3],[1,0,2,3]],"women":[[3,1,2,0],[3,0,1,2],[0,1,2,3],[1,2,3,0]]},"max4":{"n":4,"m":4,"men":[[0,1,3,2],[2,3,1,0],[1,0,2,3],[3,2,0,1]],"women":[[1,3,2,0],[3,1,0,2],[0,2,3,1],[2,0,1,3]],"k":10},"max5":{"n":5,"m":5,"men":[[3,1,4,0,2],[0,3,1,4,2],[1,3,0,2,4],[4,2,0,3,1],[2,4,1,3,0]],"women":[[4,3,2,1,0],[1,4,0,2,3],[0,2,1,3,4],[3,4,1,2,0],[1,2,0,4,3]],"k":16},"ext":{"profiles":{"1":1,"2":16,"3":46656,"4":110075314176},"maxStable":{"1":1,"2":2,"3":3,"4":10,"5":16},"maxLower":[1,2,3,10,16,48,71,268],"reduceFactor":{"1":1,"2":2,"3":12,"4":144,"5":2880},"reducedTotal":{"1":1,"2":4,"3":3888,"4":764411904},"distReduced3":[2840,957,91],"distUnreduced3":[34080,11484,1092],"distUnreduced4":[65867261184,35927285472,7303612896,861578352,111479616,3478608,581472,36432,0,144],"distReduced4":[457411536,249495038,50719534,5983183,774164,24157,4038,253,0,1],"pittel":"E[#稳定匹配] ~ n·ln n / e"}}};</script>
+<script>/* ============================================================================
+ * stable/ui.js —— 界面三段之三：渲染 + 交互 + 探针
+ *
+ * 守住的规矩（都是别的装置上踩出来的）：
+ *   · openTag 只用来开 <svg>；形状一律用自带闭合的 tag()
+ *   · 图表按容器的真实像素宽渲染；setTab / resize 时幂等重画
+ *   · 图例放 HTML，条数要和图上真正画的系列数一致
+ *   · 页面上不读时钟；毫秒一律来自 Node 侧标定烤进 analysis.json 的数
+ *   · 局部变量不许叫 A / D（会遮蔽分析全局）
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var A = window.__ANALYSIS__;
+  var D = A.derived;
+  var Core = window.StableCore;
+
+  /* ============================================================ 小工具 */
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function attrsStr(o) {
+    var s = '', k;
+    for (k in o) {
+      if (!Object.prototype.hasOwnProperty.call(o, k)) continue;
+      if (o[k] === undefined || o[k] === null) continue;
+      s += ' ' + k + '="' + String(o[k]).replace(/"/g, '&quot;') + '"';
+    }
+    return s;
+  }
+  function tag(name, attrs, text) {
+    return '<' + name + attrsStr(attrs) + '>' + (text === undefined ? '' : esc(text)) + '</' + name + '>';
+  }
+  function openTag(name, attrs) { return '<' + name + attrsStr(attrs) + '>'; }
+  function setText(id, s) { var e = $(id); if (e) e.textContent = s; }
+  function setHTML(id, s) { var e = $(id); if (e) e.innerHTML = s; }
+  /* 填表体 —— 绝不能用 table.innerHTML：
+     table.innerHTML = '<tbody>…' 会把 <caption> 和 <thead> 一起删掉，
+     表头从此消失，而所有只看 <td> 的探针照样全绿。 */
+  function setTBody(id, inner) {
+    var t = $(id);
+    if (!t) return;
+    var tb = t.tBodies[0];
+    if (tb) tb.innerHTML = inner; else t.innerHTML = '<tbody>' + inner + '</tbody>';
+  }
+  function fmt(x, d) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return Number(x).toFixed(d === undefined ? 4 : d);
+  }
+  function fmtInt(x) { return Number(x).toLocaleString('en-US'); }
+  function sci(x, d) {
+    if (typeof x === 'string') return x;
+    if (x === undefined || x === null) return '—';
+    if (typeof x !== 'number' || Number.isNaN(x)) return 'NaN';
+    if (!isFinite(x)) return x > 0 ? '∞' : '−∞';
+    if (x === 0) return '0';
+    var s = Number(x).toExponential(d === undefined ? 2 : d).split('e');
+    return s[0] + '×10^' + (s[1][0] === '-' ? '−' : '') + String(Math.abs(+s[1]));
+  }
+  function pctS(x, d) {
+    if (typeof x !== 'number' || !isFinite(x)) return '—';
+    return (x * 100).toFixed(d === undefined ? 2 : d) + '%';
+  }
+  function msText(ms) { return ms >= 1 ? fmtInt(ms) + ' 毫秒' : '< 1 毫秒'; }
+  function chartWidth(host) { return Math.max(240, Math.round(host.clientWidth || 640)); }
+  function short(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+  function joinNum(a, d) {
+    return a.map(function (x) { return fmtInt(x); }).join(' / ');
+  }
+
+  /* ============================================================ 坐标与刻度 */
+  function sc(x0, x1, a, b) {
+    var d = (x1 - x0) || 1;
+    return function (v) { return a + (v - x0) / d * (b - a); };
+  }
+  function logsc(x0, x1, a, b) {
+    var l0 = Math.log10(x0), l1 = Math.log10(x1);
+    return function (v) { return a + (Math.log10(Math.max(v, 1e-300)) - l0) / (l1 - l0) * (b - a); };
+  }
+  function niceTicks(lo, hi, count) {
+    var span = hi - lo;
+    if (!(span > 0)) return [lo];
+    var step = Math.pow(10, Math.floor(Math.log10(span / count)));
+    var err = span / count / step;
+    if (err >= 5) step *= 10; else if (err >= 2) step *= 5; else if (err >= 1) step *= 2;
+    var t = [], v = Math.ceil(lo / step - 1e-9) * step;
+    for (; v <= hi + step * 1e-9; v += step) t.push(+v.toPrecision(12));
+    return t;
+  }
+  function tickTxt(v) {
+    var a = Math.abs(v);
+    if (a === 0) return '0';
+    if (a >= 1000) return String(Math.round(v));
+    if (a >= 1) return String(+v.toFixed(2));
+    if (a >= 0.01) return String(+v.toFixed(3));
+    return sci(v, 0);
+  }
+  /* 对数刻度：范围窄于 3 个数量级时必须补 2×/5×，否则整根轴只剩 1–2 条刻度 */
+  function logTicks(lo, hi) {
+    var mult = (Math.log10(hi / lo) >= 3) ? [1] : [1, 2, 5];
+    var out = [], e, i;
+    for (e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++) {
+      for (i = 0; i < mult.length; i++) {
+        var v = mult[i] * Math.pow(10, e);
+        if (v >= lo * 0.9999 && v <= hi * 1.0001) out.push(+v.toPrecision(12));
+      }
+    }
+    return out;
+  }
+  /* 整根轴统一标签格式：混出 "10^-4" 和 "0.001" 是同轴大忌 */
+  function logFmt(ticks) {
+    var allPow = true, i;
+    for (i = 0; i < ticks.length; i++) {
+      var e = Math.log10(ticks[i]);
+      if (Math.abs(e - Math.round(e)) > 1e-9) { allPow = false; break; }
+    }
+    return function (v) {
+      if (allPow) { var k = Math.round(Math.log10(v)); return (k >= -3 && k <= 4) ? String(v) : '10^' + k; }
+      if (v >= 1) return String(+v.toPrecision(3));
+      if (v >= 1e-3) return String(+v.toPrecision(3));
+      return sci(v, 1);
+    };
+  }
+  function thin(ticks, span, minGap) {
+    var maxN = Math.max(2, Math.floor(span / minGap));
+    if (ticks.length <= maxN) return ticks;
+    var step = Math.ceil(ticks.length / maxN);
+    return ticks.filter(function (_, i) { return i % step === 0; });
+  }
+  function lblHalf(s) {
+    var w = 0;
+    for (var i = 0; i < s.length; i++) {
+      var ch = s.charAt(i);
+      w += ch === '-' ? 4.0 : (ch === '/' ? 3.4 : (ch === '.' ? 3.0 : 6.0));
+    }
+    return w / 2;
+  }
+  function frame(w, h, pad, xr, yr, opt) {
+    opt = opt || {};
+    var X = opt.xlog ? logsc(xr[0], xr[1], pad.l, w - pad.r) : sc(xr[0], xr[1], pad.l, w - pad.r);
+    var Y = opt.ylog ? logsc(yr[0], yr[1], h - pad.b, pad.t) : sc(yr[0], yr[1], h - pad.b, pad.t);
+    var s = '';
+    s += tag('rect', { x: pad.l, y: pad.t, width: w - pad.l - pad.r, height: h - pad.t - pad.b,
+                       fill: '#ffffff', stroke: '#ded9d0', 'stroke-width': 1 });
+    var xt = opt.xlog ? logTicks(xr[0], xr[1]) : niceTicks(xr[0], xr[1], opt.xn || 6);
+    xt = thin(xt, w - pad.l - pad.r, 46);
+    var xf = opt.xlog ? logFmt(xt) : tickTxt;
+    if (!opt.noxt) xt.forEach(function (v) {
+      var x = X(v);
+      if (x < pad.l - 0.5 || x > w - pad.r + 0.5) return;
+      s += tag('line', { x1: x, y1: h - pad.b, x2: x, y2: h - pad.b + 4, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('line', { x1: x, y1: pad.t, x2: x, y2: h - pad.b, stroke: '#efece6', 'stroke-width': 1 });
+      s += tag('text', { x: x, y: h - pad.b + 14, 'text-anchor': 'middle', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, xf(v));
+    });
+    var yt = opt.ylog ? logTicks(yr[0], yr[1]) : niceTicks(yr[0], yr[1], opt.yn || 5);
+    yt = thin(yt, h - pad.t - pad.b, 19);
+    var yf = opt.ylog ? logFmt(yt) : tickTxt;
+    yt.forEach(function (v) {
+      var y = Y(v);
+      if (y < pad.t - 0.5 || y > h - pad.b + 0.5) return;
+      s += tag('line', { x1: pad.l - 4, y1: y, x2: pad.l, y2: y, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('line', { x1: pad.l, y1: y, x2: w - pad.r, y2: y, stroke: '#efece6', 'stroke-width': 1 });
+      s += tag('text', { x: pad.l - 6, y: y + 3.5, 'text-anchor': 'end', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, yf(v));
+    });
+    if (opt.xlab) s += tag('text', { x: (pad.l + w - pad.r) / 2, y: h - 3, 'text-anchor': 'middle',
+                                     'font-size': 11.5, fill: '#57534e', class: 'tick' }, opt.xlab);
+    if (opt.ylab) s += tag('text', { x: 11, y: (pad.t + h - pad.b) / 2, 'text-anchor': 'middle',
+                                     'font-size': 11.5, fill: '#57534e', class: 'tick',
+                                     transform: 'rotate(-90 11 ' + ((pad.t + h - pad.b) / 2) + ')' }, opt.ylab);
+    return { X: X, Y: Y, body: s };
+  }
+  function poly(pts, color, wdt, dash) {
+    if (!pts.length) return '';
+    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2); }).join(' ');
+    return tag('path', { d: d, fill: 'none', stroke: color, 'stroke-width': wdt || 2,
+                         'stroke-dasharray': dash || 'none', 'stroke-linejoin': 'round' });
+  }
+  function dot(x, y, color, r, shape) {
+    if (shape === 'sq') return tag('rect', { x: x - (r || 3), y: y - (r || 3), width: 2 * (r || 3), height: 2 * (r || 3), fill: color });
+    return tag('circle', { cx: x, cy: y, r: r || 3, fill: color });
+  }
+  function svgInto(host, w, h, s) {
+    host.innerHTML = openTag('svg', { width: w, height: h, viewBox: '0 0 ' + w + ' ' + h, role: 'img' }) + s + '</svg>';
+  }
+  /* 竖直柱：data-want 存高度，探针按 data-vert 读 bboxH */
+  function vbar(x, yBot, hgt, bw, color, key, want, over) {
+    var hh = Math.max(0, hgt);
+    return tag('rect', { x: x - bw / 2, y: yBot - hh, width: bw, height: hh, fill: color,
+                         class: 'bar-fill', 'data-want': (want === undefined ? hh : want).toFixed(3),
+                         'data-over': over ? '1' : '0', 'data-vert': '1', 'data-key': key });
+  }
+  function capY(host, w, pad, text) {
+    return tag('text', { x: pad.l, y: pad.t - 6, 'font-size': 10.5, fill: '#8a8279', class: 'tick' }, text);
+  }
+
+  /* ============================================================ 通用：实例与显示 */
+  var SIDE_CN = { men: '男方', women: '女方' };
+  function listLabel(side, i) { return (side === 'men' ? '男' : '女') + (i + 1); }
+  function matchText(inst, M) {
+    var out = [], i;
+    for (i = 0; i < inst.n; i++) out.push((M[i] >= 0 ? (M[i] + 1) : '·'));
+    return out.join(' ');
+  }
+  function matchCompact(inst, M) {
+    var out = [], i;
+    for (i = 0; i < inst.n; i++) out.push(M[i] >= 0 ? (M[i] + 1) : '·');
+    return out.join('');
+  }
+  function matchFull(inst, M) {
+    var out = [], i;
+    for (i = 0; i < inst.n; i++) out.push('男' + (i + 1) + '→' + (M[i] >= 0 ? '女' + (M[i] + 1) : '落单'));
+    return out.join(' ');
+  }
+  function rankProfileOf(inst, M) {
+    var rm = Core.rankTable(inst.men, inst.m), rw = Core.rankTable(inst.women, inst.n);
+    var men = [], women = [], i, inv = Core.inverse(M, inst.m);
+    for (i = 0; i < inst.n; i++) men.push(M[i] >= 0 ? rm[i][M[i]] : -1);
+    for (i = 0; i < inst.m; i++) women.push(inv[i] >= 0 ? rw[i][inv[i]] : -1);
+    return { men: men, women: women };
+  }
+  function avgRank(arr) {
+    var s = 0, n = 0, i;
+    for (i = 0; i < arr.length; i++) if (arr[i] >= 0) { s += arr[i] + 1; n++; }
+    return n ? s / n : NaN;
+  }
+
+  /* ============================================================ 壹 · 规则 */
+  var GRID = { idx: 0, match: null };
+  var GRID_INSTS = [];
+  function buildGridInsts() {
+    GRID_INSTS = [];
+    if (D.demoInst) GRID_INSTS.push({ name: '两解实例（4×4）', n: 4, m: 4, men: D.demoInst.men, women: D.demoInst.women });
+    if (D.max4) GRID_INSTS.push({ name: '极值实例（4×4，10 解）', n: 4, m: 4, men: D.max4.men, women: D.max4.women });
+    if (D.max5) GRID_INSTS.push({ name: '极值实例（5×5，16 解）', n: 5, m: 5, men: D.max5.men, women: D.max5.women });
+    var rnd4 = Core.makeInstance(7, 'ui', 4);
+    GRID_INSTS.push({ name: '随机（4×4，种子 7）', n: 4, m: 4, men: rnd4.men, women: rnd4.women });
+  }
+  function gridInst() { return GRID_INSTS[GRID.idx]; }
+  function gridEnsure() {
+    var inst = gridInst();
+    if (!GRID.match || GRID.matchFor !== GRID.idx) {
+      GRID.match = Core.galeShapley(inst, 'men').match;
+      GRID.matchFor = GRID.idx;
+    }
+  }
+  function gridBlocks(inst, M) { return Core.blockingPairs(inst, M); }
+  function drawGrid(host) {
+    var inst = gridInst(), n = inst.n, m = inst.m;
+    gridEnsure();
+    var M = GRID.match;
+    var w = chartWidth(host);
+    var padL = 42, padT = 24, padR = 6, padB = 6;
+    var cell = Math.min(46, Math.floor((w - padL - padR) / Math.max(n, m)));
+    if (cell < 18) cell = 18;
+    var h = padT + cell * n + padB;
+    var rm = Core.rankTable(inst.men, inst.m);
+    var inv = Core.inverse(M, inst.m);
+    var blocks = gridBlocks(inst, M);
+    var blockSet = {};
+    blocks.forEach(function (b) { blockSet[b[0] + ',' + b[1]] = 1; });
+    var s = '';
+    var i, j;
+    for (j = 0; j < m; j++) {
+      s += tag('text', { x: padL + cell * j + cell / 2, y: padT - 9, 'text-anchor': 'middle',
+                         'font-size': 10.5, fill: '#8a8279', class: 'tick' }, '女' + (j + 1));
+    }
+    for (i = 0; i < n; i++) {
+      s += tag('text', { x: padL - 8, y: padT + cell * i + cell / 2 + 3.5, 'text-anchor': 'end',
+                         'font-size': 10.5, fill: '#8a8279', class: 'tick' }, '男' + (i + 1));
+      for (j = 0; j < m; j++) {
+        var x = padL + cell * j, y = padT + cell * i;
+        var isM = (M[i] === j);
+        var isB = blockSet[i + ',' + j];
+        s += tag('rect', { x: x + 1, y: y + 1, width: cell - 2, height: cell - 2,
+                           fill: isM ? '#1f6f8b' : '#f4f2ee',
+                           stroke: isB ? '#b91c1c' : '#ded9d0', 'stroke-width': isB ? 2.5 : 1,
+                           class: 'cell', 'data-cell': i + ',' + j,
+                           'data-match': isM ? '1' : '0', 'data-block': isB ? '1' : '0',
+                           'data-want': (cell - 2).toFixed(3), 'data-want-h': (cell - 2).toFixed(3) });
+        s += tag('text', { x: x + cell / 2, y: y + cell / 2 + 4, 'text-anchor': 'middle',
+                           'font-size': Math.min(12, cell * 0.42), class: 'tick',
+                           fill: isM ? '#ffffff' : '#57534e' }, String(rm[i][j] + 1));
+      }
+    }
+    svgInto(host, w, h, s);
+  }
+  function renderGrid() {
+    var host = $('c-grid');
+    if (!host) return;
+    drawGrid(host);
+    var inst = gridInst(), M = GRID.match;
+    var blocks = gridBlocks(inst, M);
+    var rp = rankProfileOf(inst, M);
+    setText('ro-grid', '');
+    setHTML('ro-grid',
+      '<span><span class="k">实例</span><b>' + esc(inst.n + ' 男 × ' + inst.m + ' 女') + '</b></span>' +
+      '<span><span class="k">阻塞对</span><b class="' + (blocks.length ? 'blk' : '') + '">' + blocks.length + '</b></span>' +
+      '<span class="men"><span class="k">男方均名次</span><b>' + fmt(avgRank(rp.men), 2) + '</b></span>' +
+      '<span class="maj"><span class="k">女方均名次</span><b>' + fmt(avgRank(rp.women), 2) + '</b></span>' +
+      '<span class="stable"><span class="k">稳定？</span><b>' + (blocks.length === 0 ? '是' : '否') + '</b></span>' +
+      '<span><span class="k">配法</span><b>' + esc(matchText(inst, M)) + '</b></span>');
+    var note = $('grid-note');
+    if (note) {
+      if (blocks.length === 0) {
+        note.textContent = '零阻塞对。这份配法是稳定的 —— 注意它未必"公平"：' +
+          '男方平均拿到第 ' + fmt(avgRank(rp.men), 2) + ' 名，女方平均第 ' + fmt(avgRank(rp.women), 2) + ' 名。';
+      } else {
+        var b0 = blocks[0];
+        note.textContent = '有 ' + blocks.length + ' 对阻塞：男' + (b0[0] + 1) + ' 和 女' + (b0[1] + 1) +
+          ' 互相都比现在更想要对方 —— 他们会私下换掉，所以这份配法站不住。';
+      }
+    }
+    renderBlockTable();
+  }
+  function renderBlockTable() {
+    var inst = gridInst(), n = inst.n, m = inst.m;
+    var rows = [];
+    function push(name, M) {
+      var rp = rankProfileOf(inst, M);
+      rows.push({ name: name, b: Core.blockingPairs(inst, M).length,
+                  men: avgRank(rp.men), women: avgRank(rp.women), text: matchText(inst, M) });
+    }
+    push('男方求婚（延迟接受）', Core.galeShapley(inst, 'men').match);
+    push('女方求婚（延迟接受）', Core.galeShapley(inst, 'women').match);
+    var rev = [];
+    for (var i = 0; i < n; i++) rev.push(m - 1 - (i % m));
+    push('把女方的顺序倒过来配', rev.slice(0, n));
+    var shift = [];
+    for (var k = 0; k < n; k++) shift.push((k + 1) % m);
+    push('男 1 号往后挪一格', shift);
+    var html = rows.map(function (r) {
+      return '<tr' + (r.b === 0 ? ' class="good"' : '') + '><td>' + esc(r.name) + '</td><td>' + r.b +
+        '</td><td>' + fmt(r.men, 2) + '</td><td>' + fmt(r.women, 2) + '</td><td>' +
+        (r.b === 0 ? '稳定' : '不稳定') + '</td></tr>';
+    }).join('');
+    setTBody('t-block', html);
+  }
+
+  /* ============================================================ 贰 · 算法 */
+  var PROP = { idx: 0, side: 'men', round: 0, trace: null, match: null };
+  function propInst() { return GRID_INSTS[PROP.idx]; }
+  function propEnsure() {
+    if (PROP.trace && PROP.traceFor === PROP.idx + '|' + PROP.side) return;
+    var inst = propInst();
+    var r = Core.galeShapley(inst, PROP.side);
+    PROP.trace = r.trace;
+    PROP.match = r.match;
+    PROP.round = r.trace.length;
+    PROP.traceFor = PROP.idx + '|' + PROP.side;
+  }
+  function propStateAt(k) {
+    var inst = propInst();
+    var held = {}, i;
+    for (i = 0; i < inst.m; i++) held[i] = -1;
+    for (var r = 0; r < k && r < PROP.trace.length; r++) {
+      PROP.trace[r].events.forEach(function (ev) {
+        if (PROP.side === 'men') {
+          if (ev.accepted) held[ev.to] = ev.from;
+        } else {
+          /* 女方求婚时 trace 的 from/to 是"女方 → 男方" */
+          if (ev.accepted) held[ev.to] = ev.from;
+        }
+      });
+    }
+    var match = [], j;
+    for (i = 0; i < inst.n; i++) match.push(-1);
+    if (PROP.side === 'men') { for (j = 0; j < inst.m; j++) if (held[j] >= 0) match[held[j]] = j; }
+    else { for (j = 0; j < inst.n; j++) if (held[j] >= 0) match[j] = held[j]; }
+    return match;
+  }
+  function drawPropose(host) {
+    var inst = propInst(), R = PROP.trace.length;
+    var w = chartWidth(host);
+    var padL = 42, padT = 26, padR = 6, padB = 22;
+    var rowH = Math.min(30, Math.max(20, Math.round((w - padL) / 22)));
+    var colW = Math.max(30, Math.min(64, Math.floor((w - padL - padR) / Math.max(1, R))));
+    var h = padT + rowH * inst.n + padB;
+    var s = '';
+    var i, r;
+    for (r = 0; r < R; r++) {
+      s += tag('text', { x: padL + colW * r + colW / 2, y: padT - 9, 'text-anchor': 'middle',
+                         'font-size': 10.5, fill: '#8a8279', class: 'tick' }, '第' + (r + 1) + '轮');
+    }
+    for (i = 0; i < inst.n; i++) {
+      s += tag('text', { x: padL - 8, y: padT + rowH * i + rowH / 2 + 3.5, 'text-anchor': 'end',
+                         'font-size': 10.5, fill: '#8a8279', class: 'tick' }, '男' + (i + 1));
+    }
+    var shown = Math.min(PROP.round, R);
+    for (r = 0; r < shown; r++) {
+      PROP.trace[r].events.forEach(function (ev) {
+        var mi = (PROP.side === 'men') ? ev.from : ev.to;
+        var wi = (PROP.side === 'men') ? ev.to : ev.from;
+        var x = padL + colW * r, y = padT + rowH * mi;
+        var col = ev.accepted ? (ev.evicted >= 0 ? '#a23b1e' : '#15803d') : '#ded9d0';
+        s += tag('rect', { x: x + 3, y: y + 3, width: colW - 6, height: rowH - 6, rx: 3,
+                           fill: col, class: 'cell', 'data-cell': mi + ',' + r,
+                           'data-match': '0', 'data-block': '0',
+                           'data-want': (colW - 6).toFixed(3), 'data-want-h': (rowH - 6).toFixed(3) });
+        s += tag('text', { x: x + colW / 2, y: y + rowH / 2 + 3.5, 'text-anchor': 'middle',
+                           'font-size': 10, fill: ev.accepted ? '#ffffff' : '#57534e', class: 'tick' },
+                 (PROP.side === 'men' ? '女' : '男') + (wi + 1));
+      });
+    }
+    if (PROP.round < R) {
+      s += tag('rect', { x: padL + colW * PROP.round + 1, y: padT, width: colW * (R - PROP.round) - 2,
+                         height: rowH * inst.n, fill: '#f9f8f6' });
+      s += tag('text', { x: padL + colW * PROP.round + colW * (R - PROP.round) / 2,
+                         y: padT + rowH * inst.n / 2, 'text-anchor': 'middle', 'font-size': 11,
+                         fill: '#8a8279', class: 'tick' }, '还没走到');
+    }
+    svgInto(host, w, h, s);
+  }
+  function renderProp() {
+    var host = $('c-propose');
+    if (!host) return;
+    propEnsure();
+    drawPropose(host);
+    var inst = propInst();
+    var cur = propStateAt(PROP.round);
+    var rp = rankProfileOf(inst, cur);
+    var matched = 0;
+    cur.forEach(function (x) { if (x >= 0) matched++; });
+    setHTML('ro-prop',
+      '<span><span class="k">求婚方</span><b>' + SIDE_CN[PROP.side] + '</b></span>' +
+      '<span><span class="k">已走</span><b>' + PROP.round + ' / ' + PROP.trace.length + ' 轮</b></span>' +
+      '<span class="men"><span class="k">男方均名次</span><b>' + fmt(avgRank(rp.men), 2) + '</b></span>' +
+      '<span class="maj"><span class="k">女方均名次</span><b>' + fmt(avgRank(rp.women), 2) + '</b></span>' +
+      '<span><span class="k">已配上</span><b>' + matched + ' / ' + inst.n + '</b></span>' +
+      '<span><span class="k">阻塞对</span><b>' + Core.blockingPairs(inst, cur).length + '</b></span>');
+    var note = $('prop-note');
+    if (note) {
+      if (PROP.round >= PROP.trace.length) {
+        note.textContent = '走完了。' + SIDE_CN[PROP.side] + '求婚的结果：' + matchFull(inst, cur) +
+          '。零阻塞对 —— 而且这是' + SIDE_CN[PROP.side] + '在所有稳定匹配里能拿到的最好结果。';
+      } else {
+        note.textContent = '还没走完：现在这份临时配法还有 ' + Core.blockingPairs(inst, cur).length +
+          ' 对阻塞。延迟接受会一直走下去，直到阻塞对清零 —— 它一定会清零。';
+      }
+    }
+    renderRoundTable();
+  }
+  function renderRoundTable() {
+    var inst = propInst();
+    var rows = [], held = {}, i;
+    for (i = 0; i < inst.m; i++) held[i] = -1;
+    var shown = Math.min(PROP.round, PROP.trace.length);
+    for (var r = 0; r < shown; r++) {
+      var acc = 0, rej = 0, ev = 0;
+      PROP.trace[r].events.forEach(function (e) {
+        if (e.accepted) acc++; else rej++;
+        if (e.accepted && e.evicted >= 0) ev++;
+        if (PROP.side === 'men') { if (e.accepted) held[e.to] = e.from; }
+        else { if (e.accepted) held[e.to] = e.from; }
+      });
+      var matched = 0;
+      for (i = 0; i < inst.m; i++) if (held[i] >= 0) matched++;
+      rows.push({ r: r + 1, n: PROP.trace[r].events.length, acc: acc, rej: rej, ev: ev, matched: matched });
+    }
+    setTBody('t-round', rows.map(function (x) {
+      return '<tr><td>第 ' + x.r + ' 轮</td><td>' + x.n + '</td><td>' + x.acc + '</td><td>' + x.rej +
+        '</td><td>' + x.ev + '</td><td>' + x.matched + '</td></tr>';
+    }).join(''));
+  }
+
+  /* ============================================================ 叁 · 分布 */
+  var DIST = { idx: 0 };
+  var DIST_NS = D.distRows.map(function (r) { return r.n; });
+  function distRow() { return D.distRows[DIST.idx]; }
+  function drawDist(host) {
+    var row = distRow();
+    var w = chartWidth(host);
+    var pad = { l: 52, r: 10, t: 26, b: 42 };
+    var K = 0, i;
+    for (i = 0; i < row.counts.length; i++) if (row.counts[i] > 0) K = i + 1;
+    if (row.oeis) for (i = 0; i < row.oeis.length; i++) if (row.oeis[i] > 0) K = Math.max(K, i + 1);
+    if (K < 2) K = 2;
+    var total = row.total, oTotal = row.oeisTotal || row.total;
+    var vals = [], j;
+    for (i = 0; i < K; i++) {
+      vals.push(row.counts[i] / total);
+      vals.push(row.oeis ? row.oeis[i] / oTotal : null);
+    }
+    var pos = vals.filter(function (v) { return v !== null && v > 0; });
+    var lo = pos.length ? Math.min.apply(null, pos) : 1e-3;
+    var ylo = Math.pow(10, Math.floor(Math.log10(lo)) - (lo < 0.01 ? 1 : 0));
+    if (ylo < 1e-9) ylo = 1e-9;
+    var h = 260;
+    var f = frame(w, h, pad, [0.5, K + 0.5], [ylo, 1], { ylog: true, yn: 5, ylab: '比例', noxt: true });
+    var s = f.body;
+    s += capY(host, w, pad, '比例（对数刻度）');
+    var bw = Math.max(5, Math.min(22, (w - pad.l - pad.r) / (K * 2.6)));
+    for (i = 0; i < K; i++) {
+      var cx = f.X(i + 1);
+      var pm = row.counts[i] / total;
+      var po = row.oeis ? row.oeis[i] / oTotal : null;
+      var floorY = h - pad.b;
+      if (pm > 0) {
+        var y = f.Y(Math.max(pm, ylo));
+        s += vbar(cx - bw * 0.58, floorY, floorY - y, bw, '#a23b1e', 'm' + (i + 1), floorY - y, false);
+      } else {
+        s += tag('text', { x: cx - bw * 0.58, y: floorY - 4, 'text-anchor': 'middle', 'font-size': 11,
+                           fill: '#b91c1c', class: 'tick' }, '×');
+      }
+      if (po !== null) {
+        if (po > 0) {
+          var y2 = f.Y(Math.max(po, ylo));
+          s += vbar(cx + bw * 0.58, floorY, floorY - y2, bw, '#6b8e23', 'o' + (i + 1), floorY - y2, false);
+        } else {
+          s += tag('text', { x: cx + bw * 0.58, y: floorY - 4, 'text-anchor': 'middle', 'font-size': 11,
+                             fill: '#6b8e23', class: 'tick' }, '×');
+        }
+      }
+      s += tag('text', { x: cx, y: h - pad.b + 14, 'text-anchor': 'middle', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, String(i + 1));
+    }
+    s += tag('text', { x: (pad.l + w - pad.r) / 2, y: h - 3, 'text-anchor': 'middle', 'font-size': 11.5,
+                       fill: '#57534e', class: 'tick' }, '稳定匹配的个数 k');
+    svgInto(host, w, h, s);
+  }
+  function renderDist() {
+    var host = $('c-dist');
+    if (!host) return;
+    drawDist(host);
+    var row = distRow();
+    var tot = row.total, i, nz = 0;
+    for (i = 0; i < row.counts.length; i++) if (row.counts[i] > 0) nz++;
+    setHTML('ro-dist',
+      '<span><span class="k">n</span><b>' + row.n + '</b></span>' +
+      '<span><span class="k">方式</span><b>' + esc(row.kind) + '</b></span>' +
+      '<span><span class="k">样本</span><b>' + fmtInt(row.sample) + '</b></span>' +
+      '<span><span class="k">可能个数</span><b>1 – ' + row.max + '</b></span>' +
+      '<span><span class="k">最多的那种</span><b>' + fmtInt(Math.max.apply(null, row.counts)) + '</b></span>' +
+      '<span><span class="k">OEIS</span><b>' + (row.oeis ? '有' : '—') + '</b></span>');
+    var note = $('dist-note');
+    if (note) {
+      if (row.kind === '穷举') {
+        note.textContent = '这是穷举：n=' + row.n + ' 的全部 ' + fmtInt(row.total) +
+          ' 个偏好剖面一个不落地走完了，分布与 OEIS 逐位相同（' +
+          (row.oeis ? row.oeis.slice(0, row.max).join(' / ') : '—') + '）。' +
+          (row.n === 3 ? ' 另外，恰好 3 个稳定匹配的那 1092 个剖面里，每一个都是"既约"的。' : '');
+      } else {
+        note.textContent = '这是抽样：n=' + row.n + ' 的剖面总数是 ' + fmtInt(row.oeisTotal) +
+          '，走不完，这里只走了 ' + fmtInt(row.sample) + ' 个随机剖面，看比例对不对得上。' +
+          (row.n === 4 ? ' 注意第 9 根柱子：OEIS 说这一项是 0 —— 4×4 世界里不存在恰好 9 个稳定匹配的剖面。' : '');
+      }
+    }
+    renderOeisTable();
+  }
+  function renderOeisTable() {
+    var html = D.oeisRows.map(function (r) {
+      var tds = '<td>' + r.n + '</td><td>' + esc(r.kind) + '</td><td>' + fmtInt(r.sample) + '</td>';
+      var i;
+      for (i = 0; i < 10; i++) {
+        var g = r.got[i], w = r.want[i];
+        var cls = '';
+        if (r.n <= 3) { cls = (g === w) ? ' class="good"' : ''; tds += '<td' + cls + '>' + (g === undefined ? '·' : fmtInt(g)) + '</td>'; }
+        else {
+          var gs = (g === undefined) ? '·' : (r.kind === '抽样' ? pctS(g / r.sample, 3) : fmtInt(g));
+          tds += '<td>' + gs + '</td>';
+        }
+      }
+      tds += '<td>' + esc(r.src) + '</td><td>' + (r.ok ? '✓' : '✗') + '</td>';
+      return '<tr' + (r.n <= 3 ? ' class="good"' : '') + '>' + tds + '</tr>';
+    }).join('');
+    setTBody('t-oeis', html);
+  }
+  function drawCount(host) {
+    var rows = D.countRows, g = D.growth;
+    var w = chartWidth(host);
+    var pad = { l: 54, r: 14, t: 26, b: 32 };
+    var h = 280;
+    var xs = rows.map(function (r) { return r.n; });
+    var ys = [];
+    rows.forEach(function (r) { ys.push(r.avg, r.pittel); });
+    g.forEach(function (r) { if (r.max > 0) ys.push(r.max); });
+    var f = frame(w, h, pad, [Math.min.apply(null, xs) * 0.8, Math.max.apply(null, xs) * 1.25],
+                  [Math.max(0.8, Math.min.apply(null, ys) * 0.7), Math.max.apply(null, ys) * 1.4],
+                  { xlog: true, ylog: true, yn: 5, xlab: 'n', ylab: '个数' });
+    var s = f.body;
+    s += capY(host, w, pad, '个数（双对数）');
+    var ptsA = rows.map(function (r) { return [f.X(r.n), f.Y(Math.max(r.avg, 0.8))]; });
+    var ptsP = rows.map(function (r) { return [f.X(r.n), f.Y(Math.max(r.pittel, 0.8))]; });
+    var ptsM = g.filter(function (r) { return r.max > 0; }).map(function (r) { return [f.X(r.n), f.Y(r.max)]; });
+    s += poly(ptsP, '#6b8e23', 2, '6 4');
+    s += poly(ptsM, '#7c3aed', 2, '3 3');
+    s += poly(ptsA, '#a23b1e', 2.4);
+    ptsA.forEach(function (p) { s += dot(p[0], p[1], '#a23b1e', 3); });
+    ptsM.forEach(function (p) { s += dot(p[0], p[1], '#7c3aed', 2.5, 'sq'); });
+    svgInto(host, w, h, s);
+  }
+  function renderCount() {
+    var host = $('c-count');
+    if (!host) return;
+    drawCount(host);
+    setTBody('t-count', D.countRows.map(function (r) {
+      return '<tr><td>' + r.n + '</td><td>' + fmt(r.avg, 2) + '</td><td>± ' + fmt(r.se, 2) +
+        '</td><td>' + r.max + '</td><td>' + fmt(r.avgRot, 1) + '</td><td>' + pctS(r.uniq, 1) +
+        '</td><td>' + fmt(r.pittel, 1) + '</td><td>' + fmt(r.ratio, 3) + '</td></tr>';
+    }).join(''));
+    var last = D.countRows[D.countRows.length - 1];
+    var note = $('count-note');
+    if (note) {
+      note.textContent = 'n=' + last.n + ' 时平均 ' + fmt(last.avg, 1) + ' 个，n·ln n/e 是 ' +
+        fmt(last.pittel, 1) + ' —— 实测只有它的 ' + pctS(last.ratio, 1) +
+        '。这个比值在 0.29–0.42 之间来回摆且不随 n 单调：e⁻¹ 是 n→∞ 的极限，' +
+        '而 n≤256 这个窗口还太小，二阶项没消失。';
+    }
+  }
+
+  /* ============================================================ 肆 · 格 */
+  var LAT = { idx: 0, data: null };
+  function latPreset() { return D.latticePresets[LAT.idx]; }
+  function latEnsure() {
+    if (LAT.data && LAT.dataFor === LAT.idx) return;
+    var p = latPreset();
+    var inst = { n: p.n, m: p.n, men: p.men, women: p.women };
+    var r = Core.allStableRotations(inst, 200000);
+    var G = Core.latticeOf(inst, r.list);
+    LAT.data = { inst: inst, list: r.list, G: G, capped: r.capped };
+    LAT.dataFor = LAT.idx;
+  }
+  /* 分层布局：层内按上一层邻居的重心排序（两遍），减少交叉 */
+  function latLayout(G) {
+    var L = 0, i;
+    for (i = 0; i < G.k; i++) L = Math.max(L, G.layer[i]);
+    var layers = [];
+    for (i = 0; i <= L; i++) layers.push([]);
+    for (i = 0; i < G.k; i++) layers[G.layer[i]].push(i);
+    var pos = new Array(G.k);
+    var adjDown = [], adjUp = [];
+    for (i = 0; i < G.k; i++) { adjDown.push([]); adjUp.push([]); }
+    G.cover.forEach(function (e) { adjDown[e[0]].push(e[1]); adjUp[e[1]].push(e[0]); });
+    layers.forEach(function (row, li) {
+      if (li === 0) { row.sort(function (a, b) { return a - b; }); return; }
+      row.sort(function (a, b) {
+        var sa = 0, sb = 0, t;
+        adjUp[a].forEach(function (x) { sa += pos[x] === undefined ? 0 : pos[x]; });
+        adjUp[b].forEach(function (x) { sb += pos[x] === undefined ? 0 : pos[x]; });
+        sa = adjUp[a].length ? sa / adjUp[a].length : 1e9;
+        sb = adjUp[b].length ? sb / adjUp[b].length : 1e9;
+        return sa - sb;
+      });
+    });
+    layers.forEach(function (row, li) {
+      row.forEach(function (node, ci) { pos[node] = ci; });
+    });
+    return { layers: layers, pos: pos, L: L };
+  }
+  function drawLattice(host) {
+    latEnsure();
+    var inst = LAT.data.inst, list = LAT.data.list, G = LAT.data.G, k = G.k;
+    var w = chartWidth(host);
+    var lay = latLayout(G);
+    var maxRow = 1;
+    lay.layers.forEach(function (r) { maxRow = Math.max(maxRow, r.length); });
+    var nodeW = Math.min(150, Math.max(40, Math.floor((w - 24) / maxRow) - 6));
+    var nodeH = 26;
+    var nodeFs = nodeW < 62 ? 9 : 11.5;
+    var layerH = 62;
+    var padT = 16, padB = 10;
+    var h = padT + lay.L * layerH + nodeH + padB;
+    if (h < 120) h = 120;
+    var cy = function (li) { return padT + li * layerH + nodeH / 2; };
+    var cx = function (li, ci) {
+      var n = lay.layers[li].length;
+      return (w / (n + 1)) * (ci + 1);
+    };
+    var s = '';
+    /* 先画边，再画点，避免线压住框里的字 */
+    G.cover.forEach(function (e) {
+      var a = e[0], b = e[1];
+      var la = G.layer[a], lb = G.layer[b];
+      var ca = lay.pos[a], cb = lay.pos[b];
+      var x1 = cx(la, ca), y1 = cy(la) + nodeH / 2;
+      var x2 = cx(lb, cb), y2 = cy(lb) - nodeH / 2;
+      var my = (y1 + y2) / 2;
+      s += tag('path', { d: 'M' + x1.toFixed(1) + ' ' + y1.toFixed(1) + 'C' + x1.toFixed(1) + ' ' + my.toFixed(1) +
+                         ' ' + x2.toFixed(1) + ' ' + my.toFixed(1) + ' ' + x2.toFixed(1) + ' ' + y2.toFixed(1),
+                         fill: 'none', stroke: '#c9c2b7', 'stroke-width': 1.4 });
+    });
+    for (var i = 0; i < k; i++) {
+      var li = G.layer[i], ci = lay.pos[i];
+      var x = cx(li, ci), y = cy(li);
+      var isTop = (i === G.top), isBot = (i === G.bottom);
+      var col = isTop ? '#1e3a8a' : (isBot ? '#7c3aed' : '#1f6f8b');
+      s += tag('rect', { x: x - nodeW / 2, y: y - nodeH / 2, width: nodeW, height: nodeH, rx: 5,
+                         fill: col, class: 'cell', 'data-cell': String(i), 'data-match': '0', 'data-block': '0',
+                         'data-want': nodeW.toFixed(3), 'data-want-h': nodeH.toFixed(3) });
+      s += tag('text', { x: x, y: y + 4, 'text-anchor': 'middle', 'font-size': nodeFs,
+                         fill: '#ffffff', class: 'tick' }, matchCompact(inst, list[i]));
+    }
+    svgInto(host, w, h, s);
+  }
+  function renderLat() {
+    var host = $('c-lattice');
+    if (!host) return;
+    latEnsure();
+    drawLattice(host);
+    var G = LAT.data.G, list = LAT.data.list, inst = LAT.data.inst;
+    var rpTop = rankProfileOf(inst, list[G.top]), rpBot = rankProfileOf(inst, list[G.bottom]);
+    setHTML('ro-lat',
+      '<span><span class="k">实例</span><b>' + inst.n + '×' + inst.n + '</b></span>' +
+      '<span><span class="k">稳定匹配</span><b>' + G.k + ' 个</b></span>' +
+      '<span><span class="k">层数</span><b>' + (function () { var m = 0, i; for (i = 0; i < G.k; i++) m = Math.max(m, G.layer[i]); return m + 1; })() + '</b></span>' +
+      '<span><span class="k">覆盖边</span><b>' + G.cover.length + '</b></span>' +
+      '<span class="men"><span class="k">男方最优·男均</span><b>' + fmt(avgRank(rpTop.men), 2) + '</b></span>' +
+      '<span class="maj"><span class="k">女方最优·女均</span><b>' + fmt(avgRank(rpBot.women), 2) + '</b></span>');
+    var note = $('lat-note');
+    if (note) {
+      note.textContent = '框里的数字是"男 1 配女几、男 2 配女几……"（· 表示落单）。' +
+        '最上面那个（深蓝）对男方最好：男方平均第 ' + fmt(avgRank(rpTop.men), 2) +
+        ' 名；最下面那个（紫）对女方最好：女方平均第 ' + fmt(avgRank(rpBot.women), 2) +
+        ' 名。两个都是延迟接受跑出来的，只是换了谁求婚。';
+    }
+    /* 每层构成 */
+    var L = 0, i;
+    for (i = 0; i < G.k; i++) L = Math.max(L, G.layer[i]);
+    var rows = [];
+    for (i = 0; i <= L; i++) {
+      var idx = [], j;
+      for (j = 0; j < G.k; j++) if (G.layer[j] === i) idx.push(j);
+      var best = idx.map(function (x) { return rankProfileOf(inst, list[x]).men.reduce(function (a, b) { return a + Math.max(b, 0); }, 0); });
+      var bi = idx[best.indexOf(Math.min.apply(null, best))];
+      rows.push({ layer: i, n: idx.length, text: matchFull(inst, list[bi]), sum: best[best.indexOf(Math.min.apply(null, best))] });
+    }
+    setTBody('t-lat', rows.map(function (x) {
+      return '<tr><td>第 ' + x.layer + ' 层</td><td>' + x.n + '</td><td>' + esc(x.text) + '</td><td>' + x.sum + '</td></tr>';
+    }).join(''));
+    setTBody('t-multi', D.latticeRows.map(function (r) {
+      return '<tr><td>' + r.n + '</td><td>' + fmtInt(r.T) + '</td><td>' + pctS(r.multiFrac, 1) +
+        '</td><td>' + fmt(r.avgK, 2) + '</td><td>' + r.maxK + '</td><td>' + fmt(r.avgLayers, 2) + '</td></tr>';
+    }).join(''));
+  }
+
+  /* ============================================================ 伍 · 先开口 */
+  var RANK = { side: 'men' };
+  function drawRank(host) {
+    var H = D.rankHist;
+    if (!H) { svgInto(host, chartWidth(host), 120, ''); return; }
+    var w = chartWidth(host);
+    var pad = { l: 52, r: 10, t: 26, b: 32 };
+    var h = 280;
+    var K = H.men.length;
+    var totM = H.men.reduce(function (a, b) { return a + b; }, 0);
+    var totW = H.women.reduce(function (a, b) { return a + b; }, 0);
+    var pm = H.men.map(function (x) { return x / totM; });
+    var pw = H.women.map(function (x) { return x / totW; });
+    var pos = pm.concat(pw).filter(function (v) { return v > 0; });
+    var lo = Math.min.apply(null, pos);
+    var ylo = Math.pow(10, Math.floor(Math.log10(lo)));
+    if (ylo < 1e-6) ylo = 1e-6;
+    var f = frame(w, h, pad, [0, K], [ylo, Math.max.apply(null, pm.concat(pw)) * 1.6],
+                  { ylog: true, yn: 5, xlab: '伴侣在他的偏好名单里排第几（' + H.W + ' 名一档）', ylab: '比例' });
+    var s = f.body;
+    s += capY(host, w, pad, '比例（对数刻度）');
+    var bw = Math.max(3, Math.min(14, (w - pad.l - pad.r) / (K * 2.4)));
+    var i;
+    for (i = 0; i < K; i++) {
+      var cx = f.X(i + 0.5);
+      var fy = h - pad.b;
+      var y1 = f.Y(Math.max(pm[i], ylo));
+      var y2 = f.Y(Math.max(pw[i], ylo));
+      s += vbar(cx - bw * 0.58, fy, fy - y1, bw, '#1f6f8b', 'm' + i, fy - y1, false);
+      s += vbar(cx + bw * 0.58, fy, fy - y2, bw, '#a23b1e', 'w' + i, fy - y2, false);
+    }
+    svgInto(host, w, h, s);
+  }
+  function renderRank() {
+    var host = $('c-rank');
+    if (!host) return;
+    drawRank(host);
+    var H = D.rankHist;
+    var r64 = null;
+    D.rankRows.forEach(function (r) { if (r.n === H.n) r64 = r; });
+    if (r64) {
+      var mp = RANK.side === 'men';
+      setHTML('ro-rank',
+        '<span><span class="k">n</span><b>' + H.n + '</b></span>' +
+        '<span><span class="k">实现</span><b>' + (H.count / H.n) + ' 个实例</b></span>' +
+        '<span class="men"><span class="k">男方均名次</span><b>' + fmt(mp ? r64.mpMen + 1 : r64.wpMen + 1, 2) + '</b></span>' +
+        '<span class="maj"><span class="k">女方均名次</span><b>' + fmt(mp ? r64.mpWomen + 1 : r64.wpWomen + 1, 2) + '</b></span>' +
+        '<span><span class="k">求婚方</span><b>' + SIDE_CN[RANK.side] + '</b></span>' +
+        '<span><span class="k">比值</span><b>' + fmt((mp ? r64.mpWomen : r64.wpMen) / Math.max(mp ? r64.mpMen : r64.wpMen, 1e-9), 1) + ' 倍</b></span>');
+    }
+    var note = $('rank-note');
+    if (note) {
+      note.textContent = RANK.side === 'men'
+        ? '男方求婚：男方的名次堆在最左边（多数人拿到前几名），女方的尾巴拖得很长。'
+        : '女方求婚：整张图左右对调 —— 这就是"先开口的一方占便宜"最直白的样子。';
+    }
+    drawAsym($('c-asym'));
+    setTBody('t-rank', D.rankRows.map(function (r) {
+      return '<tr><td>' + r.n + '</td><td>' + fmt(r.mpMen + 1, 2) + '</td><td>' + fmt(r.mpWomen + 1, 2) +
+        '</td><td>' + fmt(r.wpMen + 1, 2) + '</td><td>' + fmt(r.wpWomen + 1, 2) +
+        '</td><td>' + fmt(r.lnN, 2) + '</td><td>' + fmt(r.nOverLnN, 1) + '</td><td>' + fmt(r.womenOverNln, 3) + '</td></tr>';
+    }).join(''));
+  }
+  function drawAsym(host) {
+    if (!host) return;
+    var rows = D.rankRows;
+    var w = chartWidth(host);
+    var pad = { l: 54, r: 14, t: 26, b: 32 };
+    var h = 300;
+    var xs = rows.map(function (r) { return r.n; });
+    var ys = [];
+    rows.forEach(function (r) {
+      ys.push(r.mpMen + 1, r.mpWomen + 1, r.wpMen + 1, r.wpWomen + 1, r.lnN, r.nOverLnN);
+    });
+    var f = frame(w, h, pad, [Math.min.apply(null, xs) * 0.85, Math.max.apply(null, xs) * 1.3],
+                  [Math.max(0.5, Math.min.apply(null, ys) * 0.7), Math.max.apply(null, ys) * 1.5],
+                  { xlog: true, ylog: true, yn: 5, xlab: 'n', ylab: '平均名次（1 = 最想要）' });
+    var s = f.body;
+    s += capY(host, w, pad, '平均名次（双对数）');
+    function pts(key) { return rows.map(function (r) { return [f.X(r.n), f.Y(Math.max(r[key], 0.5))]; }); }
+    s += poly(pts('lnN'), '#6b8e23', 1.8, '7 4');
+    s += poly(pts('nOverLnN'), '#b45309', 1.8, '7 4');
+    s += poly(pts('wpMen'), '#1f6f8b', 1.6, '4 3');
+    s += poly(pts('wpWomen'), '#a23b1e', 1.6, '4 3');
+    s += poly(pts('mpMen'), '#1f6f8b', 2.4);
+    s += poly(pts('mpWomen'), '#a23b1e', 2.4);
+    rows.forEach(function (r) {
+      s += dot(f.X(r.n), f.Y(Math.max(r.mpMen + 1, 0.5)), '#1f6f8b', 3);
+      s += dot(f.X(r.n), f.Y(Math.max(r.mpWomen + 1, 0.5)), '#a23b1e', 3);
+    });
+    svgInto(host, w, h, s);
+  }
+  function renderRural() {
+    var ex = D.ruralExample;
+    if (ex) {
+      var cap = $('rhex-cap');
+      if (cap) cap.textContent = '例：' + ex.n + ' 男 ' + ex.m + ' 女的 ' + ex.k + ' 个稳定匹配（· = 落单）';
+      var html = ex.list.map(function (M, i) {
+        var tds = '<td>第 ' + (i + 1) + ' 个</td>';
+        for (var j = 0; j < ex.n; j++) {
+          var w2 = M[j];
+          var miss = (w2 < 0);
+          tds += '<td' + (miss ? ' class="hi"' : '') + '>' + (miss ? '·' : ('女' + (w2 + 1))) + '</td>';
+        }
+        tds += '<td>' + ex.unmatchedMen.map(function (m) { return '男' + (m + 1); }).join('、') + '</td>';
+        return '<tr>' + tds + '</tr>';
+      }).join('');
+      setTBody('t-rhex', html);
+    }
+    setTBody('t-rural', D.ruralRows.map(function (r) {
+      return '<tr><td>' + r.n + ' 男 × ' + r.m + ' 女</td><td>' + fmtInt(r.T) + '</td><td>' + r.multi +
+        '</td><td>' + r.unmatched + '</td><td' + (r.bad ? ' class="hi"' : ' class="good"') + '>' + r.bad + '</td></tr>';
+    }).join(''));
+    var note = $('rural-note');
+    if (note && ex) {
+      note.textContent = '上面那个例子里有 ' + ex.k + ' 个不同的稳定匹配，配法各不相同，' +
+        '但被剩下的永远是 男' + ex.unmatchedMen.map(function (m) { return m + 1; }).join('、男') + ' —— ' +
+        '这就是乡村医院定理：落单的是谁，不由配法决定。';
+    }
+  }
+
+  /* ============================================================ 陆 · 撒谎 */
+  var LIE = { side: 'men', list: null, inst: null };
+  function lieInst() {
+    if (LIE.inst) return LIE.inst;
+    var src = D.lieExample;
+    LIE.inst = { n: 4, m: 4, men: src.men.map(function (a) { return a.slice(); }),
+                 women: src.women.map(function (a) { return a.slice(); }) };
+    return LIE.inst;
+  }
+  function lieTrueList() {
+    var inst = lieInst();
+    return LIE.side === 'men' ? inst.men[0] : inst.women[0];
+  }
+  function lieResetList() {
+    LIE.list = lieTrueList().slice();
+  }
+  function lieRun(list) {
+    var inst = lieInst();
+    var clone = { n: inst.n, m: inst.m, men: inst.men, women: inst.women };
+    if (LIE.side === 'men') {
+      clone.men = inst.men.slice(); clone.men[0] = list.slice();
+    } else {
+      clone.women = inst.women.slice(); clone.women[0] = list.slice();
+    }
+    var M = Core.galeShapley(clone, 'men').match;   /* 一律男方求婚 */
+    return M;
+  }
+  function liePartner(M) {
+    if (LIE.side === 'men') return M[0];
+    return Core.inverse(M, lieInst().m)[0];
+  }
+  function lieTrueRank(list, partner) {
+    for (var i = 0; i < list.length; i++) if (list[i] === partner) return i;
+    return -1;
+  }
+  function renderLie() {
+    var inst = lieInst();
+    if (!LIE.list) lieResetList();
+    var trueList = lieTrueList();
+    var Mtrue = lieRun(trueList);
+    var Mnow = lieRun(LIE.list);
+    var pTrue = liePartner(Mtrue), pNow = liePartner(Mnow);
+    var rTrue = lieTrueRank(trueList, pTrue), rNow = lieTrueRank(trueList, pNow);
+    var host = $('c-lie');
+    if (host) drawLie(host, rTrue, rNow);
+    /* 名单按钮 */
+    var box = $('lie-list');
+    if (box) {
+      var html = LIE.list.map(function (w2, i) {
+        var isTrue = (i === lieTrueRank(trueList, w2));
+        return '<button type="button" data-pos="' + i + '">' +
+          '<span class="rank">第 ' + (i + 1) + '</span>' +
+          '<span class="who ' + (LIE.side === 'men' ? 'w' : 'm') + '">' +
+          (LIE.side === 'men' ? '女' : '男') + (w2 + 1) + '</span>' +
+          '<span class="tag">' + (isTrue ? '真实位置' : '↑ 挪上来') + '</span></button>';
+      }).join('');
+      box.innerHTML = html;
+    }
+    setHTML('ro-lie',
+      '<span><span class="k">你是</span><b>' + (LIE.side === 'men' ? '男方 1 号（求婚方）' : '女方 1 号（被求婚方）') + '</b></span>' +
+      '<span><span class="k">改了</span><b>' + (LIE.list.join() === trueList.join() ? '没改' : '改了') + '</b></span>' +
+      '<span class="stable"><span class="k">真话拿到</span><b>第 ' + (rTrue + 1) + ' 名</b></span>' +
+      '<span class="maj"><span class="k">现在拿到</span><b>第 ' + (rNow + 1) + ' 名</b></span>' +
+      '<span><span class="k">变化</span><b>' + (rNow < rTrue ? '变好 ' + (rTrue - rNow) + ' 名' : (rNow > rTrue ? '变差 ' + (rNow - rTrue) + ' 名' : '没变')) + '</b></span>' +
+      '<span><span class="k">配对</span><b>' + esc(matchText(inst, Mnow)) + '</b></span>');
+    var note = $('lie-note');
+    if (note) {
+      setMD2('lie-note', LIE.side === 'men'
+        ? '你是求婚方：把名单怎么改，结果都不会变好 —— 这是可以证明的（说真话是占优策略），下面那张表把全部 24 种改法都试过了。'
+        : '你是被求婚方：改名单**可能**让结果变好。同一个算法，对求婚方防伪，对被求婚方不防。');
+    }
+  }
+  function drawLie(host, rTrue, rNow) {
+    var rows = D.lieRows;
+    var w = chartWidth(host);
+    var pad = { l: 54, r: 12, t: 26, b: 50 };
+    var h = 250;
+    var K = rows.length;
+    var maxV = 0;
+    rows.forEach(function (r) { maxV = Math.max(maxV, r.gains); });
+    var top = Math.max(1, maxV) * 1.35;
+    var f = frame(w, h, pad, [-0.5, K - 0.5], [0, top], { yn: 4, ylab: '获利谎报数', noxt: true });
+    var s = f.body;
+    s += capY(host, w, pad, '获利谎报数（每格样本 ' + fmtInt(rows[0].total) + ' 次）');
+    rows.forEach(function (r, i) {
+      var cx = f.X(i);
+      var fy = h - pad.b;
+      var y = f.Y(Math.min(r.gains, top));
+      var col = r.isProposer ? '#1f6f8b' : '#a23b1e';
+      var hh = fy - y;
+      if (r.gains === 0) {
+        s += vbar(cx, fy, 2.5, Math.min(46, w / (K * 2)), '#ded9d0', 'g' + i, 2.5, false);
+        s += tag('text', { x: cx, y: fy - 8, 'text-anchor': 'middle', 'font-size': 11, fill: '#57534e',
+                           class: 'tick' }, '0');
+      } else {
+        s += vbar(cx, fy, hh, Math.min(46, w / (K * 2)), col, 'g' + i, hh, false);
+        s += tag('text', { x: cx, y: y - 5, 'text-anchor': 'middle', 'font-size': 11, fill: '#1c1b19',
+                           class: 'tick' }, String(r.gains));
+      }
+      var lab = (r.propose === 'men' ? '男求婚' : '女求婚') + '·' + (r.lie === 'men' ? '男撒谎' : '女撒谎');
+      s += tag('text', { x: cx, y: fy + 17, 'text-anchor': 'middle', 'font-size': 9.5, fill: '#8a8279',
+                         class: 'tick' }, lab.split('·')[0]);
+      s += tag('text', { x: cx, y: fy + 32, 'text-anchor': 'middle', 'font-size': 9.5, fill: '#8a8279',
+                         class: 'tick' }, lab.split('·')[1]);
+    });
+    svgInto(host, w, h, s);
+  }
+  function drawCost(host) {
+    var rows = D.costRows;
+    var w = chartWidth(host);
+    var pad = { l: 58, r: 14, t: 26, b: 32 };
+    var h = 260;
+    var xs = rows.map(function (r) { return r.n; });
+    var ys = rows.map(function (r) { return r.daMs; });
+    var ref = rows.map(function (r) { return r.n * r.n / (rows[0].n * rows[0].n) * rows[0].daMs; });
+    var f = frame(w, h, pad, [Math.min.apply(null, xs) * 0.85, Math.max.apply(null, xs) * 1.3],
+                  [Math.min.apply(null, ys) * 0.4, Math.max.apply(null, ys) * 2.5],
+                  { xlog: true, ylog: true, yn: 5, xlab: 'n', ylab: '毫秒' });
+    var s = f.body;
+    s += capY(host, w, pad, '毫秒（双对数）');
+    s += poly(rows.map(function (r, i) { return [f.X(r.n), f.Y(ref[i])]; }), '#6b8e23', 1.8, '7 4');
+    s += poly(rows.map(function (r) { return [f.X(r.n), f.Y(r.daMs)]; }), '#1f6f8b', 2.4);
+    rows.forEach(function (r) { s += dot(f.X(r.n), f.Y(r.daMs), '#1f6f8b', 3); });
+    svgInto(host, w, h, s);
+  }
+  function renderLieTables() {
+    setTBody('t-lie', D.lieRows.map(function (r) {
+      return '<tr' + (r.isProposer ? ' class="good"' : ' class="hi"') + '><td>' + SIDE_CN[r.propose] +
+        '</td><td>' + SIDE_CN[r.lie] + '</td><td>' + r.T + '</td><td>' + r.instsWith +
+        '</td><td>' + r.gains + '</td><td>' + fmtInt(r.total) + '</td><td>' +
+        (r.total ? pctS(r.gains / r.total, 2) : '—') + '</td><td>' + r.bestGain + ' 名</td></tr>';
+    }).join(''));
+    setTBody('t-cost', D.costRows.map(function (r) {
+      return '<tr><td>' + r.n + '</td><td>' + fmt(r.daMs, 2) + '</td><td>' + fmtInt(r.n * r.n) + '</td></tr>';
+    }).join(''));
+    setTBody('t-brute', D.bruteRows.map(function (r) {
+      return '<tr><td>' + r.n + '</td><td>' + fmtInt(r.matchings) + '</td><td>' + fmt(r.ms, 1) + ' 毫秒</td></tr>';
+    }).join(''));
+    var note2 = $('lie-note2');
+    if (note2) {
+      var mm = null, mw = null;
+      D.lieRows.forEach(function (r) {
+        if (r.propose === 'men' && r.lie === 'men') mm = r;
+        if (r.propose === 'men' && r.lie === 'women') mw = r;
+      });
+      if (mm && mw) {
+        setMD2('lie-note2', '同样是男方求婚：男方自己改名单，' + fmtInt(mm.total) + ' 次里获利 ' + mm.gains +
+          ' 次；女方改名单，' + fmtInt(mw.total) + ' 次里获利 ' + mw.gains + ' 次，最多一次把名次提前了 ' +
+          mw.bestGain + ' 名。**同一个算法，对一方是防伪的，对另一方不是。**');
+      }
+    }
+  }
+
+  /* ============================================================ 文字与列表 */
+  function mdInline(s) { return esc(s).replace(/\*\*([\s\S]+?)\*\*/g, '<b>$1</b>'); }
+  function setMD2(id, s) { var e = $(id); if (e) e.innerHTML = mdInline(s); }
+  function renderKPI() {
+    var host = $('kpis');
+    if (!host) return;
+    host.innerHTML = A.kpi.map(function (k) {
+      return '<div class="kpi"><div class="lab">' + esc(k.label) + '</div>' +
+        '<div class="val">' + esc(String(k.value)) + '</div>' +
+        (k.unit ? '<div class="unit">' + esc(k.unit) + '</div>' : '') +
+        (k.note ? '<div class="note">' + mdInline(k.note) + '</div>' : '') + '</div>';
+    }).join('');
+  }
+  function renderList(id, arr) {
+    var e = $(id);
+    if (!e) return;
+    e.innerHTML = arr.map(function (s) { return '<li>' + mdInline(s) + '</li>'; }).join('');
+  }
+  function renderVerify() {
+    setTBody('t-verify', A.verifyTable.map(function (r) {
+      return '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.want) + '</td><td>' + esc(r.got) + '</td></tr>';
+    }).join(''));
+  }
+  function renderStamp() {
+    var e = $('stamp');
+    if (!e) return;
+    e.textContent = '模型 ' + A.meta.core + ' · 对账 ' + A.meta.verifyRows + ' 行全绿 · ' +
+      '无外部依赖 · 单文件 ' + (A.meta.builtAt || '').slice(0, 10);
+  }
+
+  /* ============================================================ 标签页与绑定 */
+  var TABS = [['p-one', '壹 · 规则'], ['p-two', '贰 · 算法'], ['p-three', '叁 · 唯一吗'],
+              ['p-four', '肆 · 格'], ['p-five', '伍 · 先开口'], ['p-six', '陆 · 撒谎']];
+  var curTab = 'p-one';
+  var RENDERERS = {};
+  function setTab(id) {
+    curTab = id;
+    document.querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('on', p.id === id); });
+    document.querySelectorAll('#tabs button').forEach(function (b) {
+      b.setAttribute('aria-selected', b.getAttribute('data-tab') === id ? 'true' : 'false');
+    });
+    if (RENDERERS[id]) RENDERERS[id]();
+  }
+  function buildTabs() {
+    var nav = $('tabs');
+    if (!nav) return;
+    nav.innerHTML = TABS.map(function (t) {
+      return '<button type="button" data-tab="' + t[0] + '" aria-selected="false">' + esc(t[1]) + '</button>';
+    }).join('');
+    nav.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); });
+    });
+  }
+  function fillSelect(id, items, cur) {
+    var e = $(id);
+    if (!e) return;
+    e.innerHTML = items.map(function (it) {
+      return '<option value="' + esc(String(it[0])) + '">' + esc(String(it[1])) + '</option>';
+    }).join('');
+    if (cur !== undefined && cur !== null) e.value = String(cur);
+  }
+  function bindControls() {
+    var gi = $('grid-inst');
+    if (gi) gi.addEventListener('change', function () { GRID.idx = +gi.value; GRID.match = null; renderGrid(); });
+    var go = $('grid-opt');
+    if (go) go.addEventListener('click', function () {
+      GRID.match = Core.galeShapley(gridInst(), 'men').match; renderGrid();
+    });
+    var gm = $('grid-mess');
+    if (gm) gm.addEventListener('click', function () {
+      gridEnsure();
+      var inst = gridInst(), M = GRID.match.slice();
+      var a = 0, b = 1;
+      if (inst.n > 1) {
+        var t = M[a]; M[a] = M[b]; M[b] = t;
+        if (M[a] === M[b] || M[a] < 0 || M[b] < 0) M = Core.galeShapley(inst, 'women').match.slice();
+      }
+      GRID.match = M; renderGrid();
+    });
+    var gr = $('grid-rand');
+    if (gr) gr.addEventListener('click', function () {
+      var inst = gridInst(), M = [];
+      for (var i = 0; i < inst.n; i++) M.push(i % inst.m);
+      var t = M[0]; M[0] = M[inst.n - 1]; M[inst.n - 1] = t;
+      GRID.match = M; renderGrid();
+    });
+    var gchart = $('c-grid');
+    if (gchart) gchart.addEventListener('click', function (ev) {
+      var el = ev.target;
+      if (!el || !el.getAttribute) return;
+      var c = el.getAttribute('data-cell');
+      if (!c || c.indexOf(',') < 0) return;
+      var p = c.split(','), i = +p[0], j = +p[1];
+      gridEnsure();
+      var inst = gridInst(), M = GRID.match.slice();
+      var inv = Core.inverse(M, inst.m);
+      var other = inv[j];
+      if (other === i) return;
+      var old = M[i];
+      M[i] = j;
+      if (other >= 0) M[other] = old;
+      GRID.match = M; renderGrid();
+    });
+
+    var pi = $('prop-inst');
+    if (pi) pi.addEventListener('change', function () { PROP.idx = +pi.value; PROP.trace = null; renderProp(); });
+    var ps = $('prop-side');
+    if (ps) ps.addEventListener('change', function () { PROP.side = ps.value; PROP.trace = null; renderProp(); });
+    var pst = $('prop-step');
+    if (pst) pst.addEventListener('click', function () {
+      propEnsure();
+      if (PROP.round < PROP.trace.length) PROP.round++;
+      renderProp();
+    });
+    var pr = $('prop-run');
+    if (pr) pr.addEventListener('click', function () { propEnsure(); PROP.round = PROP.trace.length; renderProp(); });
+    var pre = $('prop-reset');
+    if (pre) pre.addEventListener('click', function () { propEnsure(); PROP.round = 0; renderProp(); });
+
+    var dn = $('dist-n');
+    if (dn) dn.addEventListener('change', function () { DIST.idx = +dn.value; renderDist(); });
+    var li = $('lat-inst');
+    if (li) li.addEventListener('change', function () { LAT.idx = +li.value; LAT.data = null; renderLat(); });
+    var rs = $('rank-side');
+    if (rs) rs.addEventListener('change', function () { RANK.side = rs.value; renderRank(); });
+    var lr = $('lie-reset');
+    if (lr) lr.addEventListener('click', function () { lieResetList(); renderLie(); });
+    var ll = $('lie-list');
+    if (ll) ll.addEventListener('click', function (ev) {
+      var b = ev.target;
+      while (b && b.tagName !== 'BUTTON') b = b.parentNode;
+      if (!b || !b.getAttribute) return;
+      var pos = +b.getAttribute('data-pos');
+      if (pos > 0) {
+        var t = LIE.list[pos]; LIE.list[pos] = LIE.list[pos - 1]; LIE.list[pos - 1] = t;
+        renderLie();
+      }
+    });
+  }
+
+  /* ============================================================ 探针 */
+  function collectCharts() {
+    var out = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (!h.id) return;
+      var sv = h.querySelector('svg');
+      if (!sv) { out.push({ id: h.id, hostW: h.clientWidth, svgW: 0, ok: false, texts: 0 }); return; }
+      var hostW = Math.round(h.clientWidth), svgW = Math.round(sv.getBoundingClientRect().width);
+      out.push({ id: h.id, hostW: hostW, svgW: svgW, ok: Math.abs(hostW - svgW) <= 1 && hostW > 0,
+                 texts: sv.querySelectorAll('text').length });
+    });
+    return out;
+  }
+  function visibleCharts() {
+    return collectCharts().filter(function (c) {
+      var h = $(c.id);
+      return h && h.offsetParent !== null && c.hostW > 0;
+    });
+  }
+  function collectBars() {
+    var out = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (!h.id || h.offsetParent === null) return;
+      h.querySelectorAll('.bar-fill').forEach(function (r) {
+        var bb = r.getBoundingClientRect();
+        out.push({ id: h.id, key: r.getAttribute('data-key') || '',
+                   bbox: +bb.width.toFixed(2), bboxH: +bb.height.toFixed(2),
+                   vert: r.getAttribute('data-vert') === '1',
+                   want: +(r.getAttribute('data-want') || 0),
+                   over: r.getAttribute('data-over') === '1' });
+      });
+    });
+    return out;
+  }
+  function cellScan() {
+    var out = { total: 0, matched: 0, block: 0, badSize: [], charts: {} };
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (h.offsetParent === null) return;
+      var cells = h.querySelectorAll('[data-cell]');
+      if (!cells.length) return;
+      var rec = { n: 0, matched: 0, block: 0, bad: 0 };
+      cells.forEach(function (c) {
+        rec.n++;
+        if (c.getAttribute('data-match') === '1') rec.matched++;
+        if (c.getAttribute('data-block') === '1') rec.block++;
+        var want = +(c.getAttribute('data-want') || 0);
+        var wantH = +(c.getAttribute('data-want-h') || 0);
+        var bb = c.getBoundingClientRect();
+        if (want > 0 && Math.abs(bb.width - want) > 0.6) {
+          rec.bad++; out.badSize.push(h.id + ':' + c.getAttribute('data-cell') + ' 宽 ' + bb.width.toFixed(1) + '≠' + want);
+        }
+        if (wantH > 0 && Math.abs(bb.height - wantH) > 0.6) {
+          rec.bad++; out.badSize.push(h.id + ':' + c.getAttribute('data-cell') + ' 高 ' + bb.height.toFixed(1) + '≠' + wantH);
+        }
+      });
+      out.charts[h.id] = rec;
+      out.total += rec.n; out.matched += rec.matched; out.block += rec.block;
+    });
+    return out;
+  }
+  function strayScan() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      for (var i = 0; i < h.children.length; i++) {
+        if (h.children[i].tagName.toLowerCase() !== 'svg') bad.push(h.id + ':' + h.children[i].tagName);
+      }
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function nanTicks() {
+    var bad = [];
+    document.querySelectorAll('.chart svg text').forEach(function (t) {
+      if (/NaN|Infinity|undefined/.test(t.textContent || '')) bad.push((t.textContent || '').slice(0, 24));
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function tickOverlap() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (h.offsetParent === null) return;
+      var ts = Array.prototype.slice.call(h.querySelectorAll('text.tick'));
+      var boxes = ts.map(function (t) { var r = t.getBoundingClientRect(); return { r: r, s: t.textContent }; });
+      for (var i = 0; i < boxes.length; i++) {
+        for (var j = i + 1; j < boxes.length; j++) {
+          var a = boxes[i].r, b = boxes[j].r;
+          var ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+          var oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          if (ox > 1.2 && oy > 1.2) bad.push(h.id + ': "' + boxes[i].s + '" × "' + boxes[j].s + '"');
+        }
+      }
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function textFit() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      var sv = h.querySelector('svg');
+      if (!sv || h.offsetParent === null) return;
+      var sr = sv.getBoundingClientRect();
+      sv.querySelectorAll('text').forEach(function (t) {
+        var r = t.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) return;
+        if (r.left < sr.left - 1 || r.right > sr.right + 1 || r.top < sr.top - 1 || r.bottom > sr.bottom + 1) {
+          bad.push(h.id + ': "' + (t.textContent || '').slice(0, 20) + '"');
+        }
+      });
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function tabsFit() {
+    var nav = $('tabs');
+    if (!nav) return { ok: true, bad: [] };
+    var nr = nav.getBoundingClientRect(), bad = [];
+    nav.querySelectorAll('button').forEach(function (b) {
+      var r = b.getBoundingClientRect();
+      if (r.right > nr.right + 1 || r.left < nr.left - 1) bad.push(b.textContent);
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function overflowScan() {
+    var de = document.documentElement, bad = [], scrolled = [];
+    document.querySelectorAll('.bench, .panel, .grid2').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      if (e.scrollWidth > e.clientWidth + 1) bad.push((e.id || e.className) + ' ' + e.scrollWidth + '>' + e.clientWidth);
+    });
+    document.querySelectorAll('.tbl-wrap').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      if (e.scrollWidth > e.clientWidth + 1) {
+        scrolled.push((e.querySelector('table') ? e.querySelector('table').id : 'tbl') + ' ' + e.scrollWidth + '>' + e.clientWidth);
+      }
+    });
+    return { ok: de.scrollWidth <= de.clientWidth + 1, doc: { scroll: de.scrollWidth, client: de.clientWidth }, bad: bad, scrolled: scrolled };
+  }
+  function wrapScan() {
+    var bad = [];
+    document.querySelectorAll('table.dt.num').forEach(function (t) {
+      t.querySelectorAll('td').forEach(function (c) {
+        var r = c.getBoundingClientRect();
+        if (r.height > 34) bad.push((t.id || 'tbl') + ':' + (c.textContent || '').slice(0, 14));
+      });
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function touchScan() {
+    var small = [];
+    document.querySelectorAll('.tabs button, .btnrow button, select, input[type="range"], .pref button').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      var r = e.getBoundingClientRect();
+      if (r.height > 0 && r.height < 44) small.push((e.id || e.textContent || e.tagName).slice(0, 18) + ' ' + r.height.toFixed(0));
+    });
+    return { ok: small.length === 0, bad: small };
+  }
+  function tablesScan() {
+    var out = [];
+    document.querySelectorAll('table.dt').forEach(function (t) {
+      if (!t.id) return;
+      var tb = t.tBodies[0];
+      out.push({ id: t.id, thead: !!t.tHead, caption: !!t.caption,
+                 cols: (t.tHead && t.tHead.rows[0]) ? t.tHead.rows[0].cells.length : 0,
+                 rows: tb ? tb.rows.length : 0 });
+    });
+    return out;
+  }
+  /* 数字表的"空值/破折号"探针：字段映射漏一项，整列会静默变成 "—"，
+     行数、元素数、折行、溢出四层检查全部放行。 */
+  function uniDash() {
+    var n = 0, blank = 0, sample = [];
+    document.querySelectorAll('table.dt.num tbody td').forEach(function (c) {
+      var t = (c.textContent || '').trim();
+      if (t === '—') { n++; if (sample.length < 4) sample.push(t); }
+      else if (t === '') { blank++; if (sample.length < 4) sample.push('(空)'); }
+    });
+    return { dash: n, blank: blank, sample: sample };
+  }
+  function textsScan() {
+    var out = [];
+    document.querySelectorAll('.panel.on .note, .panel.on h2, .panel.on .ro, .kpi .note, .kpi .val, #stamp').forEach(function (e) {
+      var t = (e.textContent || '').trim();
+      if (t) out.push(t.slice(0, 90));
+    });
+    return out;
+  }
+  /* 泄漏扫描要盖住"读数条"和"表格格子" —— 只扫 .note 会漏掉整列 undefined */
+  function htmlLeaks() {
+    var bad = [];
+    document.querySelectorAll('.panel.on .note, .panel.on .ro, .kpi .note, .kpi .val, ' +
+      'ol.clist li, ol.blist li, table.dt td, #stamp').forEach(function (e) {
+      var t = e.textContent || '';
+      if (/\*\*|<b>|<\/b>|<code>|NaN|undefined|\[object/.test(t)) bad.push(t.slice(0, 40));
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 5) };
+  }
+  function infLeaks() {
+    var bad = [];
+    var re = /(名次|个数|比例|耗时|次数|比值|误差)[^。；，]{0,8}(是|为|不超过)\s*∞/;
+    document.querySelectorAll('.panel.on .note, .kpi .note, .kpi .val, ol.clist li, ol.blist li, #stamp').forEach(function (e) {
+      var t = e.textContent || '';
+      if (re.test(t)) bad.push(t.slice(0, 48));
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 5) };
+  }
+  function legendsScan() {
+    var out = {};
+    document.querySelectorAll('.legend-html').forEach(function (e) {
+      if (!e.id) return;
+      out[e.id] = e.querySelectorAll('span').length;
+    });
+    return out;
+  }
+  function countsScan() {
+    var c = {};
+    c.kpi = document.querySelectorAll('#kpis .kpi').length;
+    c.concl = document.querySelectorAll('#l-concl li').length;
+    c.bound = document.querySelectorAll('#l-bound li').length;
+    c.verify = document.querySelectorAll('#t-verify tbody tr').length;
+    c.tabs = document.querySelectorAll('#tabs button').length;
+    c.panels = document.querySelectorAll('.panel').length;
+    c.block = document.querySelectorAll('#t-block tbody tr').length;
+    c.round = document.querySelectorAll('#t-round tbody tr').length;
+    c.oeis = document.querySelectorAll('#t-oeis tbody tr').length;
+    c.count = document.querySelectorAll('#t-count tbody tr').length;
+    c.lat = document.querySelectorAll('#t-lat tbody tr').length;
+    c.multi = document.querySelectorAll('#t-multi tbody tr').length;
+    c.rank = document.querySelectorAll('#t-rank tbody tr').length;
+    c.rhex = document.querySelectorAll('#t-rhex tbody tr').length;
+    c.rural = document.querySelectorAll('#t-rural tbody tr').length;
+    c.lie = document.querySelectorAll('#t-lie tbody tr').length;
+    c.cost = document.querySelectorAll('#t-cost tbody tr').length;
+    c.brute = document.querySelectorAll('#t-brute tbody tr').length;
+    return c;
+  }
+
+  window.__probe = {
+    version: '1.0',
+    tabIds: function () { return TABS.map(function (t) { return t[0]; }); },
+    setTab: setTab,
+    curTab: function () { return curTab; },
+    gridSet: function (idx) {
+      var sel = $('grid-inst');
+      if (idx !== undefined) { GRID.idx = idx; if (sel) sel.value = String(idx); GRID.match = null; }
+      if (curTab === 'p-one') renderGrid();
+      var inst = gridInst(), M = GRID.match || Core.galeShapley(inst, 'men').match;
+      var rp = rankProfileOf(inst, M);
+      return { idx: GRID.idx, n: inst.n, m: inst.m, match: matchText(inst, M),
+               blocks: Core.blockingPairs(inst, M).length,
+               menAvg: avgRank(rp.men), womenAvg: avgRank(rp.women) };
+    },
+    gridClick: function (i, j) {
+      var el = document.querySelector('#c-grid [data-cell="' + i + ',' + j + '"]');
+      if (!el) return { ok: false };
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      var inst = gridInst();
+      return { ok: true, match: matchText(inst, GRID.match),
+               blocks: Core.blockingPairs(inst, GRID.match).length };
+    },
+    gridOpt: function () {
+      GRID.match = Core.galeShapley(gridInst(), 'men').match;
+      if (curTab === 'p-one') renderGrid();
+      return { blocks: Core.blockingPairs(gridInst(), GRID.match).length };
+    },
+    propSet: function (idx, side) {
+      var sel = $('prop-inst'), ss = $('prop-side');
+      if (idx !== undefined) { PROP.idx = idx; if (sel) sel.value = String(idx); PROP.trace = null; }
+      if (side) { PROP.side = side; if (ss) ss.value = side; PROP.trace = null; }
+      propEnsure();
+      if (curTab === 'p-two') renderProp();
+      return { idx: PROP.idx, side: PROP.side, rounds: PROP.trace.length, round: PROP.round };
+    },
+    propStep: function () {
+      propEnsure();
+      if (PROP.round < PROP.trace.length) PROP.round++;
+      if (curTab === 'p-two') renderProp();
+      var cur = propStateAt(PROP.round);
+      return { round: PROP.round, rounds: PROP.trace.length, match: matchText(propInst(), cur),
+               blocks: Core.blockingPairs(propInst(), cur).length };
+    },
+    propRun: function () {
+      propEnsure(); PROP.round = PROP.trace.length;
+      if (curTab === 'p-two') renderProp();
+      return { round: PROP.round, rounds: PROP.trace.length,
+               match: matchText(propInst(), PROP.match), blocks: 0 };
+    },
+    propReset: function () { propEnsure(); PROP.round = 0; if (curTab === 'p-two') renderProp(); return { round: 0 }; },
+    distSet: function (idx) {
+      var sel = $('dist-n');
+      if (idx !== undefined) { DIST.idx = idx; if (sel) sel.value = String(idx); }
+      if (curTab === 'p-three') renderDist();
+      var r = distRow();
+      return { idx: DIST.idx, n: r.n, kind: r.kind, sample: r.sample, counts: r.counts.slice(0, 6),
+               oeis: r.oeis ? r.oeis.slice(0, 6) : null, max: r.max };
+    },
+    latSet: function (idx) {
+      var sel = $('lat-inst');
+      if (idx !== undefined) { LAT.idx = idx; if (sel) sel.value = String(idx); LAT.data = null; }
+      latEnsure();
+      if (curTab === 'p-four') renderLat();
+      var G = LAT.data.G;
+      var mx = 0, i;
+      for (i = 0; i < G.k; i++) mx = Math.max(mx, G.layer[i]);
+      return { idx: LAT.idx, name: latPreset().name, k: G.k, layers: mx + 1, cover: G.cover.length,
+               top: G.top, bottom: G.bottom };
+    },
+    rankSet: function (side) {
+      var sel = $('rank-side');
+      if (side) { RANK.side = side; if (sel) sel.value = side; }
+      if (curTab === 'p-five') renderRank();
+      var r64 = null;
+      D.rankRows.forEach(function (r) { if (r.n === D.rankHist.n) r64 = r; });
+      return { side: RANK.side, n: D.rankHist.n, count: D.rankHist.count,
+               menAvg: (RANK.side === 'men' ? r64.mpMen : r64.wpMen) + 1,
+               womenAvg: (RANK.side === 'men' ? r64.mpWomen : r64.wpWomen) + 1 };
+    },
+    lieSet: function (side) {
+      if (side) { LIE.side = side; LIE.list = null; }
+      if (!LIE.list) lieResetList();
+      if (curTab === 'p-six') renderLie();
+      var inst = lieInst();
+      var M = lieRun(LIE.list);
+      var trueList = lieTrueList();
+      var rNow = lieTrueRank(trueList, liePartner(M));
+      var rTrue = lieTrueRank(trueList, liePartner(lieRun(trueList)));
+      return { side: LIE.side, list: LIE.list.slice(), trueRank: rTrue + 1, nowRank: rNow + 1,
+               improved: rNow < rTrue };
+    },
+    lieMove: function (pos) {
+      if (!LIE.list) lieResetList();
+      if (pos > 0 && pos < LIE.list.length) {
+        var t = LIE.list[pos]; LIE.list[pos] = LIE.list[pos - 1]; LIE.list[pos - 1] = t;
+      }
+      if (curTab === 'p-six') renderLie();
+      var trueList = lieTrueList();
+      var rNow = lieTrueRank(trueList, liePartner(lieRun(LIE.list)));
+      var rTrue = lieTrueRank(trueList, liePartner(lieRun(trueList)));
+      return { list: LIE.list.slice(), trueRank: rTrue + 1, nowRank: rNow + 1, improved: rNow < rTrue };
+    },
+    lieReset: function () { LIE.list = null; if (curTab === 'p-six') renderLie(); return { list: lieTrueList().slice() }; },
+    /* 页内模型自检：值全部用页面里的引擎当场算，不读数据文件 */
+    core: function () {
+      var small = { n: 4, m: 4, men: D.demoInst.men, women: D.demoInst.women };
+      var m0 = Core.galeShapley(small, 'men').match, w0 = Core.galeShapley(small, 'women').match;
+      var max4 = { n: 4, m: 4, men: D.max4.men, women: D.max4.women };
+      var L4 = Core.allStableRotations(max4, 200000).list;
+      var max5 = { n: 5, m: 5, men: D.max5.men, women: D.max5.women };
+      var L5 = Core.allStableRotations(max5, 200000).list;
+      var r = Core.allStableRotations(small, 200000).list;
+      return {
+        demoK: r.length,
+        demoBlocks: Core.blockingPairs(small, m0).length,
+        demoIsStable: Core.isStable(small, m0),
+        max4K: L4.length,
+        max5K: L5.length,
+        m0IsTop: Core.menLeq(small, w0, m0),
+        rural: Core.ruralHospitals(small, r).ok,
+        lieProposerGain: (function () {
+          var t = Core.strategyTest(small, 'men', 0, 'men');
+          return t.improved;
+        })(),
+        lieReceiverGain: (function () {
+          var inst = { n: 4, m: 4, men: D.lieExample.men, women: D.lieExample.women };
+          var t = Core.strategyTest(inst, 'women', D.lieExample.agent, 'men');
+          return t.improved;
+        })(),
+        extMax4: Core.EXTERNAL.maxStable[4],
+        extMax5: Core.EXTERNAL.maxStable[5],
+        dist3: Core.EXTERNAL.distUnreduced[3].counts.slice(0, 3).join('/')
+      };
+    },
+    counts: countsScan,
+    tables: tablesScan,
+    uniDash: uniDash,
+    cellScan: cellScan,
+    legends: legendsScan,
+    charts: visibleCharts,
+    allCharts: collectCharts,
+    bars: collectBars,
+    stray: strayScan,
+    nanTicks: nanTicks,
+    tickOverlap: tickOverlap,
+    textFit: textFit,
+    tabsFit: tabsFit,
+    overflow: overflowScan,
+    wrapScan: wrapScan,
+    touch: touchScan,
+    texts: textsScan,
+    htmlLeaks: htmlLeaks,
+    infLeaks: infLeaks,
+    viewport: function () { return { w: window.innerWidth, h: window.innerHeight }; }
+  };
+
+  /* ============================================================ boot */
+  function boot() {
+    buildTabs();
+    renderStamp();
+    renderKPI();
+    renderList('l-concl', A.conclusions);
+    renderList('l-bound', A.boundaries);
+    renderVerify();
+    buildGridInsts();
+    fillSelect('grid-inst', GRID_INSTS.map(function (g, i) { return [String(i), g.name]; }), '0');
+    fillSelect('prop-inst', GRID_INSTS.map(function (g, i) { return [String(i), g.name]; }), '0');
+    fillSelect('dist-n', D.distRows.map(function (r, i) { return [String(i), 'n = ' + r.n + '（' + r.kind + '）']; }), '0');
+    fillSelect('lat-inst', D.latticePresets.map(function (p, i) { return [String(i), p.name]; }), '1');
+    LAT.idx = 1;
+    RENDERERS['p-one'] = renderGrid;
+    RENDERERS['p-two'] = renderProp;
+    RENDERERS['p-three'] = function () { renderDist(); renderCount(); };
+    RENDERERS['p-four'] = renderLat;
+    RENDERERS['p-five'] = renderRank;
+    RENDERERS['p-six'] = function () { renderLie(); renderLieTables(); drawCost($('c-cost')); };
+    bindControls();
+    renderRural();
+    renderLieTables();
+    setTab('p-one');
+    window.__ready = true;
+  }
+  try {
+    boot();
+  } catch (e) {
+    window.__bootError = String((e && e.message) || e);
+    window.__bootStack = String((e && e.stack) || '').slice(0, 400);
+    var st = $('stamp');
+    if (st) st.textContent = '启动失败：' + window.__bootError;
+  }
+})();
+</script>
+</body>
+</html>

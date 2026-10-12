@@ -413,7 +413,7 @@ ol.blist li{color:var(--ink2);font-size:14px}
   <div class="chart" id="c-ladder"></div>
   <div class="legend-html" id="lg-ladder">
     <span><i class="sq" style="background:#a23b1e"></i>实测跑到的最大规模</span>
-    <span><i class="sq" style="background:#ded9d0"></i>外推</span>
+    <span><i class="sq" style="background:#b9b2a6"></i>外推</span>
   </div>
   <p class="note" id="ro-ladder"></p>
   <p>
@@ -1284,9 +1284,11 @@ ol.blist li{color:var(--ink2);font-size:14px}
     for (e = Math.ceil(Math.log10(lo)); e <= Math.floor(Math.log10(hi)); e++) out.push(Math.pow(10, e));
     return out;
   }
+  /* 对数刻度标签：0.001 … 10000 直接写数字，再大/再小才用 10^n。
+   * 别按"指数 ≤ 5"切 —— 那会在同一根轴上写出 1000 和 10^6 两种格式。 */
   function logTickTxt(v) {
     var e = Math.round(Math.log10(v));
-    if (e >= 0 && e <= 5) return String(v);
+    if (e >= -3 && e <= 4) return String(v);
     return '10^' + e;
   }
 
@@ -1359,8 +1361,10 @@ function frame(w, h, pad, xr, yr, opt) {
   function hbars(host, rows, opt) {
     opt = opt || {};
     var w = chartWidth(host);
-    var labW = opt.labW || 132;
-    var valW = 86;
+    /* 标签列与数值列跟着容器缩：窄屏上 156+86=242px 会把柱子挤成一条缝。
+     * 但下限 124 是实测出来的 —— 再窄最长的行标签（"分位数积分 ∫|F⁻¹−G⁻¹|"）就会被挤出画布。 */
+    var labW = Math.min(opt.labW || 132, Math.max(124, Math.round(w * 0.34)));
+    var valW = Math.min(86, Math.max(56, Math.round(w * 0.2)));
     var rowH = opt.rowH || 22;
     var pad = { t: 10, b: opt.xlab ? 32 : 10, l: labW, r: valW };
     var h = pad.t + pad.b + rows.length * rowH;
@@ -1376,10 +1380,14 @@ function frame(w, h, pad, xr, yr, opt) {
       var v = opt.xlog ? Math.max(Math.abs(r.value), lo) : Math.abs(r.value);
       var x0 = X(opt.xlog ? lo : 0), x1 = X(v);
       var bw = Math.max(opt.floor === undefined ? 1.2 : opt.floor, x1 - x0);
+      /* 值超出轴范围时柱子会被画到画布外、再被 svg 裁掉 —— 看起来"顶到右缘"，
+       * 而 bbox 与 want 仍然一致，逐条量宽度也抓不到。必须显式打标。 */
+      var over = v > hi * (1 + 1e-9) ? 1 : 0;
       s += tag('text', { x: labW - 8, y: y + bh / 2 + 4, 'text-anchor': 'end', 'font-size': 11.5,
                          fill: '#57534e', class: 'tick' }, r.label);
       s += tag('rect', { x: x0, y: y + 3, width: bw, height: bh, fill: r.color || '#a23b1e',
-                         class: 'bar-fill', 'data-want': bw.toFixed(3), 'data-key': r.key || r.label });
+                         class: 'bar-fill', 'data-want': bw.toFixed(3), 'data-over': String(over),
+                         'data-key': r.key || r.label });
       /* 数值一律右对齐贴到画布右缘 —— 左对齐会顶出 svg（"1,000,000 个点"那种） */
       s += tag('text', { x: w - 4, y: y + bh / 2 + 4, 'text-anchor': 'end', 'font-size': 11, fill: '#1c1b19',
                          class: 'tick', 'font-family': 'ui-monospace,Menlo,monospace' },
@@ -1636,7 +1644,8 @@ function frame(w, h, pad, xr, yr, opt) {
     var PA = DUAL.A, PB = DUAL.B, pot = DUAL.pot;
     var n = PA.x.length, m = PB.x.length;
     var w = chartWidth(host);
-    var cell = Math.max(5, Math.min(34, Math.floor((w - 120) / m)));
+    /* 格子的边长要同时受宽度和**高度**约束：n=24 时不封顶会长成一整页 */
+    var cell = Math.max(5, Math.min(26, Math.floor(420 / m), Math.floor((w - 68) / m)));
     var h = 24 + n * cell + 22;
     var s = '';
     var gaps = [], i, j;
@@ -1822,12 +1831,13 @@ function frame(w, h, pad, xr, yr, opt) {
         text: fmtInt(D.e7HungLast.n) + ' 个点' },
       { label: '穷举全排列 n!', value: D.e7BruteLast.n, color: '#a23b1e',
         text: fmtInt(D.e7BruteLast.n) + ' 个点' },
-      { label: '（外推）穷举 n=20', value: 20, color: '#ded9d0',
+      { label: '（外推）穷举 n=20', value: 20, color: '#b9b2a6',
         text: sci(D.e7Fact[20] / 3.15e7 * D.e7MsPerPerm / 1000, 1) + ' 年' },
-      { label: '（外推）穷举 n=100', value: 100, color: '#ded9d0',
+      { label: '（外推）穷举 n=100', value: 100, color: '#b9b2a6',
         text: D.e7Years100Sci + ' 年' }
     ];
-    hbars(host, rows, { xlog: true, xmin: 1, xmax: 200, labW: 156, rowH: 27,
+    /* xmax 必须罩住最大的那一档（1e6），否则 1e6 与 256 都被截到右缘、看起来一样长 */
+    hbars(host, rows, { xlog: true, xmin: 1, xmax: 2e6, labW: 156, rowH: 27,
                         xlab: '点数 n（对数刻度）', floor: 1.5 });
     setHTML('ro-ladder',
       '同一台机器、同一个单线程：一维闭式在 <b>' + fmtInt(D.e7Closed1e6.n) + '</b> 个点上跑完（' +
@@ -1853,8 +1863,8 @@ function frame(w, h, pad, xr, yr, opt) {
   function renderE7Table() {
     var host = $('t-e7');
     if (!host) return;
-    var s = '<caption>代价谱系：同一台机器、同一个单线程上的实测</caption>' +
-      '<thead><tr><th>算法</th><th>复杂度</th><th>规模</th><th>W₁ 读数</th><th>实测耗时</th></tr></thead><tbody>';
+    var s = '<caption>代价谱系：同一台机器、同一个单线程上的实测（W₁ 一列是每一档自己那个随机实例，行与行之间不可比）</caption>' +
+      '<thead><tr><th>算法</th><th>复杂度</th><th>规模</th><th>本行 W₁</th><th>实测耗时</th></tr></thead><tbody>';
     D.e7Brute.forEach(function (r) {
       s += '<tr><td>穷举全排列 n=' + r.n + '</td><td>n!</td><td>' + fmtInt(r.perms) +
         ' 个排列</td><td>' + fmt(r.cost, 6) + '</td><td>' + msText(r.ms) + '</td></tr>';
@@ -2071,7 +2081,8 @@ function frame(w, h, pad, xr, yr, opt) {
       h.querySelectorAll('.bar-fill').forEach(function (r) {
         var bb = r.getBoundingClientRect();
         out.push({ id: h.id, key: r.getAttribute('data-key') || '',
-                   bbox: +bb.width.toFixed(2), want: +(r.getAttribute('data-want') || 0) });
+                   bbox: +bb.width.toFixed(2), want: +(r.getAttribute('data-want') || 0),
+                   over: r.getAttribute('data-over') === '1' });
       });
     });
     return out;

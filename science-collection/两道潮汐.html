@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#193d3d">
+<meta name="description" content="从地月日引力差异出发，调节方位与距离，观察两道潮汐如何出现。">
+<title>两道潮汐 · 引力差异与理想海面</title>
+<style>
+@charset "utf-8";
+:root{color-scheme:light;--paper:#eee7d8;--paper-light:#f8f4ea;--ink:#203c3c;--ink-soft:#536967;--rule:#cfc8b8;--teal:#276c70;--rust:#b84d32;--ochre:#d39a4e;--serif:"Iowan Old Style","Baskerville","Palatino Linotype","Songti SC","STSong",serif;--sans:"Aptos","Segoe UI","Microsoft YaHei",sans-serif}
+*{box-sizing:border-box}html{min-width:320px;background:var(--paper)}body{margin:0;color:var(--ink);background:linear-gradient(90deg,transparent 0,transparent calc(50% - 1px),rgba(88,105,94,.055) 50%,transparent calc(50% + 1px)),radial-gradient(ellipse at 50% 10%,#f9f5ea 0,var(--paper) 74%);font-family:var(--sans);font-size:15px;line-height:1.65}button,input{font:inherit}
+.tide-page{width:min(1220px,100% - 64px);margin:0 auto;padding:42px 0 28px}.masthead{border-top:3px solid var(--ink)}
+.eyebrow,.section-kicker,.edition,.sources-label,.footer-mark{font-family:var(--sans);font-size:10px;font-weight:750;letter-spacing:.15em;text-transform:uppercase}.eyebrow{display:flex;justify-content:space-between;margin:11px 0 31px;color:var(--ink-soft)}.eyebrow-mark{color:var(--rust)}.title-row{display:flex;align-items:end;justify-content:space-between;gap:24px;padding-bottom:22px}h1,h2,p{margin-top:0}h1{margin-bottom:4px;font-family:var(--serif);font-size:clamp(42px,5.1vw,66px);font-weight:500;line-height:1.06;letter-spacing:.055em}.deck{margin:0;color:var(--ink-soft);font-family:var(--serif);font-size:clamp(16px,2vw,20px)}.edition{display:grid;grid-template-columns:auto auto;align-items:center;column-gap:10px;color:var(--ink-soft);text-align:right}.edition strong{grid-row:span 2;color:var(--rust);font-family:var(--serif);font-size:48px;font-weight:500;line-height:1}.edition span:last-child{font-size:9px;letter-spacing:.08em}
+.intro{display:grid;grid-template-columns:44px 1fr;gap:13px;align-items:start;max-width:850px;margin:0 0 25px;padding:16px 0 18px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}.intro-number{padding-top:1px;color:var(--rust);font-family:var(--serif);font-size:21px}.intro p{max-width:750px;margin:0;color:var(--ink-soft);font-family:var(--serif);font-size:16px}.intro strong{color:var(--ink)}
+.workbench{display:grid;grid-template-columns:minmax(0,1.67fr) minmax(275px,.83fr);border:1px solid var(--rule);background:rgba(248,244,234,.68);box-shadow:0 12px 32px rgba(42,55,46,.06)}.figure-panel{min-width:0;padding:23px 24px 18px;border-right:1px solid var(--rule)}.figure-heading{display:flex;align-items:end;justify-content:space-between;gap:18px}.section-kicker{margin:0 0 7px;color:#73827a;font-size:9px;letter-spacing:.13em}.section-kicker span{padding:0 4px;color:var(--rust)}.figure-heading h2,.panel-heading h2,.readings-heading h2{margin:0;font-family:var(--serif);font-size:25px;font-weight:500;line-height:1.2}
+.view-switch{display:flex;flex:0 0 auto;padding:3px;border:1px solid var(--rule);border-radius:3px;background:#ede8dc}.view-button{min-height:38px;padding:5px 12px;border:0;border-radius:2px;color:#5a6c66;background:transparent;cursor:pointer;font-size:12px;transition:color .18s ease,background-color .18s ease,box-shadow .18s ease}.view-button:hover{color:var(--ink);background:rgba(255,255,255,.48)}.view-button.is-selected{color:var(--paper-light);background:var(--ink);box-shadow:0 2px 5px rgba(32,60,60,.15)}.view-button:focus-visible{outline:3px solid #c77f48;outline-offset:3px}
+.diagram-wrap{position:relative;margin:12px -5px 0;overflow:hidden}.tide-diagram{display:block;width:100%;max-height:460px;overflow:visible}.diagram-grid circle{fill:none;stroke:#d8d3c6;stroke-width:1;stroke-dasharray:3 7}.diagram-grid line{stroke:#ddd7c9;stroke-width:1;stroke-dasharray:2 6}.sun-ray{stroke:var(--ochre);stroke-width:1.8;stroke-dasharray:7 6}.sun-disc{fill:#f3d79b;stroke:var(--ochre);stroke-width:2}.moon-ray{stroke:#7c8f87;stroke-width:1.3;stroke-dasharray:4 5}.moon-disc{fill:#e0dfd0;stroke:#526963;stroke-width:2}.earth-disc{fill:#dce5db;stroke:var(--ink);stroke-width:2}.earth-texture{fill:url(#earth-hatch);opacity:.58}.earth-core{fill:var(--ink)}.svg-label{fill:#526761;font-family:var(--sans);font-size:12px;font-weight:600}.sun-label{fill:#926b36;font-size:11px}.moon-label{fill:var(--ink)}.earth-label{fill:var(--ink-soft);font-size:11px;font-weight:500}.angle-label{fill:var(--rust);font-family:var(--serif);font-size:15px;font-weight:600}.radial-guide{stroke:#9d9b8e;stroke-width:1;stroke-dasharray:3 4}.radial-component{stroke:#795b43;stroke-width:2;stroke-dasharray:3 3}.near-component{stroke:var(--rust)}.far-component{stroke:var(--teal)}.force-vector{stroke-width:4;stroke-linecap:round}.near-vector{stroke:var(--rust)}.far-vector{stroke:var(--teal)}.sample-point{stroke:var(--paper-light);stroke-width:2}.near-point{fill:var(--rust)}.far-point{fill:var(--teal)}.sample-label{fill:var(--ink);font-size:11px}.zero-ring{fill:var(--paper-light);stroke:var(--ink);stroke-width:1.5}.zero-label{fill:var(--ink);font-size:10px}.surface-fill{fill:rgba(39,108,112,.22);stroke:none}.surface-line{fill:none;stroke:var(--teal);stroke-width:3;stroke-linejoin:round}.surface-note{fill:var(--rust);font-family:var(--serif);font-size:13px}.figure-stamp{position:absolute;top:9px;right:11px;display:grid;width:50px;height:50px;place-content:center;border:1px solid rgba(184,77,50,.58);border-radius:50%;color:var(--rust);font-family:var(--serif);font-size:10px;line-height:1.15;text-align:center;transform:rotate(9deg)}.figure-stamp span:last-child{font-size:8px}
+.diagram-legend{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding:0 4px;color:var(--ink-soft);font-size:11px}.diagram-legend>span{display:inline-flex;align-items:center;gap:7px}.legend-line{display:inline-block;width:23px;height:0;border-top:3px solid var(--rust)}.radial-key{border-top:2px dashed #795b43}.surface-key{border-color:var(--teal)}.legend-note{margin-left:auto;color:#7b8176;font-size:10px}.figure-caption{margin:12px 4px 0;padding-top:10px;border-top:1px solid #ded8ca;color:var(--ink-soft);font-family:var(--serif);font-size:13px}
+.control-panel{padding:25px 25px 20px;background:rgba(231,228,214,.56)}.panel-heading{padding-bottom:16px;border-bottom:1px solid var(--rule)}.control-block{padding:19px 0 15px;border-bottom:1px solid var(--rule)}.control-label-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:9px}.control-label-row label{color:var(--ink);font-family:var(--serif);font-size:17px;font-weight:600}.control-value{color:var(--rust);font-size:15px;font-variant-numeric:tabular-nums;font-weight:750}.range-input{display:block;width:100%;height:30px;margin:0;appearance:none;background:transparent;cursor:pointer;touch-action:pan-y}.range-input::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#78958d,#c4a26d)}.range-input::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#78958d,#c4a26d)}.range-input::-webkit-slider-thumb{width:18px;height:18px;margin-top:-7px;appearance:none;border:3px solid var(--paper-light);border-radius:50%;background:var(--ink);box-shadow:0 0 0 1px var(--ink)}.range-input::-moz-range-thumb{width:13px;height:13px;border:3px solid var(--paper-light);border-radius:50%;background:var(--ink);box-shadow:0 0 0 1px var(--ink)}.range-input:focus-visible{outline:3px solid #c77f48;outline-offset:5px;border-radius:5px}.range-ends{display:flex;justify-content:space-between;gap:7px;margin-top:3px;color:#586b64;font-size:11px;line-height:1.35}.range-ends span:nth-child(2):not(:last-child){text-align:center}.distance-control .range-ends span:last-child{text-align:right}.range-ends small{color:#536967;font-size:10px}.control-help{margin:10px 0 0;color:#68766e;font-size:11px;line-height:1.55}.phase-note{display:flex;gap:11px;align-items:start;margin:17px 0 12px;padding:12px;border-left:2px solid var(--rust);background:rgba(248,244,234,.7)}.phase-note-mark{color:var(--rust);font-family:var(--serif);font-size:23px;line-height:1.1}.phase-note p{display:flex;flex-wrap:wrap;gap:3px 8px;margin:0;color:var(--ink-soft);font-family:var(--serif);font-size:13px}.phase-note strong{color:var(--ink)}.solar-note{display:flex;align-items:center;gap:8px;margin:0;color:var(--ink-soft);font-size:11px}.solar-note strong{color:var(--ink);font-variant-numeric:tabular-nums}.solar-dot{width:9px;height:9px;border:1px solid #ad7d37;border-radius:50%;background:#f3d79b}
+.readings{margin-top:31px}.readings-heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:12px}.readings-heading .section-kicker{margin-bottom:0}.readings-heading h2{font-size:20px}.force-readings,.surface-readings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--ink);border-bottom:1px solid var(--rule)}.reading-card{min-height:117px;padding:14px 18px 13px;border-right:1px solid var(--rule)}.reading-card:last-child{border-right:0}.reading-index{display:block;margin-bottom:6px;color:var(--ink-soft);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}.reading-index i{padding:0 3px;color:var(--rust);font-style:normal}.reading-value{display:block;color:var(--ink);font-family:var(--serif);font-size:clamp(22px,2.8vw,30px);font-weight:500;line-height:1.15;font-variant-numeric:tabular-nums}.near-reading .reading-value{color:var(--rust)}.far-reading .reading-value{color:var(--teal)}.reading-unit{display:block;margin-top:3px;color:#536967;font-size:10px}.surface-readings .reading-value{color:var(--teal)}.surface-readings .aligned-reading .reading-value{color:var(--rust)}.surface-readings .quadrature-reading .reading-value{color:#667b72}.readings-footnote{max-width:970px;margin:10px 0 0;color:#536967;font-size:11px}.readings-footnote span{padding-right:4px;color:var(--rust);font-weight:800}
+.model-boundary{display:grid;grid-template-columns:72px 1fr;gap:18px;align-items:center;margin:32px 0 27px;padding:18px 22px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}.boundary-marker{display:grid;width:60px;height:60px;place-content:center;border:1px solid var(--rust);border-radius:50%;color:var(--rust);font-family:var(--serif);font-size:12px;line-height:1.25;text-align:center;transform:rotate(-7deg)}.model-boundary h2{margin:0 0 4px;font-family:var(--serif);font-size:17px;font-weight:600}.model-boundary p{max-width:940px;margin:0;color:var(--ink-soft);font-family:var(--serif);font-size:13px}.sources{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding-top:12px;border-top:3px solid var(--ink)}.sources-label{flex:0 0 auto;color:var(--rust);font-size:9px}.sources p{margin:0;color:#748077;font-family:var(--serif);font-size:11px}.footer-mark{flex:0 0 auto;color:#8c978e;font-size:8px;letter-spacing:.13em}[hidden]{display:none!important}
+@media(max-width:850px){.tide-page{width:min(100% - 40px,720px);padding-top:28px}.workbench{grid-template-columns:minmax(0,1.25fr) minmax(250px,.75fr)}.figure-panel{padding:19px 16px 16px}.control-panel{padding:21px 18px 18px}.view-button{padding-inline:8px}.figure-heading{align-items:start;flex-direction:column;gap:12px}.figure-heading>.view-switch{align-self:end}.diagram-wrap{margin-top:3px}.figure-stamp{top:4px}.diagram-legend{gap:7px 12px}}
+@media(max-width:640px){body{background:radial-gradient(ellipse at 35% 3%,#f9f5ea 0,var(--paper) 68%)}.tide-page{width:calc(100% - 32px);padding-top:20px}.eyebrow{margin-bottom:23px;font-size:9px;letter-spacing:.1em}.title-row{padding-bottom:17px}.edition{column-gap:5px;font-size:8px}.edition strong{font-size:36px}.deck{max-width:280px}.intro{grid-template-columns:32px 1fr;gap:8px;margin-bottom:16px;padding:12px 0}.intro p{font-size:14px}.workbench{grid-template-columns:minmax(0,1fr)}.figure-panel{padding:17px 12px 14px;border-right:0;border-bottom:1px solid var(--rule)}.figure-heading{align-items:center;flex-direction:row;gap:8px}.figure-heading h2{font-size:22px}.view-button{min-height:40px;padding:5px 9px;font-size:11px}.diagram-wrap{margin:5px -8px 0}.tide-diagram{width:100%}.figure-stamp{top:4px;right:5px;width:42px;height:42px;font-size:9px}.figure-stamp span:last-child{font-size:7px}.diagram-legend{padding-inline:2px;font-size:10px}.legend-note{margin-left:0}.figure-caption{margin-top:9px;font-size:12px}.control-panel{padding:17px 18px 16px}.panel-heading{padding-bottom:12px}.control-block{padding:14px 0 12px}.control-help{margin-top:7px}.phase-note{margin-top:13px}.readings{margin-top:23px}.readings-heading{align-items:start;flex-direction:column;gap:5px}.readings-heading h2{font-size:18px}.force-readings,.surface-readings{grid-template-columns:minmax(0,1fr)}.reading-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:0 12px;min-height:0;padding:11px 12px;border-right:0;border-bottom:1px solid var(--rule)}.reading-card:last-child{border-bottom:0}.reading-index{grid-column:1;grid-row:1;margin-bottom:0}.reading-value{grid-column:2;grid-row:1/span 2;font-size:23px;text-align:right}.reading-unit{grid-column:1;grid-row:2;margin-top:1px}.model-boundary{grid-template-columns:48px 1fr;gap:12px;margin:25px 0 21px;padding:14px 4px}.boundary-marker{width:46px;height:46px;font-size:10px}.model-boundary p{font-size:12px}.sources{display:grid;grid-template-columns:auto 1fr;gap:3px 12px}.sources p{grid-column:1/-1;grid-row:2;font-size:10px;line-height:1.8}.footer-mark{justify-self:end}}
+@media(max-width:390px){.tide-page{width:calc(100% - 24px)}.eyebrow{gap:10px;font-size:8px}.deck{max-width:220px;font-size:15px}.figure-heading{align-items:start;flex-direction:column}.figure-heading>.view-switch{align-self:stretch}.view-switch{display:grid;grid-template-columns:1fr 1fr}.view-button{width:100%}.diagram-wrap{margin-inline:-10px}.svg-label{font-size:22px}.surface-note{font-size:23px}.sun-label{font-size:19px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
+
+</style></head><body>
+<main class="tide-page" id="tide-exhibit">
+  <header class="masthead">
+    <p class="eyebrow"><span class="eyebrow-mark">潮汐研究札记</span><span>引力 · 差分 · 平衡海面</span></p>
+    <div class="title-row">
+      <div><h1>两道潮汐</h1><p class="deck">月亮只在一侧，为什么海面会鼓起两道？</p></div>
+      <p class="edition"><span>FIELD NOTE</span><strong>02</strong><span>地—月系统</span></p>
+    </div>
+  </header>
+
+  <section class="intro" aria-label="问题导读">
+    <span class="intro-number" aria-hidden="true">01</span>
+    <p><strong>先比较差异。</strong>月球同时拉着地球与海水，但各处受到的引力并不一样。减去地心随地球一起运动的加速度，留下的微小差值，才是潮汐力。</p>
+  </section>
+
+  <section class="workbench" aria-label="潮汐交互示意">
+    <div class="figure-panel">
+      <div class="figure-heading">
+        <div><p class="section-kicker">LIVE MODEL <span>／</span> 实时模型</p><h2 id="figure-title">引力差分</h2></div>
+        <div class="view-switch" role="group" aria-label="选择主图视图">
+          <button class="view-button is-selected" id="view-force" type="button" aria-pressed="true" aria-controls="tide-diagram">引力差分</button>
+          <button class="view-button" id="view-surface" type="button" aria-pressed="false" aria-controls="tide-diagram">理想海面</button>
+        </div>
+      </div>
+
+      <div class="diagram-wrap" id="diagram-wrap">
+        <svg id="tide-diagram" class="tide-diagram" viewBox="0 0 720 460" role="img" aria-labelledby="diagram-title diagram-desc">
+          <title id="diagram-title">地球、月球与潮汐差分示意</title>
+          <desc id="diagram-desc">太阳方向固定向右。图中标出月球方位、地心零差分，以及月球轴近侧和远侧的合成引潮加速度箭头。</desc>
+          <defs>
+            <pattern id="earth-hatch" width="8" height="8" patternTransform="rotate(35)" patternUnits="userSpaceOnUse"><line x1="0" y1="0" x2="0" y2="8" stroke="#b9c4b7" stroke-width="1" /></pattern>
+            <marker id="arrow-near" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,4 L0,8 z" fill="#b84d32" /></marker>
+            <marker id="arrow-far" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,4 L0,8 z" fill="#276c70" /></marker>
+            <marker id="arrow-radial" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L7,3.5 L0,7 z" fill="#795b43" /></marker>
+            <marker id="arrow-sun" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L7,3.5 L0,7 z" fill="#d39a4e" /></marker>
+          </defs>
+          <g class="diagram-grid" aria-hidden="true"><circle cx="330" cy="228" r="198" /><line x1="76" y1="228" x2="674" y2="228" /><line x1="330" y1="54" x2="330" y2="402" /></g>
+          <g id="solar-layer" aria-hidden="true"><line class="sun-ray" x1="330" y1="228" x2="658" y2="228" marker-end="url(#arrow-sun)" /><circle class="sun-disc" cx="677" cy="228" r="12" /><text class="svg-label sun-label" x="668" y="202" text-anchor="end">太阳方向 · 0°</text></g>
+          <g id="moon-layer" aria-hidden="true"><line id="moon-ray" class="moon-ray" x1="330" y1="228" x2="520" y2="228" /><circle id="moon-disc" class="moon-disc" cx="520" cy="228" r="15" /><text class="svg-label moon-label" x="520" y="194" text-anchor="middle">月球</text></g>
+          <g id="earth-layer" aria-hidden="true"><circle class="earth-disc" cx="330" cy="228" r="80" /><circle class="earth-texture" cx="330" cy="228" r="80" /><circle class="earth-core" cx="330" cy="228" r="4" /><text class="svg-label earth-label" x="330" y="333" text-anchor="middle">地球 · 地心</text></g>
+          <g id="force-layer" aria-hidden="true">
+            <line id="axis-near" class="radial-guide" x1="330" y1="228" x2="410" y2="228" /><line id="axis-far" class="radial-guide" x1="330" y1="228" x2="250" y2="228" />
+            <line id="radial-near" class="radial-component near-component" x1="410" y1="228" x2="448" y2="228" marker-end="url(#arrow-radial)" /><line id="radial-far" class="radial-component far-component" x1="250" y1="228" x2="212" y2="228" marker-end="url(#arrow-radial)" />
+            <line id="vector-near" class="force-vector near-vector" x1="410" y1="228" x2="448" y2="228" marker-end="url(#arrow-near)" /><line id="vector-far" class="force-vector far-vector" x1="250" y1="228" x2="212" y2="228" marker-end="url(#arrow-far)" />
+            <circle id="near-point" class="sample-point near-point" cx="410" cy="228" r="5" /><circle id="far-point" class="sample-point far-point" cx="250" cy="228" r="5" />
+            <text class="svg-label sample-label" id="near-label" x="414" y="308">近月侧</text><text class="svg-label sample-label" id="far-label" x="246" y="308" text-anchor="end">远月侧</text>
+            <circle class="zero-ring" cx="330" cy="228" r="11" /><text class="svg-label zero-label" x="330" y="252" text-anchor="middle">地心 0</text>
+          </g>
+          <g id="surface-layer" aria-hidden="true" style="display:none"><path class="surface-fill" id="surface-fill" d="" /><path class="surface-line" id="surface-line" d="" /><text class="svg-label surface-note" x="330" y="423" text-anchor="middle">等效海面轮廓 · 形变放大</text></g>
+          <text id="moon-angle-label" class="svg-label angle-label" x="330" y="32" text-anchor="middle">月球方位 0°</text>
+        </svg>
+        <div class="figure-stamp" aria-hidden="true"><span>示意图</span><span>非比例</span></div>
+      </div>
+      <div class="diagram-legend" id="force-legend"><span><i class="legend-line near-key"></i>合成引潮加速度</span><span><i class="legend-line radial-key"></i>沿月球轴的径向分量</span><span class="legend-note">箭长经视觉放大</span></div>
+      <div class="diagram-legend surface-legend" id="surface-legend" hidden><span><i class="legend-line surface-key"></i>理想平衡海面</span><span class="legend-note">轮廓放大：60 px/m</span></div>
+      <p class="figure-caption" id="figure-caption">近侧和远侧都向外，但远侧较弱；地心处减去地球整体受到的加速度后为零。</p>
+    </div>
+
+    <aside class="control-panel" aria-labelledby="controls-title">
+      <div class="panel-heading"><p class="section-kicker">ADJUST <span>／</span> 调节条件</p><h2 id="controls-title">移动天体</h2></div>
+      <div class="control-block">
+        <div class="control-label-row"><label for="phase-range">月球方位</label><output class="control-value" id="phase-output" for="phase-range">0°</output></div>
+        <input id="phase-range" class="range-input phase-range" type="range" min="0" max="180" step="1" value="0" aria-describedby="phase-help">
+        <div class="range-ends"><span>0° <small>朔</small></span><span>90° <small>上/下弦</small></span><span>180° <small>望</small></span></div>
+        <p class="control-help" id="phase-help">从太阳方向起算，逆时针增加；键盘方向键可微调。</p>
+      </div>
+      <div class="control-block distance-control">
+        <div class="control-label-row"><label for="distance-range">地月距离</label><output class="control-value" id="distance-output" for="distance-range">384,400 km</output></div>
+        <input id="distance-range" class="range-input distance-range" type="range" min="356500" max="406700" step="100" value="384400" aria-describedby="distance-help">
+        <div class="range-ends"><span>近地点<br><small>356,500 km</small></span><span>远地点<br><small>406,700 km</small></span></div>
+        <p class="control-help" id="distance-help">潮汐强度约随距离的三次方反比变化。</p>
+      </div>
+      <div class="phase-note" aria-live="polite"><span class="phase-note-mark" aria-hidden="true">↗</span><p>当前位形<strong id="phase-name">朔望</strong><span id="phase-copy">日月共线，合成潮汐较强。</span></p></div>
+      <p class="solar-note"><span class="solar-dot" aria-hidden="true"></span>太阳地心距固定为 <strong>1 AU</strong>，月球距离可调。</p>
+    </aside>
+  </section>
+
+  <section class="readings" aria-labelledby="readings-title">
+    <div class="readings-heading"><p class="section-kicker">READOUT <span>／</span> 定量读数</p><h2 id="readings-title">同一引力场，不同位置</h2></div>
+    <div class="force-readings" id="force-readings">
+      <article class="reading-card near-reading"><span class="reading-index">A <i>·</i> 近月侧</span><strong id="near-reading" class="reading-value">+0.00e+0</strong><span class="reading-unit">m/s²　径向向外</span></article>
+      <article class="reading-card far-reading"><span class="reading-index">B <i>·</i> 远月侧</span><strong id="far-reading" class="reading-value">+0.00e+0</strong><span class="reading-unit">m/s²　径向向外</span></article>
+      <article class="reading-card ratio-reading"><span class="reading-index">比例 <i>·</i> 当前月距</span><strong id="strength-reading" class="reading-value">—</strong><span class="reading-unit">月潮强度 / 太阳潮强度</span></article>
+    </div>
+    <div class="surface-readings" id="surface-readings" hidden>
+      <article class="reading-card current-reading"><span class="reading-index">此刻位形</span><strong id="range-current" class="reading-value">—</strong><span class="reading-unit">理想海面峰峰值 · cm</span></article>
+      <article class="reading-card aligned-reading"><span class="reading-index">假设日月共线</span><strong id="range-aligned" class="reading-value">—</strong><span class="reading-unit">同一月距下峰峰值 · cm</span></article>
+      <article class="reading-card quadrature-reading"><span class="reading-index">假设月球直角</span><strong id="range-quadrature" class="reading-value">—</strong><span class="reading-unit">同一月距下峰峰值 · cm</span></article>
+    </div>
+    <p class="readings-footnote" id="reading-footnote"><span aria-hidden="true">†</span> 读数为合成月、日引潮加速度的径向分量；正号表示沿各自径向向外。比较地表点与地心，是为了扣除地球整体的共同加速度。</p>
+  </section>
+
+  <section class="model-boundary" aria-labelledby="boundary-title">
+    <div class="boundary-marker" aria-hidden="true">模型<br>边界</div>
+    <div><h2 id="boundary-title">这是一张理想化的图</h2><p>放大的海面轮廓仅表示理想平衡潮汐形状，不是海岸实测潮位或预报。模型忽略大陆、海深、海盆共振、惯性与摩擦；真实潮汐还会受到这些因素影响。</p></div>
+  </section>
+
+  <footer class="sources"><span class="sources-label">延伸阅读</span><p>NOAA National Ocean Service《Tides and Water Levels》　·　NOAA《What are spring and neap tides?》　·　NASA Science《Tides》</p><span class="footer-mark" aria-hidden="true">EARTH ↔ MOON</span></footer>
+</main>
+
+<script>
+'use strict';
+
+(function attachTidalModel(root) {
+  const DEFAULTS = Object.freeze({
+    G: 6.67430e-11,
+    MOON_MASS_KG: 7.342e22,
+    SUN_MASS_KG: 1.9885e30,
+    EARTH_RADIUS_M: 6.371e6,
+    GRAVITY_MPS2: 9.80665,
+    SUN_DISTANCE_KM: 149597870.7,
+    MOON_DISTANCE_MIN_KM: 356500,
+    MOON_DISTANCE_MAX_KM: 406700,
+    MOON_DISTANCE_DEFAULT_KM: 384400,
+    STATE: Object.freeze({ moonAngleDeg: 0, moonDistanceKm: 384400 })
+  });
+
+  function finiteNumber(value, fallback) {
+    if (value === undefined || value === null || value === '') return fallback;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function clamp(value, minimum, maximum) {
+    return Math.min(maximum, Math.max(minimum, value));
+  }
+
+  function createState(input = {}) {
+    const source = input && typeof input === 'object' ? input : {};
+    return {
+      moonAngleDeg: clamp(finiteNumber(source.moonAngleDeg, DEFAULTS.STATE.moonAngleDeg), 0, 180),
+      moonDistanceKm: clamp(
+        finiteNumber(source.moonDistanceKm, DEFAULTS.STATE.moonDistanceKm),
+        DEFAULTS.MOON_DISTANCE_MIN_KM,
+        DEFAULTS.MOON_DISTANCE_MAX_KM
+      )
+    };
+  }
+
+  function unitFromDegrees(degrees) {
+    if (degrees === 0) return { x: 1, y: 0 };
+    if (degrees === 90) return { x: 0, y: 1 };
+    if (degrees === 180) return { x: -1, y: 0 };
+    const radians = degrees * Math.PI / 180;
+    return { x: Math.cos(radians), y: Math.sin(radians) };
+  }
+
+  function sourcesFor(state) {
+    const normalized = createState(state);
+    const moonDirection = unitFromDegrees(normalized.moonAngleDeg);
+    return [
+      {
+        massKg: DEFAULTS.MOON_MASS_KG,
+        x: moonDirection.x * normalized.moonDistanceKm * 1000,
+        y: moonDirection.y * normalized.moonDistanceKm * 1000
+      },
+      {
+        massKg: DEFAULTS.SUN_MASS_KG,
+        x: DEFAULTS.SUN_DISTANCE_KM * 1000,
+        y: 0
+      }
+    ];
+  }
+
+  function positionComponents(positionM) {
+    if (!positionM || !Number.isFinite(positionM.x) || !Number.isFinite(positionM.y)) {
+      throw new TypeError('positionM must contain finite x and y coordinates in metres');
+    }
+    return { x: positionM.x, y: positionM.y };
+  }
+
+  function isGeocenter(position) {
+    return position.x === 0 && position.y === 0;
+  }
+
+  function tidalAccelerationAt(positionM, state) {
+    const position = positionComponents(positionM);
+    if (isGeocenter(position)) return { x: 0, y: 0 };
+
+    let x = 0;
+    let y = 0;
+    for (const source of sourcesFor(state)) {
+      const sourceDistanceSq = source.x * source.x + source.y * source.y;
+      const dx = source.x - position.x;
+      const dy = source.y - position.y;
+      const localDistanceSq = dx * dx + dy * dy;
+      const mu = DEFAULTS.G * source.massKg;
+      const localScale = mu / (localDistanceSq * Math.sqrt(localDistanceSq));
+      const centerScale = mu / (sourceDistanceSq * Math.sqrt(sourceDistanceSq));
+      x += dx * localScale - source.x * centerScale;
+      y += dy * localScale - source.y * centerScale;
+    }
+    return { x, y };
+  }
+
+  function potentialFromSource(position, source) {
+    const distanceSq = source.x * source.x + source.y * source.y;
+    const distance = Math.sqrt(distanceSq);
+    const dot = source.x * position.x + source.y * position.y;
+    const positionSq = position.x * position.x + position.y * position.y;
+    const x = dot / distanceSq;
+    const y = positionSq / distanceSq;
+    const t = Math.sqrt(1 - 2 * x + y);
+
+    // Algebraically equivalent to 1/|D-r| - 1/D - (D·r)/D³,
+    // rearranged so the leading uniform-acceleration terms cancel stably.
+    const oneMinusT = (2 * x - y) / (1 + t);
+    const dimensionlessPotential = (x * oneMinusT * (2 + t) - y) / (t * (1 + t));
+    return DEFAULTS.G * source.massKg / distance * dimensionlessPotential;
+  }
+
+  function tidePotentialAt(positionM, state) {
+    const position = positionComponents(positionM);
+    if (isGeocenter(position)) return 0;
+    let potential = 0;
+    for (const source of sourcesFor(state)) potential += potentialFromSource(position, source);
+    return potential;
+  }
+
+  function heightAt(angleRad, state) {
+    const angle = finiteNumber(angleRad, 0);
+    const position = {
+      x: DEFAULTS.EARTH_RADIUS_M * Math.cos(angle),
+      y: DEFAULTS.EARTH_RADIUS_M * Math.sin(angle)
+    };
+    return tidePotentialAt(position, state) / DEFAULTS.GRAVITY_MPS2;
+  }
+
+  function sampleSurface(state, count) {
+    const requested = finiteNumber(count, 8);
+    const normalizedCount = Number.isSafeInteger(requested) && requested >= 8
+      ? Math.min(requested, 1000000)
+      : 8;
+    const samples = new Array(normalizedCount);
+    for (let index = 0; index < normalizedCount; index += 1) {
+      const angleRad = 2 * Math.PI * index / normalizedCount;
+      samples[index] = { angleRad, heightM: heightAt(angleRad, state) };
+    }
+    return samples;
+  }
+
+  function phaseLabel(state) {
+    const angle = createState(state).moonAngleDeg;
+    if (angle <= 15 || angle >= 165) return '朔望';
+    if (Math.abs(angle - 90) <= 15) return '小潮';
+    return '过渡位形';
+  }
+
+  function lunarToSolarStrength(state) {
+    const distanceMoonM = createState(state).moonDistanceKm * 1000;
+    const distanceSunM = DEFAULTS.SUN_DISTANCE_KM * 1000;
+    const lunarStrength = DEFAULTS.G * DEFAULTS.MOON_MASS_KG / (distanceMoonM ** 3);
+    const solarStrength = DEFAULTS.G * DEFAULTS.SUN_MASS_KG / (distanceSunM ** 3);
+    return lunarStrength / solarStrength;
+  }
+
+  function peakToPeakForState(state) {
+    let minimum = Infinity;
+    let maximum = -Infinity;
+    for (let index = 0; index < 720; index += 1) {
+      const angleRad = 2 * Math.PI * index / 720;
+      const height = heightAt(angleRad, state);
+      if (height < minimum) minimum = height;
+      if (height > maximum) maximum = height;
+    }
+    return maximum - minimum;
+  }
+
+  function springNeapRange(state) {
+    const normalized = createState(state);
+    return {
+      currentM: peakToPeakForState(normalized),
+      alignedM: peakToPeakForState({ ...normalized, moonAngleDeg: 0 }),
+      quadratureM: peakToPeakForState({ ...normalized, moonAngleDeg: 90 })
+    };
+  }
+
+  root.TidalModel = Object.freeze({
+    DEFAULTS,
+    createState,
+    tidalAccelerationAt,
+    tidePotentialAt,
+    heightAt,
+    sampleSurface,
+    phaseLabel,
+    lunarToSolarStrength,
+    springNeapRange
+  });
+})(typeof window === 'object' ? window : globalThis);
+
+</script>
+<script>
+(() => {
+  'use strict';
+  const model = window.TidalModel;
+  if (!model) { document.documentElement.dataset.tidalError = 'missing-model'; return; }
+
+  const defaults = model.DEFAULTS;
+  const earthRadius = defaults.EARTH_RADIUS_M;
+  const cx = 330;
+  const cy = 228;
+  const diagramScale = 80 / earthRadius;
+  const arrowScale = 42 / 1e-6;
+  const surfaceScale = 60;
+  const $ = id => document.getElementById(id);
+  const controls = {
+    phase: $('phase-range'), distance: $('distance-range'), phaseOutput: $('phase-output'), distanceOutput: $('distance-output'),
+    phaseName: $('phase-name'), phaseCopy: $('phase-copy'), nearReading: $('near-reading'), farReading: $('far-reading'), strength: $('strength-reading'),
+    current: $('range-current'), aligned: $('range-aligned'), quadrature: $('range-quadrature')
+  };
+  const ui = {
+    forceButton: $('view-force'), surfaceButton: $('view-surface'), title: $('figure-title'), caption: $('figure-caption'), desc: $('diagram-desc'),
+    forceLayer: $('force-layer'), surfaceLayer: $('surface-layer'), forceLegend: $('force-legend'), surfaceLegend: $('surface-legend'),
+    forceReadings: $('force-readings'), surfaceReadings: $('surface-readings'), footnote: $('reading-footnote')
+  };
+  let state = model.createState(defaults.STATE);
+
+  const svgPoint = (x, y) => ({ x: cx + diagramScale * x, y: cy - diagramScale * y });
+  const setLine = (id, from, to) => {
+    const el = $(id);
+    el.setAttribute('x1', from.x.toFixed(2)); el.setAttribute('y1', from.y.toFixed(2));
+    el.setAttribute('x2', to.x.toFixed(2)); el.setAttribute('y2', to.y.toFixed(2));
+  };
+  const setPoint = (id, point) => { $(id).setAttribute('cx', point.x.toFixed(2)); $(id).setAttribute('cy', point.y.toFixed(2)); };
+  const formatAccel = value => `${value < 0 ? '−' : '+'}${Math.abs(value).toExponential(2)}`;
+  const formatCm = value => (value * 100).toFixed(1);
+
+  const drawForce = () => {
+    const angle = state.moonAngleDeg * Math.PI / 180;
+    const nx = Math.cos(angle), ny = Math.sin(angle);
+    const orbitRadius = 185 * state.moonDistanceKm / defaults.MOON_DISTANCE_DEFAULT_KM;
+    const moon = { x: cx + orbitRadius * nx, y: cy - orbitRadius * ny };
+    const ray = $('moon-ray'); ray.setAttribute('x2', moon.x.toFixed(2)); ray.setAttribute('y2', moon.y.toFixed(2));
+    setPoint('moon-disc', moon);
+    const moonLabel = $('moon-layer').querySelector('.moon-label');
+    moonLabel.setAttribute('x', Math.min(636, Math.max(88, moon.x)).toFixed(2));
+    moonLabel.setAttribute('y', (moon.y + (moon.y > cy - 35 ? -23 : 31)).toFixed(2));
+    moonLabel.setAttribute('text-anchor', moon.x < cx - 12 ? 'end' : moon.x > cx + 12 ? 'start' : 'middle');
+    $('moon-angle-label').textContent = `月球方位 ${state.moonAngleDeg}°`;
+
+    const near = { x: earthRadius * nx, y: earthRadius * ny };
+    const far = { x: -near.x, y: -near.y };
+    const nearScreen = svgPoint(near.x, near.y), farScreen = svgPoint(far.x, far.y);
+    setLine('axis-near', { x: cx, y: cy }, nearScreen); setLine('axis-far', { x: cx, y: cy }, farScreen);
+    setPoint('near-point', nearScreen); setPoint('far-point', farScreen);
+    const nearA = model.tidalAccelerationAt(near, state);
+    const farA = model.tidalAccelerationAt(far, state);
+    const nearRadial = nearA.x * nx + nearA.y * ny;
+    const farRadial = farA.x * -nx + farA.y * -ny;
+    setLine('vector-near', nearScreen, svgPoint(near.x + nearA.x * arrowScale, near.y + nearA.y * arrowScale));
+    setLine('vector-far', farScreen, svgPoint(far.x + farA.x * arrowScale, far.y + farA.y * arrowScale));
+    const nearRadialStart = { x: nearScreen.x, y: nearScreen.y - 9 };
+    const farRadialStart = { x: farScreen.x, y: farScreen.y + 9 };
+    const nearRadialEnd = svgPoint(near.x + nx * nearRadial * arrowScale, near.y + ny * nearRadial * arrowScale);
+    const farRadialEnd = svgPoint(far.x - nx * farRadial * arrowScale, far.y - ny * farRadial * arrowScale);
+    setLine('radial-near', nearRadialStart, { x: nearRadialEnd.x, y: nearRadialEnd.y - 9 });
+    setLine('radial-far', farRadialStart, { x: farRadialEnd.x, y: farRadialEnd.y + 9 });
+
+    const nearLabel = $('near-label'), farLabel = $('far-label');
+    nearLabel.setAttribute('x', (nearScreen.x + (nx > 0 ? 14 : -14)).toFixed(2));
+    nearLabel.setAttribute('y', (nearScreen.y + (ny > .15 ? -10 : ny < -.15 ? 20 : 20)).toFixed(2));
+    nearLabel.setAttribute('text-anchor', nx > .05 ? 'start' : nx < -.05 ? 'end' : 'middle');
+    farLabel.setAttribute('x', (farScreen.x + (nx > 0 ? -14 : 14)).toFixed(2));
+    farLabel.setAttribute('y', (farScreen.y + (ny > .15 ? 20 : ny < -.15 ? -10 : 20)).toFixed(2));
+    farLabel.setAttribute('text-anchor', nx > .05 ? 'end' : nx < -.05 ? 'start' : 'middle');
+    controls.nearReading.textContent = formatAccel(nearRadial);
+    controls.farReading.textContent = formatAccel(farRadial);
+    controls.nearReading.setAttribute('aria-label', `${formatAccel(nearRadial)} 米每二次方秒，向外`);
+    controls.farReading.setAttribute('aria-label', `${formatAccel(farRadial)} 米每二次方秒，向外`);
+  };
+
+  const drawSurface = () => {
+    const samples = model.sampleSurface(state, 180);
+    const coordinates = samples.map(point => {
+      const radius = 80 + point.heightM * surfaceScale;
+      return { x: cx + radius * Math.cos(point.angleRad), y: cy - radius * Math.sin(point.angleRad) };
+    });
+    const outline = coordinates.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ') + ' Z';
+    $('surface-line').setAttribute('d', outline);
+    $('surface-fill').setAttribute('d', `${outline} M${cx},${cy} Z`);
+    const range = model.springNeapRange(state);
+    controls.current.textContent = formatCm(range.currentM);
+    controls.aligned.textContent = formatCm(range.alignedM);
+    controls.quadrature.textContent = formatCm(range.quadratureM);
+    controls.current.setAttribute('aria-label', `${formatCm(range.currentM)} 厘米`);
+    controls.aligned.setAttribute('aria-label', `${formatCm(range.alignedM)} 厘米`);
+    controls.quadrature.setAttribute('aria-label', `${formatCm(range.quadratureM)} 厘米`);
+  };
+
+  const render = () => {
+    state = model.createState({ moonAngleDeg: Number(controls.phase.value), moonDistanceKm: Number(controls.distance.value) });
+    controls.phase.value = String(state.moonAngleDeg); controls.distance.value = String(state.moonDistanceKm);
+    controls.phase.setAttribute('aria-valuetext', `${state.moonAngleDeg} 度`);
+    controls.distance.setAttribute('aria-valuetext', `${state.moonDistanceKm.toLocaleString('zh-CN')} 千米`);
+    controls.phaseOutput.value = `${state.moonAngleDeg}°`; controls.phaseOutput.textContent = `${state.moonAngleDeg}°`;
+    controls.distanceOutput.value = `${state.moonDistanceKm.toLocaleString('zh-CN')} km`;
+    controls.distanceOutput.textContent = `${state.moonDistanceKm.toLocaleString('zh-CN')} km`;
+    const phase = model.phaseLabel(state);
+    controls.phaseName.textContent = phase;
+    controls.phaseCopy.textContent = phase === '小潮' ? '日月引潮方向近直角，合成潮汐较弱。' : phase === '朔望' ? '日月共线，合成潮汐较强。' : '月球逐渐转向，日月引潮正在合成。';
+    controls.strength.textContent = `${model.lunarToSolarStrength(state).toFixed(2)}×`;
+    drawForce(); drawSurface();
+  };
+
+  const setView = surface => {
+    ui.forceButton.classList.toggle('is-selected', !surface); ui.surfaceButton.classList.toggle('is-selected', surface);
+    ui.forceButton.setAttribute('aria-pressed', String(!surface)); ui.surfaceButton.setAttribute('aria-pressed', String(surface));
+    ui.forceLayer.style.display = surface ? 'none' : ''; ui.surfaceLayer.style.display = surface ? '' : 'none';
+    ui.forceLegend.hidden = surface; ui.surfaceLegend.hidden = !surface;
+    ui.forceReadings.hidden = surface; ui.surfaceReadings.hidden = !surface;
+    ui.title.textContent = surface ? '理想海面' : '引力差分';
+    ui.caption.textContent = surface ? '把势能换算为等效海面高度，沿地球整圈描出起伏。轮廓放大以便观察，绝非真实海洋外形。' : '近侧和远侧都向外，但远侧较弱；地心处减去地球整体受到的加速度后为零。';
+    ui.desc.textContent = surface ? '同一地月日位置下，沿地球整圈绘制月球和太阳共同形成的理想等效海面起伏；形变经过放大，不显示向量箭头。' : '太阳方向固定向右。图中标出月球方位、地心零差分，以及月球轴近侧和远侧的合成引潮加速度箭头。';
+    ui.footnote.innerHTML = surface
+      ? '<span aria-hidden="true">†</span> 当前、共线与直角位形均以同一地月距离计算整圈峰峰值。此为理想平衡海面高度，不对应任一海岸的实测潮差。'
+      : '<span aria-hidden="true">†</span> 读数为合成月、日引潮加速度的径向分量；正号表示沿各自径向向外。比较地表点与地心，是为了扣除地球整体的共同加速度。';
+    render();
+  };
+
+  controls.phase.addEventListener('input', render);
+  controls.distance.addEventListener('input', render);
+  ui.forceButton.addEventListener('click', () => setView(false));
+  ui.surfaceButton.addEventListener('click', () => setView(true));
+  setView(false);
+})();
+
+</script>
+</body></html>

@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>破障之锥 · 超音速激波与马赫锥</title>
+  <meta name="description" content="空气动力学与双曲几何：超音速飞机的声音，为什么不是渐渐变响，而是一记猝不及防的晴天霹雳？从多普勒频移到跨音速音障，再到超音速马赫锥包络、纹影摄影与N型激波。">
+  <meta name="keywords" content="空气动力学 超音速 激波 马赫锥 马赫数 音障 多普勒频移 纹影摄影 N型波 爆轰 激波焦散 声爆">
+  <style>
+/* ============================================================================
+ * mach/style.css —— 《破障之锥》视觉方言：超音速风洞与纹影暗舱
+ *
+ * 调色哲学：
+ *   暗夜风洞冷岩黑（#090d16），以光学纹影仪的单色刀口灰度为主基调，
+ *   正激波压缩锋采用高能声爆琥珀橙（#ff9f1c），膨胀扇区采用等离子青（#2ec4b6），
+ *   焦散奇点与过载警示采用高亮品红（#ff3366）。
+ *
+ * 硬性设计守卫：
+ *   1. 媒体查询全部置于文件最末尾（防止级联倒置）。
+ *   2. 所有 Grid/Flex 弹性子容器严格声明 min-width: 0。
+ *   3. 移动端/窄屏全部交互控件热区 >= 44px。
+ *   4. 严禁 animation + opacity:0 入场隐藏（确保无头渲染即时可见）。
+ * ==========================================================================*/
+:root {
+  color-scheme: dark;
+  --bg: #090d16;
+  --panel: #111726;
+  --panel-alt: #161e31;
+  --ink: #f0f4fc;
+  --ink-dim: #9aa8be;
+  --ink-faint: #596982;
+  --border: #1e293b;
+  --border-bright: #334155;
+  --shock-amber: #ff9f1c;
+  --shock-amber-glow: rgba(255, 159, 28, 0.25);
+  --expansion-cyan: #2ec4b6;
+  --expansion-cyan-glow: rgba(46, 196, 182, 0.2);
+  --caustic-magenta: #ff3366;
+  --grid-line: rgba(255, 255, 255, 0.05);
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.wrap {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+/* ---------------- 顶部题头 ---------------- */
+.masthead {
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--shock-amber);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.masthead h1 {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+  color: #ffffff;
+}
+
+.question-lead {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--expansion-cyan);
+  margin: 0 0 12px;
+  line-height: 1.45;
+}
+
+.lede {
+  color: var(--ink-dim);
+  font-size: 15px;
+  max-width: 860px;
+  margin: 0;
+}
+
+/* ---------------- 面板容器通用 ---------------- */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 12px 18px;
+  background: var(--panel-alt);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--mono);
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-title .badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 159, 28, 0.15);
+  color: var(--shock-amber);
+  border: 1px solid rgba(255, 159, 28, 0.3);
+}
+
+.panel-body {
+  padding: 16px 18px;
+}
+
+/* ---------------- 交互空域画布区 ---------------- */
+.airspace-container {
+  position: relative;
+  width: 100%;
+  background: #05070c;
+  border-bottom: 1px solid var(--border);
+}
+
+#airspaceCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 880 / 480;
+  cursor: crosshair;
+}
+
+.airspace-hud {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  pointer-events: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-dim);
+  background: rgba(9, 13, 22, 0.85);
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-bright);
+}
+
+.hud-item {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.hud-item:last-child {
+  margin-bottom: 0;
+}
+
+.hud-val {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.hud-val.alert {
+  color: var(--shock-amber);
+}
+
+.airspace-hint {
+  position: absolute;
+  bottom: 10px;
+  right: 14px;
+  font-size: 11px;
+  color: var(--ink-faint);
+  background: rgba(9, 13, 22, 0.7);
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* ---------------- 操纵台控制条 ---------------- */
+.control-bar {
+  padding: 14px 18px;
+  background: var(--panel-alt);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--border-bright);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn:hover {
+  background: #1c263d;
+  border-color: var(--shock-amber);
+  color: #ffffff;
+}
+
+.btn.active {
+  background: var(--shock-amber);
+  color: #000000;
+  font-weight: 700;
+  border-color: var(--shock-amber);
+}
+
+.btn-toggle {
+  min-height: 44px;
+}
+
+/* ---------------- 遥测仪表栅格 ---------------- */
+.telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.telemetry-card {
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+
+.telemetry-card .label {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.telemetry-card .value {
+  font-size: 20px;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.telemetry-card .subtext {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-top: 4px;
+}
+
+/* ---------------- 示波器波形画布 ---------------- */
+.oscilloscope-box {
+  background: #05070c;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  position: relative;
+}
+
+.oscilloscope-title {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin-bottom: 8px;
+}
+
+#oscilloscopeCanvas {
+  display: block;
+  width: 100%;
+  height: 140px;
+  background: #020408;
+  border-radius: 4px;
+}
+
+/* ---------------- 科学对账与结论条 ---------------- */
+.verdict-box {
+  background: rgba(255, 159, 28, 0.05);
+  border: 1px solid rgba(255, 159, 28, 0.3);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-top: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.verdict-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.verdict-content h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--shock-amber);
+}
+
+.verdict-content p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-dim);
+}
+
+/* ---------------- 模型边界与自白 ---------------- */
+.boundary-section {
+  border-top: 1px dashed var(--border);
+  padding-top: 20px;
+  margin-top: 30px;
+}
+
+.boundary-section h3 {
+  font-size: 16px;
+  font-family: var(--mono);
+  color: var(--ink-dim);
+  margin: 0 0 12px;
+}
+
+.boundary-list {
+  padding-left: 20px;
+  margin: 0 0 16px;
+  color: var(--ink-faint);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.colophon {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--ink-faint);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* ==========================================================================
+ * 媒体查询置底（严格契约：防止级联顺序混乱）
+ * ==========================================================================*/
+@media (max-width: 768px) {
+  .wrap {
+    padding: 16px 14px 40px;
+  }
+
+  .masthead h1 {
+    font-size: 26px;
+  }
+
+  .question-lead {
+    font-size: 16px;
+  }
+
+  .telemetry-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .control-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-group {
+    justify-content: stretch;
+  }
+
+  .btn {
+    flex: 1 1 calc(50% - 6px);
+    font-size: 12px;
+    padding: 10px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .telemetry-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .btn {
+    flex: 1 1 100%;
+  }
+
+  .airspace-hud {
+    font-size: 10px;
+  }
+}
+
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <!-- 题头与设问 -->
+  <header class="masthead">
+    <div class="eyebrow">空气动力学与双曲几何 · 激波前沿</div>
+    <h1>破障之锥</h1>
+    <div class="question-lead">超音速飞机的声音，为什么不是渐渐变响，而是一记猝不及防的晴天霹雳？</div>
+    <p class="lede">
+      介质中的微弱扰动只能以恒定声速 \(c\) 向外扩散。当波源静止，球面波以同心圆均匀散开；当航速逼近音速，波前在机头前方被紧密挤压（多普勒奇异性）；一旦突破音速（\(M > 1\)），飞机超越了自己的声音，所有历史球面波的外侧切线在三维空间中包络成一个锋利的圆锥体——<strong>马赫锥（Mach Cone）</strong>。在锥面之外是绝对的静默区，而在马赫锥面扫过地面的瞬间，无限波前重叠抵达，形成剧烈的 <strong>N 型激波（Sonic Boom）</strong>。
+    </p>
+  </header>
+
+  <!-- 交互空域视窗面板 -->
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span>交互空域与激波拓扑</span>
+        <span class="badge" id="hudStateBadge">超音速激波已成型</span>
+      </div>
+      <div class="btn-group">
+        <button type="button" class="btn active" id="btnModeSchlieren" data-mode="schlieren">纹影摄影（Schlieren）</button>
+        <button type="button" class="btn" id="btnModeWavefront" data-mode="wavefront">波前几何与切线</button>
+        <button type="button" class="btn" id="btnModePressure" data-mode="pressure">声压全息等值面</button>
+      </div>
+    </div>
+
+    <div class="airspace-container">
+      <canvas id="airspaceCanvas" width="880" height="480"></canvas>
+      <div class="airspace-hud">
+        <div class="hud-item"><span>马赫数 M:</span><span class="hud-val alert" id="hudMach">1.80</span></div>
+        <div class="hud-item"><span>半顶角 μ:</span><span class="hud-val" id="hudAngle">33.7°</span></div>
+        <div class="hud-item"><span>航速 v:</span><span class="hud-val" id="hudSpeed">252 px/s</span></div>
+        <div class="hud-item"><span>波前数:</span><span class="hud-val" id="hudWaves">142</span></div>
+      </div>
+      <div class="airspace-hint">提示：在空域中可直接鼠标拖拽飞机驾驶；点击地面可重新部署测压探针</div>
+    </div>
+
+    <!-- 机动动作与操纵栏 -->
+    <div class="control-bar">
+      <div class="btn-group">
+        <button type="button" class="btn active" data-preset="straight_accel">直线穿障加速</button>
+        <button type="button" class="btn" data-preset="transonic_barrier">跨音速音障堆积</button>
+        <button type="button" class="btn" data-preset="supersonic_turn">大过载盘旋（焦散尖点）</button>
+        <button type="button" class="btn" data-preset="dash_flyby">超音速掠地轰击</button>
+        <button type="button" class="btn" data-preset="interactive_free">自由矢量操纵</button>
+      </div>
+      <div class="btn-group">
+        <button type="button" class="btn btn-toggle" id="btnAudioToggle">🔊 开启声爆合成</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 遥测仪表与地面测压计示波器 -->
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">地面微压计阵列与声爆时域波形（Oscilloscope）</div>
+      <span style="font-family: var(--mono); font-size: 12px; color: var(--ink-dim);">采样率: 60Hz 实时推迟势解算</span>
+    </div>
+
+    <div class="panel-body">
+      <!-- 4格核心遥测数值卡片 -->
+      <div class="telemetry-grid">
+        <div class="telemetry-card">
+          <div class="label">当前马赫数 (Mach)</div>
+          <div class="value" id="cardMach" style="color: var(--shock-amber);">1.80</div>
+          <div class="subtext" id="cardRegime">超音速区 (M > 1.2)</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="label">马赫锥半顶角 (μ)</div>
+          <div class="value" id="cardMachAngle" style="color: var(--expansion-cyan);">33.7°</div>
+          <div class="subtext">解析解: arcsin(1/M)</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="label">前向多普勒频移</div>
+          <div class="value" id="cardDoppler">8.4×</div>
+          <div class="subtext">1 / |1 - M·cos(θ)|</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="label">激波压升比 Δp/p₀</div>
+          <div class="value" id="cardPressureJump" style="color: var(--caustic-magenta);">+2.84</div>
+          <div class="subtext">Rankine–Hugoniot 跃升</div>
+        </div>
+      </div>
+
+      <!-- 地面微压计多通道实时示波器 -->
+      <div class="oscilloscope-box">
+        <div class="oscilloscope-title">
+          <span>地面测压计探针压力历程 \(\Delta p(t)\)</span>
+          <span style="color: var(--shock-amber);">黄色: 1# 探针 | 青色: 2# 探针 | 紫色: 3# 探针 (激波扫过时捕获经典 N 型双峰)</span>
+        </div>
+        <canvas id="oscilloscopeCanvas" width="840" height="140"></canvas>
+      </div>
+
+      <!-- 科学机理裁决条 -->
+      <div class="verdict-box">
+        <div class="verdict-icon">⚡</div>
+        <div class="verdict-content">
+          <h4>为什么超音速飞机是“两声”巨响（N 型激波）？</h4>
+          <p>
+            当飞机超音速飞行时，机头将空气猛烈压缩形成<strong>头激波（Bow Shock）</strong>，气压突跃至峰值；随后空气顺着机身向后膨胀，压力跌至负压；最后在机尾与排气处空气骤然回填，形成<strong>尾激波（Tail Shock）</strong>重新跃升回环境气压。这一过程在地面的压力记录上画出一个标准的英文字母“N”。人耳听到的不是渐强的轰鸣，而是在 100~200 毫秒内接连而至的两次骤然压跳——“砰-砰！”。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 模型边界与自白 -->
+  <section class="boundary-section">
+    <h3>模型边界 · 在哪里诚实</h3>
+    <ul class="boundary-list">
+      <li><strong>波动几何 vs 粘性可压缩 CFD</strong>：本装置核心采用达朗贝尔双曲波动方程的李纳-维谢尔式推迟势（Liénard–Wiechert Retarded Potential）与球面波包络理论，精准再现了马赫锥几何顶角、多普勒奇异堆积、转弯焦散（Focus Boom）与 N 型波时域传播；未引入三维非定常 Navier-Stokes 粘性边界层与激波/附面层干扰。</li>
+      <li><strong>平坦声速分布</strong>：模拟空域假设等温均匀大气（声速 \(c\) 恒定）。真实地球大气中随海拔上升存在逆温层，激波向下传播时会发生声折射向上弯折，在特定高度下方形成马赫切断（Mach Cutoff）。</li>
+      <li><strong>弱激波近场声学</strong>：压力跃升采用经典 Whitham 远场超音速线性化外推 F-函数，适合演示宏观音爆声学规律；极端近场（小于两个机身长度）的复杂脱体三维斜激波不在声学微扰范围内。</li>
+    </ul>
+
+    <div class="colophon">
+      <span>《破障之锥》 · 单文件零依赖物理装置</span>
+      <span>离线运行保障 · 遵循 IEEE 754 确定性浮点契约</span>
+    </div>
+  </section>
+</div>
+
+  <script>
+/* ============================================================================
+ * mach/core.js —— 《破障之锥》物理与数学核心模型
+ *
+ * 理论基石：
+ *   1. 达朗贝尔双曲波动方程与推迟势（Retarded Potentials）
+ *   2. 马赫锥包络几何：sin(μ) = 1/M，超音速波前公切线与奇点
+ *   3. 多普勒频移奇异性：跨音速 M→1 时波前在机头发生能量堆积（音障）
+ *   4. 超音速弯道飞行中的包络自折叠与尖点突变（焦散激波 / Caustic Focus Boom）
+ *   5. N型激波压力剖面（Whitham F-函数理论模型）与微压计历程
+ *
+ * 架构契约：
+ *   - 纯数值计算层，零 DOM，零外部依赖
+ *   - 支持 Node.js CommonJS 与 浏览器全局对象双环境
+ *   - 全程确定性计算，绝对无未捕获 NaN / Infinity
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.MachCore = factory();
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  // 物理常数与基准单位
+  var C_SOUND = 140; // 模拟空域声速（像素/秒），适中速度便于肉眼观察波前扩散与结构
+  var MAX_HISTORY_SEC = 6.0; // 保持 6 秒的历史波前
+  var DT_SAMPLE = 0.016; // 标称采样间隔 ~60Hz
+
+  /**
+   * 状态构造器
+   */
+  function createSimulation(config) {
+    config = config || {};
+    var c = config.soundSpeed || C_SOUND;
+    var width = config.width || 880;
+    var height = config.height || 520;
+
+    return {
+      c: c,
+      width: width,
+      height: height,
+      time: 0,
+      // 飞行器当前动力学状态
+      plane: {
+        x: config.startX || 120,
+        y: config.startY || height * 0.5,
+        vx: 0,
+        vy: 0,
+        speed: 0,
+        mach: 0.8,
+        heading: 0, // 航向弧度 (0 为朝右)
+        throttleMach: 0.8, // 目标马赫数
+        isDragging: false
+      },
+      // 预设模式
+      preset: config.preset || 'straight_accel',
+      presetElapsed: 0,
+      // 波前历史环形队列：每个元素记录 (t, x, y, mach, heading)
+      history: [],
+      maxHistorySec: config.maxHistorySec || MAX_HISTORY_SEC,
+      // 地面与空域测压探针阵列 [{ id, x, y, name, history: [] }]
+      probes: [
+        { id: 'p1', x: 260, y: height - 50, name: '阵列探针 1#', pHistory: [], currentP: 0, lastShockTime: -99 },
+        { id: 'p2', x: 500, y: height - 50, name: '阵列探针 2#', pHistory: [], currentP: 0, lastShockTime: -99 },
+        { id: 'p3', x: 720, y: height - 50, name: '阵列探针 3#', pHistory: [], currentP: 0, lastShockTime: -99 }
+      ]
+    };
+  }
+
+  /**
+   * 马赫角理论解：sin(μ) = 1/M (M >= 1)
+   * 返回半顶角弧度，亚音速返回 null
+   */
+  function getMachAngle(mach) {
+    if (mach < 1.0) return null;
+    return Math.asin(1.0 / mach);
+  }
+
+  /**
+   * 多普勒频移因子：f' / f = 1 / |1 - M * cos(θ)|
+   * θ 为飞行速度矢量与观察点连线方向的夹角
+   */
+  function getDopplerFactor(mach, cosTheta) {
+    var denom = Math.abs(1.0 - mach * cosTheta);
+    if (denom < 1e-4) return 100.0; // 截断奇异点
+    return 1.0 / denom;
+  }
+
+  /**
+   * 航迹预设动作生成器
+   */
+  var PRESETS = {
+    // 1. 直线突破：从亚音速 M=0.5 平滑加速穿透音障直奔 M=2.2
+    straight_accel: {
+      name: '直线穿障加速',
+      desc: '从 M=0.5 连续加速至 M=2.2，观察从前密后疏的多普勒压缩到马赫锥成型的完整相变。',
+      duration: 7.0,
+      update: function (sim, dt) {
+        var p = sim.plane;
+        var progress = (sim.presetElapsed % this.duration) / this.duration;
+        // 速度曲线：前期亚音速，中期跨音速，后期超音速
+        var targetM = 0.5 + 1.7 * progress;
+        p.mach = targetM;
+        p.speed = p.mach * sim.c;
+        p.heading = 0; // 水平向右
+        p.vx = p.speed;
+        p.vy = 0;
+        p.x += p.vx * dt;
+        p.y = sim.height * 0.42;
+
+        // 飞出右边界则平滑折返从左侧重新切入
+        if (p.x > sim.width + 60) {
+          p.x = -60;
+          sim.history = [];
+        }
+      }
+    },
+    // 2. 音障徘徊：在 M=0.98~1.02 附近微幅震荡，极度强烈的能量堆积
+    transonic_barrier: {
+      name: '跨音速音障堆积',
+      desc: '航速锚定在 M≈1.0 音速边缘，声波无法逃离机头，球面波在机头前沿无限重叠挤压。',
+      duration: 6.0,
+      update: function (sim, dt) {
+        var p = sim.plane;
+        // 在 0.96 到 1.04 之间微幅正弦振荡
+        var targetM = 1.0 + 0.05 * Math.sin(sim.presetElapsed * 1.5);
+        p.mach = targetM;
+        p.speed = p.mach * sim.c;
+        p.heading = 0;
+        p.vx = p.speed;
+        p.vy = 0;
+        p.x += p.vx * dt;
+        p.y = sim.height * 0.42;
+
+        if (p.x > sim.width + 60) {
+          p.x = -60;
+          sim.history = [];
+        }
+      }
+    },
+    // 3. 超音速盘旋尖点：M=1.8 稳态大过载转弯，马赫锥包络折叠形成焦散线（Caustic Cusp）
+    supersonic_turn: {
+      name: '超音速盘旋与焦散尖点',
+      desc: 'M=1.8 曲线机动，相邻马赫锥因航向弯折互相穿插，在包络内侧汇聚出亮线与尖点（焦散爆轰）。',
+      duration: 6.28,
+      update: function (sim, dt) {
+        var p = sim.plane;
+        p.mach = 1.75;
+        p.speed = p.mach * sim.c;
+        // 椭圆航线绕行
+        var cx = sim.width * 0.5;
+        var cy = sim.height * 0.45;
+        var rx = sim.width * 0.35;
+        var ry = sim.height * 0.28;
+        var omega = (p.speed) / Math.sqrt(rx * ry);
+        var angle = sim.presetElapsed * 0.85;
+
+        var prevX = p.x;
+        var prevY = p.y;
+        p.x = cx + rx * Math.cos(angle);
+        p.y = cy + ry * Math.sin(angle);
+        p.vx = (p.x - prevX) / (dt || 0.016);
+        p.vy = (p.y - prevY) / (dt || 0.016);
+        p.heading = Math.atan2(p.vy, p.vx);
+      }
+    },
+    // 4. 超音速低空掠地：M=2.0 俯冲平拉，扫击地面测压计
+    dash_flyby: {
+      name: '超音速掠地与双爆轰',
+      desc: 'M=2.0 高速俯冲掠过地面传感器，地面测压计捕捉到典型头激波压升与尾激波恢复的 N 型波。',
+      duration: 5.5,
+      update: function (sim, dt) {
+        var p = sim.plane;
+        p.mach = 2.0;
+        p.speed = p.mach * sim.c;
+        var tNorm = (sim.presetElapsed % this.duration) / this.duration;
+        p.x = -60 + (sim.width + 120) * tNorm;
+        // 稍微俯冲再拉平
+        p.y = sim.height * 0.25 + 60 * Math.sin(tNorm * Math.PI);
+        p.heading = Math.atan2(60 * Math.PI * Math.cos(tNorm * Math.PI) / (sim.width + 120), 1.0);
+        p.vx = p.speed * Math.cos(p.heading);
+        p.vy = p.speed * Math.sin(p.heading);
+
+        if (tNorm > 0.98) {
+          sim.history = [];
+        }
+      }
+    },
+    // 5. 自由交互操纵
+    interactive_free: {
+      name: '自由矢量空域操纵',
+      desc: '使用鼠标或触控拖曳飞机在空域中自由飞翔，或者用键盘方向键转向加减速。',
+      duration: 999999,
+      update: function (sim, dt) {
+        var p = sim.plane;
+        if (!p.isDragging) {
+          // 平滑向航向飞行
+          p.speed = p.mach * sim.c;
+          p.vx = p.speed * Math.cos(p.heading);
+          p.vy = p.speed * Math.sin(p.heading);
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+
+          // 软性边界回弹转向
+          var margin = 60;
+          if (p.x < margin && Math.cos(p.heading) < 0) p.heading = Math.PI - p.heading;
+          if (p.x > sim.width - margin && Math.cos(p.heading) > 0) p.heading = Math.PI - p.heading;
+          if (p.y < margin && Math.sin(p.heading) < 0) p.heading = -p.heading;
+          if (p.y > sim.height - 100 && Math.sin(p.heading) > 0) p.heading = -p.heading;
+        }
+      }
+    }
+  };
+
+  /**
+   * 单步模拟推进
+   */
+  function stepSimulation(sim, dt) {
+    if (!dt || dt <= 0) dt = DT_SAMPLE;
+    if (dt > 0.1) dt = 0.1; // 防止掉帧导致的数值发散
+
+    sim.time += dt;
+    sim.presetElapsed += dt;
+
+    // 执行当前预设的机动更新
+    var preset = PRESETS[sim.preset];
+    if (preset) {
+      preset.update(sim, dt);
+    }
+
+    // 记录波源发射点历史
+    // 限制历史记录的最小发射间隔，以防点过密
+    var p = sim.plane;
+    var lastRec = sim.history[sim.history.length - 1];
+    var shouldRecord = !lastRec || (sim.time - lastRec.t >= 0.035);
+
+    if (shouldRecord) {
+      sim.history.push({
+        t: sim.time,
+        x: p.x,
+        y: p.y,
+        mach: p.mach,
+        heading: p.heading
+      });
+    }
+
+    // 淘汰超出有效时间的波前
+    var expireTime = sim.time - sim.maxHistorySec;
+    while (sim.history.length > 0 && sim.history[0].t < expireTime) {
+      sim.history.shift();
+    }
+
+    // 更新各个测压探针的采样历程
+    updateProbes(sim, dt);
+  }
+
+  /**
+   * 推迟势方程求解与探针微压计更新
+   * 对探针位置 (px, py)，寻找波前包络经过的瞬间，激发出 N 型超音速激波
+   */
+  function updateProbes(sim, dt) {
+    var c = sim.c;
+    var now = sim.time;
+
+    for (var i = 0; i < sim.probes.length; i++) {
+      var pb = sim.probes[i];
+      var totalP = 0;
+      var shockTriggered = false;
+
+      // 遍历历史波前，检测是否有球面波前正刚好扩展到探针处：|dist - c*(now - t_emit)| < epsilon
+      // 在激波面处，多个波前同时到达，形成声压突跃
+      var minWaveDist = 999999;
+      var hitCount = 0;
+
+      for (var j = 0; j < sim.history.length; j++) {
+        var h = sim.history[j];
+        var dtEmit = now - h.t;
+        if (dtEmit <= 0) continue;
+
+        var waveRadius = c * dtEmit;
+        var dx = pb.x - h.x;
+        var dy = pb.y - h.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var diff = Math.abs(dist - waveRadius);
+
+        if (diff < minWaveDist) {
+          minWaveDist = diff;
+        }
+
+        // 激波厚度带判定
+        if (diff < 12.0 && h.mach >= 1.0) {
+          hitCount++;
+        }
+      }
+
+      // 如果探针附近波前密集堆叠（hitCount 超过阈值），且距离上次激波已过一定冷却时间
+      if (hitCount >= 3 && (now - pb.lastShockTime > 0.45)) {
+        pb.lastShockTime = now;
+        shockTriggered = true;
+      }
+
+      // 根据最近一次激波时间计算 N 型波剖面
+      // N 型波：头激波瞬间压升 -> 线性膨胀降为负压 -> 尾激波瞬间跳回 0
+      var timeSinceShock = now - pb.lastShockTime;
+      var nWaveDuration = 0.22; // 220 毫秒双爆轰
+      if (timeSinceShock >= 0 && timeSinceShock < nWaveDuration) {
+        var tau = timeSinceShock / nWaveDuration; // 0 到 1
+        // N型函数: 1 - 2*tau
+        totalP = (1.0 - 2.0 * tau) * 1.0;
+      } else {
+        // 常规背景环境噪声 / 亚音速衰减声压
+        var distToPlane = Math.sqrt(Math.pow(pb.x - sim.plane.x, 2) + Math.pow(pb.y - sim.plane.y, 2));
+        var baseAmp = Math.max(0, 1.0 - distToPlane / (sim.width * 0.6));
+        totalP = 0.08 * baseAmp * Math.sin(now * 30.0);
+      }
+
+      pb.currentP = totalP;
+      pb.pHistory.push(totalP);
+      if (pb.pHistory.length > 120) {
+        pb.pHistory.shift();
+      }
+      pb.justShocked = shockTriggered;
+    }
+  }
+
+  /**
+   * 解析计算：对于给定的马赫数 M 与航向，生成稳态马赫锥的上下包络双线
+   */
+  function computeSteadyMachCone(x, y, heading, mach, c, length) {
+    if (mach < 1.0) return null;
+    var mu = Math.asin(1.0 / mach); // 马赫角
+    length = length || 600;
+
+    // 飞机航向与后退方向
+    var backAngle = heading + Math.PI;
+
+    // 上下两条马赫激波线与飞机对称轴夹角为 (pi - mu)
+    var angleTop = backAngle + (Math.PI * 0.5 - mu);
+    var angleBottom = backAngle - (Math.PI * 0.5 - mu);
+
+    return {
+      muDeg: (mu * 180 / Math.PI),
+      topLine: {
+        x1: x,
+        y1: y,
+        x2: x + length * Math.cos(angleTop),
+        y2: y + length * Math.sin(angleTop)
+      },
+      bottomLine: {
+        x1: x,
+        y1: y,
+        x2: x + length * Math.cos(angleBottom),
+        y2: y + length * Math.sin(angleBottom)
+      }
+    };
+  }
+
+  /**
+   * 纹影（Schlieren）密度梯度场标量估算
+   * 给定采样点 (x, y)，综合历史波前对其密度梯度的贡献
+   */
+  function sampleSchlierenDensityGrad(x, y, history, c, now) {
+    var gradX = 0;
+    var gradY = 0;
+    var count = 0;
+
+    for (var i = 0; i < history.length; i += 2) { // 降采样保证实时性
+      var h = history[i];
+      var dt = now - h.t;
+      if (dt <= 0.01) continue;
+
+      var r = c * dt;
+      var dx = x - h.x;
+      var dy = y - h.y;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      var distDiff = d - r;
+
+      // 仅在声波波前极窄区域有剧烈的折射率梯度
+      var sigma = 6.0;
+      if (Math.abs(distDiff) < sigma * 2.5) {
+        var w = Math.exp(-(distDiff * distDiff) / (2.0 * sigma * sigma)) / (Math.sqrt(d) + 10.0);
+        var dirX = dx / (d + 1e-4);
+        var dirY = dy / (d + 1e-4);
+        gradX += dirX * w;
+        gradY += dirY * w;
+        count++;
+      }
+    }
+
+    // 刀口滤波（Knife-edge filter）：模拟水平方向刀口对垂直密度梯度的敏感性
+    return gradX * 0.707 + gradY * 0.707;
+  }
+
+  return {
+    C_SOUND: C_SOUND,
+    MAX_HISTORY_SEC: MAX_HISTORY_SEC,
+    PRESETS: PRESETS,
+    createSimulation: createSimulation,
+    stepSimulation: stepSimulation,
+    getMachAngle: getMachAngle,
+    getDopplerFactor: getDopplerFactor,
+    computeSteadyMachCone: computeSteadyMachCone,
+    sampleSchlierenDensityGrad: sampleSchlierenDensityGrad
+  };
+});
+
+  </script>
+  <script>
+/* ============================================================================
+ * mach/ui.js —— 《破障之锥》前端交互、渲染与声学合成控制器
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var Mach = window.MachCore;
+  if (!Mach) return;
+
+  // DOM 容器与元素绑定
+  var airspaceCanvas = document.getElementById('airspaceCanvas');
+  var oscCanvas = document.getElementById('oscilloscopeCanvas');
+  if (!airspaceCanvas || !oscCanvas) return;
+
+  var ctxAir = airspaceCanvas.getContext('2d');
+  var ctxOsc = oscCanvas.getContext('2d');
+
+  // HUD 读数元素
+  var hudMach = document.getElementById('hudMach');
+  var hudAngle = document.getElementById('hudAngle');
+  var hudSpeed = document.getElementById('hudSpeed');
+  var hudWaves = document.getElementById('hudWaves');
+  var hudStateBadge = document.getElementById('hudStateBadge');
+
+  // 遥测卡片
+  var cardMach = document.getElementById('cardMach');
+  var cardMachAngle = document.getElementById('cardMachAngle');
+  var cardDoppler = document.getElementById('cardDoppler');
+  var cardPressureJump = document.getElementById('cardPressureJump');
+  var cardRegime = document.getElementById('cardRegime');
+
+  // 渲染模式控制
+  var renderMode = 'schlieren'; // 'schlieren' | 'wavefront' | 'pressure'
+  var btnModeSchlieren = document.getElementById('btnModeSchlieren');
+  var btnModeWavefront = document.getElementById('btnModeWavefront');
+  var btnModePressure = document.getElementById('btnModePressure');
+
+  // 音效合成器
+  var audioCtx = null;
+  var isAudioEnabled = false;
+  var btnAudio = document.getElementById('btnAudioToggle');
+
+  // 创建模拟环境
+  var sim = Mach.createSimulation({
+    width: airspaceCanvas.width,
+    height: airspaceCanvas.height,
+    preset: 'straight_accel'
+  });
+
+  /* ---------------- 音频合成引擎（Web Audio API） ---------------- */
+  function initAudio() {
+    if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+      var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContextClass();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  }
+
+  function playSonicBoomSound() {
+    if (!audioCtx || !isAudioEnabled) return;
+    try {
+      var now = audioCtx.currentTime;
+
+      // 1. 头激波低频重低音冲量
+      var osc1 = audioCtx.createOscillator();
+      var gain1 = audioCtx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(80, now);
+      osc1.frequency.exponentialRampToValueAtTime(25, now + 0.12);
+      gain1.gain.setValueAtTime(0.6, now);
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+      osc1.connect(gain1);
+      gain1.connect(audioCtx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.16);
+
+      // 2. 尾激波回填冲击（间隔 110 毫秒）
+      var osc2 = audioCtx.createOscillator();
+      var gain2 = audioCtx.createGain();
+      osc2.type = 'sawtooth';
+      osc2.frequency.setValueAtTime(70, now + 0.11);
+      osc2.frequency.exponentialRampToValueAtTime(20, now + 0.25);
+      gain2.gain.setValueAtTime(0.45, now + 0.11);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.26);
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.start(now + 0.11);
+      osc2.stop(now + 0.27);
+    } catch (e) {
+      // 忽略音频异常
+    }
+  }
+
+  if (btnAudio) {
+    btnAudio.addEventListener('click', function () {
+      initAudio();
+      isAudioEnabled = !isAudioEnabled;
+      btnAudio.textContent = isAudioEnabled ? '🔊 声爆合成已开启' : '🔈 开启声爆合成';
+      btnAudio.classList.toggle('active', isAudioEnabled);
+    });
+  }
+
+  /* ---------------- 交互模式切换 ---------------- */
+  function updateModeButtons() {
+    [btnModeSchlieren, btnModeWavefront, btnModePressure].forEach(function (btn) {
+      if (!btn) return;
+      var m = btn.getAttribute('data-mode');
+      btn.classList.toggle('active', m === renderMode);
+    });
+  }
+
+  if (btnModeSchlieren) {
+    btnModeSchlieren.addEventListener('click', function () {
+      renderMode = 'schlieren';
+      updateModeButtons();
+    });
+  }
+  if (btnModeWavefront) {
+    btnModeWavefront.addEventListener('click', function () {
+      renderMode = 'wavefront';
+      updateModeButtons();
+    });
+  }
+  if (btnModePressure) {
+    btnModePressure.addEventListener('click', function () {
+      renderMode = 'pressure';
+      updateModeButtons();
+    });
+  }
+
+  // 预设动作切换
+  var presetButtons = document.querySelectorAll('[data-preset]');
+  presetButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var p = btn.getAttribute('data-preset');
+      sim.preset = p;
+      sim.presetElapsed = 0;
+      sim.history = [];
+      presetButtons.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+
+  /* ---------------- 画布直接交互（鼠标 / 触摸驾驶与探针部署） ---------------- */
+  var dragTarget = null; // 'plane' | 'probe'
+  var activeProbe = null;
+
+  function getCanvasPos(evt) {
+    var rect = airspaceCanvas.getBoundingClientRect();
+    var clientX = evt.clientX || (evt.touches && evt.touches[0] ? evt.touches[0].clientX : 0);
+    var clientY = evt.clientY || (evt.touches && evt.touches[0] ? evt.touches[0].clientY : 0);
+    var scaleX = airspaceCanvas.width / rect.width;
+    var scaleY = airspaceCanvas.height / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  }
+
+  airspaceCanvas.addEventListener('pointerdown', function (evt) {
+    var pos = getCanvasPos(evt);
+    airspaceCanvas.setPointerCapture(evt.pointerId);
+
+    // 检查是否点中飞机附近
+    var dxPlane = pos.x - sim.plane.x;
+    var dyPlane = pos.y - sim.plane.y;
+    if (Math.sqrt(dxPlane * dxPlane + dyPlane * dyPlane) < 45) {
+      dragTarget = 'plane';
+      sim.plane.isDragging = true;
+      // 切换为自由模式
+      sim.preset = 'interactive_free';
+      presetButtons.forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-preset') === 'interactive_free');
+      });
+      return;
+    }
+
+    // 检查是否点中探针
+    for (var i = 0; i < sim.probes.length; i++) {
+      var pb = sim.probes[i];
+      var dxP = pos.x - pb.x;
+      var dyP = pos.y - pb.y;
+      if (Math.sqrt(dxP * dxP + dyP * dyP) < 25) {
+        dragTarget = 'probe';
+        activeProbe = pb;
+        return;
+      }
+    }
+
+    // 否则点击重定位距离最近的探针
+    var closest = sim.probes[0];
+    var minD = 999999;
+    sim.probes.forEach(function (pb) {
+      var d = Math.abs(pb.x - pos.x);
+      if (d < minD) { minD = d; closest = pb; }
+    });
+    closest.x = Math.max(40, Math.min(sim.width - 40, pos.x));
+    closest.y = Math.max(60, Math.min(sim.height - 30, pos.y));
+  });
+
+  airspaceCanvas.addEventListener('pointermove', function (evt) {
+    if (!dragTarget) return;
+    var pos = getCanvasPos(evt);
+
+    if (dragTarget === 'plane') {
+      var prevX = sim.plane.x;
+      var prevY = sim.plane.y;
+      sim.plane.x = Math.max(30, Math.min(sim.width - 30, pos.x));
+      sim.plane.y = Math.max(30, Math.min(sim.height - 30, pos.y));
+      var dx = sim.plane.x - prevX;
+      var dy = sim.plane.y - prevY;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+        sim.plane.heading = Math.atan2(dy, dx);
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var estimatedSpeed = dist / 0.016;
+        sim.plane.mach = Math.max(0.4, Math.min(3.0, estimatedSpeed / sim.c));
+      }
+    } else if (dragTarget === 'probe' && activeProbe) {
+      activeProbe.x = Math.max(40, Math.min(sim.width - 40, pos.x));
+      activeProbe.y = Math.max(60, Math.min(sim.height - 30, pos.y));
+    }
+  });
+
+  function endDrag() {
+    dragTarget = null;
+    activeProbe = null;
+    sim.plane.isDragging = false;
+  }
+  airspaceCanvas.addEventListener('pointerup', endDrag);
+  airspaceCanvas.addEventListener('pointercancel', endDrag);
+
+  // 键盘快捷键微调航向与速度
+  window.addEventListener('keydown', function (e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'ArrowUp') {
+      sim.plane.mach = Math.min(3.2, sim.plane.mach + 0.1);
+      e.preventDefault();
+    } else if (e.key === 'ArrowDown') {
+      sim.plane.mach = Math.max(0.3, sim.plane.mach - 0.1);
+      e.preventDefault();
+    } else if (e.key === 'ArrowLeft') {
+      sim.plane.heading -= 0.1;
+      e.preventDefault();
+    } else if (e.key === 'ArrowRight') {
+      sim.plane.heading += 0.1;
+      e.preventDefault();
+    }
+  });
+
+  /* ---------------- 绘制逻辑：交互空域 ---------------- */
+  function drawAirspace() {
+    var w = airspaceCanvas.width;
+    var h = airspaceCanvas.height;
+    ctxAir.clearRect(0, 0, w, h);
+
+    // 1. 空域风洞坐标网格与地面
+    ctxAir.save();
+    ctxAir.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+    ctxAir.lineWidth = 1;
+    for (var x = 0; x < w; x += 50) {
+      ctxAir.beginPath();
+      ctxAir.moveTo(x, 0);
+      ctxAir.lineTo(x, h);
+      ctxAir.stroke();
+    }
+    for (var y = 0; y < h; y += 50) {
+      ctxAir.beginPath();
+      ctxAir.moveTo(0, y);
+      ctxAir.lineTo(w, y);
+      ctxAir.stroke();
+    }
+
+    // 地面标尺线
+    var groundY = h - 50;
+    ctxAir.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctxAir.lineWidth = 2;
+    ctxAir.beginPath();
+    ctxAir.moveTo(0, groundY);
+    ctxAir.lineTo(w, groundY);
+    ctxAir.stroke();
+
+    // 地面刻度
+    ctxAir.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctxAir.font = '10px monospace';
+    for (var gx = 50; gx < w; gx += 100) {
+      ctxAir.beginPath();
+      ctxAir.moveTo(gx, groundY - 4);
+      ctxAir.lineTo(gx, groundY + 4);
+      ctxAir.stroke();
+      ctxAir.fillText((gx * 10) + 'm', gx - 14, groundY + 18);
+    }
+    ctxAir.restore();
+
+    // 2. 核心波前渲染（依选定模式绘制）
+    var now = sim.time;
+    var c = sim.c;
+    var hist = sim.history;
+
+    if (renderMode === 'schlieren') {
+      // 纹影摄影模式：高对比度激波与膨胀波模拟
+      drawSchlierenMode(now, c, hist);
+    } else if (renderMode === 'wavefront') {
+      // 几何波前与马赫锥模式
+      drawWavefrontMode(now, c, hist);
+    } else {
+      // 声压全息云图模式
+      drawPressureFieldMode(now, c, hist);
+    }
+
+    // 3. 稳态切线马赫锥包络辅助线
+    if (sim.plane.mach >= 1.0) {
+      var cone = Mach.computeSteadyMachCone(sim.plane.x, sim.plane.y, sim.plane.heading, sim.plane.mach, sim.c, 700);
+      if (cone) {
+        ctxAir.save();
+        ctxAir.strokeStyle = 'rgba(255, 159, 28, 0.85)';
+        ctxAir.lineWidth = 2;
+        ctxAir.setLineDash([8, 4]);
+
+        // 上马赫线
+        ctxAir.beginPath();
+        ctxAir.moveTo(cone.topLine.x1, cone.topLine.y1);
+        ctxAir.lineTo(cone.topLine.x2, cone.topLine.y2);
+        ctxAir.stroke();
+
+        // 下马赫线
+        ctxAir.beginPath();
+        ctxAir.moveTo(cone.bottomLine.x1, cone.bottomLine.y1);
+        ctxAir.lineTo(cone.bottomLine.x2, cone.bottomLine.y2);
+        ctxAir.stroke();
+
+        // 锥顶半角标注弧
+        ctxAir.setLineDash([]);
+        ctxAir.strokeStyle = 'rgba(46, 196, 182, 0.7)';
+        ctxAir.beginPath();
+        var backAngle = sim.plane.heading + Math.PI;
+        ctxAir.arc(sim.plane.x, sim.plane.y, 45, backAngle - Math.asin(1 / sim.plane.mach), backAngle);
+        ctxAir.stroke();
+        ctxAir.fillStyle = '#2ec4b6';
+        ctxAir.font = '11px monospace';
+        ctxAir.fillText('μ=' + cone.muDeg.toFixed(1) + '°', sim.plane.x - 55, sim.plane.y - 15);
+
+        ctxAir.restore();
+      }
+    }
+
+    // 4. 绘制地面探针
+    drawProbes();
+
+    // 5. 绘制超音速飞机机体
+    drawAircraft();
+  }
+
+  /**
+   * 模式 1：纹影摄影术（Schlieren Optics）风洞质感
+   */
+  function drawSchlierenMode(now, c, hist) {
+    ctxAir.save();
+
+    // 遍历波前绘制渐变刀口阴影
+    for (var i = 0; i < hist.length; i++) {
+      var h = hist[i];
+      var dt = now - h.t;
+      if (dt <= 0.02) continue;
+      var r = c * dt;
+      var alpha = Math.max(0, 1.0 - (dt / sim.maxHistorySec));
+
+      // 亮缘压缩激波前沿
+      ctxAir.beginPath();
+      ctxAir.arc(h.x, h.y, r, 0, Math.PI * 2);
+      ctxAir.strokeStyle = h.mach >= 1.0
+        ? 'rgba(255, 175, 55, ' + (alpha * 0.45) + ')'
+        : 'rgba(160, 185, 220, ' + (alpha * 0.25) + ')';
+      ctxAir.lineWidth = h.mach >= 1.0 ? 2.5 : 1.2;
+      ctxAir.stroke();
+
+      // 刀口微阴影暗带（表现折射率梯度负向）
+      if (h.mach >= 1.0) {
+        ctxAir.beginPath();
+        ctxAir.arc(h.x, h.y, Math.max(1, r - 3), 0, Math.PI * 2);
+        ctxAir.strokeStyle = 'rgba(0, 0, 0, ' + (alpha * 0.35) + ')';
+        ctxAir.lineWidth = 2.0;
+        ctxAir.stroke();
+      }
+    }
+
+    // 超音速时的尾部膨胀扇流线
+    if (sim.plane.mach > 1.05) {
+      ctxAir.save();
+      ctxAir.translate(sim.plane.x, sim.plane.y);
+      ctxAir.rotate(sim.plane.heading);
+      var grad = ctxAir.createRadialGradient(0, 0, 10, -120, 0, 200);
+      grad.addColorStop(0, 'rgba(46, 196, 182, 0.25)');
+      grad.addColorStop(1, 'rgba(46, 196, 182, 0)');
+      ctxAir.fillStyle = grad;
+      ctxAir.beginPath();
+      ctxAir.moveTo(0, 0);
+      ctxAir.lineTo(-240, -130);
+      ctxAir.lineTo(-240, 130);
+      ctxAir.closePath();
+      ctxAir.fill();
+      ctxAir.restore();
+    }
+
+    ctxAir.restore();
+  }
+
+  /**
+   * 模式 2：几何波前与马赫锥
+   */
+  function drawWavefrontMode(now, c, hist) {
+    ctxAir.save();
+    for (var i = 0; i < hist.length; i++) {
+      var h = hist[i];
+      var dt = now - h.t;
+      if (dt <= 0.02) continue;
+      var r = c * dt;
+      var alpha = Math.max(0, 1.0 - (dt / sim.maxHistorySec));
+
+      ctxAir.beginPath();
+      ctxAir.arc(h.x, h.y, r, 0, Math.PI * 2);
+      ctxAir.strokeStyle = 'rgba(120, 160, 215, ' + (alpha * 0.35) + ')';
+      ctxAir.lineWidth = 1.0;
+      ctxAir.stroke();
+
+      // 波源发射中心标记
+      if (i % 4 === 0) {
+        ctxAir.fillStyle = 'rgba(255, 255, 255, ' + (alpha * 0.4) + ')';
+        ctxAir.fillRect(h.x - 1, h.y - 1, 2, 2);
+      }
+    }
+    ctxAir.restore();
+  }
+
+  /**
+   * 模式 3：声压全息等值面
+   */
+  function drawPressureFieldMode(now, c, hist) {
+    ctxAir.save();
+    for (var i = 0; i < hist.length; i++) {
+      var h = hist[i];
+      var dt = now - h.t;
+      if (dt <= 0.02) continue;
+      var r = c * dt;
+      var alpha = Math.max(0, 1.0 - (dt / sim.maxHistorySec));
+
+      // 正压区（外环红色压缩）
+      ctxAir.beginPath();
+      ctxAir.arc(h.x, h.y, r, 0, Math.PI * 2);
+      ctxAir.strokeStyle = 'rgba(255, 80, 80, ' + (alpha * 0.4) + ')';
+      ctxAir.lineWidth = 2.0;
+      ctxAir.stroke();
+
+      // 负压区（内环青色稀疏）
+      ctxAir.beginPath();
+      ctxAir.arc(h.x, h.y, Math.max(1, r - 8), 0, Math.PI * 2);
+      ctxAir.strokeStyle = 'rgba(46, 196, 182, ' + (alpha * 0.25) + ')';
+      ctxAir.lineWidth = 1.5;
+      ctxAir.stroke();
+    }
+    ctxAir.restore();
+  }
+
+  /**
+   * 绘制地面测压探针
+   */
+  function drawProbes() {
+    var colors = ['#ff9f1c', '#2ec4b6', '#a78bfa'];
+    ctxAir.save();
+
+    for (var i = 0; i < sim.probes.length; i++) {
+      var pb = sim.probes[i];
+      var col = colors[i % colors.length];
+
+      // 激波光晕脉冲
+      var shockDt = sim.time - pb.lastShockTime;
+      if (shockDt >= 0 && shockDt < 0.4) {
+        var flashAlpha = 1.0 - (shockDt / 0.4);
+        ctxAir.beginPath();
+        ctxAir.arc(pb.x, pb.y, 16 + shockDt * 60, 0, Math.PI * 2);
+        ctxAir.strokeStyle = 'rgba(255, 51, 102, ' + flashAlpha + ')';
+        ctxAir.lineWidth = 2;
+        ctxAir.stroke();
+
+        // 声音爆发触发
+        if (pb.justShocked) {
+          playSonicBoomSound();
+        }
+      }
+
+      // 探针三角标架
+      ctxAir.fillStyle = col;
+      ctxAir.beginPath();
+      ctxAir.moveTo(pb.x, pb.y);
+      ctxAir.lineTo(pb.x - 7, pb.y + 14);
+      ctxAir.lineTo(pb.x + 7, pb.y + 14);
+      ctxAir.closePath();
+      ctxAir.fill();
+
+      // 探针指示灯
+      ctxAir.beginPath();
+      ctxAir.arc(pb.x, pb.y - 2, 4, 0, Math.PI * 2);
+      ctxAir.fillStyle = shockDt < 0.3 ? '#ff3366' : '#ffffff';
+      ctxAir.fill();
+
+      // 探针编号
+      ctxAir.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctxAir.font = '11px monospace';
+      ctxAir.fillText(pb.name, pb.x - 24, pb.y + 28);
+    }
+
+    ctxAir.restore();
+  }
+
+  /**
+   * 绘制超音速飞机机体（三角翼战机与加力尾焰）
+   */
+  function drawAircraft() {
+    var p = sim.plane;
+    ctxAir.save();
+    ctxAir.translate(p.x, p.y);
+    ctxAir.rotate(p.heading);
+
+    // 1. 加力燃烧室尾焰（马赫环/激波钻石）
+    if (p.mach >= 1.0) {
+      ctxAir.save();
+      var flameLen = 22 + p.mach * 10;
+      var grad = ctxAir.createLinearGradient(0, 0, -flameLen, 0);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, '#ff9f1c');
+      grad.addColorStop(1, 'rgba(255, 51, 102, 0)');
+      ctxAir.fillStyle = grad;
+      ctxAir.beginPath();
+      ctxAir.moveTo(-12, -4);
+      ctxAir.lineTo(-flameLen, 0);
+      ctxAir.lineTo(-12, 4);
+      ctxAir.closePath();
+      ctxAir.fill();
+
+      // 激波钻石（Shock Diamond 菱形火环）
+      ctxAir.fillStyle = '#ffffff';
+      for (var d = 1; d <= 3; d++) {
+        var dx = -14 - d * 6;
+        ctxAir.fillRect(dx, -2, 2, 4);
+      }
+      ctxAir.restore();
+    }
+
+    // 2. 飞机本体（超音速尖头三角翼）
+    ctxAir.fillStyle = '#e2e8f0';
+    ctxAir.strokeStyle = '#0f172a';
+    ctxAir.lineWidth = 1.5;
+    ctxAir.beginPath();
+    ctxAir.moveTo(18, 0);        // 细长机头受空管
+    ctxAir.lineTo(-14, -14);     // 左翼尖
+    ctxAir.lineTo(-8, -4);       // 左机身折角
+    ctxAir.lineTo(-14, 0);       // 机尾中轴
+    ctxAir.lineTo(-8, 4);        // 右机身折角
+    ctxAir.lineTo(-14, 14);      // 右翼尖
+    ctxAir.closePath();
+    ctxAir.fill();
+    ctxAir.stroke();
+
+    // 3. 驾驶舱风挡
+    ctxAir.fillStyle = '#38bdf8';
+    ctxAir.beginPath();
+    ctxAir.moveTo(6, 0);
+    ctxAir.lineTo(-2, -2.5);
+    ctxAir.lineTo(-4, 0);
+    ctxAir.lineTo(-2, 2.5);
+    ctxAir.closePath();
+    ctxAir.fill();
+
+    // 4. 机头顶激波发散虚影
+    if (p.mach >= 1.0) {
+      ctxAir.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctxAir.lineWidth = 2;
+      ctxAir.beginPath();
+      ctxAir.moveTo(18, 0);
+      ctxAir.lineTo(24, 0);
+      ctxAir.stroke();
+    }
+
+    ctxAir.restore();
+  }
+
+  /* ---------------- 绘制逻辑：地面微压计实时示波器 ---------------- */
+  function drawOscilloscope() {
+    var w = oscCanvas.width;
+    var h = oscCanvas.height;
+    ctxOsc.clearRect(0, 0, w, h);
+
+    // 示波器背底与网格
+    ctxOsc.save();
+    ctxOsc.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctxOsc.lineWidth = 1;
+    for (var x = 0; x < w; x += 40) {
+      ctxOsc.beginPath();
+      ctxOsc.moveTo(x, 0);
+      ctxOsc.lineTo(x, h);
+      ctxOsc.stroke();
+    }
+    for (var y = 0; y < h; y += 25) {
+      ctxOsc.beginPath();
+      ctxOsc.moveTo(0, y);
+      ctxOsc.lineTo(w, y);
+      ctxOsc.stroke();
+    }
+
+    // 零压基准线 (中间水平线)
+    var midY = h * 0.5;
+    ctxOsc.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctxOsc.setLineDash([4, 4]);
+    ctxOsc.beginPath();
+    ctxOsc.moveTo(0, midY);
+    ctxOsc.lineTo(w, midY);
+    ctxOsc.stroke();
+    ctxOsc.setLineDash([]);
+
+    // 绘制三个探针的历史压力曲线
+    var colors = ['#ff9f1c', '#2ec4b6', '#a78bfa'];
+    var maxAmpPx = h * 0.42;
+
+    for (var i = 0; i < sim.probes.length; i++) {
+      var pb = sim.probes[i];
+      var hist = pb.pHistory;
+      if (hist.length < 2) continue;
+
+      ctxOsc.strokeStyle = colors[i % colors.length];
+      ctxOsc.lineWidth = 2.0;
+      ctxOsc.beginPath();
+
+      var stepX = w / 120;
+      for (var k = 0; k < hist.length; k++) {
+        var px = k * stepX;
+        var pVal = hist[k];
+        var py = midY - pVal * maxAmpPx;
+        if (k === 0) ctxOsc.moveTo(px, py);
+        else ctxOsc.lineTo(px, py);
+      }
+      ctxOsc.stroke();
+    }
+
+    // 标注 N 型波关键区段文字
+    ctxOsc.fillStyle = 'rgba(255, 159, 28, 0.8)';
+    ctxOsc.font = '10px monospace';
+    ctxOsc.fillText('+Δp (头激波压缩突跃)', 10, 18);
+    ctxOsc.fillStyle = 'rgba(46, 196, 182, 0.8)';
+    ctxOsc.fillText('-Δp (尾激波复原负压)', 10, h - 8);
+
+    ctxOsc.restore();
+  }
+
+  /* ---------------- 遥测面板更新 ---------------- */
+  function updateTelemetry() {
+    var p = sim.plane;
+    var mach = p.mach;
+    var machAngle = Mach.getMachAngle(mach);
+
+    if (hudMach) hudMach.textContent = mach.toFixed(2);
+    if (cardMach) cardMach.textContent = mach.toFixed(2);
+
+    if (hudAngle) {
+      hudAngle.textContent = machAngle !== null ? (machAngle * 180 / Math.PI).toFixed(1) + '°' : '无';
+    }
+    if (cardMachAngle) {
+      cardMachAngle.textContent = machAngle !== null ? (machAngle * 180 / Math.PI).toFixed(1) + '°' : '—';
+    }
+
+    if (hudSpeed) hudSpeed.textContent = Math.round(p.mach * sim.c) + ' px/s';
+    if (hudWaves) hudWaves.textContent = sim.history.length;
+
+    // 多普勒因子
+    var dopFactor = Mach.getDopplerFactor(mach, 1.0);
+    if (cardDoppler) {
+      cardDoppler.textContent = dopFactor > 50 ? '∞ (音障堆积)' : dopFactor.toFixed(1) + '×';
+    }
+
+    // 激波压升比：Rankine-Hugoniot 公式 Δp/p0 = 2*gamma/(gamma+1)*(M^2 - 1)
+    if (cardPressureJump) {
+      if (mach >= 1.0) {
+        var gamma = 1.4;
+        var pr = (2.0 * gamma / (gamma + 1.0)) * (mach * mach - 1.0);
+        cardPressureJump.textContent = '+' + pr.toFixed(2);
+      } else {
+        cardPressureJump.textContent = '0.00';
+      }
+    }
+
+    // 飞行速域状态
+    if (cardRegime && hudStateBadge) {
+      if (mach < 0.8) {
+        cardRegime.textContent = '亚音速区 (M < 0.8)';
+        hudStateBadge.textContent = '亚音速波动自由发散';
+        hudStateBadge.style.color = '#9aa8be';
+      } else if (mach <= 1.2) {
+        cardRegime.textContent = '跨音速区 (0.8 ≤ M ≤ 1.2)';
+        hudStateBadge.textContent = '跨音速音障剧烈压缩';
+        hudStateBadge.style.color = '#ff9f1c';
+      } else {
+        cardRegime.textContent = '超音速区 (M > 1.2)';
+        hudStateBadge.textContent = '超音速马赫锥包络成型';
+        hudStateBadge.style.color = '#2ec4b6';
+      }
+    }
+  }
+
+  /* ---------------- 动画循环 ---------------- */
+  var lastTimestamp = null;
+  function tick(timestamp) {
+    if (!lastTimestamp) lastTimestamp = timestamp;
+    var dt = (timestamp - lastTimestamp) / 1000;
+    lastTimestamp = timestamp;
+
+    Mach.stepSimulation(sim, dt);
+    drawAirspace();
+    drawOscilloscope();
+    updateTelemetry();
+
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------------- 自动化与通用体检探针 window.__probe ---------------- */
+  window.__probe = {
+    getMach: function () { return sim.plane.mach; },
+    getMachAngle: function () { return Mach.getMachAngle(sim.plane.mach); },
+    getPlane: function () {
+      return {
+        x: sim.plane.x,
+        y: sim.plane.y,
+        speed: sim.plane.speed,
+        heading: sim.plane.heading
+      };
+    },
+    getProbes: function () {
+      return sim.probes.map(function (p) {
+        return { id: p.id, x: p.x, y: p.y, p: p.currentP };
+      });
+    },
+    getMode: function () { return renderMode; },
+    getPreset: function () { return sim.preset; },
+    setPreset: function (pName) {
+      sim.preset = pName;
+      sim.presetElapsed = 0;
+      sim.history = [];
+    },
+    tick: function (dt) {
+      Mach.stepSimulation(sim, dt || 0.016);
+      drawAirspace();
+      drawOscilloscope();
+      updateTelemetry();
+    }
+  };
+})();
+
+  </script>
+</body>
+</html>

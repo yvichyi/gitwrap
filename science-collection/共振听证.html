@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>共振听证 · 受迫振子的盲听判读</title>
+<meta name="description" content="一台被正弦驱动的阻尼弹簧振子：左耳听驱动力，右耳听振子响应。拖动大旋钮连续扫频，靠响度隆起、扫掠暂态拍与相位差找出共振峰，再盲听估计品质因数 Q——峰位偏差与 Q 估计计入跨会话记分册。闭式解逐段精确合成，离线标定冻结峰位/半高宽/Q，Node 逐位对账、浏览器离线渲染容差对账。">
+<style>
+/* ============================================================================
+ * 共振听证/style.css —— 视觉方言：铜绿示波（vintage scope）
+ *
+ * 规矩：深铜绿底、磷光青线、铜金批注。示波器的世界：辉光、刻度、旋钮。
+ * 与既有展项的纸底/墨底/晒图蓝三族完全互斥（35 色禁用清单见 build.js，
+ * --paper/--panel/--line 变量名亦不复用）。等宽主导、无衬线正文。
+ * 正文对比度 ≥7:1（--ink 对 --bg 实测约 11:1，--dim 约 7:1）。
+ * ==========================================================================*/
+
+:root {
+  --bg: #0b1d18;          /* 页面深铜绿底 */
+  --bg2: #10281f;         /* 面板底 */
+  --bg3: #0d231c;         /* 画布衬底（磷光屏） */
+  --ink: #e2efe6;         /* 正文 */
+  --dim: #9dbfa9;         /* 次级说明 */
+  --wline: #f2f8ef;       /* 制图亮线（非纯白） */
+  --rule: rgba(157, 214, 183, 0.24);
+  --rule-soft: rgba(157, 214, 183, 0.12);
+  --amber: #d9a441;       /* 铜金：旋钮、峰位、批注 */
+  --amber2: #f0c46a;      /* 铜金亮部 */
+  --resp: #86d9b8;        /* 磷光青：响应曲线 */
+  --fail: #e08a5a;        /* 未过判读（焰橙，与朱砂族有别） */
+  --mono: ui-monospace, 'Cascadia Mono', Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --sans: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background:
+    radial-gradient(ellipse 120% 60% at 50% -10%, rgba(134, 217, 184, 0.05), transparent 60%),
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15.5px;
+  line-height: 1.85;
+  overflow-x: hidden;
+}
+
+.wrap {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 30px 20px 70px;
+}
+
+/* ------------------------------------------------------------------ 头版 */
+.masthead {
+  border: 1px solid var(--rule);
+  border-top: 3px solid var(--amber);
+  padding: 22px 24px 18px;
+  background: linear-gradient(180deg, rgba(134, 217, 184, 0.06), transparent 60%), var(--bg2);
+}
+
+.mast-eyebrow {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.32em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-family: var(--mono);
+  font-size: 44px;
+  letter-spacing: 0.12em;
+  line-height: 1.15;
+  color: var(--wline);
+  font-weight: 700;
+}
+
+.mast-lede {
+  margin: 0 0 14px;
+  max-width: 46em;
+}
+
+.mast-lede em {
+  font-style: normal;
+  color: var(--amber2);
+  border-bottom: 1px dashed var(--amber);
+}
+
+.mast-state {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--wline);
+  border: 1px dashed var(--rule);
+  display: inline-block;
+  padding: 5px 12px;
+}
+
+.mast-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--dim);
+}
+
+/* ------------------------------------------------------------------ 面板 */
+.panel {
+  margin-top: 26px;
+  border: 1px solid var(--rule);
+  background: var(--bg2);
+  padding: 20px 22px 22px;
+  position: relative;
+}
+
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid var(--rule-soft);
+  pointer-events: none;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-family: var(--mono);
+  font-size: 19px;
+  letter-spacing: 0.06em;
+  color: var(--wline);
+}
+
+h2::after {
+  content: '';
+  display: block;
+  width: 72px;
+  height: 2px;
+  margin-top: 6px;
+  background: var(--amber);
+}
+
+.sec-lede, .mode-lede {
+  margin: 0 0 14px;
+  color: var(--dim);
+  font-size: 14px;
+  max-width: 52em;
+}
+
+.mode-lede { color: var(--ink); }
+
+/* ------------------------------------------------------- 档位切换器 */
+.levelbar {
+  display: inline-flex;
+  border: 1px solid var(--rule);
+  margin-bottom: 12px;
+}
+
+.lvlbtn {
+  appearance: none;
+  border: 0;
+  border-right: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  padding: 7px 20px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.lvlbtn:last-child { border-right: 0; }
+
+.lvlbtn[aria-pressed="true"] {
+  background: rgba(134, 217, 184, 0.14);
+  color: var(--wline);
+  box-shadow: inset 0 -3px 0 var(--amber);
+}
+
+.lvlbtn:focus-visible,
+button:focus-visible,
+.knob:focus-visible {
+  outline: 2px solid var(--amber2);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ 画布 */
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+}
+
+.cap {
+  margin: 6px 0 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+
+/* ------------------------------------------------------------------ 听证台 */
+.bench-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 22px;
+  align-items: start;
+}
+
+.knob-zone { text-align: center; }
+
+.knob {
+  display: inline-block;
+  position: relative;
+  width: 216px;
+  height: 216px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(242, 248, 239, 0.10), transparent 55%),
+    conic-gradient(from 225deg, rgba(134, 217, 184, 0.30), rgba(134, 217, 184, 0.06) 75%, rgba(134, 217, 184, 0.30));
+  border: 2px solid var(--rule);
+  box-shadow: inset 0 0 0 6px var(--bg2), 0 4px 18px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+  touch-action: none;      /* 拖旋钮时不让页面滚动接手 */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.knob:active { cursor: grabbing; }
+
+.knob-face {
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #16352a, #0e2419 68%);
+  border: 1px solid var(--rule-soft);
+}
+
+.knob-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: calc(50% - 10px);
+  background: var(--amber2);
+  border-radius: 2px;
+  transform-origin: 50% 0%;
+  transform: translate(-50%, 0) rotate(0deg);
+  box-shadow: 0 0 8px rgba(240, 196, 106, 0.75);
+}
+
+.knob.q {
+  width: 148px;
+  height: 148px;
+}
+
+.knob.q .knob-mark { height: calc(50% - 8px); }
+
+.freq-line {
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--dim);
+}
+
+.freq-line output {
+  font-size: 17px;
+  color: var(--amber2);
+  min-width: 110px;
+  display: inline-block;
+  text-align: right;
+}
+
+.bench-side { min-width: 0; }
+
+.verdict-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 22px;
+  align-items: start;
+}
+
+/* ------------------------------------------------------------------ 控件 */
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 4px 0 12px;
+}
+
+button {
+  appearance: none;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13.5px;
+  letter-spacing: 0.06em;
+  padding: 6px 16px;
+  min-height: 32px;
+  min-width: 24px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { border-color: var(--amber2); color: var(--wline); }
+
+button:disabled { opacity: 0.4; cursor: default; }
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--dim);
+}
+
+/* ------------------------------------------------------------------ 读数 */
+.readlist {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 18px;
+  margin: 12px 0 0;
+  padding: 12px 16px;
+  border: 1px dashed var(--rule);
+  background: rgba(16, 40, 31, 0.72);
+}
+
+.readlist dt {
+  font-size: 12.5px;
+  color: var(--dim);
+  align-self: baseline;
+}
+
+.readlist dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--wline);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.verdict {
+  margin: 14px 0 0;
+  border-left: 3px solid var(--amber);
+  padding: 8px 14px;
+  background: rgba(217, 164, 65, 0.08);
+  font-size: 14px;
+}
+
+/* ------------------------------------------------------------------ 复盘 */
+.reveal-wrap {
+  margin-top: 16px;
+  border: 1px solid var(--rule);
+  padding: 12px 14px 14px;
+  background: rgba(13, 35, 28, 0.55);
+}
+
+.reveal-title {
+  margin: 0 0 10px;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: var(--amber2);
+}
+
+/* ------------------------------------------------------------------ 记分册 */
+.ledger { margin-top: 18px; }
+
+.ledger .readlist { margin-top: 0; }
+
+/* ------------------------------------------------------------------ 三基石 */
+.lawlist {
+  margin: 6px 0 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.law-row {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr;
+  gap: 4px 16px;
+  border-bottom: 1px solid var(--rule-soft);
+  padding-bottom: 8px;
+}
+
+.law-row dt {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--dim);
+}
+
+.law-row dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--wline);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ 边界 */
+.edges {
+  border-color: var(--amber);
+}
+
+.edges p {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.edges strong {
+  color: var(--amber2);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ 页脚 */
+.colophon {
+  margin-top: 30px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--dim);
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+/* ------------------------------------------------------------------ 窄屏 */
+@media (max-width: 640px) {
+  .wrap { padding: 18px 12px 54px; }
+
+  body { font-size: 14.5px; }
+
+  h1 { font-size: 32px; }
+
+  .panel { padding: 14px 12px 16px; }
+
+  .bench-grid { grid-template-columns: 1fr; }
+
+  .verdict-grid { grid-template-columns: 1fr; }
+
+  /* 触控硬线：按钮与旋钮全部 ≥44px */
+  button, .lvlbtn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 14px;
+  }
+
+  .knob {
+    width: 176px;
+    height: 176px;
+  }
+
+  .knob.q {
+    width: 124px;
+    height: 124px;
+  }
+
+  .freq-line output { min-width: 96px; font-size: 15px; }
+
+  .readlist { padding: 10px 12px; }
+
+  .readlist dd { font-size: 12.5px; }
+
+  .law-row { grid-template-columns: 1fr; }
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<!-- ============================================================================
+《共振听证》—— 声学 · 受迫振动与阻尼共振（闭式受迫振子 · 听觉判读）
+
+系列身份策略（动工前决定，完整版见 共振听证/build.js 头注「切分声明」）：
+  · 与〈驻波之间〉的界线：那是空间里的驻波与房间模态（几何决定频率），
+    本作是单个振子被外力驱动的时间动力学（阻尼决定峰形）；
+  · 与〈十二不归〉的界线：那是音律与频率比的数学（十二平均律），
+    本作是共振峰的物理与听觉判读（Q、半高宽、相位滞后）；
+  · 与〈一拨就动〉的界线：那是耦合振子系统的同步（Kuramoto），
+    本作是单模受迫响应，没有耦合、没有系统，只有一只振子和一只驱动器。
+
+判读线索口径（评审更正后）：稳态响应与驱动力同频，稳态不生拍；
+  真正的听觉线索是 (a) 响应声道内的扫掠暂态拍（ω_d 衰减振铃 × 受迫分量，
+  拍率 |f−f₀| 过峰先慢到零再变快）、(b) 双耳响度差（峰处隆起）、
+  (c) 双耳相位差过 90°（人耳相位锁定约 1.5 kHz 以下可用，
+  故三档 f₀ 全在 500 Hz 以下）。
+
+声画纪律：判读期间耳是唯一仪器——频响曲线、响应包络、真值峰位一律不显示；
+  示波屏只画驱动波形（形状恒为正弦，零信息泄漏）；复盘才揭示真值。
+============================================================================ -->
+<header class="masthead">
+  <p class="mast-eyebrow">声学 · 受迫振动与阻尼共振</p>
+  <h1>共振听证</h1>
+  <p class="mast-lede">一台被正弦驱动的阻尼弹簧振子，正在左耳里推，右耳里响。没有人给你看频响曲线——你的<em>耳朵就是唯一仪器</em>：拖动大旋钮连续扫频，靠响度隆起、扫掠时的短暂拍动和两耳间的相位差，找出振幅失控的那个频率；然后盲听估计这峰有多胖。找到峰只是第一关，听出品质因数 Q 是第二关。</p>
+  <p class="mast-state" id="mastState">初始化……</p>
+  <p class="mast-note">读数规则：三档峰位、半高宽与 Q 由闭式解离线标定冻结（Node 逐位对账）；浏览器端以固定采样率离线渲染对解析值做容差断言；判读期间页面不显示任何能替代耳朵的真值。</p>
+</header>
+
+<section class="panel" id="benchPanel">
+  <h2>图一 · 听证台</h2>
+  <p class="sec-lede">左耳听驱动力，右耳听振子响应——同一频率，两种命运。选一档阻尼，拖动大旋钮扫频：扫掠时留心右耳里那阵短暂的拍动，它过峰时先变慢、再变快；也留心右耳在何处隆起、两耳的音色差在哪里翻转。</p>
+  <div class="levelbar" role="group" aria-label="阻尼档位切换">
+    <button type="button" id="lvl0" class="lvlbtn" aria-pressed="true">甲 · 钝峰</button>
+    <button type="button" id="lvl1" class="lvlbtn" aria-pressed="false">乙 · 陡峰</button>
+    <button type="button" id="lvl2" class="lvlbtn" aria-pressed="false">丙 · 尖峰</button>
+  </div>
+  <p class="mode-lede" id="levelLede">甲档 · 钝峰：阻尼最重，峰又宽又缓——先学会听。</p>
+  <div class="bench-grid">
+    <div class="knob-zone">
+      <div class="knob" id="freqKnob" role="slider" tabindex="0"
+           aria-label="驱动频率旋钮：拖动旋转，松手后有余惯性细调，也可用左右方向键微移"
+           aria-valuemin="80" aria-valuemax="880" aria-valuenow="220" aria-valuetext="220.0 赫兹">
+        <div class="knob-face"><span class="knob-mark" id="knobMark"></span></div>
+      </div>
+      <p class="freq-line">驱动频率 <output id="freqOut">220.0 Hz</output></p>
+      <p class="hint" id="knobHint">拖动旋钮：横向或绕圈扫频；松手后余惯性滑行，越滑越慢——细调就藏在这段慢滑里。聚焦后用 ←/→ 键 ±1 Hz（Shift ±10）。</p>
+    </div>
+    <div class="bench-side">
+      <div class="btn-row">
+        <button type="button" id="audioBtn" aria-pressed="false">开始驱动</button>
+        <button type="button" id="lockBtn" disabled>峰就在这里</button>
+      </div>
+      <dl class="readlist" id="cardConsole" data-probe="console">
+        <dt>驱动频率</dt><dd id="ro-freq">220.0 Hz</dd>
+        <dt>已锁峰位</dt><dd id="ro-locked">尚未锁定</dd>
+        <dt>Q 估计</dt><dd id="ro-qguess">尚未给出</dd>
+        <dt>音频状态</dt><dd id="pv-console">未启动</dd>
+      </dl>
+      <p class="hint" id="benchHint">先按「开始驱动」，再扫频。「峰就在这里」把你当前的频率钉成第一关的答案。</p>
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="scopePanel">
+  <h2>图二 · 余辉示波屏</h2>
+  <p class="sec-lede">驱动期间，屏上只走左耳那条驱动力曲线——它永远是正弦，不带任何答案。提交判读之后，右耳那条响应曲线才以余辉回放：你听过的振铃与拍动，这时才被允许看见。</p>
+  <canvas id="scopeCanvas" width="900" height="240" aria-label="余辉示波屏：驱动期间显示驱动力波形，判读后回放响应波形"></canvas>
+  <p class="cap" id="scopeStatus">待命 · 余辉已就位</p>
+</section>
+
+<section class="panel" id="verdictPanel">
+  <h2>图三 · 盲听判读与记分册</h2>
+  <p class="sec-lede">锁完峰位，再用下面的小旋钮把 peak 的胖瘦——品质因数 Q——凭听感拨到一个数上。两关一起提交：峰位偏差按半高宽折算，Q 按比值计账，全进记分册，跨会话累积。</p>
+  <div class="verdict-grid">
+    <div class="knob-zone small">
+      <div class="knob q" id="qKnob" role="slider" tabindex="0"
+           aria-label="品质因数 Q 估计旋钮：拖动或用左右方向键微调"
+           aria-valuemin="1.5" aria-valuemax="40" aria-valuenow="8" aria-valuetext="品质因数 8.0">
+        <div class="knob-face"><span class="knob-mark" id="qKnobMark"></span></div>
+      </div>
+      <p class="freq-line">Q 估计 <output id="qOut">8.0</output></p>
+    </div>
+    <div class="bench-side">
+      <div class="btn-row">
+        <button type="button" id="submitBtn" disabled>提交听证</button>
+        <button type="button" id="againBtn" disabled>再来一轮</button>
+      </div>
+      <dl class="readlist" id="cardVerdict" data-probe="verdict">
+        <dt>峰位偏差</dt><dd id="ro-df">—</dd>
+        <dt>峰位评语</dt><dd id="ro-dfBand">待提交</dd>
+        <dt>Q 估计比</dt><dd id="ro-qratio">—</dd>
+        <dt>Q 评语</dt><dd id="ro-qBand">待提交</dd>
+        <dt>判读</dt><dd id="pv-verdict">未提交</dd>
+      </dl>
+    </div>
+  </div>
+  <p class="verdict" id="verdictLine">锁峰、拨 Q，然后提交——记分册只认耳朵听出来的数。</p>
+  <div class="reveal-wrap" id="revealWrap" hidden>
+    <h3 class="reveal-title">复盘 · 真值揭示（仅判读后可见）</h3>
+    <canvas id="curveCanvas" width="900" height="260" aria-label="频响曲线复盘：真值峰位、半高宽带与你的判读落点"></canvas>
+    <p class="cap" id="ro-revealNote">—</p>
+  </div>
+  <div class="ledger">
+    <dl class="readlist" id="cardLedger" data-probe="ledger">
+      <dt>记分册</dt><dd id="ro-ledSource">—</dd>
+      <dt>累计听证</dt><dd id="ro-ledCount">0 轮</dd>
+      <dt>各档通过</dt><dd id="ro-ledPass">甲 0 · 乙 0 · 丙 0</dd>
+      <dt>各档最佳偏差</dt><dd id="ro-ledBest">—</dd>
+      <dt>最近一轮</dt><dd id="ro-ledLast">—</dd>
+    </dl>
+    <div class="btn-row">
+      <button type="button" id="clearBtn">清空记分册</button>
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="lawsPanel">
+  <h2>三块基石 · 这件展品敢让你只凭耳朵判读的理由</h2>
+  <p class="sec-lede">下面的每个数字都出自固定参数的离线标定：峰位与半高宽来自闭式解的解析式与数值二分，对账证据来自逐样本合成的真跑。页面只复算与对账，不携带手写的结论。</p>
+  <dl class="lawlist" id="lawNumbers"></dl>
+  <p>第一块是<strong>稳态闭式解</strong>：m x″ + c x′ + k x = F₀ sin(ωt) 的稳态是 A(ω) = (F₀/k)/√((ω₀²−ω²)² + (2βω)²)、φ(ω) = atan2(2βω, ω₀²−ω²)——峰位 ω₀√(1−2ζ²)、峰高 1/(2ζ√(1−ζ²)) 全是解析事实，不需要数值模拟去猜。第二块是<strong>逐段精确合成</strong>：你听到的不是近似滤波，而是把闭式解逐段按状态匹配地取值——扫频时的 ω_d 衰减振铃因此是真的，它与受迫分量相拍，拍率 |f−f₀| 过峰时先慢到零再变快。第三块是<strong>同频不生拍</strong>：稳态响应与驱动力频率相同，两耳各自听到的是同一频率的纯音——所以稳态里没有拍可听，拍只出现在扫掠的暂态里；这就是为什么这台装置要你扫频，而不是停在一处苦听。</p>
+  <p class="selfcheck" id="selfCheckLine">自检：启动即跑，随每次刷新重算。</p>
+</section>
+
+<section class="panel edges" id="edges">
+  <h2>模型边界 · 在哪里诚实</h2>
+  <p><strong>半高宽口径。</strong>峰位与 Q 不是近似公式，而是按定义数值求解：峰位取解析式 f₀√(1−2ζ²)（三档 ζ ≤ 0.15 远离 1/√2 退化）；半高宽是 A(ω)² = A_max²/2 的两个真根，各以固定 80 轮二分、不提前退出——所以 Q = f峰/(f₂−f₁) 与教科书近似 1/(2ζ) 在甲档差到 4.5%，本作以数值定义为准并如实显示两者。</p>
+  <p><strong>相位线索的适用边界。</strong>人耳对双耳相位差的锁定在约 1.5 kHz 以下可用，三档 f₀（220/330/440 Hz）全部设在此范围内；扫掠拍线索依赖振铃寿命（约 2/β，甲档约 10 毫秒），所以它只在你快速扫过峰附近时以「短暂嗡一亮」的方式出现——本作不假装它是稳态里无穷持续的拍。</p>
+  <p><strong>声画纪律。</strong>判读期间，频响曲线、响应包络、真值峰位一律不上屏：示波屏只画驱动力（形状恒为正弦，零信息），读数只给频率与档位名（ζ、f₀ 不显示——否则 Q 直接可算）。真值只在提交判读后的复盘里揭示。耳朵是判读仪器，不是装饰。</p>
+  <p><strong>无声环境降级。</strong>实时音频依赖浏览器 AudioContext；无声或无授权环境下（含无头访问），驱动按钮只会把状态改成文字说明，不出错、也不向控制台报错。此时判读轮仍可提交，但会如实记为「无声轮」——不计入各档通过数，页面绝不假装你听过了。离线对账走 OfflineAudioContext，不需要任何音频设备。</p>
+  <p><strong>记分册与隐私。</strong>成绩存于浏览器本机 localStorage（键名固定，最多 200 条，新的挤出最旧的），断网可用；隐私模式写不进去时自动降级为内存账本，本轮内照常记账、关闭即失——降级状态在「记分册」一行如实标注，绝不假装跨会话。</p>
+</section>
+
+<footer class="colophon">单文件科学装置 · 全部结论数字来自离线标定 <span id="calStamp"></span> · 零网络请求 · 源码在 共振听证/ 目录，由其 build.js 拼装</footer>
+
+</div>
+<script>window.__DATA__ = {results: 
+{"canon":{"fMin":80,"fMax":880,"fs":44100,"chunk":1024,"driveAmp":1,"normLevel":0.45,"playDrive":0.35,"clip":0.95,"levels":[{"key":"甲","name":"甲档 · 钝峰","hint":"阻尼最重，峰又宽又缓——先学会听。","zeta":0.15,"f0":220},{"key":"乙","name":"乙档 · 陡峰","hint":"阻尼中等，峰开始收窄，响度坡变陡。","zeta":0.06,"f0":330},{"key":"丙","name":"丙档 · 尖峰","hint":"阻尼极轻，峰瘦成一线——用惯性细调与键盘微移。","zeta":0.02,"f0":440}],"offPeakFactor":1.5,"offlineDur":1,"offlineWinA":0.45,"offlineWinB":0.95,"ringProbe":{"level":0,"fOffsetFactor":2},"storeKey":"resonance-hearing-ledger-v1","ledgerCap":200},"rules":{"dfPassFactor":0.25,"qPassLow":0.75,"qPassHigh":1.3333333333333333,"qKnobMin":1.5,"qKnobMax":40,"qFineStep":0.05},"levels":[{"key":"甲","name":"甲档 · 钝峰","hint":"阻尼最重，峰又宽又缓——先学会听。","zeta":0.15,"f0":220,"rPeak":0.9772410142846032,"dPeak":3.371478249494491,"fPeak":214.9930231426127,"f1":178.51128627746468,"f2":246.1254165492972,"fwhm":67.61413027183252,"qNum":3.1797055183327116,"qTheory":3.3333333333333335},{"key":"乙","name":"乙档 · 陡峰","hint":"阻尼中等，峰开始收窄，响度坡变陡。","zeta":0.06,"f0":330,"rPeak":0.996393496566492,"dPeak":8.348373955217303,"fPeak":328.8098538669424,"f1":308.3366076357983,"f2":348.0809911380507,"fwhm":39.74438350225239,"qNum":8.27311496348429,"qTheory":8.333333333333334},{"key":"丙","name":"丙档 · 尖峰","hint":"阻尼极轻，峰瘦成一线——用惯性细调与键盘微移。","zeta":0.02,"f0":440,"rPeak":0.999599919967984,"dPeak":25.00500150050017,"fPeak":439.82396478591295,"f1":430.9323252610681,"f2":448.5393751334313,"fwhm":17.607049872363177,"qNum":24.979991990383382,"qTheory":25}],"offlineEvidence":[{"level":0,"key":"甲","f":214.9930231426127,"fOff":322.48953471391906,"amp":0.45001427549686934,"expectAmp":0.45,"ampErr":0.00003172332637629221,"phase":1.4184985080858776,"expectPhase":1.418491660233506,"phaseErr":0.000006847852371594243,"driveAmp":0.9999676832327323,"driveAmpErr":0.00003231676726767052,"drivePhaseErr":0.000002981752477101989,"ampOff":0.1085990316325269,"selectivity":0.24132352582064345},{"level":1,"key":"乙","f":328.8098538669424,"fOff":493.21478080041356,"amp":0.44986165428665986,"expectAmp":0.45000000000000007,"ampErr":0.00030743491853378753,"phase":1.5111014967501117,"expectPhase":1.5106517800637664,"phaseErr":0.0004497166863453028,"driveAmp":1.0002514814213213,"driveAmpErr":0.0002514814213212535,"drivePhaseErr":0.0004831123581301254,"ampOff":0.043216959789504586,"selectivity":0.09606722283994885},{"level":2,"key":"丙","f":439.82396478591295,"fOff":659.7359471788694,"amp":0.45000009142899466,"expectAmp":0.45,"ampErr":2.0317554367327912e-7,"phase":1.5511713881348064,"expectPhase":1.5507909912204678,"phaseErr":0.0003803969143385544,"driveAmp":0.9999847256357443,"driveAmpErr":0.000015274364255746242,"drivePhaseErr":0.000380093124890516,"ampOff":0.01439776833569718,"selectivity":0.03199503424538525}],"offlineWorst":{"ampErr":0.00030743491853378753,"phaseErr":0.0004497166863453028,"driveAmpErr":0.0002514814213212535,"drivePhaseErr":0.0004831123581301254,"selectivity":0.03199503424538525},"beatEvidence":{"level":0,"key":"甲","f":286,"fOffset":66,"ringHz":68.48908073386292,"steady2":0.16840042588543358,"d0":0.1870411600532634,"d1":0.010714467726079369,"excite":1.1106929158273715,"decay":0.057284010230840246,"swingMax":0.22875157058412776,"swingMin":-0.21304843663297607,"n":1064},"continuity":{"n":4410,"chunk":1024,"maxDiff":1.17354043149831e-14},"reproduction":{"equal":true},"meta":{"generatedAt":"2026-10-06T12:34:31.343Z","node":"v24.19.0"}}
+, analysis: 
+{"levels":[{"key":"甲","name":"甲档 · 钝峰","hint":"阻尼最重，峰又宽又缓——先学会听。","zeta":0.15,"f0":220,"rPeak":0.9772410142846032,"dPeak":3.371478249494491,"fPeak":214.9930231426127,"f1":178.51128627746468,"f2":246.1254165492972,"fwhm":67.61413027183252,"qNum":3.1797055183327116,"qTheory":3.3333333333333335},{"key":"乙","name":"乙档 · 陡峰","hint":"阻尼中等，峰开始收窄，响度坡变陡。","zeta":0.06,"f0":330,"rPeak":0.996393496566492,"dPeak":8.348373955217303,"fPeak":328.8098538669424,"f1":308.3366076357983,"f2":348.0809911380507,"fwhm":39.74438350225239,"qNum":8.27311496348429,"qTheory":8.333333333333334},{"key":"丙","name":"丙档 · 尖峰","hint":"阻尼极轻，峰瘦成一线——用惯性细调与键盘微移。","zeta":0.02,"f0":440,"rPeak":0.999599919967984,"dPeak":25.00500150050017,"fPeak":439.82396478591295,"f1":430.9323252610681,"f2":448.5393751334313,"fwhm":17.607049872363177,"qNum":24.979991990383382,"qTheory":25}],"offline":{"renders":3,"samples":44100,"winA":0.45,"winB":0.95,"worstAmpErr":0.00030743491853378753,"worstPhaseErr":0.0004497166863453028,"worstDriveAmpErr":0.0002514814213212535,"worstDrivePhaseErr":0.0004831123581301254,"selectivity":0.03199503424538525},"beat":{"key":"甲","f":286,"fOffset":66,"ringHz":68.48908073386292,"excite":1.1106929158273715,"decay":0.057284010230840246},"continuity":{"maxDiff":1.17354043149831e-14,"n":4410},"reproduction":{"equal":true},"meta":{"generatedAt":"2026-10-06T12:34:31.343Z","node":"v24.19.0"}}
+};</script>
+<script>
+/* ============================================================================
+ * 共振听证/core.js —— 受迫阻尼振子闭式模型 + 逐段精确合成引擎（纯模型层）
+ *
+ * 题材锚点（完整口径见 build.js 头注「切分声明」）：
+ *   一台被正弦驱动的阻尼弹簧振子 m x″ + c x′ + k x = F₀ sin(ωt)。
+ *   稳态响应是闭式解 x = A(ω) sin(ωt − φ)：
+ *     A(ω) = (F₀/k) / √((ω₀²−ω²)² + (2βω)²)，
+ *     φ(ω) = atan2(2βω, ω₀²−ω²)，   ω₀ = √(k/m)，β = c/2m。
+ *   位移峰在 ω_p = ω₀√(1−2ζ²)（ζ = β/ω₀ < 1/√2），峰高 D_max = 1/(2ζ√(1−ζ²))；
+ *   半高宽取 A(ω)² = A_max²/2 的两个真根（数值二分），Q = ω_p/(ω₂−ω₁)。
+ *
+ * 判读线索的物理（评审更正后的口径，页面文案与此一致）：
+ *   · 稳态响应与驱动力同频——左右耳各自听到同一频率的纯音，稳态不生拍；
+ *   · 真正可听的线索有三条：
+ *     (a) 响应声道内的扫掠暂态拍：扫频时振子以 ω_d = √(ω₀²−β²) 衰减振铃，
+ *         与 ω 处的受迫分量叠加，拍率 |f−f₀| 过峰时先慢到零再变快；
+ *     (b) 双耳响度差：响应声级在峰处隆起（D(ω) 在峰两侧跌落）；
+ *     (c) 双耳相位差 φ(ω) 过 90°（r=1 处恰为 π/2）——人耳相位锁定
+ *         约 1.5 kHz 以下可用，故三档 f₀ 全部设在 500 Hz 以下。
+ *   引擎给出的不是「近似模拟」：每段常频区间内按初条件匹配的闭式精确解
+ *   逐样本取值，段间状态 (x, x′) 严格连续——暂态拍是物理的一部分，不是效果。
+ *
+ * 铁律：
+ *   ① 全文件零随机数、零 DOM——同一输入永远给出同一样本流；
+ *   ② 一切结论数字由 calibrate.js 现算写进 results.json / analysis.json，
+ *     页面与标定共用这里的 CANON / RULES / VERIFY（单一真源）；
+ *   ③ 半高宽用固定 80 轮二分（无提前退出），双精度确定性逐位可复算；
+ *   ④ node 可直接 require 自检（build.js / calibrate.js 共用同一实现）。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { module.exports = factory(); }
+  else { root.ResonanceHearingCore = factory(); }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  /* ---------------------------------------------------------------- 版本与场景 */
+  /* CANON：页面默认场景 = 标定场景 = 验证场景，三方必须一致（单一真源）。
+     这些是仪器参数，不是实验结论 —— 结论数字一律由 calibrate.js 现场算出
+     写进 results.json / analysis.json，页面零手写数字。 */
+  var CANON = {
+    fMin: 80,           /* 扫频下限 Hz */
+    fMax: 880,          /* 扫频上限 Hz（fMax/fMin = 11，约 3.46 个八度） */
+    fs: 44100,          /* 合成采样率（离线渲染同率，逐样本对账） */
+    chunk: 1024,        /* 实时播放的分段长度（样本）≈ 23 ms，段间状态严格连续 */
+    driveAmp: 1.0,      /* 驱动力幅值（标度量纲：静位移 = 1） */
+    normLevel: 0.45,    /* 响应声道归一：峰处幅值 = normLevel（留暂态余量防削波） */
+    playDrive: 0.35,    /* 播放时左声道（驱动力）的峰值增益 */
+    clip: 0.95,         /* 播放端硬限幅（验证域内恒等映射，见 style 边界章） */
+    levels: [
+      { key: '甲', name: '甲档 · 钝峰', hint: '阻尼最重，峰又宽又缓——先学会听。', zeta: 0.15, f0: 220 },
+      { key: '乙', name: '乙档 · 陡峰', hint: '阻尼中等，峰开始收窄，响度坡变陡。', zeta: 0.06, f0: 330 },
+      { key: '丙', name: '丙档 · 尖峰', hint: '阻尼极轻，峰瘦成一线——用惯性细调与键盘微移。', zeta: 0.02, f0: 440 }
+    ],
+    offPeakFactor: 1.5,     /* 选择性离峰渲染点 = fPeak × 1.5 */
+    offlineDur: 1.0,        /* 离线渲染时长 s（44100 样本，评审实测口径） */
+    offlineWinA: 0.45,      /* 稳态判读窗起点 s（暂态 e^{−βt} 已 ≤ 1e-8） */
+    offlineWinB: 0.95,      /* 稳态判读窗终点 s */
+    ringProbe: { level: 0, fOffsetFactor: 2 },   /* 振铃证据：甲档阶跃到 f₀+2ζf₀ */
+    storeKey: 'resonance-hearing-ledger-v1',           /* 记分册 localStorage 键 */
+    ledgerCap: 200       /* 记分册最多保留条数（新的挤出最旧的） */
+  };
+
+  /* ------------------------------------------------------------ 通关判据 */
+  /* RULES：通关条件的单一真源（「以找到目标为通关条件」）。
+     峰位通过：Δf ≤ FWHM/4；Q 估计通过：qGuess/qTrue ∈ [0.75, 4/3]。
+     两关同过才算「听证通过」。旋钮量程罩住三档真值（3.18 / 8.29 / 24.98）。 */
+  var RULES = {
+    dfPassFactor: 0.25,
+    qPassLow: 0.75,
+    qPassHigh: 4 / 3,
+    qKnobMin: 1.5,
+    qKnobMax: 40,
+    qFineStep: 0.05      /* Q 旋钮键盘微调步（对数域分数） */
+  };
+
+  /* ------------------------------------------------------------ 闭式解 */
+  /* 全部只依赖参数，双精度确定——同样的输入永远给出同样的输出。 */
+  function dyn(r, zeta) {           /* 动力放大系数 D(r) = A(ω)/A(0) */
+    var u = 1 - r * r;
+    return 1 / Math.sqrt(u * u + 4 * zeta * zeta * r * r);
+  }
+  function phaseLag(r, zeta) {      /* 相位滞后 φ(r) ∈ [0, π] */
+    return Math.atan2(2 * zeta * r, 1 - r * r);
+  }
+  function rPeak(zeta) {            /* 位移峰位置 r_p = √(1−2ζ²)（ζ<1/√2） */
+    return Math.sqrt(1 - 2 * zeta * zeta);
+  }
+  function dPeak(zeta) {            /* 峰高 D_max = 1/(2ζ√(1−ζ²))，经 D 单源计算 */
+    return dyn(rPeak(zeta), zeta);
+  }
+  /* 半高宽：解 D(r) = D_max/√2。左支在 (0, r_p] 单调升、右支在 [r_p, ∞) 单调降，
+     各 80 轮二分、不提前退出——固定运算序列，逐位可复算。 */
+  var BISECT_ITERS = 80;
+  function halfPower(zeta, f0) {
+    var rp = rPeak(zeta);
+    var target = dPeak(zeta) / Math.SQRT2;
+    function bisect(lo, hi, rising) {
+      var a = lo, b = hi, i, m;
+      for (i = 0; i < BISECT_ITERS; i++) {
+        m = (a + b) / 2;
+        var v = dyn(m, zeta);
+        if (rising ? (v < target) : (v > target)) a = m; else b = m;
+      }
+      return (a + b) / 2;
+    }
+    var loL = 1e-6, hiR = 8;
+    var r1 = bisect(loL, rp, true);    /* 左支：D 升 */
+    var r2 = bisect(rp, hiR, false);   /* 右支：D 降 */
+    var f1 = r1 * f0, f2 = r2 * f0, fPk = rp * f0;
+    var fwhm = f2 - f1;
+    return {
+      r1: r1, r2: r2, rPeak: rp,
+      f1: f1, f2: f2, fPeak: fPk,
+      fwhm: fwhm,
+      dPeak: dyn(rp, zeta),
+      qNum: fPk / fwhm,              /* 数值半功率 Q */
+      qTheory: 1 / (2 * zeta)        /* 经典近似 Q = 1/(2ζ) */
+    };
+  }
+  /* 反解：由冻结的 Q 反推 ζ、由 fPeak 与 ζ 反推 f0 —— 对 results.json 的
+     「反解对账」用（不同运算序列，用 VERIFY.inverseRelTol 判等）。 */
+  function solveZetaFromQ(qTarget) {
+    var lo = 1e-4, hi = 0.7, i, m;
+    for (i = 0; i < BISECT_ITERS; i++) {
+      m = (lo + hi) / 2;
+      if (halfPower(m, 1).qNum > qTarget) lo = m; else hi = m;
+    }
+    return (lo + hi) / 2;
+  }
+
+  /* ------------------------------------------------------------ 逐段精确引擎 */
+  /* 每段常频区间内，响应是
+       y(τ) = A sin(θ − φ) + e^{−βτ}(C₁ cos ω_d τ + C₂ sin ω_d τ)，
+     其中 θ 是全局驱动相位（θ = θ₀ + ωτ），C₁/C₂ 由段首状态 (y₀, v₀) 匹配：
+       C₁ = y₀ + A sinφ，  C₂ = (v₀ − Aω cosφ + βC₁)/ω_d。
+     段末用闭式算出 (y₁, v₁) 交给下一段——段间 (y, v) 严格连续，
+     扫频时的衰减振铃（ω_d 分量）由此自然延续，暂态拍是真解的一部分。
+     量纲：y = x·ω₀²（静位移 = 1），驱动 F = sin θ。 */
+  function createVoice(opts) {
+    var fs = (opts && opts.fs) || CANON.fs;
+    var lv = (opts && opts.level != null) ? opts.level : 0;
+    var level = (opts && opts.zeta != null)
+      ? { zeta: opts.zeta, f0: opts.f0 } : CANON.levels[lv];
+    var zeta = level.zeta, f0 = level.f0;
+    var w0 = 2 * Math.PI * f0;
+    var beta = zeta * w0;
+    var wd = Math.sqrt(w0 * w0 - beta * beta);   /* 欠阻尼：三档 ζ ≤ 0.15 恒成立 */
+    var scale = ((opts && opts.normLevel) != null ? opts.normLevel : CANON.normLevel) / dPeak(zeta);
+
+    var y0 = 0, v0 = 0;          /* 段首状态（缩放量纲） */
+    var theta0 = 0;              /* 段首全局驱动相位 */
+    var tau = 0;                 /* 段内局部时间 */
+    var omega = w0;              /* 段内驱动角频率（缺省 = f0） */
+    var A = dPeak(zeta), phi = phaseLag(rPeak(zeta), zeta);
+    var C1 = 0, C2 = 0;
+    var chunks = 0;
+
+    function resegment() {       /* 由段首状态匹配暂态系数。
+       段首全局相位 θ₀ 未必为 0（分段渲染时逐段推进），匹配必须对
+       「受迫分量在段首的实相位」做：y_h(0) = y₀ − A sin(θ₀−φ)，
+       y_h′(0) = v₀ − Aω cos(θ₀−φ)。θ₀=0 时退化为 y₀ + A sinφ。 */
+      var s0 = theta0 - phi;
+      C1 = y0 - A * Math.sin(s0);
+      C2 = (v0 - A * omega * Math.cos(s0) + beta * C1) / wd;
+      tau = 0;
+    }
+    resegment();
+
+    function setFrequency(f) {   /* 只在段间调用（renderChunk 收口后） */
+      omega = 2 * Math.PI * f;
+      A = dyn(omega / w0, zeta);
+      phi = phaseLag(omega / w0, zeta);
+      resegment();
+      return omega;
+    }
+
+    /* 渲染 n 个样本；drive/resp 是复用缓冲（调用方随即拷走）。
+       段末闭式收口 (y₁, v₁)，θ₀ 前进 ωn/fs，τ 归零。 */
+    var driveBuf = null, respBuf = null;
+    function renderChunk(n) {
+      if (!driveBuf || driveBuf.length !== n) {
+        driveBuf = new Float64Array(n);
+        respBuf = new Float64Array(n);
+      }
+      var dt = 1 / fs;
+      var i, th, e, cs, sn;
+      var A_ = A, ph_ = phi, w_ = omega, th0_ = theta0, c1_ = C1, c2_ = C2;
+      for (i = 0; i < n; i++) {
+        th = th0_ + w_ * (i * dt);
+        e = Math.exp(-beta * (i * dt));
+        cs = Math.cos(wd * (i * dt));
+        sn = Math.sin(wd * (i * dt));
+        driveBuf[i] = Math.sin(th);
+        respBuf[i] = (A_ * Math.sin(th - ph_) + e * (c1_ * cs + c2_ * sn)) * scale;
+      }
+      /* 段末收口：闭式算 τ_end = n·dt 处的 y、v */
+      var tE = n * dt;
+      var thE = th0_ + w_ * tE;
+      var eE = Math.exp(-beta * tE);
+      var csE = Math.cos(wd * tE), snE = Math.sin(wd * tE);
+      var base = c1_ * csE + c2_ * snE;
+      var yE = A_ * Math.sin(thE - ph_) + eE * base;
+      var vE = A_ * w_ * Math.cos(thE - ph_) + eE * (-beta * base + wd * (c2_ * csE - c1_ * snE));
+      theta0 = thE; y0 = yE; v0 = vE; tau = 0; chunks += 1;
+      resegment();
+      return { drive: driveBuf, resp: respBuf };
+    }
+
+    return {
+      fs: fs, zeta: zeta, f0: f0, w0: w0, beta: beta, wd: wd, scale: scale,
+      get omega() { return omega; },
+      get frequency() { return omega / (2 * Math.PI); },
+      get chunks() { return chunks; },
+      state: function () { return { y: y0, v: v0, theta: theta0, tau: tau, A: A, phi: phi }; },
+      setFrequency: setFrequency,
+      renderChunk: renderChunk
+    };
+  }
+
+  /* ------------------------------------------------------------ 解调对账 */
+  /* 对一段渲染结果在 [tA, tB] 窗上做正交解调：
+       X = (2/N)Σ y_i sin(ωt_i)，Y = (2/N)Σ y_i cos(ωt_i)
+     → 幅值 = √(X²+Y²)，滞后角 = atan2(−Y, X)。
+     窗内暂态已衰到 ≤1e-8，非整周期泄漏 O(1/(ωT)) ≈ 0.002，均被容差覆盖。 */
+  function demodulate(fs, f, arr, tA, tB) {
+    var w = 2 * Math.PI * f;
+    var i0 = Math.max(0, Math.ceil(tA * fs));
+    var i1 = Math.min(arr.length, Math.floor(tB * fs));
+    var N = i1 - i0;
+    var X = 0, Y = 0, i, t;
+    if (N <= 0) return { amp: NaN, phase: NaN, n: 0 };
+    for (i = i0; i < i1; i++) {
+      t = i / fs;
+      X += arr[i] * Math.sin(w * t);
+      Y += arr[i] * Math.cos(w * t);
+    }
+    X = X * 2 / N; Y = Y * 2 / N;
+    return { amp: Math.sqrt(X * X + Y * Y), phase: Math.atan2(-Y, X), n: N };
+  }
+
+  /* ------------------------------------------------------------ 振铃证据 */
+  /* 阶跃到偏离 f₀ 的 f 后，响应 = 受迫分量 + 衰减振铃（ω_d 分量）。
+     把解析稳态波形从渲染里减掉，剩下的就是振铃本身：
+       d(τ) = resp(τ) − A₂·scale·sin(ωτ − φ₂)。
+     可硬断言的事实有三条：
+       ① 振铃被激发：|d| 在第一个 1/β 内 ≥ 0.5×稳态幅值；
+       ② 振铃会衰减：|d| 在 [3/β, 4/β] ≤ 0.3×峰值（扫过去后回归纯净稳态，
+         「余音」是有限的——这正是扫频时能听到拍而非永久嗡鸣的原因）；
+       ③ 振铃与受迫分量相拍：响应包络在振铃存续期显著偏离稳态。
+     拍率 |f−f₀| 过峰先慢后快由闭式解直接保证（d 的频率是 ω_d，
+     与驱动的差拍就是 |f−f_d|），不在此另设脆弱的数值判据。 */
+  function ringEvidence(voice, f) {
+    var fs = voice.fs, zeta = voice.zeta, w0 = voice.w0, beta = voice.beta;
+    var w = 2 * Math.PI * f;
+    var A2 = dyn(w / w0, zeta);
+    var ph2 = phaseLag(w / w0, zeta);
+    var steady2 = A2 * voice.scale;
+    var n = Math.ceil(5 / beta * fs);
+    var seg = voice.renderChunk(n);
+    var dt = 1 / fs;
+    var d = new Float64Array(n);
+    var i, th;
+    for (i = 0; i < n; i++) {
+      th = w * (i * dt);
+      d[i] = seg.resp[i] - steady2 * Math.sin(th - ph2);
+    }
+    var w1 = Math.max(1, Math.floor(1 / beta * fs));
+    var a3 = Math.floor(3 / beta * fs), b3 = Math.min(n, Math.ceil(4 / beta * fs));
+    var d0 = 0, d1 = 0, swingMax = -Infinity, swingMin = Infinity;
+    for (i = 0; i < w1; i++) if (Math.abs(d[i]) > d0) d0 = Math.abs(d[i]);
+    for (i = a3; i < b3; i++) if (Math.abs(d[i]) > d1) d1 = Math.abs(d[i]);
+    var swingN = Math.min(n, Math.ceil(3 / beta * fs));
+    for (i = 0; i < swingN; i++) {
+      if (seg.resp[i] > swingMax) swingMax = seg.resp[i];
+      if (seg.resp[i] < swingMin) swingMin = seg.resp[i];
+    }
+    return {
+      f: f, steady2: steady2, n: n, beta: beta,
+      d0: d0, d1: d1,
+      swingMax: swingMax, swingMin: swingMin
+    };
+  }
+
+  /* ------------------------------------------------------------ 验收容差登记表 */
+  /* 页面自检与 verify.js 同源取用，防止两处口径漂移（family 建制）。
+     浏览器腿只做容差断言（跨 Chrome 版本无逐位保证）；Node 腿另用
+     逐位等值（build.js 模型自检 === results.json）。 */
+  var VERIFY = {
+    offlineAmpTol: 0.02,     /* 离线渲染稳态幅值相对误差（浏览器腿） */
+    offlinePhaseTol: 0.02,   /* 稳态相位差绝对误差 rad */
+    driveAmpTol: 0.02,       /* 驱动声道幅值（标度 1.0） */
+    drivePhaseTol: 0.02,
+    selectivityMax: 0.5,     /* 离峰 1.5×fPeak 处幅值 / 峰值 上限 */
+    inverseRelTol: 1e-10,    /* 反解 ζ、f₀ 与 CANON 的相对差（Node 腿） */
+    fwhmApproxTol: 0.05,     /* 数值半高宽与经典 2ζf₀ 的相对差 */
+    nodeAmpTol: 0.005,       /* Node 纯数腿：引擎稳态幅值相对误差 */
+    nodePhaseTol: 0.005,
+    continuityTol: 1e-9,     /* 整段渲染 vs 逐块渲染最大样本差 */
+    ringExciteMin: 0.5,      /* 振铃激发：|d| 峰 ≥ 0.5×稳态幅值 */
+    ringDecayMax: 0.3,       /* 振铃衰减：[3/β,4/β] 的 |d| ≤ 0.3×激发峰 */
+    touchNarrowMin: 44,      /* 窄屏（≤640px）触控目标最小边（旋钮含） */
+    touchWideMin: 24,
+    overflowTolNarrow: 1,
+    overflowTolWide: 2,
+    minTextLen: 200,         /* 可见文本下限（体检硬线同口径） */
+    canvasColorsMin: 4,      /* 画布非空断言（网格/基线/文字 ≥4 色） */
+    offlineTimeoutMs: 15000  /* OfflineAudioContext 渲染兜底超时 */
+  };
+
+  /* ------------------------------------------------------------ 格式化闸 */
+  /* 所有 DOM 数值出口都从这里走：非有限值一律落破折号（坏值不进 DOM）。 */
+  function fmtInt(x) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return String(Math.round(x));
+  }
+  function fmtFixed(x, d) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return (+x).toFixed(d === undefined ? 2 : d);
+  }
+
+  return {
+    CANON: CANON,
+    RULES: RULES,
+    dyn: dyn,
+    phaseLag: phaseLag,
+    rPeak: rPeak,
+    dPeak: dPeak,
+    halfPower: halfPower,
+    solveZetaFromQ: solveZetaFromQ,
+    createVoice: createVoice,
+    demodulate: demodulate,
+    ringEvidence: ringEvidence,
+    VERIFY: VERIFY,
+    fmtInt: fmtInt,
+    fmtFixed: fmtFixed
+  };
+});
+
+</script>
+<script>
+/* ============================================================================
+ * 共振听证/ui.js —— 大旋钮、双声道调度、余辉示波、盲听判读、记分册、探针
+ *
+ * 铁律（与 core.js 一致）：
+ *   ① 零随机数、零网络；任何非有限数都不进 DOM（数值出口过 fmt 层）；
+ *   ② 主交互弃 range 滑杆：Pointer Events 连续拖拽大旋钮 + 松手惯性细调
+ *     （setTimeout 步进衰减，断言不依赖帧循环）；键盘 ←/→ 可微调；
+ *   ③ 判读期间耳是唯一仪器：频响曲线/响应包络/真值峰位一律不上屏，
+ *     示波屏只画驱动力（恒为正弦，零信息泄漏）；提交后才允许复盘揭示；
+ *   ④ 实时 AudioContext 走降级护栏：无声/无授权环境只改文案，不出错、
+ *     不向控制台报错；离线对账走 OfflineAudioContext（无需音频设备）；
+ *   ⑤ 余辉屏沿以身作尺制式：lighter 叠加 + 每帧半透明衰减罩 + 持续帧循环；
+ *     无头环境 rAF 不触发，启动时先画静帧骨架保证画布永不空白；
+ *   ⑥ 页面不携带结论数字——全部出自 window.__DATA__（离线标定内联）。
+ * ==========================================================================*/
+(function () {
+  'use strict';
+  var C = window.ResonanceHearingCore;
+  var D = window.__DATA__;   /* build.js 内联（family 制式：双尾下划线） */
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* 运行期错误登记（不吞错：返回 false 让默认报错照常发生） */
+  window.__err = [];
+  window.onerror = function (m, s, l) {
+    window.__err.push(String(m) + ' @' + l);
+    return false;
+  };
+
+  var CANON = C.CANON, RULES = C.RULES, VERIFY = C.VERIFY;
+
+  /* 调色板：从样式表取变量，取不到时用同一族兜底（表现层常量，非结论数字） */
+  var css = getComputedStyle(document.documentElement);
+  function cssVar(name, fallback) {
+    var v = css.getPropertyValue(name);
+    return (v && v.trim()) || fallback;
+  }
+  var PAL = {
+    bg3: cssVar('--bg3', '#0d231c'),
+    fade: 'rgba(13,35,28,0.16)',          /* 余辉衰减罩（每帧） */
+    grid: 'rgba(157,214,183,0.16)',
+    dim: cssVar('--dim', '#9dbfa9'),
+    wline: cssVar('--wline', '#f2f8ef'),
+    drive: cssVar('--wline', '#f2f8ef'),  /* 驱动波形（左耳） */
+    resp: cssVar('--resp', '#86d9b8'),    /* 响应波形（右耳，仅复盘） */
+    amber: cssVar('--amber', '#d9a441'),
+    amber2: cssVar('--amber2', '#f0c46a'),
+    fail: cssVar('--fail', '#e08a5a'),
+    mono: cssVar('--mono', 'monospace')
+  };
+
+  var state = {
+    level: 0,
+    freq: 220,
+    q: 8,
+    locked: null,
+    audio: { state: 'off', msg: '未启动', attempted: false },
+    playing: false,
+    trial: { submitted: false },
+    verdict: null,
+    ledger: [],
+    storage: 'local',
+    writeOk: true,
+    readMatch: true,
+    reveal: false,
+    dragging: false,
+    inertiaTimer: null,
+    pumpTimer: null,
+    rafId: null,
+    reduced: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+    selfCheck: { pass: 0, fail: 0, lines: [] }
+  };
+
+  /* ------------------------------------------------------------ 小工具 */
+  function setText(id, s) { var el = $(id); if (el) el.textContent = s; }
+  function clamp(x, lo, hi) { return x < lo ? lo : (x > hi ? hi : x); }
+  function logT(f, lo, hi) { return Math.log(f / lo) / Math.log(hi / lo); }
+  function fromLogT(t, lo, hi) { return lo * Math.exp(t * Math.log(hi / lo)); }
+
+  /* ------------------------------------------------------------ 旋钮（Pointer Events + 惯性） */
+  /* 连续拖拽：横向/绕圈合成位移映到对数频率域；松手后按最近速度
+     惯性滑行、指数衰减——细调藏在慢滑的尾段里。全程 setTimeout 步进，
+     不占帧循环；断言读数（semantic().freq）不依赖 rAF。 */
+  var DRAG_RANGE = 700;        /* 合成位移多少 px 扫完全程（对数域） */
+  function attachKnob(el, opts) {
+    var lastX = 0, lastY = 0, lastT = 0, vel = 0;
+    function applyDeltaPixels(dpx) {
+      var dLog = dpx / DRAG_RANGE * Math.log(opts.max / opts.min);
+      opts.set(clamp(opts.get() * Math.exp(dLog), opts.min, opts.max));
+    }
+    el.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      stopInertia();
+      state.dragging = true;
+      lastX = e.clientX; lastY = e.clientY; lastT = e.timeStamp || Date.now();
+      vel = 0;
+      if (el.setPointerCapture) { try { el.setPointerCapture(e.pointerId); } catch (err) { /* 无头环境可忽略 */ } }
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (!state.dragging) return;
+      var now = e.timeStamp || Date.now();
+      var dx = e.clientX - lastX, dy = e.clientY - lastY;
+      var dpx = dx - dy;             /* 向右或向上 = 增大 */
+      lastX = e.clientX; lastY = e.clientY;
+      var dt = Math.max(1, now - lastT);
+      lastT = now;
+      applyDeltaPixels(dpx);
+      vel = 0.7 * vel + 0.3 * (dpx / dt);
+    });
+    function endDrag() {
+      if (!state.dragging) return;
+      state.dragging = false;
+      startInertia(vel);
+    }
+    el.addEventListener('pointerup', endDrag);
+    el.addEventListener('pointercancel', endDrag);
+    el.addEventListener('keydown', function (e) {
+      var step = e.shiftKey ? 10 : 1;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { stopInertia(); opts.nudge(+step); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { stopInertia(); opts.nudge(-step); e.preventDefault(); }
+    });
+    function startInertia(v) {
+      stopInertia();
+      if (!isFinite(v) || Math.abs(v) < 0.02) return;
+      var steps = 0;
+      function inertiaStep() {
+        var dpx = vel * 16;
+        applyDeltaPixels(dpx);
+        vel *= 0.94;
+        steps += 1;
+        if (Math.abs(vel) >= 0.02 && steps < 90) state.inertiaTimer = setTimeout(inertiaStep, 16);
+        else state.inertiaTimer = null;
+      }
+      state.inertiaTimer = setTimeout(inertiaStep, 16);
+    }
+  }
+  function stopInertia() {
+    if (state.inertiaTimer) { clearTimeout(state.inertiaTimer); state.inertiaTimer = null; }
+  }
+
+  function setFrequency(f, opts) {
+    var v = clamp(+f, CANON.fMin, CANON.fMax);
+    if (!isFinite(v)) return state.freq;
+    state.freq = v;
+    if (rtVoice) { try { rtVoice.setFrequency(v); } catch (e) { /* 引擎只接受有限值 */ } }
+    paintKnob($('freqKnob'), $('knobMark'), logT(v, CANON.fMin, CANON.fMax));
+    var el = $('freqKnob');
+    el.setAttribute('aria-valuenow', C.fmtFixed(v, 1));
+    el.setAttribute('aria-valuetext', C.fmtFixed(v, 1) + ' 赫兹');
+    setText('freqOut', C.fmtFixed(v, 1) + ' Hz');
+    setText('ro-freq', C.fmtFixed(v, 1) + ' Hz');
+    return state.freq;
+  }
+  function setQ(q) {
+    var v = clamp(+q, RULES.qKnobMin, RULES.qKnobMax);
+    if (!isFinite(v)) return state.q;
+    state.q = v;
+    paintKnob($('qKnob'), $('qKnobMark'), logT(v, RULES.qKnobMin, RULES.qKnobMax));
+    var el = $('qKnob');
+    el.setAttribute('aria-valuenow', C.fmtFixed(v, 1));
+    el.setAttribute('aria-valuetext', '品质因数 ' + C.fmtFixed(v, 1));
+    setText('qOut', C.fmtFixed(v, 1));
+    return state.q;
+  }
+  function paintKnob(knobEl, markEl, t) {
+    if (!markEl) return;
+    var ang = -135 + 270 * clamp(t, 0, 1);
+    markEl.style.transform = 'translate(-50%, 0) rotate(' + C.fmtFixed(ang, 2) + 'deg)';
+  }
+
+  /* ------------------------------------------------------------ 音频引擎（实时） */
+  var audioCtx = null, master = null, rtVoice = null, nextTime = 0;
+  var schedQueue = [];        /* {t0, drive, resp} —— 供示波屏取当前可闻段 */
+
+  function audioInfo() {
+    return { state: state.audio.state, msg: state.audio.msg, attempted: state.audio.attempted };
+  }
+  function degrade(msg) {
+    state.audio.state = 'degraded';
+    state.audio.msg = msg;
+    setText('pv-console', msg);
+    setText('scopeStatus', '无声降级 · 示波屏保持待命骨架');
+  }
+  function startPump() {
+    state.playing = true;
+    nextTime = audioCtx.currentTime + 0.08;
+    pump();
+  }
+  function pump() {
+    if (!state.playing || !audioCtx) return;
+    var CHUNK = CANON.chunk;
+    while (nextTime < audioCtx.currentTime + 0.30) {
+      var seg = rtVoice.renderChunk(CHUNK);
+      var buf = audioCtx.createBuffer(2, CHUNK, CANON.fs);
+      var Lc = buf.getChannelData(0), Rc = buf.getChannelData(1);
+      for (var i = 0; i < CHUNK; i++) {
+        var dl = seg.drive[i] * CANON.playDrive;
+        var rr = seg.resp[i];
+        Lc[i] = dl > CANON.clip ? CANON.clip : (dl < -CANON.clip ? -CANON.clip : dl);
+        Rc[i] = rr > CANON.clip ? CANON.clip : (rr < -CANON.clip ? -CANON.clip : rr);
+      }
+      schedQueue.push({ t0: nextTime, drive: Float32Array.from(seg.drive), resp: Float32Array.from(seg.resp) });
+      if (schedQueue.length > 8) schedQueue.shift();
+      var src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(master);
+      src.start(nextTime);
+      nextTime += CHUNK / CANON.fs;
+    }
+    drawScope();
+    state.pumpTimer = setTimeout(pump, 60);
+  }
+  function startAudio() {
+    state.audio.attempted = true;
+    if (state.audio.state === 'running') return Promise.resolve(audioInfo());
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) {
+      degrade('这个浏览器不支持 Web Audio；判读轮会记为无声轮，示波与复盘仍可用。');
+      refreshAll();
+      return Promise.resolve(audioInfo());
+    }
+    try {
+      if (!audioCtx || audioCtx.state === 'closed') audioCtx = new AC();
+      if (!master) {
+        master = audioCtx.createGain();
+        master.gain.value = 0.9;
+        master.connect(audioCtx.destination);
+      }
+    } catch (e) {
+      degrade('浏览器拒绝创建音频通道；判读轮会记为无声轮。');
+      refreshAll();
+      return Promise.resolve(audioInfo());
+    }
+    var p = Promise.resolve();
+    if (audioCtx.state === 'suspended' && audioCtx.resume) {
+      p = audioCtx.resume().catch(function () { /* 无手势/无设备：走降级 */ });
+    }
+    var finalize = function () {
+      if (audioCtx && audioCtx.state === 'running') {
+        state.audio.state = 'running';
+        state.audio.msg = '双声道驱动中（左耳驱动力 · 右耳振子响应）';
+        setText('pv-console', state.audio.msg);
+        setText('scopeStatus', '驱动中 · 屏上只有驱动力（零信息泄漏）');
+        if (!rtVoice) rtVoice = C.createVoice({ fs: CANON.fs, level: state.level });
+        rtVoice.setFrequency(state.freq);
+        startPump();
+      } else {
+        degrade('音频通道未获授权或没有输出设备；判读轮会记为无声轮。');
+      }
+      refreshAll();
+      return audioInfo();
+    };
+    return Promise.race([
+      p.then(finalize, finalize),
+      new Promise(function (res) { setTimeout(function () { res(finalize()); }, 700); })
+    ]);
+  }
+  function stopAudio() {
+    state.playing = false;
+    if (state.pumpTimer) { clearTimeout(state.pumpTimer); state.pumpTimer = null; }
+    schedQueue.length = 0;
+    state.audio.state = 'off';
+    state.audio.msg = '已停止（可重新启动）';
+    setText('pv-console', state.audio.msg);
+    setText('scopeStatus', '待命 · 余辉已就位');
+    refreshAll();
+  }
+
+  /* ------------------------------------------------------------ 余辉示波屏 */
+  var scopeCv = $('scopeCanvas'), sctx = scopeCv.getContext('2d');
+  var curveCv = $('curveCanvas'), cctx = null;
+
+  function scopeGrid() {
+    var W = scopeCv.width, H = scopeCv.height;
+    sctx.strokeStyle = PAL.grid;
+    sctx.lineWidth = 1;
+    for (var x = 0; x <= W; x += 60) {
+      sctx.beginPath(); sctx.moveTo(x + 0.5, 0); sctx.lineTo(x + 0.5, H); sctx.stroke();
+    }
+    for (var y = 0; y <= H; y += 60) {
+      sctx.beginPath(); sctx.moveTo(0, y + 0.5); sctx.lineTo(W, y + 0.5); sctx.stroke();
+    }
+    sctx.strokeStyle = PAL.dim;
+    sctx.beginPath(); sctx.moveTo(0, H / 2 + 0.5); sctx.lineTo(W, H / 2 + 0.5); sctx.stroke();
+  }
+  function drawScopeStatic() {
+    var W = scopeCv.width, H = scopeCv.height;
+    sctx.fillStyle = PAL.bg3;
+    sctx.fillRect(0, 0, W, H);
+    scopeGrid();
+    /* 静帧骨架：一条平直的待命基线 + 标注（无 rAF 的环境也保证画布非空） */
+    sctx.strokeStyle = PAL.drive;
+    sctx.lineWidth = 1.4;
+    sctx.beginPath();
+    sctx.moveTo(0, H / 2);
+    sctx.lineTo(W, H / 2);
+    sctx.stroke();
+    sctx.fillStyle = PAL.dim;
+    sctx.font = '12px ' + PAL.mono;
+    sctx.fillText('待命 · 按下「开始驱动」后左耳的驱动力从这里走过', 14, 22);
+    sctx.fillStyle = PAL.amber;
+    sctx.fillText('DRIVE', W - 62, 22);
+  }
+  /* 当前可闻段：取调度队列里时间戳罩住此刻的那一段 */
+  function activeSegment() {
+    if (!audioCtx || !schedQueue.length) return null;
+    var now = audioCtx.currentTime;
+    var best = null;
+    for (var i = 0; i < schedQueue.length; i++) {
+      var s = schedQueue[i];
+      if (s.t0 <= now + 0.03) best = s;
+    }
+    return best;
+  }
+  function trace(ctx, W, H, arr, color, gain) {
+    var n = arr.length;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (var i = 0; i < n; i++) {
+      var y = H / 2 - arr[i] * gain * (H / 2 - 8);
+      if (i === 0) ctx.moveTo(0, y); else ctx.lineTo(i / (n - 1) * W, y);
+    }
+    ctx.stroke();
+  }
+  function drawScope() {
+    var W = scopeCv.width, H = scopeCv.height;
+    /* 余辉 = 每帧半透明衰减罩 + lighter 叠加（以身作尺制式） */
+    sctx.globalCompositeOperation = 'source-over';
+    sctx.fillStyle = PAL.fade;
+    sctx.fillRect(0, 0, W, H);
+    var seg = activeSegment();
+    if (!seg) return;
+    sctx.globalCompositeOperation = 'lighter';
+    trace(sctx, W, H, seg.drive, PAL.drive, 0.92);
+    if (state.reveal) trace(sctx, W, H, seg.resp, PAL.resp, 1.6);
+    sctx.globalCompositeOperation = 'source-over';
+  }
+  function scopeFrame() {
+    drawScope();
+    state.rafId = requestAnimationFrame(scopeFrame);
+  }
+
+  /* ------------------------------------------------------------ 复盘曲线（仅判读后） */
+  function drawCurve() {
+    if (!cctx) cctx = curveCv.getContext('2d');
+    var ctx = cctx, W = curveCv.width, H = curveCv.height;
+    var padL = 46, padR = 16, padT = 20, padB = 34;
+    var iw = W - padL - padR, ih = H - padT - padB;
+    var lv = D.results.levels[state.level];
+    ctx.fillStyle = PAL.bg3;
+    ctx.fillRect(0, 0, W, H);
+    function xp(f) { return padL + (f - CANON.fMin) / (CANON.fMax - CANON.fMin) * iw; }
+    function yp(t) { return padT + (1 - t) * ih; }   /* t ∈ [0,1]，1 = 峰顶 */
+    /* 网格与轴 */
+    ctx.strokeStyle = PAL.grid;
+    ctx.lineWidth = 1;
+    ctx.fillStyle = PAL.dim;
+    ctx.font = '10px ' + PAL.mono;
+    ctx.textAlign = 'center';
+    for (var f = 100; f <= 800; f += 100) {
+      var gx = xp(f);
+      ctx.beginPath(); ctx.moveTo(gx, padT); ctx.lineTo(gx, padT + ih); ctx.stroke();
+      ctx.fillText(String(f), gx, H - padB + 14);
+    }
+    for (var g = 0; g <= 4; g++) {
+      var gy = yp(g / 4);
+      ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(padL + iw, gy); ctx.stroke();
+    }
+    ctx.textAlign = 'left';
+    ctx.fillText('归一响应 |A(ω)|/A_max', 6, padT - 6);
+    ctx.textAlign = 'right';
+    ctx.fillText('驱动频率 f（Hz）', padL + iw, H - 6);
+    /* 半高宽带（0.707 水平线 + f1..f2 竖带） */
+    ctx.fillStyle = 'rgba(217,164,65,0.14)';
+    ctx.fillRect(xp(lv.f1), padT, xp(lv.f2) - xp(lv.f1), ih);
+    ctx.strokeStyle = PAL.amber;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(padL, yp(1 / Math.SQRT2)); ctx.lineTo(padL + iw, yp(1 / Math.SQRT2)); ctx.stroke();
+    ctx.setLineDash([]);
+    /* 归一频响曲线 */
+    ctx.strokeStyle = PAL.resp;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    for (var fi = CANON.fMin; fi <= CANON.fMax; fi += 2) {
+      var t = C.dyn(fi / lv.f0, lv.zeta) / lv.dPeak;
+      var px = xp(fi), py = yp(t);
+      if (fi === CANON.fMin) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    /* 真值峰位（铜金实线）与你的锁峰（白虚线） */
+    ctx.strokeStyle = PAL.amber2;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(xp(lv.fPeak), padT); ctx.lineTo(xp(lv.fPeak), padT + ih); ctx.stroke();
+    if (state.locked != null) {
+      ctx.strokeStyle = PAL.wline;
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(xp(state.locked), padT); ctx.lineTo(xp(state.locked), padT + ih); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.fillStyle = PAL.amber2;
+    ctx.textAlign = 'right';
+    ctx.fillText('真值峰 ' + C.fmtFixed(lv.fPeak, 1) + ' Hz · 半高宽 ' + C.fmtFixed(lv.fwhm, 1) + ' Hz · Q ' + C.fmtFixed(lv.qNum, 2),
+      padL + iw, padT + 12);
+  }
+
+  /* ------------------------------------------------------------ 判读流程 */
+  function lockPeak() {
+    state.locked = state.freq;
+    setText('ro-locked', C.fmtFixed(state.locked, 1) + ' Hz');
+    $('submitBtn').disabled = false;
+    setText('verdictLine', '峰位已锁定在 ' + C.fmtFixed(state.locked, 1) +
+      ' Hz。现在拨下面的 Q 旋钮——凭听感给峰的胖瘦一个数，然后提交。');
+    refreshAll();
+    return state.locked;
+  }
+  function submitTrial() {
+    if (state.locked == null) {
+      setText('verdictLine', '还没有锁峰——先拖旋钮找到你耳中的峰，按「峰就在这里」。');
+      return null;
+    }
+    var lv = D.results.levels[state.level];
+    var df = Math.abs(state.locked - lv.fPeak);
+    var dfTol = lv.fwhm * RULES.dfPassFactor;
+    var dfPass = df <= dfTol;
+    var qRatio = state.q / lv.qNum;
+    var qPass = qRatio >= RULES.qPassLow && qRatio <= RULES.qPassHigh;
+    var muted = state.audio.state !== 'running';
+    var pass = dfPass && qPass && !muted;
+    state.verdict = {
+      level: state.level, levelKey: lv.key,
+      locked: state.locked, fPeak: lv.fPeak, df: df, dfTol: dfTol, dfPass: dfPass,
+      qGuess: state.q, qNum: lv.qNum, qRatio: qRatio, qPass: qPass,
+      muted: muted, pass: pass, submitted: true
+    };
+    state.trial.submitted = true;
+    /* 记分册 */
+    var entry = {
+      t: new Date().toISOString(),
+      lvl: state.level, key: lv.key,
+      df: df, qg: state.q, qt: lv.qNum,
+      pass: pass, muted: muted
+    };
+    state.ledger.push(entry);
+    while (state.ledger.length > CANON.ledgerCap) state.ledger.shift();
+    saveLedger();
+    /* 读数 */
+    setText('ro-df', C.fmtFixed(df, 1) + ' Hz（容差 ' + C.fmtFixed(dfTol, 1) + '）');
+    setText('ro-dfBand', dfPass ? '正中靶心' : (df <= lv.fwhm / 2 ? '峰坡之上' : (df <= lv.fwhm ? '峰影之侧' : '脱靶')));
+    setText('ro-qratio', C.fmtFixed(qRatio, 2) + '（通过带 [0.75, 1.33]）');
+    setText('ro-qBand', qPass ? (qRatio > 1 ? '略偏瘦' : (qRatio < 1 ? '略偏胖' : '恰如其分')) : (qRatio > 1 ? '听得偏瘦' : '听得偏胖'));
+    setText('pv-verdict', pass ? '听证通过' + (muted ? '（无声轮）' : '') : (muted ? '无声轮 · 不计通过' : '未过'));
+    setText('verdictLine', (muted ? '（无声轮：此轮没有声音，不计入通过数）' : '') +
+      (pass
+        ? '两关都过：峰位偏差 ' + C.fmtFixed(df, 1) + ' Hz ≤ 半高宽的四分之一，Q 听出了 ' + C.fmtFixed(qRatio, 2) + ' 倍。耳朵收下了这份峰。'
+        : '尚未通关：峰位' + (dfPass ? '已中靶' : '偏差 ' + C.fmtFixed(df, 1) + ' Hz（容差 ' + C.fmtFixed(dfTol, 1) + '）') +
+          '，Q ' + (qPass ? '在通过带内' : '比值 ' + C.fmtFixed(qRatio, 2) + ' 超出 [0.75, 1.33]') + '。复盘已揭示真值，再听一轮。'));
+    /* 复盘揭示 */
+    state.reveal = true;
+    $('revealWrap').hidden = false;
+    drawCurve();
+    setText('ro-revealNote', lv.key + '档真值：峰 ' + C.fmtFixed(lv.fPeak, 1) + ' Hz · 半高宽 ' +
+      C.fmtFixed(lv.fwhm, 2) + ' Hz · Q ' + C.fmtFixed(lv.qNum, 2) + '（经典 1/(2ζ) = ' + C.fmtFixed(lv.qTheory, 2) +
+      '）；你锁在 ' + C.fmtFixed(state.locked, 1) + ' Hz、Q 估计 ' + C.fmtFixed(state.q, 1) + '。');
+    $('againBtn').disabled = false;
+    $('submitBtn').disabled = true;
+    $('lockBtn').disabled = true;
+    refreshLedger();
+    refreshAll();
+    return state.verdict;
+  }
+  function resetTrial() {
+    state.locked = null;
+    state.verdict = null;
+    state.trial.submitted = false;
+    state.reveal = false;
+    $('revealWrap').hidden = true;
+    setText('ro-locked', '尚未锁定');
+    setText('ro-df', '—');
+    setText('ro-dfBand', '待提交');
+    setText('ro-qratio', '—');
+    setText('ro-qBand', '待提交');
+    setText('pv-verdict', '未提交');
+    setText('verdictLine', '新的一轮：扫频、锁峰、拨 Q、提交。');
+    $('lockBtn').disabled = !state.audio.attempted;
+    $('submitBtn').disabled = true;
+    $('againBtn').disabled = true;
+    refreshAll();
+  }
+
+  /* ------------------------------------------------------------ 记分册 */
+  function loadLedger() {
+    try {
+      var raw = window.localStorage.getItem(CANON.storeKey);
+      if (!raw) { state.storage = 'local'; return; }
+      var v = JSON.parse(raw);
+      if (Array.isArray(v)) state.ledger = v;
+      state.storage = 'local';
+    } catch (e) {
+      state.storage = 'memory';   /* 隐私模式/禁用：降级为内存账本 */
+    }
+  }
+  function saveLedger() {
+    state.writeOk = false;
+    try {
+      window.localStorage.setItem(CANON.storeKey, JSON.stringify(state.ledger));
+      state.writeOk = true;
+      var back = JSON.parse(window.localStorage.getItem(CANON.storeKey));
+      state.readMatch = Array.isArray(back) && back.length === state.ledger.length &&
+        JSON.stringify(back[back.length - 1]) === JSON.stringify(state.ledger[state.ledger.length - 1]);
+    } catch (e) {
+      state.storage = 'memory';
+      state.readMatch = state.ledger.length === 0 || true;   /* 内存账本天然一致 */
+    }
+  }
+  function clearLedger() {
+    state.ledger = [];
+    try { window.localStorage.removeItem(CANON.storeKey); } catch (e) { /* 内存降级下无需清理 */ }
+    refreshLedger();
+    setText('verdictLine', '记分册已清空（下一轮从零计起）。');
+  }
+  function refreshLedger() {
+    var src = state.storage === 'local' ? '本机 localStorage（跨会话）' : '内存降级（仅本会话）';
+    if (!state.writeOk) src += ' · 本轮写入被拒';
+    setText('ro-ledSource', src);
+    setText('ro-ledCount', C.fmtInt(state.ledger.length) + ' 轮');
+    var passBy = [0, 0, 0], best = [null, null, null];
+    for (var i = 0; i < state.ledger.length; i++) {
+      var e = state.ledger[i];
+      if (e.lvl >= 0 && e.lvl < 3) {
+        if (e.pass && !e.muted) passBy[e.lvl] += 1;
+        if (!e.muted && (best[e.lvl] == null || e.df < best[e.lvl])) best[e.lvl] = e.df;
+      }
+    }
+    setText('ro-ledPass', '甲 ' + C.fmtInt(passBy[0]) + ' · 乙 ' + C.fmtInt(passBy[1]) + ' · 丙 ' + C.fmtInt(passBy[2]));
+    function b(x) { return x == null ? '—' : C.fmtFixed(x, 1) + ' Hz'; }
+    setText('ro-ledBest', '甲 ' + b(best[0]) + ' · 乙 ' + b(best[1]) + ' · 丙 ' + b(best[2]));
+    var last = state.ledger[state.ledger.length - 1];
+    setText('ro-ledLast', last
+      ? last.key + '档 Δf ' + C.fmtFixed(last.df, 1) + ' Hz · Q 比 ' + C.fmtFixed(last.qg / last.qt, 2) +
+        ' · ' + (last.muted ? '无声轮' : (last.pass ? '通过' : '未过')) + ' · ' + String(last.t).slice(0, 10)
+      : '—');
+  }
+
+  /* ------------------------------------------------------------ 档位切换 */
+  var LEVEL_STATES = ['甲', '乙', '丙'];
+  function setLevel(i) {
+    if (!(i >= 0 && i < CANON.levels.length)) return state.level;
+    stopInertia();
+    state.level = i;
+    var frozen = D.results.levels[i];
+    LEVEL_STATES.forEach(function (k, idx) {
+      $('lvl' + idx).setAttribute('aria-pressed', idx === i ? 'true' : 'false');
+    });
+    setText('levelLede', frozen.name + '：' + CANON.levels[i].hint);
+    /* 档位换了就是一台新振子（新 ζ、新 f₀）：实时引擎整只重建，
+       状态从静止开始——旧档的振铃不许泄漏进新档。 */
+    if (rtVoice) {
+      rtVoice = C.createVoice({ fs: CANON.fs, level: i });
+      rtVoice.setFrequency(state.freq);
+    }
+    resetTrial();
+    return state.level;
+  }
+
+  /* ------------------------------------------------------------ 三基石行 */
+  function fillLaws() {
+    var lv = D.results.levels;
+    var rows = [
+      ['三档峰位（闭式）', '甲 ' + C.fmtFixed(lv[0].fPeak, 1) + ' Hz · 乙 ' + C.fmtFixed(lv[1].fPeak, 1) +
+        ' Hz · 丙 ' + C.fmtFixed(lv[2].fPeak, 1) + ' Hz（f₀√(1−2ζ²)，数值半功率复核）'],
+      ['三档半高宽', '甲 ' + C.fmtFixed(lv[0].fwhm, 1) + ' Hz · 乙 ' + C.fmtFixed(lv[1].fwhm, 1) +
+        ' Hz · 丙 ' + C.fmtFixed(lv[2].fwhm, 2) + ' Hz（A²=A²_max/2 的两真根，各 80 轮二分）'],
+      ['三档品质因数 Q', '甲 ' + C.fmtFixed(lv[0].qNum, 2) + ' · 乙 ' + C.fmtFixed(lv[1].qNum, 2) +
+        ' · 丙 ' + C.fmtFixed(lv[2].qNum, 2) + '（Q = f峰/Δf；经典 1/(2ζ) 为 ' +
+        C.fmtFixed(lv[0].qTheory, 2) + '/' + C.fmtFixed(lv[1].qTheory, 2) + '/' + C.fmtFixed(lv[2].qTheory, 2) + '）'],
+      ['稳态对账', D.analysis.offline.renders + ' 次渲染 × ' + C.fmtInt(D.analysis.offline.samples) +
+        ' 样本 · 幅值误差 ≤ ' + C.fmtFixed(D.analysis.offline.worstAmpErr * 100, 3) + '%（容差 2%）· 相位 ≤ ' +
+        C.fmtFixed(D.analysis.offline.worstPhaseErr, 4) + ' rad（容差 0.02）· 离峰选择性 ' +
+        C.fmtFixed(D.analysis.offline.selectivity, 3)],
+      ['分段连续性', '整段 vs 逐块（' + C.fmtInt(D.analysis.continuity.n) + ' 样本）最大差 ' +
+        C.fmtFixed(D.analysis.continuity.maxDiff, 12) + '（容差 1e-9）——你听到的拍是同一条精确解'],
+      ['振铃证据', D.analysis.beat.key + '档 f₀+' + C.fmtFixed(D.analysis.beat.fOffset, 0) + ' Hz 阶跃：激发 ' +
+        C.fmtFixed(D.analysis.beat.excite, 2) + '×稳态 · ' + C.fmtFixed(D.analysis.beat.ringHz, 1) +
+        ' Hz 拍率 · 衰减余量 ' + C.fmtFixed(D.analysis.beat.decay, 3)],
+      ['复现', '标定双跑逐字节一致：' + (D.analysis.reproduction.equal ? '是' : '否（自检会翻红）')]
+    ];
+    var el = $('lawNumbers');
+    el.textContent = '';
+    rows.forEach(function (r) {
+      var dt = document.createElement('dt');
+      var dd = document.createElement('dd');
+      dt.textContent = r[0];
+      dd.textContent = r[1];
+      el.appendChild(dt);
+      el.appendChild(dd);
+    });
+    setText('calStamp', '（' + String(D.results.meta.generatedAt).slice(0, 10) + ' · Node ' + D.results.meta.node + '）');
+  }
+
+  /* ------------------------------------------------------------ 页面自检 */
+  function refreshSelfCheck() {
+    var lines = [], fail = 0, pass = 0;
+    function check(name, ok, detail) {
+      if (ok) { pass += 1; lines.push('✓ ' + name); }
+      else { fail += 1; lines.push('✗ ' + name + (detail ? '：' + detail : '')); }
+    }
+    var canonOk = ['fMin', 'fMax', 'fs', 'chunk', 'driveAmp', 'normLevel', 'storeKey', 'ledgerCap']
+      .every(function (k2) { return D.results.canon[k2] === CANON[k2]; }) &&
+      CANON.levels.every(function (l, i) {
+        return D.results.canon.levels[i].zeta === l.zeta && D.results.canon.levels[i].f0 === l.f0;
+      });
+    check('CANON 与标定一致', canonOk);
+    var frozenOk = D.results.levels.every(function (lv, i) {
+      var hp = C.halfPower(lv.zeta, lv.f0);
+      return hp.fPeak === lv.fPeak && hp.fwhm === lv.fwhm && hp.qNum === lv.qNum;
+    });
+    check('冻结峰位/半高宽/Q 可逐位复算', frozenOk);
+    var rulesOk = ['dfPassFactor', 'qPassLow', 'qPassHigh', 'qKnobMin', 'qKnobMax']
+      .every(function (k3) { return D.results.rules[k3] === RULES[k3]; });
+    check('判读规则与标定一致', rulesOk);
+    /* 分段连续性快速抽查：512 单段 vs 2×256（renderChunk 返回复用缓冲，
+       每段必须立刻拷走——否则第二段会把第一段的样本覆盖掉） */
+    var va = C.createVoice({ fs: CANON.fs, level: state.level });
+    va.setFrequency(300);
+    var whole = Float64Array.from(va.renderChunk(512).resp);
+    var vb = C.createVoice({ fs: CANON.fs, level: state.level });
+    vb.setFrequency(300);
+    var p1 = Float64Array.from(vb.renderChunk(256).resp);
+    var p2 = Float64Array.from(vb.renderChunk(256).resp);
+    var md = 0;
+    for (var i = 0; i < 256; i++) {
+      var d1 = Math.abs(whole[i] - p1[i]); if (d1 > md) md = d1;
+      var d2 = Math.abs(whole[256 + i] - p2[i]); if (d2 > md) md = d2;
+    }
+    check('分段连续性（页内抽查）', md <= VERIFY.continuityTol, 'maxDiff ' + md);
+    check('记分册读写', state.storage === 'memory' || (state.writeOk && state.readMatch),
+      'storage=' + state.storage);
+    state.selfCheck = { pass: pass, fail: fail, lines: lines };
+    var el = $('selfCheckLine');
+    if (el) el.textContent = fail === 0
+      ? '自检：' + pass + ' 项断言全部通过（结构与语义同步在跑）'
+      : '自检失败 ' + fail + ' 项：' + lines.filter(function (l) { return l.charAt(0) === '✗'; }).join(' ／ ');
+  }
+
+  /* ------------------------------------------------------------ 读数刷新 */
+  function refreshAll() {
+    refreshSelfCheck();
+    refreshLedger();
+    $('lockBtn').disabled = !(state.audio.attempted && state.locked == null && !state.trial.submitted);
+    $('submitBtn').disabled = !(state.locked != null && !state.trial.submitted);
+    $('againBtn').disabled = !state.trial.submitted;
+    $('audioBtn').setAttribute('aria-pressed', state.audio.state === 'running' ? 'true' : 'false');
+    setText('audioBtn', state.audio.state === 'running' ? '停止驱动' : '开始驱动');
+  }
+
+  /* ------------------------------------------------------------ 通用体检量具 */
+  function measureTouch() {
+    var smallCtrl = [], ctrl44 = [], smallSlider = [], count = 0;
+    var sel = 'button, input[type=checkbox], input[type=radio], select, [role=button], [role=slider], summary';
+    var els = document.querySelectorAll(sel);
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.closest && el.closest('[aria-hidden="true"]')) continue;
+      var r = el.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) continue;
+      count += 1;
+      var minSide = Math.min(r.width, r.height);
+      if (minSide < VERIFY.touchWideMin) {
+        smallCtrl.push({ tag: el.tagName.toLowerCase(), id: el.id || '', w: Math.round(r.width), h: Math.round(r.height) });
+      }
+      if (minSide < VERIFY.touchNarrowMin) {
+        ctrl44.push({ tag: el.tagName.toLowerCase(), id: el.id || '', w: Math.round(r.width), h: Math.round(r.height) });
+      }
+    }
+    return { count: count, smallCtrl: smallCtrl, ctrl44: ctrl44, smallSlider: smallSlider };
+  }
+  function measureOverflow() {
+    var de = document.documentElement;
+    var clientW = de.clientWidth, innerW = window.innerWidth;
+    var scrollW = Math.max(de.scrollWidth, document.body.scrollWidth);
+    return { scrollW: scrollW, clientW: clientW, innerW: innerW, over: scrollW - Math.max(clientW, innerW) };
+  }
+  function badTextScan() {
+    var bad = [];
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+    var re = /(^|[^A-Za-z0-9_$])(NaN|Infinity|undefined)([^A-Za-z0-9_$]|$)/;
+    while (walker.nextNode()) {
+      var node = walker.currentNode;
+      var t = node.textContent || '';
+      if (re.test(t)) {
+        var el = node.parentElement;
+        var vis = true;
+        while (el) {
+          var cs = window.getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden') { vis = false; break; }
+          el = el.parentElement;
+        }
+        if (vis) bad.push(t.trim().slice(0, 40));
+      }
+    }
+    return bad;
+  }
+  function visibleCanvases() {
+    var out = [];
+    [scopeCv, curveCv].forEach(function (cv) {
+      var cs = window.getComputedStyle(cv);
+      if (cs.display === 'none' || cv.getClientRects().length === 0) return;
+      out.push(cv);
+    });
+    return out;
+  }
+  function canvasSample(cv) {
+    var w = cv.width, h = cv.height;
+    try {
+      var ctx = cv.getContext('2d');
+      var img = ctx.getImageData(0, 0, w, h).data;
+      var colors = {}, n = 0;
+      var sx = Math.max(1, Math.floor(w / 48)), sy = Math.max(1, Math.floor(h / 48));
+      for (var y = 0; y < h; y += sy) {
+        for (var x = 0; x < w; x += sx) {
+          var o = (y * w + x) * 4;
+          var key = img[o] + ',' + img[o + 1] + ',' + img[o + 2] + ',' + img[o + 3];
+          if (!colors[key]) { colors[key] = 1; n += 1; }
+        }
+      }
+      return { id: cv.id || '(no-id)', w: w, h: h, colors: n };
+    } catch (e) {
+      return { id: cv.id || '(no-id)', w: w, h: h, colors: -1, note: String(e && e.message) };
+    }
+  }
+
+  /* ------------------------------------------------------------ 离线对账（浏览器腿） */
+  /* OfflineAudioContext 固定采样率离线渲染：评审实测渲染 promise ~15ms、
+     44100 样本、state=closed。渲染后取稳态窗解调，与解析值比容差
+     （VERIFY.offlineAmpTol / offlinePhaseTol）——跨 Chrome 版本无逐位
+     保证，浏览器腿只做容差断言；逐位对账押在 Node 腿（build.js）。 */
+  function offlineCheck() {
+    return new Promise(function (resolve) {
+      var settled = false;
+      function finish(x) { if (!settled) { settled = true; resolve(x); } }
+      var guard = setTimeout(function () { finish({ available: false, reason: 'timeout' }); }, VERIFY.offlineTimeoutMs);
+      try {
+        var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        if (!OAC) { clearTimeout(guard); finish({ available: false, reason: 'no-offline-context' }); return; }
+        var N = Math.round(CANON.offlineDur * CANON.fs);
+        var jobs = [];
+        D.results.levels.forEach(function (lv, idx) { jobs.push({ idx: idx, f: lv.fPeak, off: false }); });
+        jobs.push({ idx: 1, f: D.results.levels[1].fPeak * CANON.offPeakFactor, off: true });
+        var got = {};
+        var done = 0;
+        function assembled() {
+          var renders = [], worst = { amp: 0, phase: 0, driveAmp: 0, drivePhase: 0 };
+          var selectivity = 1;
+          var onAmp1 = got['on-1'] ? got['on-1'].amp : 0;
+          jobs.forEach(function (job) {
+            var r = got[job.off ? 'off-1' : ('on-' + job.idx)];
+            if (!r) return;
+            renders.push({
+              idx: job.idx, f: job.f, off: job.off,
+              amp: r.amp, expectAmp: r.expectAmp, ampErr: r.ampErr,
+              phase: r.phase, expectPhase: r.expectPhase, phaseErr: r.phaseErr,
+              driveAmp: r.driveAmp, driveAmpErr: r.driveAmpErr, drivePhaseErr: r.drivePhaseErr,
+              state: r.state, samples: r.samples
+            });
+            if (!job.off) {
+              if (r.ampErr > worst.amp) worst.amp = r.ampErr;
+              if (r.phaseErr > worst.phase) worst.phase = r.phaseErr;
+              if (r.driveAmpErr > worst.driveAmp) worst.driveAmp = r.driveAmpErr;
+              if (r.drivePhaseErr > worst.drivePhase) worst.drivePhase = r.drivePhaseErr;
+            } else {
+              selectivity = onAmp1 > 0 ? r.amp / onAmp1 : 1;
+            }
+          });
+          clearTimeout(guard);
+          finish({
+            available: true,
+            dur: CANON.offlineDur, samples: N, state: got['on-0'] ? got['on-0'].state : 'unknown',
+            renders: renders,
+            worstAmpErr: worst.amp, worstPhaseErr: worst.phase,
+            worstDriveAmpErr: worst.driveAmp, worstDrivePhaseErr: worst.drivePhase,
+            selectivity: selectivity,
+            tolAmp: VERIFY.offlineAmpTol, tolPhase: VERIFY.offlinePhaseTol,
+            selectivityMax: VERIFY.selectivityMax
+          });
+        }
+        jobs.forEach(function (job) {
+          try {
+            var octx = new OAC(2, N, CANON.fs);
+            var voice = C.createVoice({ fs: CANON.fs, level: job.idx });
+            voice.setFrequency(job.f);
+            var seg = voice.renderChunk(N);
+            var buf = octx.createBuffer(2, N, CANON.fs);
+            var Lc = buf.getChannelData(0), Rc = buf.getChannelData(1);
+            for (var i = 0; i < N; i++) { Lc[i] = seg.drive[i]; Rc[i] = seg.resp[i]; }
+            var src = octx.createBufferSource();
+            src.buffer = buf;
+            src.connect(octx.destination);
+            src.start(0);
+            var rr = job.f / D.results.levels[job.idx].f0;
+            var expectAmp0 = C.dyn(rr, D.results.levels[job.idx].zeta) * voice.scale;
+            var expectPhase0 = C.phaseLag(rr, D.results.levels[job.idx].zeta);
+            octx.startRendering().then(function (rendered) {
+              var Ld = rendered.getChannelData(0), Rd = rendered.getChannelData(1);
+              var dR = C.demodulate(CANON.fs, job.f, Rd, CANON.offlineWinA, CANON.offlineWinB);
+              var dL = C.demodulate(CANON.fs, job.f, Ld, CANON.offlineWinA, CANON.offlineWinB);
+              got[job.off ? 'off-1' : ('on-' + job.idx)] = {
+                amp: dR.amp, expectAmp: expectAmp0,
+                ampErr: Math.abs(dR.amp - expectAmp0) / expectAmp0,
+                phase: dR.phase, expectPhase: expectPhase0,
+                phaseErr: Math.abs(dR.phase - expectPhase0),
+                driveAmp: dL.amp, driveAmpErr: Math.abs(dL.amp - CANON.driveAmp),
+                drivePhaseErr: Math.abs(dL.phase),
+                state: octx.state, samples: Rd.length
+              };
+              done += 1;
+              if (done === jobs.length) assembled();
+            }).catch(function (e) {
+              clearTimeout(guard);
+              finish({ available: false, reason: 'render: ' + String((e && e.message) || e) });
+            });
+          } catch (e2) {
+            clearTimeout(guard);
+            finish({ available: false, reason: 'setup: ' + String((e2 && e2.message) || e2) });
+          }
+        });
+      } catch (e3) {
+        clearTimeout(guard);
+        finish({ available: false, reason: String((e3 && e3.message) || e3) });
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------ 探针 */
+  function semantic() {
+    var lv = D.results.levels[state.level];
+    return {
+      drivenBy: 'pointer+setTimeout',
+      level: state.level,
+      levelKey: lv.key,
+      freq: state.freq,
+      qGuess: state.q,
+      locked: state.locked,
+      audio: audioInfo(),
+      playing: state.playing,
+      trial: { locked: state.locked != null, submitted: state.trial.submitted },
+      verdict: state.verdict,
+      ledger: {
+        storage: state.storage,
+        count: state.ledger.length,
+        writeOk: state.writeOk,
+        readMatch: state.readMatch,
+        last: state.ledger.length ? state.ledger[state.ledger.length - 1] : null
+      },
+      reveal: state.reveal,
+      badText: badTextScan(),
+      selfCheck: state.selfCheck
+    };
+  }
+
+  window.__probe = {
+    counts: function () {
+      var pressed = [];
+      ['lvl0', 'lvl1', 'lvl2', 'audioBtn'].forEach(function (id) {
+        pressed.push($(id).getAttribute('aria-pressed'));
+      });
+      var bar = document.querySelector('.levelbar');
+      return {
+        title: document.title,
+        canvases: visibleCanvases().length,
+        buttons: document.querySelectorAll('button').length,
+        sliders: document.querySelectorAll('[role=slider]').length,
+        ranges: document.querySelectorAll('input[type=range]').length,
+        outputs: document.querySelectorAll('output').length,
+        pressed: pressed,
+        pressedTrue: pressed.filter(function (p) { return p === 'true'; }).length,
+        groupAria: bar ? bar.getAttribute('aria-label') : null,
+        panels: document.querySelectorAll('section.panel').length,
+        textLen: (document.body.innerText || '').replace(/\s+/g, '').length
+      };
+    },
+    semantic: semantic,
+    bounds: function () { return VERIFY; },
+    touch: measureTouch,
+    overflow: measureOverflow,
+    canvases: function () { return visibleCanvases().map(canvasSample); },
+    setLevel: function (i) { return setLevel(+i || 0); },
+    setFrequency: function (f) { return setFrequency(+f); },
+    setQ: function (q) { return setQ(+q); },
+    startAudio: function () { return startAudio(); },
+    stopAudio: function () { stopAudio(); return audioInfo(); },
+    lockPeak: function () { return lockPeak(); },
+    submitTrial: function () { return submitTrial(); },
+    resetTrial: function () { resetTrial(); return semantic().trial; },
+    clearLedger: function () { clearLedger(); return semantic().ledger; },
+    setReveal: function (open) {
+      state.reveal = !!open;
+      $('revealWrap').hidden = !open;
+      if (open) drawCurve();
+      return state.reveal;
+    },
+    offlineCheck: offlineCheck,
+    audioState: audioInfo,
+    selfcheck: function () { return state.selfCheck; }
+  };
+
+  /* ------------------------------------------------------------ 事件绑定 */
+  $('lvl0').addEventListener('click', function () { setLevel(0); });
+  $('lvl1').addEventListener('click', function () { setLevel(1); });
+  $('lvl2').addEventListener('click', function () { setLevel(2); });
+  $('audioBtn').addEventListener('click', function () {
+    if (state.audio.state === 'running') stopAudio();
+    else startAudio();
+  });
+  $('lockBtn').addEventListener('click', lockPeak);
+  $('submitBtn').addEventListener('click', submitTrial);
+  $('againBtn').addEventListener('click', resetTrial);
+  $('clearBtn').addEventListener('click', clearLedger);
+
+  attachKnob($('freqKnob'), {
+    min: CANON.fMin, max: CANON.fMax,
+    get: function () { return state.freq; },
+    set: function (v) { setFrequency(v); },
+    nudge: function (step) { setFrequency(state.freq + step); }
+  });
+  attachKnob($('qKnob'), {
+    min: RULES.qKnobMin, max: RULES.qKnobMax,
+    get: function () { return state.q; },
+    set: function (v) { setQ(v); },
+    nudge: function (step) { setQ(state.q * Math.exp(step * RULES.qFineStep * Math.log(RULES.qKnobMax / RULES.qKnobMin))); }
+  });
+
+  /* ------------------------------------------------------------ 启动 */
+  function boot() {
+    loadLedger();
+    setFrequency(220);
+    setQ(8);
+    setLevel(0);
+    drawScopeStatic();
+    fillLaws();
+    refreshLedger();
+    refreshAll();
+    /* 余辉帧循环：表现层，断言不读它；偏好减动效时不启（慢速重绘走 pump） */
+    if (!state.reduced) scopeFrame();
+    var frozenOk = D.results.levels.every(function (lv, i) {
+      var hp = C.halfPower(lv.zeta, lv.f0);
+      return hp.fPeak === lv.fPeak && hp.fwhm === lv.fwhm && hp.qNum === lv.qNum;
+    });
+    setText('mastState', frozenOk
+      ? '引擎就绪 · 峰位/半高宽/Q 与标定逐位一致 ✓ · 三档阻尼已上座 · 耳机为佳'
+      : '自检失败：冻结峰位复算不一致（见页尾自检行）');
+    window.__ready = true;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+
+</script>
+</body>
+</html>

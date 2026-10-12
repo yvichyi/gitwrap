@@ -2,7 +2,7 @@
 
 **Your year in code.** One command turns your git history into a Spotify-Wrapped-style annual report — numbers, a commit heatmap, streaks, and a personality title. Built to be screenshot and shared.
 
-This repository also includes [57 standalone interactive science experiments](science-collection/README.md), organized into eight themes. Open `science-collection/index.html` locally for the searchable gallery. The repository also includes one [interactive story](interactive-stories/README.md). See the [collection review](science-collection/docs/REVIEW.md) for the improvements and reproducibility limits.
+This repository also includes [76 standalone interactive science experiments](science-collection/README.md), organized into eight themes. Open `science-collection/index.html` locally for the searchable gallery. The repository also includes one [interactive story](interactive-stories/README.md). See the [collection review](science-collection/docs/REVIEW.md) for the improvements and reproducibility limits.
 
 ```text
 YOUR YEAR IN CODE

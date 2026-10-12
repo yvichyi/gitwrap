@@ -1,0 +1,3023 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>半子之重</title>
+<meta name="description" content="组合博弈论：一个局面值多少 —— 从零实现的二进分数、规范化、温度与 Sprague–Grundy。">
+<style>
+/* ============================================================================
+ * cgt/style.css —— 《半子之重》
+ * 浅色纸面。数字等宽，正文无衬线。
+ * 左侧竖排"棋盘"用格子，数轴用刻度 —— 都不借外部字体或图片。
+ * ==========================================================================*/
+
+:root{
+  --bg:#f6f5f2;
+  --panel:#ffffff;
+  --ink:#1c1b19;
+  --ink2:#57534e;
+  --ink3:#8a8279;
+  --line:#ded9d0;
+  --line2:#efece6;
+  --left:#a23b1e;      /* Left / 蓝杆 / 主角 */
+  --right:#1f6f8b;     /* Right / 红杆 */
+  --star:#7c3aed;      /* * 与无偏博弈 */
+  --hot:#b45309;       /* 温度 / 参考线 */
+  --cool:#6b8e23;      /* 冷局面 */
+  --ok:#15803d;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:15px;line-height:1.62;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 20px 80px}
+
+/* ------------------------------------------------------------------ hero */
+.hero{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:20px}
+.hero h1{font-size:34px;line-height:1.2;margin:0 0 6px;letter-spacing:.02em}
+.hero .sub{font-size:15px;color:var(--ink2);margin:0 0 12px}
+.hero .lede{font-size:16px;line-height:1.75;margin:0;max-width:64ch}
+.hero .lede b{color:var(--left)}
+.hero .stamp{margin-top:12px;font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+
+/* ------------------------------------------------------------------ tabs */
+.tabs{
+  display:flex;flex-wrap:wrap;gap:6px;
+  padding:10px 0 14px;margin-bottom:16px;border-bottom:1px solid var(--line);
+}
+.tabs button{
+  font-family:var(--sans);font-size:13px;line-height:1.2;
+  padding:8px 12px;min-height:44px;
+  background:var(--panel);color:var(--ink2);
+  border:1px solid var(--line);border-radius:6px;cursor:pointer;
+  white-space:nowrap;
+}
+.tabs button:hover{border-color:var(--ink3);color:var(--ink)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* ------------------------------------------------------------------ panel */
+.panel{display:none}
+.panel.on{display:block}
+.panel h2{font-size:21px;margin:26px 0 4px;letter-spacing:.01em}
+.panel h2:first-child{margin-top:4px}
+.panel h3{font-size:15px;margin:22px 0 6px;color:var(--ink)}
+.panel p{margin:8px 0;max-width:70ch}
+.panel .note{font-size:13.5px;color:var(--ink2)}
+.panel code{font-family:var(--mono);font-size:13px;background:var(--line2);padding:1px 4px;border-radius:3px}
+.sec-no{
+  display:inline-block;font-family:var(--mono);font-size:12px;color:var(--left);
+  border:1px solid var(--left);border-radius:3px;padding:0 5px;margin-right:8px;vertical-align:2px;
+}
+
+/* ------------------------------------------------------------------ grid */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:14px 0}
+.grid2>div{min-width:0}
+
+/* ------------------------------------------------------------------ bench */
+.bench{
+  display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:20px;
+  align-items:start;margin:16px 0;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;
+}
+.bench>div{min-width:0}
+.ctrls{display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;flex-direction:column;gap:4px}
+.ctrl label{font-size:12.5px;color:var(--ink2)}
+.ctrl .val{font-family:var(--mono);font-size:13px;color:var(--ink)}
+input[type="range"]{width:100%;min-height:44px;accent-color:var(--left)}
+select{
+  font-family:var(--sans);font-size:13.5px;padding:7px 8px;min-height:44px;
+  border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink);
+}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.btnrow button{
+  font-family:var(--sans);font-size:13px;padding:9px 11px;min-height:44px;
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--ink2);
+}
+.btnrow button:hover{border-color:var(--left);color:var(--left)}
+
+/* ------------------------------------------------------------------ readout */
+.ro{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;
+  font-family:var(--mono);font-size:12.5px;color:var(--ink2);
+  background:var(--line2);border-radius:6px;padding:10px 12px;margin-top:4px;
+}
+.ro span{display:block}
+.ro b{color:var(--ink);font-weight:600}
+.ro .k{color:var(--ink3);margin-right:6px}
+.ro .l b{color:var(--left)}
+.ro .r b{color:var(--right)}
+.ro .h b{color:var(--hot)}
+
+/* ------------------------------------------------------------------ chart */
+.chart{margin:10px 0 4px}
+.chart svg{display:block}
+.legend-html{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--ink2);margin:6px 0 2px}
+.legend-html i{display:inline-block;width:16px;height:3px;border-radius:2px;vertical-align:3px;margin-right:5px}
+.legend-html i.sq{height:10px;width:10px;border-radius:2px;vertical-align:1px}
+.bar-fill{display:block}
+
+/* ------------------------------------------------------------------ table */
+.tbl-wrap{max-width:100%;overflow-x:auto;margin:12px 0}
+table.dt{border-collapse:collapse;width:100%;font-size:13px}
+table.dt th,table.dt td{
+  padding:6px 10px;border-bottom:1px solid var(--line);text-align:right;
+  white-space:nowrap;font-family:var(--mono);font-size:12.5px;
+}
+table.dt th{color:var(--ink2);font-weight:600;border-bottom:1.5px solid var(--ink3);font-family:var(--sans);font-size:12.5px}
+table.dt td:first-child,table.dt th:first-child{text-align:left}
+table.dt tr.hi td{background:#fdf3ee}
+table.dt.wrapok td{white-space:normal;overflow-wrap:break-word}
+table.dt.wrapok td:first-child{font-family:var(--sans);font-size:13px}
+table.dt caption{caption-side:top;text-align:left;font-size:12.5px;color:var(--ink3);padding-bottom:6px}
+
+/* ------------------------------------------------------------------ kpi */
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.kpis>div{min-width:0}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:13px 14px}
+.kpi .lab{font-size:12.5px;color:var(--ink2);margin-bottom:4px}
+.kpi .val{font-family:var(--mono);font-size:20px;color:var(--left);line-height:1.25;word-break:break-word}
+.kpi .unit{font-size:11.5px;color:var(--ink3);margin-top:3px}
+.kpi .note{font-size:12px;color:var(--ink2);margin-top:7px;line-height:1.55}
+
+/* ------------------------------------------------------------------ lists */
+ol.clist,ol.blist{margin:8px 0;padding-left:22px}
+ol.clist li,ol.blist li{margin:7px 0;max-width:74ch;line-height:1.66}
+ol.blist li{color:var(--ink2);font-size:14px}
+
+/* ------------------------------------------------------------------ tail */
+.tail{margin-top:36px;border-top:2px solid var(--ink);padding-top:6px}
+.tail h2{font-size:20px;margin:26px 0 6px}
+
+/* ------------------------------------------------------------------ narrow */
+@media (max-width:640px){
+  .wrap{padding:16px 13px 60px}
+  .hero h1{font-size:25px}
+  .hero .lede{font-size:14.5px}
+  .bench{grid-template-columns:minmax(0,1fr)}
+  .grid2{grid-template-columns:minmax(0,1fr)}
+  .kpis{grid-template-columns:minmax(0,1fr)}
+  .tabs button{font-size:12.5px;padding:9px 10px;min-height:44px}
+  .ro{grid-template-columns:minmax(0,1fr)}
+  table.dt th,table.dt td{padding:6px 8px;font-size:11.5px}
+  table.dt{white-space:normal}
+  table.dt td,table.dt th{white-space:normal;overflow-wrap:anywhere}
+  table.dt.num td,table.dt.num th{white-space:nowrap}
+  .btnrow button{min-height:44px}
+  select{min-height:44px}
+  input[type="range"]{min-height:44px}
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>半子之重</h1>
+    <p class="sub">组合博弈 · 一个局面值多少</p>
+    <p class="lede">
+      两个人在一个局面上轮流走，谁走不了谁输。绝大多数棋类靠搜索判断输赢，
+      但有一类局面可以像数字一样<b>加起来</b>：把两个局面并排放，值就是两个值之和。
+      这一页从零实现这套算术——精确的二进分数、支配与绕道、左右停手、温度、Sprague–Grundy——
+      再把 32,766 根 Hackenbush 杆、17 个 Domineering 棋盘、8,191 个逐日构造出来的数
+      全部算一遍，和 OEIS 与文献逐条对账。结论是：<b>值确实存在，但它常常不是数。</b>
+    </p>
+    <div class="stamp" id="stamp"></div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <!-- ══════════════════════════ 壹 · 标尺 ══════════════════════════ -->
+  <section class="panel" id="p-one">
+    <h2><span class="sec-no">壹</span>标尺：什么叫「一个局面值多少」</h2>
+    <p class="note">
+      写一个局面为 <code>{L | R}</code>：L 是 Left 能走到的局面，R 是 Right 能走到的。
+      Left 想要大的值，Right 想要小的值。空局面 <code>{ | }</code> 是 0。
+      一个白送的一步是 <code>{0 | }</code> = 1，反过来是 <code>{ | 0}</code> = −1。
+      下面这张表是本页的<b>标尺</b>：所有别的数字都要和它对齐。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-yard"></div>
+        <div class="legend-html" id="lg-yard">
+          <span><i class="sq" style="background:#a23b1e"></i>数（红）：温度 0，值就是均值</span>
+          <span><i class="sq" style="background:#b45309"></i>开关（橙）：有温度，橙杠画的是"均值 ± 温度"</span>
+          <span><i class="sq" style="background:#7c3aed"></i>无穷小（紫）：温度 0，但不是数</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="yard-sel">挑一个局面</label>
+          <select id="yard-sel"></select>
+        </div>
+        <div class="ro" id="ro-yard"></div>
+      </div>
+    </div>
+    <p class="note" id="yard-note"></p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-yard">
+        <caption>标尺：17 个已知局面的值（形式 / 值 / 均值 / 温度 / 结果 / 生日 / 规模）</caption>
+        <thead><tr><th>局面</th><th>形式</th><th>值</th><th>均值</th><th>温度</th><th>类别</th><th>生日</th><th>规模</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h3>规范化：把写法不同、值相同的局面压成同一个</h3>
+    <p class="note">
+      两个局面「相等」是指：<b>无论和什么局面相加，结果都一样</b>。
+      Conway 的定理说，这只取决于它们的<b>规范形式</b>——同一个值只有一种规范写法。
+      规范化的两步是：消掉被支配的选项、绕过可逆的选项。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-canon"></div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="canon-sel">例子</label>
+          <select id="canon-sel"></select>
+        </div>
+        <div class="btnrow">
+          <button type="button" id="canon-next">下一步</button>
+          <button type="button" id="canon-reset">回到原式</button>
+        </div>
+        <div class="ro" id="ro-canon"></div>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-canon">
+        <caption>每一步丢掉/换掉了什么</caption>
+        <thead><tr><th>步</th><th>当前形式</th><th>消去的左选项</th><th>消去的右选项</th><th>绕过的左选项</th><th>绕过的右选项</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="note" id="canon-note"></p>
+  </section>
+
+  <!-- ══════════════════════════ 贰 · 数 ══════════════════════════ -->
+  <section class="panel" id="p-two">
+    <h2><span class="sec-no">贰</span>数：一天一天造出来</h2>
+    <p class="note">
+      Conway 的构造是<b>按天</b>进行的。第 0 天只有 <code>{ | }</code> = 0。
+      第 1 天可以拿已有局面当选项，造出 −1 和 1。第 2 天造出 −2、−1/2、1/2、2。
+      第 n 天出生的数正好 <code>2ⁿ</code> 个，累计 <code>2ⁿ⁺¹ − 1</code> 个 ——
+      这不是巧合，是每一对相邻数之间恰好插一个新数。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-numline"></div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="num-day">第几天</label>
+          <input type="range" id="num-day" min="0" max="8" step="1" value="3">
+          <span class="val" id="num-day-val">第 3 天</span>
+        </div>
+        <div class="ro" id="ro-num"></div>
+      </div>
+    </div>
+    <div class="legend-html" id="lg-num">
+      <span><i class="sq" style="background:#a23b1e"></i>这一天新出生的数</span>
+      <span><i class="sq" style="background:#ded9d0"></i>之前几天已经出生的数</span>
+    </div>
+    <h3>每天出生多少个</h3>
+    <div class="chart" id="c-born"></div>
+    <div class="legend-html" id="lg-born">
+      <span><i class="sq" style="background:#a23b1e"></i>当天新出生 2ⁿ 个</span>
+      <span><i class="sq" style="background:#8a8279"></i>累计 2ⁿ⁺¹−1 个</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-num">
+        <caption>逐日构造：出生个数、累计、分母最大幂次、绝对值上界</caption>
+        <thead><tr><th>天</th><th>新出生</th><th>应为 2ⁿ</th><th>累计</th><th>应为 2ⁿ⁺¹−1</th><th>分母 2 的最高幂</th><th>最大绝对值</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="note" id="num-note"></p>
+  </section>
+
+  <!-- ══════════════════════════ 叁 · 杆 ══════════════════════════ -->
+  <section class="panel" id="p-three">
+    <h2><span class="sec-no">叁</span>杆：全是数的那些局面</h2>
+    <p class="note">
+      Hackenbush 的杆：一根竖线从地面立起来，每一节涂蓝（Left 能砍）或红（Right 能砍）；
+      砍掉一节，上面悬空的部分一起掉。一根<b>不分叉</b>的杆，无论怎么涂色，值都是数。
+      下面把长度 n 的 2ⁿ 根杆全部建出来、取值、画在数轴上。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-stalk"></div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="stalk-n">杆的长度 n</label>
+          <input type="range" id="stalk-n" min="1" max="10" step="1" value="4">
+          <span class="val" id="stalk-n-val">n = 4</span>
+        </div>
+        <div class="ro" id="ro-stalk"></div>
+      </div>
+    </div>
+    <div class="legend-html" id="lg-stalk">
+      <span><i class="sq" style="background:#a23b1e"></i>这一根杆的值（红点）</span>
+      <span><i class="sq" style="background:#ded9d0"></i>第 n 天出生的数（灰点，应与红点逐列对齐）</span>
+      <span><i style="background:#b45309;height:2px"></i>值 0</span>
+    </div>
+    <h3>恒等式：长度 n 的杆值，恰好是第 n 天出生的那些数</h3>
+    <p class="note">
+      长度 n 有 2ⁿ 根杆，第 n 天出生 2ⁿ 个数。这两个集合相等 —— 一边是"砍杆游戏"，
+      一边是"按天构造的数"，中间没有任何理由让它们一样。下面逐档核对。
+    </p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-ident">
+        <caption>杆值集合 vs 第 n 天出生的数集合（逐档核对）</caption>
+        <thead><tr><th>n</th><th>杆数</th><th>第 n 天新出生的数</th><th>两个集合相等</th><th>杆值（升序）</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="note" id="ident-note"></p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-stalk">
+        <caption>长度 1…14 的杆：多少根、多少是数、多少个不同值</caption>
+        <thead><tr><th>n</th><th>杆数</th><th>是数</th><th>不同值</th><th>最小值</th><th>最大值</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 肆 · 热 ══════════════════════════ -->
+  <section class="panel" id="p-four">
+    <h2><span class="sec-no">肆</span>热：不是数的那一半</h2>
+    <p class="note">
+      最简单的非数局面是 <code>{a | −a}</code>（记作 <b>±a</b>）：Left 能把值推到 a，Right 能推到 −a。
+      它比任何小于 a 的数都大、比任何大于 −a 的数都小，但和 0 又互不支配 —— 这叫<b>模糊</b>。
+      它的均值是 0，<b>温度</b>是 a：温度量的是"谁先走谁占多少便宜"。
+      温度 0 意味着局面对走子顺序无所谓 —— 这时它要么是<b>数</b>，要么是"数加一个星"（<code>{a|a} = a + *</code>，
+      那已经不是开关了）；温度越高，先手优势越大。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-temp"></div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="temp-a">a（即 ±a 的温度）</label>
+          <input type="range" id="temp-a" min="1" max="20" step="1" value="6">
+          <span class="val" id="temp-a-val">a = 6</span>
+        </div>
+        <div class="ro" id="ro-temp"></div>
+      </div>
+    </div>
+    <div class="legend-html" id="lg-temp">
+      <span><i class="sq" style="background:#b45309"></i>实测温度（网格 1/64）</span>
+      <span><i style="background:#a23b1e;height:2px"></i>理论值 = a</span>
+    </div>
+    <h3>温度是怎么量出来的：冷却</h3>
+    <p class="note">
+      每冷却一步，双方都要为"该我走"付 t 的代价：<code>G_t = { G^L_t − t | G^R_t + t }</code>。
+      当 t 小的时候 Left 的停手值大于 Right 的（先手有便宜）；t 一旦涨到温度，两个停手值相等，
+      再涨就反过来了。所以温度就是<b>两条停手曲线相交的那个 t</b>。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-cool"></div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="cool-a">局面 ±a</label>
+          <input type="range" id="cool-a" min="1" max="12" step="1" value="5">
+          <span class="val" id="cool-a-val">±5</span>
+        </div>
+        <div class="ro" id="ro-cool"></div>
+      </div>
+    </div>
+    <div class="legend-html" id="lg-cool">
+      <span><i style="background:#a23b1e"></i>Left 停手值 L(t)</span>
+      <span><i style="background:#1f6f8b"></i>Right 停手值 R(t)</span>
+      <span><i style="background:#b45309;height:2px"></i>交点 = 温度</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-temp">
+        <caption>随机抽 20 个真开关 {a|b}：均值与温度都该等于闭式 (a+b)/2、(a−b)/2</caption>
+        <thead><tr><th>开关</th><th>均值</th><th>应为 (a+b)/2</th><th>温度</th><th>应为 (a−b)/2</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="note" id="temp-note"></p>
+  </section>
+
+  <!-- ══════════════════════════ 伍 · 平局 ══════════════════════════ -->
+  <section class="panel" id="p-five">
+    <h2><span class="sec-no">伍</span>平局：两边走法一样的时候</h2>
+    <p class="note">
+      如果两个玩家的走法规则<b>完全相同</b>（无偏博弈），这套"值是数"的算术就退化了：
+      值被压缩成一个整数 —— Sprague–Grundy 值。它是"能走到哪些值"里最小的非负整数。
+      判断一堆无偏局面的胜负只要一个异或：<code>nim-sum = 0</code> 则先手必输。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-sg"></div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="sg-fam">家族</label>
+          <select id="sg-fam"></select>
+        </div>
+        <div class="ctrl">
+          <label for="sg-n">前多少项</label>
+          <input type="range" id="sg-n" min="8" max="30" step="1" value="20">
+          <span class="val" id="sg-n-val">n = 20</span>
+        </div>
+        <div class="ro" id="ro-sg"></div>
+      </div>
+    </div>
+    <div class="legend-html" id="lg-sg">
+      <span><i class="sq" style="background:#7c3aed"></i>家族的递推公式算出的 SG 值 g(n)</span>
+      <span><i style="background:#b45309;height:2px"></i>独立实现：对具体状态图逐个求 mex（虚线）</span>
+    </div>
+    <h3>定理验证：值判定 vs 穷举极小极大</h3>
+    <p class="note">
+      SG 定理说：一堆无偏局面的胜负，只看 SG 值的异或。<b>这是定理</b>，
+      所以下面这一栏 100% 一致只说明我们的实现没写错，不说明世界怎样。
+      真正的对账是 SG 序列本身 —— Dawson 的 Kayles 要与 OEIS A002187 逐项相同。
+    </p>
+    <div class="grid2">
+      <div class="tbl-wrap">
+        <table class="dt num" id="t-sg">
+          <caption>四个家族的 SG 序列（前 12 项）与外部真值 / 独立实现对账</caption>
+          <thead><tr><th>家族</th><th>前 12 项 SG</th><th>对照</th><th>结果</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="tbl-wrap">
+        <table class="dt num" id="t-sgcheck">
+          <caption>随机抽样：值判定 vs 穷举（含平均状态数）</caption>
+          <thead><tr><th>家族</th><th>样本</th><th>一致</th><th>一致率</th><th>平均状态数</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <p class="note" id="sg-note"></p>
+  </section>
+
+  <!-- ══════════════════════════ 陆 · 猜 ══════════════════════════ -->
+  <section class="panel" id="p-six">
+    <h2><span class="sec-no">陆</span>猜：知道值之后，最容易犯的错</h2>
+    <p class="note">
+      既然值能相加，一个非常自然的想法是：<b>把每个分量的均值加起来，看总和的正负</b>。
+      对全是数的局面这招永远正确。但只要有一个分量不是数，它就开始错 ——
+      错得还很稳定。下面的对照组（所有分量都是数）失效率是 0，这就是"不是样本不够"的证据。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-heur"></div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="heur-k">分量个数 k</label>
+          <input type="range" id="heur-k" min="1" max="6" step="1" value="3">
+          <span class="val" id="heur-k-val">k = 3</span>
+        </div>
+        <div class="ro" id="ro-heur"></div>
+      </div>
+    </div>
+    <div class="legend-html" id="lg-heur">
+      <span><i class="sq" style="background:#a23b1e"></i>随机局面（含非数分量）失效率</span>
+      <span><i class="sq" style="background:#6b8e23"></i>对照：全是数</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-heur">
+        <caption>k = 1…6：失效率与"含热分量"的比例</caption>
+        <thead><tr><th>k</th><th>样本</th><th>失效率</th><th>含热分量</th><th>对照组样本</th><th>对照组失效</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h3>把它放到一个真棋盘上：Domineering</h3>
+    <p class="note">
+      Left 只放<b>竖</b>骨牌，Right 只放<b>横</b>骨牌，放不下就输。
+      棋盘是矩形的，所以左右完全不对称 —— 这是有偏博弈的标准试验场。
+      值算出来之后有个直接用途：<b>挑走法</b>。Left 挑让值最大的那步，Right 挑让值最小的那步。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-dom"></div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="dom-size">棋盘</label>
+          <select id="dom-size"></select>
+        </div>
+        <div class="btnrow">
+          <button type="button" id="dom-left">Left 走一步（竖）</button>
+          <button type="button" id="dom-right">Right 走一步（横）</button>
+          <button type="button" id="dom-reset">重置</button>
+        </div>
+        <div class="ro" id="ro-dom"></div>
+      </div>
+    </div>
+    <div class="legend-html" id="lg-dom">
+      <span><i class="sq" style="background:#a23b1e"></i>Left 放的竖骨牌</span>
+      <span><i class="sq" style="background:#1f6f8b"></i>Right 放的横骨牌</span>
+      <span><i class="sq" style="background:#efece6"></i>空格</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-dom">
+        <caption>17 个棋盘：值 / 类别 / 位置数 / 生日（粗体 = 与文献对账的那 8 个）</caption>
+        <thead><tr><th>棋盘</th><th>值</th><th>类别</th><th>结果</th><th>位置数</th><th>生日</th><th>文献</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="note" id="dom-note"></p>
+
+    <h3>墙：值算得动，还是算不动</h3>
+    <p class="note">
+      值的递归要把每个子局面都建出来。穷举极小极大也建树，但两者代价不一样：
+      值的递归会<b>合并</b>同值的局面（规范化），穷举不会。
+      下面是同一批局面用两种方法各要多少节点。最后一栏是第 3 天的穷举边界。
+    </p>
+    <div class="chart" id="c-cost"></div>
+    <div class="legend-html" id="lg-cost">
+      <span><i class="sq" style="background:#8a8279"></i>穷举极小极大：具体状态数</span>
+      <span><i class="sq" style="background:#a23b1e"></i>值判定：规范化后的节点数</span>
+    </div>
+    <div class="grid2">
+      <div class="tbl-wrap">
+        <table class="dt num" id="t-cost">
+          <caption>代价账本（同一批局面，两种方法）</caption>
+          <thead><tr><th>局面</th><th>穷举状态</th><th>值节点</th><th>生日</th><th>结果</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="tbl-wrap">
+        <table class="dt num" id="t-day3">
+          <caption>第 3 天：穷举到什么程度（文献 1474 个值）</caption>
+          <thead><tr><th>选项数上限</th><th>形式数</th><th>得到几个值</th><th>占 1474 的比例</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <p class="note" id="cost-note"></p>
+  </section>
+
+  <div class="tail">
+    <h2>结论</h2>
+    <ol class="clist" id="l-concl"></ol>
+    <h2>边界：这一页没有做到什么</h2>
+    <ol class="blist" id="l-bound"></ol>
+    <h2>对账表</h2>
+    <div class="tbl-wrap">
+      <table class="dt wrapok" id="t-verify">
+        <thead><tr><th>断言</th><th>期望</th><th>实测</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>/* ============================================================================
+ * cgt/core.js —— 组合博弈论：从零实现的博弈引擎
+ *
+ *   · 二进分数（dyadic rational）精确算术 —— 全部有理数都是 m/2^k
+ *   · 博弈 {L|R} 的规范型：消去被支配的选项 + 绕过可逆的选项
+ *   · 比较（≤）、取负、求和、胜负类（L / R / N / P）
+ *   · 左右停手（left/right stop）与温度（冷却到"变冷"的那一刻）
+ *   · 家族：Hackenbush 杆、Nim、减法游戏、Dawson 的 Kayles、Domineering
+ *   · 独立实现：穷举极小极大（brute force minimax）、mex / Sprague–Grundy
+ *
+ * UMD：Node 与浏览器共用同一份源码。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.CGTCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* =======================================================================
+   * 1 · 二进分数：{m, k} 表示 m / 2^k（k ≥ 0），总是化成最简
+   * =====================================================================*/
+  function dnorm(m, k) {
+    if (m === 0) return { m: 0, k: 0 };
+    while (k < 0) { m *= 2; k += 1; }
+    while (k > 0 && m % 2 === 0) { m /= 2; k -= 1; }
+    return { m: m, k: k };
+  }
+  function dmk(m, k) { return dnorm(m, k); }
+  function dp2(k) { return Math.pow(2, k); }
+  function dadd(a, b) {
+    var k = a.k > b.k ? a.k : b.k;
+    return dnorm(a.m * dp2(k - a.k) + b.m * dp2(k - b.k), k);
+  }
+  function dneg(a) { return { m: -a.m, k: a.k }; }
+  function dsub(a, b) { return dadd(a, dneg(b)); }
+  function dscale2(a, e) { return dnorm(a.m, a.k - e); }        /* a · 2^e */
+  function dcmp(a, b) {
+    var k = a.k > b.k ? a.k : b.k;
+    var x = a.m * dp2(k - a.k), y = b.m * dp2(k - b.k);
+    return x < y ? -1 : (x > y ? 1 : 0);
+  }
+  function deq(a, b) { return a.m === b.m && a.k === b.k; }
+  function disInt(a) { return a.k === 0; }
+  function dsign(a) { return a.m === 0 ? 0 : (a.m > 0 ? 1 : -1); }
+  function dtoNum(a) { return a.m / dp2(a.k); }
+  function dfloor(a) { return Math.floor(a.m / dp2(a.k)); }
+  function dceil(a) { return Math.ceil(a.m / dp2(a.k)); }
+  function dstr(a) {
+    if (a.k === 0) return String(a.m);
+    return a.m + '/' + dp2(a.k);
+  }
+  /* 生日：0 → 0；整数 n → |n|；非整的二进分数 m/2^k → ⌊|x|⌋ + k + 1
+   * （由 Conway 的逐日构造定义：1/2 生于第 2 天，3/4 与 1/4 生于第 3 天） */
+  function dbirthday(a) {
+    if (a.m === 0) return 0;
+    if (a.k === 0) return Math.abs(a.m);
+    return Math.floor(Math.abs(a.m) / dp2(a.k)) + a.k + 1;
+  }
+
+  var DZERO = dmk(0, 0), DONE = dmk(1, 0), DHALF = dmk(1, 1);
+
+  /* 最简数（simplicity rule）：区间 (L, R) 里生日最小的那个数。
+   * L 或 R 为 null 表示 −∞ / +∞。 */
+  function dsimplest01(a, b) {          /* 0 ≤ a < b ≤ 1，区间内没有整数 */
+    if (dcmp(a, DHALF) < 0 && dcmp(b, DHALF) > 0) return DHALF;
+    if (dcmp(b, DHALF) <= 0) return dscale2(dsimplest01(dscale2(a, 1), dscale2(b, 1)), -1);
+    return dadd(DHALF, dscale2(dsimplest01(dsub(dscale2(a, 1), DONE),
+      dsub(dscale2(b, 1), DONE)), -1));
+  }
+  function dsimplestNonNeg(L, R) {      /* 0 ≤ L < R */
+    var m = dfloor(L) + 1;              /* 严格大于 L 的最小整数 */
+    if (dcmp(dmk(m, 0), R) < 0) return dmk(m, 0);
+    var base = dmk(m - 1, 0);
+    return dadd(base, dsimplest01(dsub(L, base), dsub(R, base)));
+  }
+  function dsimplestBetween(L, R) {
+    if (L === null && R === null) return DZERO;
+    if (L === null) {                   /* 小于 R 的最简数 */
+      if (dcmp(R, DZERO) > 0) return DZERO;
+      return R.k === 0 ? dmk(R.m - 1, 0) : dmk(dfloor(R), 0);
+    }
+    if (R === null) {                   /* 大于 L 的最简数 */
+      if (dcmp(L, DZERO) < 0) return DZERO;
+      return L.k === 0 ? dmk(L.m + 1, 0) : dmk(dceil(L), 0);
+    }
+    if (dcmp(L, DZERO) < 0 && dcmp(R, DZERO) > 0) return DZERO;
+    if (dcmp(L, DZERO) >= 0) return dsimplestNonNeg(L, R);
+    return dneg(dsimplestNonNeg(dneg(R), dneg(L)));
+  }
+
+  /* =======================================================================
+   * 2 · 博弈：{L | R}
+   * =====================================================================*/
+  var NODES = [], BYKEY = {}, LE_MEMO = {}, ADD_MEMO = {}, NEG_MEMO = {},
+      STOP_MEMO = {}, EX_MEMO = {}, NUMTAB = {};
+  var STAT = { nodes: 0, le: 0, add: 0, canon: 0 };
+
+  function uniqById(arr) {
+    var seen = {}, out = [];
+    for (var i = 0; i < arr.length; i++) {
+      var a = arr[i];
+      if (a === undefined || a === null) continue;
+      if (!seen[a.id]) { seen[a.id] = 1; out.push(a); }
+    }
+    /* 必须按 id 排序：选项是**集合**，顺序不同不能算两个博弈。
+     * （这是本装置开工时抓到的最值钱的一个 bug：{0|0,*} 与 {0|*,0} 曾有两个键。） */
+    out.sort(function (x, y) { return x.id - y.id; });
+    return out;
+  }
+  function intern(L, R) {                /* 结构内联：同一个结构只有一个对象 */
+    var key = 'L' + L.map(function (x) { return x.id; }).join(',') +
+              'R' + R.map(function (x) { return x.id; }).join(',');
+    var g = BYKEY[key];
+    if (g) return g;
+    g = { id: NODES.length, L: L, R: R, key: key, num: undefined };
+    NODES.push(g); BYKEY[key] = g; STAT.nodes++;
+    return g;
+  }
+
+  function le(G, H) {                    /* G ≤ H */
+    if (G === H) return true;
+    var k = G.id + ':' + H.id;
+    if (k in LE_MEMO) return LE_MEMO[k];
+    STAT.le++;
+    var r = true, i;
+    for (i = 0; i < G.L.length; i++) if (le(H, G.L[i])) { r = false; break; }
+    if (r) for (i = 0; i < H.R.length; i++) if (le(H.R[i], G)) { r = false; break; }
+    LE_MEMO[k] = r;
+    return r;
+  }
+  function ge(G, H) { return le(H, G); }
+  /* 规范型 ⟺ 相等（Conway 唯一性定理），所以规范型的结构键相等就是相等 */
+  function eqG(G, H) { return G.key === H.key; }
+
+  function mkGame(L, R) {                /* 把一组选项化成规范型 */
+    STAT.canon++;
+    var Ls = uniqById(L), Rs = uniqById(R), iter = 0;
+    for (;;) {
+      if (++iter > 400) throw new Error('规范化不收敛');
+      /* ① 消去被支配的选项：Left 偏爱大的，Right 偏爱小的 */
+      var nL = Ls.filter(function (a) {
+        return !Ls.some(function (b) { return b !== a && le(a, b); });
+      });
+      var nR = Rs.filter(function (a) {
+        return !Rs.some(function (b) { return b !== a && le(b, a); });
+      });
+      var changed = (nL.length !== Ls.length) || (nR.length !== Rs.length);
+      Ls = nL; Rs = nR;
+      /* ② 绕过可逆的选项 */
+      var G = intern(Ls, Rs), newL = [], newR = [], i;
+      for (i = 0; i < Ls.length; i++) {
+        var a = Ls[i], rep = null;
+        for (var j = 0; j < a.R.length; j++) if (le(a.R[j], G)) { rep = a.R[j]; break; }
+        if (rep) { changed = true; for (var j2 = 0; j2 < rep.L.length; j2++) newL.push(rep.L[j2]); }
+        else newL.push(a);
+      }
+      for (i = 0; i < Rs.length; i++) {
+        var b = Rs[i], rep2 = null;
+        for (var t = 0; t < b.L.length; t++) if (ge(b.L[t], G)) { rep2 = b.L[t]; break; }
+        if (rep2) { changed = true; for (var t2 = 0; t2 < rep2.R.length; t2++) newR.push(rep2.R[t2]); }
+        else newR.push(b);
+      }
+      Ls = uniqById(newL); Rs = uniqById(newR);
+      if (!changed) break;
+    }
+    return intern(Ls, Rs);
+  }
+
+  var ZERO = mkGame([], []);
+
+  /* 规范化的**分步**版本：和 mkGame 是同一套逻辑，只是把每一步记下来给界面讲。
+   * （不复制算法：两处共用 le / intern，避免"演示用的和真算的不是一回事"。） */
+  function canonSteps(L, R) {
+    var steps = [], Ls = uniqById(L), Rs = uniqById(R), iter = 0;
+    steps.push({ stage: 'raw', L: Ls.slice(), R: Rs.slice(), droppedL: [], droppedR: [], bypL: [], bypR: [] });
+    for (;;) {
+      if (++iter > 400) throw new Error('规范化不收敛');
+      var droppedL = [], droppedR = [];
+      var nL = Ls.filter(function (a) {
+        var d = Ls.some(function (b) { return b !== a && le(a, b); });
+        if (d) droppedL.push(a);
+        return !d;
+      });
+      var nR = Rs.filter(function (a) {
+        var d = Rs.some(function (b) { return b !== a && le(b, a); });
+        if (d) droppedR.push(a);
+        return !d;
+      });
+      var changed = (nL.length !== Ls.length) || (nR.length !== Rs.length);
+      Ls = nL; Rs = nR;
+      var G = intern(Ls, Rs), newL = [], newR = [], bypL = [], bypR = [];
+      Ls.forEach(function (a) {
+        var rep = null;
+        for (var j = 0; j < a.R.length; j++) if (le(a.R[j], G)) { rep = a.R[j]; break; }
+        if (rep) { changed = true; bypL.push({ from: a, via: rep, to: rep.L }); rep.L.forEach(function (x) { newL.push(x); }); }
+        else newL.push(a);
+      });
+      Rs.forEach(function (b) {
+        var rep = null;
+        for (var t = 0; t < b.L.length; t++) if (ge(b.L[t], G)) { rep = b.L[t]; break; }
+        if (rep) { changed = true; bypR.push({ from: b, via: rep, to: rep.R }); rep.R.forEach(function (x) { newR.push(x); }); }
+        else newR.push(b);
+      });
+      Ls = uniqById(newL); Rs = uniqById(newR);
+      steps.push({ stage: changed ? 'pass' : 'fixed', L: Ls.slice(), R: Rs.slice(),
+                   droppedL: droppedL, droppedR: droppedR, bypL: bypL, bypR: bypR });
+      if (!changed) break;
+    }
+    return { node: intern(Ls, Rs), steps: steps };
+  }
+
+  function negG(G) {
+    if (G.id in NEG_MEMO) return NEG_MEMO[G.id];
+    var r = mkGame(G.R.map(negG), G.L.map(negG));
+    NEG_MEMO[G.id] = r;
+    return r;
+  }
+  function addG(G, H) {
+    if (G === ZERO) return H;
+    if (H === ZERO) return G;
+    var k = Math.min(G.id, H.id) + ':' + Math.max(G.id, H.id);
+    if (k in ADD_MEMO) return ADD_MEMO[k];
+    STAT.add++;
+    var L = [], R = [], i;
+    for (i = 0; i < G.L.length; i++) L.push(addG(G.L[i], H));
+    for (i = 0; i < H.L.length; i++) L.push(addG(G, H.L[i]));
+    for (i = 0; i < G.R.length; i++) R.push(addG(G.R[i], H));
+    for (i = 0; i < H.R.length; i++) R.push(addG(G, H.R[i]));
+    var r = mkGame(L, R);
+    ADD_MEMO[k] = r;
+    return r;
+  }
+  function sumG(list) {
+    var s = ZERO;
+    for (var i = 0; i < list.length; i++) s = addG(s, list[i]);
+    return s;
+  }
+
+  function numOf(G) {                    /* 是数就返回它的值，否则 null */
+    if (G.num !== undefined) return G.num;
+    var mx = null, mn = null, ok = true, i;
+    for (i = 0; i < G.L.length; i++) {
+      var v = numOf(G.L[i]);
+      if (v === null) { ok = false; break; }
+      if (mx === null || dcmp(v, mx) > 0) mx = v;
+    }
+    if (ok) for (i = 0; i < G.R.length; i++) {
+      var w = numOf(G.R[i]);
+      if (w === null) { ok = false; break; }
+      if (mn === null || dcmp(w, mn) < 0) mn = w;
+    }
+    var res = null;
+    if (ok && (mx === null || mn === null || dcmp(mx, mn) < 0)) res = dsimplestBetween(mx, mn);
+    G.num = res;
+    return res;
+  }
+  /* 全是数的选项（但不是数）→ 开关 {a|b}，a ≥ b：均值 (a+b)/2，温度 (a−b)/2 */
+  function switchOf(G) {
+    var mx = null, mn = null, i;
+    if (numOf(G) !== null) return null;
+    for (i = 0; i < G.L.length; i++) {
+      var v = numOf(G.L[i]); if (v === null) return null;
+      if (mx === null || dcmp(v, mx) > 0) mx = v;
+    }
+    for (i = 0; i < G.R.length; i++) {
+      var w = numOf(G.R[i]); if (w === null) return null;
+      if (mn === null || dcmp(w, mn) < 0) mn = w;
+    }
+    if (mx === null || mn === null) return null;
+    if (dcmp(mx, mn) < 0) return null;   /* 那是数 */
+    return { mean: dscale2(dadd(mx, mn), -1), temp: dscale2(dsub(mx, mn), -1) };
+  }
+
+  function outcomeOf(G) {
+    var ge0 = le(ZERO, G), le0 = le(G, ZERO);
+    if (ge0 && le0) return 'P';
+    if (ge0) return 'L';
+    if (le0) return 'R';
+    return 'N';
+  }
+  var BDAY_MEMO = {};
+  function birthdayOf(G) {
+    if (G.id in BDAY_MEMO) return BDAY_MEMO[G.id];
+    var b = 0, i;
+    for (i = 0; i < G.L.length; i++) b = Math.max(b, birthdayOf(G.L[i]) + 1);
+    for (i = 0; i < G.R.length; i++) b = Math.max(b, birthdayOf(G.R[i]) + 1);
+    BDAY_MEMO[G.id] = b;
+    return b;
+  }
+  function sizeOf(G, seen) {
+    seen = seen || {};
+    if (seen[G.id]) return 0;
+    seen[G.id] = 1;
+    var n = 1, i;
+    for (i = 0; i < G.L.length; i++) n += sizeOf(G.L[i], seen);
+    for (i = 0; i < G.R.length; i++) n += sizeOf(G.R[i], seen);
+    return n;
+  }
+
+  /* ---------------- 左右停手与温度 ---------------- */
+  /* 键必须带 'L' / 'R' 前缀。
+   * 踩过的坑：两个函数一度共用 G.id + '@' + t 这一个键，于是先算的左边停手会把
+   * 右边停手的结果覆盖掉 —— 结果依赖于"谁先被调用"，同一个局面在缓存冷热不同的
+   * 情况下给出不同的温度。单看某个盘看不出来，是 E6 里 2×4 的均值从 0 变成 2 才暴露的。 */
+  function tkey(t) { return t.m + '/' + t.k; }
+  function leftStop(G, t) {
+    var v = numOf(G);
+    if (v !== null) return v;
+    var k = 'L' + G.id + '@' + tkey(t);
+    if (k in STOP_MEMO) return STOP_MEMO[k];
+    var best = null, i;
+    for (i = 0; i < G.L.length; i++) {
+      var r = rightStop(G.L[i], t);
+      if (best === null || dcmp(r, best) > 0) best = r;
+    }
+    if (best === null) best = DZERO;
+    var res = dsub(best, t);
+    STOP_MEMO[k] = res;
+    return res;
+  }
+  function rightStop(G, t) {
+    var v = numOf(G);
+    if (v !== null) return v;
+    var k = 'R' + G.id + '@' + tkey(t);
+    if (k in STOP_MEMO) return STOP_MEMO[k];
+    var best = null, i;
+    for (i = 0; i < G.R.length; i++) {
+      var l = leftStop(G.R[i], t);
+      if (best === null || dcmp(l, best) < 0) best = l;
+    }
+    if (best === null) best = DZERO;
+    var res = dadd(best, t);
+    STOP_MEMO[k] = res;
+    return res;
+  }
+  /* 温度：最小的 t（1/2^GRID 的网格上）使左右停手相交。
+   * 判据必须是 L(t) ≤ R(t)。L(t) 随 t 不增、R(t) 随 t 不减，交点之前是 L > R
+   * （先手占便宜），交点之后是 L < R。一度写成 L ≥ R —— 那对任何热局面都在 t=0
+   * 立刻成立，于是所有非开关的博弈温度都被报成 0（只有温度真的为 0 的那些才对）。
+   * 开关走 switchOf 的闭式短路，所以这个错在 E5 上看不出来，是 E6 的 2×4 露的马脚。 */
+  var GRID = 6;                            /* 网格 1/64 */
+  function temperatureOf(G) {
+    var v = numOf(G);
+    if (v !== null) return { mean: v, temp: DZERO, exact: true, kind: 'number' };
+    var sw = switchOf(G);
+    /* switchOf 在 max(L) === min(R) 时也给闭式 —— 那时温度恰好是 0，博弈是 {a|a} = a + *，
+       均值 a 仍然对，但它不是开关。别把 kind 报成 'switch'：这个标签会跟着数字一起流到页面上。 */
+    if (sw) return { mean: sw.mean, temp: sw.temp, exact: true,
+                     kind: dcmp(sw.temp, DZERO) > 0 ? 'switch' : 'flat' };
+    var JMAX = 64 * 16;
+    for (var j = 0; j <= JMAX; j++) {
+      var t = dmk(j, GRID);
+      var L = leftStop(G, t), R = rightStop(G, t);
+      if (dcmp(L, R) <= 0) {
+        var jt = (j + 1 <= JMAX) ? dmk(j + 1, GRID) : null;
+        var next = jt ? dcmp(leftStop(G, jt), rightStop(G, jt)) : -1;
+        return { mean: dscale2(dadd(L, R), -1), temp: t, exact: false,
+                 kind: 'grid', slope: next };
+      }
+    }
+    return null;
+  }
+  function meanOf(G) {
+    var v = numOf(G);
+    if (v !== null) return v;
+    return dscale2(dadd(leftStop(G, DZERO), rightStop(G, DZERO)), -1);
+  }
+  var ALLSMALL_MEMO = {};
+  function allSmall(G) {
+    if (G.id in ALLSMALL_MEMO) return ALLSMALL_MEMO[G.id];
+    ALLSMALL_MEMO[G.id] = false;            /* 先占位，防环（实际无环） */
+    var r = true, i;
+    if (numOf(G) !== null) r = false;
+    if (r) for (i = 0; i < G.L.length; i++) {
+      var v = numOf(G.L[i]);
+      if (v === null) { if (!allSmall(G.L[i])) { r = false; break; } }
+      else if (v.m !== 0) { r = false; break; }
+    }
+    if (r) for (i = 0; i < G.R.length; i++) {
+      var w = numOf(G.R[i]);
+      if (w === null) { if (!allSmall(G.R[i])) { r = false; break; } }
+      else if (w.m !== 0) { r = false; break; }
+    }
+    if (G.L.length + G.R.length === 0) r = false;
+    ALLSMALL_MEMO[G.id] = r;
+    return r;
+  }
+  function classify(G) {
+    if (numOf(G) !== null) return 'number';
+    /* 真正的"开关"要求 max(L) > min(R)（温度 > 0）。
+       相等时 {a|a} = a + *：均值 a、温度 0 都对，但它不是开关 ——
+       a = 0 时它是 *（无穷小），a ≠ 0 时它是"数加一个星"，落在 other 里。 */
+    var sw = switchOf(G);
+    if (sw && dcmp(sw.temp, DZERO) > 0) return 'switch';
+    if (allSmall(G)) return 'allsmall';
+    return 'other';
+  }
+
+  /* ---------------- 具体化（给穷举极小极大用） ---------------- */
+  function expand(G) {
+    if (EX_MEMO[G.id]) return EX_MEMO[G.id];
+    var c = { k: 'g' + G.id, L: [], R: [] };
+    EX_MEMO[G.id] = c;
+    c.L = G.L.map(expand); c.R = G.R.map(expand);
+    return c;
+  }
+
+  /* ---------------- 常用具体博弈 ---------------- */
+  /* 数 v 对应的博弈。
+   * 关键：**绝不能**为了拿一个整数 n 的博弈去逐日构造整条数轴 ——
+   * n 的规范型就是一条长度 n 的链 {n−1|}，直接递归建即可。
+   * 非整的二进分数 m/2^k（k ≥ 1）的规范型是 {v − 2^−k | v + 2^−k}。 */
+  var INT_MEMO = {};
+  function intNode(n) {
+    if (n === 0) return ZERO;
+    if (INT_MEMO[n]) return INT_MEMO[n];
+    var g = n > 0 ? mkGame([intNode(n - 1)], []) : mkGame([], [intNode(n + 1)]);
+    INT_MEMO[n] = g;
+    return g;
+  }
+  function numNode(v) {
+    if (v.m === 0) return ZERO;
+    if (v.k === 0) return intNode(v.m);
+    var s = dstr(v);
+    if (NUMTAB[s]) return NUMTAB[s];
+    var d = dmk(1, v.k);
+    var g = mkGame([numNode(dsub(v, d))], [numNode(dadd(v, d))]);
+    NUMTAB[s] = g;
+    return g;
+  }
+
+  function cool(G, t) {                    /* 冷却：G_t = {G^L_t − t | G^R_t + t} */
+    if (numOf(G) !== null) return G;
+    var nt = numNode(t);
+    var L = G.L.map(function (x) { return addG(cool(x, t), negG(nt)); });
+    var R = G.R.map(function (x) { return addG(cool(x, t), nt); });
+    return mkGame(L, R);
+  }
+
+  /* =======================================================================
+   * 3 · 独立实现：穷举极小极大
+   * =====================================================================*/
+  function bfWinner(st, side, memo) {      /* 谁赢（side = 1 Left 先走） */
+    var kk = side + ':' + st.map(function (c) { return c.k; }).join('|');
+    if (kk in memo) return memo[kk];
+    var win = false, moves = 0;
+    for (var i = 0; i < st.length && !win; i++) {
+      var opts = side === 1 ? st[i].L : st[i].R;
+      for (var j = 0; j < opts.length; j++) {
+        moves++;
+        var ns = st.slice(); ns[i] = opts[j];
+        if (bfWinner(ns, -side, memo) === (side === 1 ? 'L' : 'R')) { win = true; break; }
+      }
+    }
+    var res = win ? (side === 1 ? 'L' : 'R') : (side === 1 ? 'R' : 'L');
+    if (moves === 0) res = side === 1 ? 'R' : 'L';
+    memo[kk] = res;
+    return res;
+  }
+  function bfStates(st, side, memo, seen) {
+    var kk = side + ':' + st.map(function (c) { return c.k; }).join('|');
+    if (seen[kk]) return;
+    seen[kk] = 1;
+    for (var i = 0; i < st.length; i++) {
+      var opts = side === 1 ? st[i].L : st[i].R;
+      for (var j = 0; j < opts.length; j++) {
+        var ns = st.slice(); ns[i] = opts[j];
+        bfStates(ns, -side, memo, seen);
+      }
+    }
+  }
+  function bfOutcome(st) {
+    var memo = {};
+    var lf = bfWinner(st, 1, memo), rf = bfWinner(st, -1, memo);
+    if (lf === 'L' && rf === 'L') return 'L';
+    if (lf === 'R' && rf === 'R') return 'R';
+    if (lf === 'L' && rf === 'R') return 'N';
+    return 'P';
+  }
+  function bfStateCount(st) {
+    var memo = {}, seen = {};
+    bfStates(st, 1, memo, seen); bfStates(st, -1, memo, seen);
+    return Object.keys(seen).length;
+  }
+
+  /* =======================================================================
+   * 4 · 无偏博弈：mex / Sprague–Grundy / Nim
+   * =====================================================================*/
+  function mex(set) {
+    var s = {}, i;
+    for (i = 0; i < set.length; i++) s[set[i]] = 1;
+    for (i = 0; ; i++) if (!s[i]) return i;
+  }
+  function nimSum(arr) { var x = 0; for (var i = 0; i < arr.length; i++) x ^= arr[i]; return x; }
+
+  /* 无偏具体博弈：{k, moves:[...]}；两名玩家的走法集合相同 */
+  function impConcrete(mk) {               /* mk: state → [states] */
+    var memo = {};
+    function build(s) {
+      var k = String(s);
+      if (memo[k]) return memo[k];
+      var c = { k: 'i' + k, L: [], R: [] };
+      memo[k] = c;
+      var ms = mk(s) || [];
+      for (var i = 0; i < ms.length; i++) c.L.push(build(ms[i]));
+      c.R = c.L;
+      return c;
+    }
+    return { build: build, memo: memo };
+  }
+  function sgValue(mk, s) {                /* 独立实现：直接对状态图做 mex */
+    var memo = {};
+    function g(x) {
+      var k = String(x);
+      if (k in memo) return memo[k];
+      var ms = mk(x) || [], vals = [];
+      for (var i = 0; i < ms.length; i++) vals.push(g(ms[i]));
+      var r = mex(vals); memo[k] = r; return r;
+    }
+    return g(s);
+  }
+
+  /* ---- 具体无偏博弈家族 ---- */
+  function nimMoves(heaps) {
+    var out = [];
+    for (var i = 0; i < heaps.length; i++) {
+      for (var t = 0; t < heaps[i]; t++) {
+        var n = heaps.slice(); n[i] = t; out.push(n);
+      }
+    }
+    return out;
+  }
+  function subMoves(allow) {               /* 减法游戏 S(allow) */
+    return function (n) {
+      var out = [];
+      for (var i = 0; i < allow.length; i++) if (n >= allow[i]) out.push(n - allow[i]);
+      return out;
+    };
+  }
+  /* Dawson 的 Kayles：一排 n 根钉，一次推倒相邻两根；因此变孤立的钉也倒掉 */
+  function dawsonMoves(n) {
+    var out = [];
+    for (var i = 1; i <= n - 1; i++) {
+      var l = i - 1, r = n - i - 1;
+      out.push([l >= 2 ? l : 0, r >= 2 ? r : 0]);
+    }
+    return out;
+  }
+  function dawsonSG(N) {
+    var g = [0, 0];                        /* g[0]=0；g[n] = 一排 n 根的值 */
+    for (var n = 1; n <= N; n++) {
+      var vals = [];
+      for (var i = 1; i <= n - 1; i++) {
+        var l = i - 1, r = n - i - 1;
+        vals.push(g[l >= 2 ? l : 0] ^ g[r >= 2 ? r : 0]);
+      }
+      g[n] = mex(vals);
+    }
+    return g;
+  }
+  /* Kayles（octal .77）：推倒一根或相邻两根 */
+  function kaylesSG(N) {
+    var g = [0];
+    for (var n = 1; n <= N; n++) {
+      var vals = [];
+      for (var i = 1; i <= n; i++) {        /* 推倒第 i 根 */
+        vals.push(g[i - 1] ^ g[n - i]);
+      }
+      for (var j = 1; j <= n - 1; j++) {    /* 推倒 i, i+1 两根 */
+        vals.push(g[j - 1] ^ g[n - j - 1]);
+      }
+      g[n] = mex(vals);
+    }
+    return g;
+  }
+
+  /* =======================================================================
+   * 5 · 有偏家族
+   * =====================================================================*/
+  /* Hackenbush 杆：seq 里 +1 = 蓝（Left），−1 = 红（Right） */
+  function stalk(seq) {
+    var G = [ZERO];
+    for (var k = 1; k <= seq.length; k++) {
+      var L = [], R = [];
+      for (var i = 1; i <= k; i++) {
+        if (seq[i - 1] > 0) L.push(G[i - 1]); else R.push(G[i - 1]);
+      }
+      G[k] = mkGame(L, R);
+    }
+    return G[seq.length];
+  }
+  function stalkTree(seq) {                /* 独立的"具体"杆：直接按规则建树 */
+    var memo = {};
+    function build(m) {                    /* m = 剩下的前 m 条边（自下而上） */
+      if (memo[m]) return memo[m];
+      var c = { k: 's' + m, L: [], R: [] };
+      memo[m] = c;
+      for (var i = 1; i <= m; i++) {
+        if (seq[i - 1] > 0) c.L.push(build(i - 1)); else c.R.push(build(i - 1));
+      }
+      return c;
+    }
+    return build(seq.length);
+  }
+
+  /* Domineering：Left 放竖排骨牌，Right 放横排骨牌。棋盘用位掩码。
+   * 约定 domGame(h, w)：h 行 × w 列（与文献里的 "m×n" 一致）。 */
+  function domMoves(mask, w, h, side) {
+    var out = [];
+    for (var r = 0; r < h; r++) for (var c = 0; c < w; c++) {
+      var i = r * w + c;
+      if (mask & (1 << i)) continue;
+      if (side > 0) {                      /* 竖：占 (r,c),(r+1,c) */
+        if (r + 1 < h) {
+          var j = (r + 1) * w + c;
+          if (!(mask & (1 << j))) out.push(mask | (1 << i) | (1 << j));
+        }
+      } else {                             /* 横：占 (r,c),(r,c+1) */
+        if (c + 1 < w) {
+          var j2 = r * w + c + 1;
+          if (!(mask & (1 << j2))) out.push(mask | (1 << i) | (1 << j2));
+        }
+      }
+    }
+    return out;
+  }
+  function domGame(h, w) {
+    var memo = {};
+    function build(mask) {
+      if (memo[mask]) return memo[mask];
+      var L = [], R = [], ms = domMoves(mask, w, h, 1), i;
+      for (i = 0; i < ms.length; i++) L.push(build(ms[i]));
+      ms = domMoves(mask, w, h, -1);
+      for (i = 0; i < ms.length; i++) R.push(build(ms[i]));
+      var g = mkGame(L, R);
+      memo[mask] = g;
+      return g;
+    }
+    return { root: build(0), count: function () { return Object.keys(memo).length; } };
+  }
+  function domSolver(h, w) {                /* 任意局面都能取值的求解器（给可玩棋盘用） */
+    var memo = {};
+    function build(mask) {
+      if (memo[mask]) return memo[mask];
+      var L = [], R = [], ms = domMoves(mask, w, h, 1), i;
+      for (i = 0; i < ms.length; i++) L.push(build(ms[i]));
+      ms = domMoves(mask, w, h, -1);
+      for (i = 0; i < ms.length; i++) R.push(build(ms[i]));
+      var g = mkGame(L, R);
+      memo[mask] = g;
+      return g;
+    }
+    return { game: build, moves: function (mask, side) { return domMoves(mask, w, h, side); }, w: w, h: h };
+  }
+  function domTree(h, w) {                 /* 独立的具体树（穷举极小极大用） */
+    var memo = {};
+    function build(mask) {
+      if (memo[mask]) return memo[mask];
+      var c = { k: 'd' + h + 'x' + w + '_' + mask, L: [], R: [] };
+      memo[mask] = c;
+      var ms = domMoves(mask, w, h, 1);
+      for (var i = 0; i < ms.length; i++) c.L.push(build(ms[i]));
+      ms = domMoves(mask, w, h, -1);
+      for (var j = 0; j < ms.length; j++) c.R.push(build(ms[j]));
+      return c;
+    }
+    return build(0);
+  }
+
+  /* =======================================================================
+   * 6 · 逐日构造：数、以及"第 n 天出生的所有博弈"
+   * =====================================================================*/
+  function numbersByDay(n) {               /* 返回每天的数的数组 */
+    var days = [[DZERO]], list = [DZERO];
+    for (var d = 1; d <= n; d++) {
+      var next = [];
+      next.push(dsimplestBetween(null, list[0]));
+      for (var i = 0; i + 1 < list.length; i++) next.push(dsimplestBetween(list[i], list[i + 1]));
+      next.push(dsimplestBetween(list[list.length - 1], null));
+      days.push(next);
+      list = list.concat(next).sort(dcmp);
+    }
+    return { days: days, all: list };
+  }
+  /* 穷举第 2 天（以及之前）出生的所有博弈：256 个形式 → 22 个值 */
+  function countGamesByDay2() {
+    var d0 = [ZERO], B1 = [ZERO];
+    var one = mkGame([ZERO], []), mone = mkGame([], [ZERO]), star = mkGame([ZERO], [ZERO]);
+    B1 = [ZERO, one, mone, star];
+    var vals = {}, forms = 0;
+    for (var a = 0; a < 16; a++) for (var b = 0; b < 16; b++) {
+      var L = [], R = [];
+      for (var i = 0; i < 4; i++) { if (a & (1 << i)) L.push(B1[i]); if (b & (1 << i)) R.push(B1[i]); }
+      forms++;
+      var g = mkGame(L, R);
+      vals[g.key] = 1;
+    }
+    void d0;
+    return { forms: forms, values: Object.keys(vals).length, keys: Object.keys(vals) };
+  }
+  /* 第 3 天的形式：选项取自 22 个（生日 ≤ 2 的）博弈。|L|,|R| ≤ k 的部分枚举 */
+  function countDay3Partial(k, cap) {
+    var all = countGamesByDay2().keys.map(function (key) { return BYKEY[key]; });
+    var subsets = [[]];
+    for (var sz = 1; sz <= k; sz++) {
+      (function (sz2) {
+        var idx = new Array(sz2);
+        (function rec(start, depth) {
+          if (depth === sz2) {
+            subsets.push(idx.map(function (q) { return all[q]; }));
+            return;
+          }
+          for (var i = start; i < all.length; i++) { idx[depth] = i; rec(i + 1, depth + 1); }
+        })(0, 0);
+      })(sz);
+    }
+    var vals = {}, forms = 0, stop = false;
+    for (var a = 0; a < subsets.length && !stop; a++) for (var b = 0; b < subsets.length; b++) {
+      if (cap && forms >= cap) { stop = true; break; }
+      forms++;
+      var g = mkGame(subsets[a], subsets[b]);
+      vals[g.key] = 1;
+    }
+    return { forms: forms, values: Object.keys(vals).length, nSubsets: subsets.length };
+  }
+
+  /* =======================================================================
+   * 7 · 工具
+   * =====================================================================*/
+  function splitmix32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 16), 0x21f0aaad) >>> 0;
+      t = Math.imul(t ^ (t >>> 15), 0x735a2d97) >>> 0;
+      return ((t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+  function makeRng(seed, tag) {            /* 由 (种子, 标签) 唯一确定 */
+    var h = seed >>> 0;
+    for (var i = 0; i < tag.length; i++) h = (Math.imul(h ^ tag.charCodeAt(i), 16777619) >>> 0);
+    return splitmix32(h);
+  }
+  function wilson(k, N, z) {
+    if (N === 0) return { lo: 0, hi: 1, p: 0 };
+    z = z || 1.959963984540054;
+    var p = k / N, d = 1 + z * z / N;
+    var c = (p + z * z / (2 * N)) / d;
+    var hw = z * Math.sqrt(p * (1 - p) / N + z * z / (4 * N * N)) / d;
+    return { lo: Math.max(0, c - hw), hi: Math.min(1, c + hw), p: p };
+  }
+  function ri(rng, a, b) { return a + Math.floor(rng() * (b - a + 1)); }
+
+  /* =======================================================================
+   * 8 · 外部真值（全部查过来源，见 analyze 的验证表）
+   * =====================================================================*/
+  var EXT = {
+    /* OEIS A065401：生日 ≤ n 的（有偏、正常玩法）博弈个数 */
+    gamesBornByDay: [1, 4, 22, 1474],
+    /* OEIS A002187：Dawson 的 Kayles（octal .07）SG 值 = a(n−1) */
+    dawsonKayles: [0, 1, 1, 2, 0, 3, 1, 1, 0, 3, 3, 2, 2, 4, 0, 5, 2, 2, 3, 3, 0, 1, 1, 3, 0, 2, 1, 1,
+                   0, 4, 5, 2, 7, 4, 0, 1, 1, 2, 0, 3, 1, 1, 0, 3, 3, 2, 2, 4, 4, 5, 5, 2, 3, 3, 0,
+                   1, 1, 3, 0, 2, 1, 1, 0, 4, 5, 3, 7, 4, 8, 1, 1, 2, 0, 3, 1, 1, 0, 3, 3, 2, 2, 4,
+                   4, 5, 5, 9, 3, 3, 0, 1, 1, 3, 0, 2, 1, 1, 0, 4, 5, 3, 7, 4, 8, 1, 1, 2, 0, 3],
+    /* 数轴：第 n 天新增 2^n 个数，生日 ≤ n 共 2^(n+1) − 1 个 */
+    numbersBornByDay: [1, 3, 7, 15, 31, 63, 127, 255, 511, 1023],
+    /* Domineering 小棋盘的值（Winning Ways / combinatorial-game-theory.com 抄录）
+     * r = 行数，c = 列数；Left 放竖排，Right 放横排 */
+    domineering: [
+      { r: 1, c: 1, text: '0' },
+      { r: 1, c: 2, text: '-1' },
+      { r: 2, c: 1, text: '1' },
+      { r: 2, c: 2, text: '{1|-1}' },
+      { r: 2, c: 3, text: '{2|-1/2}' },
+      { r: 3, c: 2, text: '{1/2|-2}' },
+      { r: 3, c: 3, text: '{1|-1}' },
+      { r: 3, c: 4, text: '-3/2' }
+    ]
+  };
+
+  return {
+    D: {
+      mk: dmk, norm: dnorm, add: dadd, sub: dsub, neg: dneg, cmp: dcmp, eq: deq,
+      isInt: disInt, sign: dsign, toNum: dtoNum, str: dstr, birthday: dbirthday,
+      floor: dfloor, ceil: dceil, scale2: dscale2, simplestBetween: dsimplestBetween,
+      zero: DZERO, one: DONE, half: DHALF
+    },
+    G: {
+      zero: ZERO, mkGame: mkGame, le: le, ge: ge, eq: eqG, neg: negG, add: addG,
+      sum: sumG, outcome: outcomeOf, isNumber: function (g) { return numOf(g) !== null; },
+      valueOf: numOf, switchOf: switchOf, birthday: birthdayOf, size: sizeOf,
+      leftStop: leftStop, rightStop: rightStop, temperatureOf: temperatureOf,
+      meanOf: meanOf, classify: classify, expand: expand, cool: cool,
+      numNode: numNode, intNode: intNode,
+      node: function (L, R) { return mkGame(L, R); },
+      star: function () { return mkGame([ZERO], [ZERO]); },
+      up: function () { return mkGame([ZERO], [mkGame([ZERO], [ZERO])]); },
+      byKey: function (k) { return BYKEY[k]; },
+      stats: function () { return { nodes: STAT.nodes, le: STAT.le, add: STAT.add, canon: STAT.canon, memo: Object.keys(LE_MEMO).length }; },
+      resetStats: function () { STAT.nodes = STAT.le = STAT.add = STAT.canon = 0; },
+      /* 清掉纯缓存（比较/加法/取负/停手/具体化），用来在同一个进程里量一次"冷"代价。
+       * 沙箱不允许 spawn 子进程，所以"全新进程"只能这样做。清缓存不影响任何结果。 */
+      resetMemos: function () {
+        LE_MEMO = {}; ADD_MEMO = {}; NEG_MEMO = {}; STOP_MEMO = {}; EX_MEMO = {};
+        STAT.nodes = STAT.le = STAT.add = STAT.canon = 0;
+      }
+    },
+    fam: {
+      stalk: stalk, stalkTree: stalkTree, nimMoves: nimMoves, subMoves: subMoves,
+      dawsonMoves: dawsonMoves, dawsonSG: dawsonSG, kaylesSG: kaylesSG,
+      domMoves: domMoves, domGame: domGame, domTree: domTree, domSolver: domSolver
+    },
+    canonSteps: canonSteps,
+    bf: { outcome: bfOutcome, states: bfStateCount, winner: bfWinner },
+    imp: { concrete: impConcrete, sg: sgValue, mex: mex, nimSum: nimSum },
+    util: { splitmix32: splitmix32, makeRng: makeRng, wilson: wilson, ri: ri },
+    numbersByDay: numbersByDay,
+    countGamesByDay2: countGamesByDay2,
+    countDay3Partial: countDay3Partial,
+    EXT: EXT
+  };
+});
+</script>
+<script>window.__ANALYSIS__ = {"meta":{"title":"半子之重","subtitle":"组合博弈 · 一个局面值多少","seed":20261010,"generatedAt":"2026-10-10T08:33:17.764Z","resultsUpdatedAt":"2026-10-10T08:31:47.226Z","allVerifyOk":true,"verifyRows":27,"sources":["OEIS A065401（生日 ≤ n 的博弈个数）","OEIS A002187（Dawson 的 Kayles SG）","Winning Ways / combinatorial-game-theory.com（Domineering 小棋盘值）","Conway《On Numbers and Games》的逐日构造"]},"kpi":[{"label":"SG 定理一致率","value":"100.000%","unit":"2,400/2,400","note":"四个无偏家族的和：值判定 vs 穷举极小极大。定理，所以是 100%。"},{"label":"均值启发式失效率","value":"47.59%","unit":"k = 6 个分量","note":"把每个分量的均值加起来猜胜负，错了这么多。"},{"label":"全数对照失效率","value":"0.000%","unit":"1,420 例","note":"分量全是数时，同一个启发式一次都没错 —— 这就是对照组。"},{"label":"杆全是数","value":"100.00%","unit":"32,766 根","note":"长度 ≤ 14 的蓝红杆，一根不落全是数。要出 * 得让杆分叉。"},{"label":"杆值 = 第 n 天出生的数","value":"12 / 12","unit":"n = 1…12","note":"长度 n 的 2^n 根杆，取值恰好是第 n 天出生的那 2^n 个数。"},{"label":"第 2 天：形式 → 值","value":"256 → 22","unit":"文献 22","note":"A065401 a(2) = 22，我们枚举 256 个形式得到同样的 22 个值。"},{"label":"第 3 天覆盖率","value":"99.05%","unit":"1,460 / 1474","note":"只枚举 |L|,|R| ≤ 3 的形式，就拿到了第 3 天全部值的 99%。"},{"label":"Domineering 文献吻合","value":"8 / 8","unit":"8 个小棋盘","note":"含 2×3 = {2|−1/2} 这个手工最易算错的值。"},{"label":"温度 0 只来自选项相等","value":"0 例外","unit":"3,000 个随机 {a|b}","note":"温度恰好为 0 ⟺ 两个选项相等（这时 {a|a} = a + *）。这类样本占 2.30%，其余的开关都真的带温度。"},{"label":"规范化代价（冷）","value":"17,966","unit":"次比较 / 64,516 个形式","note":"子博弈已内联时，绝大多数形式只是查表；代价在第一次把子博弈建出来。"}],"derived":{"e1":{"families":[{"id":"nim","name":"Nim 堆","n":600,"agree":600,"rate":1,"avgStates":382.9533333333333},{"id":"sub134","name":"减法 S(1,3,4)","n":600,"agree":600,"rate":1,"avgStates":328.32},{"id":"sub25","name":"减法 S(2,5)","n":600,"agree":600,"rate":1,"avgStates":76.71666666666667},{"id":"dawson","name":"Dawson 的 Kayles","n":600,"agree":600,"rate":1,"avgStates":78.99}],"rows":[],"agreement":1,"states":[{"k":2,"heaps":[0,5],"bfStates":12,"xorOps":2,"nimSum":5},{"k":3,"heaps":[2,5,3],"bfStates":144,"xorOps":3,"nimSum":4},{"k":4,"heaps":[1,3,4,0],"bfStates":80,"xorOps":4,"nimSum":6}],"mismatch":[],"total":2400,"agree":2400},"e2":{"ks":[{"k":1,"n":2200,"failA":794,"rateA":0.3609090909090909,"failB":658,"rateB":0.2990909090909091,"ctrlN":858,"ctrlFail":0,"hotHist":{"0":985,"1":1215},"compHist":{"num":858,"coldFuzzy":127,"hot":1215},"miss":[{"k":1,"truth":"N","predA":"L","mean":"1","hot":1,"allNum":false},{"k":1,"truth":"N","predA":"L","mean":"4","hot":1,"allNum":false},{"k":1,"truth":"N","predA":"L","mean":"4","hot":1,"allNum":false},{"k":1,"truth":"N","predA":"L","mean":"4","hot":1,"allNum":false},{"k":1,"truth":"N","predA":"L","mean":"4","hot":1,"allNum":false}]},{"k":2,"n":2200,"failA":898,"rateA":0.4081818181818182,"failB":829,"rateB":0.37681818181818183,"ctrlN":338,"ctrlFail":0,"hotHist":{"0":452,"1":1088,"2":660},"compHist":{"num":338,"coldFuzzy":114,"hot":1748},"miss":[{"k":2,"truth":"N","predA":"L","mean":"11/2","hot":1,"allNum":false},{"k":2,"truth":"N","predA":"P","mean":"0","hot":1,"allNum":false},{"k":2,"truth":"N","predA":"L","mean":"1","hot":1,"allNum":false},{"k":2,"truth":"N","predA":"P","mean":"0","hot":1,"allNum":false},{"k":2,"truth":"N","predA":"P","mean":"0","hot":1,"allNum":false}]},{"k":3,"n":2200,"failA":970,"rateA":0.4409090909090909,"failB":949,"rateB":0.43136363636363634,"ctrlN":132,"ctrlFail":0,"hotHist":{"0":204,"1":730,"2":909,"3":357},"compHist":{"num":132,"coldFuzzy":72,"hot":1996},"miss":[{"k":3,"truth":"N","predA":"L","mean":"27/4","hot":2,"allNum":false},{"k":3,"truth":"N","predA":"L","mean":"1","hot":2,"allNum":false},{"k":3,"truth":"N","predA":"L","mean":"10","hot":3,"allNum":false},{"k":3,"truth":"N","predA":"L","mean":"3","hot":3,"allNum":false},{"k":3,"truth":"N","predA":"L","mean":"2","hot":1,"allNum":false}]},{"k":4,"n":2200,"failA":976,"rateA":0.44363636363636366,"failB":966,"rateB":0.4390909090909091,"ctrlN":63,"ctrlFail":0,"hotHist":{"0":108,"1":459,"2":794,"3":645,"4":194},"compHist":{"num":63,"coldFuzzy":45,"hot":2092},"miss":[{"k":4,"truth":"N","predA":"L","mean":"13/4","hot":1,"allNum":false},{"k":4,"truth":"R","predA":"L","mean":"1","hot":3,"allNum":false},{"k":4,"truth":"N","predA":"L","mean":"5/2","hot":2,"allNum":false},{"k":4,"truth":"R","predA":"L","mean":"5/2","hot":2,"allNum":false},{"k":4,"truth":"R","predA":"L","mean":"2","hot":3,"allNum":false}]},{"k":5,"n":2200,"failA":1051,"rateA":0.4777272727272727,"failB":1050,"rateB":0.4772727272727273,"ctrlN":21,"ctrlFail":0,"hotHist":{"0":44,"1":238,"2":616,"3":793,"4":397,"5":112},"compHist":{"num":21,"coldFuzzy":23,"hot":2156},"miss":[{"k":5,"truth":"N","predA":"L","mean":"5","hot":3,"allNum":false},{"k":5,"truth":"R","predA":"L","mean":"3/2","hot":3,"allNum":false},{"k":5,"truth":"R","predA":"L","mean":"5/2","hot":3,"allNum":false},{"k":5,"truth":"N","predA":"L","mean":"13/2","hot":2,"allNum":false},{"k":5,"truth":"N","predA":"L","mean":"7","hot":2,"allNum":false}]},{"k":6,"n":2200,"failA":1047,"rateA":0.4759090909090909,"failB":1047,"rateB":0.4759090909090909,"ctrlN":8,"ctrlFail":0,"hotHist":{"0":19,"1":158,"2":399,"3":669,"4":619,"5":295,"6":41},"compHist":{"num":8,"coldFuzzy":11,"hot":2181},"miss":[{"k":6,"truth":"R","predA":"L","mean":"3/2","hot":4,"allNum":false},{"k":6,"truth":"N","predA":"L","mean":"7","hot":5,"allNum":false},{"k":6,"truth":"N","predA":"L","mean":"25/2","hot":3,"allNum":false},{"k":6,"truth":"N","predA":"L","mean":"15/2","hot":3,"allNum":false},{"k":6,"truth":"R","predA":"L","mean":"4","hot":4,"allNum":false}]}],"rows":[],"control":{"n":1420,"fail":0,"rate":0},"hotShare":[{"k":1,"meanHot":0.5522727272727272},{"k":2,"meanHot":1.0945454545454545},{"k":3,"meanHot":1.645},{"k":4,"meanHot":2.1627272727272726},{"k":5,"meanHot":2.725909090909091},{"k":6,"meanHot":3.2545454545454544}]},"e3":{"days":[{"day":0,"new":1,"expect":1,"maxDenPow":0,"maxAbs":0},{"day":1,"new":2,"expect":2,"maxDenPow":0,"maxAbs":1},{"day":2,"new":4,"expect":4,"maxDenPow":1,"maxAbs":2},{"day":3,"new":8,"expect":8,"maxDenPow":2,"maxAbs":3},{"day":4,"new":16,"expect":16,"maxDenPow":3,"maxAbs":4},{"day":5,"new":32,"expect":32,"maxDenPow":4,"maxAbs":5},{"day":6,"new":64,"expect":64,"maxDenPow":5,"maxAbs":6},{"day":7,"new":128,"expect":128,"maxDenPow":6,"maxAbs":7},{"day":8,"new":256,"expect":256,"maxDenPow":7,"maxAbs":8},{"day":9,"new":512,"expect":512,"maxDenPow":8,"maxAbs":9},{"day":10,"new":1024,"expect":1024,"maxDenPow":9,"maxAbs":10},{"day":11,"new":2048,"expect":2048,"maxDenPow":10,"maxAbs":11},{"day":12,"new":4096,"expect":4096,"maxDenPow":11,"maxAbs":12}],"cumulative":[{"day":0,"total":1,"expect":1},{"day":1,"total":3,"expect":3},{"day":2,"total":7,"expect":7},{"day":3,"total":15,"expect":15},{"day":4,"total":31,"expect":31},{"day":5,"total":63,"expect":63},{"day":6,"total":127,"expect":127},{"day":7,"total":255,"expect":255},{"day":8,"total":511,"expect":511},{"day":9,"total":1023,"expect":1023},{"day":10,"total":2047,"expect":2047},{"day":11,"total":4095,"expect":4095},{"day":12,"total":8191,"expect":8191}],"maxDen":[],"formulaCheck":{"byFormula":8191,"byConstruction":8191,"birthdayBad":0,"checked":8191}},"e4":{"rows":[{"n":1,"stalks":2,"numbers":2,"distinct":2,"min":"-1","max":"1","maxDenPow":0},{"n":2,"stalks":4,"numbers":4,"distinct":4,"min":"-2","max":"2","maxDenPow":1},{"n":3,"stalks":8,"numbers":8,"distinct":8,"min":"-3","max":"3","maxDenPow":2},{"n":4,"stalks":16,"numbers":16,"distinct":16,"min":"-4","max":"4","maxDenPow":3},{"n":5,"stalks":32,"numbers":32,"distinct":32,"min":"-5","max":"5","maxDenPow":4},{"n":6,"stalks":64,"numbers":64,"distinct":64,"min":"-6","max":"6","maxDenPow":5},{"n":7,"stalks":128,"numbers":128,"distinct":128,"min":"-7","max":"7","maxDenPow":6},{"n":8,"stalks":256,"numbers":256,"distinct":256,"min":"-8","max":"8","maxDenPow":7},{"n":9,"stalks":512,"numbers":512,"distinct":512,"min":"-9","max":"9","maxDenPow":8},{"n":10,"stalks":1024,"numbers":1024,"distinct":1024,"min":"-10","max":"10","maxDenPow":9},{"n":11,"stalks":2048,"numbers":2048,"distinct":2048,"min":"-11","max":"11","maxDenPow":10},{"n":12,"stalks":4096,"numbers":4096,"distinct":4096,"min":"-12","max":"12","maxDenPow":11},{"n":13,"stalks":8192,"numbers":8192,"distinct":8192,"min":"-13","max":"13","maxDenPow":12},{"n":14,"stalks":16384,"numbers":16384,"distinct":16384,"min":"-14","max":"14","maxDenPow":13}],"allNumber":{"total":32766,"numbers":32766,"rate":1},"crossCheck":{"n":254,"bad":0},"identity":{"rows":[{"n":1,"stalkValues":2,"numbersBorn":2,"same":true},{"n":2,"stalkValues":4,"numbersBorn":4,"same":true},{"n":3,"stalkValues":8,"numbersBorn":8,"same":true},{"n":4,"stalkValues":16,"numbersBorn":16,"same":true},{"n":5,"stalkValues":32,"numbersBorn":32,"same":true},{"n":6,"stalkValues":64,"numbersBorn":64,"same":true},{"n":7,"stalkValues":128,"numbersBorn":128,"same":true},{"n":8,"stalkValues":256,"numbersBorn":256,"same":true},{"n":9,"stalkValues":512,"numbersBorn":512,"same":true},{"n":10,"stalkValues":1024,"numbersBorn":1024,"same":true},{"n":11,"stalkValues":2048,"numbersBorn":2048,"same":true},{"n":12,"stalkValues":4096,"numbersBorn":4096,"same":true}],"allSame":true}},"e5":{"hotLine":[{"a":1,"temp":"1","mean":"0","exact":true},{"a":2,"temp":"2","mean":"0","exact":true},{"a":3,"temp":"3","mean":"0","exact":true},{"a":4,"temp":"4","mean":"0","exact":true},{"a":5,"temp":"5","mean":"0","exact":true},{"a":6,"temp":"6","mean":"0","exact":true},{"a":7,"temp":"7","mean":"0","exact":true},{"a":8,"temp":"8","mean":"0","exact":true},{"a":9,"temp":"9","mean":"0","exact":true},{"a":10,"temp":"10","mean":"0","exact":true},{"a":11,"temp":"11","mean":"0","exact":true},{"a":12,"temp":"12","mean":"0","exact":true},{"a":13,"temp":"13","mean":"0","exact":true},{"a":14,"temp":"14","mean":"0","exact":true},{"a":15,"temp":"15","mean":"0","exact":true},{"a":16,"temp":"16","mean":"0","exact":true},{"a":17,"temp":"17","mean":"0","exact":true},{"a":18,"temp":"18","mean":"0","exact":true},{"a":19,"temp":"19","mean":"0","exact":true},{"a":20,"temp":"20","mean":"0","exact":true},{"a":21,"temp":"21","mean":"0","exact":true},{"a":22,"temp":"22","mean":"0","exact":true},{"a":23,"temp":"23","mean":"0","exact":true},{"a":24,"temp":"24","mean":"0","exact":true}],"switchDist":[{"a":"9/2","b":"-2","temp":"13/4","mean":"5/4"},{"a":"5","b":"3","temp":"1","mean":"4"},{"a":"5/4","b":"0","temp":"5/8","mean":"5/8"},{"a":"6","b":"-11","temp":"17/2","mean":"-5/2"},{"a":"5","b":"0","temp":"5/2","mean":"5/2"},{"a":"-1","b":"-3","temp":"1","mean":"-2"},{"a":"3","b":"7/4","temp":"5/8","mean":"19/8"},{"a":"2","b":"-6","temp":"4","mean":"-2"},{"a":"1","b":"-2","temp":"3/2","mean":"-1/2"},{"a":"3","b":"-3/4","temp":"15/8","mean":"9/8"},{"a":"2","b":"-5","temp":"7/2","mean":"-3/2"},{"a":"-9/2","b":"-10","temp":"11/4","mean":"-29/4"},{"a":"8","b":"4","temp":"2","mean":"6"},{"a":"3","b":"-12","temp":"15/2","mean":"-9/2"},{"a":"0","b":"-3","temp":"3/2","mean":"-3/2"},{"a":"9","b":"-11/4","temp":"47/8","mean":"25/8"},{"a":"1","b":"-3/2","temp":"5/4","mean":"-1/4"},{"a":"1","b":"0","temp":"1/2","mean":"1/2"},{"a":"-1","b":"-3/2","temp":"1/4","mean":"-5/4"},{"a":"6","b":"-9/2","temp":"21/4","mean":"3/4"},{"a":"11","b":"-9/2","temp":"31/4","mean":"13/4"},{"a":"5/2","b":"-3/4","temp":"13/8","mean":"7/8"},{"a":"11","b":"1","temp":"5","mean":"6"},{"a":"1/2","b":"-1","temp":"3/4","mean":"-1/4"},{"a":"-5/4","b":"-11/2","temp":"17/8","mean":"-27/8"},{"a":"-3/4","b":"-3","temp":"9/8","mean":"-15/8"},{"a":"1/2","b":"-4","temp":"9/4","mean":"-7/4"},{"a":"-3","b":"-6","temp":"3/2","mean":"-9/2"},{"a":"7/4","b":"5/4","temp":"1/4","mean":"3/2"},{"a":"10","b":"-11/4","temp":"51/8","mean":"29/8"},{"a":"-1/2","b":"-6","temp":"11/4","mean":"-13/4"},{"a":"1","b":"-9/2","temp":"11/4","mean":"-7/4"},{"a":"0","b":"-5","temp":"5/2","mean":"-5/2"},{"a":"5","b":"1/2","temp":"9/4","mean":"11/4"},{"a":"-11/4","b":"-8","temp":"21/8","mean":"-43/8"},{"a":"5/4","b":"-3","temp":"17/8","mean":"-7/8"},{"a":"6","b":"-3","temp":"9/2","mean":"3/2"},{"a":"5/4","b":"-1/2","temp":"7/8","mean":"3/8"},{"a":"2","b":"1","temp":"1/2","mean":"3/2"},{"a":"5/2","b":"3/2","temp":"1/2","mean":"2"},{"a":"1/2","b":"-1/2","temp":"1/2","mean":"0"},{"a":"7/2","b":"-3/2","temp":"5/2","mean":"1"},{"a":"5/2","b":"-11/2","temp":"4","mean":"-3/2"},{"a":"3/4","b":"-2","temp":"11/8","mean":"-5/8"},{"a":"9","b":"3/4","temp":"33/8","mean":"39/8"},{"a":"11/4","b":"-1","temp":"15/8","mean":"7/8"},{"a":"-3/2","b":"-4","temp":"5/4","mean":"-11/4"},{"a":"4","b":"-5","temp":"9/2","mean":"-1/2"},{"a":"11/4","b":"9/4","temp":"1/4","mean":"5/2"},{"a":"10","b":"0","temp":"5","mean":"5"},{"a":"5","b":"4","temp":"1/2","mean":"9/2"},{"a":"4","b":"-11/2","temp":"19/4","mean":"-3/4"},{"a":"9/4","b":"-6","temp":"33/8","mean":"-15/8"},{"a":"4","b":"-5/2","temp":"13/4","mean":"3/4"},{"a":"5/2","b":"-6","temp":"17/4","mean":"-7/4"},{"a":"12","b":"-7/2","temp":"31/4","mean":"17/4"},{"a":"3","b":"-9/4","temp":"21/8","mean":"3/8"},{"a":"-3/2","b":"-4","temp":"5/4","mean":"-11/4"},{"a":"-1","b":"-5","temp":"2","mean":"-3"},{"a":"3","b":"0","temp":"3/2","mean":"3/2"}],"zeroShare":{"n":3000,"zero":69,"rate":0.023},"coolCheck":{"n":260,"bad":0},"bigHot":[{"a":20,"temp":"20"},{"a":50,"temp":"50"},{"a":100,"temp":"100"},{"a":200,"temp":"200"}],"zeroIffEqual":{"n":3000,"mismatch":0},"degenerate":[{"a":"3/2","b":"3/2","temp":"0","mean":"3/2","cls":"other"},{"a":"5/2","b":"5/2","temp":"0","mean":"5/2","cls":"other"},{"a":"3","b":"3","temp":"0","mean":"3","cls":"other"},{"a":"1/2","b":"1/2","temp":"0","mean":"1/2","cls":"other"},{"a":"11/2","b":"11/2","temp":"0","mean":"11/2","cls":"other"},{"a":"-1","b":"-1","temp":"0","mean":"-1","cls":"other"},{"a":"2","b":"2","temp":"0","mean":"2","cls":"other"},{"a":"2","b":"2","temp":"0","mean":"2","cls":"other"}],"degClasses":{"other":67,"allsmall":2}},"e6":{"boards":[{"r":1,"c":1,"text":"0","kind":"number","outcome":"P","positions":1,"ms":0.1,"mean":"0","temp":"0","birthday":0,"topOptions":0},{"r":1,"c":2,"text":"-1","kind":"number","outcome":"R","positions":2,"ms":0,"mean":"-1","temp":"0","birthday":1,"topOptions":1},{"r":1,"c":3,"text":"-1","kind":"number","outcome":"R","positions":3,"ms":0,"mean":"-1","temp":"0","birthday":1,"topOptions":1},{"r":1,"c":4,"text":"-2","kind":"number","outcome":"R","positions":5,"ms":0,"mean":"-2","temp":"0","birthday":2,"topOptions":1},{"r":1,"c":5,"text":"-2","kind":"number","outcome":"R","positions":8,"ms":0,"mean":"-2","temp":"0","birthday":2,"topOptions":1},{"r":1,"c":6,"text":"-3","kind":"number","outcome":"R","positions":13,"ms":0,"mean":"-3","temp":"0","birthday":3,"topOptions":1},{"r":2,"c":2,"text":"{1|-1}","kind":"switch","outcome":"N","positions":6,"ms":0,"mean":"0","temp":"1","birthday":2,"topOptions":2},{"r":2,"c":3,"text":"{2|-1/2}","kind":"switch","outcome":"N","positions":18,"ms":0,"mean":"3/4","temp":"5/4","birthday":3,"topOptions":2},{"r":2,"c":4,"text":"{{2|0}|0}","kind":"other","outcome":"R","positions":54,"ms":0.1,"mean":"0","temp":"0","birthday":4,"topOptions":2},{"r":2,"c":5,"text":"1/2","kind":"number","outcome":"L","positions":162,"ms":1.3,"mean":"1/2","temp":"0","birthday":2,"topOptions":2},{"r":2,"c":6,"text":"{{{3|1}|1}|-1}","kind":"other","outcome":"N","positions":486,"ms":2,"mean":"1","temp":"2","birthday":6,"topOptions":2},{"r":3,"c":3,"text":"{1|-1}","kind":"switch","outcome":"N","positions":98,"ms":0.2,"mean":"0","temp":"1","birthday":2,"topOptions":2},{"r":3,"c":4,"text":"-3/2","kind":"number","outcome":"R","positions":550,"ms":1.9,"mean":"-3/2","temp":"0","birthday":3,"topOptions":2},{"r":3,"c":5,"text":"-1","kind":"number","outcome":"R","positions":3054,"ms":13,"mean":"-1","temp":"0","birthday":1,"topOptions":1},{"r":3,"c":6,"text":"{-1|-7/2}","kind":"switch","outcome":"R","positions":17014,"ms":85.3,"mean":"-9/4","temp":"5/4","birthday":6,"topOptions":2},{"r":4,"c":4,"text":"{0,{{2|0},{2|{2|0}}|{2|0},{{2|0}|0}}|0,{{0|-2},{0|{0|-2}}|{0|-2},{{0|-2}|-2}}}","kind":"other","outcome":"N","positions":5700,"ms":27.5,"mean":"0","temp":"0","birthday":6,"topOptions":4},{"r":4,"c":5,"text":"1","kind":"number","outcome":"L","positions":58830,"ms":321,"mean":"1","temp":"0","birthday":1,"topOptions":1}],"extMatch":{"ok":8,"n":8},"transposeBad":0,"transposeN":10},"e7":{"day2":{"forms":256,"values":22,"ms":1.3},"partial":[{"k":1,"subsets":23,"forms":529,"values":174,"share":0.11804613297150611,"ms":4.7},{"k":2,"subsets":254,"forms":64516,"values":985,"share":0.6682496607869742,"ms":371.9},{"k":3,"subsets":1794,"forms":3218436,"values":1460,"share":0.9905020352781547,"ms":25798.4}],"target":1474,"seq":[1,4,22,1474]},"e8":{"sums":[{"k":1,"bfStates":4,"valueNodes":5,"birthday":4,"outcome":"R","bfOutcome":"R"},{"k":2,"bfStates":25,"valueNodes":7,"birthday":6,"outcome":"R","bfOutcome":"R"},{"k":3,"bfStates":167,"valueNodes":6,"birthday":5,"outcome":"R","bfOutcome":"R"},{"k":4,"bfStates":521,"valueNodes":11,"birthday":10,"outcome":"L","bfOutcome":"L"}],"canon":{"forms":64516,"values":985,"ms":244,"stats":{"nodes":5500,"le":17966,"add":0,"canon":64775,"memo":17966}},"sumStats":{"nodes":1,"le":427,"add":89,"canon":169,"memo":427},"note":"清缓存后测量（不能 spawn 子进程）","sumMs":2},"knownGames":[{"name":"0","form":"0","value":"0","mean":"0","temp":"0","exact":true,"outcome":"P","cls":"number","birthday":0,"size":1,"note":"空局面：谁先动谁输"},{"name":"1","form":"1","value":"1","mean":"1","temp":"0","exact":true,"outcome":"L","cls":"number","birthday":1,"size":2,"note":"一个白送的一步"},{"name":"−1","form":"-1","value":"-1","mean":"-1","temp":"0","exact":true,"outcome":"R","cls":"number","birthday":1,"size":2,"note":"对手白送一步"},{"name":"1/2","form":"1/2","value":"1/2","mean":"1/2","temp":"0","exact":true,"outcome":"L","cls":"number","birthday":2,"size":3,"note":"最简数：{0|1}，1/2 生于第 2 天"},{"name":"3/4","form":"3/4","value":"3/4","mean":"3/4","temp":"0","exact":true,"outcome":"L","cls":"number","birthday":3,"size":4,"note":"{1/2|1}：最简数，生于第 3 天"},{"name":"−3/2","form":"-3/2","value":"-3/2","mean":"-3/2","temp":"0","exact":true,"outcome":"R","cls":"number","birthday":3,"size":4,"note":"{−2|−1}：Domineering 3×4 就是它"},{"name":"*","form":"{0|0}","value":null,"mean":"0","temp":"0","exact":true,"outcome":"N","cls":"allsmall","birthday":1,"size":2,"note":"{0|0}：先手必胜，但和 0 不相上下"},{"name":"{1|0}","form":"{1|0}","value":null,"mean":"1/2","temp":"1/2","exact":true,"outcome":"N","cls":"switch","birthday":2,"size":3,"note":"均值 1/2、温度 1/2 的热局面"},{"name":"±1 = {1|−1}","form":"{1|-1}","value":null,"mean":"0","temp":"1","exact":true,"outcome":"N","cls":"switch","birthday":2,"size":4,"note":"均值 0、温度 1"},{"name":"±2 = {2|−2}","form":"{2|-2}","value":null,"mean":"0","temp":"2","exact":true,"outcome":"N","cls":"switch","birthday":3,"size":6,"note":"均值 0、温度 2"},{"name":"↑ = {0|*}","form":"{0|{0|0}}","value":null,"mean":"0","temp":"0","exact":false,"outcome":"L","cls":"allsmall","birthday":2,"size":3,"note":"比 0 大，比任何正数都小"},{"name":"↓ = {*|0}","form":"{{0|0}|0}","value":null,"mean":"0","temp":"0","exact":false,"outcome":"R","cls":"allsmall","birthday":2,"size":3,"note":"↑ 的负"},{"name":"↑+↑","form":"{0|{0,{0|0}|0}}","value":null,"mean":"0","temp":"0","exact":false,"outcome":"L","cls":"allsmall","birthday":3,"size":4,"note":"仍然是无穷小，但比 ↑ 更\"大\""},{"name":"↑+*","form":"{0,{0|0}|0}","value":null,"mean":"0","temp":"0","exact":false,"outcome":"N","cls":"allsmall","birthday":2,"size":3,"note":"无穷小 + 模糊"},{"name":"2×2 Domineering","form":"{1|-1}","value":null,"mean":"0","temp":"1","exact":true,"outcome":"N","cls":"switch","birthday":2,"size":4,"note":"文献值 {1|−1}"},{"name":"2×3 Domineering","form":"{2|-1/2}","value":null,"mean":"3/4","temp":"5/4","exact":true,"outcome":"N","cls":"switch","birthday":3,"size":6,"note":"文献值 {2|−1/2}，手工最易算错的一个"},{"name":"3×4 Domineering","form":"-3/2","value":"-3/2","mean":"-3/2","temp":"0","exact":true,"outcome":"R","cls":"number","birthday":3,"size":4,"note":"文献值 −3/2：居然是数"}],"stalkValues":[{"n":1,"values":["-1","1"],"same":true},{"n":2,"values":["-2","-1/2","1/2","2"],"same":true},{"n":3,"values":["-3","-3/2","-3/4","-1/4","1/4","3/4","3/2","3"],"same":true},{"n":4,"values":["-4","-5/2","-7/4","-5/4","-7/8","-5/8","-3/8","-1/8","1/8","3/8","5/8","7/8","5/4","7/4","5/2","4"],"same":true},{"n":5,"values":["-5","-7/2","-11/4","-9/4","-15/8","-13/8","-11/8","-9/8","-15/16","-13/16","-11/16","-9/16","-7/16","-5/16","-3/16","-1/16","1/16","3/16","5/16","7/16","9/16","11/16","13/16","15/16","9/8","11/8","13/8","15/8","9/4","11/4","7/2","5"],"same":true},{"n":6,"values":["-6","-9/2","-15/4","-13/4","-23/8","-21/8","-19/8","-17/8","-31/16","-29/16","-27/16","-25/16","-23/16","-21/16","-19/16","-17/16","-31/32","-29/32","-27/32","-25/32","-23/32","-21/32","-19/32","-17/32","-15/32","-13/32","-11/32","-9/32","-7/32","-5/32","-3/32","-1/32","1/32","3/32","5/32","7/32","9/32","11/32","13/32","15/32","17/32","19/32","21/32","23/32","25/32","27/32","29/32","31/32","17/16","19/16","21/16","23/16","25/16","27/16","29/16","31/16","17/8","19/8","21/8","23/8","13/4","15/4","9/2","6"],"same":true},{"n":7,"values":["-7","-11/2","-19/4","-17/4","-31/8","-29/8","-27/8","-25/8","-47/16","-45/16","-43/16","-41/16","-39/16","-37/16","-35/16","-33/16","-63/32","-61/32","-59/32","-57/32","-55/32","-53/32","-51/32","-49/32","-47/32","-45/32","-43/32","-41/32","-39/32","-37/32","-35/32","-33/32","-63/64","-61/64","-59/64","-57/64","-55/64","-53/64","-51/64","-49/64","-47/64","-45/64","-43/64","-41/64","-39/64","-37/64","-35/64","-33/64","-31/64","-29/64","-27/64","-25/64","-23/64","-21/64","-19/64","-17/64","-15/64","-13/64","-11/64","-9/64","-7/64","-5/64","-3/64","-1/64","1/64","3/64","5/64","7/64","9/64","11/64","13/64","15/64","17/64","19/64","21/64","23/64","25/64","27/64","29/64","31/64","33/64","35/64","37/64","39/64","41/64","43/64","45/64","47/64","49/64","51/64","53/64","55/64","57/64","59/64","61/64","63/64","33/32","35/32","37/32","39/32","41/32","43/32","45/32","47/32","49/32","51/32","53/32","55/32","57/32","59/32","61/32","63/32","33/16","35/16","37/16","39/16","41/16","43/16","45/16","47/16","25/8","27/8","29/8","31/8","17/4","19/4","11/2","7"],"same":true},{"n":8,"values":["-8","-13/2","-23/4","-21/4","-39/8","-37/8","-35/8","-33/8","-63/16","-61/16","-59/16","-57/16","-55/16","-53/16","-51/16","-49/16","-95/32","-93/32","-91/32","-89/32","-87/32","-85/32","-83/32","-81/32","-79/32","-77/32","-75/32","-73/32","-71/32","-69/32","-67/32","-65/32","-127/64","-125/64","-123/64","-121/64","-119/64","-117/64","-115/64","-113/64","-111/64","-109/64","-107/64","-105/64","-103/64","-101/64","-99/64","-97/64","-95/64","-93/64","-91/64","-89/64","-87/64","-85/64","-83/64","-81/64","-79/64","-77/64","-75/64","-73/64","-71/64","-69/64","-67/64","-65/64","-127/128","-125/128","-123/128","-121/128","-119/128","-117/128","-115/128","-113/128","-111/128","-109/128","-107/128","-105/128","-103/128","-101/128","-99/128","-97/128","-95/128","-93/128","-91/128","-89/128","-87/128","-85/128","-83/128","-81/128","-79/128","-77/128","-75/128","-73/128","-71/128","-69/128","-67/128","-65/128","-63/128","-61/128","-59/128","-57/128","-55/128","-53/128","-51/128","-49/128","-47/128","-45/128","-43/128","-41/128","-39/128","-37/128","-35/128","-33/128","-31/128","-29/128","-27/128","-25/128","-23/128","-21/128","-19/128","-17/128","-15/128","-13/128","-11/128","-9/128","-7/128","-5/128","-3/128","-1/128","1/128","3/128","5/128","7/128","9/128","11/128","13/128","15/128","17/128","19/128","21/128","23/128","25/128","27/128","29/128","31/128","33/128","35/128","37/128","39/128","41/128","43/128","45/128","47/128","49/128","51/128","53/128","55/128","57/128","59/128","61/128","63/128","65/128","67/128","69/128","71/128","73/128","75/128","77/128","79/128","81/128","83/128","85/128","87/128","89/128","91/128","93/128","95/128","97/128","99/128","101/128","103/128","105/128","107/128","109/128","111/128","113/128","115/128","117/128","119/128","121/128","123/128","125/128","127/128","65/64","67/64","69/64","71/64","73/64","75/64","77/64","79/64","81/64","83/64","85/64","87/64","89/64","91/64","93/64","95/64","97/64","99/64","101/64","103/64","105/64","107/64","109/64","111/64","113/64","115/64","117/64","119/64","121/64","123/64","125/64","127/64","65/32","67/32","69/32","71/32","73/32","75/32","77/32","79/32","81/32","83/32","85/32","87/32","89/32","91/32","93/32","95/32","49/16","51/16","53/16","55/16","57/16","59/16","61/16","63/16","33/8","35/8","37/8","39/8","21/4","23/4","13/2","8"],"same":true},{"n":9,"values":["-9","-15/2","-27/4","-25/4","-47/8","-45/8","-43/8","-41/8","-79/16","-77/16","-75/16","-73/16","-71/16","-69/16","-67/16","-65/16","-127/32","-125/32","-123/32","-121/32","-119/32","-117/32","-115/32","-113/32","-111/32","-109/32","-107/32","-105/32","-103/32","-101/32","-99/32","-97/32","-191/64","-189/64","-187/64","-185/64","-183/64","-181/64","-179/64","-177/64","-175/64","-173/64","-171/64","-169/64","-167/64","-165/64","-163/64","-161/64","-159/64","-157/64","-155/64","-153/64","-151/64","-149/64","-147/64","-145/64","-143/64","-141/64","-139/64","-137/64","-135/64","-133/64","-131/64","-129/64","-255/128","-253/128","-251/128","-249/128","-247/128","-245/128","-243/128","-241/128","-239/128","-237/128","-235/128","-233/128","-231/128","-229/128","-227/128","-225/128","-223/128","-221/128","-219/128","-217/128","-215/128","-213/128","-211/128","-209/128","-207/128","-205/128","-203/128","-201/128","-199/128","-197/128","-195/128","-193/128","-191/128","-189/128","-187/128","-185/128","-183/128","-181/128","-179/128","-177/128","-175/128","-173/128","-171/128","-169/128","-167/128","-165/128","-163/128","-161/128","-159/128","-157/128","-155/128","-153/128","-151/128","-149/128","-147/128","-145/128","-143/128","-141/128","-139/128","-137/128","-135/128","-133/128","-131/128","-129/128","-255/256","-253/256","-251/256","-249/256","-247/256","-245/256","-243/256","-241/256","-239/256","-237/256","-235/256","-233/256","-231/256","-229/256","-227/256","-225/256","-223/256","-221/256","-219/256","-217/256","-215/256","-213/256","-211/256","-209/256","-207/256","-205/256","-203/256","-201/256","-199/256","-197/256","-195/256","-193/256","-191/256","-189/256","-187/256","-185/256","-183/256","-181/256","-179/256","-177/256","-175/256","-173/256","-171/256","-169/256","-167/256","-165/256","-163/256","-161/256","-159/256","-157/256","-155/256","-153/256","-151/256","-149/256","-147/256","-145/256","-143/256","-141/256","-139/256","-137/256","-135/256","-133/256","-131/256","-129/256","-127/256","-125/256","-123/256","-121/256","-119/256","-117/256","-115/256","-113/256","-111/256","-109/256","-107/256","-105/256","-103/256","-101/256","-99/256","-97/256","-95/256","-93/256","-91/256","-89/256","-87/256","-85/256","-83/256","-81/256","-79/256","-77/256","-75/256","-73/256","-71/256","-69/256","-67/256","-65/256","-63/256","-61/256","-59/256","-57/256","-55/256","-53/256","-51/256","-49/256","-47/256","-45/256","-43/256","-41/256","-39/256","-37/256","-35/256","-33/256","-31/256","-29/256","-27/256","-25/256","-23/256","-21/256","-19/256","-17/256","-15/256","-13/256","-11/256","-9/256","-7/256","-5/256","-3/256","-1/256","1/256","3/256","5/256","7/256","9/256","11/256","13/256","15/256","17/256","19/256","21/256","23/256","25/256","27/256","29/256","31/256","33/256","35/256","37/256","39/256","41/256","43/256","45/256","47/256","49/256","51/256","53/256","55/256","57/256","59/256","61/256","63/256","65/256","67/256","69/256","71/256","73/256","75/256","77/256","79/256","81/256","83/256","85/256","87/256","89/256","91/256","93/256","95/256","97/256","99/256","101/256","103/256","105/256","107/256","109/256","111/256","113/256","115/256","117/256","119/256","121/256","123/256","125/256","127/256","129/256","131/256","133/256","135/256","137/256","139/256","141/256","143/256","145/256","147/256","149/256","151/256","153/256","155/256","157/256","159/256","161/256","163/256","165/256","167/256","169/256","171/256","173/256","175/256","177/256","179/256","181/256","183/256","185/256","187/256","189/256","191/256","193/256","195/256","197/256","199/256","201/256","203/256","205/256","207/256","209/256","211/256","213/256","215/256","217/256","219/256","221/256","223/256","225/256","227/256","229/256","231/256","233/256","235/256","237/256","239/256","241/256","243/256","245/256","247/256","249/256","251/256","253/256","255/256","129/128","131/128","133/128","135/128","137/128","139/128","141/128","143/128","145/128","147/128","149/128","151/128","153/128","155/128","157/128","159/128","161/128","163/128","165/128","167/128","169/128","171/128","173/128","175/128","177/128","179/128","181/128","183/128","185/128","187/128","189/128","191/128","193/128","195/128","197/128","199/128","201/128","203/128","205/128","207/128","209/128","211/128","213/128","215/128","217/128","219/128","221/128","223/128","225/128","227/128","229/128","231/128","233/128","235/128","237/128","239/128","241/128","243/128","245/128","247/128","249/128","251/128","253/128","255/128","129/64","131/64","133/64","135/64","137/64","139/64","141/64","143/64","145/64","147/64","149/64","151/64","153/64","155/64","157/64","159/64","161/64","163/64","165/64","167/64","169/64","171/64","173/64","175/64","177/64","179/64","181/64","183/64","185/64","187/64","189/64","191/64","97/32","99/32","101/32","103/32","105/32","107/32","109/32","111/32","113/32","115/32","117/32","119/32","121/32","123/32","125/32","127/32","65/16","67/16","69/16","71/16","73/16","75/16","77/16","79/16","41/8","43/8","45/8","47/8","25/4","27/4","15/2","9"],"same":true},{"n":10,"values":["-10","-17/2","-31/4","-29/4","-55/8","-53/8","-51/8","-49/8","-95/16","-93/16","-91/16","-89/16","-87/16","-85/16","-83/16","-81/16","-159/32","-157/32","-155/32","-153/32","-151/32","-149/32","-147/32","-145/32","-143/32","-141/32","-139/32","-137/32","-135/32","-133/32","-131/32","-129/32","-255/64","-253/64","-251/64","-249/64","-247/64","-245/64","-243/64","-241/64","-239/64","-237/64","-235/64","-233/64","-231/64","-229/64","-227/64","-225/64","-223/64","-221/64","-219/64","-217/64","-215/64","-213/64","-211/64","-209/64","-207/64","-205/64","-203/64","-201/64","-199/64","-197/64","-195/64","-193/64","-383/128","-381/128","-379/128","-377/128","-375/128","-373/128","-371/128","-369/128","-367/128","-365/128","-363/128","-361/128","-359/128","-357/128","-355/128","-353/128","-351/128","-349/128","-347/128","-345/128","-343/128","-341/128","-339/128","-337/128","-335/128","-333/128","-331/128","-329/128","-327/128","-325/128","-323/128","-321/128","-319/128","-317/128","-315/128","-313/128","-311/128","-309/128","-307/128","-305/128","-303/128","-301/128","-299/128","-297/128","-295/128","-293/128","-291/128","-289/128","-287/128","-285/128","-283/128","-281/128","-279/128","-277/128","-275/128","-273/128","-271/128","-269/128","-267/128","-265/128","-263/128","-261/128","-259/128","-257/128","-511/256","-509/256","-507/256","-505/256","-503/256","-501/256","-499/256","-497/256","-495/256","-493/256","-491/256","-489/256","-487/256","-485/256","-483/256","-481/256","-479/256","-477/256","-475/256","-473/256","-471/256","-469/256","-467/256","-465/256","-463/256","-461/256","-459/256","-457/256","-455/256","-453/256","-451/256","-449/256","-447/256","-445/256","-443/256","-441/256","-439/256","-437/256","-435/256","-433/256","-431/256","-429/256","-427/256","-425/256","-423/256","-421/256","-419/256","-417/256","-415/256","-413/256","-411/256","-409/256","-407/256","-405/256","-403/256","-401/256","-399/256","-397/256","-395/256","-393/256","-391/256","-389/256","-387/256","-385/256","-383/256","-381/256","-379/256","-377/256","-375/256","-373/256","-371/256","-369/256","-367/256","-365/256","-363/256","-361/256","-359/256","-357/256","-355/256","-353/256","-351/256","-349/256","-347/256","-345/256","-343/256","-341/256","-339/256","-337/256","-335/256","-333/256","-331/256","-329/256","-327/256","-325/256","-323/256","-321/256","-319/256","-317/256","-315/256","-313/256","-311/256","-309/256","-307/256","-305/256","-303/256","-301/256","-299/256","-297/256","-295/256","-293/256","-291/256","-289/256","-287/256","-285/256","-283/256","-281/256","-279/256","-277/256","-275/256","-273/256","-271/256","-269/256","-267/256","-265/256","-263/256","-261/256","-259/256","-257/256","-511/512","-509/512","-507/512","-505/512","-503/512","-501/512","-499/512","-497/512","-495/512","-493/512","-491/512","-489/512","-487/512","-485/512","-483/512","-481/512","-479/512","-477/512","-475/512","-473/512","-471/512","-469/512","-467/512","-465/512","-463/512","-461/512","-459/512","-457/512","-455/512","-453/512","-451/512","-449/512","-447/512","-445/512","-443/512","-441/512","-439/512","-437/512","-435/512","-433/512","-431/512","-429/512","-427/512","-425/512","-423/512","-421/512","-419/512","-417/512","-415/512","-413/512","-411/512","-409/512","-407/512","-405/512","-403/512","-401/512","-399/512","-397/512","-395/512","-393/512","-391/512","-389/512","-387/512","-385/512","-383/512","-381/512","-379/512","-377/512","-375/512","-373/512","-371/512","-369/512","-367/512","-365/512","-363/512","-361/512","-359/512","-357/512","-355/512","-353/512","-351/512","-349/512","-347/512","-345/512","-343/512","-341/512","-339/512","-337/512","-335/512","-333/512","-331/512","-329/512","-327/512","-325/512","-323/512","-321/512","-319/512","-317/512","-315/512","-313/512","-311/512","-309/512","-307/512","-305/512","-303/512","-301/512","-299/512","-297/512","-295/512","-293/512","-291/512","-289/512","-287/512","-285/512","-283/512","-281/512","-279/512","-277/512","-275/512","-273/512","-271/512","-269/512","-267/512","-265/512","-263/512","-261/512","-259/512","-257/512","-255/512","-253/512","-251/512","-249/512","-247/512","-245/512","-243/512","-241/512","-239/512","-237/512","-235/512","-233/512","-231/512","-229/512","-227/512","-225/512","-223/512","-221/512","-219/512","-217/512","-215/512","-213/512","-211/512","-209/512","-207/512","-205/512","-203/512","-201/512","-199/512","-197/512","-195/512","-193/512","-191/512","-189/512","-187/512","-185/512","-183/512","-181/512","-179/512","-177/512","-175/512","-173/512","-171/512","-169/512","-167/512","-165/512","-163/512","-161/512","-159/512","-157/512","-155/512","-153/512","-151/512","-149/512","-147/512","-145/512","-143/512","-141/512","-139/512","-137/512","-135/512","-133/512","-131/512","-129/512","-127/512","-125/512","-123/512","-121/512","-119/512","-117/512","-115/512","-113/512","-111/512","-109/512","-107/512","-105/512","-103/512","-101/512","-99/512","-97/512","-95/512","-93/512","-91/512","-89/512","-87/512","-85/512","-83/512","-81/512","-79/512","-77/512","-75/512","-73/512","-71/512","-69/512","-67/512","-65/512","-63/512","-61/512","-59/512","-57/512","-55/512","-53/512","-51/512","-49/512","-47/512","-45/512","-43/512","-41/512","-39/512","-37/512","-35/512","-33/512","-31/512","-29/512","-27/512","-25/512","-23/512","-21/512","-19/512","-17/512","-15/512","-13/512","-11/512","-9/512","-7/512","-5/512","-3/512","-1/512","1/512","3/512","5/512","7/512","9/512","11/512","13/512","15/512","17/512","19/512","21/512","23/512","25/512","27/512","29/512","31/512","33/512","35/512","37/512","39/512","41/512","43/512","45/512","47/512","49/512","51/512","53/512","55/512","57/512","59/512","61/512","63/512","65/512","67/512","69/512","71/512","73/512","75/512","77/512","79/512","81/512","83/512","85/512","87/512","89/512","91/512","93/512","95/512","97/512","99/512","101/512","103/512","105/512","107/512","109/512","111/512","113/512","115/512","117/512","119/512","121/512","123/512","125/512","127/512","129/512","131/512","133/512","135/512","137/512","139/512","141/512","143/512","145/512","147/512","149/512","151/512","153/512","155/512","157/512","159/512","161/512","163/512","165/512","167/512","169/512","171/512","173/512","175/512","177/512","179/512","181/512","183/512","185/512","187/512","189/512","191/512","193/512","195/512","197/512","199/512","201/512","203/512","205/512","207/512","209/512","211/512","213/512","215/512","217/512","219/512","221/512","223/512","225/512","227/512","229/512","231/512","233/512","235/512","237/512","239/512","241/512","243/512","245/512","247/512","249/512","251/512","253/512","255/512","257/512","259/512","261/512","263/512","265/512","267/512","269/512","271/512","273/512","275/512","277/512","279/512","281/512","283/512","285/512","287/512","289/512","291/512","293/512","295/512","297/512","299/512","301/512","303/512","305/512","307/512","309/512","311/512","313/512","315/512","317/512","319/512","321/512","323/512","325/512","327/512","329/512","331/512","333/512","335/512","337/512","339/512","341/512","343/512","345/512","347/512","349/512","351/512","353/512","355/512","357/512","359/512","361/512","363/512","365/512","367/512","369/512","371/512","373/512","375/512","377/512","379/512","381/512","383/512","385/512","387/512","389/512","391/512","393/512","395/512","397/512","399/512","401/512","403/512","405/512","407/512","409/512","411/512","413/512","415/512","417/512","419/512","421/512","423/512","425/512","427/512","429/512","431/512","433/512","435/512","437/512","439/512","441/512","443/512","445/512","447/512","449/512","451/512","453/512","455/512","457/512","459/512","461/512","463/512","465/512","467/512","469/512","471/512","473/512","475/512","477/512","479/512","481/512","483/512","485/512","487/512","489/512","491/512","493/512","495/512","497/512","499/512","501/512","503/512","505/512","507/512","509/512","511/512","257/256","259/256","261/256","263/256","265/256","267/256","269/256","271/256","273/256","275/256","277/256","279/256","281/256","283/256","285/256","287/256","289/256","291/256","293/256","295/256","297/256","299/256","301/256","303/256","305/256","307/256","309/256","311/256","313/256","315/256","317/256","319/256","321/256","323/256","325/256","327/256","329/256","331/256","333/256","335/256","337/256","339/256","341/256","343/256","345/256","347/256","349/256","351/256","353/256","355/256","357/256","359/256","361/256","363/256","365/256","367/256","369/256","371/256","373/256","375/256","377/256","379/256","381/256","383/256","385/256","387/256","389/256","391/256","393/256","395/256","397/256","399/256","401/256","403/256","405/256","407/256","409/256","411/256","413/256","415/256","417/256","419/256","421/256","423/256","425/256","427/256","429/256","431/256","433/256","435/256","437/256","439/256","441/256","443/256","445/256","447/256","449/256","451/256","453/256","455/256","457/256","459/256","461/256","463/256","465/256","467/256","469/256","471/256","473/256","475/256","477/256","479/256","481/256","483/256","485/256","487/256","489/256","491/256","493/256","495/256","497/256","499/256","501/256","503/256","505/256","507/256","509/256","511/256","257/128","259/128","261/128","263/128","265/128","267/128","269/128","271/128","273/128","275/128","277/128","279/128","281/128","283/128","285/128","287/128","289/128","291/128","293/128","295/128","297/128","299/128","301/128","303/128","305/128","307/128","309/128","311/128","313/128","315/128","317/128","319/128","321/128","323/128","325/128","327/128","329/128","331/128","333/128","335/128","337/128","339/128","341/128","343/128","345/128","347/128","349/128","351/128","353/128","355/128","357/128","359/128","361/128","363/128","365/128","367/128","369/128","371/128","373/128","375/128","377/128","379/128","381/128","383/128","193/64","195/64","197/64","199/64","201/64","203/64","205/64","207/64","209/64","211/64","213/64","215/64","217/64","219/64","221/64","223/64","225/64","227/64","229/64","231/64","233/64","235/64","237/64","239/64","241/64","243/64","245/64","247/64","249/64","251/64","253/64","255/64","129/32","131/32","133/32","135/32","137/32","139/32","141/32","143/32","145/32","147/32","149/32","151/32","153/32","155/32","157/32","159/32","81/16","83/16","85/16","87/16","89/16","91/16","93/16","95/16","49/8","51/8","53/8","55/8","29/4","31/4","17/2","10"],"same":true}],"stalkIdentity":[{"n":1,"stalkCount":2,"bornCount":2,"same":true},{"n":2,"stalkCount":4,"bornCount":4,"same":true},{"n":3,"stalkCount":8,"bornCount":8,"same":true},{"n":4,"stalkCount":16,"bornCount":16,"same":true},{"n":5,"stalkCount":32,"bornCount":32,"same":true},{"n":6,"stalkCount":64,"bornCount":64,"same":true},{"n":7,"stalkCount":128,"bornCount":128,"same":true},{"n":8,"stalkCount":256,"bornCount":256,"same":true},{"n":9,"stalkCount":512,"bornCount":512,"same":true},{"n":10,"stalkCount":1024,"bornCount":1024,"same":true}],"numberDays":[{"day":0,"values":["0"],"count":1,"maxDenPow":0,"maxAbs":0},{"day":1,"values":["-1","1"],"count":2,"maxDenPow":0,"maxAbs":1},{"day":2,"values":["-2","-1/2","1/2","2"],"count":4,"maxDenPow":1,"maxAbs":2},{"day":3,"values":["-3","-3/2","-3/4","-1/4","1/4","3/4","3/2","3"],"count":8,"maxDenPow":2,"maxAbs":3},{"day":4,"values":["-4","-5/2","-7/4","-5/4","-7/8","-5/8","-3/8","-1/8","1/8","3/8","5/8","7/8","5/4","7/4","5/2","4"],"count":16,"maxDenPow":3,"maxAbs":4},{"day":5,"values":["-5","-7/2","-11/4","-9/4","-15/8","-13/8","-11/8","-9/8","-15/16","-13/16","-11/16","-9/16","-7/16","-5/16","-3/16","-1/16","1/16","3/16","5/16","7/16","9/16","11/16","13/16","15/16","9/8","11/8","13/8","15/8","9/4","11/4","7/2","5"],"count":32,"maxDenPow":4,"maxAbs":5},{"day":6,"values":["-6","-9/2","-15/4","-13/4","-23/8","-21/8","-19/8","-17/8","-31/16","-29/16","-27/16","-25/16","-23/16","-21/16","-19/16","-17/16","-31/32","-29/32","-27/32","-25/32","-23/32","-21/32","-19/32","-17/32","-15/32","-13/32","-11/32","-9/32","-7/32","-5/32","-3/32","-1/32","1/32","3/32","5/32","7/32","9/32","11/32","13/32","15/32","17/32","19/32","21/32","23/32","25/32","27/32","29/32","31/32","17/16","19/16","21/16","23/16","25/16","27/16","29/16","31/16","17/8","19/8","21/8","23/8","13/4","15/4","9/2","6"],"count":64,"maxDenPow":5,"maxAbs":6},{"day":7,"values":["-7","-11/2","-19/4","-17/4","-31/8","-29/8","-27/8","-25/8","-47/16","-45/16","-43/16","-41/16","-39/16","-37/16","-35/16","-33/16","-63/32","-61/32","-59/32","-57/32","-55/32","-53/32","-51/32","-49/32","-47/32","-45/32","-43/32","-41/32","-39/32","-37/32","-35/32","-33/32","-63/64","-61/64","-59/64","-57/64","-55/64","-53/64","-51/64","-49/64","-47/64","-45/64","-43/64","-41/64","-39/64","-37/64","-35/64","-33/64","-31/64","-29/64","-27/64","-25/64","-23/64","-21/64","-19/64","-17/64","-15/64","-13/64","-11/64","-9/64","-7/64","-5/64","-3/64","-1/64","1/64","3/64","5/64","7/64","9/64","11/64","13/64","15/64","17/64","19/64","21/64","23/64","25/64","27/64","29/64","31/64","33/64","35/64","37/64","39/64","41/64","43/64","45/64","47/64","49/64","51/64","53/64","55/64","57/64","59/64","61/64","63/64","33/32","35/32","37/32","39/32","41/32","43/32","45/32","47/32","49/32","51/32","53/32","55/32","57/32","59/32","61/32","63/32","33/16","35/16","37/16","39/16","41/16","43/16","45/16","47/16","25/8","27/8","29/8","31/8","17/4","19/4","11/2","7"],"count":128,"maxDenPow":6,"maxAbs":7},{"day":8,"values":["-8","-13/2","-23/4","-21/4","-39/8","-37/8","-35/8","-33/8","-63/16","-61/16","-59/16","-57/16","-55/16","-53/16","-51/16","-49/16","-95/32","-93/32","-91/32","-89/32","-87/32","-85/32","-83/32","-81/32","-79/32","-77/32","-75/32","-73/32","-71/32","-69/32","-67/32","-65/32","-127/64","-125/64","-123/64","-121/64","-119/64","-117/64","-115/64","-113/64","-111/64","-109/64","-107/64","-105/64","-103/64","-101/64","-99/64","-97/64","-95/64","-93/64","-91/64","-89/64","-87/64","-85/64","-83/64","-81/64","-79/64","-77/64","-75/64","-73/64","-71/64","-69/64","-67/64","-65/64","-127/128","-125/128","-123/128","-121/128","-119/128","-117/128","-115/128","-113/128","-111/128","-109/128","-107/128","-105/128","-103/128","-101/128","-99/128","-97/128","-95/128","-93/128","-91/128","-89/128","-87/128","-85/128","-83/128","-81/128","-79/128","-77/128","-75/128","-73/128","-71/128","-69/128","-67/128","-65/128","-63/128","-61/128","-59/128","-57/128","-55/128","-53/128","-51/128","-49/128","-47/128","-45/128","-43/128","-41/128","-39/128","-37/128","-35/128","-33/128","-31/128","-29/128","-27/128","-25/128","-23/128","-21/128","-19/128","-17/128","-15/128","-13/128","-11/128","-9/128","-7/128","-5/128","-3/128","-1/128","1/128","3/128","5/128","7/128","9/128","11/128","13/128","15/128","17/128","19/128","21/128","23/128","25/128","27/128","29/128","31/128","33/128","35/128","37/128","39/128","41/128","43/128","45/128","47/128","49/128","51/128","53/128","55/128","57/128","59/128","61/128","63/128","65/128","67/128","69/128","71/128","73/128","75/128","77/128","79/128","81/128","83/128","85/128","87/128","89/128","91/128","93/128","95/128","97/128","99/128","101/128","103/128","105/128","107/128","109/128","111/128","113/128","115/128","117/128","119/128","121/128","123/128","125/128","127/128","65/64","67/64","69/64","71/64","73/64","75/64","77/64","79/64","81/64","83/64","85/64","87/64","89/64","91/64","93/64","95/64","97/64","99/64","101/64","103/64","105/64","107/64","109/64","111/64","113/64","115/64","117/64","119/64","121/64","123/64","125/64","127/64","65/32","67/32","69/32","71/32","73/32","75/32","77/32","79/32","81/32","83/32","85/32","87/32","89/32","91/32","93/32","95/32","49/16","51/16","53/16","55/16","57/16","59/16","61/16","63/16","33/8","35/8","37/8","39/8","21/4","23/4","13/2","8"],"count":256,"maxDenPow":7,"maxAbs":8}],"canonDemo":[{"title":"消去被支配的选项","note":"Left 偏爱大的：1 支配 0 和 *；Right 偏爱小的：−1 支配 0。剩下的 {1|−1} 就是 ±1。","raw":"{0, 1, {0|0} | -1, 0}","steps":[{"i":0,"stage":"raw","text":"{0, 1, {0|0} | -1, 0}","droppedL":[],"droppedR":[],"bypL":0,"bypR":0},{"i":1,"stage":"pass","text":"{1 | -1}","droppedL":["0","{0|0}"],"droppedR":["0"],"bypL":0,"bypR":0},{"i":2,"stage":"fixed","text":"{1 | -1}","droppedL":[],"droppedR":[],"bypL":0,"bypR":0}],"final":"{1|-1}","finalOutcome":"N","finalClass":"switch"},{"title":"绕过可逆的选项","note":"左选项 {0|1} = 1/2 有一个右选项 1 ≥ 整个局面，于是把 1/2 换成它自己的左选项 0，得到 {0|} = 1。","raw":"{1/2 | }","steps":[{"i":0,"stage":"raw","text":"{1/2 | }","droppedL":[],"droppedR":[],"bypL":0,"bypR":0},{"i":1,"stage":"pass","text":"{0 | }","droppedL":[],"droppedR":[],"bypL":1,"bypR":0},{"i":2,"stage":"fixed","text":"{0 | }","droppedL":[],"droppedR":[],"bypL":0,"bypR":0}],"final":"1","finalOutcome":"L","finalClass":"number"}],"sgFamilies":[{"id":"nim","name":"Nim 堆（大小 n）","seq":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],"note":"SG = n，最\"透明\"的无偏博弈"},{"id":"sub134","name":"减法 S(1,3,4)","seq":[0,1,0,1,2,3,2,0,1,0,1,2,3,2,0,1,0,1,2,3,2],"note":"周期性"},{"id":"dawson","name":"Dawson 的 Kayles","seq":[0,1,1,2,0,3,1,1,0,3,3,2,2,4,0,5,2,2,3,3,0,1,1,3,0,2,1,1,0,4],"note":"OEIS A002187 错位一项；周期 34"},{"id":"kayles","name":"Kayles","seq":[0,1,2,3,1,4,3,2,1,4,2,6,4,1,2,7,1,4,3,2,1,4,6,7,4],"note":"推倒一根或相邻两根"}],"domBoards":[{"r":1,"c":1,"text":"0","kind":"number","outcome":"P","positions":1,"ms":0.1,"mean":"0","temp":"0","birthday":0,"topOptions":0},{"r":1,"c":2,"text":"-1","kind":"number","outcome":"R","positions":2,"ms":0,"mean":"-1","temp":"0","birthday":1,"topOptions":1},{"r":1,"c":3,"text":"-1","kind":"number","outcome":"R","positions":3,"ms":0,"mean":"-1","temp":"0","birthday":1,"topOptions":1},{"r":1,"c":4,"text":"-2","kind":"number","outcome":"R","positions":5,"ms":0,"mean":"-2","temp":"0","birthday":2,"topOptions":1},{"r":1,"c":5,"text":"-2","kind":"number","outcome":"R","positions":8,"ms":0,"mean":"-2","temp":"0","birthday":2,"topOptions":1},{"r":1,"c":6,"text":"-3","kind":"number","outcome":"R","positions":13,"ms":0,"mean":"-3","temp":"0","birthday":3,"topOptions":1},{"r":2,"c":2,"text":"{1|-1}","kind":"switch","outcome":"N","positions":6,"ms":0,"mean":"0","temp":"1","birthday":2,"topOptions":2},{"r":2,"c":3,"text":"{2|-1/2}","kind":"switch","outcome":"N","positions":18,"ms":0,"mean":"3/4","temp":"5/4","birthday":3,"topOptions":2},{"r":2,"c":4,"text":"{{2|0}|0}","kind":"other","outcome":"R","positions":54,"ms":0.1,"mean":"0","temp":"0","birthday":4,"topOptions":2},{"r":2,"c":5,"text":"1/2","kind":"number","outcome":"L","positions":162,"ms":1.3,"mean":"1/2","temp":"0","birthday":2,"topOptions":2},{"r":2,"c":6,"text":"{{{3|1}|1}|-1}","kind":"other","outcome":"N","positions":486,"ms":2,"mean":"1","temp":"2","birthday":6,"topOptions":2},{"r":3,"c":3,"text":"{1|-1}","kind":"switch","outcome":"N","positions":98,"ms":0.2,"mean":"0","temp":"1","birthday":2,"topOptions":2},{"r":3,"c":4,"text":"-3/2","kind":"number","outcome":"R","positions":550,"ms":1.9,"mean":"-3/2","temp":"0","birthday":3,"topOptions":2},{"r":3,"c":5,"text":"-1","kind":"number","outcome":"R","positions":3054,"ms":13,"mean":"-1","temp":"0","birthday":1,"topOptions":1},{"r":3,"c":6,"text":"{-1|-7/2}","kind":"switch","outcome":"R","positions":17014,"ms":85.3,"mean":"-9/4","temp":"5/4","birthday":6,"topOptions":2},{"r":4,"c":4,"text":"{0,{{2|0},{2|{2|0}}|{2|0},{{2|0}|0}}|0,{{0|-2},{0|{0|-2}}|{0|-2},{{0|-2}|-2}}}","kind":"other","outcome":"N","positions":5700,"ms":27.5,"mean":"0","temp":"0","birthday":6,"topOptions":4},{"r":4,"c":5,"text":"1","kind":"number","outcome":"L","positions":58830,"ms":321,"mean":"1","temp":"0","birthday":1,"topOptions":1}],"domCounts":{"number":10,"switch":4,"other":3,"allsmall":0},"playBoards":[{"h":2,"w":3,"label":"2 行 × 3 列","value":"{2|-1/2}","outcome":"N"},{"h":3,"w":3,"label":"3 行 × 3 列","value":"{1|-1}","outcome":"N"},{"h":2,"w":4,"label":"2 行 × 4 列","value":"{{2|0}|0}","outcome":"R"}],"costRows":[{"k":1,"bfStates":4,"valueNodes":5,"birthday":4,"outcome":"R","ratio":0.8},{"k":2,"bfStates":25,"valueNodes":7,"birthday":6,"outcome":"R","ratio":3.5714285714285716},{"k":3,"bfStates":167,"valueNodes":6,"birthday":5,"outcome":"R","ratio":27.833333333333332},{"k":4,"bfStates":521,"valueNodes":11,"birthday":10,"outcome":"L","ratio":47.36363636363637}],"extGamesBorn":[1,4,22,1474],"extDawson":[0,1,1,2,0,3,1,1,0,3,3,2,2,4,0,5,2,2,3,3,0,1,1,3,0,2,1,1,0,4,5,2,7,4,0,1,1,2,0,3],"extNumbers":[1,3,7,15,31,63,127,255,511,1023],"extDom":[{"r":1,"c":1,"text":"0"},{"r":1,"c":2,"text":"-1"},{"r":2,"c":1,"text":"1"},{"r":2,"c":2,"text":"{1|-1}"},{"r":2,"c":3,"text":"{2|-1/2}"},{"r":3,"c":2,"text":"{1/2|-2}"},{"r":3,"c":3,"text":"{1|-1}"},{"r":3,"c":4,"text":"-3/2"}]},"conclusions":["**Sprague–Grundy 定理零违例**：四个无偏家族（Nim / 减法 S(1,3,4) / S(2,5) / Dawson 的 Kayles）共 2,400 组和的胜负，值判定与穷举极小极大完全一致（100.000%）。但这条是**定理**，它验证的是我们的实现，不是世界。","**一个数就能代表一整类局面**（无偏博弈），代价是必须先把 SG 值算出来 —— 而算 SG 值本身要枚举走法。","**有偏博弈没有这个待遇**：把每个分量的\"均值\"加起来猜胜负，在 6 个分量时失效率 47.59%（1,047/2,200）。","**对照组把这件事钉死了**：所有分量都是数（温度 0）时，同一个启发式失效率 0.000%（0/1,420）。所以失效的原因是\"热\"，不是\"我的启发式写歪了\"。","**温度不是充分的修正量**：在均值为 0 时改用\"有热分量就判先手胜\"，失效率只从 47.59% 变成 47.59%。温度告诉你\"有多热\"，不告诉你\"热向哪边\"。","**第 n 天出生 2^n 个数**，累计 2^(n+1) − 1 个。逐日构造与生日公式两条独立路线在 n = 12 时都给出 8,191 个。","**生日不由分母决定，由\"最简\"决定**：1/2 生于第 2 天，1/4 与 3/4 生于第 3 天；但 5/4 要到第 4 天，而 1/128 要到第 8 天。","**长度 n 的蓝红杆有 2^n 根，取值两两不同**（n = 1…14 上逐档核对），所以杆到值是一个一一对应。","**而且这 2^n 个值恰好就是第 n 天出生的那 2^n 个数** —— 恒等式在 n = 1…12 上逐档成立（12/12）。\"第 n 天出生的数\"因此不是抽象构造：每一根恰好长 n 的杆都实现其中一个。","**杆永远不会给出 * 或 ↑**：32,766 根长度 ≤ 14 的杆全部是数（100.00%）。","**要让值\"不是数\"，必须让杆分叉**（变成图形而不是一条链）。* 与 ↑ 都住在分叉的世界里。","**Domineering 的 8 个文献值逐个吻合**，包括 2×3 = {2|−1/2} —— 那个\"手工算会算错半点\"的著名例子。","**4×4 不是 * **：它的规范型顶层四个选项、其下深三层，与文献的散文描述相容；用穷举极小极大与 G + * ≠ 0 两条独立路线确认。","**棋盘值不随尺寸单调变化**：3×4 = −3/2 是数，而它的邻居 2×3、3×3 都是开关。在可算的 17 个棋盘里，10 个是数、4 个是开关、3 个是别的 —— 没有规律。","**温度恰好为 0 只发生在一处**：3,000 个随机 {a|b} 里，温度 0 与\"两个选项相等\"**逐例同步**（0 例外；这类样本占 2.30%）。此时 {a|a} = a + *：均值 a、温度 0，但它**不是开关** —— 开关的定义要求 max(L) &gt; min(R)，温度必须严格大于 0。a = 0 时它是 *（无穷小），a ≠ 0 时它是\"数加一个星\"：这次抽到 2 例是前者、67 例是后者，**没有一例是开关**。","**{a | −a} 的温度精确等于 a**：a = 200 时温度 200、均值 0 —— 温度是\"这一手值多少分\"，与 a 成正比。","**冷却检验 260 例零违例**：t 一旦超过温度，G_t 立刻变成数；低于温度时不是。温度就是\"把局面加热到能当数字用的那个门槛\"。","**256 个第 2 天的形式带 22 个值**（22，文献 A065401 也是 22）——规范化引擎与已发表的计数吻合。","**第 3 天有 1474 个值**；只枚举 |L|,|R| ≤ 3 的形式就已经拿到 1,460 个（99.05%）。","**但选项少的形式几乎不贡献新值**：|L|,|R| ≤ 1 只能拿到 174 个（11.80%）。从 1 加到 2 个选项，覆盖率从 11.8% 跳到 66.8%。","**穷举极小极大的状态数随分量数爆炸**（4 → 25 → 167 → 521），而值判定用的节点数只有 5 → 7 → 6 → 11 个。","**值判定把\"和\"的胜负变成查表**：把状态空间的乘积换成规范型的常数级 —— 这正是\"值\"这个发明的全部意义。","**规范化 64516 个形式只要 17,966 次比较**（244 毫秒）—— 因为子博弈已经内联过，绝大多数形式只是查表。代价几乎全在第一次把子博弈建出来的那一步。","**本次最值钱的 bug 是\"选项的顺序\"**：把 {0|0,*} 和 {0|*,0} 当成两个博弈，第 3 天的值一度数出 1495 个 —— **超过了文献的 1474**，才发现不对。修好之后是 1460 个。","**\"值\"这套东西的全部威力来自一条**：加法和比较在规范型上封闭。所以两个局面相加，你可以在值上算，而不必回到棋盘上算。"],"boundaries":["**温度只在 1/64 的网格上搜索**（对不是开关的博弈）。网格分辨率之下的差别本文看不出来，这类温度都标了\"网格值\"而不是\"精确值\"。","**第 3 天的 1474 是文献值，我们做的是部分枚举**：只枚举了 |L|,|R| ≤ 3 的形式，不是完整计数。1460 是**下界**，不是\"我算出了 1474\"。","**第 4 天的博弈数没有确切值**，只有界（下界 10^28.2、上界 4×10^184）—— 那个规模枚举不动。","**Domineering 只算到 4×5（20 格）**。更大的棋盘本文没有算；4×4 已经要 5700 个位置、4×5 要 58830 个。","**均值启发式的样本不是均匀随机的博弈**：它是\"整数 / 半整数 / 四分之一 + 小整数\"的开关与数，不是从所有博弈里均匀抽样。","**\"失效率 47.6%\"只在这个分布下成立**。换一个博弈分布，这个数字会变；它测的是\"均值法有多不可靠\"，不是\"所有博弈的失效率\"。","**大 k 的对照样本很少**：k = 6 时\"全部分量都是数\"的样本只有 8 例。0.000% 这个数在大 k 上精度有限。","**Sprague–Grundy 的 100% 一致不含经验成分**：它是定理的必然结果，只证明实现没写错，不构成任何关于\"世界\"的发现。","**穷举极小极大只在小局面上可行**：4 根杆就已经 521 个状态，再加长度会指数爆炸。","**\"温度 0 ⟺ 选项相等\"是在 {a|b} 这一类上逐例核对的**（3,000 个随机二选项开关），不是对任意博弈的证明。一般博弈的温度来自网格搜索，网格上的 0 与\"恰好为 0\"是两回事。","**\"冷的局面\"这个说法本身有问题**：温度 0 不等于\"局面对先后手无所谓\"。{a|a} = a + * 的温度是 0，但它和 0 并不互等 —— 它是无穷小那一侧的扰动。只有**是数**的博弈才真正对走子顺序无所谓。","**冷却检验用的是开关家族**（温度有精确闭式）。一般博弈的温度是网格值，不是精确值。","**4×4 与文献的关系是\"相容\"不是\"逐个吻合\"**：文献用散文描述它的规范型形状（顶层四个选项、深三层），没有给出可逐字比对的表格。我们只确认了形状相符，并用穷举极小极大确认了胜负类。","**规范化代价是\"子博弈已内联\"之后测的**。冷启动时把全部子博弈第一次建出来的代价没有单独测。","**数轴只构造到第 12 天**（8191 个数）；Hackenbush 只测了\"杆\"（链），没有测分叉图形；Domineering 只测了矩形。","**页面上不显示任何耗时**：所有\"毫秒\"都来自 Node 侧的标定，烤进 analysis.json；页面自己不读时钟（`--virtual-time-budget` 下时钟不推进，会印出假的 0 毫秒）。","**\"杆值集合 = 第 n 天出生的数\"只验到 n = 12**（4096 根杆）。它是构造性恒等式，不是我们证明的定理。"],"verifyTable":[{"name":"生日 ≤ 2 的博弈个数","ours":"22","theirs":"22","source":"OEIS A065401 a(2)","ok":true},{"name":"生日 ≤ 3 的博弈个数（部分枚举下界）","ours":"1,460","theirs":"≤ 1474","source":"OEIS A065401 a(3)","ok":true},{"name":"第 n 天新增数的个数","ours":"4,096","theirs":"2^12 = 4096","source":"Conway 逐日构造","ok":true},{"name":"生日 ≤ 12 的数的个数","ours":"8,191","theirs":"2^13 − 1 = 8191","source":"逐日构造 vs 生日公式","ok":true},{"name":"1/2 的生日","ours":"2","theirs":"2","source":"Conway 逐日构造","ok":true},{"name":"1/4 的生日","ours":"3","theirs":"3","source":"Conway 逐日构造","ok":true},{"name":"3/4 的生日","ours":"3","theirs":"3","source":"Conway 逐日构造","ok":true},{"name":"3/2 的生日","ours":"3","theirs":"3","source":"Conway 逐日构造","ok":true},{"name":"Dawson 的 Kayles SG 前 80 项","ours":"逐项相同","theirs":"OEIS A002187（错位一项）","source":"OEIS","ok":true},{"name":"Domineering 1×1","ours":"0","theirs":"0","source":"Winning Ways / combinatorial-game-theory.com","ok":true},{"name":"Domineering 1×2","ours":"-1","theirs":"-1","source":"Winning Ways / combinatorial-game-theory.com","ok":true},{"name":"Domineering 2×1","ours":"1","theirs":"1","source":"Winning Ways / combinatorial-game-theory.com","ok":true},{"name":"Domineering 2×2","ours":"{1|-1}","theirs":"{1|-1}","source":"Winning Ways / combinatorial-game-theory.com","ok":true},{"name":"Domineering 2×3","ours":"{2|-1/2}","theirs":"{2|-1/2}","source":"Winning Ways / combinatorial-game-theory.com","ok":true},{"name":"Domineering 3×2","ours":"{1/2|-2}","theirs":"{1/2|-2}","source":"Winning Ways / combinatorial-game-theory.com","ok":true},{"name":"Domineering 3×3","ours":"{1|-1}","theirs":"{1|-1}","source":"Winning Ways / combinatorial-game-theory.com","ok":true},{"name":"Domineering 3×4","ours":"-3/2","theirs":"-3/2","source":"Winning Ways / combinatorial-game-theory.com","ok":true},{"name":"最简数（6000 个随机区间）","ours":"与暴力枚举一致","theirs":"按生日从小到大扫","source":"独立实现","ok":true},{"name":"二进分数加法（20000 例）","ours":"与朴素有理数一致","theirs":"{n,d} + gcd 约分","source":"独立实现","ok":true},{"name":"杆 [蓝, 红^k] 的值","ours":"1/2^k","theirs":"1/2^k（k ≤ 10）","source":"Hackenbush 递推","ok":true},{"name":"穷举极小极大 vs 值判定（杆的和）","ours":"一致","theirs":"具体树 minimax","source":"独立实现","ok":true},{"name":"Nim 的和：穷举 vs nim 和","ours":"一致","theirs":"XOR","source":"独立实现","ok":true},{"name":"规范型唯一性（985 个值）","ours":"0 对\"互等但键不同\"","theirs":"规范型定理","source":"Conway 唯一性","ok":true},{"name":"4×4 Domineering 的胜负类","ours":"N","theirs":"穷举极小极大","source":"独立实现","ok":true},{"name":"温度恰好为 0 ⟺ 两个选项相等","ours":"0 例外","theirs":"0 例外","source":"逐例核对（3,000 个随机 {a|b}）","ok":true},{"name":"{a|a} 不被当成开关","ours":"0 例","theirs":"0 例","source":"开关的定义：max(L) > min(R)","ok":true},{"name":"杆值集合 = 第 n 天出生的数（n ≤ 12）","ours":"12/12 档成立","theirs":"构造性恒等式","source":"本装置发现并逐档核对","ok":true}]};</script>
+<script>/* ============================================================================
+ * cgt/ui.js —— 界面三段之三：渲染 + 交互 + 探针
+ *
+ * 守住的规矩（都是别的装置上踩出来的）：
+ *   · openTag 只用来开 <svg>；形状一律用自带闭合的 tag()
+ *   · 图表按容器的真实像素宽渲染；setTab / resize 时幂等重画
+ *   · 图例放 HTML，条数要和图上真正画的系列数一致
+ *   · 页面上不读时钟；毫秒一律来自 Node 侧标定烤进 analysis.json 的数
+ *   · 局部变量不许叫 A / D（会遮蔽分析全局）
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var A = window.__ANALYSIS__;
+  var D = A.derived;
+  var Core = window.CGTCore;
+  var DG = Core.D, GG = Core.G, F = Core.fam;
+
+  /* ============================================================ 小工具 */
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function attrsStr(o) {
+    var s = '', k;
+    for (k in o) {
+      if (!Object.prototype.hasOwnProperty.call(o, k)) continue;
+      if (o[k] === undefined || o[k] === null) continue;
+      s += ' ' + k + '="' + String(o[k]).replace(/"/g, '&quot;') + '"';
+    }
+    return s;
+  }
+  function tag(name, attrs, text) {
+    return '<' + name + attrsStr(attrs) + '>' + (text === undefined ? '' : esc(text)) + '</' + name + '>';
+  }
+  function openTag(name, attrs) { return '<' + name + attrsStr(attrs) + '>'; }
+  function setText(id, s) { var e = $(id); if (e) e.textContent = s; }
+  function setHTML(id, s) { var e = $(id); if (e) e.innerHTML = s; }
+  /* 填表体 —— 绝不能用 setHTML：
+     table.innerHTML = '<tbody>…' 会把 <caption> 和 <thead> 一起删掉，
+     表头从此消失，而所有只看 <td> 的探针（行数、折行、列数）照样全绿。
+     实测过：渲染过的表全都成了"没有表头的表"。 */
+  function setTBody(id, inner) {
+    var t = $(id);
+    if (!t) return;
+    var tb = t.tBodies[0];
+    if (tb) tb.innerHTML = inner; else t.innerHTML = '<tbody>' + inner + '</tbody>';
+  }
+  function fmt(x, d) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return Number(x).toFixed(d === undefined ? 4 : d);
+  }
+  function fmtInt(x) { return Number(x).toLocaleString('en-US'); }
+  function sci(x, d) {
+    if (typeof x === 'string') return x;
+    if (x === undefined || x === null) return '—';
+    if (typeof x !== 'number' || Number.isNaN(x)) return 'NaN';
+    if (!isFinite(x)) return x > 0 ? '∞' : '−∞';
+    if (x === 0) return '0';
+    var s = Number(x).toExponential(d === undefined ? 2 : d).split('e');
+    return s[0] + '×10^' + (s[1][0] === '-' ? '−' : '') + String(Math.abs(+s[1]));
+  }
+  function pctS(x, d) {
+    if (typeof x !== 'number' || !isFinite(x)) return '—';
+    return (x * 100).toFixed(d === undefined ? 2 : d) + '%';
+  }
+  function msText(ms) { return ms >= 1 ? fmtInt(ms) + ' 毫秒' : '< 1 毫秒'; }
+  function chartWidth(host) { return Math.max(240, Math.round(host.clientWidth || 640)); }
+
+  /* ---- 二进分数与"值"的显示 ---- */
+  function dnum(s) {                       /* "13/4" → 3.25；"−3" → −3 */
+    if (typeof s === 'number') return s;
+    var t = String(s).replace('−', '-');
+    var p = t.split('/');
+    return p.length === 2 ? (+p[0]) / (+p[1]) : +p[0];
+  }
+  function dobj(s) {                       /* "13/4" → D 对象（分母必为 2 的幂） */
+    var t = String(s).replace('−', '-');
+    var p = t.split('/');
+    if (p.length === 1) return DG.mk(+p[0], 0);
+    var den = +p[1], k = 0;
+    while (den > 1) { den /= 2; k++; }
+    return DG.mk(+p[0], k);
+  }
+  function dn(x) {                         /* 数字 → D 对象（x 是二进分数） */
+    var k = 0, m = x;
+    while (Math.abs(m - Math.round(m)) > 1e-9 && k < 40) { m *= 2; k++; }
+    return DG.mk(Math.round(m), k);
+  }
+  function gform(g, depth) {               /* 规范型的紧凑写法 */
+    depth = depth || 0;
+    if (depth > 5) return '…';
+    var v = GG.valueOf(g);
+    if (v) return DG.str(v);
+    return '{' + g.L.map(function (x) { return gform(x, depth + 1); }).join(',') + '|' +
+      g.R.map(function (x) { return gform(x, depth + 1); }).join(',') + '}';
+  }
+  function short(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+  var OUT_CN = { L: 'Left 必胜（先手或后手）', R: 'Right 必胜', N: '先手必胜', P: '后手必胜' };
+  var OUT_S = { L: 'L', R: 'R', N: 'N', P: 'P' };
+  var CLS_CN = { number: '数', switch: '开关', allsmall: '无穷小', other: '其它' };
+  var CLS_COLOR = { number: '#a23b1e', switch: '#b45309', allsmall: '#7c3aed', other: '#1f6f8b' };
+
+  /* ============================================================ 坐标与刻度 */
+  function sc(x0, x1, a, b) {
+    var d = (x1 - x0) || 1;
+    return function (v) { return a + (v - x0) / d * (b - a); };
+  }
+  function logsc(x0, x1, a, b) {
+    var l0 = Math.log10(x0), l1 = Math.log10(x1);
+    return function (v) { return a + (Math.log10(Math.max(v, 1e-300)) - l0) / (l1 - l0) * (b - a); };
+  }
+  function niceTicks(lo, hi, count) {
+    var span = hi - lo;
+    if (!(span > 0)) return [lo];
+    var step = Math.pow(10, Math.floor(Math.log10(span / count)));
+    var err = span / count / step;
+    if (err >= 5) step *= 10; else if (err >= 2) step *= 5; else if (err >= 1) step *= 2;
+    var t = [], v = Math.ceil(lo / step - 1e-9) * step;
+    for (; v <= hi + step * 1e-9; v += step) t.push(+v.toPrecision(12));
+    return t;
+  }
+  function tickTxt(v) {
+    var a = Math.abs(v);
+    if (a === 0) return '0';
+    if (a >= 1000) return String(Math.round(v));
+    if (a >= 1) return String(+v.toFixed(2));
+    if (a >= 0.01) return String(+v.toFixed(3));
+    return sci(v, 0);
+  }
+  function logTicks(lo, hi) {
+    var out = [], e;
+    for (e = Math.ceil(Math.log10(lo)); e <= Math.floor(Math.log10(hi)); e++) out.push(Math.pow(10, e));
+    return out;
+  }
+  function logTickTxt(v) {
+    var e = Math.round(Math.log10(v));
+    if (e >= -3 && e <= 4) return String(v);
+    return '10^' + e;
+  }
+  function thin(ticks, span, minGap) {
+    var maxN = Math.max(2, Math.floor(span / minGap));
+    if (ticks.length <= maxN) return ticks;
+    var step = Math.ceil(ticks.length / maxN);
+    return ticks.filter(function (_, i) { return i % step === 0; });
+  }
+  /* 一个 10.5px 标签的半个字宽（够用就行：只拿来判"两个标签会不会压住"） */
+  function lblHalf(s) {
+    var w = 0;
+    for (var i = 0; i < s.length; i++) {
+      var ch = s.charAt(i);
+      w += ch === '-' ? 4.0 : (ch === '/' ? 3.4 : (ch === '.' ? 3.0 : 6.0));
+    }
+    return w / 2;
+  }
+  function frame(w, h, pad, xr, yr, opt) {
+    opt = opt || {};
+    var X = opt.xlog ? logsc(xr[0], xr[1], pad.l, w - pad.r)
+                     : sc(xr[0], xr[1], pad.l, w - pad.r);
+    var Y = opt.ylog ? logsc(yr[0], yr[1], h - pad.b, pad.t)
+                     : sc(yr[0], yr[1], h - pad.b, pad.t);
+    var s = '';
+    s += tag('rect', { x: pad.l, y: pad.t, width: w - pad.l - pad.r, height: h - pad.t - pad.b,
+                       fill: '#ffffff', stroke: '#ded9d0', 'stroke-width': 1 });
+    var xt = opt.xlog ? logTicks(xr[0], xr[1]) : niceTicks(xr[0], xr[1], opt.xn || 6);
+    xt = thin(xt, w - pad.l - pad.r, 46);
+    xt.forEach(function (v) {
+      var x = X(v);
+      if (x < pad.l - 0.5 || x > w - pad.r + 0.5) return;
+      s += tag('line', { x1: x, y1: h - pad.b, x2: x, y2: h - pad.b + 4, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('line', { x1: x, y1: pad.t, x2: x, y2: h - pad.b, stroke: '#efece6', 'stroke-width': 1 });
+      s += tag('text', { x: x, y: h - pad.b + 14, 'text-anchor': 'middle', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, opt.xlog ? logTickTxt(v) : tickTxt(v));
+    });
+    var yt = opt.ylog ? logTicks(yr[0], yr[1]) : niceTicks(yr[0], yr[1], opt.yn || 5);
+    yt = thin(yt, h - pad.t - pad.b, 19);
+    yt.forEach(function (v) {
+      var y = Y(v);
+      if (y < pad.t - 0.5 || y > h - pad.b + 0.5) return;
+      s += tag('line', { x1: pad.l - 4, y1: y, x2: pad.l, y2: y, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('line', { x1: pad.l, y1: y, x2: w - pad.r, y2: y, stroke: '#efece6', 'stroke-width': 1 });
+      s += tag('text', { x: pad.l - 6, y: y + 3.5, 'text-anchor': 'end', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, opt.ylog ? logTickTxt(v) : tickTxt(v));
+    });
+    if (opt.xlab) s += tag('text', { x: (pad.l + w - pad.r) / 2, y: h - 3, 'text-anchor': 'middle',
+                                     'font-size': 11.5, fill: '#57534e', class: 'tick' }, opt.xlab);
+    if (opt.ylab) s += tag('text', { x: 11, y: (pad.t + h - pad.b) / 2, 'text-anchor': 'middle',
+                                     'font-size': 11.5, fill: '#57534e', class: 'tick',
+                                     transform: 'rotate(-90 11 ' + ((pad.t + h - pad.b) / 2) + ')' }, opt.ylab);
+    return { X: X, Y: Y, body: s };
+  }
+  function poly(pts, color, wdt, dash) {
+    if (!pts.length) return '';
+    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2); }).join(' ');
+    return tag('path', { d: d, fill: 'none', stroke: color, 'stroke-width': wdt || 2,
+                         'stroke-dasharray': dash || 'none', 'stroke-linejoin': 'round' });
+  }
+  function dot(x, y, color, r, shape) {
+    if (shape === 'sq') return tag('rect', { x: x - (r || 3), y: y - (r || 3), width: 2 * (r || 3), height: 2 * (r || 3), fill: color });
+    return tag('circle', { cx: x, cy: y, r: r || 3, fill: color });
+  }
+  function svgInto(host, w, h, s) {
+    host.innerHTML = openTag('svg', { width: w, height: h, viewBox: '0 0 ' + w + ' ' + h,
+                                      role: 'img' }) + s + '</svg>';
+  }
+  /* 竖直柱：data-want 存高度，探针按 data-vert 读 bboxH */
+  function vbar(x, yTop, yBot, bw, color, key, want) {
+    var hgt = Math.max(0, yBot - yTop);
+    return tag('rect', { x: x - bw / 2, y: yBot - hgt, width: bw, height: hgt, fill: color,
+                         class: 'bar-fill', 'data-want': hgt.toFixed(3), 'data-over': '0',
+                         'data-vert': '1', 'data-key': key });
+  }
+
+  /* ============================================================ 壹 · 标尺 */
+  var YARD = null;
+
+  function yardRight(r) {
+    if (r.value !== null && r.value !== undefined) return r.value;
+    if (r.cls === 'allsmall') return '无穷小';
+    return r.mean + '±' + r.temp;
+  }
+  function drawYard(host) {
+    var rows = D.knownGames;
+    var w = chartWidth(host);
+    var labW = Math.min(152, Math.max(116, Math.round(w * 0.30)));
+    var valW = Math.min(112, Math.max(64, Math.round(w * 0.24)));
+    var rowH = 21;
+    var pad = { t: 22, b: 24, l: labW, r: valW };
+    var h = pad.t + pad.b + rows.length * rowH;
+    var lo = 0, hi = 0;
+    rows.forEach(function (r) {
+      var m = dnum(r.mean), t = dnum(r.temp);
+      lo = Math.min(lo, m - t); hi = Math.max(hi, m + t);
+    });
+    lo -= 0.4; hi += 0.4;
+    var X = sc(lo, hi, pad.l, w - pad.r);
+    var s = '';
+    var xt = thin(niceTicks(lo, hi, 7), w - pad.l - pad.r, 46);
+    xt.forEach(function (v) {
+      var x = X(v);
+      if (x < pad.l - 0.5 || x > w - pad.r + 0.5) return;
+      s += tag('line', { x1: x, y1: pad.t, x2: x, y2: h - pad.b, stroke: '#efece6', 'stroke-width': 1 });
+      s += tag('line', { x1: x, y1: h - pad.b, x2: x, y2: h - pad.b + 4, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('text', { x: x, y: h - pad.b + 15, 'text-anchor': 'middle', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, tickTxt(v));
+    });
+    var zx = X(0);
+    s += tag('line', { x1: zx, y1: pad.t, x2: zx, y2: h - pad.b, stroke: '#1c1b19', 'stroke-width': 1, 'stroke-dasharray': '3 3' });
+    rows.forEach(function (r, i) {
+      var y = pad.t + i * rowH, cy = y + rowH / 2;
+      var m = dnum(r.mean), t = dnum(r.temp);
+      var x0 = X(0), x1 = X(m);
+      var bw = Math.max(0, Math.abs(x1 - x0));
+      s += tag('text', { x: labW - 8, y: cy + 3.5, 'text-anchor': 'end', 'font-size': 11.5,
+                         fill: '#57534e', class: 'tick' }, r.name);
+      s += tag('rect', { x: Math.min(x0, x1), y: y + 3, width: bw, height: rowH - 7,
+                         fill: CLS_COLOR[r.cls] || '#1f6f8b', class: 'bar-fill',
+                         'data-want': bw.toFixed(3), 'data-over': '0', 'data-key': 'y' + i });
+      if (t > 0) {
+        var xa = X(m - t), xb = X(m + t);
+        s += tag('line', { x1: xa, y1: cy, x2: xb, y2: cy, stroke: '#b45309', 'stroke-width': 2 });
+        s += tag('line', { x1: xa, y1: cy - 4, x2: xa, y2: cy + 4, stroke: '#b45309', 'stroke-width': 2 });
+        s += tag('line', { x1: xb, y1: cy - 4, x2: xb, y2: cy + 4, stroke: '#b45309', 'stroke-width': 2 });
+      }
+      s += dot(X(m), cy, '#1c1b19', 2.6);
+      s += tag('text', { x: w - 4, y: cy + 3.5, 'text-anchor': 'end', 'font-size': 11,
+                         fill: '#1c1b19', class: 'tick' }, yardRight(r));
+    });
+    svgInto(host, w, h, s);
+  }
+
+  function renderYard() {
+    var host = $('c-yard');
+    if (!host) return;
+    drawYard(host);
+    var id = $('yard-sel').value;
+    var r = null;
+    D.knownGames.forEach(function (x) { if (x.name === id) r = x; });
+    if (!r) { r = D.knownGames[0]; }
+    YARD = r;
+    setHTML('ro-yard',
+      '<span><span class="k">形式</span><b>' + esc(short(r.form, 26)) + '</b></span>' +
+      '<span><span class="k">值</span><b>' + esc(r.value === null ? '不是数' : r.value) + '</b></span>' +
+      '<span><span class="k">均值</span><b>' + esc(r.mean === null ? '—' : r.mean) + '</b></span>' +
+      '<span><span class="k">温度</span><b>' + esc(r.temp === null ? '—' : r.temp) + '</b></span>' +
+      '<span><span class="k">类别</span><b>' + esc(CLS_CN[r.cls] || r.cls) + '</b></span>' +
+      '<span><span class="k">生日</span><b>' + r.birthday + '</b></span>' +
+      '<span><span class="k">规模</span><b>' + r.size + ' 个节点</b></span>' +
+      '<span><span class="k">结果</span><b>' + esc(OUT_S[r.outcome] || r.outcome) + '</b></span>');
+    setMD2('yard-note', r.note + '　**值**：' + (r.value === null ? '不是数（' + (CLS_CN[r.cls] || r.cls) + '）' : r.value) +
+      '；**均值** ' + (r.mean === null ? '—' : r.mean) + '，**温度** ' + (r.temp === null ? '—' : r.temp) +
+      '（' + (r.exact ? '精确值' : '网格值，1/64 分辨率') + '）。' +
+      '这个局面的**生日**是 ' + r.birthday + '，规范型一共 ' + r.size + ' 个节点。');
+    var body = D.knownGames.map(function (g) {
+      return '<tr' + (g.name === r.name ? ' class="hi"' : '') + '><td>' + esc(g.name) + '</td><td>' +
+        esc(short(g.form, 30)) + '</td><td>' + esc(g.value === null ? '—' : g.value) + '</td><td>' +
+        esc(g.mean === null ? '—' : g.mean) + '</td><td>' + esc(g.temp === null ? '—' : g.temp) + '</td><td>' +
+        esc(CLS_CN[g.cls] || g.cls) + '</td><td>' + g.birthday + '</td><td>' + g.size + '</td></tr>';
+    });
+    setTBody('t-yard', body.join(''));
+  }
+
+  /* ---- 规范化分步 ---- */
+  var CANON = { ex: 0, step: 0 };
+  function splitForm(t) {
+    var s = String(t).trim();
+    if (s.charAt(0) === '{') s = s.slice(1, s.length - 1);
+    var d = 0, cut = -1, i;
+    for (i = 0; i < s.length; i++) {
+      var ch = s.charAt(i);
+      if (ch === '{') d++; else if (ch === '}') d--;
+      else if (ch === '|' && d === 0) { cut = i; break; }
+    }
+    if (cut < 0) return { L: [], R: [] };
+    function parts(x) {
+      if (!x) return [];
+      var out = [], cur = '', dd = 0, j, c;
+      for (j = 0; j < x.length; j++) {
+        c = x.charAt(j);
+        if (c === '{') dd++; if (c === '}') dd--;
+        if (c === ',' && dd === 0) { out.push(cur.trim()); cur = ''; } else cur += c;
+      }
+      if (cur.trim()) out.push(cur.trim());
+      return out;
+    }
+    return { L: parts(s.slice(0, cut).trim()), R: parts(s.slice(cut + 1).trim()) };
+  }
+  function drawCanon(host) {
+    var ex = D.canonDemo[CANON.ex];
+    var st = ex.steps[Math.min(CANON.step, ex.steps.length - 1)];
+    var pr = splitForm(st.text);
+    var w = chartWidth(host);
+    var gap = Math.max(5, Math.round(w * 0.014));
+    var colW = Math.max(60, Math.min(140, Math.floor((w - 20 - 4 * gap) / 3)));
+    var rows = Math.max(pr.L.length, pr.R.length, 1);
+    var rowsShown = Math.min(rows, 5);
+    var rowH = 23;
+    var h = 30 + rowsShown * rowH + 16;
+    var yTop = 22;
+    var cx = w / 2;
+    var s = '';
+    var droppedL = {}, droppedR = {};
+    (st.droppedL || []).forEach(function (x) { droppedL[x] = 1; });
+    (st.droppedR || []).forEach(function (x) { droppedR[x] = 1; });
+    var stage = st.stage === 'raw' ? '原式' : (st.stage === 'fixed' ? '已收敛' : '第 ' + st.i + ' 轮');
+    s += tag('text', { x: 6, y: 12, 'font-size': 11, fill: '#8a8279', class: 'tick' },
+      stage + '　（左 ' + pr.L.length + ' 项 / 右 ' + pr.R.length + ' 项）');
+    /* 中央：当前局面 */
+    s += tag('rect', { x: cx - colW / 2, y: yTop + rowH * 0.6, width: colW, height: rowH * 1.5,
+                       rx: 4, fill: '#fdf3ee', stroke: '#a23b1e', 'stroke-width': 1.4 });
+    s += tag('text', { x: cx, y: yTop + rowH * 0.6 + rowH * 0.75 + 4, 'text-anchor': 'middle',
+                       'font-size': 11.5, fill: '#a23b1e', class: 'tick' }, short(st.text, 12));
+    /* 左列 / 右列（bx 是列左边缘；左列贴左，右列贴右） */
+    function colItems(list, bx, isLeft, drop) {
+      var out = '';
+      for (var i = 0; i < list.length && i < 5; i++) {
+        var y = yTop + i * rowH;
+        var dd = drop[list[i]] ? 1 : 0;
+        out += tag('rect', { x: bx, y: y, width: colW, height: rowH - 5, rx: 3,
+                             fill: dd ? '#f2f0ec' : '#ffffff',
+                             stroke: dd ? '#c9c3b8' : '#ded9d0', 'stroke-width': 1,
+                             'stroke-dasharray': dd ? '3 2' : 'none' });
+        out += tag('text', { x: bx + colW / 2, y: y + (rowH - 5) / 2 + 4, 'text-anchor': 'middle',
+                             'font-size': 10.5, fill: dd ? '#a8a29a' : '#57534e',
+                             class: 'tick', 'text-decoration': dd ? 'line-through' : 'none' },
+          short(list[i], 9));
+        out += tag('line', { x1: isLeft ? bx + colW : bx, y1: y + (rowH - 5) / 2,
+                             x2: isLeft ? cx - colW / 2 - 1 : cx + colW / 2 + 1,
+                             y2: yTop + rowH * 1.35, stroke: '#ded9d0', 'stroke-width': 1 });
+      }
+      if (list.length > 5) {
+        out += tag('text', { x: bx + colW / 2, y: yTop + 5 * rowH + 8,
+                             'text-anchor': 'middle', 'font-size': 10, fill: '#8a8279', class: 'tick' },
+          '还有 ' + (list.length - 5) + ' 项');
+      }
+      return out;
+    }
+    s += colItems(pr.L, 8, true, droppedL);
+    s += colItems(pr.R, w - 8 - colW, false, droppedR);
+    s += tag('text', { x: 8, y: h - 4, 'font-size': 10, fill: '#8a8279', class: 'tick' }, 'Left 的选项');
+    s += tag('text', { x: w - 8, y: h - 4, 'text-anchor': 'end', 'font-size': 10, fill: '#8a8279', class: 'tick' }, 'Right 的选项');
+    svgInto(host, w, h, s);
+  }
+  function renderCanon() {
+    var host = $('c-canon');
+    if (!host) return;
+    drawCanon(host);
+    var ex = D.canonDemo[CANON.ex];
+    var st = ex.steps[Math.min(CANON.step, ex.steps.length - 1)];
+    setHTML('ro-canon',
+      '<span><span class="k">例子</span><b>' + esc(ex.title) + '</b></span>' +
+      '<span><span class="k">步</span><b>' + (st.i + 1) + ' / ' + ex.steps.length + '</b></span>' +
+      '<span><span class="k">当前形式</span><b>' + esc(short(st.text, 22)) + '</b></span>' +
+      '<span><span class="k">最终形式</span><b>' + esc(short(ex.final, 22)) + '</b></span>' +
+      '<span><span class="k">最终类别</span><b>' + esc(CLS_CN[ex.finalClass] || ex.finalClass) + '</b></span>' +
+      '<span><span class="k">最终结果</span><b>' + esc(OUT_S[ex.finalOutcome] || ex.finalOutcome) + '</b></span>');
+    var body = ex.steps.map(function (t) {
+      return '<tr' + (t.i === CANON.step ? ' class="hi"' : '') + '><td>' + (t.i + 1) + '　' +
+        (t.stage === 'raw' ? '原式' : (t.stage === 'fixed' ? '已收敛' : '规范化一轮')) + '</td><td>' +
+        esc(short(t.text, 30)) + '</td><td>' + esc(t.droppedL.length ? t.droppedL.join('、') : '—') +
+        '</td><td>' + esc(t.droppedR.length ? t.droppedR.join('、') : '—') +
+        '</td><td>' + (t.bypL || 0) + '</td><td>' + (t.bypR || 0) + '</td></tr>';
+    });
+    setTBody('t-canon', body.join(''));
+    setMD2('canon-note', ex.note + '　**最终形式 ' + ex.final + '**，类别是' +
+      (CLS_CN[ex.finalClass] || ex.finalClass) + '，结果是 ' + (OUT_CN[ex.finalOutcome] || ex.finalOutcome) +
+      '。灰掉并划掉的是被支配、已经消去的选项。');
+  }
+
+  /* ============================================================ 贰 · 数 */
+  var NUM = { day: 3 };
+  var NBD8 = Core.numbersByDay(10);
+
+  function drawNumline(host, day) {
+    var all = NBD8.days[0].slice(), d;
+    for (d = 1; d <= day; d++) all = all.concat(NBD8.days[d]);
+    var dayN = NBD8.days[day];
+    var vals = all.map(DG.toNum);
+    var lo = Math.min.apply(null, vals) - 1, hi = Math.max.apply(null, vals) + 1;
+    var w = chartWidth(host);
+    var pad = { t: 30, b: 34, l: 14, r: 14 };
+    var h = 132;
+    var X = sc(lo, hi, pad.l, w - pad.r);
+    var y0 = h - pad.b;
+    var s = '';
+    s += tag('text', { x: 6, y: 12, 'font-size': 11, fill: '#57534e', class: 'tick' },
+      '第 ' + day + ' 天：累计 ' + all.length + ' 个数，其中 ' + dayN.length + ' 个是今天新出生的');
+    s += tag('line', { x1: pad.l, y1: y0, x2: w - pad.r, y2: y0, stroke: '#8a8279', 'stroke-width': 1 });
+    var xt = thin(niceTicks(lo, hi, 7), w - pad.l - pad.r, 46);
+    xt.forEach(function (v) {
+      var x = X(v);
+      if (x < pad.l - 0.5 || x > w - pad.r + 0.5) return;
+      s += tag('line', { x1: x, y1: y0 - 4, x2: x, y2: y0 + 4, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('text', { x: x, y: y0 + 16, 'text-anchor': 'middle', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, tickTxt(v));
+    });
+    all.forEach(function (v) {
+      s += dot(X(DG.toNum(v)), y0 - 12, '#ded9d0', 2.4);
+    });
+    dayN.forEach(function (v) {
+      s += dot(X(DG.toNum(v)), y0 - 12, '#a23b1e', 3.4);
+    });
+    /* 新出生的数逐个标名字；按估算字宽贪心去重叠（360px 下 "-3/4" 与 "-1/4" 正好压住）。
+       超过 8 个就只标两头，免得整条轴糊成一片。 */
+    var cand = dayN.map(function (v) { return { x: X(DG.toNum(v)), t: DG.str(v) }; });
+    var kept = [];
+    if (cand.length <= 8) {
+      cand.forEach(function (c) {
+        var last = kept[kept.length - 1];
+        if (last && c.x - lblHalf(c.t) < last.x + lblHalf(last.t) + 2) return;
+        kept.push(c);
+      });
+    } else {
+      kept = [cand[0], cand[cand.length - 1]];
+    }
+    kept.forEach(function (c) {
+      s += tag('text', { x: c.x, y: y0 - 26, 'text-anchor': 'middle', 'font-size': 10.5,
+                         fill: '#a23b1e', class: 'tick' }, c.t);
+    });
+    svgInto(host, w, h, s);
+    return all;
+  }
+  function renderNum() {
+    var host = $('c-numline');
+    if (!host) return;
+    var all = drawNumline(host, NUM.day);
+    var dayN = NBD8.days[NUM.day];
+    var rec = D.numberDays[NUM.day];
+    setHTML('ro-num',
+      '<span><span class="k">天</span><b>' + NUM.day + '</b></span>' +
+      '<span><span class="k">今天新出生</span><b>' + dayN.length + ' 个</b></span>' +
+      '<span><span class="k">累计</span><b>' + all.length + ' 个</b></span>' +
+      '<span><span class="k">应为 2ⁿ</span><b>' + Math.pow(2, NUM.day) + '</b></span>' +
+      '<span><span class="k">分母 2 的最高幂</span><b>' + rec.maxDenPow + '</b></span>' +
+      '<span><span class="k">最大绝对值</span><b>' + rec.maxAbs + '</b></span>');
+    var body = D.numberDays.map(function (r, i) {
+      var cum = Math.pow(2, i + 1) - 1;
+      return '<tr' + (i === NUM.day ? ' class="hi"' : '') + '><td>' + r.day + '</td><td>' + r.count +
+        '</td><td>' + Math.pow(2, r.day) + '</td><td>' + cum + '</td><td>' + cum +
+        '</td><td>' + r.maxDenPow + '</td><td>' + r.maxAbs + '</td></tr>';
+    });
+    setTBody('t-num', body.join(''));
+    var fc = D.e3.formulaCheck;
+    setMD2('num-note', '两条独立路线在 **n = 12** 时都给出 ' + fmtInt(fc.byConstruction) +
+      ' 个数：一条是按天一个个造出来，另一条是直接用生日公式数（生日 ≤ 12 的数共 ' +
+      fmtInt(fc.byFormula) + ' 个）。**生日错的：' + fc.birthdayBad + ' 个**（共核对 ' +
+      fmtInt(fc.checked) + ' 个）。注意 1/2 生于第 2 天、1/4 与 3/4 生于第 3 天 —— ' +
+      '生日不是由分母决定的，是由"最简"决定的。');
+    drawBorn($('c-born'));
+  }
+  function drawBorn(host) {
+    var w = chartWidth(host);
+    var pad = { t: 16, b: 40, l: 46, r: 12 };
+    var h = 220;
+    var Fx = frame(w, h, pad, [-0.6, 8.6], [1, 700], { ylog: true, xlab: '第 n 天', ylab: '个数（对数轴）', xn: 5 });
+    var s = Fx.body, X = Fx.X, Y = Fx.Y;
+    var bw = Math.max(4, Math.min(16, (w - pad.l - pad.r) / 9 * 0.26));
+    D.numberDays.forEach(function (r, i) {
+      var cum = Math.pow(2, i + 1) - 1;
+      s += vbar(X(i) - bw * 0.72, Y(r.count), Y(1), bw, '#a23b1e', 'n' + i, r.count);
+      s += vbar(X(i) + bw * 0.72, Y(cum), Y(1), bw, '#8a8279', 'c' + i, cum);
+    });
+    s += tag('text', { x: pad.l, y: 11, 'font-size': 11, fill: '#57534e', class: 'tick' },
+      '每天新出生 2ⁿ 个，累计 2ⁿ⁺¹−1 个');
+    svgInto(host, w, h, s);
+  }
+
+  /* ============================================================ 叁 · 杆 */
+  var STALK = { n: 4 };
+  function drawStalk(host, n) {
+    var sv = D.stalkValues[n - 1];
+    var vals = sv.values.map(dnum);
+    /* "第 n 天出生的数"在页面里现算：引擎就在同一份产物里，不必再运一份数据过来。 */
+    var born = NBD8.days[n].map(function (v) { return DG.toNum(v); });
+    var lo = Math.min.apply(null, vals) - 0.8, hi = Math.max.apply(null, vals) + 0.8;
+    var w = chartWidth(host);
+    var pad = { t: 40, b: 34, l: 14, r: 14 };
+    var h = 150;
+    var X = sc(lo, hi, pad.l, w - pad.r);
+    var y0 = h - pad.b;
+    var s = '';
+    s += tag('text', { x: 6, y: 12, 'font-size': 11, fill: '#57534e', class: 'tick' },
+      '长度 ' + n + ' 的杆共 ' + sv.values.length + ' 根');
+    s += tag('text', { x: 6, y: 26, 'font-size': 10.5, fill: '#8a8279', class: 'tick' }, '第 n 天出生的数（灰）');
+    s += tag('text', { x: 6, y: y0 - 18, 'font-size': 10.5, fill: '#8a8279', class: 'tick' }, '杆的值（红）');
+    s += tag('line', { x1: pad.l, y1: y0, x2: w - pad.r, y2: y0, stroke: '#8a8279', 'stroke-width': 1 });
+    var xt = thin(niceTicks(lo, hi, 7), w - pad.l - pad.r, 46);
+    xt.forEach(function (v) {
+      var x = X(v);
+      if (x < pad.l - 0.5 || x > w - pad.r + 0.5) return;
+      s += tag('line', { x1: x, y1: y0 - 4, x2: x, y2: y0 + 4, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('text', { x: x, y: y0 + 16, 'text-anchor': 'middle', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, tickTxt(v));
+    });
+    var zx = X(0);
+    s += tag('line', { x1: zx, y1: pad.t - 6, x2: zx, y2: y0, stroke: '#b45309', 'stroke-width': 1, 'stroke-dasharray': '4 3' });
+    born.forEach(function (v) { s += dot(X(v), pad.t, '#ded9d0', 2.6); });
+    vals.forEach(function (v) { s += dot(X(v), y0 - 14, '#a23b1e', 2.2); });
+    svgInto(host, w, h, s);
+  }
+  function renderStalk() {
+    var host = $('c-stalk');
+    if (!host) return;
+    var n = STALK.n;
+    drawStalk(host, n);
+    var sv = D.stalkValues[n - 1], id = D.stalkIdentity[n - 1];
+    var row = null;
+    D.e4.rows.forEach(function (r) { if (r.n === n) row = r; });
+    setHTML('ro-stalk',
+      '<span><span class="k">杆数</span><b>' + sv.values.length + '</b></span>' +
+      '<span><span class="k">不同值</span><b>' + (row ? row.distinct : sv.values.length) + '</b></span>' +
+      '<span><span class="k">全是数</span><b>' + (row ? (row.numbers === row.stalks ? '是' : '否') : '—') + '</b></span>' +
+      '<span><span class="k">最小值</span><b>' + (row ? row.min : '—') + '</b></span>' +
+      '<span><span class="k">最大值</span><b>' + (row ? row.max : '—') + '</b></span>' +
+      '<span><span class="k">集合相等</span><b>' + (id.same ? '是' : '否') + '</b></span>');
+    var body = D.stalkIdentity.map(function (r, i) {
+      var svv = D.stalkValues[i];
+      var shown = svv.values.length <= 8 ? svv.values.join(', ')
+        : svv.values.slice(0, 8).join(', ') + ' … （共 ' + svv.values.length + ' 个）';
+      return '<tr' + (r.n === n ? ' class="hi"' : '') + '><td>' + r.n + '</td><td>' + r.stalkCount +
+        '</td><td>' + r.bornCount + '</td><td>' + (r.same ? '是' : '否') + '</td><td>' +
+        esc(shown) + '</td></tr>';
+    });
+    setTBody('t-ident', body.join(''));
+    var body2 = D.e4.rows.map(function (r) {
+      return '<tr' + (r.n === n ? ' class="hi"' : '') + '><td>' + r.n + '</td><td>' + fmtInt(r.stalks) +
+        '</td><td>' + fmtInt(r.numbers) + '</td><td>' + fmtInt(r.distinct) + '</td><td>' + r.min +
+        '</td><td>' + r.max + '</td></tr>';
+    });
+    setTBody('t-stalk', body2.join(''));
+    setMD2('ident-note', '长度 n 的杆共 **2ⁿ 根**，取值两两不同，所以"杆 → 值"是一个一一对应；' +
+      '而第 n 天出生的数正好也是 2ⁿ 个。两个集合在 n = 1…12 上**逐档相等**（' +
+      (D.e4.identity.allSame ? '12 / 12 成立' : '有档不符') + '）。长度 ≤ 14 的 ' +
+      fmtInt(D.e4.allNumber.total) + ' 根杆全部是数（' + pctS(D.e4.allNumber.rate) +
+      '）—— 要让值不是数，必须让杆分叉。');
+  }
+
+  /* ============================================================ 肆 · 热 */
+  var TEMP = { a: 6 }, COOL = { a: 5 };
+  function drawTemp(host) {
+    var w = chartWidth(host);
+    var pad = { t: 16, b: 40, l: 46, r: 12 };
+    var h = 236;
+    var Fx = frame(w, h, pad, [0.5, 20.5], [0, 21], { xlab: 'a（局面 ±a）', ylab: '温度', xn: 6, yn: 5 });
+    var s = Fx.body, X = Fx.X, Y = Fx.Y;
+    var bw = Math.max(4, Math.min(20, (w - pad.l - pad.r) / 20 * 0.6));
+    var pts = [];
+    D.e5.hotLine.forEach(function (r) {
+      if (r.a > 20) return;
+      var t = dnum(r.temp);
+      s += vbar(X(r.a), Y(t), Y(0), bw, '#b45309', 'a' + r.a, t);
+      pts.push([X(r.a), Y(t)]);
+    });
+    s += poly(pts, '#a23b1e', 1.8, '5 3');
+    s += tag('text', { x: pad.l + 4, y: pad.t + 12, 'font-size': 11, fill: '#57534e', class: 'tick' },
+      '虚线 = 理论值 a（柱顶应正好落在线上）');
+    svgInto(host, w, h, s);
+  }
+  function drawCool(host, a) {
+    var gp = GG.mkGame([GG.numNode(DG.mk(a, 0))], [GG.numNode(DG.mk(-a, 0))]);
+    var w = chartWidth(host);
+    var pad = { t: 16, b: 40, l: 46, r: 12 };
+    var h = 236;
+    var NPT = 33;
+    var Lp = [], Rp = [], tmax = 2 * a;
+    for (var i = 0; i <= NPT; i++) {
+      var t = tmax * i / NPT;
+      var j = Math.round(t * 64);
+      var dt = DG.mk(j, 6);
+      Lp.push([t, DG.toNum(GG.leftStop(gp, dt))]);
+      Rp.push([t, DG.toNum(GG.rightStop(gp, dt))]);
+    }
+    var allv = Lp.concat(Rp).map(function (p) { return p[1]; });
+    var ylo = Math.min.apply(null, allv) - 0.6, yhi = Math.max.apply(null, allv) + 0.6;
+    var Fx = frame(w, h, pad, [0, tmax], [ylo, yhi], { xlab: 't（冷却量）', ylab: '停手值', xn: 6, yn: 5 });
+    var s = Fx.body, X = Fx.X, Y = Fx.Y;
+    s += poly(Lp.map(function (p) { return [X(p[0]), Y(p[1])]; }), '#a23b1e', 2);
+    s += poly(Rp.map(function (p) { return [X(p[0]), Y(p[1])]; }), '#1f6f8b', 2);
+    var xc = X(a);
+    s += tag('line', { x1: xc, y1: pad.t, x2: xc, y2: h - pad.b, stroke: '#b45309', 'stroke-width': 1.4, 'stroke-dasharray': '5 3' });
+    s += dot(xc, Y(0), '#b45309', 3.4);
+    /* 曲线自己带标签：窄屏上图例会换行到图外，图里只剩两条没名字的线 */
+    s += tag('text', { x: X(0) + 6, y: Y(Lp[0][1]) + 4, 'font-size': 10.5, fill: '#a23b1e',
+                       class: 'tick', 'text-anchor': 'start' }, 'L(t)');
+    s += tag('text', { x: X(0) + 6, y: Y(Rp[0][1]) - 4, 'font-size': 10.5, fill: '#1f6f8b',
+                       class: 'tick', 'text-anchor': 'start' }, 'R(t)');
+    s += tag('text', { x: xc + 6, y: Y(0) + 4, 'font-size': 10.5, fill: '#b45309',
+                       class: 'tick', 'text-anchor': 'start' }, '0');
+    s += tag('text', { x: Math.min(xc + 5, w - pad.r - 6), y: pad.t + 12, 'font-size': 11,
+                       fill: '#b45309', class: 'tick', 'text-anchor': xc > w * 0.66 ? 'end' : 'start' },
+      't = ' + a + ' 处两条线相交');
+    svgInto(host, w, h, s);
+    return { cross: a, L0: Lp[0][1], R0: Rp[0][1] };
+  }
+  function renderTemp() {
+    var h1 = $('c-temp');
+    if (h1) drawTemp(h1);
+    var h2 = $('c-cool');
+    var cr = null;
+    if (h2) cr = drawCool(h2, COOL.a);
+    var row = null;
+    D.e5.hotLine.forEach(function (r) { if (r.a === TEMP.a) row = r; });
+    if (row) {
+      setHTML('ro-temp',
+        '<span><span class="k">局面</span><b>±' + row.a + '</b></span>' +
+        '<span><span class="k">实测温度</span><b>' + row.temp + '</b></span>' +
+        '<span><span class="k">均值</span><b>' + row.mean + '</b></span>' +
+        '<span><span class="k">理论温度</span><b>' + row.a + '</b></span>' +
+        '<span><span class="k">类别</span><b>开关</b></span>' +
+        '<span><span class="k">精确？</span><b>' + (row.exact ? '精确（闭式）' : '网格值') + '</b></span>');
+    }
+    if (cr) {
+      setHTML('ro-cool',
+        '<span><span class="k">局面</span><b>±' + COOL.a + '</b></span>' +
+        '<span><span class="k">L(0)</span><b>' + fmt(cr.L0, 4) + '</b></span>' +
+        '<span><span class="k">R(0)</span><b>' + fmt(cr.R0, 4) + '</b></span>' +
+        '<span><span class="k">交点 t</span><b>' + cr.cross + '</b></span>' +
+        '<span><span class="k">t 小于温度</span><b>L &gt; R（先手有便宜）</b></span>' +
+        '<span><span class="k">t 大于温度</span><b>L = R（变冷了）</b></span>');
+    }
+    var body = D.e5.switchDist.slice(0, 20).map(function (r) {
+      var a = dnum(r.a), b = dnum(r.b);
+      return '<tr><td>{' + r.a + ' | ' + r.b + '}</td><td>' + r.mean + '</td><td>' +
+        DG.str(DG.scale2(DG.add(dobj(r.a), dobj(r.b)), -1)) + '</td><td>' + r.temp + '</td><td>' +
+        DG.str(DG.scale2(DG.sub(dobj(r.a), dobj(r.b)), -1)) + '</td></tr>';
+    });
+    setTBody('t-temp', body.join(''));
+    var zs = D.e5.zeroShare, cc = D.e5.coolCheck, big = D.e5.bigHot, ze = D.e5.zeroIffEqual, dg = D.e5.degClasses;
+    var bigTxt = big.map(function (r) { return '±' + r.a + ' → ' + r.temp; }).join('、');
+    setMD2('temp-note', '随机抽 ' + fmtInt(zs.n) + ' 个 {a|b}，温度恰好为 0 的有 **' + fmtInt(zs.zero) +
+      '** 个（' + pctS(zs.rate) + '）—— 它们**一个都不是开关**：温度 0 与"两个选项相等"逐例同步（' +
+      fmtInt(ze.mismatch) + ' 例外 / ' + fmtInt(ze.n) + '）。这时 {a|a} = a + *，均值是 a、温度是 0：' +
+      'a = 0 时它是 *（无穷小，' + fmtInt(dg.allsmall) + ' 例），a ≠ 0 时它是"数加一个星"（' +
+      fmtInt(dg.other) + ' 例）。**开关的定义要求 max(L) > min(R)，温度必须严格大于 0** —— ' +
+      '所以上面那张开关表（表里 20 行、背后 60 个抽样）的温度没有一个是 0。' +
+      '冷却检验 **' + fmtInt(cc.n) + ' 例零违例**：t 一旦超过温度，G_t 立刻变成数。' +
+      '温度随 a 线性增长：' + esc(bigTxt) + '。**温度量的是"这一手值多少分"，不告诉你分数归谁** —— ' +
+      '所以它不能拿来猜胜负（见陆）。');
+  }
+
+  /* ============================================================ 伍 · 平局 */
+  var SG = { fam: 2, n: 20 };
+  function dawsonStateMoves(arr) {
+    var out = [], i, j, rest;
+    for (i = 0; i < arr.length; i++) {
+      var n = arr[i];
+      var rest0 = arr.slice(0, i).concat(arr.slice(i + 1));
+      for (j = 1; j <= n - 1; j++) {
+        rest = rest0.slice();
+        if (j - 1 >= 2) rest.push(j - 1);
+        if (n - j - 1 >= 2) rest.push(n - j - 1);
+        rest.sort(function (a, b) { return a - b; });
+        out.push(rest);
+      }
+    }
+    return out;
+  }
+  function kaylesStateMoves(arr) {
+    var out = [], i, j, rest;
+    for (i = 0; i < arr.length; i++) {
+      var n = arr[i];
+      var rest0 = arr.slice(0, i).concat(arr.slice(i + 1));
+      for (j = 1; j <= n; j++) {
+        rest = rest0.slice();
+        if (j - 1 >= 1) rest.push(j - 1);
+        if (n - j >= 1) rest.push(n - j);
+        rest.sort(function (a, b) { return a - b; });
+        out.push(rest);
+      }
+      for (j = 1; j <= n - 1; j++) {
+        rest = rest0.slice();
+        if (j - 1 >= 1) rest.push(j - 1);
+        if (n - j - 1 >= 1) rest.push(n - j - 1);
+        rest.sort(function (a, b) { return a - b; });
+        out.push(rest);
+      }
+    }
+    return out;
+  }
+  function nimStateMoves(arr) {
+    var out = F.nimMoves(arr);
+    out.forEach(function (a) { a.sort(function (x, y) { return x - y; }); });
+    return out;
+  }
+  /* 独立实现：直接对具体状态图做 mex（与家族的递推公式无关）
+     注意 Dawson 一行：家族序列取的是 dawsonSG(30).slice(1)，即第 i 项对应"一排 i+1 根钉"
+     （这就是 OEIS A002187 与"一排 n 根"之间的那个错位），所以这里必须补 1。 */
+  function sgIndependent(famId, n) {
+    if (famId === 'nim') return Core.imp.sg(nimStateMoves, [n]);
+    if (famId === 'sub134') return Core.imp.sg(F.subMoves([1, 3, 4]), n);
+    if (famId === 'sub25') return Core.imp.sg(F.subMoves([2, 5]), n);
+    if (famId === 'dawson') return Core.imp.sg(dawsonStateMoves, [n + 1]);
+    if (famId === 'kayles') return Core.imp.sg(kaylesStateMoves, [n]);
+    return null;
+  }
+  function drawSg(host, famId, N) {
+    var fam = null;
+    D.sgFamilies.forEach(function (f) { if (f.id === famId) fam = f; });
+    if (!fam) fam = D.sgFamilies[0];
+    var seq = fam.seq.slice(0, N);
+    var ind = [];
+    for (var i = 0; i < seq.length; i++) ind.push(sgIndependent(famId, i));
+    var mx = Math.max.apply(null, seq.concat(ind).concat([1]));
+    var w = chartWidth(host);
+    var pad = { t: 16, b: 40, l: 46, r: 12 };
+    var h = 232;
+    var Fx = frame(w, h, pad, [-0.6, seq.length - 0.4], [0, mx + 1], { xlab: 'n', ylab: 'SG 值', xn: 6, yn: 5 });
+    var s = Fx.body, X = Fx.X, Y = Fx.Y;
+    var bw = Math.max(3, Math.min(18, (w - pad.l - pad.r) / Math.max(1, seq.length) * 0.5));
+    seq.forEach(function (v, i) {
+      s += vbar(X(i), Y(v), Y(0), bw, '#7c3aed', 'g' + i, v);
+    });
+    var pts = [];
+    for (var j = 0; j < ind.length; j++) pts.push([X(j), Y(ind[j])]);
+    s += poly(pts, '#b45309', 1.6, '5 3');
+    s += tag('text', { x: pad.l + 4, y: pad.t + 12, 'font-size': 11, fill: '#57534e', class: 'tick' },
+      esc(fam.name));
+    svgInto(host, w, h, s);
+    return { fam: fam, seq: seq, ind: ind };
+  }
+  function renderSg() {
+    var host = $('c-sg');
+    if (!host) return;
+    var fam0 = D.sgFamilies[SG.fam] || D.sgFamilies[0];
+    var N = Math.min(SG.n, fam0.seq.length);
+    var r = drawSg(host, fam0.id, N);
+    var bad = 0;
+    for (var i = 0; i < r.ind.length; i++) if (r.ind[i] !== r.seq[i]) bad++;
+    var f1 = null;
+    D.e1.families.forEach(function (x) { if (x.id === fam0.id) f1 = x; });
+    setHTML('ro-sg',
+      '<span><span class="k">家族</span><b>' + esc(fam0.name) + '</b></span>' +
+      '<span><span class="k">项数</span><b>' + r.seq.length + '</b></span>' +
+      '<span><span class="k">最大 SG</span><b>' + Math.max.apply(null, r.seq) + '</b></span>' +
+      '<span><span class="k">两法不一致</span><b>' + bad + ' 项</b></span>' +
+      '<span><span class="k">样本</span><b>' + (f1 ? fmtInt(f1.n) : '—') + '</b></span>' +
+      '<span><span class="k">定理一致率</span><b>' + (f1 ? pctS(f1.rate, 3) : '—') + '</b></span>');
+    /* 家族表：对照列只写"拿什么比的"，比了多少项写在正文里 ——
+       表格宽度只有半栏（1400px 下 510px），列里塞长句子会把表顶出横滚。 */
+    var body = D.sgFamilies.map(function (f) {
+      var cmp, ok, n;
+      if (f.id === 'dawson') {
+        ok = true; n = Math.min(f.seq.length, D.extDawson.length);
+        for (var j = 0; j < n; j++) if (f.seq[j] !== D.extDawson[j]) ok = false;
+        cmp = 'OEIS A002187';
+      } else if (f.id === 'nim') {
+        ok = true; n = f.seq.length;
+        for (var k = 0; k < n; k++) if (f.seq[k] !== k) ok = false;
+        cmp = '闭式 g(n) = n';
+      } else if (f.id === 'kayles') {
+        /* Kayles 没有闭式，也不是简单的周期 7（周期 12 只在 n ≥ 71 之后才成立），
+           所以这里比的是"另一套实现"：状态图上的 mex。 */
+        ok = true; n = f.seq.length;
+        for (var q = 0; q < n; q++) if (sgIndependent('kayles', q) !== f.seq[q]) ok = false;
+        cmp = '独立 mex';
+      } else {
+        ok = true; n = f.seq.length - 7;
+        for (var m = 7; m < f.seq.length; m++) if (f.seq[m] !== f.seq[m - 7]) ok = false;
+        cmp = '周期 7';
+      }
+      return '<tr><td>' + esc(f.name) + '</td><td>' + esc(f.seq.slice(0, 12).join(' ')) +
+        '</td><td>' + esc(cmp) + '</td><td>' + (ok ? '逐项相同' : '有差异') + '</td></tr>';
+    });
+    setTBody('t-sg', body.join(''));
+    var body2 = D.e1.families.map(function (f) {
+      return '<tr><td>' + esc(f.name) + '</td><td>' + fmtInt(f.n) + '</td><td>' + fmtInt(f.agree) +
+        '</td><td>' + pctS(f.rate, 3) + '</td><td>' + fmt(f.avgStates, 1) + '</td></tr>';
+    });
+    setTBody('t-sgcheck', body2.join(''));
+    var dawN = 0, nimN = 0, subN = 0, kayN = 0;
+    D.sgFamilies.forEach(function (f) {
+      if (f.id === 'dawson') dawN = Math.min(f.seq.length, D.extDawson.length);
+      if (f.id === 'nim') nimN = f.seq.length;
+      if (f.id === 'sub134') subN = f.seq.length - 7;
+      if (f.id === 'kayles') kayN = f.seq.length;
+    });
+    setMD2('sg-note', '**定理不是发现。** 这一栏 100% 一致只说明我们的值判定和穷举极小极大是同一个东西；' +
+      '真正的外部对账在"对照"列：Dawson 的 Kayles 前 ' + dawN + ' 项与 **OEIS A002187** 逐项相同，' +
+      'Nim 的 SG 就是 n（' + nimN + ' 项），减法 S(1,3,4) 的 SG 以 7 为周期（' + subN + ' 项）。' +
+      'Kayles 既没有闭式，也不是简单的周期序列 —— 它的周期 12 要到 n ≥ 71 才成立，' +
+      '所以这里比的是**另一套实现**：直接在状态图上算 mex（' + kayN + ' 项）。' +
+      '四个家族共 ' + fmtInt(D.e1.total) + ' 组和的胜负全部一致（' + fmtInt(D.e1.agree) + ' / ' +
+      fmtInt(D.e1.total) + '）。');
+  }
+
+  /* ============================================================ 陆 · 猜 */
+  var HEUR = { k: 3 };
+  function drawHeur(host, k) {
+    var w = chartWidth(host);
+    var pad = { t: 16, b: 40, l: 46, r: 12 };
+    var h = 226;
+    var Fx = frame(w, h, pad, [0.4, 6.6], [0, 0.58], { xlab: '分量个数 k', ylab: '失效率', xn: 6, yn: 5 });
+    var s = Fx.body, X = Fx.X, Y = Fx.Y;
+    var bw = Math.max(6, Math.min(46, (w - pad.l - pad.r) / 6 * 0.52));
+    D.e2.ks.forEach(function (r) {
+      var hi = r.k === k;
+      s += vbar(X(r.k), Y(r.rateA), Y(0), bw, hi ? '#a23b1e' : '#c9826c', 'r' + r.k, r.rateA);
+      s += tag('text', { x: X(r.k), y: Y(r.rateA) - 4, 'text-anchor': 'middle', 'font-size': 10.5,
+                         fill: '#57534e', class: 'tick' }, pctS(r.rateA, 1));
+      s += dot(X(r.k), Y(0) - 4, '#6b8e23', 3.4, 'sq');
+    });
+    s += tag('text', { x: pad.l + 4, y: pad.t + 12, 'font-size': 11, fill: '#57534e', class: 'tick' },
+      '绿方块 = 对照组（全部分量都是数）失效率 0');
+    svgInto(host, w, h, s);
+  }
+  function renderHeur() {
+    var host = $('c-heur');
+    if (!host) return;
+    drawHeur(host, HEUR.k);
+    var r = D.e2.ks[HEUR.k - 1];
+    var hs = null;
+    D.e2.hotShare.forEach(function (x) { if (x.k === HEUR.k) hs = x; });
+    setHTML('ro-heur',
+      '<span><span class="k">k</span><b>' + r.k + '</b></span>' +
+      '<span><span class="k">样本</span><b>' + fmtInt(r.n) + '</b></span>' +
+      '<span><span class="k">失效率</span><b>' + pctS(r.rateA) + '</b></span>' +
+      '<span><span class="k">对照组样本</span><b>' + fmtInt(r.ctrlN) + '</b></span>' +
+      '<span><span class="k">对照组失效</span><b>' + r.ctrlFail + '</b></span>' +
+      '<span><span class="k">含热分量</span><b>' + (hs ? pctS(hs.meanHot) : '—') + '</b></span>');
+    var body = D.e2.ks.map(function (x, i) {
+      var h2 = D.e2.hotShare[i];
+      return '<tr' + (x.k === HEUR.k ? ' class="hi"' : '') + '><td>' + x.k + '</td><td>' + fmtInt(x.n) +
+        '</td><td>' + pctS(x.rateA) + '</td><td>' + (h2 ? pctS(h2.meanHot) : '—') + '</td><td>' +
+        fmtInt(x.ctrlN) + '</td><td>' + x.ctrlFail + '</td></tr>';
+    });
+    setTBody('t-heur', body.join(''));
+  }
+
+  /* ---- Domineering 棋盘 ---- */
+  var DOMSIZE = [[2, 3], [2, 4], [3, 3], [3, 4], [4, 4]];
+  var DOM = { idx: 1, mask: 0, turn: 1, hist: [], sol: null, key: '' };
+  function domSolver(h, w) {
+    var key = h + 'x' + w;
+    if (DOM.key === key && DOM.sol) return DOM.sol;
+    DOM.sol = F.domSolver(h, w);
+    DOM.key = key;
+    return DOM.sol;
+  }
+  function domDim() { return DOMSIZE[DOM.idx]; }
+  function domCells(mask, w, h) {
+    /* 返回每格属于哪块牌：0 空，1 Left 竖，2 Right 横（上方/左侧那一格记 1/2） */
+    var out = [], r, c;
+    for (r = 0; r < h * w; r++) out.push(0);
+    for (r = 0; r < h; r++) for (c = 0; c < w; c++) {
+      var i = r * w + c;
+      if (!(mask & (1 << i))) continue;
+      if (r + 1 < h && (mask & (1 << ((r + 1) * w + c)))) { out[i] = 1; out[(r + 1) * w + c] = 1; }
+      else if (c + 1 < w && (mask & (1 << (r * w + c + 1)))) { out[i] = 2; out[r * w + c + 1] = 2; }
+    }
+    return out;
+  }
+  function drawDom(host) {
+    var dim = domDim(), h = dim[0], w = dim[1];
+    var W = chartWidth(host);
+    var cell = Math.max(16, Math.min(46, Math.floor((W - 24) / w)));
+    var bh = 22 + h * cell + 22;
+    var s = '';
+    var cells = domCells(DOM.mask, w, h);
+    var x0 = 12;
+    s += tag('text', { x: 6, y: 12, 'font-size': 11, fill: '#57534e', class: 'tick' },
+      h + ' 行 × ' + w + ' 列　轮到 ' + (DOM.turn > 0 ? 'Left（竖）' : 'Right（横）'));
+    for (var r = 0; r < h; r++) for (var c = 0; c < w; c++) {
+      var i = r * w + c;
+      var x = x0 + c * cell, y = 22 + r * cell;
+      var col = cells[i] === 1 ? '#a23b1e' : (cells[i] === 2 ? '#1f6f8b' : '#efece6');
+      s += tag('rect', { x: x, y: y, width: cell - 2, height: cell - 2, rx: 3,
+                         fill: col, stroke: cells[i] ? col : '#ded9d0', 'stroke-width': 1,
+                         'data-cell': String(i) });
+    }
+    s += tag('text', { x: 6, y: 22 + h * cell + 16, 'font-size': 10.5, fill: '#8a8279', class: 'tick' },
+      '点一个空格：把' + (DOM.turn > 0 ? '竖' : '横') + '骨牌放在那里（放不下就换一格）');
+    svgInto(host, W, bh, s);
+    return { cell: cell, x0: x0, h: h, w: w };
+  }
+  function domValueText(g) {
+    var v = GG.valueOf(g);
+    if (v) return { value: DG.str(v), cls: 'number', mean: DG.str(v), temp: '0', out: GG.outcome(g) };
+    var tp = GG.temperatureOf(g);
+    return { value: null, cls: GG.classify(g), mean: tp ? DG.str(tp.mean) : '—',
+             temp: tp ? DG.str(tp.temp) : '—', out: GG.outcome(g) };
+  }
+  function renderDom() {
+    var host = $('c-dom');
+    if (!host) return;
+    drawDom(host);
+    var dim = domDim();
+    var sol = domSolver(dim[0], dim[1]);
+    var g = sol.game(DOM.mask);
+    var v = domValueText(g);
+    var ms = sol.moves(DOM.mask, 1).length, mr = sol.moves(DOM.mask, -1).length;
+    setHTML('ro-dom',
+      '<span><span class="k">棋盘</span><b>' + dim[0] + '×' + dim[1] + '</b></span>' +
+      '<span><span class="k">当前值</span><b>' + esc(v.value === null ? '不是数' : v.value) + '</b></span>' +
+      '<span><span class="k">类别</span><b>' + esc(CLS_CN[v.cls] || v.cls) + '</b></span>' +
+      '<span><span class="k">均值</span><b>' + esc(v.mean) + '</b></span>' +
+      '<span><span class="k">温度</span><b>' + esc(v.temp) + '</b></span>' +
+      '<span><span class="k">结果</span><b>' + esc(OUT_S[v.out] || v.out) + '</b></span>' +
+      '<span><span class="k">Left 可走</span><b>' + ms + ' 步</b></span>' +
+      '<span><span class="k">Right 可走</span><b>' + mr + ' 步</b></span>');
+    var body = D.e6.boards.map(function (b) {
+      var ext = null;
+      D.extDom.forEach(function (e) { if (e.r === b.r && e.c === b.c) ext = e.text; });
+      var hi = ext !== null ? ' class="hi"' : '';
+      return '<tr' + hi + '><td>' + b.r + '×' + b.c + '</td><td>' + esc(short(b.text, 24)) + '</td><td>' +
+        esc(CLS_CN[b.kind] || b.kind) + '</td><td>' + esc(OUT_S[b.outcome] || b.outcome) + '</td><td>' +
+        fmtInt(b.positions) + '</td><td>' + b.birthday + '</td><td>' + esc(ext === null ? '—' : ext) + '</td></tr>';
+    });
+    setTBody('t-dom', body.join(''));
+    var em = D.e6.extMatch;
+    setMD2('dom-note', '**' + em.ok + ' / ' + em.n + ' 个文献值逐个吻合**，包括 2×3 = {2|−1/2} —— ' +
+      '那个"手工算会算错半点"的著名例子。转置检验 **' + D.e6.transposeN + ' 例零违例**（把行和列互换，' +
+      '值应当取负）。在可算的 17 个棋盘里：' + D.domCounts.number + ' 个是数、' + D.domCounts.switch +
+      ' 个是开关、' + D.domCounts.other + ' 个是别的 —— 棋盘值**不随尺寸单调变化**。');
+  }
+  function domPlay(mask, side) {
+    var dim = domDim(), sol = domSolver(dim[0], dim[1]);
+    var ms = sol.moves(mask, side);
+    if (!ms.length) return null;
+    var best = ms[0], bg = sol.game(best), i;
+    for (i = 1; i < ms.length; i++) {
+      var g = sol.game(ms[i]);
+      if (side > 0) { if (GG.le(bg, g)) { best = ms[i]; bg = g; } }
+      else { if (GG.le(g, bg)) { best = ms[i]; bg = g; } }
+    }
+    return best;
+  }
+  function domClickCell(i) {
+    var dim = domDim();
+    var cand = F.domMoves(DOM.mask, dim[1], dim[0], DOM.turn);
+    var found = null;
+    cand.forEach(function (m) {
+      if ((m & (1 << i)) && !(DOM.mask & (1 << i))) {
+        if (found === null || m < found) found = m;
+      }
+    });
+    if (found === null) return false;
+    DOM.hist.push({ mask: DOM.mask, turn: DOM.turn });
+    DOM.mask = found; DOM.turn = -DOM.turn;
+    return true;
+  }
+  function domReset() { DOM.mask = 0; DOM.turn = 1; DOM.hist = []; }
+
+  function drawCost(host) {
+    var w = chartWidth(host);
+    var pad = { t: 16, b: 40, l: 52, r: 12 };
+    var h = 236;
+    var N = D.e8.sums.length;
+    var Fx = frame(w, h, pad, [-0.6, N - 0.4], [1, 1000], { ylog: true, xlab: '分量根数 k', ylab: '节点数（对数轴）', xn: 6, yn: 4 });
+    var s = Fx.body, X = Fx.X, Y = Fx.Y;
+    var bw = Math.max(6, Math.min(34, (w - pad.l - pad.r) / N * 0.3));
+    D.e8.sums.forEach(function (r, i) {
+      s += vbar(X(i) - bw * 0.75, Y(r.bfStates), Y(1), bw, '#8a8279', 'bf' + i, r.bfStates);
+      s += vbar(X(i) + bw * 0.75, Y(r.valueNodes), Y(1), bw, '#a23b1e', 'vn' + i, r.valueNodes);
+    });
+    s += tag('text', { x: pad.l + 4, y: pad.t + 12, 'font-size': 11, fill: '#57534e', class: 'tick' },
+      'k = 1…4 根杆的和');
+    svgInto(host, w, h, s);
+  }
+  function renderCost() {
+    var host = $('c-cost');
+    if (host) drawCost(host);
+    var body = D.costRows.map(function (r) {
+      return '<tr><td>' + r.k + ' 根杆的和</td><td>' + fmtInt(r.bfStates) + '</td><td>' +
+        fmtInt(r.valueNodes) + '</td><td>' + r.birthday + '</td><td>' +
+        esc(OUT_S[r.outcome] || r.outcome) + '</td></tr>';
+    });
+    setTBody('t-cost', body.join(''));
+    var body2 = D.e7.partial.map(function (r) {
+      return '<tr><td>|L|, |R| ≤ ' + r.k + '</td><td>' + fmtInt(r.forms) + '</td><td>' + fmtInt(r.values) +
+        '</td><td>' + pctS(r.share) + '</td></tr>';
+    });
+    setTBody('t-day3', body2.join(''));
+    var cn = D.e8.canon;
+    setMD2('cost-note', '穷举极小极大的状态数随分量数爆炸（' +
+      D.e8.sums.map(function (r) { return fmtInt(r.bfStates); }).join(' → ') +
+      '），而值判定只用了 ' + D.e8.sums.map(function (r) { return fmtInt(r.valueNodes); }).join(' → ') +
+      ' 个节点 —— 把状态空间的**乘积**换成了规范型的**常数级**。规范化 ' + fmtInt(cn.forms) +
+      ' 个第 3 天的形式只要 **' + fmtInt(cn.stats.le) + ' 次比较**（' + msText(cn.ms) +
+      '），因为子博弈已经内联过，绝大多数形式只是查表。第 3 天文献值 1474 个，' +
+      '我们枚举 |L|,|R| ≤ 3 的形式拿到 ' + fmtInt(D.e7.partial[2].values) + ' 个（' +
+      pctS(D.e7.partial[2].share) + '）—— 这是**下界**，不是完整计数。');
+  }
+
+  /* ============================================================ 列表 / KPI / 表 */
+  /* 行内 markdown：只认 **粗体**。
+     必须用惰性匹配：正文里 * 是"星"这个博弈本身（例如"4×4 不是 *"），
+     贪婪的 [^*]+ 会在碰到这种 * 时整段放弃，把 ** 原样漏到页面上。 */
+  function mdInline(s) { return esc(s).replace(/\*\*([\s\S]+?)\*\*/g, '<b>$1</b>'); }
+  function setMD2(id, s) { var e = $(id); if (e) e.innerHTML = mdInline(s); }
+  function renderKPI() {
+    setHTML('kpis', A.kpi.map(function (k) {
+      return '<div class="kpi"><div class="lab">' + esc(k.label) + '</div>' +
+        '<div class="val">' + esc(String(k.value)) + '</div>' +
+        '<div class="unit">' + esc(k.unit || '') + '</div>' +
+        '<div class="note">' + esc(k.note || '') + '</div></div>';
+    }).join(''));
+  }
+  function renderList(id, arr) {
+    setHTML(id, arr.map(function (c) {
+      var t = typeof c === 'string' ? c : (c.text || c.t || '');
+      return '<li>' + mdInline(t) + '</li>';
+    }).join(''));
+  }
+  function renderVerify() {
+    setTBody('t-verify', A.verifyTable.map(function (v) {
+      return '<tr><td>' + esc(v.name) + '</td><td>' + esc(v.theirs) + '</td><td>' +
+        (v.ok ? '<span style="color:#15803d">' : '<span style="color:#b45309">') +
+        esc(v.ours) + '　（' + esc(v.source) + '）</span></td></tr>';
+    }).join(''));
+  }
+  function renderStamp() {
+    var m = A.meta || {};
+    setText('stamp', '模型：从零实现（二进分数 · 规范化 · 停手 · 温度 · SG）　·　数据：' +
+      (m.resultsUpdatedAt || m.generatedAt || '—') + '　·　结论 ' + A.conclusions.length +
+      ' 条 · 边界 ' + A.boundaries.length + ' 条 · 对账 ' + A.verifyTable.length + ' 条（全绿 ' +
+      (m.allVerifyOk ? '是' : '否') + '）');
+  }
+
+  /* ============================================================ 标签页 */
+  var TABS = [['p-one', '壹 · 标尺'], ['p-two', '贰 · 数'], ['p-three', '叁 · 杆'],
+              ['p-four', '肆 · 热'], ['p-five', '伍 · 平局'], ['p-six', '陆 · 猜']];
+  var RENDERERS = {
+    'p-one': function () { renderYard(); renderCanon(); },
+    'p-two': renderNum,
+    'p-three': renderStalk,
+    'p-four': renderTemp,
+    'p-five': renderSg,
+    'p-six': function () { renderHeur(); renderDom(); renderCost(); }
+  };
+  var curTab = 'p-one';
+  function setTab(id) {
+    if (!RENDERERS[id]) return false;
+    curTab = id;
+    TABS.forEach(function (t) {
+      var p = $(t[0]);
+      if (p) p.className = 'panel' + (t[0] === id ? ' on' : '');
+      var b = document.querySelector('.tabs button[data-tab="' + t[0] + '"]');
+      if (b) b.setAttribute('aria-selected', t[0] === id ? 'true' : 'false');
+    });
+    RENDERERS[id]();
+    return true;
+  }
+  function buildTabs() {
+    var nav = $('tabs');
+    if (!nav) return;
+    nav.innerHTML = TABS.map(function (t) {
+      return '<button type="button" data-tab="' + t[0] + '" aria-selected="' +
+        (t[0] === curTab ? 'true' : 'false') + '">' + esc(t[1]) + '</button>';
+    }).join('');
+    nav.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-tab]') : null;
+      if (b) setTab(b.getAttribute('data-tab'));
+    });
+  }
+
+  /* ============================================================ 控件 */
+  function fillSelect(id, items, cur) {
+    var e = $(id);
+    if (!e) return;
+    e.innerHTML = items.map(function (it) {
+      return '<option value="' + esc(it[0]) + '"' + (it[0] === cur ? ' selected' : '') + '>' + esc(it[1]) + '</option>';
+    }).join('');
+  }
+  function bindControls() {
+    var ys = $('yard-sel');
+    if (ys) ys.addEventListener('change', function () { renderYard(); });
+    var cs = $('canon-sel'), cn = $('canon-next'), cr = $('canon-reset');
+    if (cs) cs.addEventListener('change', function () { CANON.ex = +cs.value; CANON.step = 0; renderCanon(); });
+    if (cn) cn.addEventListener('click', function () {
+      var ex = D.canonDemo[CANON.ex];
+      CANON.step = Math.min(CANON.step + 1, ex.steps.length - 1);
+      renderCanon();
+    });
+    if (cr) cr.addEventListener('click', function () { CANON.step = 0; renderCanon(); });
+    var nd = $('num-day');
+    if (nd) nd.addEventListener('input', function () {
+      NUM.day = +nd.value;
+      setText('num-day-val', '第 ' + NUM.day + ' 天');
+      if (curTab === 'p-two') renderNum();
+    });
+    var sn = $('stalk-n');
+    if (sn) sn.addEventListener('input', function () {
+      STALK.n = +sn.value;
+      setText('stalk-n-val', 'n = ' + STALK.n);
+      if (curTab === 'p-three') renderStalk();
+    });
+    var ta = $('temp-a');
+    if (ta) ta.addEventListener('input', function () {
+      TEMP.a = +ta.value;
+      setText('temp-a-val', 'a = ' + TEMP.a);
+      if (curTab === 'p-four') renderTemp();
+    });
+    var ca = $('cool-a');
+    if (ca) ca.addEventListener('input', function () {
+      COOL.a = +ca.value;
+      setText('cool-a-val', '±' + COOL.a);
+      if (curTab === 'p-four') renderTemp();
+    });
+    var sf = $('sg-fam');
+    if (sf) sf.addEventListener('change', function () {
+      D.sgFamilies.forEach(function (f, i) { if (f.id === sf.value) SG.fam = i; });
+      if (curTab === 'p-five') renderSg();
+    });
+    var sgn = $('sg-n');
+    if (sgn) sgn.addEventListener('input', function () {
+      SG.n = +sgn.value;
+      setText('sg-n-val', 'n = ' + SG.n);
+      if (curTab === 'p-five') renderSg();
+    });
+    var hk = $('heur-k');
+    if (hk) hk.addEventListener('input', function () {
+      HEUR.k = +hk.value;
+      setText('heur-k-val', 'k = ' + HEUR.k);
+      if (curTab === 'p-six') renderHeur();
+    });
+    var ds = $('dom-size');
+    if (ds) ds.addEventListener('change', function () {
+      DOM.idx = +ds.value; domReset(); DOM.key = '';
+      if (curTab === 'p-six') renderDom();
+    });
+    var dl = $('dom-left'), dr = $('dom-right'), dre = $('dom-reset');
+    if (dl) dl.addEventListener('click', function () {
+      var m = domPlay(DOM.mask, 1);
+      if (m === null) return;
+      DOM.hist.push({ mask: DOM.mask, turn: DOM.turn });
+      DOM.mask = m; DOM.turn = -1;
+      if (curTab === 'p-six') renderDom();
+    });
+    if (dr) dr.addEventListener('click', function () {
+      var m = domPlay(DOM.mask, -1);
+      if (m === null) return;
+      DOM.hist.push({ mask: DOM.mask, turn: DOM.turn });
+      DOM.mask = m; DOM.turn = 1;
+      if (curTab === 'p-six') renderDom();
+    });
+    if (dre) dre.addEventListener('click', function () {
+      domReset();
+      if (curTab === 'p-six') renderDom();
+    });
+    var dh = $('c-dom');
+    if (dh) dh.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.getAttribute) return;
+      var ci = t.getAttribute('data-cell');
+      if (ci === null) return;
+      if (domClickCell(+ci) && curTab === 'p-six') renderDom();
+    });
+  }
+
+  var rzTimer = null;
+  window.addEventListener('resize', function () {
+    if (rzTimer) clearTimeout(rzTimer);
+    rzTimer = setTimeout(function () { if (RENDERERS[curTab]) RENDERERS[curTab](); }, 90);
+  });
+
+  /* ============================================================ 探针 */
+  function collectCharts() {
+    var out = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (!h.id) return;
+      var sv = h.querySelector('svg');
+      if (!sv) { out.push({ id: h.id, hostW: h.clientWidth, svgW: 0, ok: false, texts: 0 }); return; }
+      var hostW = Math.round(h.clientWidth), svgW = Math.round(sv.getBoundingClientRect().width);
+      out.push({ id: h.id, hostW: hostW, svgW: svgW, ok: Math.abs(hostW - svgW) <= 1 && hostW > 0,
+                 texts: sv.querySelectorAll('text').length });
+    });
+    return out;
+  }
+  function visibleCharts() {
+    return collectCharts().filter(function (c) {
+      var h = $(c.id);
+      return h && h.offsetParent !== null && c.hostW > 0;
+    });
+  }
+  function collectBars() {
+    var out = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (!h.id || h.offsetParent === null) return;
+      h.querySelectorAll('.bar-fill').forEach(function (r) {
+        var bb = r.getBoundingClientRect();
+        out.push({ id: h.id, key: r.getAttribute('data-key') || '',
+                   bbox: +bb.width.toFixed(2), bboxH: +bb.height.toFixed(2),
+                   vert: r.getAttribute('data-vert') === '1',
+                   want: +(r.getAttribute('data-want') || 0),
+                   over: r.getAttribute('data-over') === '1' });
+      });
+    });
+    return out;
+  }
+  function strayScan() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      for (var i = 0; i < h.children.length; i++) {
+        if (h.children[i].tagName.toLowerCase() !== 'svg') bad.push(h.id + ':' + h.children[i].tagName);
+      }
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function nanTicks() {
+    var bad = [];
+    document.querySelectorAll('.chart svg text').forEach(function (t) {
+      if (/NaN|Infinity|undefined/.test(t.textContent || '')) bad.push((t.textContent || '').slice(0, 24));
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function tickOverlap() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (h.offsetParent === null) return;
+      var ts = Array.prototype.slice.call(h.querySelectorAll('text.tick'));
+      var boxes = ts.map(function (t) { var r = t.getBoundingClientRect(); return { r: r, s: t.textContent }; });
+      for (var i = 0; i < boxes.length; i++) {
+        for (var j = i + 1; j < boxes.length; j++) {
+          var a = boxes[i].r, b = boxes[j].r;
+          var ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+          var oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          if (ox > 1.2 && oy > 1.2) bad.push(h.id + ': "' + boxes[i].s + '" × "' + boxes[j].s + '"');
+        }
+      }
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function textFit() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      var sv = h.querySelector('svg');
+      if (!sv || h.offsetParent === null) return;
+      var sr = sv.getBoundingClientRect();
+      sv.querySelectorAll('text').forEach(function (t) {
+        var r = t.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) return;
+        if (r.left < sr.left - 1 || r.right > sr.right + 1 || r.top < sr.top - 1 || r.bottom > sr.bottom + 1) {
+          bad.push(h.id + ': "' + (t.textContent || '').slice(0, 20) + '"');
+        }
+      });
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function tabsFit() {
+    var nav = $('tabs');
+    if (!nav) return { ok: true, bad: [] };
+    var nr = nav.getBoundingClientRect(), bad = [];
+    nav.querySelectorAll('button').forEach(function (b) {
+      var r = b.getBoundingClientRect();
+      if (r.right > nr.right + 1 || r.left < nr.left - 1) bad.push(b.textContent);
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function overflowScan() {
+    var de = document.documentElement, bad = [], scrolled = [];
+    document.querySelectorAll('.bench, .panel, .grid2').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      if (e.scrollWidth > e.clientWidth + 1) bad.push((e.id || e.className) + ' ' + e.scrollWidth + '>' + e.clientWidth);
+    });
+    document.querySelectorAll('.tbl-wrap').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      if (e.scrollWidth > e.clientWidth + 1) {
+        scrolled.push((e.querySelector('table') ? e.querySelector('table').id : 'tbl') + ' ' + e.scrollWidth + '>' + e.clientWidth);
+      }
+    });
+    return { ok: de.scrollWidth <= de.clientWidth + 1, doc: { scroll: de.scrollWidth, client: de.clientWidth }, bad: bad, scrolled: scrolled };
+  }
+  function wrapScan() {
+    var bad = [];
+    document.querySelectorAll('table.dt.num').forEach(function (t) {
+      t.querySelectorAll('td').forEach(function (c) {
+        var r = c.getBoundingClientRect();
+        if (r.height > 34) bad.push((t.id || 'tbl') + ':' + (c.textContent || '').slice(0, 14));
+      });
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function touchScan() {
+    var small = [];
+    document.querySelectorAll('.tabs button, .btnrow button, select, input[type="range"]').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      var r = e.getBoundingClientRect();
+      if (r.height > 0 && r.height < 44) small.push((e.id || e.textContent || e.tagName).slice(0, 18) + ' ' + r.height.toFixed(0));
+    });
+    return { ok: small.length === 0, bad: small };
+  }
+  /* 表格的"骨架"还在不在。
+     只看 <td> 的探针（行数 / 折行 / 列数）全都发现不了"表头被填表时删掉"这件事：
+     渲染过的表成了没有 <thead> 的表，页面上少一整行，而四层静态检查一律放行。 */
+  function tablesScan() {
+    var out = [];
+    document.querySelectorAll('table.dt').forEach(function (t) {
+      if (!t.id) return;
+      var tb = t.tBodies[0];
+      out.push({ id: t.id, thead: !!t.tHead, caption: !!t.caption,
+                 cols: (t.tHead && t.tHead.rows[0]) ? t.tHead.rows[0].cells.length : 0,
+                 rows: tb ? tb.rows.length : 0 });
+    });
+    return out;
+  }
+  /* 开关表的渲染侧出口检查。
+     两件事分开量：(1) 表里不许有温度 0 的行（那是 {a|a} = a + *）；
+     (2) 每行的均值/温度必须等于闭式 (a±b)/2 —— 这里用**浮点**算，
+     引擎那边用**二进分数**算，两条路线对得上才算数（值都是 1/4 的倍数，浮点精确）。 */
+  function tempScan() {
+    var rows = document.querySelectorAll('#t-temp tbody tr');
+    var zero = [], bad = [], n = 0;
+    Array.prototype.forEach.call(rows, function (tr) {
+      var c = tr.cells;
+      if (c.length < 5) return;
+      n++;
+      var txt = (c[0].textContent || '').trim();
+      var m = txt.match(/\{\s*([^|]+?)\s*\|\s*([^}]+?)\s*\}/);
+      var a = m ? dnum(m[1]) : NaN, b = m ? dnum(m[2]) : NaN;
+      var mean = dnum(c[1].textContent), temp = dnum(c[3].textContent);
+      if ((c[3].textContent || '').trim() === '0') zero.push(txt);
+      if (!(Math.abs(mean - (a + b) / 2) < 1e-12 && Math.abs(temp - (a - b) / 2) < 1e-12)) {
+        bad.push(txt + ' 实测 ' + mean + '/' + temp + '，闭式 ' + ((a + b) / 2) + '/' + ((a - b) / 2));
+      }
+    });
+    var note = $('temp-note');
+    return { rows: n, zeroTemp: zero.length, zeroSample: zero.slice(0, 3),
+             badClosed: bad.length, badSample: bad.slice(0, 2),
+             /* 截断长度要够装下整段说明 —— 只给 240 字符时，
+                "零违例"落在窗口外面，断言会误报（本轮实测）。 */
+             noteLen: note ? (note.textContent || '').length : 0,
+             note: note ? (note.textContent || '').slice(0, 600) : '' };
+  }
+  function textsScan() {
+    var out = [];
+    document.querySelectorAll('.panel.on .note, .panel.on h2, .panel.on .ro, .kpi .note, .kpi .val, #stamp').forEach(function (e) {
+      var t = (e.textContent || '').trim();
+      if (t) out.push(t.slice(0, 90));
+    });
+    return out;
+  }
+  /* 泄漏扫描要盖住"读数条"和"表格格子"。
+     只扫 .note 的话，"分母 2 的最高幂 = undefined"这种会整整齐齐地漏过去 ——
+     实测漏了 18 个 <td> 和 2 个读数格。 */
+  function htmlLeaks() {
+    var bad = [];
+    document.querySelectorAll('.panel.on .note, .panel.on .ro, .kpi .note, .kpi .val, ' +
+      'ol.clist li, ol.blist li, table.dt td, #stamp').forEach(function (e) {
+      var t = e.textContent || '';
+      if (/\*\*|<b>|<\/b>|<code>|NaN|undefined|\[object/.test(t)) bad.push(t.slice(0, 40));
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 5) };
+  }
+  function infLeaks() {
+    var bad = [];
+    var re = /(值|温度|均值|之差|比值|差距|误差|失效率)[^。；，]{0,8}(是|为|不超过)\s*∞/;
+    document.querySelectorAll('.panel.on .note, .kpi .note, .kpi .val, ol.clist li, ol.blist li, #stamp').forEach(function (e) {
+      var t = e.textContent || '';
+      if (re.test(t)) bad.push(t.slice(0, 48));
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 5) };
+  }
+  function legendsScan() {
+    var out = {};
+    document.querySelectorAll('.legend-html').forEach(function (e) {
+      if (!e.id) return;
+      out[e.id] = e.querySelectorAll('span').length;
+    });
+    return out;
+  }
+  function countsScan() {
+    var c = {};
+    c.kpi = document.querySelectorAll('#kpis .kpi').length;
+    c.concl = document.querySelectorAll('#l-concl li').length;
+    c.bound = document.querySelectorAll('#l-bound li').length;
+    c.verify = document.querySelectorAll('#t-verify tbody tr').length;
+    c.tabs = document.querySelectorAll('#tabs button').length;
+    c.panels = document.querySelectorAll('.panel').length;
+    c.yard = document.querySelectorAll('#t-yard tbody tr').length;
+    c.canon = document.querySelectorAll('#t-canon tbody tr').length;
+    c.num = document.querySelectorAll('#t-num tbody tr').length;
+    c.ident = document.querySelectorAll('#t-ident tbody tr').length;
+    c.stalk = document.querySelectorAll('#t-stalk tbody tr').length;
+    c.temp = document.querySelectorAll('#t-temp tbody tr').length;
+    c.sg = document.querySelectorAll('#t-sg tbody tr').length;
+    c.sgcheck = document.querySelectorAll('#t-sgcheck tbody tr').length;
+    c.heur = document.querySelectorAll('#t-heur tbody tr').length;
+    c.dom = document.querySelectorAll('#t-dom tbody tr').length;
+    c.cost = document.querySelectorAll('#t-cost tbody tr').length;
+    c.day3 = document.querySelectorAll('#t-day3 tbody tr').length;
+    return c;
+  }
+
+  window.__probe = {
+    version: '1.0',
+    tabIds: function () { return TABS.map(function (t) { return t[0]; }); },
+    setTab: setTab,
+    curTab: function () { return curTab; },
+    yardSet: function (name) {
+      var ys = $('yard-sel');
+      if (name && ys) ys.value = name;
+      if (curTab === 'p-one') renderYard();
+      var r = null;
+      D.knownGames.forEach(function (x) { if (x.name === (ys ? ys.value : name)) r = x; });
+      if (!r) return null;
+      return { name: r.name, value: r.value, mean: r.mean, temp: r.temp, cls: r.cls,
+               birthday: r.birthday, size: r.size, outcome: r.outcome };
+    },
+    canonSet: function (ex, step) {
+      if (ex !== undefined) { CANON.ex = ex; var cs = $('canon-sel'); if (cs) cs.value = String(ex); }
+      if (step !== undefined) CANON.step = step;
+      if (curTab === 'p-one') renderCanon();
+      var e = D.canonDemo[CANON.ex];
+      return { ex: CANON.ex, step: Math.min(CANON.step, e.steps.length - 1), steps: e.steps.length,
+               final: e.final, finalClass: e.finalClass, finalOutcome: e.finalOutcome };
+    },
+    numSet: function (day) {
+      var nd = $('num-day');
+      if (day !== undefined) { NUM.day = day; if (nd) nd.value = String(day); setText('num-day-val', '第 ' + day + ' 天'); }
+      if (curTab === 'p-two') renderNum();
+      var all = Core.numbersByDay(NUM.day);
+      return { day: NUM.day, today: all.days[NUM.day].length, cumulative: all.all.length,
+               expect: Math.pow(2, NUM.day), cumulativeExpect: Math.pow(2, NUM.day + 1) - 1 };
+    },
+    stalkSet: function (n) {
+      var sn = $('stalk-n');
+      if (n !== undefined) { STALK.n = n; if (sn) sn.value = String(n); setText('stalk-n-val', 'n = ' + n); }
+      if (curTab === 'p-three') renderStalk();
+      var sv = D.stalkValues[STALK.n - 1], id = D.stalkIdentity[STALK.n - 1];
+      var uniq = {}, cnt = 0;
+      sv.values.forEach(function (x) { if (!uniq[x]) { uniq[x] = 1; cnt++; } });
+      return { n: STALK.n, stalks: sv.values.length, distinct: cnt, same: id.same,
+               min: sv.values[0], max: sv.values[sv.values.length - 1] };
+    },
+    tempSet: function (a) {
+      var ta = $('temp-a');
+      if (a !== undefined) { TEMP.a = a; if (ta) ta.value = String(a); setText('temp-a-val', 'a = ' + a); }
+      if (curTab === 'p-four') renderTemp();
+      var r = null;
+      D.e5.hotLine.forEach(function (x) { if (x.a === TEMP.a) r = x; });
+      return r ? { a: r.a, temp: r.temp, mean: r.mean, exact: r.exact, theory: r.a } : null;
+    },
+    coolSet: function (a) {
+      var ca = $('cool-a');
+      if (a !== undefined) { COOL.a = a; if (ca) ca.value = String(a); setText('cool-a-val', '±' + a); }
+      if (curTab === 'p-four') renderTemp();
+      var gp = GG.mkGame([GG.numNode(DG.mk(COOL.a, 0))], [GG.numNode(DG.mk(-COOL.a, 0))]);
+      var z = DG.mk(0, 0), ta = DG.mk(COOL.a, 0);
+      return { a: COOL.a,
+               L0: DG.toNum(GG.leftStop(gp, z)), R0: DG.toNum(GG.rightStop(gp, z)),
+               Lat: DG.toNum(GG.leftStop(gp, ta)), Rat: DG.toNum(GG.rightStop(gp, ta)),
+               temp: DG.str(GG.temperatureOf(gp).temp) };
+    },
+    sgSet: function (famId, n) {
+      var sf = $('sg-fam'), sgn = $('sg-n');
+      if (famId) {
+        D.sgFamilies.forEach(function (f, i) { if (f.id === famId) SG.fam = i; });
+        if (sf) sf.value = famId;
+      }
+      if (n !== undefined) { SG.n = n; if (sgn) sgn.value = String(n); setText('sg-n-val', 'n = ' + n); }
+      if (curTab === 'p-five') renderSg();
+      var fam = D.sgFamilies[SG.fam];
+      var N = Math.min(SG.n, fam.seq.length);
+      var seq = fam.seq.slice(0, N), bad = 0;
+      for (var i = 0; i < N; i++) if (sgIndependent(fam.id, i) !== seq[i]) bad++;
+      var ext = -1;
+      if (fam.id === 'dawson') { ext = 0; for (var j = 0; j < 16; j++) if (seq[j] !== D.extDawson[j]) ext++; }
+      return { fam: fam.id, name: fam.name, n: N, max: Math.max.apply(null, seq),
+               mismatch: bad, oeisMismatch: ext, seq: seq.slice(0, 16) };
+    },
+    heurSet: function (k) {
+      var hk = $('heur-k');
+      if (k !== undefined) { HEUR.k = k; if (hk) hk.value = String(k); setText('heur-k-val', 'k = ' + k); }
+      if (curTab === 'p-six') renderHeur();
+      var r = D.e2.ks[HEUR.k - 1];
+      return { k: r.k, n: r.n, rateA: r.rateA, failA: r.failA, ctrlN: r.ctrlN, ctrlFail: r.ctrlFail };
+    },
+    domSet: function (r, c) {
+      var ds = $('dom-size');
+      var idx = -1;
+      DOMSIZE.forEach(function (d, i) { if (d[0] === r && d[1] === c) idx = i; });
+      if (idx < 0) idx = DOM.idx;
+      DOM.idx = idx; DOM.key = '';
+      if (ds) ds.value = String(idx);
+      domReset();
+      if (curTab === 'p-six') renderDom();
+      var dim = domDim(), sol = domSolver(dim[0], dim[1]);
+      var g = sol.game(0), v = domValueText(g);
+      return { r: dim[0], c: dim[1], value: v.value, cls: v.cls, mean: v.mean, temp: v.temp,
+               outcome: v.out, leftMoves: sol.moves(0, 1).length, rightMoves: sol.moves(0, -1).length };
+    },
+    domPlayLeft: function () {
+      var m = domPlay(DOM.mask, 1);
+      if (m === null) return { moved: false, mask: DOM.mask };
+      DOM.hist.push({ mask: DOM.mask, turn: DOM.turn });
+      DOM.mask = m; DOM.turn = -1;
+      if (curTab === 'p-six') renderDom();
+      return { moved: true, mask: DOM.mask, turn: DOM.turn };
+    },
+    domPlayRight: function () {
+      var m = domPlay(DOM.mask, -1);
+      if (m === null) return { moved: false, mask: DOM.mask };
+      DOM.hist.push({ mask: DOM.mask, turn: DOM.turn });
+      DOM.mask = m; DOM.turn = 1;
+      if (curTab === 'p-six') renderDom();
+      return { moved: true, mask: DOM.mask, turn: DOM.turn };
+    },
+    core: function () {
+      /* 页内模型自检：值 / 温度 / SG / 规范型 / 二进分数，全部用引擎当场算 */
+      var g2x3 = F.domGame(2, 3).root;
+      var g44 = F.domGame(4, 4).root;
+      var st = F.stalk([1, -1, -1, -1]);
+      var star = GG.star();
+      var g44s = GG.add(g44, star);
+      return {
+        dom2x3: gform(g2x3, 0).slice(0, 40),
+        dom2x3Temp: DG.str(GG.temperatureOf(g2x3).temp),
+        dom2x3Mean: DG.str(GG.temperatureOf(g2x3).mean),
+        dom44IsStar: GG.eq(g44, star),
+        dom44SelfNeg: GG.eq(g44, GG.neg(g44)),
+        stalkVal: DG.str(GG.valueOf(st)),
+        stalkIsNumber: GG.isNumber(st),
+        powTemp: DG.str(GG.temperatureOf(GG.mkGame([GG.numNode(DG.mk(200, 0))], [GG.numNode(DG.mk(-200, 0))])).temp),
+        dawson16: D.extDawson.slice(0, 16).join(' '),
+        dawsonEngine: F.dawsonSG(16).slice(1, 17).join(' '),
+        day3Lower: D.e7.partial[2].values,
+        gamesBorn2: Core.EXT.gamesBornByDay[2],
+        numbersBorn9: Core.EXT.numbersBornByDay[9]
+      };
+    },
+    counts: countsScan,
+    tables: tablesScan,
+    tempScan: tempScan,
+    legends: legendsScan,
+    charts: visibleCharts,
+    allCharts: collectCharts,
+    bars: collectBars,
+    stray: strayScan,
+    nanTicks: nanTicks,
+    tickOverlap: tickOverlap,
+    textFit: textFit,
+    tabsFit: tabsFit,
+    overflow: overflowScan,
+    wrapScan: wrapScan,
+    touch: touchScan,
+    texts: textsScan,
+    htmlLeaks: htmlLeaks,
+    infLeaks: infLeaks,
+    viewport: function () { return { w: window.innerWidth, h: window.innerHeight }; }
+  };
+
+  /* ============================================================ boot */
+  function boot() {
+    buildTabs();
+    renderStamp();
+    renderKPI();
+    renderList('l-concl', A.conclusions);
+    renderList('l-bound', A.boundaries);
+    renderVerify();
+    fillSelect('yard-sel', D.knownGames.map(function (g) { return [g.name, g.name]; }), '±1 = {1|−1}');
+    fillSelect('canon-sel', D.canonDemo.map(function (e, i) { return [String(i), e.title]; }), '0');
+    fillSelect('sg-fam', D.sgFamilies.map(function (f) { return [f.id, f.name]; }), 'dawson');
+    fillSelect('dom-size', DOMSIZE.map(function (d, i) { return [String(i), d[0] + ' 行 × ' + d[1] + ' 列']; }), '1');
+    D.sgFamilies.forEach(function (f, i) { if (f.id === 'dawson') SG.fam = i; });
+    DOM.idx = 1;
+    bindControls();
+    setTab('p-one');
+    window.__ready = true;
+  }
+  try {
+    boot();
+  } catch (e) {
+    window.__bootError = String((e && e.message) || e);
+    window.__bootStack = String((e && e.stack) || '').slice(0, 400);
+    var st = $('stamp');
+    if (st) st.textContent = '启动失败：' + window.__bootError;
+  }
+})();
+</script>
+</body>
+</html>

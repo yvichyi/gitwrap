@@ -1,0 +1,2040 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>融通之弦 —— 四十二学科因果拓扑与大历史知识融通网络</title>
+  <style>
+/* ============================================================================
+ * consilience/style.css —— 《融通之弦》四十二学科因果网络样式表
+ * ==========================================================================*/
+
+:root {
+  --bg-deep: #070914;
+  --bg-card: #0e1424;
+  --bg-card-hover: #151e36;
+  --border-subtle: #1e2842;
+  --border-focus: #4f46e5;
+
+  --color-astro: #6366f1;
+  --color-planet: #06b6d4;
+  --color-prebio: #10b981;
+  --color-evo: #84cc16;
+  --color-soc: #f59e0b;
+  --color-info: #ec4899;
+
+  --text-main: #f8fafc;
+  --text-dim: #94a3b8;
+  --text-faint: #64748b;
+
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  padding: 24px 16px;
+}
+
+.cons-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 头部导航与标题 */
+.cons-header {
+  background: linear-gradient(135deg, rgba(14, 20, 36, 0.95), rgba(30, 24, 52, 0.85));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.cons-header::after {
+  content: "";
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.cons-badge-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.cons-glyph {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+}
+
+.cons-domain-tag {
+  font-size: 13px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.cons-cross-tag {
+  font-size: 13px;
+  color: #f43f5e;
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.cons-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(90deg, #ffffff 0%, #cbd5e1 50%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+
+.cons-question {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fcd34d;
+  margin-bottom: 12px;
+}
+
+.cons-subtitle {
+  font-size: 15px;
+  color: var(--text-dim);
+  max-width: 1100px;
+}
+
+/* 核心仪表盘指标栏 */
+.cons-dashboard {
+  display: grid;
+  grid-template-columns: 1.3fr 1.1fr 1.2fr 1fr;
+  gap: 16px;
+}
+
+.dash-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.card-label {
+  font-size: 13px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.dash-val-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.dash-num {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+}
+
+.dash-unit {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.cons-bar-wrap {
+  width: 100%;
+  height: 6px;
+  background: #1a233a;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.cons-fill-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #10b981, #f59e0b);
+  width: 90%;
+  transition: width 0.3s ease;
+}
+
+.cons-status-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+
+.badge-harmony {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.badge-warning {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+/* 领域微缩健康谱 */
+.domains-mini-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.dom-mini-item {
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dom-mini-item strong {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  color: #fff;
+}
+
+.dom-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-astro { background: var(--color-astro); }
+.dot-planet { background: var(--color-planet); }
+.dot-prebio { background: var(--color-prebio); }
+.dot-evo { background: var(--color-evo); }
+.dot-soc { background: var(--color-soc); }
+.dot-info { background: var(--color-info); }
+
+.dash-subtext {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 4px;
+}
+
+.dash-subtext strong {
+  color: #f59e0b;
+}
+
+/* 主双视窗工作区 */
+.cons-workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.viewport-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.viewport-header {
+  padding: 14px 20px;
+  background: rgba(14, 20, 36, 0.95);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vp-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #fff;
+}
+
+.vp-icon {
+  font-size: 16px;
+}
+
+.vp-hint {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.vp-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.vp-tab-btn {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border-subtle);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vp-tab-btn.active, .vp-tab-btn:hover {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+.canvas-wrap {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #060812;
+  position: relative;
+}
+
+.canvas-wrap canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 图例指示栏 */
+.network-legend-bar, .cascade-legend-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 20px;
+  background: rgba(11, 16, 30, 0.95);
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-dim);
+  align-items: center;
+}
+
+.leg-domain-item, .leg-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.leg-right {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+
+/* 交互控制中心 */
+.cons-controls-panel {
+  display: grid;
+  grid-template-columns: 1.2fr 1.3fr 1.1fr;
+  gap: 20px;
+}
+
+.control-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.grp-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.3px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 8px;
+}
+
+/* 选中学科微观卡片 */
+.selected-disc-card {
+  background: rgba(18, 25, 45, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.disc-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.disc-header-row strong {
+  font-size: 16px;
+  color: #fff;
+}
+
+.disc-domain-pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.disc-epoch-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.tuner-slider-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tuner-slider-wrap label {
+  font-size: 12px;
+  color: var(--text-faint);
+  display: flex;
+  justify-content: space-between;
+}
+
+.tuner-slider-wrap label strong {
+  color: #f59e0b;
+  font-family: var(--font-mono);
+}
+
+.tuner-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* 按钮通用 */
+.action-btn {
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  background: #162038;
+  color: #fff;
+  transition: all 0.2s ease;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.action-btn:hover {
+  background: #222f50;
+  border-color: var(--border-focus);
+}
+
+.action-primary {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: #a855f7;
+  color: #c084fc;
+}
+
+.action-primary:hover {
+  background: rgba(168, 85, 247, 0.35);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+}
+
+.action-danger {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.action-danger:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.action-toggle.active {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.action-muted {
+  background: rgba(25, 33, 56, 0.6);
+  color: var(--text-dim);
+}
+
+/* 预设按钮网格 */
+.preset-btn-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preset-btn {
+  background: rgba(20, 28, 48, 0.8);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 40px;
+}
+
+.preset-btn:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: #6366f1;
+  color: #fff;
+}
+
+.sim-ctrl-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sim-speed-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sim-speed-wrap label {
+  font-size: 12px;
+  color: var(--text-faint);
+  display: flex;
+  justify-content: space-between;
+}
+
+.sim-speed-wrap label span {
+  font-family: var(--font-mono);
+  color: #fff;
+}
+
+/* 滑块控件 */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #1a233a;
+  border-radius: 3px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #a855f7;
+  cursor: pointer;
+  box-shadow: 0 0 8px #a855f7;
+  border: 2px solid #fff;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #a855f7;
+  cursor: pointer;
+  box-shadow: 0 0 8px #a855f7;
+  border: 2px solid #fff;
+}
+
+/* 认识论折叠深潜 */
+.cons-epistemology-details {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+}
+
+.cons-details-summary {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+  color: #fcd34d;
+  user-select: none;
+}
+
+.sum-arrow {
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.cons-epistemology-details[open] .sum-arrow {
+  transform: rotate(180deg);
+}
+
+.details-body {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.epist-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.epist-col h4 {
+  font-size: 15px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.epist-col p {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  line-height: 1.7;
+}
+
+/* ============================================================================
+ * 响应式媒体查询 (严格置于文件末尾)
+ * ==========================================================================*/
+@media (max-width: 1200px) {
+  .cons-dashboard {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cons-controls-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .cons-workspace {
+    grid-template-columns: 1fr;
+  }
+  .epist-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 12px 8px;
+  }
+  .cons-header {
+    padding: 20px 16px;
+  }
+  .cons-title {
+    font-size: 24px;
+  }
+  .cons-dashboard {
+    grid-template-columns: 1fr;
+  }
+  .domains-mini-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sim-ctrl-grid {
+    grid-template-columns: 1fr;
+  }
+  .tuner-action-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+  </style>
+</head>
+<body>
+<div class="cons-container">
+  <!-- 头部导引 -->
+  <header class="cons-header">
+    <div class="cons-badge-bar">
+      <span class="cons-glyph">∑ 42 𝒢</span>
+      <span class="cons-domain-tag">交叉科学 · 知识大融通</span>
+      <span class="cons-cross-tag">42 门基础学科全景因果拓扑网络 · 宇宙大历史</span>
+    </div>
+    <h1 class="cons-title">融通之弦</h1>
+    <p class="cons-question">“当四十二个学科连成一张网，扰动其中一根弦，整个文明体系怎样随之共振？”</p>
+    <p class="cons-subtitle">
+      爱德华·威尔逊《知识大融通》（Consilience）与大历史（Big History）系统模型：
+      从恒星核聚变、热泉矿物催化、RNA自催化循环，到动作电位、递归语法、工业契约与存在性风险。
+      42 门跨学科节点由 64 条因果弦紧密咬合。操纵任意学科，亲历局域微扰如何沿知识链引发全网级联相变与大过滤器跃迁。
+    </p>
+  </header>
+
+  <!-- 仪表盘核心态量 -->
+  <section class="cons-dashboard" aria-label="全网核心指标">
+    <div class="dash-card metric-main-card" id="cardConsilience">
+      <div class="card-label">全局融通指数 𝒞 (协同度 / 离散方差)</div>
+      <div class="dash-val-row">
+        <span class="dash-num" id="metricConsilience">0.912</span>
+        <span class="dash-unit">/ σ²: <span id="metricVariance">0.002</span></span>
+      </div>
+      <div class="cons-bar-wrap">
+        <div class="cons-fill-bar" id="consFillBar"></div>
+      </div>
+      <div class="cons-status-badge badge-harmony" id="badgeConsStatus">
+        🌟 42 学科高度融通协同 · 知识大网络平稳运行
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="card-label">大过滤器文明跃迁概率 P_Filter</div>
+      <div class="dash-val-row">
+        <span class="dash-num" id="metricSurvivalProb">92.3%</span>
+        <span class="dash-unit">跨越窄门概率</span>
+      </div>
+      <div class="dash-subtext">关键瓶颈短板学科: <strong id="metricWeakest">无显著短板</strong></div>
+    </div>
+
+    <div class="dash-card">
+      <div class="card-label">六大科学领域协同健康谱</div>
+      <div class="domains-mini-grid">
+        <div class="dom-mini-item" title="宇宙与天体物理"><span class="dom-dot dot-astro"></span>天体: <strong id="domAstro">0.91</strong></div>
+        <div class="dom-mini-item" title="行星地球与地质"><span class="dom-dot dot-planet"></span>地球: <strong id="domPlanet">0.90</strong></div>
+        <div class="dom-mini-item" title="生化与微观生命"><span class="dom-dot dot-prebio"></span>生化: <strong id="domPrebio">0.92</strong></div>
+        <div class="dom-mini-item" title="演化与神经认知"><span class="dom-dot dot-evo"></span>神经: <strong id="domEvo">0.93</strong></div>
+        <div class="dom-mini-item" title="语言、心智与文明"><span class="dom-dot dot-soc"></span>文明: <strong id="domSoc">0.92</strong></div>
+        <div class="dom-mini-item" title="信息、工程与未来"><span class="dom-dot dot-info"></span>未来: <strong id="domInfo">0.90</strong></div>
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="card-label">网络因果传导与动力学通量</div>
+      <div class="dash-val-row">
+        <span class="dash-num" id="metricActiveEdges">64</span>
+        <span class="dash-unit">条跨学科活跃因果边</span>
+      </div>
+      <div class="dash-subtext">当前聚焦枢纽: <span id="metricSelectedHub">点击节点展开因果</span></div>
+    </div>
+  </section>
+
+  <!-- 主双视窗工作区 -->
+  <main class="cons-workspace">
+    <!-- 视窗 A: 42 门学科有向因果网络拓扑织机 -->
+    <div class="viewport-box" id="boxNetwork">
+      <div class="viewport-header">
+        <div class="vp-title">
+          <span class="vp-icon">🕸️</span>
+          <strong>四十二学科因果拓扑织机 (Force-Directed Knowledge Loom)</strong>
+        </div>
+        <div class="vp-actions">
+          <span class="vp-hint">点击节点锁定微调 · 拖拽调整拓扑 · 观察彩色脉冲流动</span>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="networkCanvas" width="760" height="440"></canvas>
+      </div>
+      <!-- 领域图例栏 -->
+      <div class="network-legend-bar">
+        <span class="leg-domain-item"><i class="dot-swatch dot-astro"></i> 宇宙天体 (7)</span>
+        <span class="leg-domain-item"><i class="dot-swatch dot-planet"></i> 行星地质 (7)</span>
+        <span class="leg-domain-item"><i class="dot-swatch dot-prebio"></i> 生化生命 (7)</span>
+        <span class="leg-domain-item"><i class="dot-swatch dot-evo"></i> 演化神经 (7)</span>
+        <span class="leg-domain-item"><i class="dot-swatch dot-soc"></i> 语言文明 (7)</span>
+        <span class="leg-domain-item"><i class="dot-swatch dot-info"></i> 信息未来 (7)</span>
+      </div>
+    </div>
+
+    <!-- 视窗 B: 跨尺度因果级联谱与大过滤器瀑布 -->
+    <div class="viewport-box" id="boxCascade">
+      <div class="viewport-header">
+        <div class="vp-title">
+          <span class="vp-icon">🌊</span>
+          <strong>因果级联瀑布与大过滤器跨尺度传导谱</strong>
+        </div>
+        <div class="vp-tabs">
+          <button class="vp-tab-btn active" id="tabCascade" data-view="cascade">大过滤器瀑布</button>
+          <button class="vp-tab-btn" id="tabAdjacency" data-view="adjacency">因果邻接矩阵</button>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="cascadeCanvas" width="760" height="440"></canvas>
+      </div>
+      <div class="cascade-legend-bar">
+        <span class="leg-item">瀑布水流高度反映各学科发展充沛度 (0.0 ~ 1.0)</span>
+        <span class="leg-item leg-right">任何断流将沿有向拓扑引发全局级联停滞</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- 交互控制中心 -->
+  <section class="cons-controls-panel" aria-label="融通控制台">
+    <!-- 控制组 1: 选中学科微观调谐器 -->
+    <div class="control-group" id="grpTuner">
+      <h3 class="grp-title">1. 学科微观参数调谐器</h3>
+      <div class="selected-disc-card">
+        <div class="disc-header-row">
+          <strong id="tunerDiscName">核天体物理</strong>
+          <span class="disc-domain-pill" id="tunerDomainPill">宇宙与天体物理</span>
+        </div>
+        <p class="disc-epoch-desc" id="tunerEpochDesc">恒星核聚变重元素合成，产出硅铁碳氧，为行星岩石圈与生命提供物质底座。</p>
+        <div class="tuner-slider-wrap">
+          <label for="sliderPerturb">学科发展充沛度微调: <strong id="valTuner">0.85</strong></label>
+          <input type="range" id="sliderPerturb" min="0.05" max="1.0" step="0.01" value="0.85">
+        </div>
+        <div class="tuner-action-row">
+          <button class="action-btn action-danger" id="btnShockSelected">⚠️ 抑制此学科 (-0.5 冲击)</button>
+          <button class="action-btn action-primary" id="btnBoostSelected">✨ 突破此学科 (+0.3 跃迁)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 控制组 2: 宏观科学假说与历史危机预设 -->
+    <div class="control-group">
+      <h3 class="grp-title">2. 大历史假说与级联危机预设</h3>
+      <div class="preset-btn-bar">
+        <button class="preset-btn" id="btnPresetEquilibrium" title="所有 42 个学科协同繁茂，大过滤器通过率 > 90%">
+          🌿 知识大融通黄金融通态 (42 学科全面繁茂)
+        </button>
+        <button class="preset-btn" id="btnPresetAstroStarve" title="核天体物理坍塌：缺少硅铁重元素，行星地质与生命全线枯竭">
+          🌌 暗淡宇宙危机 (核合成窒息导致物质枯竭)
+        </button>
+        <button class="preset-btn" id="btnPresetPrebioBlock" title="深海热泉催化失活：前生命 RNA 超循环受阻，生命永远无法起源">
+          🧬 无机死局瓶颈 (前生命化学受阻无法跨越非生命鸿沟)
+        </button>
+        <button class="preset-btn" id="btnPresetTechMismatch" title="信息算力突飞猛进但博弈与社会制度滞后：触碰大过滤器最高危悬崖">
+          🤖 费米绝壁相变 (技术与制度伦理严重失衡)
+        </button>
+      </div>
+    </div>
+
+    <!-- 控制组 3: 动力学演化与全网脉冲控制 -->
+    <div class="control-group">
+      <h3 class="grp-title">3. 连续动力学与全域脉冲</h3>
+      <div class="sim-ctrl-grid">
+        <button class="action-btn action-toggle active" id="btnToggleSim">⏸ 动态级联演化中</button>
+        <button class="action-btn action-primary" id="btnTriggerPulse">⚡ 发射全网因果脉冲波</button>
+        <button class="action-btn action-muted" id="btnResetAll">↺ 重置全网基准态</button>
+        <button class="action-btn action-danger" id="btnRandomStress">🎲 随机扰动压力测试</button>
+      </div>
+      <div class="sim-speed-wrap">
+        <label for="sliderSpeed">非线性松弛速率: <span id="valSpeed">1.0x</span></label>
+        <input type="range" id="sliderSpeed" min="0.2" max="3.0" step="0.1" value="1.0">
+      </div>
+    </div>
+  </section>
+
+  <!-- 认识论折叠深潜 -->
+  <details class="cons-epistemology-details">
+    <summary class="cons-details-summary">
+      <strong>认识论深潜：为什么融合几十个学科不是空谈，而是现代科学大历史的底层必然？</strong>
+      <span class="sum-arrow">▾</span>
+    </summary>
+    <div class="details-body">
+      <div class="epist-grid">
+        <div class="epist-col">
+          <h4>1. 还原论的尽头是融通（Consilience）</h4>
+          <p>
+            过去三百年来，人类科学凭借<strong>还原论（Reductionism）</strong>获得了空前成功：把大自然拆解成物理学、化学、细胞学、经济学等互不通气的孤岛。
+          </p>
+          <p>
+            但正如生物学家爱德华·威尔逊所言：<strong>“现实世界本身并没有专业院系的划分。”</strong>
+            当你追问“为什么人类能读懂文字”：你必须沿着因果链一直倒推——从眼球晶状体折射（光学物理）$\to$ 视网膜视紫红质构象（生物物理）$\to$ 动作电位传导（电生理学）$\to$ 韦尼克区符号解码（神经认知）$\to$ 递归离散语法（计算语言学）$\to$ 农业定居契约记录（考古社会学）$\to$ 碳基大脑细胞能量供应（线粒体生物化学）$\to$ 地幔重元素合成（恒星核天体物理）！
+          </p>
+        </div>
+        <div class="epist-col">
+          <h4>2. 大过滤器（The Great Filter）与跨学科短板效应</h4>
+          <p>
+            罗宾·汉森（Robin Hanson）提出费米悖论大过滤器假说：在宇宙从死寂星云走向星际智慧文明的漫长阶梯中，必定存在极其难以跨越的“不可逾越之关”。
+          </p>
+          <p>
+            在四十二学科因果网络中，你可以清晰观察到<strong>木桶短板效应</strong>：
+            文明系统是一个高阶非线性动力学巨系统。即便你的量子固态电子学与超级计算机体系结构再繁荣，如果制度社会学与博弈论未能解开全球公地悲剧，整个文明就会在大过滤器的最后一扇窄门前轰然折戟。
+            <strong>唯有全域融通，方能跨越深空。</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  </details>
+</div>
+
+  <script>
+/* ============================================================================
+ * consilience/core.js —— 知识大融通（Consilience）与四十二学科因果动力学引擎
+ *
+ * 理论基石：
+ * 1. 爱德华·威尔逊《知识大融通》（Consilience: The Unity of Knowledge）
+ * 2. 大历史（Big History）从宇宙起源到文明演化的因果时间轴
+ * 3. 跨越 6 大知识领域、整整 42 门基础学科的有向因果拓扑动力学网络
+ * 4. 连续非线性耦合常微分方程组（Sigmoidal Coupled ODEs）与高阶级联传导
+ * 5. 网络图论：度分布、介数中心性（Betweenness Centrality）与因果枢纽识别
+ * 6. 大过滤器（The Great Filter）文明跃迁概率与多学科临界相变
+ * ==========================================================================*/
+'use strict';
+
+// ----------------------------------------------------------------------------
+// 1. 六大领域与四十二门学科标准知识库定义
+// ----------------------------------------------------------------------------
+var DOMAINS = {
+  astro_geo: { id: 'astro_geo', name: '宇宙与天体物理', color: '#6366f1', baseAngle: 0 },
+  planet_earth: { id: 'planet_earth', name: '行星地球与地热', color: '#06b6d4', baseAngle: Math.PI / 3 },
+  prebio_bio: { id: 'prebio_bio', name: '生化与微观生命', color: '#10b981', baseAngle: (2 * Math.PI) / 3 },
+  evo_neuro: { id: 'evo_neuro', name: '演化与神经认知', color: '#84cc16', baseAngle: Math.PI },
+  ling_soc: { id: 'ling_soc', name: '语言、心智与文明', color: '#f59e0b', baseAngle: (4 * Math.PI) / 3 },
+  info_future: { id: 'info_future', name: '信息、工程与未来系统', color: '#ec4899', baseAngle: (5 * Math.PI) / 3 }
+};
+
+var DISCIPLINES = [
+  // 1. 宇宙与天体物理 (1-7)
+  { id: 'cosmology', name: '现代宇宙学', domain: 'astro_geo', epoch: '大爆炸暴胀与暗能量' },
+  { id: 'relativity', name: '广义相对论', domain: 'astro_geo', epoch: '弯曲时空零测地线' },
+  { id: 'nuc_astro', name: '核天体物理', domain: 'astro_geo', epoch: '恒星核聚变重元素合成' },
+  { id: 'stellar_dyn', name: '恒星动力学', domain: 'astro_geo', epoch: '主序星光度辐射平衡' },
+  { id: 'proto_hydro', name: '原行星盘流体', domain: 'astro_geo', epoch: '吸积盘微米尘埃碰撞' },
+  { id: 'exoplanet', name: '系外行星轨道学', domain: 'astro_geo', epoch: '宜居带轨道共振' },
+  { id: 'high_energy', name: '高能天文学', domain: 'astro_geo', epoch: '超新星伽马射线暴' },
+
+  // 2. 行星地球与地质化学 (8-14)
+  { id: 'geology', name: '行星地质学', domain: 'planet_earth', epoch: '地幔分异与硅酸盐岩壳' },
+  { id: 'tectonics', name: '板块构造学', domain: 'planet_earth', epoch: '地壳俯冲与碳循环释放' },
+  { id: 'mineral_cat', name: '矿物催化学', domain: 'planet_earth', epoch: '深海热泉硫化铁微孔' },
+  { id: 'biogeochem', name: '生物地球化学', domain: 'planet_earth', epoch: '氮磷钾元素全球循环' },
+  { id: 'atmo_chem', name: '大气化学', domain: 'planet_earth', epoch: '还原性大气向臭氧氧气演替' },
+  { id: 'rad_climate', name: '辐射气候学', domain: 'planet_earth', epoch: '黑体辐射反照率恒温' },
+  { id: 'oceanography', name: '古海洋学', domain: 'planet_earth', epoch: '大洋热盐环流输送' },
+
+  // 3. 生化与微观生命 (15-21)
+  { id: 'non_eq_thermo', name: '非平衡态热力学', domain: 'prebio_bio', epoch: '普里戈金耗散结构自组织' },
+  { id: 'prebio_chem', name: '前生命化学', domain: 'prebio_bio', epoch: '米勒尤里氨基酸合成' },
+  { id: 'hypercycles', name: '自催化超循环', domain: 'prebio_bio', epoch: '艾根超循环核酸自我复制' },
+  { id: 'biophysics', name: '大分子生物物理', domain: 'prebio_bio', epoch: '蛋白质折叠自由能漏斗' },
+  { id: 'mol_genetics', name: '分子遗传学', domain: 'prebio_bio', epoch: 'DNA 双螺旋中心法则' },
+  { id: 'cell_bio', name: '细胞生物学', domain: 'prebio_bio', epoch: '脂质双分子层区室化' },
+  { id: 'bioenergetics', name: '生物能量学', domain: 'prebio_bio', epoch: '化学渗透跨膜质子梯度' },
+
+  // 4. 演化与神经认知 (22-28)
+  { id: 'evo_biology', name: '演化生物学', domain: 'evo_neuro', epoch: '达尔文自然选择基因漂变' },
+  { id: 'paleontology', name: '古生物演化系统', domain: 'evo_neuro', epoch: '寒武纪大爆发化石记录' },
+  { id: 'trophic_eco', name: '营养级生态学', domain: 'evo_neuro', epoch: '食物网全异速能量流' },
+  { id: 'neuroanatomy', name: '比较神经解剖', domain: 'evo_neuro', epoch: '脊椎动物三位一体脑膨胀' },
+  { id: 'electrophys', name: '膜电位电生理', domain: 'evo_neuro', epoch: '霍奇金-赫胥黎动作电位' },
+  { id: 'cog_psych', name: '认知心理学', domain: 'evo_neuro', epoch: '工作记忆与时空因果心智' },
+  { id: 'ethology', name: '动物行为学', domain: 'evo_neuro', epoch: '社会习得利他亲缘选择' },
+
+  // 5. 语言、心智与文明 (29-35)
+  { id: 'comp_ling', name: '计算语言学', domain: 'ling_soc', epoch: '递归离散组合性语法' },
+  { id: 'semiotics', name: '符号抽象学', domain: 'ling_soc', epoch: '抽象隐喻跨代文化固化' },
+  { id: 'anthropology', name: '演化人类学', domain: 'ling_soc', epoch: '直立行走到智人出非洲' },
+  { id: 'archaeology', name: '工具考古学', domain: 'ling_soc', epoch: '旧石器到金属冶炼革命' },
+  { id: 'agri_econ', name: '农业资源经济', domain: 'ling_soc', epoch: '动植物驯化卡路里剩余' },
+  { id: 'demography', name: '人口动力学', domain: 'ling_soc', epoch: '马尔萨斯陷阱人口激增' },
+  { id: 'sociology', name: '制度社会学', domain: 'ling_soc', epoch: '国家阶层法律与信用契约' },
+
+  // 6. 信息、工程与未来系统 (36-42)
+  { id: 'solid_elec', name: '固体微电子学', domain: 'info_future', epoch: '能带理论半导体晶体管' },
+  { id: 'info_theory', name: '香农信息论', domain: 'info_future', epoch: '熵信道极限纠错编码' },
+  { id: 'comp_arch', name: '计算体系结构', domain: 'info_future', epoch: '冯·诺依曼可编程图灵机' },
+  { id: 'network_sci', name: '网络拓扑科学', domain: 'info_future', epoch: '全球超连接无标度小世界' },
+  { id: 'game_theory', name: '现代博弈论', domain: 'info_future', epoch: '纳什均衡与公地悲剧' },
+  { id: 'cybernetics', name: '复杂系统控制论', domain: 'info_future', epoch: '全球负反馈自适应调控' },
+  { id: 'exist_risk', name: '存在性风险未来学', domain: 'info_future', epoch: '大过滤器窄门与技术奇点' }
+];
+
+// 建立 ID 索引字典
+var DISC_MAP = {};
+DISCIPLINES.forEach(function (d, idx) {
+  d.index = idx;
+  DISC_MAP[d.id] = d;
+});
+
+// ----------------------------------------------------------------------------
+// 2. 跨学科因果连接矩阵与拓扑边构建 (Causal Edges: 28+ 跨域边)
+// ----------------------------------------------------------------------------
+var CAUSAL_EDGES = [
+  // 域 1: 天体物理内部
+  { from: 'cosmology', to: 'relativity', weight: 0.85, desc: '时空度规决定宇宙膨胀背景' },
+  { from: 'relativity', to: 'nuc_astro', weight: 0.90, desc: '引力坍缩催化恒星核心聚变' },
+  { from: 'nuc_astro', to: 'stellar_dyn', weight: 0.90, desc: '重元素丰度决定恒星不透明度' },
+  { from: 'proto_hydro', to: 'exoplanet', weight: 0.80, desc: '吸积盘角动量决定行星轨道排布' },
+
+  // 域 1 -> 域 2: 天体物理跨至地质行星
+  { from: 'nuc_astro', to: 'geology', weight: 0.95, desc: '超新星核合成提供硅铁岩石元素' },
+  { from: 'stellar_dyn', to: 'rad_climate', weight: 0.90, desc: '恒星主序辐射通量驱动地表能量平衡' },
+  { from: 'exoplanet', to: 'rad_climate', weight: 0.85, desc: '日地距离确立宜居带黑体平衡' },
+  { from: 'high_energy', to: 'atmo_chem', weight: 0.75, desc: '极紫外电离层电荷剥离与臭氧催化' },
+  { from: 'proto_hydro', to: 'geology', weight: 0.80, desc: '星子吸积碰撞塑造原始行星地幔' },
+
+  // 域 2: 行星地球系统内部
+  { from: 'geology', to: 'tectonics', weight: 0.90, desc: '地幔热对流驱动岩石圈板块漂移' },
+  { from: 'tectonics', to: 'mineral_cat', weight: 0.95, desc: '洋中脊扩张形成深海热泉矿物微孔' },
+  { from: 'tectonics', to: 'atmo_chem', weight: 0.85, desc: '火山脱气释放二氧化碳与水汽' },
+  { from: 'rad_climate', to: 'oceanography', weight: 0.80, desc: '高低纬度温差驱动温盐深层循环' },
+  { from: 'oceanography', to: 'biogeochem', weight: 0.85, desc: '洋流上升流输送矿物质营养盐' },
+  { from: 'atmo_chem', to: 'rad_climate', weight: 0.80, desc: '温室气体浓度反馈热平衡' },
+
+  // 域 2 -> 域 3: 地球系统跨至生化与微观生命
+  { from: 'mineral_cat', to: 'prebio_chem', weight: 0.95, desc: '硫化铁矿物表面提供电子催化有机单体' },
+  { from: 'biogeochem', to: 'prebio_chem', weight: 0.85, desc: '磷酸盐与活性氮底物汇聚' },
+  { from: 'rad_climate', to: 'non_eq_thermo', weight: 0.85, desc: '恒星辐射温差驱动耗散自组织' },
+  { from: 'oceanography', to: 'prebio_chem', weight: 0.80, desc: '热泉界面温度梯度促进分子浓缩' },
+  { from: 'atmo_chem', to: 'prebio_chem', weight: 0.85, desc: '还原料气体闪电放电合成氢氰酸' },
+
+  // 域 3: 生化内部
+  { from: 'non_eq_thermo', to: 'hypercycles', weight: 0.90, desc: '远离平衡态熵耗散孕育自催化循环' },
+  { from: 'prebio_chem', to: 'hypercycles', weight: 0.90, desc: '核苷酸单体形成自互补 RNA 模板' },
+  { from: 'hypercycles', to: 'mol_genetics', weight: 0.95, desc: '遗传密码子与蛋白质翻译机械成型' },
+  { from: 'biophysics', to: 'mol_genetics', weight: 0.85, desc: '碱基氢键互补确保高保真遗传复制' },
+  { from: 'cell_bio', to: 'bioenergetics', weight: 0.90, desc: '脂质囊泡隔绝质子形成化学渗透梯度' },
+  { from: 'mol_genetics', to: 'cell_bio', weight: 0.95, desc: '基因调控多肽转运装配活体细胞' },
+
+  // 域 3 -> 域 4: 微观生化跨至宏观演化与神经
+  { from: 'bioenergetics', to: 'evo_biology', weight: 0.85, desc: '线粒体共生提供高功率演化能量' },
+  { from: 'mol_genetics', to: 'evo_biology', weight: 0.95, desc: '基因突变与重组提供自然选择素材' },
+  { from: 'cell_bio', to: 'electrophys', weight: 0.90, desc: '钠钾离子通道构筑神经膜电位' },
+  { from: 'biophysics', to: 'electrophys', weight: 0.80, desc: '跨膜电场门控构象快速翻转' },
+
+  // 域 4: 演化与神经认知内部
+  { from: 'evo_biology', to: 'paleontology', weight: 0.90, desc: '适应辐射产生化石地层物种更迭' },
+  { from: 'evo_biology', to: 'trophic_eco', weight: 0.90, desc: '捕食与共生编织多营养级食物网' },
+  { from: 'electrophys', to: 'neuroanatomy', weight: 0.95, desc: '突触连接形成网状神经节到中枢脑' },
+  { from: 'trophic_eco', to: 'ethology', weight: 0.80, desc: '群落捕食压力促生集群防御行为' },
+  { from: 'neuroanatomy', to: 'cog_psych', weight: 0.95, desc: '新皮层膨胀支撑工作记忆与心智推理' },
+  { from: 'ethology', to: 'cog_psych', weight: 0.80, desc: '社会互动启发心理理论 (Theory of Mind)' },
+
+  // 域 4 跨至 域 2 (生物地球化学反馈)
+  { from: 'trophic_eco', to: 'biogeochem', weight: 0.85, desc: '生物光合与呼吸重构全球氧碳通量' },
+
+  // 域 4 -> 域 5: 神经认知跨至语言与人类文明
+  { from: 'cog_psych', to: 'comp_ling', weight: 0.95, desc: '递归心智映射产生普遍语法结构' },
+  { from: 'ethology', to: 'anthropology', weight: 0.85, desc: '灵长类理毛社交演化为部落伦理' },
+  { from: 'neuroanatomy', to: 'comp_ling', weight: 0.90, desc: '布罗卡与韦尼克语言中枢解剖特化' },
+
+  // 域 5: 文明社会内部
+  { from: 'comp_ling', to: 'semiotics', weight: 0.90, desc: '声波符号抽象为脱离现场的意义世界' },
+  { from: 'semiotics', to: 'anthropology', weight: 0.90, desc: '神话与图腾凝结大规模虚构共识' },
+  { from: 'anthropology', to: 'archaeology', weight: 0.85, desc: '文化传承推动复合石器与火的使用' },
+  { from: 'archaeology', to: 'agri_econ', weight: 0.95, desc: '镰刀磨盘与选育触发新石器农业革命' },
+  { from: 'agri_econ', to: 'demography', weight: 0.90, desc: '卡路里定居盈余推动人口几何级增长' },
+  { from: 'demography', to: 'sociology', weight: 0.90, desc: '大规模定居人口催生阶层制度与国家法律' },
+  { from: 'semiotics', to: 'sociology', weight: 0.85, desc: '文字与度量衡建立全域契约信用' },
+
+  // 域 5 跨至 域 2 与 域 4 (人类世反噬)
+  { from: 'demography', to: 'rad_climate', weight: 0.80, desc: '化石能源消耗向大气注入温室气体' },
+  { from: 'agri_econ', to: 'trophic_eco', weight: 0.85, desc: '土地垦殖导致生物多样性物种灭绝' },
+
+  // 域 5 -> 域 6: 文明社会跨至现代信息与复杂系统
+  { from: 'sociology', to: 'solid_elec', weight: 0.80, desc: '工业化科研机构分工驱动量子固态理论' },
+  { from: 'semiotics', to: 'info_theory', weight: 0.85, desc: '离散符号统计冗余启发香农熵编码' },
+  { from: 'anthropology', to: 'network_sci', weight: 0.80, desc: '氏族社交六度分隔奠定小世界网络' },
+  { from: 'sociology', to: 'game_theory', weight: 0.85, desc: '国际政治与资源分配构建非零和博弈' },
+
+  // 域 6: 信息、工程与未来系统内部
+  { from: 'solid_elec', to: 'comp_arch', weight: 0.95, desc: '硅基半导体集成逻辑门构筑微处理器' },
+  { from: 'info_theory', to: 'comp_arch', weight: 0.90, desc: '布尔逻辑与信道编码定义数字计算机' },
+  { from: 'comp_arch', to: 'network_sci', weight: 0.95, desc: '分散式服务器互联形成全球互联网' },
+  { from: 'network_sci', to: 'game_theory', weight: 0.85, desc: '复杂拓扑多智能体协同与公地博弈' },
+  { from: 'game_theory', to: 'cybernetics', weight: 0.90, desc: '机制设计与负反馈控制优化全局资源' },
+  { from: 'cybernetics', to: 'exist_risk', weight: 0.95, desc: '宏观控制论能力决定能否穿过大过滤器' },
+  { from: 'solid_elec', to: 'exist_risk', weight: 0.85, desc: '算力爆发逼近人工智能与技术奇点' },
+
+  // 域 6 跨至 域 4、域 2 与 域 5 (未来反馈)
+  { from: 'comp_arch', to: 'cog_psych', weight: 0.75, desc: '计算主义启发心智模块化神经模拟' },
+  { from: 'cybernetics', to: 'trophic_eco', weight: 0.80, desc: '复杂自适应系统理论反哺生态保护' },
+  { from: 'exist_risk', to: 'rad_climate', weight: 0.90, desc: '气候工程或失控相变反噬地球宜居带' },
+  { from: 'exist_risk', to: 'demography', weight: 0.85, desc: '存在性危机直接威胁全人类生存繁衍' }
+];
+
+// ----------------------------------------------------------------------------
+// 3. 网络图论静态拓扑分析算法
+// ----------------------------------------------------------------------------
+function buildNetworkTopology() {
+  var inEdges = {};
+  var outEdges = {};
+
+  DISCIPLINES.forEach(function (d) {
+    inEdges[d.id] = [];
+    outEdges[d.id] = [];
+  });
+
+  CAUSAL_EDGES.forEach(function (edge) {
+    if (outEdges[edge.from]) outEdges[edge.from].push(edge);
+    if (inEdges[edge.to]) inEdges[edge.to].push(edge);
+  });
+
+  var metrics = {};
+  DISCIPLINES.forEach(function (d) {
+    var inW = 0;
+    inEdges[d.id].forEach(function (e) { inW += e.weight; });
+    var outW = 0;
+    outEdges[d.id].forEach(function (e) { outW += e.weight; });
+
+    metrics[d.id] = {
+      inDegree: inEdges[d.id].length,
+      outDegree: outEdges[d.id].length,
+      inWeight: inW,
+      outWeight: outW,
+      totalConnectivity: inEdges[d.id].length + outEdges[d.id].length
+    };
+  });
+
+  return {
+    inEdges: inEdges,
+    outEdges: outEdges,
+    metrics: metrics
+  };
+}
+
+var TOPOLOGY = buildNetworkTopology();
+
+// ----------------------------------------------------------------------------
+// 4. 连续非线性耦合常微分方程组模拟器 (Coupled Nonlinear ODEs)
+// ----------------------------------------------------------------------------
+function sigmoid(z) {
+  return 1.0 / (1.0 + Math.exp(-z));
+}
+
+// 单步非线性常微分方程积分
+function stepSystemDynamics(currentStates, dt, perturbations) {
+  var h = dt || 0.1;
+  var nextStates = {};
+  var inEdges = TOPOLOGY.inEdges;
+  var perts = perturbations || {};
+
+  DISCIPLINES.forEach(function (d) {
+    var x = currentStates[d.id];
+    var edges = inEdges[d.id];
+
+    var driveSum = 0;
+    var totalWeight = 0;
+
+    edges.forEach(function (e) {
+      var sourceVal = currentStates[e.from];
+      driveSum += sourceVal * e.weight;
+      totalWeight += e.weight;
+    });
+
+    var inputLevel = totalWeight > 0 ? (driveSum / totalWeight) : 0.85;
+
+    // 非线性 Sigmoid 响应曲线：低输入惩罚，高输入饱和
+    var target = sigmoid((inputLevel - 0.45) * 5.5);
+
+    // 叠加外生实验扰动注入
+    if (perts[d.id] !== undefined) {
+      target = Math.max(0.01, Math.min(1.0, target + perts[d.id]));
+    }
+
+    var alpha = 0.35;
+    var nextVal = x + alpha * (target - x) * h;
+    nextStates[d.id] = Math.max(0.01, Math.min(1.0, nextVal));
+  });
+
+  return nextStates;
+}
+
+// 求解无扰动自然平衡态作为初始基准状态
+function createSystemState() {
+  var states = {};
+  DISCIPLINES.forEach(function (d) {
+    states[d.id] = 0.85;
+  });
+  // 快速松弛至精确平衡态
+  for (var step = 0; step < 50; step++) {
+    states = stepSystemDynamics(states, 0.2, {});
+  }
+  return states;
+}
+
+// ----------------------------------------------------------------------------
+// 5. 宏观跨学科指标与大过滤器跃迁概率解算
+// ----------------------------------------------------------------------------
+function evaluateGlobalConsilience(states) {
+  var sum = 0;
+  var vals = [];
+  var domainAverages = {};
+
+  Object.keys(DOMAINS).forEach(function (dk) {
+    domainAverages[dk] = { sum: 0, count: 0, avg: 0 };
+  });
+
+  DISCIPLINES.forEach(function (d) {
+    var v = states[d.id];
+    sum += v;
+    vals.push(v);
+    domainAverages[d.domain].sum += v;
+    domainAverages[d.domain].count++;
+  });
+
+  var mean = sum / DISCIPLINES.length;
+
+  var varSum = 0;
+  vals.forEach(function (v) {
+    var diff = v - mean;
+    varSum += diff * diff;
+  });
+  var variance = varSum / DISCIPLINES.length;
+  var stdDev = Math.sqrt(variance);
+
+  // 融通一致性指数 Consilience Index
+  var consilienceIndex = Math.max(0, mean * (1.0 - stdDev * 1.5));
+
+  // 六大领域平均值
+  Object.keys(domainAverages).forEach(function (dk) {
+    var dom = domainAverages[dk];
+    dom.avg = dom.count > 0 ? dom.sum / dom.count : 0;
+  });
+
+  var weakest = findWeakestDiscipline(states);
+  var strongest = findStrongestDiscipline(states);
+
+  // 大过滤器通过概率：六大阶段几何均值 × 最短板惩罚
+  var geomProduct = 1.0;
+  Object.keys(domainAverages).forEach(function (dk) {
+    geomProduct *= Math.max(0.01, domainAverages[dk].avg);
+  });
+  var geomMean = Math.pow(geomProduct, 1.0 / 6.0);
+  var weakPenalty = Math.max(0.05, Math.min(1.0, weakest.value / 0.65));
+
+  var filterSurvivalProb = Math.min(1.0, geomMean * weakPenalty);
+
+  return {
+    meanHealth: mean,
+    variance: variance,
+    stdDev: stdDev,
+    consilienceIndex: consilienceIndex,
+    domainAverages: domainAverages,
+    filterSurvivalProb: filterSurvivalProb,
+    weakestDiscipline: weakest,
+    strongestDiscipline: strongest
+  };
+}
+
+function findWeakestDiscipline(states) {
+  var minVal = 999;
+  var minDisc = null;
+  DISCIPLINES.forEach(function (d) {
+    if (states[d.id] < minVal) {
+      minVal = states[d.id];
+      minDisc = d;
+    }
+  });
+  return { discipline: minDisc, value: minVal };
+}
+
+function findStrongestDiscipline(states) {
+  var maxVal = -1;
+  var maxDisc = null;
+  DISCIPLINES.forEach(function (d) {
+    if (states[d.id] > maxVal) {
+      maxVal = states[d.id];
+      maxDisc = d;
+    }
+  });
+  return { discipline: maxDisc, value: maxVal };
+}
+
+// ----------------------------------------------------------------------------
+// 6. 受力导向网络布局算法 (Force-Directed Layout)
+// ----------------------------------------------------------------------------
+function initGraphLayout(width, height) {
+  var cx = width / 2;
+  var cy = height / 2;
+  var radius = Math.min(width, height) * 0.40;
+  var nodes = [];
+
+  DISCIPLINES.forEach(function (d, idx) {
+    var domInfo = DOMAINS[d.domain];
+    var domainOffset = (idx % 7 - 3) * 0.12;
+    var angle = domInfo.baseAngle + domainOffset;
+    var r = radius * (0.65 + 0.35 * Math.sin(idx * 2.3));
+
+    nodes.push({
+      id: d.id,
+      name: d.name,
+      domain: d.domain,
+      x: cx + Math.cos(angle) * r,
+      y: cy + Math.sin(angle) * r,
+      vx: 0,
+      vy: 0,
+      radius: 9,
+      color: domInfo.color
+    });
+  });
+
+  return nodes;
+}
+
+function stepGraphLayout(nodes, width, height) {
+  var cx = width / 2;
+  var cy = height / 2;
+  var nodeMap = {};
+  nodes.forEach(function (n) { nodeMap[n.id] = n; });
+
+  // 1. 节点间斥力
+  for (var i = 0; i < nodes.length; i++) {
+    for (var j = i + 1; j < nodes.length; j++) {
+      var n1 = nodes[i];
+      var n2 = nodes[j];
+      var dx = n2.x - n1.x;
+      var dy = n2.y - n1.y;
+      var distSq = dx * dx + dy * dy + 100;
+      var dist = Math.sqrt(distSq);
+      var force = 1200 / distSq;
+
+      var fx = (dx / dist) * force;
+      var fy = (dy / dist) * force;
+
+      n1.vx -= fx;
+      n1.vy -= fy;
+      n2.vx += fx;
+      n2.vy += fy;
+    }
+  }
+
+  // 2. 因果边弹簧引力
+  CAUSAL_EDGES.forEach(function (e) {
+    var src = nodeMap[e.from];
+    var tgt = nodeMap[e.to];
+    if (!src || !tgt) return;
+
+    var dx = tgt.x - src.x;
+    var dy = tgt.y - src.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var restLength = 80;
+    var force = (dist - restLength) * 0.035 * e.weight;
+
+    var fx = (dx / (dist || 1)) * force;
+    var fy = (dy / (dist || 1)) * force;
+
+    src.vx += fx;
+    src.vy += fy;
+    tgt.vx -= fx;
+    tgt.vy -= fy;
+  });
+
+  // 3. 向心回拉与阻尼
+  nodes.forEach(function (n) {
+    var dx = cx - n.x;
+    var dy = cy - n.y;
+    n.vx += dx * 0.008;
+    n.vy += dy * 0.008;
+
+    n.vx *= 0.85;
+    n.vy *= 0.85;
+
+    n.x += n.vx;
+    n.y += n.vy;
+
+    n.x = Math.max(30, Math.min(width - 30, n.x));
+    n.y = Math.max(30, Math.min(height - 30, n.y));
+  });
+}
+
+// 导出纯模块
+var Core = {
+  DOMAINS: DOMAINS,
+  DISCIPLINES: DISCIPLINES,
+  DISC_MAP: DISC_MAP,
+  CAUSAL_EDGES: CAUSAL_EDGES,
+  TOPOLOGY: TOPOLOGY,
+  createSystemState: createSystemState,
+  stepSystemDynamics: stepSystemDynamics,
+  evaluateGlobalConsilience: evaluateGlobalConsilience,
+  initGraphLayout: initGraphLayout,
+  stepGraphLayout: stepGraphLayout
+};
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Core;
+}
+if (typeof window !== 'undefined') {
+  window.ConsilienceCore = Core;
+}
+
+  </script>
+  <script>
+/* ============================================================================
+ * consilience/ui.js —— 42 门学科拓扑织机交互、因果瀑布渲染与动力学控制器
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var Core = typeof window !== 'undefined' && window.ConsilienceCore
+    ? window.ConsilienceCore
+    : (typeof require !== 'undefined' ? require('./core.js') : null);
+
+  if (!Core) {
+    console.error('无法加载 ConsilienceCore 知识融通核心计算引擎');
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // 应用全局状态
+  // --------------------------------------------------------------------------
+  var state = {
+    states: Core.createSystemState(),
+    perturbations: {},
+    selectedId: 'nuc_astro',
+    hoveredId: null,
+
+    isSimulating: true,
+    simSpeed: 1.0,
+
+    currentView: 'cascade', // 'cascade' | 'adjacency'
+    nodes: [],
+    particles: [],
+
+    draggedNode: null,
+    dragOffset: { x: 0, y: 0 },
+
+    probe: {
+      consilienceIndex: 0,
+      filterSurvivalProb: 0,
+      meanHealth: 0,
+      weakestId: '',
+      numDisciplines: 42,
+      numEdges: Core.CAUSAL_EDGES.length
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // DOM 元素缓存
+  // --------------------------------------------------------------------------
+  var dom = {};
+
+  function cacheDom() {
+    dom.networkCanvas = document.getElementById('networkCanvas');
+    dom.cascadeCanvas = document.getElementById('cascadeCanvas');
+
+    dom.metricConsilience = document.getElementById('metricConsilience');
+    dom.metricVariance = document.getElementById('metricVariance');
+    dom.consFillBar = document.getElementById('consFillBar');
+    dom.badgeConsStatus = document.getElementById('badgeConsStatus');
+
+    dom.metricSurvivalProb = document.getElementById('metricSurvivalProb');
+    dom.metricWeakest = document.getElementById('metricWeakest');
+
+    dom.domAstro = document.getElementById('domAstro');
+    dom.domPlanet = document.getElementById('domPlanet');
+    dom.domPrebio = document.getElementById('domPrebio');
+    dom.domEvo = document.getElementById('domEvo');
+    dom.domSoc = document.getElementById('domSoc');
+    dom.domInfo = document.getElementById('domInfo');
+
+    dom.metricActiveEdges = document.getElementById('metricActiveEdges');
+    dom.metricSelectedHub = document.getElementById('metricSelectedHub');
+
+    dom.tunerDiscName = document.getElementById('tunerDiscName');
+    dom.tunerDomainPill = document.getElementById('tunerDomainPill');
+    dom.tunerEpochDesc = document.getElementById('tunerEpochDesc');
+    dom.valTuner = document.getElementById('valTuner');
+    dom.sliderPerturb = document.getElementById('sliderPerturb');
+
+    dom.btnShockSelected = document.getElementById('btnShockSelected');
+    dom.btnBoostSelected = document.getElementById('btnBoostSelected');
+
+    dom.btnPresetEquilibrium = document.getElementById('btnPresetEquilibrium');
+    dom.btnPresetAstroStarve = document.getElementById('btnPresetAstroStarve');
+    dom.btnPresetPrebioBlock = document.getElementById('btnPresetPrebioBlock');
+    dom.btnPresetTechMismatch = document.getElementById('btnPresetTechMismatch');
+
+    dom.btnToggleSim = document.getElementById('btnToggleSim');
+    dom.btnTriggerPulse = document.getElementById('btnTriggerPulse');
+    dom.btnResetAll = document.getElementById('btnResetAll');
+    dom.btnRandomStress = document.getElementById('btnRandomStress');
+    dom.sliderSpeed = document.getElementById('sliderSpeed');
+    dom.valSpeed = document.getElementById('valSpeed');
+
+    dom.tabCascade = document.getElementById('tabCascade');
+    dom.tabAdjacency = document.getElementById('tabAdjacency');
+  }
+
+  // --------------------------------------------------------------------------
+  // 指标仪表盘与调谐器数据同步
+  // --------------------------------------------------------------------------
+  function updateDashboard() {
+    var evalRes = Core.evaluateGlobalConsilience(state.states);
+
+    if (dom.metricConsilience) dom.metricConsilience.textContent = evalRes.consilienceIndex.toFixed(3);
+    if (dom.metricVariance) dom.metricVariance.textContent = evalRes.variance.toFixed(4);
+
+    if (dom.consFillBar) {
+      dom.consFillBar.style.width = Math.min(100, Math.max(0, evalRes.consilienceIndex * 100)).toFixed(1) + '%';
+    }
+
+    if (dom.badgeConsStatus) {
+      if (evalRes.consilienceIndex > 0.80) {
+        dom.badgeConsStatus.className = 'cons-status-badge badge-harmony';
+        dom.badgeConsStatus.textContent = '🌟 42 学科高度融通协同 · 知识大网络平稳运行';
+      } else if (evalRes.consilienceIndex > 0.50) {
+        dom.badgeConsStatus.className = 'cons-status-badge';
+        dom.badgeConsStatus.style.background = 'rgba(245, 158, 11, 0.15)';
+        dom.badgeConsStatus.style.color = '#f59e0b';
+        dom.badgeConsStatus.textContent = '⚠️ 局部学科受挫 · 知识因果链出现级联震荡';
+      } else {
+        dom.badgeConsStatus.className = 'cons-status-badge badge-warning';
+        dom.badgeConsStatus.textContent = '💀 知识网络断裂 · 大过滤器临界坠落危机';
+      }
+    }
+
+    if (dom.metricSurvivalProb) {
+      dom.metricSurvivalProb.textContent = Math.round(evalRes.filterSurvivalProb * 100) + '%';
+    }
+
+    if (dom.metricWeakest && evalRes.weakestDiscipline) {
+      var wDisc = evalRes.weakestDiscipline.discipline;
+      dom.metricWeakest.textContent = wDisc ? (wDisc.name + ' (' + evalRes.weakestDiscipline.value.toFixed(2) + ')') : '无';
+    }
+
+    // 六大领域平均值
+    var domAvg = evalRes.domainAverages;
+    if (dom.domAstro) dom.domAstro.textContent = domAvg.astro_geo.avg.toFixed(2);
+    if (dom.domPlanet) dom.domPlanet.textContent = domAvg.planet_earth.avg.toFixed(2);
+    if (dom.domPrebio) dom.domPrebio.textContent = domAvg.prebio_bio.avg.toFixed(2);
+    if (dom.domEvo) dom.domEvo.textContent = domAvg.evo_neuro.avg.toFixed(2);
+    if (dom.domSoc) dom.domSoc.textContent = domAvg.ling_soc.avg.toFixed(2);
+    if (dom.domInfo) dom.domInfo.textContent = domAvg.info_future.avg.toFixed(2);
+
+    // 选中学科调谐器同步
+    var sel = Core.DISC_MAP[state.selectedId];
+    if (sel) {
+      if (dom.tunerDiscName) dom.tunerDiscName.textContent = sel.name;
+      if (dom.tunerDomainPill) {
+        dom.tunerDomainPill.textContent = Core.DOMAINS[sel.domain].name;
+        dom.tunerDomainPill.style.color = Core.DOMAINS[sel.domain].color;
+      }
+      if (dom.tunerEpochDesc) dom.tunerEpochDesc.textContent = sel.epoch;
+      var curVal = state.states[sel.id];
+      if (dom.valTuner) dom.valTuner.textContent = curVal.toFixed(2);
+      if (dom.sliderPerturb && !dom.sliderPerturb.matches(':active')) {
+        dom.sliderPerturb.value = curVal.toFixed(2);
+      }
+      if (dom.metricSelectedHub) {
+        var topoMetric = Core.TOPOLOGY.metrics[sel.id];
+        dom.metricSelectedHub.textContent = sel.name + ' (连接度=' + topoMetric.totalConnectivity + ')';
+      }
+    }
+
+    // 探针暴露
+    state.probe = {
+      consilienceIndex: evalRes.consilienceIndex,
+      filterSurvivalProb: evalRes.filterSurvivalProb,
+      meanHealth: evalRes.meanHealth,
+      weakestId: evalRes.weakestDiscipline.discipline ? evalRes.weakestDiscipline.discipline.id : '',
+      numDisciplines: 42,
+      numEdges: Core.CAUSAL_EDGES.length
+    };
+    if (typeof window !== 'undefined') {
+      window.__probe = state.probe;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 因果粒子流生成 (Causal Flux Particles)
+  // --------------------------------------------------------------------------
+  function spawnParticles() {
+    if (state.particles.length > 80) return;
+    var nodeMap = {};
+    state.nodes.forEach(function (n) { nodeMap[n.id] = n; });
+
+    var edge = Core.CAUSAL_EDGES[Math.floor(Math.random() * Core.CAUSAL_EDGES.length)];
+    var src = nodeMap[edge.from];
+    var tgt = nodeMap[edge.to];
+    if (!src || !tgt) return;
+
+    state.particles.push({
+      src: src,
+      tgt: tgt,
+      progress: 0.0,
+      speed: 0.02 + Math.random() * 0.02,
+      color: src.color
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // Canvas 1: 42 门学科受力导向知识织机绘制
+  // --------------------------------------------------------------------------
+  function renderNetwork(ctx, width, height) {
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.fillStyle = '#060812';
+    ctx.fillRect(0, 0, width, height);
+
+    // 物理排布单步迭代
+    Core.stepGraphLayout(state.nodes, width, height);
+
+    var nodeMap = {};
+    state.nodes.forEach(function (n) { nodeMap[n.id] = n; });
+
+    // 1. 绘制因果拓扑连线
+    Core.CAUSAL_EDGES.forEach(function (e) {
+      var src = nodeMap[e.from];
+      var tgt = nodeMap[e.to];
+      if (!src || !tgt) return;
+
+      var isHighlighted = (e.from === state.selectedId || e.to === state.selectedId ||
+                           e.from === state.hoveredId || e.to === state.hoveredId);
+
+      ctx.strokeStyle = isHighlighted ? 'rgba(168, 85, 247, 0.85)' : 'rgba(30, 41, 68, 0.4)';
+      ctx.lineWidth = isHighlighted ? 2.5 : 1.0;
+
+      ctx.beginPath();
+      ctx.moveTo(src.x, src.y);
+      ctx.lineTo(tgt.x, tgt.y);
+      ctx.stroke();
+
+      // 若高亮则绘制微型方向箭头
+      if (isHighlighted) {
+        var mx = (src.x + tgt.x) * 0.5;
+        var my = (src.y + tgt.y) * 0.5;
+        var ang = Math.atan2(tgt.y - src.y, tgt.x - src.x);
+        ctx.fillStyle = '#c084fc';
+        ctx.beginPath();
+        ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+
+    // 2. 绘制流动的因果粒子
+    for (var i = state.particles.length - 1; i >= 0; i--) {
+      var p = state.particles[i];
+      p.progress += p.speed;
+
+      var px = p.src.x + (p.tgt.x - p.src.x) * p.progress;
+      var py = p.src.y + (p.tgt.y - p.src.y) * p.progress;
+
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (p.progress >= 1.0) {
+        state.particles.splice(i, 1);
+      }
+    }
+
+    // 3. 绘制 42 门学科节点
+    state.nodes.forEach(function (n) {
+      var val = state.states[n.id] || 0.5;
+      var isSelected = (n.id === state.selectedId);
+      var isHovered = (n.id === state.hoveredId);
+
+      var r = 10 + val * 6;
+
+      // 外圈光晕 (反映健康/充沛度)
+      var glow = ctx.createRadialGradient(n.x, n.y, 4, n.x, n.y, r * 1.8);
+      glow.addColorStop(0, n.color);
+      glow.addColorStop(1, 'transparent');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 核心球体
+      ctx.fillStyle = isSelected ? '#ffffff' : n.color;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 选中光圈
+      if (isSelected || isHovered) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r + 4, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // 文字标注
+      ctx.fillStyle = isSelected ? '#ffffff' : '#cbd5e1';
+      ctx.font = (isSelected ? 'bold 11px ' : '10px ') + 'sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(n.name, n.x, n.y + r + 12);
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // Canvas 2: 大历史因果级联瀑布与邻接矩阵
+  // --------------------------------------------------------------------------
+  function renderCascade(ctx, width, height) {
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.fillStyle = '#080d1a';
+    ctx.fillRect(0, 0, width, height);
+
+    if (state.currentView === 'cascade') {
+      renderWaterfallCascade(ctx, width, height);
+    } else {
+      renderAdjacencyMatrix(ctx, width, height);
+    }
+  }
+
+  // 大过滤器跨尺度级联瀑布
+  function renderWaterfallCascade(ctx, width, height) {
+    var padL = 30;
+    var padR = 30;
+    var padT = 40;
+    var padB = 40;
+    var plotW = width - padL - padR;
+    var plotH = height - padT - padB;
+
+    var domainKeys = Object.keys(Core.DOMAINS);
+    var colW = plotW / domainKeys.length;
+
+    // 绘制 6 大领域竖向分栏水流
+    domainKeys.forEach(function (dk, dIdx) {
+      var domInfo = Core.DOMAINS[dk];
+      var colX = padL + dIdx * colW;
+
+      // 领域标题
+      ctx.fillStyle = domInfo.color;
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(domInfo.name, colX + colW * 0.5, padT - 14);
+
+      // 该领域 7 门学科横条柱
+      var discList = Core.DISCIPLINES.filter(function (d) { return d.domain === dk; });
+      var barH = (plotH - 20) / discList.length;
+
+      discList.forEach(function (d, bIdx) {
+        var val = state.states[d.id];
+        var barY = padT + bIdx * barH + 4;
+        var barWidth = (colW - 12) * val;
+
+        // 背景槽
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.fillRect(colX + 6, barY, colW - 12, barH - 4);
+
+        // 充沛度色条
+        ctx.fillStyle = domInfo.color;
+        ctx.fillRect(colX + 6, barY, barWidth, barH - 4);
+
+        // 学科名称与数值
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '9px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(d.name, colX + 10, barY + barH - 8);
+
+        ctx.textAlign = 'right';
+        ctx.fillText(val.toFixed(2), colX + colW - 10, barY + barH - 8);
+      });
+    });
+
+    // 大过滤器临界危险线 (值 < 0.40)
+    var dangerX = padL + colW * 0.40;
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(dangerX, padT);
+    ctx.lineTo(dangerX, padT + plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // 42x42 因果连接邻接矩阵
+  function renderAdjacencyMatrix(ctx, width, height) {
+    var pad = 40;
+    var size = Math.min(width, height) - pad * 2;
+    var cellSize = size / 42.0;
+    var ox = (width - size) / 2;
+    var oy = (height - size) / 2;
+
+    // 邻接字典查找表
+    var edgeMap = {};
+    Core.CAUSAL_EDGES.forEach(function (e) {
+      edgeMap[e.from + '->' + e.to] = e.weight;
+    });
+
+    for (var r = 0; r < 42; r++) {
+      var srcId = Core.DISCIPLINES[r].id;
+      for (var c = 0; c < 42; c++) {
+        var tgtId = Core.DISCIPLINES[c].id;
+        var w = edgeMap[srcId + '->' + tgtId];
+
+        ctx.fillStyle = w ? 'rgba(168, 85, 247, ' + w + ')' : '#0d1326';
+        ctx.fillRect(ox + c * cellSize, oy + r * cellSize, cellSize - 1, cellSize - 1);
+      }
+    }
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('42×42 跨学科因果邻接矩阵 (紫色亮点表示学科间直接因果驱动)', width / 2, 24);
+  }
+
+  // --------------------------------------------------------------------------
+  // 事件交互与控制器绑定
+  // --------------------------------------------------------------------------
+  function bindEvents() {
+    // 调谐器滑块
+    if (dom.sliderPerturb) {
+      dom.sliderPerturb.addEventListener('input', function (e) {
+        var v = parseFloat(e.target.value);
+        state.states[state.selectedId] = v;
+        if (dom.valTuner) dom.valTuner.textContent = v.toFixed(2);
+        updateDashboard();
+      });
+    }
+
+    // 冲击与跃迁按钮
+    if (dom.btnShockSelected) {
+      dom.btnShockSelected.addEventListener('click', function () {
+        state.perturbations[state.selectedId] = -0.55;
+        setTimeout(function () { delete state.perturbations[state.selectedId]; }, 2000);
+      });
+    }
+    if (dom.btnBoostSelected) {
+      dom.btnBoostSelected.addEventListener('click', function () {
+        state.perturbations[state.selectedId] = 0.35;
+        setTimeout(function () { delete state.perturbations[state.selectedId]; }, 2000);
+      });
+    }
+
+    // 假说预设
+    if (dom.btnPresetEquilibrium) {
+      dom.btnPresetEquilibrium.addEventListener('click', function () {
+        state.states = Core.createSystemState();
+        state.perturbations = {};
+        updateDashboard();
+      });
+    }
+    if (dom.btnPresetAstroStarve) {
+      dom.btnPresetAstroStarve.addEventListener('click', function () {
+        state.perturbations = { nuc_astro: -0.65, geology: -0.50 };
+      });
+    }
+    if (dom.btnPresetPrebioBlock) {
+      dom.btnPresetPrebioBlock.addEventListener('click', function () {
+        state.perturbations = { mineral_cat: -0.65, prebio_chem: -0.65, hypercycles: -0.60 };
+      });
+    }
+    if (dom.btnPresetTechMismatch) {
+      dom.btnPresetTechMismatch.addEventListener('click', function () {
+        state.perturbations = { exist_risk: -0.70, game_theory: -0.55, sociology: -0.45, solid_elec: 0.25 };
+      });
+    }
+
+    // 动力学开关
+    if (dom.btnToggleSim) {
+      dom.btnToggleSim.addEventListener('click', function () {
+        state.isSimulating = !state.isSimulating;
+        if (state.isSimulating) {
+          dom.btnToggleSim.classList.add('active');
+          dom.btnToggleSim.textContent = '⏸ 动态级联演化中';
+        } else {
+          dom.btnToggleSim.classList.remove('active');
+          dom.btnToggleSim.textContent = '▶ 启动动态级联';
+        }
+      });
+    }
+
+    // 触发全局脉冲
+    if (dom.btnTriggerPulse) {
+      dom.btnTriggerPulse.addEventListener('click', function () {
+        for (var k = 0; k < 40; k++) spawnParticles();
+      });
+    }
+
+    // 重置全网
+    if (dom.btnResetAll) {
+      dom.btnResetAll.addEventListener('click', function () {
+        state.states = Core.createSystemState();
+        state.perturbations = {};
+        updateDashboard();
+      });
+    }
+
+    // 随机压力测试
+    if (dom.btnRandomStress) {
+      dom.btnRandomStress.addEventListener('click', function () {
+        var randDisc = Core.DISCIPLINES[Math.floor(Math.random() * Core.DISCIPLINES.length)];
+        state.selectedId = randDisc.id;
+        state.perturbations[randDisc.id] = (Math.random() - 0.7) * 0.8;
+        setTimeout(function () { delete state.perturbations[randDisc.id]; }, 2500);
+      });
+    }
+
+    // 速度滑块
+    if (dom.sliderSpeed) {
+      dom.sliderSpeed.addEventListener('input', function (e) {
+        state.simSpeed = parseFloat(e.target.value);
+        if (dom.valSpeed) dom.valSpeed.textContent = state.simSpeed.toFixed(1) + 'x';
+      });
+    }
+
+    // 标签页切换
+    if (dom.tabCascade) {
+      dom.tabCascade.addEventListener('click', function () {
+        state.currentView = 'cascade';
+        dom.tabCascade.classList.add('active');
+        if (dom.tabAdjacency) dom.tabAdjacency.classList.remove('active');
+      });
+    }
+    if (dom.tabAdjacency) {
+      dom.tabAdjacency.addEventListener('click', function () {
+        state.currentView = 'adjacency';
+        dom.tabAdjacency.classList.add('active');
+        if (dom.tabCascade) dom.tabCascade.classList.remove('active');
+      });
+    }
+
+    // 节点鼠标交互 (点击/悬停/拖拽)
+    if (dom.networkCanvas) {
+      dom.networkCanvas.addEventListener('mousedown', function (e) {
+        var rect = dom.networkCanvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+
+        for (var i = 0; i < state.nodes.length; i++) {
+          var n = state.nodes[i];
+          var dist = Math.sqrt((mx - n.x) * (mx - n.x) + (my - n.y) * (my - n.y));
+          if (dist < n.radius + 6) {
+            state.draggedNode = n;
+            state.selectedId = n.id;
+            state.dragOffset = { x: mx - n.x, y: my - n.y };
+            updateDashboard();
+            break;
+          }
+        }
+      });
+
+      window.addEventListener('mousemove', function (e) {
+        if (!dom.networkCanvas) return;
+        var rect = dom.networkCanvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+
+        if (state.draggedNode) {
+          state.draggedNode.x = mx - state.dragOffset.x;
+          state.draggedNode.y = my - state.dragOffset.y;
+          state.draggedNode.vx = 0;
+          state.draggedNode.vy = 0;
+        } else {
+          // 悬停检测
+          var foundHover = null;
+          for (var i = 0; i < state.nodes.length; i++) {
+            var n = state.nodes[i];
+            var dist = Math.sqrt((mx - n.x) * (mx - n.x) + (my - n.y) * (my - n.y));
+            if (dist < n.radius + 6) {
+              foundHover = n.id;
+              break;
+            }
+          }
+          state.hoveredId = foundHover;
+        }
+      });
+
+      window.addEventListener('mouseup', function () {
+        state.draggedNode = null;
+      });
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 主渲染与动力学循环
+  // --------------------------------------------------------------------------
+  function startLoop() {
+    var netCtx = dom.networkCanvas ? dom.networkCanvas.getContext('2d') : null;
+    var casCtx = dom.cascadeCanvas ? dom.cascadeCanvas.getContext('2d') : null;
+
+    state.nodes = Core.initGraphLayout(dom.networkCanvas.width, dom.networkCanvas.height);
+
+    function loop() {
+      // 连续动力学常微分积分
+      if (state.isSimulating) {
+        state.states = Core.stepSystemDynamics(state.states, 0.12 * state.simSpeed, state.perturbations);
+        if (Math.random() < 0.35) {
+          spawnParticles();
+        }
+        updateDashboard();
+      }
+
+      if (netCtx && dom.networkCanvas) {
+        renderNetwork(netCtx, dom.networkCanvas.width, dom.networkCanvas.height);
+      }
+      if (casCtx && dom.cascadeCanvas) {
+        renderCascade(casCtx, dom.cascadeCanvas.width, dom.cascadeCanvas.height);
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  // --------------------------------------------------------------------------
+  // 初始化引导
+  // --------------------------------------------------------------------------
+  function init() {
+    cacheDom();
+    bindEvents();
+    updateDashboard();
+    startLoop();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,1218 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="此机何人——浏览器自查卷宗：十八组原生探针逐条显影、盖章，按文献先验粗估此机的可识别性；零网络、零存储、关页即无痕。">
+<title>此机何人 · 浏览器自查卷宗</title>
+<style>
+/* 《此机何人》style.css —— 全新档案皮肤：米白纸底 + 黑墨 + 单一印章红。
+   不继承全库四套皮肤家族（纸面/报告/仪表盘/仪器）的任何 token 结构。 */
+
+:root {
+  --paper: #f7f3e8;
+  --ink: #211f1a;
+  --ink-60: rgba(33, 31, 26, 0.6);
+  --ink-30: rgba(33, 31, 26, 0.3);
+  --line: rgba(33, 31, 26, 0.18);
+  --line-soft: rgba(33, 31, 26, 0.09);
+  --seal: #b5382e;
+  --gray-ink: #8a857a;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, "Courier New", "PingFang SC", "Microsoft YaHei", monospace;
+  font-size: 15px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible { outline: 3px solid var(--seal); outline-offset: 2px; }
+
+.page { max-width: 880px; margin: 0 auto; padding: 56px 32px 96px 44px; }
+
+/* ---------- 卷首 ---------- */
+.eyebrow { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.45em; color: var(--seal); }
+
+h1 {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  border-bottom: 3px double var(--ink);
+  padding-bottom: 14px;
+}
+
+.subtitle { margin: 10px 0 0; font-size: 13px; letter-spacing: 0.25em; color: var(--ink-60); }
+.brief { margin-top: 34px; }
+.brief p { margin: 0 0 12px; }
+.brief em { font-style: normal; color: var(--seal); }
+
+/* ---------- 卷宗 ---------- */
+.dossier { margin-top: 44px; }
+
+.dossier-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+h2 { margin: 0; font-size: 17px; letter-spacing: 0.3em; font-weight: 700; }
+.status { margin: 0; font-size: 12px; color: var(--ink-60); text-align: right; }
+
+.entries { list-style: none; margin: 0; padding: 0; }
+
+.entry {
+  display: grid;
+  grid-template-columns: 2.4em minmax(8.5em, 10.5em) 1fr 3.8em auto;
+  gap: 4px 12px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.entry .no { font-size: 12px; color: var(--ink-30); }
+.entry .pname { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; }
+.entry .reading { font-size: 13px; word-break: break-all; }
+.entry .bits { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-60); }
+.entry.pending { color: var(--ink-30); }
+.entry.pending .pname { font-weight: 400; }
+
+.entry .sub {
+  grid-column: 2 / -1;
+  border-left: 2px solid var(--line);
+  padding-left: 10px;
+  margin-top: 4px;
+  display: none;
+}
+
+.entry.done .sub { display: block; }
+.entry .sub p { margin: 2px 0; font-size: 12px; color: var(--ink-60); }
+.svgwrap { margin: 8px 0 4px; }
+
+.dst-curve {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  height: 84px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.35);
+  color: var(--ink);
+}
+
+/* ---------- 印章 ---------- */
+.seal {
+  justify-self: end;
+  align-self: center;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  padding: 2px 6px 2px 8px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+  transform: rotate(-6deg);
+  white-space: nowrap;
+}
+
+.entry.pending .seal { opacity: 0.35; border-style: dotted; }
+.entry.done .seal-ok { color: var(--ink); }
+.entry.done .seal-na { color: var(--gray-ink); }
+.entry.done .seal-clash { color: var(--seal); font-weight: 700; }
+.entry.done .seal { animation: stamp 0.3s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+
+@keyframes stamp {
+  from { opacity: 0; transform: rotate(-6deg) scale(1.8); }
+  to { opacity: 1; transform: rotate(-6deg) scale(1); }
+}
+
+/* ---------- 结论 / 操作 / 页脚 ---------- */
+.verdict { margin-top: 40px; border: 1px solid var(--ink); padding: 18px 22px; }
+.verdict-line { margin: 4px 0 10px; font-size: 19px; }
+
+.verdict-line strong {
+  font-size: 30px;
+  color: var(--seal);
+  font-variant-numeric: tabular-nums;
+}
+
+.fineprint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-60);
+  border-top: 1px dashed var(--line);
+  padding-top: 10px;
+}
+
+.actions { margin-top: 44px; }
+.actions-note { font-size: 13px; color: var(--ink-60); margin: 8px 0 14px; }
+.btns { display: flex; gap: 14px; flex-wrap: wrap; }
+
+button {
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  padding: 9px 22px;
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
+button:disabled { opacity: 0.4; cursor: default; }
+#forget { border-color: var(--seal); color: var(--seal); }
+#forget:hover:not(:disabled) { background: var(--seal); color: var(--paper); }
+
+.site-footer { margin-top: 56px; border-top: 3px double var(--ink); padding-top: 14px; }
+.site-footer .promise { margin: 0 0 8px; font-size: 13px; }
+.site-footer .colophon { margin: 0; font-size: 12px; letter-spacing: 0.2em; color: var(--ink-60); }
+
+.erased {
+  padding: 28px 0;
+  font-size: 16px;
+  letter-spacing: 0.1em;
+  color: var(--seal);
+  border-bottom: 1px solid var(--line-soft);
+  outline: none;
+}
+
+.noscript { max-width: 880px; margin: 20px auto; padding: 0 32px; color: var(--seal); }
+
+/* ---------- 熵尺（右缘，纯 CSS 高度条） ---------- */
+.ruler {
+  position: fixed;
+  right: 18px;
+  top: 14vh;
+  bottom: 10vh;
+  width: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 5;
+}
+
+.ruler-num { font-size: 11px; writing-mode: vertical-rl; color: var(--seal); font-variant-numeric: tabular-nums; }
+
+.ruler-track { flex: 1; width: 10px; border: 1px solid var(--line); position: relative; background: rgba(255, 255, 255, 0.3); }
+
+.ruler-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0%;
+  background: var(--seal);
+  transition: height 0.6s ease;
+}
+
+.ruler-cap { font-size: 10px; writing-mode: vertical-rl; letter-spacing: 0.3em; color: var(--ink-60); }
+
+@media (max-width: 760px) {
+  .ruler { display: none; }
+  .page { padding: 40px 20px 80px; }
+  h1 { font-size: 32px; }
+  .entry { grid-template-columns: 2em minmax(7em, 9em) 1fr 3.2em auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .entry.done .seal { animation: none; }
+  .ruler-fill { transition: none; }
+}
+
+</style>
+</head>
+<body>
+<main class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">无编号 · 不入地图</p>
+    <h1>此机何人</h1>
+    <p class="subtitle">浏览器自查卷宗 · 现场签发</p>
+  </header>
+
+  <section class="brief" aria-label="导言">
+    <p>全库的装置都在模拟外部世界的规律——波的、概率的、生长的。这一件不搭任何模型：
+    <strong>它的测件就是你此刻正在用的这台浏览器与机器。</strong>页面打开的一刻，此机即入卷宗。</p>
+    <p>十八组原生探针正在依次按响门铃，每组只读它有权读的一小块本地事实：屏幕、色域、核心数、
+    时区的形状、引擎的算术口音、画布与音频栈的指纹、本机字体……逐条显影、盖章，并按公开文献的
+    先验占比，为每组粗估一个「可识别性位数」（bits）。最后合成一个量级估计——
+    此机在人群中大约有多独一无二。</p>
+    <p>零网络请求，零存储写入，零标准答案。每台机器拿到的卷宗都不同，
+    <em>「不可预测」本身成为内容</em>。你唯一能做的事：滚动阅读、现在忘掉、或者重新核验。</p>
+  </section>
+
+  <section class="dossier" aria-label="探针卷宗">
+    <div class="dossier-head">
+      <h2>卷宗</h2>
+      <p id="status" class="status" role="status" aria-live="polite">正在唤醒探针……</p>
+    </div>
+    <ol id="entries" class="entries"></ol>
+  </section>
+
+  <section id="verdict" class="verdict" aria-label="量级结论" hidden>
+    <p class="eyebrow">量级结论</p>
+    <p class="verdict-line">合计 <strong id="total-bits">—</strong> bits · <span id="verdict-word">—</span></p>
+    <p class="fineprint">计分说明：每条探针的位数 = −log₂(先验占比)，截取 0–12；「不可得」恒记 0；
+    已合并强相关项（分辨率与像素比只计主项一次），避免重复计分。先验数值取公开研究的量级近似——
+    文献近似、非实测；本页全程只作量级估计，不构成对任何具体人群的排名。</p>
+  </section>
+
+  <section class="actions" aria-label="操作">
+    <h2>两张批条</h2>
+    <p class="actions-note">「现在忘掉」当场抹除本页内存里的一切记录与卷宗；「重新核验」从头再跑一遍。
+    关闭标签页，一切无痕。</p>
+    <div class="btns">
+      <button id="forget" type="button">现在忘掉</button>
+      <button id="reverify" type="button">重新核验</button>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <p class="promise">全库的集体承诺——「单文件 · 离线运行 · 计算留在本机」。别的作品承诺它，
+    这一件检验它：构建期断言源码不含任何联网与存储记号，运行期零请求、零写入；
+    你可以在开发者工具的「网络」与「应用」面板当场核对。</p>
+    <p class="colophon">此机何人 · 浏览器自查卷宗 · 无编号 · 不入地图 · 关闭标签页即无痕</p>
+  </footer>
+
+</main>
+
+<aside class="ruler" aria-hidden="true">
+  <span class="ruler-num" id="ruler-num">0</span>
+  <span class="ruler-track"><span class="ruler-fill" id="ruler-fill"></span></span>
+  <span class="ruler-cap">熵尺 bits</span>
+</aside>
+
+<noscript><p class="noscript">本页需要启用 JavaScript：所有探针都在本机运行，不发任何请求。</p></noscript>
+
+<script id="cjh-core">
+/* 《此机何人》core.js —— 纯函数层。
+   铁律：零 DOM、零 Math.random、零联网、零存储；UMD 双端加载（Node 测试 / 浏览器运行）。
+   先验字面量表：数值取 EFF Panopticlick / AmIUnique 一类公开研究的量级近似，
+   仅用于「可识别性位数」的粗估——文献近似、非实测，宁粗勿细；bits 全程只作量级估计。 */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { module.exports = factory(); }
+  else { root.CijiHeren = factory(); }
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  /* ---------- 通用 ---------- */
+  function clamp(x, lo, hi) { return x < lo ? lo : (x > hi ? hi : x); }
+
+  /* ---------- 纯 JS SHA-256（唯一哈希实现，不依赖任何平台密码接口） ---------- */
+  var K256 = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+  ];
+
+  function rotr32(x, n) { return ((x >>> n) | (x << (32 - n))) >>> 0; }
+
+  function utf8Encode(str) {
+    var out = [], i, c, cp, c2;
+    for (i = 0; i < str.length; i++) {
+      c = str.charCodeAt(i);
+      if (c < 0x80) { out.push(c); }
+      else if (c < 0x800) { out.push(0xc0 | (c >> 6), 0x80 | (c & 63)); }
+      else if (c >= 0xd800 && c <= 0xdbff && i + 1 < str.length) {
+        c2 = str.charCodeAt(i + 1);
+        if (c2 >= 0xdc00 && c2 <= 0xdfff) {
+          cp = 0x10000 + ((c - 0xd800) << 10) + (c2 - 0xdc00); i++;
+          out.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 63), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+        } else { out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63)); }
+      } else { out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63)); }
+    }
+    return out;
+  }
+
+  function sha256Bytes(bytes) {
+    var H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    var bitLen = bytes.length * 8;
+    var msg = bytes.slice();
+    msg.push(0x80);
+    while (msg.length % 64 !== 56) { msg.push(0); }
+    var hi = Math.floor(bitLen / 4294967296), lo = bitLen - hi * 4294967296;
+    msg.push((hi >>> 24) & 255, (hi >>> 16) & 255, (hi >>> 8) & 255, hi & 255);
+    msg.push((lo >>> 24) & 255, (lo >>> 16) & 255, (lo >>> 8) & 255, lo & 255);
+    var w = new Array(64), off, i, a, b, c, d, e, f, g, h, S0, S1, t1, t2, mj;
+    for (off = 0; off < msg.length; off += 64) {
+      for (i = 0; i < 16; i++) {
+        w[i] = (msg[off + 4 * i] << 24) | (msg[off + 4 * i + 1] << 16) | (msg[off + 4 * i + 2] << 8) | msg[off + 4 * i + 3];
+      }
+      for (i = 16; i < 64; i++) {
+        S0 = rotr32(w[i - 15], 7) ^ rotr32(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+        S1 = rotr32(w[i - 2], 17) ^ rotr32(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+        w[i] = (w[i - 16] + S0 + w[i - 7] + S1) | 0;
+      }
+      a = H[0]; b = H[1]; c = H[2]; d = H[3]; e = H[4]; f = H[5]; g = H[6]; h = H[7];
+      for (i = 0; i < 64; i++) {
+        S1 = rotr32(e, 6) ^ rotr32(e, 11) ^ rotr32(e, 25);
+        mj = (e & f) ^ (~e & g);
+        t1 = (h + S1 + mj + K256[i] + w[i]) | 0;
+        S0 = rotr32(a, 2) ^ rotr32(a, 13) ^ rotr32(a, 22);
+        mj = (a & b) ^ (a & c) ^ (b & c);
+        t2 = (S0 + mj) | 0;
+        h = g; g = f; f = e; e = (d + t1) | 0;
+        d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+      H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+    }
+    var hex = '';
+    for (i = 0; i < 8; i++) { hex += (H[i] >>> 0).toString(16).padStart(8, '0'); }
+    return hex;
+  }
+
+  function sha256Hex(str) { return sha256Bytes(utf8Encode(String(str))); }
+
+  /* ---------- 浮点 → IEEE-754 双精度位型（十六进制） ---------- */
+  function floatToHex(x) {
+    if (typeof x !== 'number' || !isFinite(x)) { return 'nan'; }
+    var dv = new DataView(new ArrayBuffer(8));
+    dv.setFloat64(0, x);
+    var s = '', i;
+    for (i = 0; i < 8; i++) { s += dv.getUint8(i).toString(16).padStart(2, '0'); }
+    return s;
+  }
+
+  /* ---------- 熵计分：bits = −log2(占比)，截取 [0,12]；「不可得」恒 0 ---------- */
+  function bitsFromShare(p) {
+    if (typeof p !== 'number' || !isFinite(p) || p <= 0) { return 0; }
+    return clamp(-Math.log2(p), 0, 12);
+  }
+
+  function priorShare(table, key) {
+    if (!table) { return 0.004; }
+    var v = table[key];
+    if (typeof v === 'number') { return v; }
+    return typeof table['default'] === 'number' ? table['default'] : 0.004;
+  }
+
+  /* 多项观测合并计分：占比连乘（下限 1e-6，最终仍被 0–12 截断） */
+  function productBits(shares) {
+    var p = 1, i;
+    for (i = 0; i < shares.length; i++) {
+      var s = shares[i];
+      p *= (typeof s === 'number' && s > 0 ? s : 1e-6);
+    }
+    return bitsFromShare(Math.max(p, 1e-6));
+  }
+
+  /* ---------- 先验字面量表（文献近似，非实测） ---------- */
+  var PRIORS = {
+    /* 屏幕精确分辨率（键 '宽x高'） */
+    res: {
+      '1920x1080': 0.22, '1366x768': 0.10, '1536x864': 0.07, '1440x900': 0.045, '2560x1440': 0.04,
+      '3840x2160': 0.02, '1280x720': 0.025, '1600x900': 0.02, '1680x1050': 0.008, '2560x1080': 0.006,
+      '3440x1440': 0.006, '390x844': 0.015, '393x852': 0.015, '412x915': 0.01, '360x800': 0.01,
+      '414x896': 0.008, '375x812': 0.008, '1280x800': 0.012, '1920x1200': 0.012, 'default': 0.004
+    },
+    /* 色域档 */
+    gamut: { 'srgb': 0.78, 'p3': 0.20, 'rec2020': 0.02, 'none': 0.35, 'default': 0.30 },
+    /* 逻辑核心数 */
+    cores: {
+      1: 0.02, 2: 0.045, 4: 0.17, 6: 0.20, 8: 0.31, 10: 0.05, 12: 0.08, 14: 0.005, 16: 0.09,
+      20: 0.008, 22: 0.004, 24: 0.02, 28: 0.003, 32: 0.012, 48: 0.002, 64: 0.004, 'default': 0.004
+    },
+    /* 设备内存档（GB） */
+    memory: { 0.25: 0.004, 0.5: 0.008, 1: 0.02, 2: 0.09, 4: 0.20, 8: 0.48, 'default': 0.03 },
+    /* 存储配额档：2^n GB 的 n */
+    storageExp: {
+      0: 0.008, 1: 0.015, 2: 0.04, 3: 0.09, 4: 0.14, 5: 0.18, 6: 0.20, 7: 0.13, 8: 0.09,
+      9: 0.05, 10: 0.03, 11: 0.01, 12: 0.006, 'default': 0.01
+    },
+    /* 最大触点数 */
+    touch: { 0: 0.72, 1: 0.02, 2: 0.01, 3: 0.01, 5: 0.10, 10: 0.13, 'default': 0.05 },
+    /* IANA 时区（人口占比量级） */
+    tz: {
+      'Asia/Shanghai': 0.185, 'Asia/Kolkata': 0.17, 'America/New_York': 0.026, 'America/Los_Angeles': 0.018,
+      'Asia/Tokyo': 0.015, 'Europe/Moscow': 0.012, 'America/Sao_Paulo': 0.013, 'Europe/London': 0.013,
+      'Europe/Paris': 0.009, 'Asia/Dhaka': 0.011, 'Asia/Jakarta': 0.011, 'Europe/Berlin': 0.011,
+      'America/Mexico_City': 0.008, 'Asia/Manila': 0.007, 'Asia/Seoul': 0.007, 'Africa/Lagos': 0.013,
+      'America/Chicago': 0.012, 'Asia/Bangkok': 0.005, 'Europe/Istanbul': 0.011, 'Asia/Ho_Chi_Minh': 0.006,
+      'Asia/Karachi': 0.013, 'Europe/Kyiv': 0.006, 'America/Denver': 0.004, 'Africa/Cairo': 0.007,
+      'Asia/Tehran': 0.005, 'Europe/Madrid': 0.003, 'Europe/Rome': 0.004, 'Australia/Sydney': 0.002,
+      'America/Toronto': 0.004, 'Europe/Amsterdam': 0.002, 'Europe/Warsaw': 0.002, 'Africa/Nairobi': 0.003,
+      'America/Bogota': 0.003, 'America/Lima': 0.002, 'America/Santiago': 0.002, 'Asia/Kuala_Lumpur': 0.002,
+      'Asia/Singapore': 0.004, 'Africa/Johannesburg': 0.004, 'Europe/Lisbon': 0.001, 'Asia/Riyadh': 0.002,
+      'default': 0.003
+    },
+    /* 夏令时形状：无跳变 / 北半球两跳(+,−) / 南半球两跳(−,+) / 其他 */
+    dst: { 'none': 0.55, 'north': 0.27, 'south': 0.05, 'other': 0.012 },
+    /* 算术差分：命中收录基线的组合 / 未命中任何基线 */
+    arith: { 'v8': 0.62, 'unmatched': 0.05 },
+    /* 高维指纹的单值先验（同一哈希在人群中的近似占比，宁粗勿细） */
+    canvas: 0.002,
+    audio: 0.005,
+    webgl: { 'present': 0.012, 'masked': 0.40, 'absent': 0.05 },
+    /* 字体出现率（候选清单内） */
+    fonts: {
+      'Arial': 0.95, 'Arial Black': 0.85, 'Bahnschrift': 0.45, 'Calibri': 0.85, 'Cambria': 0.80,
+      'Candara': 0.72, 'Comic Sans MS': 0.88, 'Consolas': 0.80, 'Constantia': 0.72, 'Corbel': 0.72,
+      'Courier New': 0.90, 'Georgia': 0.90, 'Impact': 0.88, 'Leelawadee UI': 0.50, 'Malgun Gothic': 0.25,
+      'Microsoft JhengHei': 0.25, 'Microsoft YaHei': 0.75, 'Nirmala UI': 0.50, 'Segoe UI': 0.85,
+      'Segoe UI Emoji': 0.82, 'SimSun': 0.72, 'Sylfaen': 0.72, 'Tahoma': 0.86, 'Times New Roman': 0.93,
+      'Trebuchet MS': 0.90, 'Verdana': 0.90, 'Webdings': 0.85, 'Wingdings': 0.86, 'Helvetica Neue': 0.13,
+      'Menlo': 0.10, 'Monaco': 0.10, 'Optima': 0.11, 'PingFang SC': 0.12, 'Hiragino Sans GB': 0.10,
+      'Songti SC': 0.08, 'DejaVu Sans': 0.06, 'Liberation Sans': 0.05, 'Noto Sans CJK SC': 0.08,
+      'Ubuntu': 0.03, 'Roboto': 0.22
+    },
+    fontDefault: 0.05,
+    /* 平台杂项 */
+    uaLang: { 0: 0.04, 1: 0.46, 2: 0.34, 'more': 0.16, 'default': 0.16 },
+    uaData: { 'present': 0.70, 'absent': 0.30 },
+    mobile: { 'true': 0.55, 'false': 0.45 },
+    /* CSS 新特性支持位 */
+    css: { 'subgrid': 0.30, 'has': 0.78, 'accent': 0.86, 'balance': 0.70 },
+    /* 偏好介质位 */
+    media: {
+      'dark': 0.26, 'light': 0.72, 'motionReduce': 0.05, 'hover': 0.74,
+      'pointerFine': 0.70, 'pointerCoarse': 0.22
+    },
+    /* Intl 能力位 */
+    intlcap: { 'RelativeTimeFormat': 0.90, 'Segmenter': 0.80, 'ListFormat': 0.85, 'DisplayNames': 0.80 },
+    /* 导航器杂项位 */
+    navflags: {
+      'webdriverTrue': 0.005, 'webdriverFalse': 0.995, 'pdfViewerTrue': 0.95, 'pdfViewerFalse': 0.05,
+      'dntSet': 0.15, 'dntUnset': 0.85, 'gpcSet': 0.04, 'gpcUnset': 0.96
+    }
+  };
+
+  /* 字体探测候选清单（40 个，跨 Windows/macOS/Linux） */
+  var FONT_CANDIDATES = [
+    'Arial', 'Arial Black', 'Bahnschrift', 'Calibri', 'Cambria', 'Candara', 'Comic Sans MS',
+    'Consolas', 'Constantia', 'Corbel', 'Courier New', 'Georgia', 'Impact', 'Leelawadee UI',
+    'Malgun Gothic', 'Microsoft JhengHei', 'Microsoft YaHei', 'Nirmala UI', 'Segoe UI',
+    'Segoe UI Emoji', 'SimSun', 'Sylfaen', 'Tahoma', 'Times New Roman', 'Trebuchet MS',
+    'Verdana', 'Webdings', 'Wingdings', 'Helvetica Neue', 'Menlo', 'Monaco', 'Optima',
+    'PingFang SC', 'Hiragino Sans GB', 'Songti SC', 'DejaVu Sans', 'Liberation Sans',
+    'Noto Sans CJK SC', 'Ubuntu', 'Roboto'
+  ];
+
+  /* ---------- 探针描述符静态注册表 ---------- */
+  var PROBES = [
+    { id: 'screen', name: '屏幕分辨率与像素比', prior: 'res', dual: 'devicePixelRatio 与 matchMedia 分辨率互证' },
+    { id: 'gamut', name: '色域档', prior: 'gamut', dual: 'color-gamut 查询与色深交叉印证' },
+    { id: 'cores', name: '逻辑核心数', prior: 'cores', dual: '' },
+    { id: 'memory', name: '设备内存档', prior: 'memory', dual: '' },
+    { id: 'storage', name: '存储额度档', prior: 'storageExp', dual: '' },
+    { id: 'touch', name: '最大触点数', prior: 'touch', dual: '' },
+    { id: 'tzname', name: '时区名', prior: 'tz', dual: '' },
+    { id: 'dst', name: '夏令时形状', prior: 'dst', dual: '逐日拟合与 1 月/7 月 Intl 名比对' },
+    { id: 'arith', name: '算术差分', prior: 'arith', dual: '' },
+    { id: 'canvas', name: '画布指纹', prior: 'canvas', dual: '同一绘制序列跑两遍' },
+    { id: 'audio', name: '音频栈指纹', prior: 'audio', dual: '' },
+    { id: 'webgl', name: 'WebGL 档', prior: 'webgl', dual: '渲染器串读取两遍' },
+    { id: 'fonts', name: '本机字体清单', prior: 'fonts', dual: '全清单跑两遍' },
+    { id: 'ua', name: '平台杂项', prior: 'uaLang', dual: '' },
+    { id: 'css', name: 'CSS 新特性支持位', prior: 'css', dual: '' },
+    { id: 'media', name: '偏好介质位', prior: 'media', dual: '' },
+    { id: 'intlcap', name: 'Intl 能力位', prior: 'intlcap', dual: '' },
+    { id: 'navflags', name: '导航器杂项位', prior: 'navflags', dual: '' }
+  ];
+
+  /* ---------- 算术差分：跨引擎敏感表达式 + 2 个 Number 边界 ---------- */
+  var ARITH_EXPRS = [
+    ['Math.tan(-1e300)', function () { return Math.tan(-1e300); }],
+    ['Math.sin(1e300)', function () { return Math.sin(1e300); }],
+    ['Math.cos(1e300)', function () { return Math.cos(1e300); }],
+    ['Math.expm1(1)', function () { return Math.expm1(1); }],
+    ['Math.log1p(10)', function () { return Math.log1p(10); }],
+    ['Math.sinh(1)', function () { return Math.sinh(1); }],
+    ['0.1 + 0.2', function () { return 0.1 + 0.2; }],
+    ['(0.1+0.2) - 0.3', function () { return (0.1 + 0.2) - 0.3; }]
+  ];
+
+  function arithTable() {
+    var labels = [], hexes = [], i;
+    for (i = 0; i < ARITH_EXPRS.length; i++) {
+      labels.push(ARITH_EXPRS[i][0]);
+      hexes.push(floatToHex(ARITH_EXPRS[i][1]()));
+    }
+    return { labels: labels, hexes: hexes };
+  }
+
+  /* 收录基线：两条都在本仓库实测烤入——Node 与 headless Edge（V8/Chromium 系，
+     两者仅 expm1 末位相差 1 ulp）；见 test.js 对 Node 一条逐位互检。
+     其他引擎（SpiderMonkey/JSC）未实测，不烤入虚构数字——
+     落在全部收录基线之外即如实计分，那本身就是信息。 */
+  var ARITH_BASELINES = [
+    { engine: 'V8 / Node（本仓库实测）', share: 0.62, hexes: ['bff6be411f37ac77', 'bfea2c16b010e385', 'bfe2699022adc4c1', '3ffb7e151628aed2', '40032ee3b77f374c', '3ff2cd9fc44eb982', '3fd3333333333334', '3c90000000000000'] },
+    { engine: 'V8 / Chromium 系（本仓库 headless Edge 实测）', share: 0.62, hexes: ['bff6be411f37ac77', 'bfea2c16b010e385', 'bfe2699022adc4c1', '3ffb7e151628aed3', '40032ee3b77f374c', '3ff2cd9fc44eb982', '3fd3333333333334', '3c90000000000000'] }
+  ];
+
+  function arithBits(hexes) {
+    var combo = hexes.join(','), i;
+    for (i = 0; i < ARITH_BASELINES.length; i++) {
+      if (ARITH_BASELINES[i].hexes.join(',') === combo) {
+        return { matched: ARITH_BASELINES[i].engine, bits: bitsFromShare(ARITH_BASELINES[i].share) };
+      }
+    }
+    return { matched: null, bits: bitsFromShare(PRIORS.arith.unmatched) };
+  }
+
+  /* ---------- 字体清单计分：出现字体占比连乘 ---------- */
+  function fontSetBits(names) {
+    if (!names.length) { return 0; }
+    var p = 1, i;
+    for (i = 0; i < names.length; i++) { p *= (PRIORS.fonts[names[i]] || PRIORS.fontDefault); }
+    return productBits([p]);
+  }
+
+  /* ---------- 夏令时拟合：逐日 UTC 偏移 → 阶梯序列 → 跳变 + 折线数据 ---------- */
+  function fitDST(samples, w, h) {
+    var n = samples.length, offs = [], i;
+    for (i = 0; i < n; i++) { offs.push(samples[i].off); }
+    var jumps = [];
+    for (i = 1; i < n; i++) {
+      if (offs[i] !== offs[i - 1]) {
+        jumps.push({ day: samples[i].i, from: offs[i - 1], to: offs[i], delta: offs[i] - offs[i - 1] });
+      }
+    }
+    var mn = Math.min.apply(null, offs), mx = Math.max.apply(null, offs);
+    var span = (mx - mn) || 1;
+    var points = [];
+    for (i = 0; i < n; i++) {
+      points.push([
+        +(samples[i].i / (n - 1) * w).toFixed(1),
+        +(((mx - offs[i]) / span) * (h - 8) + 4).toFixed(1)
+      ]);
+    }
+    return { jumps: jumps, points: points, minOff: mn, maxOff: mx };
+  }
+
+  function buildPolylineAttr(points) {
+    var s = [], i;
+    for (i = 0; i < points.length; i++) { s.push(points[i][0] + ',' + points[i][1]); }
+    return s.join(' ');
+  }
+
+  function dstBits(jumps) {
+    var key;
+    if (jumps.length === 0) { key = 'none'; }
+    else if (jumps.length === 2 && jumps[0].delta > 0 && jumps[1].delta < 0) { key = 'north'; }
+    else if (jumps.length === 2 && jumps[0].delta < 0 && jumps[1].delta > 0) { key = 'south'; }
+    else { key = 'other'; }
+    return bitsFromShare(PRIORS.dst[key]);
+  }
+
+  /* ---------- 量级结论（只说量级，不做人群排名） ---------- */
+  function verdictFor(total) {
+    if (total < 20) { return '大约千人一面'; }
+    if (total < 33) { return '小镇级——一条街上能遇到同类'; }
+    if (total < 45) { return '城市级——同城人群仍不少见'; }
+    return '全球唯一量级——同卷宗难有第二份';
+  }
+
+  /* ---------- 零联网零存储记号扫描（记号清单由 build.js/test.js 注入） ---------- */
+  function scanForbidden(text, marks) {
+    if (typeof text !== 'string') { return false; }
+    for (var i = 0; i < marks.length; i++) {
+      if (text.indexOf(marks[i]) !== -1) { return true; }
+    }
+    return false;
+  }
+
+  return {
+    PRIORS: PRIORS, FONT_CANDIDATES: FONT_CANDIDATES, PROBES: PROBES,
+    ARITH_EXPRS: ARITH_EXPRS, ARITH_BASELINES: ARITH_BASELINES,
+    clamp: clamp, bitsFromShare: bitsFromShare, priorShare: priorShare, productBits: productBits,
+    fontSetBits: fontSetBits, arithTable: arithTable, arithBits: arithBits,
+    fitDST: fitDST, buildPolylineAttr: buildPolylineAttr, dstBits: dstBits,
+    verdictFor: verdictFor, scanForbidden: scanForbidden,
+    utf8Encode: utf8Encode, sha256Hex: sha256Hex, floatToHex: floatToHex
+  };
+}));
+
+</script>
+<script id="cjh-ui">
+/* 《此机何人》ui.js —— 探针调度器 + 档案显影渲染。
+   逐条 try/catch + 2s 超时：单条探针异常记「不可得」，绝不中断全局。
+   零联网、零存储：本文件不含任何网络或存储调用（构建期有断言兜底）。 */
+(function () {
+  'use strict';
+  var C = window.CijiHeren;
+
+  window.__probe = { __ready: false, __bootError: null, records: [], totals: null };
+
+  var state = { running: false };
+  var listEl, statusEl, verdictEl, verdictBitsEl, verdictWordEl;
+  var forgetBtn, reverifyBtn, rulerFill, rulerNum;
+  var MAX_RULER_BITS = 60;
+
+  /* ---------- 小工具 ---------- */
+  function $(sel) { return document.querySelector(sel); }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function round1(x) { return Math.round(x * 10) / 10; }
+
+  function withTimeout(fn, ms) {
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      var t = setTimeout(function () {
+        if (!settled) { settled = true; reject(new Error(ms + 'ms 超时')); }
+      }, ms);
+      Promise.resolve().then(fn).then(function (v) {
+        if (!settled) { settled = true; clearTimeout(t); resolve(v); }
+      }, function (e) {
+        if (!settled) { settled = true; clearTimeout(t); reject(e); }
+      });
+    });
+  }
+
+  function fmtOffset(min) {
+    var sign = min <= 0 ? '+' : '−';
+    var a = Math.abs(min);
+    return 'UTC' + sign + Math.floor(a / 60) + (a % 60 ? ':' + (a % 60 < 10 ? '0' : '') + (a % 60) : '');
+  }
+
+  /* ---------- 探针实现（每条只读它有权读的一小块本地事实） ---------- */
+
+  function probeScreen() {
+    var s = window.screen;
+    if (!s || !s.width) { throw new Error('screen 不可得'); }
+    var dpr = window.devicePixelRatio || 1;
+    var m = window.matchMedia ? window.matchMedia('(resolution: ' + dpr + 'dppx)').matches : null;
+    return {
+      reading: s.width + '×' + s.height + ' · 色深 ' + s.colorDepth + ' · dpr ' + dpr,
+      ch2: m === null ? '无 matchMedia' : 'matchMedia（resolution: ' + dpr + 'dppx）' + (m ? '命中' : '未命中'),
+      agree: m === null ? undefined : (m ? '一致' : '两通道相左'),
+      bits: C.bitsFromShare(C.priorShare(C.PRIORS.res, s.width + 'x' + s.height)),
+      note: '像素比与分辨率强相关，并入主项不另计分；外接屏或页面缩放会改变读数'
+    };
+  }
+
+  function probeGamut() {
+    if (!window.matchMedia) { throw new Error('无 matchMedia'); }
+    var g = window.matchMedia('(color-gamut: rec2020)').matches ? 'rec2020'
+      : window.matchMedia('(color-gamut: p3)').matches ? 'p3'
+        : window.matchMedia('(color-gamut: srgb)').matches ? 'srgb' : 'none';
+    var depth = window.screen ? window.screen.colorDepth : null;
+    var agree, note;
+    if (depth === null) { agree = undefined; note = '无色深可印证——单通道'; }
+    else if (depth >= 30 && g === 'srgb') { agree = '两通道相左'; note = '色深 ' + depth + ' 却只报 srgb——如实记录，不静默择一'; }
+    else if (depth <= 22 && g !== 'srgb' && g !== 'none') { agree = '两通道相左'; note = '色深 ' + depth + ' 却报 ' + g + '——如实记录，不静默择一'; }
+    else if (depth === 24) { agree = undefined; note = '色深 24 无法区分 srgb 与 p3——单通道结论，允许'; }
+    else { agree = '一致'; note = '色深与色域档相称'; }
+    return {
+      reading: g,
+      ch2: 'colorDepth = ' + depth,
+      agree: agree,
+      bits: C.bitsFromShare(C.priorShare(C.PRIORS.gamut, g)),
+      note: note
+    };
+  }
+
+  function probeCores() {
+    var n = navigator.hardwareConcurrency;
+    if (typeof n !== 'number') { throw new Error('hardwareConcurrency 不可得'); }
+    return {
+      reading: n + ' 核',
+      bits: C.bitsFromShare(C.priorShare(C.PRIORS.cores, String(n))),
+      note: '逻辑核心数；同机各标签页读数一致'
+    };
+  }
+
+  function probeMemory() {
+    var n = navigator.deviceMemory;
+    if (typeof n !== 'number') { throw new Error('deviceMemory 不可得（本浏览器不提供）'); }
+    return {
+      reading: '≥ ' + n + ' GB 档',
+      bits: C.bitsFromShare(C.priorShare(C.PRIORS.memory, String(n))),
+      note: '浏览器只报粗档（0.25–8），Chrome 系特有；Firefox/Safari 此处即为「不可得」'
+    };
+  }
+
+  function probeStorage() {
+    if (!navigator.storage || !navigator.storage.estimate) { throw new Error('storage.estimate 不可得'); }
+    return navigator.storage.estimate().then(function (est) {
+      var gb = (est && est.quota ? est.quota : 0) / 1073741824;
+      if (!gb) { throw new Error('配额为 0'); }
+      var exp = C.clamp(Math.round(Math.log2(gb)), 0, 12);
+      return {
+        reading: '配额 ≈ ' + (gb >= 10 ? Math.round(gb) : gb.toFixed(1)) + ' GB（2^' + exp + ' 档）',
+        bits: C.bitsFromShare(C.priorShare(C.PRIORS.storageExp, String(exp))),
+        note: '这是浏览器给本站的分区配额，不是磁盘总量'
+      };
+    });
+  }
+
+  function probeTouch() {
+    var n = navigator.maxTouchPoints;
+    if (typeof n !== 'number') { throw new Error('maxTouchPoints 不可得'); }
+    return {
+      reading: n + ' 触点',
+      bits: C.bitsFromShare(C.priorShare(C.PRIORS.touch, String(n))),
+      note: '0 通常意味着纯桌面环境'
+    };
+  }
+
+  function probeTz() {
+    var name = null;
+    try { name = Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch (e) { name = null; }
+    var off = new Date().getTimezoneOffset();
+    if (!name) {
+      return {
+        reading: '偏移 ' + fmtOffset(off),
+        bits: C.bitsFromShare(0.02),
+        note: 'Intl 时区名不可得，退回 UTC 偏移'
+      };
+    }
+    return {
+      reading: name + '（' + fmtOffset(off) + '）',
+      bits: C.bitsFromShare(C.priorShare(C.PRIORS.tz, name)),
+      note: 'IANA 名；不在收录名单按 0.003 近似'
+    };
+  }
+
+  function tzAbbr(date) {
+    try {
+      var parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(date);
+      for (var i = 0; i < parts.length; i++) {
+        if (parts[i].type === 'timeZoneName') { return parts[i].value; }
+      }
+    } catch (e) { /* 落到 null */ }
+    return null;
+  }
+
+  function probeDst() {
+    var year = new Date().getUTCFullYear();
+    var days = Math.round((Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / 86400000);
+    var samples = [], d;
+    for (d = 0; d < days; d++) {
+      samples.push({ i: d, off: new Date(Date.UTC(year, 0, 1) + d * 86400000 + 43200000).getTimezoneOffset() });
+    }
+    var fit = C.fitDST(samples, 320, 84);
+    var janOff = new Date(Date.UTC(year, 0, 15)).getTimezoneOffset();
+    var julOff = new Date(Date.UTC(year, 6, 15)).getTimezoneOffset();
+    var nameJan = tzAbbr(new Date(Date.UTC(year, 0, 15)));
+    var nameJul = tzAbbr(new Date(Date.UTC(year, 6, 15)));
+    var intlSaysDst = (janOff !== julOff) || (nameJan !== null && nameJul !== null && nameJan !== nameJul);
+    var fitSaysDst = fit.jumps.length > 0;
+    var deltas = fit.jumps.map(function (j) { return (j.delta > 0 ? '+' : '') + j.delta + ' 分'; });
+    var svg = '<svg class="dst-curve" viewBox="0 0 320 84" preserveAspectRatio="none" role="img"' +
+      ' aria-label="本机时区今年逐日 UTC 偏移折线，横轴为日期，纵轴为偏移">' +
+      '<polyline fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"' +
+      ' points="' + C.buildPolylineAttr(fit.points) + '"/></svg>';
+    return {
+      reading: '全年逐日拟合：跳变 ' + fit.jumps.length + ' 次' + (deltas.length ? '（' + deltas.join('、') + '）' : '') +
+        '，偏移 ' + fit.minOff + '…' + fit.maxOff + ' 分',
+      ch2: '1 月/7 月：' + (nameJan || '不可得') + ' / ' + (nameJul || '不可得') + '，两点偏移差 ' + (julOff - janOff) + ' 分',
+      agree: intlSaysDst === fitSaysDst ? '一致' : '两通道相左',
+      bits: C.dstBits(fit.jumps),
+      note: '逐日 UTC 正午采样（Date 通道）对账 Intl 通道；折线是全页唯一内联 SVG',
+      svg: svg
+    };
+  }
+
+  function probeArith() {
+    var t = C.arithTable();
+    var m = C.arithBits(t.hexes);
+    return {
+      reading: t.hexes.join(' '),
+      bits: m.bits,
+      note: m.matched
+        ? '命中收录基线：' + m.matched + '。表达式：' + t.labels.join('；')
+        : '未命中任何收录基线（现收录 ' + C.ARITH_BASELINES.length + ' 条）——你的引擎或版本不在名单，这本身就是信息。表达式：' + t.labels.join('；')
+    };
+  }
+
+  function drawSpecimen() {
+    var cv = document.createElement('canvas');
+    cv.width = 200; cv.height = 60;
+    var ctx = cv.getContext('2d');
+    if (!ctx) { throw new Error('无 2D 上下文'); }
+    var g1 = ctx.createLinearGradient(0, 0, 200, 60);
+    g1.addColorStop(0, '#f60'); g1.addColorStop(1, '#0f6');
+    ctx.fillStyle = g1; ctx.fillRect(0, 0, 200, 60);
+    var g2 = ctx.createRadialGradient(150, 18, 2, 150, 18, 42);
+    g2.addColorStop(0, 'rgba(255,255,255,0.9)'); g2.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g2; ctx.fillRect(80, 0, 120, 60);
+    var g3 = ctx.createLinearGradient(0, 0, 0, 60);
+    g3.addColorStop(0, 'rgba(0,0,120,0.35)'); g3.addColorStop(1, 'rgba(120,0,0,0.2)');
+    ctx.fillStyle = g3; ctx.fillRect(0, 0, 200, 60);
+    ctx.font = '17px "Arial", sans-serif'; ctx.fillStyle = 'rgba(10,30,60,0.85)';
+    ctx.fillText('此机何人 · CijiHeren ①', 4, 22);
+    ctx.font = '13px "Times New Roman", serif'; ctx.fillStyle = 'rgba(60,10,10,0.8)';
+    ctx.fillText('CJK 与 Latin 混排——卷宗 №7', 4, 48);
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(2, 52); ctx.bezierCurveTo(60, -8, 140, 72, 198, 10); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(0, 0, 200, 60);
+    return cv.toDataURL();
+  }
+
+  function probeCanvas() {
+    var h1 = C.sha256Hex(drawSpecimen()).slice(0, 16);
+    var h2 = C.sha256Hex(drawSpecimen()).slice(0, 16);
+    return {
+      reading: 'SHA-256 前 16 位：' + h1,
+      ch2: '第二遍：' + (h2 === h1 ? '同上' : h2),
+      agree: h2 === h1 ? '一致' : '两通道相左',
+      bits: C.bitsFromShare(C.PRIORS.canvas),
+      note: '固定绘制序列（两段文字、三种渐变、一条贝塞尔、半透明叠加）→ toDataURL → 纯 JS 哈希'
+    };
+  }
+
+  function probeAudio() {
+    var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OAC) { throw new Error('无 OfflineAudioContext'); }
+    var ctx = new OAC(1, 8000, 44100);
+    var osc = ctx.createOscillator();
+    osc.type = 'triangle'; osc.frequency.value = 1000;
+    var comp = ctx.createDynamicsCompressor();
+    osc.connect(comp); comp.connect(ctx.destination); osc.start(0);
+    return ctx.startRendering().then(function (buf) {
+      var d = buf.getChannelData(0), s = 0, i;
+      for (i = 0; i < d.length; i++) { s += Math.abs(d[i]); }
+      return {
+        reading: '|样本| 累加的双精度位型：' + C.floatToHex(s),
+        bits: C.bitsFromShare(C.PRIORS.audio),
+        note: 'triangle 1 kHz → DynamicsCompressor，8000 样本离线渲染；是测量不是发声，与《共振听证》用途相反'
+      };
+    });
+  }
+
+  function probeWebGL() {
+    var cv1 = document.createElement('canvas');
+    var gl = cv1.getContext('webgl2') || cv1.getContext('webgl');
+    if (!gl) { throw new Error('WebGL 不可用'); }
+    var cv2 = document.createElement('canvas');
+    var gl2 = cv2.getContext('webgl2');
+    var maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    var dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    var r1 = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : null;
+    var r2 = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : null;
+    var hasStr = typeof r1 === 'string' && r1.length > 0;
+    return {
+      reading: (gl2 ? 'WebGL2 可用' : 'WebGL2 不可用') + ' · MAX_TEXTURE_SIZE ' + maxTex +
+        ' · 渲染器 ' + (hasStr ? r1 : '被遮蔽/不可得'),
+      ch2: dbg ? ('渲染器串第二读：' + (r1 === r2 ? '同上' : r2)) : '无调试扩展，单通道',
+      agree: dbg ? (r1 === r2 ? '一致' : '两通道相左') : undefined,
+      bits: C.bitsFromShare(hasStr ? C.PRIORS.webgl.present : C.PRIORS.webgl.masked),
+      note: hasStr ? '渲染器串被遮蔽/缺失时如实记「不可得」——那也是有信息量的记录' : '被遮蔽本身即一条记录'
+    };
+  }
+
+  function probeFonts() {
+    var ctx = document.createElement('canvas').getContext('2d');
+    if (!ctx || !ctx.measureText) { throw new Error('无 2D 上下文'); }
+    var texts = ['此机何人 卷宗 0123', 'mmmwwwiiilll', '組織測量會社 ABC'];
+    var SIZE = 72;
+    function width(font, text) { ctx.font = SIZE + 'px ' + font; return ctx.measureText(text).width; }
+    function detect(font) {
+      var hits = 0, t;
+      for (t = 0; t < texts.length; t++) {
+        var b0 = width('monospace', texts[t]), b1 = width('sans-serif', texts[t]);
+        var v0 = width('"' + font + '", monospace', texts[t]);
+        var v1 = width('"' + font + '", sans-serif', texts[t]);
+        if (v0 !== b0 && v1 !== b1) { hits++; }
+      }
+      return hits >= 2; /* ≥2/3 测试串同时偏离双哨兵才判存在 */
+    }
+    var pass1 = C.FONT_CANDIDATES.filter(detect);
+    var pass2 = C.FONT_CANDIDATES.filter(detect);
+    var agree = pass1.join('|') === pass2.join('|');
+    return {
+      reading: pass1.length ? pass1.join('、') : '（候选清单内无一命中）',
+      ch2: '第二遍：' + (agree ? '与第一遍一致' : '与第一遍不同'),
+      agree: agree ? '一致' : '两通道相左',
+      bits: C.fontSetBits(pass1),
+      note: pass1.length + '/' + C.FONT_CANDIDATES.length + ' 个候选命中；这是本卷宗最大的信息源'
+    };
+  }
+
+  function probeUa() {
+    var langs = navigator.languages || [];
+    var uaData = navigator.userAgentData;
+    var brands = uaData && uaData.brands ? uaData.brands.length : null;
+    var shares = [C.priorShare(C.PRIORS.uaLang, langs.length > 2 ? 'more' : String(langs.length))];
+    shares.push(uaData ? C.PRIORS.uaData.present : C.PRIORS.uaData.absent);
+    if (uaData) { shares.push(C.priorShare(C.PRIORS.mobile, String(uaData.mobile))); }
+    return {
+      reading: 'languages=[' + langs.join(', ') + '] · cookieEnabled=' + navigator.cookieEnabled +
+        ' · UA-CH brands=' + (brands === null ? '不可得' : brands) +
+        ' · mobile=' + (uaData ? String(uaData.mobile) : '不可得'),
+      bits: C.productBits(shares),
+      note: '只取摘要计数，不复读整串 UA'
+    };
+  }
+
+  function probeCss() {
+    if (!window.CSS || !CSS.supports) { throw new Error('无 CSS.supports'); }
+    var items = [
+      ['subgrid', 'subgrid', CSS.supports('grid-template-rows', 'subgrid')],
+      [':has()', 'has', CSS.supports('selector(:has(a))')],
+      ['accent-color', 'accent', CSS.supports('accent-color', 'red')],
+      ['text-wrap: balance', 'balance', CSS.supports('text-wrap', 'balance')]
+    ];
+    var hits = items.filter(function (it) { return it[2]; });
+    return {
+      reading: '命中 ' + hits.length + '/4：' + (hits.length ? hits.map(function (it) { return it[0]; }).join('、') : '（无）'),
+      bits: C.productBits(items.map(function (it) {
+        var p = C.priorShare(C.PRIORS.css, it[1]);
+        return it[2] ? p : 1 - p;
+      })),
+      note: '缺失同样计分：不支持新特性的旧浏览器在人群里也是少数'
+    };
+  }
+
+  function probeMedia() {
+    if (!window.matchMedia) { throw new Error('无 matchMedia'); }
+    function q(s) { return window.matchMedia(s).matches; }
+    var items = [
+      ['color-scheme: dark', 'dark', q('(prefers-color-scheme: dark)')],
+      ['color-scheme: light', 'light', q('(prefers-color-scheme: light)')],
+      ['reduced-motion', 'motionReduce', q('(prefers-reduced-motion: reduce)')],
+      ['hover: hover', 'hover', q('(hover: hover)')],
+      ['pointer: fine', 'pointerFine', q('(pointer: fine)')],
+      ['pointer: coarse', 'pointerCoarse', q('(pointer: coarse)')]
+    ];
+    var hits = items.filter(function (it) { return it[2]; });
+    return {
+      reading: hits.length ? hits.map(function (it) { return it[0]; }).join('、') : '（无命中）',
+      bits: C.productBits(items.map(function (it) {
+        var p = C.priorShare(C.PRIORS.media, it[1]);
+        return it[2] ? p : 1 - p;
+      })),
+      note: '操作系统的外观与输入偏好，从 CSS 介质查询侧面读出'
+    };
+  }
+
+  function probeIntl() {
+    if (!window.Intl) { throw new Error('无 Intl'); }
+    var caps = [
+      ['RelativeTimeFormat', !!Intl.RelativeTimeFormat],
+      ['Segmenter', !!Intl.Segmenter],
+      ['ListFormat', !!Intl.ListFormat],
+      ['DisplayNames', !!Intl.DisplayNames]
+    ];
+    var hits = caps.filter(function (c) { return c[1]; });
+    return {
+      reading: '命中 ' + hits.length + '/4：' + (hits.length ? hits.map(function (c) { return c[0]; }).join('、') : '（无）'),
+      bits: C.productBits(caps.map(function (c) {
+        var p = C.priorShare(C.PRIORS.intlcap, c[0]);
+        return c[1] ? p : 1 - p;
+      })),
+      note: '引擎代际的侧面证据：越新的引擎命中越多'
+    };
+  }
+
+  function probeNavflags() {
+    var shares = [], parts = [];
+    var wd = navigator.webdriver;
+    if (typeof wd === 'boolean') {
+      shares.push(wd ? C.PRIORS.navflags.webdriverTrue : C.PRIORS.navflags.webdriverFalse);
+      parts.push('webdriver=' + wd + (wd ? '（自动化环境，罕见）' : ''));
+    }
+    var pv = navigator.pdfViewerEnabled;
+    if (typeof pv === 'boolean') {
+      shares.push(pv ? C.PRIORS.navflags.pdfViewerTrue : C.PRIORS.navflags.pdfViewerFalse);
+      parts.push('pdfViewerEnabled=' + pv);
+    }
+    var dnt = navigator.doNotTrack;
+    if (dnt !== undefined) {
+      shares.push(dnt && dnt !== 'unspecified' && dnt !== 'null' ? C.PRIORS.navflags.dntSet : C.PRIORS.navflags.dntUnset);
+      parts.push('doNotTrack=' + dnt);
+    }
+    var gpc = navigator.globalPrivacyControl;
+    if (typeof gpc === 'boolean') {
+      shares.push(gpc ? C.PRIORS.navflags.gpcSet : C.PRIORS.navflags.gpcUnset);
+      parts.push('globalPrivacyControl=' + gpc);
+    }
+    if (!shares.length) { throw new Error('全部标志位不可得'); }
+    return {
+      reading: parts.join(' · '),
+      bits: C.productBits(shares),
+      note: 'undefined 的标志位不参与计分；webdriver=true 极罕见，位数接近上限'
+    };
+  }
+
+  var PROBE_FNS = {
+    screen: probeScreen, gamut: probeGamut, cores: probeCores, memory: probeMemory,
+    storage: probeStorage, touch: probeTouch, tzname: probeTz, dst: probeDst,
+    arith: probeArith, canvas: probeCanvas, audio: probeAudio, webgl: probeWebGL,
+    fonts: probeFonts, ua: probeUa, css: probeCss, media: probeMedia,
+    intlcap: probeIntl, navflags: probeNavflags
+  };
+
+  /* ---------- 显影渲染 ---------- */
+
+  function buildSkeleton() {
+    listEl.innerHTML = '';
+    C.PROBES.forEach(function (d, i) {
+      var li = document.createElement('li');
+      li.className = 'entry pending';
+      li.innerHTML =
+        '<span class="no">' + pad2(i + 1) + '</span>' +
+        '<span class="pname"></span>' +
+        '<span class="reading">待显影</span>' +
+        '<span class="bits">—</span>' +
+        '<span class="seal seal-wait">…</span>' +
+        '<div class="sub"></div>';
+      li.querySelector('.pname').textContent = d.name;
+      listEl.appendChild(li);
+    });
+  }
+
+  function renderRecord(rec, index) {
+    var li = listEl.children[index];
+    if (!li) { return; }
+    var clash = rec.一致性 === '两通道相左';
+    var na = rec.读数 === '不可得';
+    li.querySelector('.reading').textContent = rec.读数;
+    li.querySelector('.bits').textContent = rec.bits.toFixed(1);
+    var sealEl = li.querySelector('.seal');
+    sealEl.textContent = clash ? '两通道相左' : (na ? '不可得' : '已核');
+    sealEl.className = 'seal ' + (clash ? 'seal-clash' : (na ? 'seal-na' : 'seal-ok'));
+    var sub = li.querySelector('.sub');
+    sub.innerHTML = '';
+    var lines = ['第二通道 · ' + rec.第二通道读数 + (clash ? ' —— 两通道相左，不静默择一' : '')];
+    if (rec.备注) { lines.push(rec.备注); }
+    lines.forEach(function (t) {
+      var p = document.createElement('p');
+      p.textContent = t;
+      sub.appendChild(p);
+    });
+    if (rec.svg) {
+      var wrap = document.createElement('div');
+      wrap.className = 'svgwrap';
+      wrap.innerHTML = rec.svg;
+      sub.appendChild(wrap);
+    }
+    li.classList.remove('pending');
+    li.classList.add('done');
+  }
+
+  function updateRuler(total) {
+    rulerFill.style.height = (clamp01(total / MAX_RULER_BITS) * 100).toFixed(1) + '%';
+    rulerNum.textContent = total.toFixed(1);
+  }
+
+  function setStatus(text) { statusEl.textContent = text; }
+
+  function setButtons() {
+    forgetBtn.disabled = state.running;
+    reverifyBtn.disabled = state.running;
+  }
+
+  /* ---------- 调度器 ---------- */
+
+  async function runAll() {
+    state.running = true;
+    setButtons();
+    verdictEl.hidden = true;
+    buildSkeleton();
+    updateRuler(0);
+    var records = window.__probe.records = [];
+    var total = 0, failed = 0, clashed = 0, i;
+    for (i = 0; i < C.PROBES.length; i++) {
+      var desc = C.PROBES[i];
+      setStatus('核验中 · 第 ' + (i + 1) + '/' + C.PROBES.length + ' 组：' + desc.name);
+      var rec;
+      try {
+        var out = await withTimeout(PROBE_FNS[desc.id], 2000);
+        rec = {
+          id: desc.id, 名称: desc.name, 读数: out.reading,
+          第二通道读数: out.ch2 || '（单通道）',
+          一致性: out.agree || '单通道',
+          bits: round1(out.bits || 0),
+          备注: out.note || ''
+        };
+        if (out.svg) { rec.svg = out.svg; }
+      } catch (err) {
+        rec = {
+          id: desc.id, 名称: desc.name, 读数: '不可得',
+          第二通道读数: '（单通道）', 一致性: '单通道', bits: 0,
+          备注: '探针异常：' + (err && err.message ? err.message : String(err))
+        };
+      }
+      records.push(rec);
+      renderRecord(rec, i);
+      total += rec.bits;
+      if (rec.读数 === '不可得') { failed++; }
+      if (rec.一致性 === '两通道相左') { clashed++; }
+      updateRuler(total);
+      if (i < C.PROBES.length - 1) { await sleep(300); }
+    }
+    var v = C.verdictFor(total);
+    verdictBitsEl.textContent = total.toFixed(1);
+    verdictWordEl.textContent = v;
+    verdictEl.hidden = false;
+    setStatus('核验完毕 · ' + C.PROBES.length + ' 组中 ' + (C.PROBES.length - failed) + ' 组有读数' +
+      (failed ? '，' + failed + ' 组不可得' : '') + (clashed ? '，' + clashed + ' 组两通道相左' : ''));
+    window.__probe.totals = { bits: round1(total), failed: failed, clashed: clashed, verdict: v };
+    window.__probe.__ready = true;
+    state.running = false;
+    setButtons();
+  }
+
+  /* ---------- 现在忘掉 / 重新核验 ---------- */
+
+  function forget() {
+    if (state.running) { return; }
+    window.__probe.records.length = 0;
+    window.__probe.totals = null;
+    listEl.innerHTML = '<li class="erased" id="erased-note" tabindex="-1">已抹除。本页从未写入任何存储。</li>';
+    verdictEl.hidden = true;
+    updateRuler(0);
+    setStatus('已抹除。本页从未写入任何存储。点击「重新核验」可从头再跑一遍。');
+    var note = document.getElementById('erased-note');
+    if (note) { note.focus(); }
+  }
+
+  function boot() {
+    try {
+      if (!C) { throw new Error('core 未加载'); }
+      listEl = $('#entries');
+      statusEl = $('#status');
+      verdictEl = $('#verdict');
+      verdictBitsEl = $('#total-bits');
+      verdictWordEl = $('#verdict-word');
+      forgetBtn = $('#forget');
+      reverifyBtn = $('#reverify');
+      rulerFill = $('#ruler-fill');
+      rulerNum = $('#ruler-num');
+      forgetBtn.addEventListener('click', forget);
+      reverifyBtn.addEventListener('click', function () {
+        if (!state.running) { runAll().catch(bootError); }
+      });
+      setButtons();
+      runAll().catch(bootError);
+    } catch (e) {
+      bootError(e);
+    }
+  }
+
+  function bootError(e) {
+    state.running = false;
+    setButtons();
+    window.__probe.__bootError = String(e && e.message ? e.message : e);
+    setStatus('引导失败：' + window.__probe.__bootError);
+  }
+
+  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', boot); }
+  else { boot(); }
+})();
+
+</script>
+</body>
+</html>

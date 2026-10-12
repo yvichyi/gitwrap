@@ -46,6 +46,7 @@
 }
 *{box-sizing:border-box}
 html,body{overflow-x:clip}
+.wrap{width:min(1080px,calc(100% - 40px));margin:0 auto}
 body{margin:0;min-width:320px;color:var(--ink);background:radial-gradient(ellipse at 18% -6%,rgba(87,240,169,.05),transparent 34rem),radial-gradient(ellipse at 88% 12%,rgba(245,180,83,.04),transparent 30rem),var(--case);font-family:var(--sans);-webkit-font-smoothing:antialiased}
 button,input,output{font:inherit}
 button,input{-webkit-tap-highlight-color:transparent}
@@ -161,6 +162,7 @@ input[type="range"]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;b
   .cert-stamp{width:84px;height:84px;top:auto;bottom:16px;right:14px;font-size:14px}
 }
 @media (max-width:640px){
+  .wrap{width:calc(100% - 28px)}
   .masthead{padding-top:40px}
   .panel{border-radius:11px}
   .calib-log li{grid-template-columns:minmax(0,1fr);gap:2px}
@@ -188,7 +190,7 @@ input[type="range"]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;b
 系列身份策略（动工前决定，完整版见 以身作尺/build.js 头注「切分声明」）：
   · 页内不自称「第 X 件」：本库展项编号由目录页卡片按登记序派生（FIELD NN），
     页内再写编号会与目录打架。本件的身份锚点是标题 + 「检定证书」这一形态本身。
-  · 阅读路线：加入既有路线 field「量出来的，是真的吗？」作第 4 站，不另立路线。
+  · 阅读路线：加入既有路线 field「量出来的，是真的吗？」作第 5 站（第 4 站虹的角度系并行会话登记；前 4 站测外部对象，本作收束于检定仪器本身），不另立路线。
 
 本作与近邻展项的切分（文案与 build.js 守卫双重落实）：
   · 半信半疑(kalman)：已知真值模型内的滤波仿真——有仿真对象；
@@ -737,6 +739,11 @@ input[type="range"]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;b
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(190,230,215,0.7)';
     ctx.fillText('帧间隔分布（ms）· n=' + rafHist.total() + (rafHist.outside() ? ' · 界外 ' + rafHist.outside() : ''), 12, 14);
+    /* 帧探针判"量测不可用"后，帧循环仍可能零星给帧——侧栏样本数跟着实时走，
+       别让"样本 0 帧"与直方图 n=1 打架 */
+    if (state.probes.raf && state.probes.raf.status !== 'ok') {
+      $('v-raf-n').textContent = rafSample.n + ' 帧（采样受限）';
+    }
   }
 
   /* ======================================================== 探针 */
@@ -1074,6 +1081,12 @@ input[type="range"]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;b
   }
 
   function takeRead() {
+    /* 拍表的瞬间当场重算两表读数：走针定时器可能还没用上新偏差
+       （自动化探针在同一个任务里 setBias+takeRead 时尤其如此） */
+    var nowMs = performance.now();
+    var tRef = nowMs - state.t0;
+    state.lastRef = tRef;
+    state.lastFake = tRef + state.bias + jitterNext();
     var d = state.lastFake - state.lastRef;
     calibSample.push(d);
     var li = document.createElement('li');
@@ -1120,7 +1133,9 @@ input[type="range"]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;b
   function performTap(t) {
     if (pulse.last > 0) {
       var iv = t - pulse.last;
-      if (iv > 0 && iv < 60000) pulse.sample.push(iv);
+      /* iv=0 也收：两次点按落在同一毫秒，是"比时钟步长还快"的真实读数，
+         不是坏值（这正是本作要展出的量化现象之一） */
+      if (iv >= 0 && iv < 60000) pulse.sample.push(iv);
     }
     pulse.last = t;
     paintPulse();
@@ -1313,13 +1328,17 @@ input[type="range"]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;b
       ' —— 口径：模拟件等值、测量件有界（见 以身作尺/build.js 头注）';
   }
 
-  /* 可见文本坏值扫描（兜底闸：理论上 fmt 层已拦，这里双保险） */
+  /* 可见文本坏值扫描（兜底闸：理论上 fmt 层已拦，这里双保险）。
+     必须跳过 script/style 的文本子节点——那是源码不是读数，
+     否则会把代码里的字面量当坏值"修"掉（实测改写过 15 处）。 */
   function scanBadText() {
     var bad = 0;
     try {
       var walker = document.createTreeWalker(document.body, window.NodeFilter.SHOW_TEXT, null, false);
       var node;
       while ((node = walker.nextNode())) {
+        var parent = node.parentElement;
+        if (!parent || /^(script|style)$/i.test(parent.tagName)) continue;
         var t = node.nodeValue;
         if (!t || !t.trim()) continue;
         if (/NaN|undefined|Infinity/.test(t)) {

@@ -1,0 +1,2168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>重影时空 · 强引力透镜与费马到达时间曲面</title>
+  <meta name="description" content="广义相对论天体物理：一颗超新星爆发，为什么我们在不同年份能看见它炸开四次？从时空弯曲测地线到费马势曲面驻点、爱因斯坦十字、引力光环与相对论光变时滞脉冲回音。">
+  <meta name="keywords" content="广义相对论 引力透镜 费马势 爱因斯坦环 爱因斯坦十字 强透镜 焦散线 临界线 时间延迟 奇数定理 奇异等温椭圆球 宇宙学">
+  <style>
+/* ============================================================================
+ * works/lensing/style.css —— 《重影时空》视觉系统：深空黑曜石与相对论引力全息
+ * ==========================================================================*/
+
+:root {
+  color-scheme: dark;
+  --space-void: #05070e;
+  --space-deep: #0b1120;
+  --space-surface: #111a2e;
+  --space-card: #15223c;
+  --space-border: #1e2e4f;
+  --space-border-light: #2c4270;
+
+  --text-primary: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+
+  --star-azure: #38bdf8;
+  --star-azure-glow: rgba(56, 189, 248, 0.25);
+  --fermat-gold: #fbbf24;
+  --fermat-gold-glow: rgba(251, 191, 36, 0.28);
+  --caustic-coral: #fb7185;
+  --caustic-coral-glow: rgba(251, 113, 133, 0.25);
+  --saddle-purple: #c084fc;
+  --min-emerald: #34d399;
+  --lens-halo: #f59e0b;
+
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--space-void);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.lensing-app {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 28px 20px 80px;
+}
+
+/* ---------------- 顶部题头 ---------------- */
+.astro-masthead {
+  margin-bottom: 24px;
+}
+
+.masthead-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--star-azure);
+  background: var(--star-azure-glow);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.main-title {
+  margin: 0 0 10px;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  text-shadow: 0 0 24px rgba(56, 189, 248, 0.3);
+}
+
+.focal-question {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--fermat-gold);
+  margin-bottom: 12px;
+}
+
+.theory-intro {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--text-muted);
+  line-height: 1.68;
+  max-width: 960px;
+}
+
+.theory-intro strong {
+  color: #ffffff;
+}
+
+/* ---------------- 预设视界选择栏 ---------------- */
+.preset-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: var(--space-deep);
+  border: 1px solid var(--space-border);
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.strip-label {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.astro-btn {
+  background: var(--space-surface);
+  color: var(--text-muted);
+  border: 1px solid var(--space-border);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.astro-btn:hover {
+  background: var(--space-card);
+  color: var(--text-primary);
+  border-color: var(--star-azure);
+}
+
+.astro-btn.active {
+  background: var(--star-azure-glow);
+  color: #ffffff;
+  border-color: var(--star-azure);
+  font-weight: 600;
+  box-shadow: 0 0 12px var(--star-azure-glow);
+}
+
+/* ---------------- 双生共轭视窗 ---------------- */
+.conjugate-manifold {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.viewport-box {
+  background: var(--space-deep);
+  border: 1px solid var(--space-border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--space-surface);
+  border-bottom: 1px solid var(--space-border);
+}
+
+.box-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.status-pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.pip-gold { background: var(--fermat-gold); box-shadow: 0 0 8px var(--fermat-gold); }
+.pip-blue { background: var(--star-azure); box-shadow: 0 0 8px var(--star-azure); }
+
+.box-tags {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tag-pill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.canvas-wrap {
+  position: relative;
+  width: 100%;
+  background: #02040a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: crosshair;
+}
+
+.canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 460px;
+  aspect-ratio: 460 / 420;
+}
+
+.canvas-overlay-tip {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: rgba(5, 7, 14, 0.7);
+  padding: 2px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  font-family: var(--font-mono);
+}
+
+.legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--space-surface);
+  border-top: 1px solid var(--space-border);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-gold { background: var(--fermat-gold); }
+.dot-coral { background: var(--caustic-coral); }
+.dot-green { background: var(--min-emerald); }
+.dot-purple { background: var(--saddle-purple); }
+.dot-azure { background: var(--star-azure); }
+.dot-amber { background: var(--lens-halo); }
+.dot-cyan { background: #22d3ee; }
+
+/* ---------------- 示波器区域 ---------------- */
+.oscilloscope-section {
+  background: var(--space-deep);
+  border: 1px solid var(--space-border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  min-width: 0;
+}
+
+.scope-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--space-surface);
+  border-bottom: 1px solid var(--space-border);
+}
+
+.scope-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pulse-trigger-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #e11d48, #be123c);
+  color: #ffffff;
+  border: 1px solid #f43f5e;
+  padding: 9px 18px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(225, 29, 72, 0.4);
+  transition: all 0.2s ease;
+}
+
+.pulse-trigger-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.6);
+}
+
+.pulse-trigger-btn:active {
+  transform: translateY(1px);
+}
+
+.scope-body {
+  width: 100%;
+  background: #020308;
+  display: flex;
+  justify-content: center;
+}
+
+.scope-body canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 940px;
+  aspect-ratio: 940 / 150;
+}
+
+.scope-footer {
+  padding: 10px 18px;
+  background: var(--space-surface);
+  border-top: 1px solid var(--space-border);
+}
+
+.echo-report {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* ---------------- 驻点遥测表格 ---------------- */
+.telemetry-deck {
+  background: var(--space-deep);
+  border: 1px solid var(--space-border);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 24px;
+  min-width: 0;
+}
+
+.deck-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.deck-header h3 {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.deck-note {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.table-responsive {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.astro-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  text-align: left;
+}
+
+.astro-table th {
+  background: var(--space-surface);
+  color: var(--text-dim);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--space-border);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.astro-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+}
+
+.astro-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tag-min { color: var(--min-emerald); font-weight: 600; }
+.tag-saddle { color: var(--saddle-purple); font-weight: 600; }
+.tag-max { color: var(--text-dim); font-style: italic; }
+
+.status-flashing {
+  color: var(--fermat-gold);
+  font-weight: bold;
+}
+
+/* ---------------- 交互微调滑块 ---------------- */
+.controls-deck {
+  background: var(--space-deep);
+  border: 1px solid var(--space-border);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 24px;
+  min-width: 0;
+}
+
+.sliders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.slider-unit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.unit-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.unit-val {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--star-azure);
+}
+
+.slider-unit input[type="range"] {
+  width: 100%;
+  accent-color: var(--star-azure);
+  cursor: pointer;
+}
+
+/* ---------------- 底部理论阐释 ---------------- */
+.theory-colophon {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.colophon-card {
+  display: flex;
+  gap: 16px;
+  background: var(--space-deep);
+  border: 1px solid var(--space-border);
+  border-left: 4px solid var(--star-azure);
+  padding: 18px 20px;
+  border-radius: 8px;
+}
+
+.card-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.card-body h4 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  color: #ffffff;
+}
+
+.card-body p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.boundary-manifesto {
+  background: rgba(11, 17, 32, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 16px 20px;
+  border-radius: 8px;
+}
+
+.manifesto-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.boundary-manifesto p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* ---------------- 严格响应式媒体查询（置于文件最末） ---------------- */
+@media (max-width: 900px) {
+  .conjugate-manifold {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .lensing-app {
+    padding: 18px 12px 60px;
+  }
+
+  .main-title {
+    font-size: 26px;
+  }
+
+  .focal-question {
+    font-size: 16px;
+  }
+
+  /* 移动端触控热区保证 >= 44px */
+  .astro-btn {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .pulse-trigger-btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .slider-unit input[type="range"] {
+    min-height: 44px;
+  }
+
+  .colophon-card {
+    flex-direction: column;
+  }
+}
+
+  </style>
+</head>
+<body>
+<div class="lensing-app">
+  <!-- 顶栏天文台台标与宏观设问 -->
+  <header class="astro-masthead">
+    <div class="masthead-badge">广义相对论时空几何 · 强引力透镜与费马到达时间</div>
+    <h1 class="main-title">重影时空</h1>
+    <div class="focal-question">一颗超新星爆发，为什么我们在不同年份能看见它炸开四次？</div>
+    <p class="theory-intro">
+      在平直时空中，光沿欧几里得直线传播；但在大质量星系与暗物质晕撕裂的弯曲时空中，光线既要绕过弯曲空间的几何凹陷，又要承受引力时间膨胀（Shapiro 延迟）。
+      二者叠加构成一个二维到达时间曲面——<strong>费马势（Fermat Potential）\(\tau(\vec{\theta}; \vec{\beta})\)</strong>。根据费马原理，观测者能看见的所有真实像，恰好是这个时空曲面上的<strong>全部驻点（Stationary Points, \(\nabla_\theta \tau = 0\)）</strong>。
+      极小值像最先抵达，鞍点像随后折返，极大值像没入核心。当背景天体穿越焦散线，时空发生突变，单个星系骤然分裂出多重孪生重影。
+    </p>
+  </header>
+
+  <!-- 预设天文奇观切换器 -->
+  <nav class="preset-strip" aria-label="天文物理观测预设">
+    <span class="strip-label">观测视界：</span>
+    <div class="preset-buttons" id="presetButtons">
+      <button type="button" class="astro-btn active" data-preset="einstein_cross">爱因斯坦十字 (Quad)</button>
+      <button type="button" class="astro-btn" data-preset="einstein_ring">完美爱因斯坦环 (Ring)</button>
+      <button type="button" class="astro-btn" data-preset="giant_arc">巨型引力弧 (Giant Arc)</button>
+      <button type="button" class="astro-btn" data-preset="refsdal_supernova">Refsdal 超新星时滞</button>
+      <button type="button" class="astro-btn" data-preset="point_mass">微引力透镜双像 (Micro)</button>
+    </div>
+  </nav>
+
+  <!-- 核心主展区：双生共轭视窗 -->
+  <main class="conjugate-manifold">
+    <!-- 左视窗：源平面与费马势地貌 -->
+    <section class="viewport-box" id="sourceBox">
+      <div class="box-header">
+        <div class="box-title">
+          <span class="status-pip pip-gold"></span>
+          <span>源平面与费马势地貌（Fermat Landscape）</span>
+        </div>
+        <div class="box-tags">
+          <span class="tag-pill" id="tagTopology">5 重像 · 驻点拓扑</span>
+          <span class="tag-pill" id="tagCausticState">位于菱形焦散线内</span>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="fermatCanvas" width="460" height="420"></canvas>
+        <div class="canvas-overlay-tip">拖拽金色光标可平移背景源星系位置</div>
+      </div>
+      <div class="legend-row">
+        <span class="legend-item"><i class="dot dot-gold"></i>背景源天体 \(\vec{\beta}\)</span>
+        <span class="legend-item"><i class="dot dot-coral"></i>切向菱形焦散线</span>
+        <span class="legend-item"><i class="dot dot-green"></i>极小点（最早到达）</span>
+        <span class="legend-item"><i class="dot dot-purple"></i>鞍点（延迟到达）</span>
+      </div>
+    </section>
+
+    <!-- 右视窗：天球深空摄星仪（真实透镜成像） -->
+    <section class="viewport-box" id="lensBox">
+      <div class="box-header">
+        <div class="box-title">
+          <span class="status-pip pip-blue"></span>
+          <span>天球深空摄星仪（Sky Lens Plane）</span>
+        </div>
+        <div class="box-tags">
+          <span class="tag-pill" id="tagTotalMu">总放大率: \(\mu = 7.8\times\)</span>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="skyCanvas" width="460" height="420"></canvas>
+        <div class="canvas-overlay-tip">基于刘维尔定理（Liouville）全真逆向光线投射</div>
+      </div>
+      <div class="legend-row">
+        <span class="legend-item"><i class="dot dot-azure"></i>透镜变形重影像点</span>
+        <span class="legend-item"><i class="dot dot-amber"></i>前景透镜暗物质星系</span>
+        <span class="legend-item"><i class="dot dot-cyan"></i>天球临界线（\(\det A = 0\)）</span>
+      </div>
+    </section>
+  </main>
+
+  <!-- 相对论光行时差脉冲示波器 -->
+  <section class="oscilloscope-section">
+    <div class="scope-header">
+      <div class="scope-title">
+        <span>相对论时域光行时差回音仪（Relativistic Time-Delay Echo Recorder）</span>
+      </div>
+      <div class="scope-actions">
+        <button type="button" class="pulse-trigger-btn" id="btnTriggerPulse">
+          <span class="pulse-icon">💥</span>
+          <span>激发超新星脉冲（空格键 / Trigger Burst）</span>
+        </button>
+      </div>
+    </div>
+    <div class="scope-body">
+      <canvas id="scopeCanvas" width="940" height="150"></canvas>
+    </div>
+    <div class="scope-footer">
+      <div class="echo-report" id="echoReport">
+        等待脉冲激发... 点击上方按钮观测超新星爆炸在不同零测地线上的回音次序。
+      </div>
+    </div>
+  </section>
+
+  <!-- 天体物理遥测读数与驻点矩阵表格 -->
+  <section class="telemetry-deck">
+    <div class="deck-header">
+      <h3>费马到达时间曲面驻点解析表（Stationary Points & Image Telemetry）</h3>
+      <span class="deck-note">遵循奇数定理与突变论：\(\sum \operatorname{sign}(\det A_i) = 1\)</span>
+    </div>
+    <div class="table-responsive">
+      <table class="astro-table" id="imagesTable">
+        <thead>
+          <tr>
+            <th>像点编号</th>
+            <th>天球位置 \((\theta_x, \theta_y)\)</th>
+            <th>驻点几何类型</th>
+            <th>放大率 \(\mu\)</th>
+            <th>相对时间延迟 \(\Delta \tau\)</th>
+            <th>光脉冲到达状态</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <!-- 动态渲染像点行 -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 交互微调控制台 -->
+  <section class="controls-deck">
+    <div class="deck-header">
+      <h3>暗物质晕与宇宙学剪切微调（Dark Matter Halo & Shear Controls）</h3>
+    </div>
+    <div class="sliders-grid">
+      <div class="slider-unit">
+        <div class="unit-label">
+          <label for="sliderQ">透镜轴比 (Axis Ratio \(q = b/a\)):</label>
+          <span class="unit-val" id="valQ">0.72</span>
+        </div>
+        <input type="range" id="sliderQ" min="0.25" max="1.0" step="0.01" value="0.72">
+      </div>
+      <div class="slider-unit">
+        <div class="unit-label">
+          <label for="sliderGamma">外部剪切强度 (\(\gamma\)):</label>
+          <span class="unit-val" id="valGamma">0.08</span>
+        </div>
+        <input type="range" id="sliderGamma" min="0.0" max="0.30" step="0.01" value="0.08">
+      </div>
+      <div class="slider-unit">
+        <div class="unit-label">
+          <label for="sliderPhi">透镜旋转角 (\(\phi_L\)):</label>
+          <span class="unit-val" id="valPhi">9°</span>
+        </div>
+        <input type="range" id="sliderPhi" min="-90" max="90" step="1" value="9">
+      </div>
+      <div class="slider-unit">
+        <div class="unit-label">
+          <label for="sliderCore">致密核半径 (\(s\)):</label>
+          <span class="unit-val" id="valCore">0.07</span>
+        </div>
+        <input type="range" id="sliderCore" min="0.02" max="0.30" step="0.01" value="0.07">
+      </div>
+    </div>
+  </section>
+
+  <!-- 科学机理与时空认识论阐释 -->
+  <footer class="theory-colophon">
+    <div class="colophon-card">
+      <div class="card-icon">🪐</div>
+      <div class="card-body">
+        <h4>为什么引力透镜能充当“宇宙天然望远镜与宇宙时钟”？</h4>
+        <p>
+          在广义相对论中，光线没有质量，却感受到质量造成的弯曲时空度规。强引力透镜不仅将原本极其微弱的百亿光年外遥远类星体放大数十倍，更关键的是——<strong>不同重影路径的光行时差与哈勃常数 \(H_0\) 严格成反比</strong>。
+          当天文学家测出超新星在不同重影中亮起的真实天数（例如 Refsdal 超新星的第四颗像比第一颗晚了整整 350 天到达），就能独立于距离阶梯直接测定宇宙膨胀速率与暗能量状态方程。
+        </p>
+      </div>
+    </div>
+    <div class="boundary-manifesto">
+      <div class="manifesto-title">物理模型边界与实现声明</div>
+      <p>
+        本展项基于薄透镜近似（Thin-Lens Approximation）与拟等温椭圆透镜势模型（Non-singular Isothermal Ellipsoid, NIE）耦合一阶弱外场剪切（External Shear）。
+        成像采用天体物理标准的逆向光线投射法（Inverse Ray-Shooting）与表面亮度守恒（Liouville 定理），示波器回音基于解析费马势到达时间差 \(\Delta \tau\)。
+        未建模因素包括：微引力透镜恒星颗粒散斑（Micro-lensing caustic crossing）、多引力透镜平面的沿视线高阶挠曲、以及广义相对论高阶弯曲偏振态旋转（Skrotskii 效应）。
+      </p>
+    </div>
+  </footer>
+</div>
+
+  <script>
+/**
+ * works/lensing/core.js —— 《重影时空》核心数学与广义相对论天体物理引擎
+ *
+ * 核心物理与数学基础：
+ * 1. 广义相对论强引力透镜（Strong Gravitational Lensing）
+ *    - 椭圆透镜势（Elliptical Lens Potential / NIE）：考虑星系暗物质晕的轴比 q、软核半径 s 与爱因斯坦半径 θE
+ *    - 外部引力剪切（External Shear）：表征背景星系团的大尺度潮汐摄动（剪切强度 γ，剪切方位角 ϕγ）
+ *    - 闭式保守偏折角场 ∇ψ = α，严格保证旋度为零（非散度反演）
+ * 2. 费马势与时空到达时间曲面（Fermat Arrival-Time Potential Surface）
+ *    - τ(θ; β) = 1/2 |θ - β|² - ψ(θ)
+ *    - 费马原理：光行路径为到达时间曲面的驻点 ∇θ τ = 0 ↔ β = θ - α(θ)
+ *    - 雅可比放大率张量 A = I - ∇²ψ，像点放大率 μ = 1/det(A)
+ *    - 驻点拓扑分类：
+ *      · 局域极小值（Minimum，正奇偶，首先到达，波前发散）
+ *      · 鞍点（Saddle，负奇偶，时间延迟到达，波前沿一维聚焦反转）
+ *      · 局域极大值（Maximum，正奇偶，穿过透镜致密核心，微弱暗化）
+ * 3. 焦散线与临界线（Critical Curves & Caustics）
+ *    - 临界线：透镜平面上 det(A) = 0 的几何轨迹，放大率理论发散
+ *    - 焦散线：临界线通过透镜方程映射到源平面的拓扑包络（菱形切向焦散线与椭圆径向焦散线）
+ *    - 突变论（Catastrophe Theory）：源天体穿越焦散线诱发像点数量奇数拓扑突变（1像 ↔ 3像 ↔ 5像）
+ * 4. 相对论光行时差脉冲回音（Relativistic Time-Delay Echoes）
+ *    - 瞬变源（如 Refsdal 超新星）发出的脉冲穿过各零测地线，以精确几何与引力时滞先后抵达观测者
+ *
+ * 设计纪律：纯数学无 DOM，零外部依赖，Node.js 与浏览器双环境（UMD）。
+ */
+
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.LensingCore = factory();
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  // 默认物理常数与基准参数
+  var CANON = {
+    thetaE: 1.0,        // 爱因斯坦角半径（归一化标尺）
+    q: 0.75,            // 椭圆轴比 b/a ∈ (0, 1]
+    s: 0.08,            // 软化核半径（避免奇点发散并允许中心第5像存在）
+    phiL: 0.0,          // 透镜主轴旋转角（弧度）
+    gamma: 0.08,        // 外部引力剪切强度
+    phiG: 0.0,          // 外部剪切方位角
+    sourceRadius: 0.12, // 背景光源半光半径
+    sourceBrightness: 1.0
+  };
+
+  /**
+   * 二维坐标旋转变换
+   */
+  function rotate(x, y, angle) {
+    if (Math.abs(angle) < 1e-12) return { x: x, y: y };
+    var c = Math.cos(angle);
+    var s = Math.sin(angle);
+    return {
+      x: c * x + s * y,
+      y: -s * x + c * y
+    };
+  }
+
+  function unrotate(x, y, angle) {
+    if (Math.abs(angle) < 1e-12) return { x: x, y: y };
+    var c = Math.cos(angle);
+    var s = Math.sin(angle);
+    return {
+      x: c * x - s * y,
+      y: s * x + c * y
+    };
+  }
+
+  /**
+   * 规范化参数对象
+   */
+  function normalizeParams(p) {
+    p = p || {};
+    var thetaE = p.thetaE !== undefined ? Math.max(0.1, Number(p.thetaE)) : CANON.thetaE;
+    var q = p.q !== undefined ? Math.max(0.15, Math.min(1.0, Number(p.q))) : CANON.q;
+    var s = p.s !== undefined ? Math.max(0.01, Number(p.s)) : CANON.s;
+    var phiL = p.phiL !== undefined ? Number(p.phiL) : CANON.phiL;
+    var gamma = p.gamma !== undefined ? Math.max(0.0, Math.min(0.4, Number(p.gamma))) : CANON.gamma;
+    var phiG = p.phiG !== undefined ? Number(p.phiG) : CANON.phiG;
+    var sourceRadius = p.sourceRadius !== undefined ? Math.max(0.02, Number(p.sourceRadius)) : CANON.sourceRadius;
+    var sourceBrightness = p.sourceBrightness !== undefined ? Math.max(0.1, Number(p.sourceBrightness)) : CANON.sourceBrightness;
+
+    var gamma1 = gamma * Math.cos(2 * phiG);
+    var gamma2 = gamma * Math.sin(2 * phiG);
+
+    return {
+      thetaE: thetaE,
+      q: q,
+      s: s,
+      phiL: phiL,
+      gamma: gamma,
+      phiG: phiG,
+      gamma1: gamma1,
+      gamma2: gamma2,
+      sourceRadius: sourceRadius,
+      sourceBrightness: sourceBrightness
+    };
+  }
+
+  /**
+   * 透镜势 ψ(θ) 计算
+   * 采用广义椭圆透镜势模型 + 外部剪切势：
+   * ψ(x', y') = θE * √(s² + q*x'² + y'²/q)
+   * ψ_shear(x, y) = 1/2 [ γ1 (x² - y²) + 2 γ2 x y ]
+   */
+  function potential(x, y, p) {
+    p = normalizeParams(p);
+    // 旋转至透镜主轴对齐坐标系
+    var r = rotate(x, y, p.phiL);
+    var xp = r.x, yp = r.y;
+    var u = p.s * p.s + p.q * xp * xp + (yp * yp) / p.q;
+    var psiEll = p.thetaE * Math.sqrt(u);
+
+    // 外部引力剪切势（直接作用于天球固定网格）
+    var psiShear = 0.5 * (p.gamma1 * (x * x - y * y) + 2 * p.gamma2 * x * y);
+
+    return psiEll + psiShear;
+  }
+
+  /**
+   * 偏折角场 α(θ) = ∇ψ(θ) 解析计算
+   * 严格解析推导，无数值差分误差，旋度恒等于 0
+   */
+  function deflection(x, y, p) {
+    p = normalizeParams(p);
+    var r = rotate(x, y, p.phiL);
+    var xp = r.x, yp = r.y;
+
+    var u = p.s * p.s + p.q * xp * xp + (yp * yp) / p.q;
+    var rEll = Math.sqrt(u);
+
+    // 在主轴对齐系中的偏折分量
+    var axp = (p.thetaE * p.q * xp) / rEll;
+    var ayp = (p.thetaE * yp / p.q) / rEll;
+
+    // 旋转回天球观测坐标系
+    var aEll = unrotate(axp, ayp, p.phiL);
+
+    // 叠加上外部剪切偏折
+    var axShear = p.gamma1 * x + p.gamma2 * y;
+    var ayShear = p.gamma2 * x - p.gamma1 * y;
+
+    return {
+      ax: aEll.x + axShear,
+      ay: aEll.y + ayShear
+    };
+  }
+
+  /**
+   * 势函数的海森矩阵 ∇²ψ(θ) 解析解
+   * 矩阵元素：
+   * ψ_xx = ∂αx/∂x, ψ_yy = ∂αy/∂y, ψ_xy = ∂αx/∂y = ∂αy/∂x
+   */
+  function hessian(x, y, p) {
+    p = normalizeParams(p);
+    var r = rotate(x, y, p.phiL);
+    var xp = r.x, yp = r.y;
+
+    var u = p.s * p.s + p.q * xp * xp + (yp * yp) / p.q;
+    var u12 = Math.sqrt(u);
+    var u32 = u * u12;
+
+    // 主轴系下偏导
+    var hxxP = p.thetaE * p.q * (p.s * p.s + (yp * yp) / p.q) / u32;
+    var hyyP = p.thetaE * (1.0 / p.q) * (p.s * p.s + p.q * xp * xp) / u32;
+    var hxyP = -p.thetaE * (xp * yp) / u32;
+
+    // 张量旋转变换至观测坐标系：H = R(-phi) * H_prime * R(phi)
+    var c = Math.cos(p.phiL);
+    var s = Math.sin(p.phiL);
+    var c2 = c * c, s2 = s * s, cs = c * s;
+
+    var hxxEll = c2 * hxxP - 2 * cs * hxyP + s2 * hyyP;
+    var hyyEll = s2 * hxxP + 2 * cs * hxyP + c2 * hyyP;
+    var hxyEll = cs * (hxxP - hyyP) + (c2 - s2) * hxyP;
+
+    // 叠加外部剪切的二阶导
+    var hxx = hxxEll + p.gamma1;
+    var hyy = hyyEll - p.gamma1;
+    var hxy = hxyEll + p.gamma2;
+
+    return {
+      hxx: hxx,
+      hyy: hyy,
+      hxy: hxy
+    };
+  }
+
+  /**
+   * 逆放大率张量（透镜方程雅可比矩阵）
+   * A(θ) = I - ∇²ψ
+   */
+  function jacobian(x, y, p) {
+    var h = hessian(x, y, p);
+    var A11 = 1.0 - h.hxx;
+    var A22 = 1.0 - h.hyy;
+    var A12 = -h.hxy;
+    var A21 = -h.hxy;
+    var det = A11 * A22 - A12 * A21;
+    var trace = A11 + A22;
+    return {
+      A11: A11,
+      A22: A22,
+      A12: A12,
+      A21: A21,
+      det: det,
+      trace: trace
+    };
+  }
+
+  /**
+   * 放大率标量计算 μ = 1 / det(A)
+   */
+  function magnification(x, y, p) {
+    var j = jacobian(x, y, p);
+    if (Math.abs(j.det) < 1e-12) {
+      return j.det >= 0 ? 1e12 : -1e12;
+    }
+    return 1.0 / j.det;
+  }
+
+  /**
+   * 费马势（相对论光行时到达时间曲面）
+   * τ(θ; β) = 1/2 |θ - β|² - ψ(θ)
+   */
+  function fermatPotential(tx, ty, bx, by, p) {
+    var geom = 0.5 * ((tx - bx) * (tx - bx) + (ty - by) * (ty - by));
+    var grav = potential(tx, ty, p);
+    return geom - grav;
+  }
+
+  /**
+   * 求解透镜方程 β = θ - α(θ) 的所有像点（即费马势驻点 ∇τ = 0）
+   * 使用多网格初猜 + 阻尼二维牛顿-拉夫逊迭代全局求根
+   */
+  function solveImages(bx, by, p, opt) {
+    p = normalizeParams(p);
+    opt = opt || {};
+    var gridSize = opt.gridSize || 22;
+    var bound = opt.bound || (2.5 * p.thetaE);
+    var roots = [];
+
+    // 网格初值扫描
+    for (var i = 0; i <= gridSize; i++) {
+      var initX = -bound + (2 * bound * i) / gridSize;
+      for (var j = 0; j <= gridSize; j++) {
+        var initY = -bound + (2 * bound * j) / gridSize;
+        var x = initX;
+        var y = initY;
+        var converged = false;
+
+        for (var step = 0; step < 16; step++) {
+          var a = deflection(x, y, p);
+          var fx = x - a.ax - bx;
+          var fy = y - a.ay - by;
+          var res = Math.hypot(fx, fy);
+          if (res < 1e-10) {
+            converged = true;
+            break;
+          }
+
+          var jcb = jacobian(x, y, p);
+          var det = jcb.det;
+          if (Math.abs(det) < 1e-8) break; // 临界线附近退化
+
+          var dx = (jcb.A22 * fx - jcb.A12 * fy) / det;
+          var dy = (-jcb.A21 * fx + jcb.A11 * fy) / det;
+
+          // 阻尼回溯
+          var damp = 1.0;
+          if (Math.hypot(dx, dy) > 1.0) {
+            damp = 1.0 / Math.hypot(dx, dy);
+          }
+
+          x -= damp * dx;
+          y -= damp * dy;
+
+          if (Math.hypot(x, y) > bound * 2.5) break;
+        }
+
+        if (converged) {
+          // 判定是否为新像点（去重）
+          var duplicate = false;
+          for (var k = 0; k < roots.length; k++) {
+            if (Math.hypot(roots[k].x - x, roots[k].y - y) < 1e-4) {
+              duplicate = true;
+              break;
+            }
+          }
+          if (!duplicate) {
+            var jcbFinal = jacobian(x, y, p);
+            var detFinal = jcbFinal.det;
+            var trFinal = jcbFinal.trace;
+            var mu = Math.abs(detFinal) > 1e-12 ? (1.0 / detFinal) : (detFinal >= 0 ? 1e12 : -1e12);
+
+            // 依据费马势海森矩阵严格分类
+            var type = 'saddle';
+            var parity = -1;
+            if (detFinal > 0) {
+              if (trFinal > 0) {
+                type = 'minimum';
+                parity = 1;
+              } else {
+                type = 'maximum';
+                parity = 1;
+              }
+            } else {
+              type = 'saddle';
+              parity = -1;
+            }
+
+            var tau = fermatPotential(x, y, bx, by, p);
+
+            roots.push({
+              x: x,
+              y: y,
+              mu: mu,
+              absMu: Math.abs(mu),
+              det: detFinal,
+              trace: trFinal,
+              type: type,
+              parity: parity,
+              tau: tau
+            });
+          }
+        }
+      }
+    }
+
+    // 按光行时（到达时间 τ）严格升序排列：最先到达在最前
+    roots.sort(function (a, b) {
+      return a.tau - b.tau;
+    });
+
+    // 计算相对于最先到达像的时间延迟 Δτ
+    var minTau = roots.length > 0 ? roots[0].tau : 0;
+    for (var m = 0; m < roots.length; m++) {
+      roots[m].timeDelay = roots[m].tau - minTau;
+      roots[m].id = m + 1;
+    }
+
+    return roots;
+  }
+
+  /**
+   * 临界曲线与焦散线拓扑生成器
+   * 采用高精细极坐标射线零点寻根法，分别追迹：
+   * 1. 切向临界线（Tangential Critical Curve）-> 映射为切向菱形焦散线（Astroid Caustic）
+   * 2. 径向临界线（Radial Critical Curve）-> 映射为径向椭圆焦散线（Oval Caustic）
+   */
+  function computeCriticalAndCaustics(p, numRays) {
+    p = normalizeParams(p);
+    numRays = numRays || 180;
+    var tangCrit = [];
+    var tangCaust = [];
+    var radCrit = [];
+    var radCaust = [];
+
+    // 沿 360° 极角发射射线寻根 det(A) = 0
+    for (var i = 0; i < numRays; i++) {
+      var angle = (2 * Math.PI * i) / numRays;
+      var cosA = Math.cos(angle);
+      var sinA = Math.sin(angle);
+
+      // 寻根 1：切向临界线（约在 0.5 * θE ~ 2.2 * θE 之间）
+      var rMin = 0.4 * p.thetaE;
+      var rMax = 2.4 * p.thetaE;
+      var rTang = findDetZero(cosA, sinA, rMin, rMax, p);
+      if (rTang !== null) {
+        var cx = rTang * cosA;
+        var cy = rTang * sinA;
+        tangCrit.push({ x: cx, y: cy });
+        var a = deflection(cx, cy, p);
+        tangCaust.push({ x: cx - a.ax, y: cy - a.ay });
+      }
+
+      // 寻根 2：径向临界线（通常在紧贴核心处 0.02 * θE ~ 0.5 * θE 之间）
+      var rRadMin = 0.01 * p.thetaE;
+      var rRadMax = 0.5 * p.thetaE;
+      var rRad = findDetZero(cosA, sinA, rRadMin, rRadMax, p);
+      if (rRad !== null && (rTang === null || Math.abs(rRad - rTang) > 0.05)) {
+        var rx = rRad * cosA;
+        var ry = rRad * sinA;
+        radCrit.push({ x: rx, y: ry });
+        var ar = deflection(rx, ry, p);
+        radCaust.push({ x: rx - ar.ax, y: ry - ar.ay });
+      }
+    }
+
+    return {
+      tangentialCritical: tangCrit,
+      tangentialCaustic: tangCaust,
+      radialCritical: radCrit,
+      radialCaustic: radCaust
+    };
+  }
+
+  function findDetZero(cosA, sinA, r1, r2, p) {
+    var steps = 18;
+    var dr = (r2 - r1) / steps;
+    var prevR = r1;
+    var prevDet = jacobian(r1 * cosA, r1 * sinA, p).det;
+
+    for (var s = 1; s <= steps; s++) {
+      var curR = r1 + s * dr;
+      var curDet = jacobian(curR * cosA, curR * sinA, p).det;
+      if (prevDet * curDet <= 0) {
+        // 二分精修
+        var a = prevR, b = curR;
+        for (var it = 0; it < 12; it++) {
+          var mid = 0.5 * (a + b);
+          var midDet = jacobian(mid * cosA, mid * sinA, p).det;
+          if (Math.abs(midDet) < 1e-7) return mid;
+          if (prevDet * midDet <= 0) {
+            b = mid;
+          } else {
+            a = mid;
+            prevDet = midDet;
+          }
+        }
+        return 0.5 * (a + b);
+      }
+      prevR = curR;
+      prevDet = curDet;
+    }
+    return null;
+  }
+
+  /**
+   * 预置天文物理典型场景
+   */
+  var PRESETS = {
+    einstein_cross: {
+      name: '爱因斯坦十字 (Einstein Cross)',
+      desc: '经典四重对称像：源位于菱形焦散线中心，四颗明亮像点环绕星系核心，中央第5像暗化。',
+      p: {
+        thetaE: 1.0,
+        q: 0.72,
+        s: 0.07,
+        phiL: 0.15,
+        gamma: 0.08,
+        phiG: 0.0,
+        sourceRadius: 0.10
+      },
+      source: { x: 0.04, y: 0.03 }
+    },
+    einstein_ring: {
+      name: '完美爱因斯坦环 (Einstein Ring)',
+      desc: '源天体、透镜星系与观测者严格处于同一直线，背景光线被完全延展为闭合发光圆环。',
+      p: {
+        thetaE: 1.0,
+        q: 0.999,
+        s: 0.06,
+        phiL: 0.0,
+        gamma: 0.00,
+        phiG: 0.0,
+        sourceRadius: 0.14
+      },
+      source: { x: 0.00, y: 0.00 }
+    },
+    giant_arc: {
+      name: '巨型引力弧 (Giant Tangential Arc)',
+      desc: '背景星系穿过切向焦散线边界，局部放大率急剧发散，天球上拉伸出宏伟弯曲弧线。',
+      p: {
+        thetaE: 1.0,
+        q: 0.65,
+        s: 0.08,
+        phiL: -0.3,
+        gamma: 0.12,
+        phiG: 0.2,
+        sourceRadius: 0.13
+      },
+      source: { x: 0.28, y: 0.18 }
+    },
+    refsdal_supernova: {
+      name: 'Refsdal 超新星时滞回音',
+      desc: '2014年真实探测到的超新星爆发：四颗像点具有数日至数月的时间延迟，重现宇宙时钟。',
+      p: {
+        thetaE: 1.0,
+        q: 0.78,
+        s: 0.08,
+        phiL: 0.45,
+        gamma: 0.09,
+        phiG: -0.2,
+        sourceRadius: 0.09
+      },
+      source: { x: 0.12, y: 0.08 }
+    },
+    point_mass: {
+      name: '微引力透镜双像 (Schwarzschild Lens)',
+      desc: '单致密天体微透镜：形成一大一小两颗经典像点，展示引力光度放大与视线偏折。',
+      p: {
+        thetaE: 1.0,
+        q: 1.0,
+        s: 0.02,
+        phiL: 0.0,
+        gamma: 0.0,
+        phiG: 0.0,
+        sourceRadius: 0.08
+      },
+      source: { x: 0.45, y: 0.0 }
+    }
+  };
+
+  return {
+    CANON: CANON,
+    rotate: rotate,
+    unrotate: unrotate,
+    normalizeParams: normalizeParams,
+    potential: potential,
+    deflection: deflection,
+    hessian: hessian,
+    jacobian: jacobian,
+    magnification: magnification,
+    fermatPotential: fermatPotential,
+    solveImages: solveImages,
+    computeCriticalAndCaustics: computeCriticalAndCaustics,
+    PRESETS: PRESETS
+  };
+});
+
+  </script>
+  <script>
+/**
+ * works/lensing/ui.js —— 《重影时空》交互界面控制器与全真渲染引擎
+ */
+(function () {
+  'use strict';
+
+  var Core = typeof LensingCore !== 'undefined' ? LensingCore : window.LensingCore;
+  if (!Core) {
+    console.error('LensingCore 未就绪');
+    return;
+  }
+
+  // 视窗世界坐标范围设定
+  var WORLD_BOUND = 2.4; // 坐标轴范围 [-WORLD_BOUND, WORLD_BOUND]
+
+  // 全局交互与仿真状态
+  var state = {
+    params: Core.normalizeParams(Core.PRESETS.einstein_cross.p),
+    source: { x: Core.PRESETS.einstein_cross.source.x, y: Core.PRESETS.einstein_cross.source.y },
+    currentPreset: 'einstein_cross',
+    images: [],
+    caustics: null,
+    totalMagnification: 0,
+    isDraggingSource: false,
+    dragTarget: 'fermat', // 'fermat' or 'sky'
+
+    // 超新星脉冲回音示波器状态
+    pulse: {
+      active: false,
+      startTime: 0,
+      currentTime: 0,
+      duration: 5000,      // 完整示波回音周期 5.0 秒
+      speedScale: 1000,    // 1个时间延迟单位对应 1000ms
+      flashingImageId: null,
+      history: []
+    }
+  };
+
+  // DOM 元素缓存
+  var dom = {};
+
+  function initDom() {
+    dom.fermatCanvas = document.getElementById('fermatCanvas');
+    dom.skyCanvas = document.getElementById('skyCanvas');
+    dom.scopeCanvas = document.getElementById('scopeCanvas');
+
+    dom.ctxFermat = dom.fermatCanvas.getContext('2d');
+    dom.ctxSky = dom.skyCanvas.getContext('2d');
+    dom.ctxScope = dom.scopeCanvas.getContext('2d');
+
+    dom.tagTopology = document.getElementById('tagTopology');
+    dom.tagCausticState = document.getElementById('tagCausticState');
+    dom.tagTotalMu = document.getElementById('tagTotalMu');
+
+    dom.tableBody = document.getElementById('tableBody');
+    dom.echoReport = document.getElementById('echoReport');
+    dom.btnTriggerPulse = document.getElementById('btnTriggerPulse');
+
+    dom.sliderQ = document.getElementById('sliderQ');
+    dom.sliderGamma = document.getElementById('sliderGamma');
+    dom.sliderPhi = document.getElementById('sliderPhi');
+    dom.sliderCore = document.getElementById('sliderCore');
+
+    dom.valQ = document.getElementById('valQ');
+    dom.valGamma = document.getElementById('valGamma');
+    dom.valPhi = document.getElementById('valPhi');
+    dom.valCore = document.getElementById('valCore');
+
+    dom.presetButtons = document.getElementById('presetButtons');
+  }
+
+  // 坐标映射辅助函数
+  function worldToCanvas(wx, wy, width, height) {
+    var scale = width / (2 * WORLD_BOUND);
+    var cx = width / 2 + wx * scale;
+    var cy = height / 2 - wy * scale; // 天文标准：y轴朝上
+    return { x: cx, y: cy };
+  }
+
+  function canvasToWorld(cx, cy, width, height) {
+    var scale = width / (2 * WORLD_BOUND);
+    var wx = (cx - width / 2) / scale;
+    var wy = -(cy - height / 2) / scale;
+    return { x: wx, y: wy };
+  }
+
+  // 计算并刷新物理状态
+  function updatePhysics() {
+    state.images = Core.solveImages(state.source.x, state.source.y, state.params);
+    state.caustics = Core.computeCriticalAndCaustics(state.params, 180);
+
+    var totalMu = 0;
+    for (var i = 0; i < state.images.length; i++) {
+      totalMu += state.images[i].absMu;
+    }
+    state.totalMagnification = totalMu;
+
+    updateUIHeaders();
+    updateTable();
+  }
+
+  // 刷新顶栏标签与数据卡
+  function updateUIHeaders() {
+    if (dom.tagTopology) {
+      dom.tagTopology.textContent = state.images.length + ' 重像 · 驻点拓扑';
+    }
+
+    if (dom.tagTotalMu) {
+      dom.tagTotalMu.textContent = '总放大率: μ = ' + state.totalMagnification.toFixed(1) + '×';
+    }
+
+    if (dom.tagCausticState) {
+      var n = state.images.length;
+      if (n >= 5) {
+        dom.tagCausticState.textContent = '位于菱形切向焦散线内 (Quad)';
+        dom.tagCausticState.style.borderColor = 'var(--caustic-coral)';
+        dom.tagCausticState.style.color = 'var(--caustic-coral)';
+      } else if (n >= 3) {
+        dom.tagCausticState.textContent = '位于径向焦散线与切向线之间 (Double)';
+        dom.tagCausticState.style.borderColor = 'var(--star-azure)';
+        dom.tagCausticState.style.color = 'var(--star-azure)';
+      } else {
+        dom.tagCausticState.textContent = '移出全部焦散线 · 弱透镜单像';
+        dom.tagCausticState.style.borderColor = 'var(--text-dim)';
+        dom.tagCausticState.style.color = 'var(--text-dim)';
+      }
+    }
+  }
+
+  // 刷新驻点遥测表格
+  function updateTable() {
+    if (!dom.tableBody) return;
+    var html = '';
+
+    for (var i = 0; i < state.images.length; i++) {
+      var img = state.images[i];
+      var typeClass = 'tag-saddle';
+      var typeName = '鞍点 (Saddle, 奇偶-)';
+      if (img.type === 'minimum') {
+        typeClass = 'tag-min';
+        typeName = '局域极小 (Minima, 奇偶+)';
+      } else if (img.type === 'maximum') {
+        typeClass = 'tag-max';
+        typeName = '中心极大 (Maxima, 奇偶+)';
+      }
+
+      var isFlashing = state.pulse.active && state.pulse.flashingImageId === img.id;
+      var statusText = '测地线稳定';
+      var statusClass = '';
+      if (isFlashing) {
+        statusText = '💥 脉冲锋面抵达！';
+        statusClass = 'status-flashing';
+      } else if (state.pulse.active) {
+        var arrivalT = img.timeDelay * state.pulse.speedScale;
+        if (state.pulse.currentTime >= arrivalT) {
+          statusText = '已抵达并衰减';
+        } else {
+          var remaining = ((arrivalT - state.pulse.currentTime) / 1000).toFixed(2);
+          statusText = '预计 ' + remaining + 's 后到达';
+        }
+      }
+
+      html += '<tr>' +
+        '<td><strong>#' + img.id + '</strong></td>' +
+        '<td>(' + img.x.toFixed(3) + ', ' + img.y.toFixed(3) + ')</td>' +
+        '<td><span class="' + typeClass + '">' + typeName + '</span></td>' +
+        '<td>' + img.absMu.toFixed(2) + '×' + (img.mu < 0 ? ' (反转)' : '') + '</td>' +
+        '<td>' + (img.timeDelay > 0 ? ('+' + img.timeDelay.toFixed(3)) : '0.000 (首达基准)') + '</td>' +
+        '<td class="' + statusClass + '">' + statusText + '</td>' +
+        '</tr>';
+    }
+
+    dom.tableBody.innerHTML = html;
+  }
+
+  // ---------------- 视窗 1：渲染费马到达时间曲面地貌 ----------------
+  function renderFermatLandscape() {
+    var ctx = dom.ctxFermat;
+    var W = dom.fermatCanvas.width;
+    var H = dom.fermatCanvas.height;
+
+    // 清屏与深空网格
+    ctx.fillStyle = '#03050c';
+    ctx.fillRect(0, 0, W, H);
+
+    drawCoordinateGrid(ctx, W, H);
+
+    // 绘制费马势到达时间等高线 (Isochrones)
+    renderIsochrones(ctx, W, H);
+
+    // 绘制焦散线 (Caustics on Source Plane)
+    if (state.caustics) {
+      // 径向焦散线（外层椭圆）
+      drawSmoothClosedCurve(ctx, state.caustics.radialCaustic, W, H, 'rgba(251, 113, 133, 0.35)', 1, [4, 4]);
+      // 切向焦散线（内层四尖点菱形/星形 Astroid）
+      drawSmoothClosedCurve(ctx, state.caustics.tangentialCaustic, W, H, '#fb7185', 2);
+    }
+
+    // 绘制驻点（映射到费马平面上的极值投影）
+    for (var i = 0; i < state.images.length; i++) {
+      var img = state.images[i];
+      var pos = worldToCanvas(img.x, img.y, W, H);
+
+      ctx.save();
+      if (img.type === 'minimum') {
+        ctx.fillStyle = '#34d399';
+        ctx.strokeStyle = '#059669';
+      } else if (img.type === 'saddle') {
+        ctx.fillStyle = '#c084fc';
+        ctx.strokeStyle = '#9333ea';
+      } else {
+        ctx.fillStyle = '#64748b';
+        ctx.strokeStyle = '#334155';
+      }
+
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 4.5, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
+
+      // 编号标注
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '10px ui-monospace, monospace';
+      ctx.fillText('#' + img.id, pos.x + 7, pos.y + 3);
+      ctx.restore();
+    }
+
+    // 绘制背景源星系位置 β
+    var srcPos = worldToCanvas(state.source.x, state.source.y, W, H);
+    drawGlowingOrb(ctx, srcPos.x, srcPos.y, 7, '#fbbf24', 'rgba(251, 191, 36, 0.45)');
+
+    // 绘制原点标记
+    var center = worldToCanvas(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(center.x - 6, center.y);
+    ctx.lineTo(center.x + 6, center.y);
+    ctx.moveTo(center.x, center.y - 6);
+    ctx.lineTo(center.x, center.y + 6);
+    ctx.stroke();
+  }
+
+  // 费马等时线采样与等高线绘制
+  function renderIsochrones(ctx, W, H) {
+    var minTau = state.images.length > 0 ? state.images[0].tau : -1.0;
+    var maxTau = minTau + 2.5;
+    var levels = 12;
+
+    var step = (maxTau - minTau) / levels;
+    ctx.save();
+    ctx.lineWidth = 1;
+
+    for (var l = 1; l <= levels; l++) {
+      var targetTau = minTau + l * step;
+      var alphaVal = Math.max(0.08, 0.28 - l * 0.015);
+      ctx.strokeStyle = 'rgba(251, 191, 36, ' + alphaVal + ')';
+
+      // 沿极角粗扫等值线
+      ctx.beginPath();
+      var started = false;
+      var numRays = 72;
+      for (var r = 0; r <= numRays; r++) {
+        var angle = (2 * Math.PI * r) / numRays;
+        var cosA = Math.cos(angle);
+        var sinA = Math.sin(angle);
+
+        // 简易射线插值
+        for (var dist = 0.2; dist < WORLD_BOUND * 1.5; dist += 0.12) {
+          var tx = dist * cosA;
+          var ty = dist * sinA;
+          var val = Core.fermatPotential(tx, ty, state.source.x, state.source.y, state.params);
+          if (val >= targetTau) {
+            var pt = worldToCanvas(tx, ty, W, H);
+            if (!started) {
+              ctx.moveTo(pt.x, pt.y);
+              started = true;
+            } else {
+              ctx.lineTo(pt.x, pt.y);
+            }
+            break;
+          }
+        }
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ---------------- 视窗 2：天球深空摄星仪全真逆向光线投射 ----------------
+  function renderSkyLensView() {
+    var ctx = dom.ctxSky;
+    var W = dom.skyCanvas.width;
+    var H = dom.skyCanvas.height;
+
+    // 清屏与天球坐标网格
+    ctx.fillStyle = '#02040b';
+    ctx.fillRect(0, 0, W, H);
+
+    drawCoordinateGrid(ctx, W, H);
+
+    // 1. 连续光线逆向追迹渲染背景星系光度变形 (Liouville Surface Brightness Mapping)
+    renderLensedRaySurface(ctx, W, H);
+
+    // 2. 渲染前景透镜星系核心（微弱弥散暗物质与恒星晕）
+    renderForegroundLensGalaxy(ctx, W, H);
+
+    // 3. 渲染天球临界线 (Critical Curves: det(A) = 0)
+    if (state.caustics) {
+      // 径向临界线
+      drawSmoothClosedCurve(ctx, state.caustics.radialCritical, W, H, 'rgba(34, 211, 238, 0.4)', 1, [3, 3]);
+      // 切向临界线
+      drawSmoothClosedCurve(ctx, state.caustics.tangentialCritical, W, H, '#22d3ee', 1.8);
+    }
+
+    // 4. 标注各个解析像点、测地线偏折环与脉冲闪烁
+    for (var i = 0; i < state.images.length; i++) {
+      var img = state.images[i];
+      var pos = worldToCanvas(img.x, img.y, W, H);
+      var isFlashing = state.pulse.active && state.pulse.flashingImageId === img.id;
+
+      ctx.save();
+      // 脉冲爆炸闪耀光晕
+      if (isFlashing) {
+        var ringGrad = ctx.createRadialGradient(pos.x, pos.y, 4, pos.x, pos.y, 28);
+        ringGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        ringGrad.addColorStop(0.3, 'rgba(251, 191, 36, 0.8)');
+        ringGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+        ctx.fillStyle = ringGrad;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 28, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      // 十字准星标线
+      ctx.strokeStyle = isFlashing ? '#ffffff' : 'rgba(56, 189, 248, 0.8)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 7, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(pos.x - 11, pos.y);
+      ctx.lineTo(pos.x + 11, pos.y);
+      ctx.moveTo(pos.x, pos.y - 11);
+      ctx.lineTo(pos.x, pos.y + 11);
+      ctx.stroke();
+
+      // 标示像点序号与放大率
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '11px ui-monospace, monospace';
+      ctx.fillText('#' + img.id + ' (' + img.absMu.toFixed(1) + '×)', pos.x + 10, pos.y - 5);
+      ctx.restore();
+    }
+  }
+
+  // 逆向光线投射场光栅化
+  function renderLensedRaySurface(ctx, W, H) {
+    // 为保证高帧率实时性，在 230x210 内部缓冲区逆向追迹
+    var sw = Math.floor(W / 2);
+    var sh = Math.floor(H / 2);
+    var imgData = ctx.createImageData(sw, sh);
+    var data = imgData.data;
+
+    var bx = state.source.x;
+    var by = state.source.y;
+    var srcR = state.params.sourceRadius;
+    var srcR2 = srcR * srcR;
+
+    var scale = (2 * WORLD_BOUND) / sw;
+
+    for (var j = 0; j < sh; j++) {
+      var wy = -(j - sh / 2) * scale;
+      for (var i = 0; i < sw; i++) {
+        var wx = (i - sw / 2) * scale;
+
+        // 逆向解算源平面坐标：β = θ - α(θ)
+        var a = Core.deflection(wx, wy, state.params);
+        var sx = wx - a.ax;
+        var sy = wy - a.ay;
+
+        var d2 = (sx - bx) * (sx - bx) + (sy - by) * (sy - by);
+
+        var idx = (j * sw + i) * 4;
+        if (d2 < srcR2 * 9.0) {
+          // 高斯核表面亮度轮廓
+          var intensity = Math.exp(-d2 / (2 * srcR2));
+          var r = Math.min(255, Math.floor(intensity * 120));
+          var g = Math.min(255, Math.floor(intensity * 210));
+          var b = Math.min(255, Math.floor(intensity * 255));
+          var aAlpha = Math.min(255, Math.floor(intensity * 255));
+
+          data[idx] = r;
+          data[idx + 1] = g;
+          data[idx + 2] = b;
+          data[idx + 3] = aAlpha;
+        } else {
+          data[idx + 3] = 0;
+        }
+      }
+    }
+
+    // 离屏缩放绘制
+    var offCanvas = document.createElement('canvas');
+    offCanvas.width = sw;
+    offCanvas.height = sh;
+    offCanvas.getContext('2d').putImageData(imgData, 0, 0);
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(offCanvas, 0, 0, W, H);
+    ctx.restore();
+  }
+
+  // 前景透镜星系核心晕光渲染
+  function renderForegroundLensGalaxy(ctx, W, H) {
+    var center = worldToCanvas(0, 0, W, H);
+    var coreRadius = (state.params.s / WORLD_BOUND) * (W / 2) * 4.0;
+    coreRadius = Math.max(12, Math.min(45, coreRadius));
+
+    ctx.save();
+    var grad = ctx.createRadialGradient(center.x, center.y, 2, center.x, center.y, coreRadius);
+    grad.addColorStop(0, 'rgba(251, 191, 36, 0.7)');
+    grad.addColorStop(0.3, 'rgba(245, 158, 11, 0.35)');
+    grad.addColorStop(0.7, 'rgba(217, 119, 6, 0.12)');
+    grad.addColorStop(1, 'rgba(180, 83, 9, 0)');
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, coreRadius, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // 致密核核心
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, 2.5, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ---------------- 示波器渲染与相对论光行时差演化 ----------------
+  function renderOscilloscope(now) {
+    var ctx = dom.ctxScope;
+    var W = dom.scopeCanvas.width;
+    var H = dom.scopeCanvas.height;
+
+    // 清屏
+    ctx.fillStyle = '#020308';
+    ctx.fillRect(0, 0, W, H);
+
+    // 绘制示波器时间网格与基线
+    var baseY = H - 30;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1;
+
+    for (var gx = 0; gx < W; gx += 80) {
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, H);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.beginPath();
+    ctx.moveTo(0, baseY);
+    ctx.lineTo(W, baseY);
+    ctx.stroke();
+
+    // 坐标标注
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillText('0.0s (首达基准)', 10, baseY + 18);
+    ctx.fillText('时间延迟流淌方向 →', W / 2 - 40, baseY + 18);
+    ctx.fillText('+4.0s', W - 45, baseY + 18);
+
+    if (state.images.length === 0) return;
+
+    // 确定时间尺度映射：将 0 ~ 4.0 个归一化时滞单位映射到 [50, W - 60] 像素区间
+    var tMin = 0;
+    var tMax = 3.5;
+    var xStart = 60;
+    var xEnd = W - 60;
+
+    // 绘制每个像点的理论时滞阶梯与到达峰
+    for (var i = 0; i < state.images.length; i++) {
+      var img = state.images[i];
+      var imgDelay = img.timeDelay;
+      var px = xStart + (imgDelay / tMax) * (xEnd - xStart);
+      px = Math.min(xEnd + 20, Math.max(xStart, px));
+
+      var peakH = Math.min(95, img.absMu * 12 + 18);
+      var py = baseY - peakH;
+
+      // 示波脉冲波形（高斯包络）
+      ctx.save();
+      var strokeColor = img.type === 'minimum' ? '#34d399' : (img.type === 'saddle' ? '#c084fc' : '#64748b');
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      var halfW = 28;
+      for (var dx = -halfW; dx <= halfW; dx += 2) {
+        var curX = px + dx;
+        var env = Math.exp(-(dx * dx) / (2 * 10 * 10));
+        var curY = baseY - peakH * env;
+        if (dx === -halfW) ctx.moveTo(curX, curY);
+        else ctx.lineTo(curX, curY);
+      }
+      ctx.stroke();
+
+      // 像点标头
+      ctx.fillStyle = strokeColor;
+      ctx.font = '11px ui-monospace, monospace';
+      ctx.fillText('#' + img.id + ' (+' + imgDelay.toFixed(2) + ')', px - 16, py - 6);
+      ctx.restore();
+    }
+
+    // 动态回音扫描波演化
+    if (state.pulse.active) {
+      var elapsed = now - state.pulse.startTime;
+      state.pulse.currentTime = elapsed;
+
+      var currentT = elapsed / state.pulse.speedScale; // 转换为时滞单位
+      var scanX = xStart + (currentT / tMax) * (xEnd - xStart);
+
+      // 绘制时间扫描光柱
+      ctx.save();
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(scanX, 0);
+      ctx.lineTo(scanX, baseY);
+      ctx.stroke();
+      ctx.restore();
+
+      // 判定哪个像点正在爆炸闪耀
+      state.pulse.flashingImageId = null;
+      for (var k = 0; k < state.images.length; k++) {
+        var arrivalT = state.images[k].timeDelay * state.pulse.speedScale;
+        if (Math.abs(elapsed - arrivalT) < 300) {
+          state.pulse.flashingImageId = state.images[k].id;
+          break;
+        }
+      }
+
+      if (elapsed > state.pulse.duration) {
+        state.pulse.active = false;
+        state.pulse.flashingImageId = null;
+        if (dom.echoReport) {
+          dom.echoReport.textContent = '✓ 完整相对论光变回音序列接收完毕！各重影像点已全部捕获。';
+        }
+      } else {
+        updateEchoNarrative(elapsed);
+      }
+    }
+  }
+
+  function updateEchoNarrative(elapsed) {
+    if (!dom.echoReport) return;
+    var arrived = [];
+    for (var i = 0; i < state.images.length; i++) {
+      var img = state.images[i];
+      var arrivalMs = img.timeDelay * state.pulse.speedScale;
+      if (elapsed >= arrivalMs) {
+        arrived.push('#' + img.id + ' (' + (img.type === 'minimum' ? '极小像' : '鞍点像') + ', 放大率 ' + img.absMu.toFixed(1) + '×)');
+      }
+    }
+
+    if (arrived.length > 0) {
+      dom.echoReport.innerHTML = '⚡ <strong>时钟历程: ' + (elapsed / 1000).toFixed(2) + 's</strong> | 已到达像点: ' + arrived.join(' ➔ ') +
+        (state.pulse.flashingImageId ? ' <span style="color:var(--fermat-gold)">[像 #' + state.pulse.flashingImageId + ' 正在爆发闪耀!]</span>' : '');
+    } else {
+      dom.echoReport.textContent = '脉冲正在光锥曲面中行进... 首个费马极小值像即将抵达。';
+    }
+  }
+
+  // 激发超新星脉冲
+  function triggerSupernovaPulse() {
+    state.pulse.active = true;
+    state.pulse.startTime = performance.now();
+    state.pulse.currentTime = 0;
+    state.pulse.flashingImageId = null;
+
+    if (dom.echoReport) {
+      dom.echoReport.textContent = '💥 超新星已爆发！相对论光脉冲以光速沿不同零测地线向地球传播...';
+    }
+  }
+
+  // ---------------- 图形辅助绘制方法 ----------------
+  function drawCoordinateGrid(ctx, W, H) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+
+    for (var x = 0; x < W; x += 46) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+    for (var y = 0; y < H; y += 42) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+
+    // 刻度标尺
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.font = '9px ui-monospace, monospace';
+    ctx.fillText('-1.0 θE', W / 2 - (1.0 / WORLD_BOUND) * (W / 2) - 15, H - 6);
+    ctx.fillText('+1.0 θE', W / 2 + (1.0 / WORLD_BOUND) * (W / 2) - 15, H - 6);
+    ctx.restore();
+  }
+
+  function drawSmoothClosedCurve(ctx, points, W, H, strokeStyle, lineWidth, dash) {
+    if (!points || points.length < 3) return;
+    ctx.save();
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    if (dash) ctx.setLineDash(dash);
+
+    ctx.beginPath();
+    var first = worldToCanvas(points[0].x, points[0].y, W, H);
+    ctx.moveTo(first.x, first.y);
+
+    for (var i = 1; i < points.length; i++) {
+      var p = worldToCanvas(points[i].x, points[i].y, W, H);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawGlowingOrb(ctx, cx, cy, radius, coreColor, glowColor) {
+    ctx.save();
+    var grad = ctx.createRadialGradient(cx, cy, 1, cx, cy, radius * 3.5);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.3, coreColor);
+    grad.addColorStop(0.7, glowColor);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 3.5, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 0.7, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ---------------- 交互事件绑定 ----------------
+  function bindEvents() {
+    // 1. 视窗 1 拖拽背景光源
+    dom.fermatCanvas.addEventListener('pointerdown', function (e) {
+      state.isDraggingSource = true;
+      state.dragTarget = 'fermat';
+      dom.fermatCanvas.setPointerCapture(e.pointerId);
+      handleSourceDrag(e, dom.fermatCanvas);
+    });
+
+    dom.fermatCanvas.addEventListener('pointermove', function (e) {
+      if (state.isDraggingSource && state.dragTarget === 'fermat') {
+        handleSourceDrag(e, dom.fermatCanvas);
+      }
+    });
+
+    dom.fermatCanvas.addEventListener('pointerup', function (e) {
+      state.isDraggingSource = false;
+      try { dom.fermatCanvas.releasePointerCapture(e.pointerId); } catch (_) {}
+    });
+
+    // 2. 视窗 2 也可以拖拽平移背景源
+    dom.skyCanvas.addEventListener('pointerdown', function (e) {
+      state.isDraggingSource = true;
+      state.dragTarget = 'sky';
+      dom.skyCanvas.setPointerCapture(e.pointerId);
+      handleSourceDrag(e, dom.skyCanvas);
+    });
+
+    dom.skyCanvas.addEventListener('pointermove', function (e) {
+      if (state.isDraggingSource && state.dragTarget === 'sky') {
+        handleSourceDrag(e, dom.skyCanvas);
+      }
+    });
+
+    dom.skyCanvas.addEventListener('pointerup', function (e) {
+      state.isDraggingSource = false;
+      try { dom.skyCanvas.releasePointerCapture(e.pointerId); } catch (_) {}
+    });
+
+    // 3. 脉冲触发按钮
+    if (dom.btnTriggerPulse) {
+      dom.btnTriggerPulse.addEventListener('click', triggerSupernovaPulse);
+    }
+
+    // 4. 键盘无障碍交互
+    window.addEventListener('keydown', function (e) {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        triggerSupernovaPulse();
+      } else if (e.code === 'ArrowLeft') {
+        state.source.x = Math.max(-1.5, state.source.x - 0.03);
+        updatePhysics();
+      } else if (e.code === 'ArrowRight') {
+        state.source.x = Math.min(1.5, state.source.x + 0.03);
+        updatePhysics();
+      } else if (e.code === 'ArrowUp') {
+        state.source.y = Math.min(1.5, state.source.y + 0.03);
+        updatePhysics();
+      } else if (e.code === 'ArrowDown') {
+        state.source.y = Math.max(-1.5, state.source.y - 0.03);
+        updatePhysics();
+      } else if (e.key >= '1' && e.key <= '5') {
+        var keys = Object.keys(Core.PRESETS);
+        var idx = parseInt(e.key, 10) - 1;
+        if (keys[idx]) applyPreset(keys[idx]);
+      }
+    });
+
+    // 5. 预设切换按钮
+    if (dom.presetButtons) {
+      dom.presetButtons.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-preset]');
+        if (btn) {
+          applyPreset(btn.getAttribute('data-preset'));
+        }
+      });
+    }
+
+    // 6. 微调滑块
+    bindSlider(dom.sliderQ, dom.valQ, 'q', function (v) { return Number(v).toFixed(2); });
+    bindSlider(dom.sliderGamma, dom.valGamma, 'gamma', function (v) { return Number(v).toFixed(2); });
+    bindSlider(dom.sliderPhi, dom.valPhi, 'phiL', function (v) { return v + '°'; }, function (v) { return (Number(v) * Math.PI) / 180; });
+    bindSlider(dom.sliderCore, dom.valCore, 's', function (v) { return Number(v).toFixed(2); });
+  }
+
+  function handleSourceDrag(e, canvas) {
+    var rect = canvas.getBoundingClientRect();
+    var cx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    var cy = (e.clientY - rect.top) * (canvas.height / rect.height);
+    var world = canvasToWorld(cx, cy, canvas.width, canvas.height);
+
+    state.source.x = Math.max(-1.8, Math.min(1.8, world.x));
+    state.source.y = Math.max(-1.8, Math.min(1.8, world.y));
+
+    updatePhysics();
+  }
+
+  function bindSlider(slider, valSpan, paramKey, formatFn, transformFn) {
+    if (!slider) return;
+    slider.addEventListener('input', function () {
+      var raw = slider.value;
+      var val = transformFn ? transformFn(raw) : Number(raw);
+      state.params[paramKey] = val;
+      state.params = Core.normalizeParams(state.params);
+      if (valSpan) valSpan.textContent = formatFn(raw);
+      updatePhysics();
+    });
+  }
+
+  function applyPreset(presetKey) {
+    var preset = Core.PRESETS[presetKey];
+    if (!preset) return;
+
+    state.currentPreset = presetKey;
+    state.params = Core.normalizeParams(preset.p);
+    state.source = { x: preset.source.x, y: preset.source.y };
+
+    // 同步滑块
+    if (dom.sliderQ) dom.sliderQ.value = state.params.q;
+    if (dom.valQ) dom.valQ.textContent = state.params.q.toFixed(2);
+
+    if (dom.sliderGamma) dom.sliderGamma.value = state.params.gamma;
+    if (dom.valGamma) dom.valGamma.textContent = state.params.gamma.toFixed(2);
+
+    if (dom.sliderPhi) dom.sliderPhi.value = Math.round((state.params.phiL * 180) / Math.PI);
+    if (dom.valPhi) dom.valPhi.textContent = Math.round((state.params.phiL * 180) / Math.PI) + '°';
+
+    if (dom.sliderCore) dom.sliderCore.value = state.params.s;
+    if (dom.valCore) dom.valCore.textContent = state.params.s.toFixed(2);
+
+    // 同步按钮激活态
+    var btns = dom.presetButtons.querySelectorAll('.astro-btn');
+    for (var b = 0; b < btns.length; b++) {
+      if (btns[b].getAttribute('data-preset') === presetKey) {
+        btns[b].classList.add('active');
+      } else {
+        btns[b].classList.remove('active');
+      }
+    }
+
+    updatePhysics();
+  }
+
+  // 主渲染循环
+  function loop(now) {
+    renderFermatLandscape();
+    renderSkyLensView();
+    renderOscilloscope(now);
+    requestAnimationFrame(loop);
+  }
+
+  // ---------------- 自动化测试与体检探针 (window.__probe) ----------------
+  function setupProbe() {
+    window.__probe = {
+      name: 'lensing',
+      title: '重影时空',
+      getParams: function () {
+        return JSON.parse(JSON.stringify(state.params));
+      },
+      getSource: function () {
+        return { x: state.source.x, y: state.source.y };
+      },
+      getImages: function () {
+        return JSON.parse(JSON.stringify(state.images));
+      },
+      getTotalMu: function () {
+        return state.totalMagnification;
+      },
+      getCausticPointsCount: function () {
+        return state.caustics ? state.caustics.tangentialCaustic.length : 0;
+      },
+      triggerPulse: function () {
+        triggerSupernovaPulse();
+        return state.pulse.active;
+      },
+      setPreset: function (key) {
+        applyPreset(key);
+        return state.currentPreset;
+      },
+      setSourcePos: function (x, y) {
+        state.source.x = x;
+        state.source.y = y;
+        updatePhysics();
+        return state.images.length;
+      },
+      status: function () {
+        return {
+          numImages: state.images.length,
+          totalMu: state.totalMagnification,
+          causticCount: state.caustics ? state.caustics.tangentialCaustic.length : 0,
+          preset: state.currentPreset
+        };
+      }
+    };
+  }
+
+  // 初始化入口
+  function init() {
+    initDom();
+    bindEvents();
+    setupProbe();
+    updatePhysics();
+    requestAnimationFrame(loop);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
+  </script>
+</body>
+</html>

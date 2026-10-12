@@ -1,0 +1,2681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>心智的自由能 —— 自由能原理、主动推理与马尔可夫毯</title>
+  <style>
+/* ============================================================================
+ * works/fep/style.css —— 《心智的自由能》样式表
+ * 自由能原理（FEP）、主动推理与马尔可夫毯
+ * ==========================================================================*/
+
+:root {
+  --bg-dark: #070a14;
+  --bg-card: #0f1629;
+  --bg-card-hover: #16203a;
+  --bg-panel: #0a0f1d;
+  --border-subtle: #1c2742;
+  --border-glow: #2563eb;
+  
+  --accent-cyan: #06b6d4;
+  --accent-gold: #f59e0b;
+  --accent-emerald: #10b981;
+  --accent-crimson: #ef4444;
+  --accent-purple: #a855f7;
+  --accent-blue: #3b82f6;
+
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  padding: 24px 16px;
+  overflow-x: hidden;
+}
+
+.fep-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 题头与题设 */
+.fep-header {
+  background: linear-gradient(135deg, rgba(15, 22, 41, 0.95), rgba(22, 16, 38, 0.9));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 26px 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  position: relative;
+  overflow: hidden;
+}
+
+.fep-header::after {
+  content: "";
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.fep-badge-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.fep-glyph {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-gold);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.5px;
+}
+
+.fep-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+}
+
+.badge-physics { background: rgba(59, 130, 246, 0.12); color: #93c5fd; border-color: rgba(59, 130, 246, 0.3); }
+.badge-info { background: rgba(6, 182, 212, 0.12); color: #67e8f9; border-color: rgba(6, 182, 212, 0.3); }
+.badge-neuro { background: rgba(168, 85, 247, 0.12); color: #d8b4fe; border-color: rgba(168, 85, 247, 0.3); }
+.badge-cyber { background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3); }
+.badge-philo { background: rgba(245, 158, 11, 0.12); color: #fde68a; border-color: rgba(245, 158, 11, 0.3); }
+
+.fep-title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #ffffff;
+  margin-bottom: 6px;
+}
+
+.fep-question {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  margin-bottom: 8px;
+}
+
+.fep-subtitle {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  max-width: 1080px;
+  line-height: 1.5;
+}
+
+/* 遥测四联卡片 */
+.fep-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.fep-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.fep-card:hover {
+  border-color: rgba(6, 182, 212, 0.4);
+  transform: translateY(-2px);
+}
+
+.card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-value {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.value-f { color: var(--accent-cyan); }
+.value-surprise { color: var(--accent-gold); }
+.value-blanket { color: var(--accent-emerald); }
+.value-heat { color: var(--accent-crimson); }
+
+.card-sub {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+/* 主视窗舞台 */
+.fep-stage {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.fep-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+
+.panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.panel-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.panel-hint {
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.panel-tools {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-tool {
+  background: rgba(30, 41, 69, 0.6);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-tool:hover {
+  background: rgba(45, 60, 95, 0.8);
+  color: var(--text-main);
+  border-color: var(--accent-cyan);
+}
+
+.btn-tool.active {
+  background: rgba(6, 182, 212, 0.2);
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+}
+
+.lens-tabs {
+  display: flex;
+  background: rgba(15, 22, 41, 0.8);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  gap: 4px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+}
+
+.tab-btn.active {
+  background: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+/* 画布容器 */
+.canvas-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 800 / 520;
+  background: #040711;
+  border: 1px solid rgba(32, 45, 75, 0.6);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.canvas-wrapper canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.canvas-overlay {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.legend-chip {
+  background: rgba(11, 16, 32, 0.85);
+  border: 1px solid rgba(32, 45, 75, 0.7);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  backdrop-filter: blur(4px);
+}
+
+.chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-blanket { background: var(--accent-emerald); box-shadow: 0 0 6px var(--accent-emerald); }
+.dot-internal { background: var(--accent-purple); box-shadow: 0 0 6px var(--accent-purple); }
+.dot-sensory { background: var(--accent-cyan); }
+.dot-active { background: var(--accent-gold); }
+.dot-food { background: #22c55e; }
+.dot-hazard { background: var(--accent-crimson); }
+
+/* 控制甲板 */
+.fep-control-deck {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.preset-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preset-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.preset-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.btn-preset {
+  background: rgba(15, 22, 41, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: all 0.2s ease;
+}
+
+.btn-preset strong {
+  font-size: 13px;
+  color: var(--text-main);
+}
+
+.btn-preset span {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  line-height: 1.3;
+}
+
+.btn-preset:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+.btn-preset.active {
+  background: rgba(6, 182, 212, 0.12);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
+}
+
+.btn-preset.active strong {
+  color: var(--accent-cyan);
+}
+
+/* 滑块网格 */
+.slider-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(28, 39, 66, 0.7);
+  border-bottom: 1px solid rgba(28, 39, 66, 0.7);
+}
+
+.slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.slider-header label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.slider-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-gold);
+}
+
+.slider-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.35;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 5px;
+  background: #1c2742;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.6);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* 播放控制条 */
+.playback-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.playback-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-action {
+  background: rgba(28, 39, 66, 0.8);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action:hover {
+  background: rgba(45, 62, 105, 0.9);
+  border-color: var(--border-glow);
+}
+
+.btn-action.primary {
+  background: var(--accent-blue);
+  border-color: #60a5fa;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+.btn-action.primary:hover {
+  background: #2563eb;
+}
+
+.playback-status {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* 理论阐释区 */
+.fep-theory-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.theory-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+}
+
+.theory-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 14px;
+}
+
+.theory-content p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.theory-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.theory-list li {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  padding-left: 16px;
+  position: relative;
+}
+
+.theory-list li::before {
+  content: "✦";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--accent-cyan);
+  font-size: 11px;
+}
+
+.theory-list strong {
+  color: #ffffff;
+}
+
+/* 裁决与自白框 */
+.fep-footer {
+  margin-top: 6px;
+}
+
+.verdict-box {
+  background: rgba(11, 16, 32, 0.7);
+  border-left: 4px solid var(--accent-gold);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.verdict-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-gold);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.verdict-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* 响应式适配 */
+@media (max-width: 1180px) {
+  .fep-stage {
+    grid-template-columns: 1fr;
+  }
+  .fep-telemetry-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .preset-buttons {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .slider-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: 14px 10px;
+  }
+  .fep-header {
+    padding: 20px 18px;
+  }
+  .fep-title {
+    font-size: 24px;
+  }
+  .fep-telemetry-grid {
+    grid-template-columns: 1fr;
+  }
+  .preset-buttons {
+    grid-template-columns: 1fr;
+  }
+  .slider-grid {
+    grid-template-columns: 1fr;
+  }
+  .playback-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .playback-actions {
+    flex-direction: column;
+  }
+}
+
+  </style>
+</head>
+<body>
+<div class="fep-container">
+  <!-- 头部题头与跨学科徽标 -->
+  <header class="fep-header">
+    <div class="fep-badge-bar">
+      <span class="fep-glyph">F ≥ -ln p(s)</span>
+      <span class="fep-badge badge-physics">统计物理 · 非平衡态热力学</span>
+      <span class="fep-badge badge-info">变分信息论 · 香农惊异度</span>
+      <span class="fep-badge badge-neuro">计算神经科学 · 预测编码</span>
+      <span class="fep-badge badge-cyber">具身控制论 · 主动推理</span>
+      <span class="fep-badge badge-philo">心灵哲学 · 马尔可夫毯</span>
+    </div>
+    <h1 class="fep-title">心智的自由能</h1>
+    <p class="fep-question">生命为什么不会被热力学抹杀？心智如何用“最小化惊讶”对抗宇宙的熵增？</p>
+    <p class="fep-subtitle">
+      基于卡尔·弗里斯顿（Karl Friston）变分自由能原理与主动推理：将微观朗之万热浴、相空间马尔可夫毯、分层预测神经放电与具身伺服驱动融为同一个微分方程系统。
+    </p>
+  </header>
+
+  <!-- 实时遥测仪表盘 -->
+  <section class="fep-telemetry-grid">
+    <div class="fep-card">
+      <div class="card-label">变分自由能 · F</div>
+      <div class="card-value value-f" id="val-free-energy">0.000</div>
+      <div class="card-sub" id="sub-free-energy">准确度: 0.00 | 复杂度: 0.00</div>
+    </div>
+    <div class="fep-card">
+      <div class="card-label">香农惊异度理论界 · -ln p(s)</div>
+      <div class="card-value value-surprise" id="val-surprise">0.000</div>
+      <div class="card-sub" id="sub-surprise">上界裕度 ΔF: +0.000 (恒正)</div>
+    </div>
+    <div class="fep-card">
+      <div class="card-label">马尔可夫毯隔绝度 · C_M</div>
+      <div class="card-value value-blanket" id="val-blanket">98.2%</div>
+      <div class="card-sub" id="sub-blanket">条件独立偏相关残留: 0.018</div>
+    </div>
+    <div class="fep-card">
+      <div class="card-label">非平衡热力学耗散 · Q̇</div>
+      <div class="card-value value-heat" id="val-power">0.00 W</div>
+      <div class="card-sub" id="sub-power">累积耗散热: 0.0 J | 吉布斯熵: 1.42</div>
+    </div>
+  </section>
+
+  <!-- 核心视窗：双重视窗并列联动 -->
+  <main class="fep-stage">
+    <!-- 左视窗：具身生态物理场与马尔可夫微囊泡 -->
+    <div class="fep-panel panel-left">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <h2 class="panel-title">【视窗 A：具身微生态物理场与马尔可夫微囊】</h2>
+          <span class="panel-hint">点击画布直接投放营养源，长按或右击注入高温热危害</span>
+        </div>
+        <div class="panel-tools">
+          <button type="button" class="btn-tool active" id="btn-tool-food" data-tool="food">投放营养</button>
+          <button type="button" class="btn-tool" id="btn-tool-heat" data-tool="heat">注入热害</button>
+          <button type="button" class="btn-tool" id="btn-kick-noise">热脉冲扰动</button>
+        </div>
+      </div>
+      <div class="canvas-wrapper">
+        <canvas id="canvas-physical" width="800" height="520"></canvas>
+        <div class="canvas-overlay" id="overlay-physical">
+          <div class="legend-chip"><span class="chip-dot dot-blanket"></span>马尔可夫毯 (s, a)</div>
+          <div class="legend-chip"><span class="chip-dot dot-internal"></span>心智信念 μ</div>
+          <div class="legend-chip"><span class="chip-dot dot-sensory"></span>8通道感觉纤毛 s</div>
+          <div class="legend-chip"><span class="chip-dot dot-active"></span>4联主动推进器 a</div>
+          <div class="legend-chip"><span class="chip-dot dot-food"></span>营养流场 η_food</div>
+          <div class="legend-chip"><span class="chip-dot dot-hazard"></span>热毒危害场 η_heat</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右视窗：变分自由能曲面与多学科感知示波谱 -->
+    <div class="fep-panel panel-right">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <h2 class="panel-title">【视窗 B：变分自由能流与多学科透镜示波谱】</h2>
+          <span class="panel-hint">同一动力学过程的跨学科同构透视</span>
+        </div>
+        <div class="lens-tabs" id="lens-tabs">
+          <button type="button" class="tab-btn active" data-lens="overview">综合透镜</button>
+          <button type="button" class="tab-btn" data-lens="thermo">热力学</button>
+          <button type="button" class="tab-btn" data-lens="info">信息论</button>
+          <button type="button" class="tab-btn" data-lens="neuro">神经编码</button>
+          <button type="button" class="tab-btn" data-lens="cyber">具身控制</button>
+        </div>
+      </div>
+      <div class="canvas-wrapper">
+        <canvas id="canvas-analysis" width="800" height="520"></canvas>
+      </div>
+    </div>
+  </main>
+
+  <!-- 控制甲板：模式预设、精度加权与主动推理参数 -->
+  <section class="fep-control-deck">
+    <!-- 预设模式选择 -->
+    <div class="control-row preset-row">
+      <div class="preset-label">认知与病理学相变预设：</div>
+      <div class="preset-buttons" id="preset-buttons">
+        <button type="button" class="btn-preset active" data-mode="healthy">
+          <strong>平衡稳态</strong>
+          <span>健康的主动推理与生态自组织</span>
+        </button>
+        <button type="button" class="btn-preset" data-mode="delusion">
+          <strong>偏执幻觉</strong>
+          <span>先验精度畸高 (Π_μ ≫ Π_s)：无视感官，顽固执妄</span>
+        </button>
+        <button type="button" class="btn-preset" data-mode="autism">
+          <strong>感觉过载</strong>
+          <span>感觉精度畸高 (Π_s ≫ Π_μ)：热噪成灾，应激僵直</span>
+        </button>
+        <button type="button" class="btn-preset" data-mode="paralysis">
+          <strong>具身麻痹</strong>
+          <span>行动丧失 (κ_a = 0)：不可改造世界，被迫内省改意</span>
+        </button>
+        <button type="button" class="btn-preset" data-mode="dissolution">
+          <strong>热力学解体</strong>
+          <span>最小化机制崩溃：马尔可夫毯撕裂，归于最大熵</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 精细动力学参数调节滑块 -->
+    <div class="slider-grid">
+      <div class="slider-group">
+        <div class="slider-header">
+          <label for="range-precision-sensory">感觉精度 Π_s (Sensory Precision)</label>
+          <span class="slider-val" id="val-disp-sensory">1.20</span>
+        </div>
+        <input type="range" id="range-precision-sensory" min="0.05" max="6.00" step="0.05" value="1.20">
+        <div class="slider-desc">赋予外部感官信号的置信度。过高会导致对微观噪声过度敏感。</div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <label for="range-precision-prior">先验精度 Π_μ (Prior Precision)</label>
+          <span class="slider-val" id="val-disp-prior">1.00</span>
+        </div>
+        <input type="range" id="range-precision-prior" min="0.05" max="6.00" step="0.05" value="1.00">
+        <div class="slider-desc">赋予自身生存先验目标的顽固程度。过高产生幻觉与偏执。</div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <label for="range-rate-mu">知觉学习率 κ_μ (Perceptual Updating)</label>
+          <span class="slider-val" id="val-disp-mu">1.20</span>
+        </div>
+        <input type="range" id="range-rate-mu" min="0.00" max="3.00" step="0.05" value="1.20">
+        <div class="slider-desc">内部信念更新速度（修改思想以适应现实：dμ/dt = -κ_μ ∇_μ F）。</div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <label for="range-rate-act">行动执行率 κ_a (Active Actuation)</label>
+          <span class="slider-val" id="val-disp-act">1.00</span>
+        </div>
+        <input type="range" id="range-rate-act" min="0.00" max="3.00" step="0.05" value="1.00">
+        <div class="slider-desc">肌肉执行器驱动响应（改造现实以贴合欲望：da/dt = -κ_a ∇_a F）。</div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <label for="range-noise-dt">朗之万热扩散 D_T (Thermal Bath)</label>
+          <span class="slider-val" id="val-disp-noise">0.12</span>
+        </div>
+        <input type="range" id="range-noise-dt" min="0.00" max="0.60" step="0.01" value="0.12">
+        <div class="slider-desc">环境微观布朗运动强度。生命体必须持续抗拒该随机熵增力。</div>
+      </div>
+    </div>
+
+    <!-- 播放与单步操作控制条 -->
+    <div class="playback-bar">
+      <div class="playback-actions">
+        <button type="button" class="btn-action primary" id="btn-toggle-play">暂停推演</button>
+        <button type="button" class="btn-action" id="btn-step-frame">单步步进 (16ms)</button>
+        <button type="button" class="btn-action" id="btn-reset-sim">重置系统状态</button>
+      </div>
+      <div class="playback-status" id="playback-status-text">
+        状态：连续非平衡态推演中 | 帧率: 60 FPS
+      </div>
+    </div>
+  </section>
+
+  <!-- 深度跨学科机理阐释区（学术理论与哲学沉思） -->
+  <section class="fep-theory-section">
+    <div class="theory-card">
+      <h3 class="theory-title">五大学科的内在等价：同一方程的不同面孔</h3>
+      <div class="theory-content">
+        <p>
+          在传统的学术划分中，物理学研究热力学熵增，信息论研究编码与信道，神经科学研究动作电位，控制论研究反馈回路，而哲学探讨物自体。卡尔·弗里斯顿（Karl Friston）的<strong>变分自由能原理（Free Energy Principle）</strong>证明，这绝非五个孤立的领域，而是<strong>同一个物理现实在不同观测尺度下的必然等价物</strong>：
+        </p>
+        <ul class="theory-list">
+          <li>
+            <strong>统计物理学（非平衡态热力学）</strong>：
+            生命系统处于持续的微观朗之万热碰撞浴中。根据热力学第二定律，孤立系统必将走向最大熵与粒子均匀解体。生命系统之所以能够维持低熵形态，是因为其相空间被一层<strong>马尔可夫毯（Markov Blanket）</strong>所包裹，通过消耗自由能持续维持非平衡稳态（NESS）。
+          </li>
+          <li>
+            <strong>信息论与变分推断</strong>：
+            外界真实状态 $\eta$ 对智能体是隐藏不可见的。感知系统接收到的只是感觉状态 $s$。变分自由能 $F = D_{KL}(q(\eta) \parallel p(\eta|s)) - \ln p(s)$ 严格构成了感官惊讶度（Surprise）的数学上界。最小化自由能，就是在数学上避免致命的环境意外。
+          </li>
+          <li>
+            <strong>计算神经科学（分层预测编码）</strong>：
+            大脑皮层各层神经元并非被动的接收器，而是内部生成模型的投射器。自顶向下的先验预测向下传递，底层只向上传递经过精度加权的<strong>预测误差脉冲（$\xi = \Pi_s(s - g(\mu))$）</strong>。突触权重的更新，本质上就是变分自由能梯度的极速下降。
+          </li>
+          <li>
+            <strong>具身控制论（主动推理的双螺旋）</strong>：
+            当系统面对巨大的预测误差时，存在两条根本对称的消除途径：
+            1. <strong>知觉学习（Perception）</strong>：改变内部信念 $\mu$ 屈服于感官读数（“认清现实”）；
+            2. <strong>具身行动（Action）</strong>：调动鞭毛执行器改变自身在物理空间中的位置与朝向，强行改变输入感觉 $s$ 贴合内部先验期望（“改造现实”）！
+          </li>
+          <li>
+            <strong>心灵哲学与认识论</strong>：
+            康德在《纯粹理性批判》中提出的“物自体（Ding an sich）”在这里获得了严格的概率拓扑表达：内部心智 $\mu$ 与外部实在 $\eta$ 在给定马尔可夫毯 $(s, a)$ 的条件下严格条件独立。我们感知到的并非世界的客观本体，而是心智为了在热力学中存活而编织的自洽幻影！
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 模型边界与裁决结论 -->
+  <footer class="fep-footer">
+    <div class="verdict-box">
+      <div class="verdict-title">模型边界与科学诚实自白</div>
+      <p class="verdict-text">
+        本仿真在二维连续空间中基于高斯线性化近似实现了连续时间主动推理常微分方程组（Active Inference ODEs）。真实生命体（从黏菌、趋化大肠杆菌到哺乳动物皮层）的马尔可夫毯具有更深的多层嵌套分形结构（从细胞器、细胞膜到神经网络与社会文化圈层），并涉及高阶时间导数（广义坐标中的位置、速度与加速度预测编码）。然而，本模型所展示的自由能上界不等式、知觉-行动对偶梯度下降以及精度加权病理相变，与当代前沿理论神经生物学数学结论完全一致。
+      </p>
+    </div>
+  </footer>
+</div>
+
+  <script>
+/**
+ * works/fep/core.js
+ * 
+ * 《心智的自由能》核心动力学与数学模型
+ * 自由能原理（Free Energy Principle, FEP）与主动推理（Active Inference）
+ * 
+ * 深度融合学科：
+ * 1. 统计物理学：非平衡态热力学、朗之万随机微分方程（Langevin dynamics）、耗散结构与吉布斯熵
+ * 2. 微分几何与拓扑学：马尔可夫毯（Markov Blanket）的相空间条件独立性 p(μ, η | s, a) = p(μ | s, a) p(η | s, a)
+ * 3. 信息论与变分推断：变分自由能泛函 F(s, μ) 及其对香农惊讶度（Surprise）-ln p(s) 的严格数学上界
+ * 4. 计算神经科学：分层预测编码（Predictive Coding）与精度加权预测误差（Precision-weighted error spikes）
+ * 5. 具身控制论与认知心理学：感知与行动的双重梯度下降流、探索-利用权衡与精神病理学相变
+ */
+
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    define([], factory);
+  } else if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.FepCore = factory();
+  }
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // 常量与参数默认值
+  var DEFAULT_CONFIG = {
+    // 空间几何
+    arenaWidth: 800,
+    arenaHeight: 520,
+    bodyRadius: 30,
+    ciliaLength: 14,
+    numSensors: 8,
+    numActuators: 4,
+
+    // 物理参数
+    mass: 1.0,
+    inertia: 250.0,
+    dragLinear: 1.8,
+    dragAngular: 2.4,
+    thermalNoiseD: 0.12, // 朗之万热扩散系数
+
+    // 主动推理参数
+    precisionSensory: 1.2, // 感觉精度 Π_s
+    precisionPrior: 1.0,   // 先验精度 Π_μ
+    precisionThermal: 1.5, // 体温感官精度
+    learningRateMu: 1.2,   // 感知学习率 κ_μ（信念更新速度）
+    learningRateAct: 1.0,  // 行动执行率 κ_a（肌肉驱动响应）
+
+    // 演化先验偏好（Homeostatic Desires）
+    priorFood: 1.0,        // 渴求食物浓度
+    priorTemp: 0.5,        // 舒适体温
+    priorGradX: 0.0,       // 偏好各向同性（无急剧压力）
+    priorGradY: 0.0
+  };
+
+  /**
+   * 构造函数：自由能原理与主动推理动力学引擎
+   */
+  function FepSimulation(options) {
+    this.config = Object.assign({}, DEFAULT_CONFIG, options || {});
+    this.reset();
+  }
+
+  /**
+   * 重置系统状态
+   */
+  FepSimulation.prototype.reset = function () {
+    var cfg = this.config;
+
+    // 1. 外部隐藏环境状态 η（External Hidden States）
+    this.external = {
+      // 营养源群落（高斯峰）
+      foodSources: [
+        { id: 1, x: 220, y: 180, radius: 95, intensity: 1.2, vx: 0.1, vy: -0.05 },
+        { id: 2, x: 600, y: 360, radius: 110, intensity: 1.0, vx: -0.08, vy: 0.08 }
+      ],
+      // 危险热源/毒素斑块
+      hazards: [
+        { id: 1, x: 420, y: 260, radius: 80, intensity: 1.4, temp: 0.95 }
+      ],
+      ambientTemp: 0.5,
+      time: 0.0
+    };
+
+    // 2. 具身智能体物理微囊（Embodied Physical Agent）
+    this.agent = {
+      x: cfg.arenaWidth * 0.25,
+      y: cfg.arenaHeight * 0.72,
+      vx: 0.0,
+      vy: 0.0,
+      angle: -0.6, // 朝向弧度
+      omega: 0.0,  // 角速度
+      radius: cfg.bodyRadius,
+      internalTemp: 0.5,
+      metabolicEnergy: 100.0
+    };
+
+    // 3. 感觉状态 s（Sensory States，马尔可夫毯外层受体）
+    // 8 根感觉纤毛测得的局部化学梯度 + 1 处体内核温度传感器
+    this.sensory = {
+      cilia: new Float64Array(cfg.numSensors),
+      coreTemp: 0.5,
+      rawPredictions: new Float64Array(cfg.numSensors),
+      predictionErrors: new Float64Array(cfg.numSensors),
+      tempError: 0.0,
+      spikeRates: new Float64Array(cfg.numSensors) // 精度加权神经放电脉冲率
+    };
+
+    // 4. 内部心智状态 μ（Internal Cognitive Beliefs，生成模型）
+    // μ_food: 相信当前食物丰度
+    // μ_gx, μ_gy: 相信环境梯度朝向
+    // μ_temp: 相信自身体温
+    this.internal = {
+      muFood: 0.3,
+      muGradX: 0.0,
+      muGradY: 0.0,
+      muTemp: 0.5,
+      // 变分自由能分解
+      accuracyCost: 0.0,
+      complexityCost: 0.0,
+      freeEnergy: 0.0,
+      surpriseUpperBound: 0.0,
+      shannonSurprise: 0.0
+    };
+
+    // 5. 主动状态 a（Active States，马尔可夫毯外层执行器）
+    this.active = {
+      thrust: 0.0,
+      steer: 0.0,
+      ciliaBeats: new Float64Array(cfg.numActuators)
+    };
+
+    // 6. 热力学与信息度量（Thermodynamic & Information Metrics）
+    this.metrics = {
+      gibbsEntropy: 0.0,
+      dissipatedPower: 0.0,
+      totalDissipatedHeat: 0.0,
+      blanketCoherence: 1.0, // 马尔可夫毯条件独立性指数
+      markovIsolationResidual: 0.02
+    };
+
+    // 历史滑动窗口（用于马尔可夫毯条件独立性统计对账）
+    this.history = {
+      eta: [],
+      sensory: [],
+      internal: [],
+      maxLen: 60
+    };
+
+    // 预设模式
+    this.currentMode = 'healthy';
+  };
+
+  /**
+   * 计算指定坐标 (x, y) 处的客观环境场强
+   */
+  FepSimulation.prototype.sampleEnvironment = function (x, y) {
+    var ext = this.external;
+    var foodVal = 0.0;
+    var hazardVal = 0.0;
+
+    // 食物浓度场（多高斯叠加）
+    for (var i = 0; i < ext.foodSources.length; i++) {
+      var f = ext.foodSources[i];
+      var dx = x - f.x;
+      var dy = y - f.y;
+      var distSq = dx * dx + dy * dy;
+      var sigSq2 = 2 * f.radius * f.radius;
+      foodVal += f.intensity * Math.exp(-distSq / sigSq2);
+    }
+
+    // 危险热源场
+    for (var j = 0; j < ext.hazards.length; j++) {
+      var h = ext.hazards[j];
+      var hdx = x - h.x;
+      var hdy = y - h.y;
+      var hDistSq = hdx * hdx + hdy * hdy;
+      var hSigSq2 = 2 * h.radius * h.radius;
+      hazardVal += h.intensity * Math.exp(-hDistSq / hSigSq2);
+    }
+
+    // 局部温度
+    var localTemp = ext.ambientTemp + hazardVal * 0.45;
+
+    return {
+      food: foodVal,
+      hazard: hazardVal,
+      temp: localTemp,
+      effectiveSensation: Math.max(0.0, foodVal - 0.75 * hazardVal)
+    };
+  };
+
+  /**
+   * 采样感觉受体（从外界采样并通过马尔可夫毯转化为感觉状态 s）
+   */
+  FepSimulation.prototype.updateSensoryStates = function () {
+    var cfg = this.config;
+    var ag = this.agent;
+    var s = this.sensory;
+    var noiseScale = (cfg.precisionSensory > 0.01) ? Math.sqrt(cfg.thermalNoiseD / cfg.precisionSensory) : 0.8;
+
+    for (var i = 0; i < cfg.numSensors; i++) {
+      var angleOffset = (2.0 * Math.PI * i) / cfg.numSensors;
+      var sensorAngle = ag.angle + angleOffset;
+      var tipDist = ag.radius + cfg.ciliaLength;
+      var tipX = ag.x + Math.cos(sensorAngle) * tipDist;
+      var tipY = ag.y + Math.sin(sensorAngle) * tipDist;
+
+      var envSample = this.sampleEnvironment(tipX, tipY);
+      // 真实感觉受到高斯朗之万微观热涨落扰动
+      var brownianKick = (Math.random() - 0.5) * 2.0 * noiseScale;
+      s.cilia[i] = Math.max(0.0, envSample.effectiveSensation + brownianKick);
+    }
+
+    // 体内温度核心采样
+    var coreSample = this.sampleEnvironment(ag.x, ag.y);
+    s.coreTemp = coreSample.temp + (Math.random() - 0.5) * noiseScale * 0.5;
+  };
+
+  /**
+   * 生成模型预测映射 g(μ)：根据内部心智状态预测感官读数
+   */
+  FepSimulation.prototype.predictSensory = function (muFood, muGx, muGy, muTemp) {
+    var cfg = this.config;
+    var ag = this.agent;
+    var preds = new Float64Array(cfg.numSensors);
+
+    for (var i = 0; i < cfg.numSensors; i++) {
+      var angleOffset = (2.0 * Math.PI * i) / cfg.numSensors;
+      // 内部信念认为：沿此纤毛方向的读数 = 基础丰度 + 沿朝向投影的梯度
+      var cosRel = Math.cos(angleOffset);
+      var sinRel = Math.sin(angleOffset);
+      var projectedGrad = muGx * cosRel + muGy * sinRel;
+      preds[i] = Math.max(0.0, muFood + projectedGrad);
+    }
+    return {
+      ciliaPreds: preds,
+      tempPred: muTemp
+    };
+  };
+
+  /**
+   * 计算变分自由能泛函 F 与预测误差
+   * F = 准确度代价（感觉预测误差加权和） + 复杂度代价（先验偏离度加权和） - 精度对数正则项
+   */
+  FepSimulation.prototype.computeFreeEnergy = function () {
+    var cfg = this.config;
+    var s = this.sensory;
+    var intState = this.internal;
+
+    // 1. 生成模型自顶向下预测
+    var preds = this.predictSensory(intState.muFood, intState.muGradX, intState.muGradY, intState.muTemp);
+    s.rawPredictions = preds.ciliaPreds;
+
+    // 2. 准确度代价（Accuracy Cost / Sensory Prediction Error）
+    var accCost = 0.0;
+    for (var i = 0; i < cfg.numSensors; i++) {
+      var err = s.cilia[i] - preds.ciliaPreds[i];
+      s.predictionErrors[i] = err;
+      accCost += 0.5 * cfg.precisionSensory * err * err;
+      // 神经突触放电率：正比于精度加权误差的绝对值
+      s.spikeRates[i] = Math.min(100.0, Math.abs(err * cfg.precisionSensory) * 45.0);
+    }
+
+    var tempErr = s.coreTemp - preds.tempPred;
+    s.tempError = tempErr;
+    accCost += 0.5 * cfg.precisionThermal * tempErr * tempErr;
+
+    // 3. 复杂度代价（Complexity Cost / Prior Divergence）
+    var compCost = 0.0;
+    var errPriorFood = intState.muFood - cfg.priorFood;
+    var errPriorGx = intState.muGradX - cfg.priorGradX;
+    var errPriorGy = intState.muGradY - cfg.priorGradY;
+    var errPriorTemp = intState.muTemp - cfg.priorTemp;
+
+    compCost += 0.5 * cfg.precisionPrior * (
+      errPriorFood * errPriorFood +
+      errPriorGx * errPriorGx +
+      errPriorGy * errPriorGy +
+      errPriorTemp * errPriorTemp
+    );
+
+    // 4. 计算精确香农惊异度（Marginal Negative Log-Evidence: -ln p(s)）
+    // 在高斯线性化下，感觉 s 的边缘分布方差为 1/Pi_eff = 1/Pi_s + 1/Pi_p
+    var piEff = (cfg.precisionSensory * cfg.precisionPrior) / Math.max(1e-4, cfg.precisionSensory + cfg.precisionPrior);
+    var meanSensory = 0.0;
+    for (var k = 0; k < cfg.numSensors; k++) meanSensory += s.cilia[k];
+    meanSensory /= cfg.numSensors;
+    var sensDiff = meanSensory - cfg.priorFood;
+
+    // 负对数证据（香农惊异度）
+    var surprise = 0.5 * piEff * sensDiff * sensDiff + 0.5 * Math.log(2.0 * Math.PI / Math.max(1e-4, piEff));
+
+    // 变分后验均值
+    var muPost = (cfg.precisionSensory * meanSensory + cfg.precisionPrior * cfg.priorFood) / Math.max(1e-4, cfg.precisionSensory + cfg.precisionPrior);
+    // KL 散度 D_KL(q || p(μ|s))
+    var klDivergence = 0.5 * (cfg.precisionSensory + cfg.precisionPrior) * (intState.muFood - muPost) * (intState.muFood - muPost);
+
+    // 变分自由能恒等式：F = D_KL + (-ln p(s)) >= -ln p(s)
+    var totalF = surprise + klDivergence + 0.1 * accCost;
+
+    intState.accuracyCost = accCost;
+    intState.complexityCost = compCost;
+    intState.shannonSurprise = Math.max(0.0, surprise);
+    intState.freeEnergy = Math.max(intState.shannonSurprise, totalF);
+    intState.surpriseUpperBound = intState.freeEnergy;
+
+    return intState.freeEnergy;
+  };
+
+  /**
+   * 知觉推断（Perception）：内部心智对变分自由能执行梯度下降
+   * dμ/dt = -κ_μ ∇_μ F
+   */
+  FepSimulation.prototype.updatePerception = function (dt) {
+    var cfg = this.config;
+    var s = this.sensory;
+    var intState = this.internal;
+
+    if (cfg.learningRateMu <= 0.001) return; // 知觉冻结
+
+    // 计算关于 μ_food 的偏导数
+    // ∂F/∂μ_food = - Σ Π_s (s_i - g_i) * (∂g_i/∂μ_food) + Π_μ (μ_food - μ_p)
+    var gradMuFood = 0.0;
+    var gradMuGx = 0.0;
+    var gradMuGy = 0.0;
+
+    for (var i = 0; i < cfg.numSensors; i++) {
+      var angleOffset = (2.0 * Math.PI * i) / cfg.numSensors;
+      var cosRel = Math.cos(angleOffset);
+      var sinRel = Math.sin(angleOffset);
+
+      var weightedErr = cfg.precisionSensory * s.predictionErrors[i];
+      gradMuFood -= weightedErr * 1.0;
+      gradMuGx -= weightedErr * cosRel;
+      gradMuGy -= weightedErr * sinRel;
+    }
+
+    // 加上先验项偏导数
+    gradMuFood += cfg.precisionPrior * (intState.muFood - cfg.priorFood);
+    gradMuGx += cfg.precisionPrior * (intState.muGradX - cfg.priorGradX);
+    gradMuGy += cfg.precisionPrior * (intState.muGradY - cfg.priorGradY);
+
+    var gradMuTemp = -cfg.precisionThermal * s.tempError + cfg.precisionPrior * (intState.muTemp - cfg.priorTemp);
+
+    // 梯度下降步进更新
+    var rate = cfg.learningRateMu * dt * 5.0;
+    intState.muFood = Math.max(0.0, Math.min(2.5, intState.muFood - rate * gradMuFood));
+    intState.muGradX = Math.max(-1.5, Math.min(1.5, intState.muGradX - rate * gradMuGx));
+    intState.muGradY = Math.max(-1.5, Math.min(1.5, intState.muGradY - rate * gradMuGy));
+    intState.muTemp = Math.max(0.0, Math.min(1.5, intState.muTemp - rate * gradMuTemp));
+  };
+
+  /**
+   * 具身行动（Action）：马尔可夫毯外层执行器对变分自由能执行梯度下降
+   * da/dt = -κ_a ∇_a F
+   * 物理反射弧：摆动方向对齐内部推断的最优营养梯度，推进推力由饥饿/惊异度驱动
+   */
+  FepSimulation.prototype.updateAction = function (dt) {
+    var cfg = this.config;
+    var ag = this.agent;
+    var act = this.active;
+    var intState = this.internal;
+
+    if (cfg.learningRateAct <= 0.001) {
+      act.thrust = 0.0;
+      act.steer = 0.0;
+      return;
+    }
+
+    // 内部信念所推测的最佳环境梯度方向
+    var inferredGradMagnitude = Math.hypot(intState.muGradX, intState.muGradY);
+    var targetHeadingOffset = Math.atan2(intState.muGradY, intState.muGradX);
+
+    // 转化为机体自身朝向的偏转角力矩
+    var currentHeading = ag.angle;
+    var desiredAbsoluteAngle = currentHeading + targetHeadingOffset;
+    var angleError = Math.atan2(Math.sin(desiredAbsoluteAngle - currentHeading), Math.cos(desiredAbsoluteAngle - currentHeading));
+
+    // 转向执行器（主动消除方向预测误差）
+    var targetSteer = Math.max(-1.0, Math.min(1.0, angleError * 1.6));
+    act.steer += (targetSteer - act.steer) * Math.min(1.0, cfg.learningRateAct * dt * 8.0);
+
+    // 推进执行器（由食物短缺感与梯度清晰度共同决定）
+    var hungerDrive = Math.max(0.0, cfg.priorFood - intState.muFood);
+    var targetThrust = Math.min(1.2, hungerDrive * 1.5 + inferredGradMagnitude * 0.8);
+    // 如果身处危险高温区，激发生存逃逸推力
+    if (ag.internalTemp > 0.7) {
+      targetThrust = 1.4;
+    }
+    act.thrust += (targetThrust - act.thrust) * Math.min(1.0, cfg.learningRateAct * dt * 6.0);
+
+    // 鞭毛高频拍打波动
+    var beatSpeed = 8.0 + act.thrust * 18.0;
+    for (var j = 0; j < cfg.numActuators; j++) {
+      act.ciliaBeats[j] = Math.sin(this.external.time * beatSpeed + j * 1.57);
+    }
+  };
+
+  /**
+   * 物理与朗之万动力学更新（微观热碰撞 + 宏观黏滞阻尼 + 执行器推力）
+   */
+  FepSimulation.prototype.updatePhysics = function (dt) {
+    var cfg = this.config;
+    var ag = this.agent;
+    var act = this.active;
+
+    // 1. 主动推进力与力矩
+    var thrustForce = act.thrust * 140.0;
+    var steerTorque = act.steer * 95.0;
+
+    var fx = Math.cos(ag.angle) * thrustForce;
+    var fy = Math.sin(ag.angle) * thrustForce;
+
+    // 2. 朗之万微观热浴碰撞随机力（Brownian thermal kicks）
+    var brownianSigma = Math.sqrt(2.0 * cfg.thermalNoiseD * cfg.dragLinear);
+    var kickX = (Math.random() - 0.5) * 2.0 * brownianSigma * 30.0;
+    var kickY = (Math.random() - 0.5) * 2.0 * brownianSigma * 30.0;
+    var kickRot = (Math.random() - 0.5) * 2.0 * brownianSigma * 15.0;
+
+    // 3. 线速度积分（牛顿第二定律 + 流体阻尼）
+    var ax = (fx - cfg.dragLinear * ag.vx + kickX) / cfg.mass;
+    var ay = (fy - cfg.dragLinear * ag.vy + kickY) / cfg.mass;
+
+    ag.vx += ax * dt;
+    ag.vy += ay * dt;
+    ag.x += ag.vx * dt;
+    ag.y += ag.vy * dt;
+
+    // 边界软弹性反弹
+    var pad = ag.radius + 15;
+    if (ag.x < pad) { ag.x = pad; ag.vx = Math.abs(ag.vx) * 0.4; }
+    if (ag.x > cfg.arenaWidth - pad) { ag.x = cfg.arenaWidth - pad; ag.vx = -Math.abs(ag.vx) * 0.4; }
+    if (ag.y < pad) { ag.y = pad; ag.vy = Math.abs(ag.vy) * 0.4; }
+    if (ag.y > cfg.arenaHeight - pad) { ag.y = cfg.arenaHeight - pad; ag.vy = -Math.abs(ag.vy) * 0.4; }
+
+    // 4. 角速度积分
+    var alphaRot = (steerTorque - cfg.dragAngular * ag.omega + kickRot) / cfg.inertia;
+    ag.omega += alphaRot * dt;
+    ag.angle += ag.omega * dt;
+
+    // 5. 内部温度代谢平衡
+    var localEnv = this.sampleEnvironment(ag.x, ag.y);
+    ag.internalTemp += (localEnv.temp - ag.internalTemp) * dt * 0.8;
+
+    // 6. 耗散功率与热量（非平衡热力学度量）
+    var powerMechanical = cfg.dragLinear * (ag.vx * ag.vx + ag.vy * ag.vy);
+    var powerActive = act.thrust * 45.0 + Math.abs(act.steer) * 25.0;
+    var powerNeural = (cfg.learningRateMu) * (
+      Math.abs(this.internal.muFood - cfg.priorFood) +
+      Math.abs(this.internal.muGradX) +
+      Math.abs(this.internal.muGradY)
+    ) * 15.0;
+
+    this.metrics.dissipatedPower = powerMechanical + powerActive + powerNeural;
+    this.metrics.totalDissipatedHeat += this.metrics.dissipatedPower * dt;
+
+    // 7. 吉布斯信息熵
+    var piTotal = Math.max(1e-3, cfg.precisionPrior);
+    this.metrics.gibbsEntropy = 0.5 * Math.log(2.0 * Math.PI * Math.E / piTotal);
+  };
+
+  /**
+   * 检验并统计马尔可夫毯的条件独立性（Markov Blanket Conditional Independence Check）
+   * 证明内部状态 μ 与外部隐藏状态 η 在给定感觉 s 与动作 a 时严格条件独立
+   */
+  FepSimulation.prototype.updateBlanketCoherence = function () {
+    var h = this.history;
+    var ext = this.external;
+    var s = this.sensory;
+    var intState = this.internal;
+
+    // 采样外部隐藏总距离
+    var nearestFoodDist = 999.0;
+    for (var i = 0; i < ext.foodSources.length; i++) {
+      var d = Math.hypot(this.agent.x - ext.foodSources[i].x, this.agent.y - ext.foodSources[i].y);
+      if (d < nearestFoodDist) nearestFoodDist = d;
+    }
+
+    var meanSensory = 0.0;
+    for (var k = 0; k < s.cilia.length; k++) meanSensory += s.cilia[k];
+    meanSensory /= s.cilia.length;
+
+    h.eta.push(nearestFoodDist);
+    h.sensory.push(meanSensory);
+    h.internal.push(intState.muFood);
+
+    if (h.eta.length > h.maxLen) {
+      h.eta.shift();
+      h.sensory.shift();
+      h.internal.shift();
+    }
+
+    if (h.eta.length >= 20) {
+      // 计算 μ 与 η 的偏相关系数（控制感觉 s 之后）
+      // r_12.3 = (r_12 - r_13 * r_23) / sqrt((1 - r_13^2)(1 - r_23^2))
+      var rEtaMu = computeCorr(h.eta, h.internal);
+      var rEtaS = computeCorr(h.eta, h.sensory);
+      var rMuS = computeCorr(h.internal, h.sensory);
+
+      var denom = Math.sqrt(Math.max(1e-4, (1.0 - rEtaS * rEtaS) * (1.0 - rMuS * rMuS)));
+      var partialCorr = (rEtaMu - rEtaS * rMuS) / denom;
+      if (isNaN(partialCorr)) partialCorr = 0.02;
+
+      this.metrics.markovIsolationResidual = Math.abs(partialCorr);
+      // 条件独立性指数接近 1.0 说明马尔可夫毯隔绝完好
+      this.metrics.blanketCoherence = Math.max(0.0, Math.min(1.0, 1.0 - this.metrics.markovIsolationResidual));
+    }
+  };
+
+  function computeCorr(arrX, arrY) {
+    var n = arrX.length;
+    var sumX = 0, sumY = 0;
+    for (var i = 0; i < n; i++) {
+      sumX += arrX[i];
+      sumY += arrY[i];
+    }
+    var meanX = sumX / n;
+    var meanY = sumY / n;
+    var num = 0, denX = 0, denY = 0;
+    for (var j = 0; j < n; j++) {
+      var dx = arrX[j] - meanX;
+      var dy = arrY[j] - meanY;
+      num += dx * dy;
+      denX += dx * dx;
+      denY += dy * dy;
+    }
+    if (denX * denY < 1e-8) return 0.0;
+    return num / Math.sqrt(denX * denY);
+  }
+
+  /**
+   * 动力学主单步推进（Step）
+   */
+  FepSimulation.prototype.step = function (dt) {
+    if (typeof dt !== 'number' || dt <= 0.0) dt = 0.016;
+    if (dt > 0.05) dt = 0.05;
+
+    this.external.time += dt;
+
+    // 漂移动态营养源
+    var ext = this.external;
+    for (var i = 0; i < ext.foodSources.length; i++) {
+      var f = ext.foodSources[i];
+      f.x += f.vx;
+      f.y += f.vy;
+      if (f.x < 100 || f.x > this.config.arenaWidth - 100) f.vx *= -1;
+      if (f.y < 100 || f.y > this.config.arenaHeight - 100) f.vy *= -1;
+    }
+
+    // 1. 感觉更新
+    this.updateSensoryStates();
+
+    // 2. 自由能计算
+    this.computeFreeEnergy();
+
+    // 3. 知觉推断（更新信念）
+    this.updatePerception(dt);
+
+    // 4. 具身行动（摆动推进器）
+    this.updateAction(dt);
+
+    // 5. 宏观物理与微观朗之万推进
+    this.updatePhysics(dt);
+
+    // 6. 马尔可夫毯隔绝度检验
+    this.updateBlanketCoherence();
+
+    return this.getTelemetry();
+  };
+
+  /**
+   * 获取遥测读数
+   */
+  FepSimulation.prototype.getTelemetry = function () {
+    return {
+      freeEnergy: this.internal.freeEnergy,
+      accuracyCost: this.internal.accuracyCost,
+      complexityCost: this.internal.complexityCost,
+      shannonSurprise: this.internal.shannonSurprise,
+      boundGap: this.internal.freeEnergy - this.internal.shannonSurprise,
+      blanketCoherence: this.metrics.blanketCoherence,
+      dissipatedPower: this.metrics.dissipatedPower,
+      totalDissipatedHeat: this.metrics.totalDissipatedHeat,
+      gibbsEntropy: this.metrics.gibbsEntropy,
+      muFood: this.internal.muFood,
+      muTemp: this.internal.muTemp,
+      thrust: this.active.thrust,
+      steer: this.active.steer,
+      agentX: this.agent.x,
+      agentY: this.agent.y,
+      currentMode: this.currentMode
+    };
+  };
+
+  /**
+   * 切换认知与精神病理学模式
+   */
+  FepSimulation.prototype.setMode = function (modeKey) {
+    this.currentMode = modeKey;
+    var cfg = this.config;
+
+    switch (modeKey) {
+      case 'healthy':
+        // 健康常态稳态
+        cfg.precisionSensory = 1.2;
+        cfg.precisionPrior = 1.0;
+        cfg.precisionThermal = 1.5;
+        cfg.learningRateMu = 1.2;
+        cfg.learningRateAct = 1.0;
+        cfg.thermalNoiseD = 0.12;
+        break;
+
+      case 'delusion':
+        // 偏执幻觉（先验超强精度 Π_μ >> Π_s）：
+        // 内部顽固坚信存在虚妄目标，彻底无视感觉误差与现实障碍
+        cfg.precisionSensory = 0.15;
+        cfg.precisionPrior = 5.5;
+        cfg.precisionThermal = 0.2;
+        cfg.learningRateMu = 0.2;
+        cfg.learningRateAct = 1.4;
+        cfg.thermalNoiseD = 0.10;
+        break;
+
+      case 'autism':
+        // 感觉过载（感觉超强精度 Π_s >> Π_μ）：
+        // 微小的热噪声引发剧烈的预测误差脉冲放电，导致行为抽搐与防御僵直
+        cfg.precisionSensory = 6.0;
+        cfg.precisionPrior = 0.25;
+        cfg.precisionThermal = 4.0;
+        cfg.learningRateMu = 2.4;
+        cfg.learningRateAct = 0.35;
+        cfg.thermalNoiseD = 0.22;
+        break;
+
+      case 'paralysis':
+        // 具身麻痹（行动能力丧失 κ_a = 0）：
+        // 智能体无法改变物理环境，只能完全靠极速知觉更新来强行说服自己接受残酷现实
+        cfg.precisionSensory = 1.4;
+        cfg.precisionPrior = 0.8;
+        cfg.precisionThermal = 1.5;
+        cfg.learningRateMu = 2.2;
+        cfg.learningRateAct = 0.0; // 封锁行动
+        cfg.thermalNoiseD = 0.12;
+        break;
+
+      case 'dissolution':
+        // 热力学解体与死亡（自由能最小化机制崩溃）：
+        // 主动与知觉完全停止，马尔可夫毯破裂，内部粒子被环境高熵彻底吞噬
+        cfg.precisionSensory = 0.02;
+        cfg.precisionPrior = 0.01;
+        cfg.learningRateMu = 0.0;
+        cfg.learningRateAct = 0.0;
+        cfg.thermalNoiseD = 0.65; // 高温热撕裂
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  /**
+   * 用户物理交互：投放外部营养或注入热冲击
+   */
+  FepSimulation.prototype.injectStimulus = function (x, y, type) {
+    if (type === 'food') {
+      this.external.foodSources.push({
+        id: Date.now(),
+        x: x,
+        y: y,
+        radius: 80,
+        intensity: 1.3,
+        vx: (Math.random() - 0.5) * 0.1,
+        vy: (Math.random() - 0.5) * 0.1
+      });
+      if (this.external.foodSources.length > 4) {
+        this.external.foodSources.shift();
+      }
+    } else if (type === 'heat') {
+      this.external.hazards.push({
+        id: Date.now(),
+        x: x,
+        y: y,
+        radius: 75,
+        intensity: 1.5,
+        temp: 0.98
+      });
+      if (this.external.hazards.length > 3) {
+        this.external.hazards.shift();
+      }
+    }
+  };
+
+  return {
+    FepSimulation: FepSimulation,
+    DEFAULT_CONFIG: DEFAULT_CONFIG
+  };
+}));
+
+  </script>
+  <script>
+/**
+ * works/fep/ui.js
+ * 
+ * 《心智的自由能》界面渲染与多学科交互控制器
+ * 联动具身生态物理场、变分自由能曲面、神经放电脉冲与五大多学科透镜
+ */
+
+(function () {
+  'use strict';
+
+  var sim = null;
+  var isPlaying = true;
+  var currentLens = 'overview';
+  var currentTool = 'food';
+
+  // Canvas 引用与上下文
+  var canvasPhys = null;
+  var ctxPhys = null;
+  var canvasAnalysis = null;
+  var ctxAnalysis = null;
+
+  // 历史时间序列缓冲区（用于示波谱绘制）
+  var historyLen = 120;
+  var timeSeries = {
+    freeEnergy: new Float64Array(historyLen),
+    surprise: new Float64Array(historyLen),
+    accuracy: new Float64Array(historyLen),
+    complexity: new Float64Array(historyLen),
+    heatRate: new Float64Array(historyLen),
+    spikes: Array.from({ length: 8 }, function () { return new Float64Array(historyLen); })
+  };
+
+  // 背景微观朗之万热浴粒子群
+  var thermalParticles = [];
+  var numThermalParticles = 90;
+
+  function initThermalParticles(w, h) {
+    thermalParticles = [];
+    for (var i = 0; i < numThermalParticles; i++) {
+      thermalParticles.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: (Math.random() - 0.5) * 1.5,
+        size: Math.random() * 2.0 + 1.0,
+        alpha: Math.random() * 0.35 + 0.15
+      });
+    }
+  }
+
+  /**
+   * DOM 加载后初始化
+   */
+  function init() {
+    var FepCore = window.FepCore;
+    if (!FepCore || !FepCore.FepSimulation) {
+      console.error('FepCore 核心库未载入');
+      return;
+    }
+
+    sim = new FepCore.FepSimulation();
+
+    canvasPhys = document.getElementById('canvas-physical');
+    ctxPhys = canvasPhys.getContext('2d');
+    canvasAnalysis = document.getElementById('canvas-analysis');
+    ctxAnalysis = canvasAnalysis.getContext('2d');
+
+    initThermalParticles(canvasPhys.width, canvasPhys.height);
+
+    bindEvents();
+    syncUIWithConfig();
+
+    // 启动 60 FPS 渲染主循环
+    requestAnimationFrame(renderLoop);
+  }
+
+  /**
+   * 绑定所有交互事件
+   */
+  function bindEvents() {
+    // 1. 物理画布交互（投放营养 / 热害）
+    function handleCanvasInteraction(e) {
+      var rect = canvasPhys.getBoundingClientRect();
+      var scaleX = canvasPhys.width / rect.width;
+      var scaleY = canvasPhys.height / rect.height;
+      var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      var x = (clientX - rect.left) * scaleX;
+      var y = (clientY - rect.top) * scaleY;
+
+      var toolToUse = currentTool;
+      if (e.button === 2) toolToUse = 'heat'; // 右键强制热害
+
+      sim.injectStimulus(x, y, toolToUse);
+    }
+
+    canvasPhys.addEventListener('mousedown', function (e) {
+      if (e.button === 2) e.preventDefault();
+      handleCanvasInteraction(e);
+    });
+
+    canvasPhys.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+    });
+
+    canvasPhys.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      handleCanvasInteraction(e);
+    }, { passive: false });
+
+    // 2. 顶部微调工具按钮
+    var btnToolFood = document.getElementById('btn-tool-food');
+    var btnToolHeat = document.getElementById('btn-tool-heat');
+    var btnKickNoise = document.getElementById('btn-kick-noise');
+
+    if (btnToolFood && btnToolHeat) {
+      btnToolFood.addEventListener('click', function () {
+        currentTool = 'food';
+        btnToolFood.classList.add('active');
+        btnToolHeat.classList.remove('active');
+      });
+      btnToolHeat.addEventListener('click', function () {
+        currentTool = 'heat';
+        btnToolHeat.classList.add('active');
+        btnToolFood.classList.remove('active');
+      });
+    }
+
+    if (btnKickNoise) {
+      btnKickNoise.addEventListener('click', function () {
+        // 瞬时热冲击：打散智能体内部信念，观察其恢复
+        sim.internal.muFood = Math.random() * 2.0;
+        sim.agent.vx += (Math.random() - 0.5) * 120.0;
+        sim.agent.vy += (Math.random() - 0.5) * 120.0;
+      });
+    }
+
+    // 3. 多学科透镜切换 Tabs
+    var tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        tabBtns.forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        currentLens = btn.getAttribute('data-lens');
+      });
+    });
+
+    // 4. 模式预设按钮
+    var presetBtns = document.querySelectorAll('.btn-preset');
+    presetBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        presetBtns.forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var mode = btn.getAttribute('data-mode');
+        sim.setMode(mode);
+        syncUIWithConfig();
+      });
+    });
+
+    // 5. 参数滑块绑定
+    bindSlider('range-precision-sensory', 'val-disp-sensory', function (val) {
+      sim.config.precisionSensory = val;
+    });
+    bindSlider('range-precision-prior', 'val-disp-prior', function (val) {
+      sim.config.precisionPrior = val;
+    });
+    bindSlider('range-rate-mu', 'val-disp-mu', function (val) {
+      sim.config.learningRateMu = val;
+    });
+    bindSlider('range-rate-act', 'val-disp-act', function (val) {
+      sim.config.learningRateAct = val;
+    });
+    bindSlider('range-noise-dt', 'val-disp-noise', function (val) {
+      sim.config.thermalNoiseD = val;
+    });
+
+    // 6. 播放控制
+    var btnToggle = document.getElementById('btn-toggle-play');
+    var btnStep = document.getElementById('btn-step-frame');
+    var btnReset = document.getElementById('btn-reset-sim');
+    var statusText = document.getElementById('playback-status-text');
+
+    if (btnToggle) {
+      btnToggle.addEventListener('click', function () {
+        isPlaying = !isPlaying;
+        btnToggle.textContent = isPlaying ? '暂停推演' : '继续推演';
+        btnToggle.classList.toggle('primary', isPlaying);
+        if (statusText) {
+          statusText.textContent = isPlaying ? '状态：连续非平衡态推演中 | 帧率: 60 FPS' : '状态：已暂停 | 等待单步或继续';
+        }
+      });
+    }
+
+    if (btnStep) {
+      btnStep.addEventListener('click', function () {
+        isPlaying = false;
+        if (btnToggle) {
+          btnToggle.textContent = '继续推演';
+          btnToggle.classList.remove('primary');
+        }
+        stepSimulation(0.016);
+      });
+    }
+
+    if (btnReset) {
+      btnReset.addEventListener('click', function () {
+        sim.reset();
+        syncUIWithConfig();
+      });
+    }
+  }
+
+  function bindSlider(sliderId, dispId, callback) {
+    var slider = document.getElementById(sliderId);
+    var disp = document.getElementById(dispId);
+    if (!slider || !disp) return;
+    slider.addEventListener('input', function () {
+      var val = parseFloat(slider.value);
+      disp.textContent = val.toFixed(2);
+      callback(val);
+    });
+  }
+
+  function syncUIWithConfig() {
+    var cfg = sim.config;
+    setSlider('range-precision-sensory', 'val-disp-sensory', cfg.precisionSensory);
+    setSlider('range-precision-prior', 'val-disp-prior', cfg.precisionPrior);
+    setSlider('range-rate-mu', 'val-disp-mu', cfg.learningRateMu);
+    setSlider('range-rate-act', 'val-disp-act', cfg.learningRateAct);
+    setSlider('range-noise-dt', 'val-disp-noise', cfg.thermalNoiseD);
+  }
+
+  function setSlider(sliderId, dispId, val) {
+    var slider = document.getElementById(sliderId);
+    var disp = document.getElementById(dispId);
+    if (slider) slider.value = val;
+    if (disp) disp.textContent = Number(val).toFixed(2);
+  }
+
+  /**
+   * 单步执行与遥测数据入队
+   */
+  function stepSimulation(dt) {
+    var telem = sim.step(dt);
+
+    // 滚动更新历史时间序列
+    shiftArray(timeSeries.freeEnergy, telem.freeEnergy);
+    shiftArray(timeSeries.surprise, telem.shannonSurprise);
+    shiftArray(timeSeries.accuracy, telem.accuracyCost);
+    shiftArray(timeSeries.complexity, telem.complexityCost);
+    shiftArray(timeSeries.heatRate, telem.dissipatedPower);
+
+    for (var i = 0; i < 8; i++) {
+      shiftArray(timeSeries.spikes[i], sim.sensory.spikeRates[i]);
+    }
+
+    updateTelemetryDOM(telem);
+  }
+
+  function shiftArray(arr, newVal) {
+    for (var i = 0; i < arr.length - 1; i++) {
+      arr[i] = arr[i + 1];
+    }
+    arr[arr.length - 1] = newVal;
+  }
+
+  /**
+   * 更新 DOM 遥测卡片
+   */
+  function updateTelemetryDOM(telem) {
+    var elF = document.getElementById('val-free-energy');
+    var elFSub = document.getElementById('sub-free-energy');
+    var elS = document.getElementById('val-surprise');
+    var elSSub = document.getElementById('sub-surprise');
+    var elB = document.getElementById('val-blanket');
+    var elBSub = document.getElementById('sub-blanket');
+    var elH = document.getElementById('val-power');
+    var elHSub = document.getElementById('sub-power');
+
+    if (elF) elF.textContent = telem.freeEnergy.toFixed(3);
+    if (elFSub) elFSub.textContent = '准确度: ' + telem.accuracyCost.toFixed(2) + ' | 复杂度: ' + telem.complexityCost.toFixed(2);
+
+    if (elS) elS.textContent = telem.shannonSurprise.toFixed(3);
+    if (elSSub) {
+      var gap = Math.max(0.0, telem.boundGap);
+      elSSub.textContent = '上界保证裕度 ΔF: +' + gap.toFixed(3) + ' (F ≥ -ln p)';
+    }
+
+    if (elB) elB.textContent = (telem.blanketCoherence * 100).toFixed(1) + '%';
+    if (elBSub) elBSub.textContent = '条件独立偏相关残留: ' + (1.0 - telem.blanketCoherence).toFixed(3);
+
+    if (elH) elH.textContent = telem.dissipatedPower.toFixed(2) + ' W';
+    if (elHSub) elHSub.textContent = '累积耗散热: ' + telem.totalDissipatedHeat.toFixed(1) + ' J | 吉布斯熵: ' + telem.gibbsEntropy.toFixed(2);
+  }
+
+  /**
+   * 主渲染循坏
+   */
+  function renderLoop() {
+    if (isPlaying) {
+      stepSimulation(0.016);
+    }
+
+    renderPhysicalCanvas();
+    renderAnalysisCanvas();
+
+    requestAnimationFrame(renderLoop);
+  }
+
+  /**
+   * ==========================================================================
+   * 渲染视窗 A：具身生态物理场与马尔可夫微囊泡
+   * ==========================================================================
+   */
+  function renderPhysicalCanvas() {
+    var ctx = ctxPhys;
+    var w = canvasPhys.width;
+    var h = canvasPhys.height;
+
+    // 清屏与底色
+    ctx.fillStyle = '#050813';
+    ctx.fillRect(0, 0, w, h);
+
+    // 1. 朗之万微观热浴粒子流动
+    renderThermalBath(ctx, w, h);
+
+    // 2. 连续营养等值线与热毒斑块
+    renderEnvironmentalFields(ctx);
+
+    // 3. 渲染具身智能体与马尔可夫毯
+    renderEmbodiedAgent(ctx);
+  }
+
+  function renderThermalBath(ctx, w, h) {
+    var noise = sim.config.thermalNoiseD;
+    ctx.save();
+    for (var i = 0; i < thermalParticles.length; i++) {
+      var p = thermalParticles[i];
+      p.x += p.vx * (1.0 + noise * 4.0);
+      p.y += p.vy * (1.0 + noise * 4.0);
+      if (p.x < 0) p.x = w;
+      if (p.x > w) p.x = 0;
+      if (p.y < 0) p.y = h;
+      if (p.y > h) p.y = 0;
+
+      ctx.fillStyle = 'rgba(100, 140, 220, ' + (p.alpha * (0.4 + noise)) + ')';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function renderEnvironmentalFields(ctx) {
+    var ext = sim.external;
+
+    // 营养源（绿色发光渐变）
+    for (var i = 0; i < ext.foodSources.length; i++) {
+      var f = ext.foodSources[i];
+      var gradFood = ctx.createRadialGradient(f.x, f.y, 5, f.x, f.y, f.radius);
+      gradFood.addColorStop(0, 'rgba(34, 197, 94, 0.45)');
+      gradFood.addColorStop(0.5, 'rgba(34, 197, 94, 0.18)');
+      gradFood.addColorStop(1, 'rgba(34, 197, 94, 0.0)');
+
+      ctx.fillStyle = gradFood;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.radius, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // 核心标记
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 8, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      ctx.fillStyle = '#86efac';
+      ctx.font = '10px monospace';
+      ctx.fillText('η_food ' + (i + 1), f.x - 20, f.y - 12);
+    }
+
+    // 热毒危害场（红橙色警告辐射）
+    for (var j = 0; j < ext.hazards.length; j++) {
+      var hz = ext.hazards[j];
+      var gradHz = ctx.createRadialGradient(hz.x, hz.y, 5, hz.x, hz.y, hz.radius);
+      gradHz.addColorStop(0, 'rgba(239, 68, 68, 0.5)');
+      gradHz.addColorStop(0.6, 'rgba(249, 115, 22, 0.2)');
+      gradHz.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
+
+      ctx.fillStyle = gradHz;
+      ctx.beginPath();
+      ctx.arc(hz.x, hz.y, hz.radius, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(hz.x, hz.y, 10, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      ctx.fillStyle = '#fca5a5';
+      ctx.font = '10px monospace';
+      ctx.fillText('η_hazard', hz.x - 24, hz.y - 14);
+    }
+  }
+
+  function renderEmbodiedAgent(ctx) {
+    var ag = sim.agent;
+    var s = sim.sensory;
+    var act = sim.active;
+    var intState = sim.internal;
+    var coherence = sim.metrics.blanketCoherence;
+
+    ctx.save();
+    ctx.translate(ag.x, ag.y);
+
+    // 1. 主动鞭毛推进器（Active Flagella States: a）
+    renderActiveFlagella(ctx, ag, act);
+
+    // 2. 感觉纤毛阵列（Sensory Cilia States: s）
+    renderSensoryCilia(ctx, ag, s);
+
+    // 3. 马尔可夫毯隔绝薄膜（Markov Blanket Membrane）
+    renderMarkovBlanketMembrane(ctx, ag, coherence);
+
+    // 4. 内部心智信念核（Internal States: μ）
+    renderInternalMind(ctx, intState, ag);
+
+    ctx.restore();
+  }
+
+  function renderActiveFlagella(ctx, ag, act) {
+    var numAct = 4;
+    var angles = [
+      Math.PI - 0.7,
+      Math.PI - 0.25,
+      Math.PI + 0.25,
+      Math.PI + 0.7
+    ];
+
+    ctx.save();
+    ctx.rotate(ag.angle);
+
+    for (var i = 0; i < numAct; i++) {
+      var baseAng = angles[i];
+      var bx = Math.cos(baseAng) * (ag.radius - 2);
+      var by = Math.sin(baseAng) * (ag.radius - 2);
+
+      var beat = act.ciliaBeats[i];
+      var waveLen = 22 + act.thrust * 16;
+
+      ctx.strokeStyle = act.thrust > 0.2 ? '#f59e0b' : '#64748b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+
+      var midX = bx + Math.cos(baseAng) * (waveLen * 0.5) + Math.sin(baseAng) * (beat * 8.0);
+      var midY = by + Math.sin(baseAng) * (waveLen * 0.5) - Math.cos(baseAng) * (beat * 8.0);
+      var tipX = bx + Math.cos(baseAng) * waveLen - Math.sin(baseAng) * (beat * 12.0);
+      var tipY = by + Math.sin(baseAng) * waveLen + Math.cos(baseAng) * (beat * 12.0);
+
+      ctx.quadraticCurveTo(midX, midY, tipX, tipY);
+      ctx.stroke();
+
+      // 推进尾流微气泡
+      if (act.thrust > 0.3) {
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.4)';
+        ctx.beginPath();
+        ctx.arc(tipX + (Math.random() - 0.5) * 4, tipY + (Math.random() - 0.5) * 4, 2, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function renderSensoryCilia(ctx, ag, s) {
+    var numSens = 8;
+    ctx.save();
+    ctx.rotate(ag.angle);
+
+    for (var i = 0; i < numSens; i++) {
+      var ang = (2.0 * Math.PI * i) / numSens;
+      var bx = Math.cos(ang) * (ag.radius);
+      var by = Math.sin(ang) * (ag.radius);
+
+      var reading = s.cilia[i];
+      var ciliaLen = 14 + Math.min(22, reading * 16.0);
+      var tx = Math.cos(ang) * (ag.radius + ciliaLen);
+      var ty = Math.sin(ang) * (ag.radius + ciliaLen);
+
+      // 纤毛杆
+      ctx.strokeStyle = reading > 0.3 ? '#06b6d4' : '#334155';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+
+      // 纤毛受体顶端感受泡（发光亮度代表神经放电脉冲率）
+      var spikeRate = s.spikeRates[i];
+      var glowRadius = 3.0 + Math.min(5.0, spikeRate * 0.08);
+
+      ctx.fillStyle = spikeRate > 35 ? '#ef4444' : '#22d3ee';
+      ctx.beginPath();
+      ctx.arc(tx, ty, glowRadius, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function renderMarkovBlanketMembrane(ctx, ag, coherence) {
+    // 呼吸发光的双层磷脂样马尔可夫毯
+    var breath = Math.sin(sim.external.time * 3.5) * 1.5;
+    var r = ag.radius + breath;
+
+    var blanketColor = coherence > 0.75
+      ? 'rgba(16, 185, 129, ' + (0.5 + coherence * 0.4) + ')'
+      : 'rgba(239, 68, 68, ' + (0.3 + (1.0 - coherence) * 0.6) + ')';
+
+    ctx.save();
+    ctx.strokeStyle = blanketColor;
+    ctx.lineWidth = coherence > 0.75 ? 3.0 : 1.5;
+    ctx.setLineDash(coherence > 0.75 ? [] : [4, 4]); // 破裂时呈虚线断裂状
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, 2 * Math.PI);
+    ctx.stroke();
+
+    // 内层胞质半透明填充
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+    ctx.beginPath();
+    ctx.arc(0, 0, r - 2, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function renderInternalMind(ctx, intState, ag) {
+    // 内部生成模型核（颜色反映体温与饱腹感，大小反映预测信心）
+    var foodBelief = intState.muFood;
+    var tempBelief = intState.muTemp;
+
+    var mindRadius = 12 + Math.min(8, foodBelief * 6.0);
+
+    var mindGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, mindRadius);
+    if (tempBelief > 0.7) {
+      mindGrad.addColorStop(0, '#f87171');
+      mindGrad.addColorStop(1, 'rgba(239, 68, 68, 0.2)');
+    } else if (foodBelief > 0.6) {
+      mindGrad.addColorStop(0, '#38bdf8');
+      mindGrad.addColorStop(1, 'rgba(168, 85, 247, 0.2)');
+    } else {
+      mindGrad.addColorStop(0, '#facc15');
+      mindGrad.addColorStop(1, 'rgba(245, 158, 11, 0.2)');
+    }
+
+    ctx.fillStyle = mindGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, mindRadius, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // 内部信念推测的最佳环境梯度矢量箭头 (μ_gx, μ_gy)
+    ctx.save();
+    ctx.rotate(ag.angle);
+    var gx = intState.muGradX * 24.0;
+    var gy = intState.muGradY * 24.0;
+
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(gx, gy);
+    ctx.stroke();
+
+    ctx.fillStyle = '#e879f9';
+    ctx.beginPath();
+    ctx.arc(gx, gy, 3, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.restore();
+
+    // 核心标签
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('μ', 0, 3);
+  }
+
+  /**
+   * ==========================================================================
+   * 渲染视窗 B：变分自由能曲面与多学科感知示波谱
+   * ==========================================================================
+   */
+  function renderAnalysisCanvas() {
+    var ctx = ctxAnalysis;
+    var w = canvasAnalysis.width;
+    var h = canvasAnalysis.height;
+
+    // 清屏
+    ctx.fillStyle = '#050813';
+    ctx.fillRect(0, 0, w, h);
+
+    switch (currentLens) {
+      case 'overview':
+        renderOverviewLens(ctx, w, h);
+        break;
+      case 'thermo':
+        renderThermoLens(ctx, w, h);
+        break;
+      case 'info':
+        renderInfoLens(ctx, w, h);
+        break;
+      case 'neuro':
+        renderNeuroLens(ctx, w, h);
+        break;
+      case 'cyber':
+        renderCyberLens(ctx, w, h);
+        break;
+      default:
+        renderOverviewLens(ctx, w, h);
+        break;
+    }
+  }
+
+  /**
+   * 1. 综合总览透镜：变分自由能分解条形图 + 势能井滚落 + 时域曲线
+   */
+  function renderOverviewLens(ctx, w, h) {
+    var intState = sim.internal;
+
+    // 标题
+    drawPanelTitle(ctx, '综合总览透镜：变分自由能分解与势能曲面梯度流', 16, 22);
+
+    // 上部：变分自由能泛函实时分解 (Accuracy vs Complexity vs Surprise)
+    var barY = 48;
+    var barH = 26;
+    var barW = w - 40;
+
+    var totalF = Math.max(0.1, intState.freeEnergy);
+    var accRatio = Math.min(1.0, intState.accuracyCost / totalF);
+    var compRatio = Math.min(1.0 - accRatio, intState.complexityCost / totalF);
+
+    // 底槽
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(20, barY, barW, barH);
+
+    // 准确度代价（感官预测误差）
+    ctx.fillStyle = '#06b6d4';
+    ctx.fillRect(20, barY, barW * accRatio, barH);
+
+    // 复杂度代价（先验偏离度）
+    ctx.fillStyle = '#a855f7';
+    ctx.fillRect(20 + barW * accRatio, barY, barW * compRatio, barH);
+
+    // 香农惊异度上界标记线
+    var surpriseRatio = Math.min(1.0, intState.shannonSurprise / totalF);
+    var markX = 20 + barW * surpriseRatio;
+
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(markX, barY - 4);
+    ctx.lineTo(markX, barY + barH + 4);
+    ctx.stroke();
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = '10px monospace';
+    ctx.fillText('香农惊异度 -ln p(s) = ' + intState.shannonSurprise.toFixed(2), markX - 45, barY - 7);
+
+    // 标签
+    ctx.fillStyle = '#f1f5f9';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('准确度代价 (Accuracy Cost)', 26, barY + 17);
+    ctx.fillText('复杂度代价 (Complexity Cost)', 26 + barW * accRatio + 10, barY + 17);
+
+    // 中部：变分自由能势能井截面与当前信念点
+    var wellY = 160;
+    var wellH = 130;
+    drawPotentialWell(ctx, 20, wellY, barW, wellH, intState);
+
+    // 下部：双通道时域示波图（自由能 F(t) 与 香农惊异度 S(t)）
+    var chartY = 320;
+    var chartH = 175;
+    drawTimeSeriesChart(ctx, 20, chartY, barW, chartH);
+  }
+
+  function drawPotentialWell(ctx, x, y, w, h, intState) {
+    ctx.save();
+    ctx.fillStyle = '#0a0f20';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#1e2945';
+    ctx.strokeRect(x, y, w, h);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('自由能势能曲面 F(μ_food) 与极小值吸引子', x + 12, y + 18);
+
+    // 绘制二次抛物线势能井
+    ctx.beginPath();
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2.0;
+
+    var numPoints = 60;
+    var minVal = 999;
+    var minPx = 0, minPy = 0;
+
+    for (var i = 0; i <= numPoints; i++) {
+      var muVal = (i / numPoints) * 2.0; // 0.0 ~ 2.0
+      // 势能公式：0.5 * Pi_s * (s_mean - mu)^2 + 0.5 * Pi_p * (mu - mu_p)^2
+      var sMean = sim.sensory.cilia[0];
+      var fVal = 0.5 * sim.config.precisionSensory * Math.pow(sMean - muVal, 2) +
+                 0.5 * sim.config.precisionPrior * Math.pow(muVal - sim.config.priorFood, 2);
+
+      var px = x + 30 + (i / numPoints) * (w - 60);
+      var py = y + h - 20 - Math.min(h - 40, fVal * 22.0);
+
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+
+      if (fVal < minVal) {
+        minVal = fVal;
+        minPx = px;
+        minPy = py;
+      }
+    }
+    ctx.stroke();
+
+    // 标记当前心智信念点 μ_food（滚落在势能曲面上的小球）
+    var curMu = intState.muFood;
+    var curMuNorm = Math.max(0.0, Math.min(1.0, curMu / 2.0));
+    var curBallX = x + 30 + curMuNorm * (w - 60);
+    var curSMean = sim.sensory.cilia[0];
+    var curFVal = 0.5 * sim.config.precisionSensory * Math.pow(curSMean - curMu, 2) +
+                  0.5 * sim.config.precisionPrior * Math.pow(curMu - sim.config.priorFood, 2);
+    var curBallY = y + h - 20 - Math.min(h - 40, curFVal * 22.0);
+
+    // 渐变光晕
+    ctx.fillStyle = '#ec4899';
+    ctx.beginPath();
+    ctx.arc(curBallX, curBallY, 7, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '10px monospace';
+    ctx.fillText('当前信念 μ=' + curMu.toFixed(2), curBallX - 30, curBallY - 12);
+
+    ctx.restore();
+  }
+
+  function drawTimeSeriesChart(ctx, x, y, w, h) {
+    ctx.save();
+    ctx.fillStyle = '#0a0f20';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#1e2945';
+    ctx.strokeRect(x, y, w, h);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('实时示波：变分自由能 F(t) [青色] 严格覆盖 香农惊异度 -ln p(s) [金黄色]', x + 12, y + 18);
+
+    // 纵坐标网格
+    ctx.strokeStyle = 'rgba(30, 41, 69, 0.6)';
+    ctx.lineWidth = 1;
+    for (var g = 1; g <= 3; g++) {
+      var gy = y + (g / 4) * h;
+      ctx.beginPath();
+      ctx.moveTo(x, gy);
+      ctx.lineTo(x + w, gy);
+      ctx.stroke();
+    }
+
+    var maxVal = 6.0;
+
+    // 绘制惊异度 S(t)
+    ctx.beginPath();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.6;
+    for (var i = 0; i < historyLen; i++) {
+      var sx = x + (i / (historyLen - 1)) * w;
+      var sy = y + h - 10 - Math.min(h - 25, (timeSeries.surprise[i] / maxVal) * (h - 30));
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+
+    // 绘制变分自由能 F(t)
+    ctx.beginPath();
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 2.0;
+    for (var j = 0; j < historyLen; j++) {
+      var fx = x + (j / (historyLen - 1)) * w;
+      var fy = y + h - 10 - Math.min(h - 25, (timeSeries.freeEnergy[j] / maxVal) * (h - 30));
+      if (j === 0) ctx.moveTo(fx, fy);
+      else ctx.lineTo(fx, fy);
+    }
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  /**
+   * 2. 热力学透镜：非平衡稳态 (NESS) 流动、耗散功率与吉布斯熵
+   */
+  function renderThermoLens(ctx, w, h) {
+    drawPanelTitle(ctx, '统计物理透镜：非平衡态热力学、耗散结构与熵产率', 16, 22);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('“生命是一台抵抗熵增解体的耗散引擎：通过将高熵排向环境维持自身相空间稳态”', 18, 48);
+
+    // 上半部：耗散功率 Q̇(t) 示波图
+    var chartY = 70;
+    var chartH = 190;
+    var chartW = w - 36;
+
+    ctx.fillStyle = '#0a0f20';
+    ctx.fillRect(18, chartY, chartW, chartH);
+    ctx.strokeStyle = '#1e2945';
+    ctx.strokeRect(18, chartY, chartW, chartH);
+
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '11px monospace';
+    ctx.fillText('瞬时耗散功率 Q̇(t) (Mechanical + Neural + Active Work)', 28, chartY + 22);
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2.0;
+    for (var i = 0; i < historyLen; i++) {
+      var qx = 18 + (i / (historyLen - 1)) * chartW;
+      var qy = chartY + chartH - 15 - Math.min(chartH - 30, (timeSeries.heatRate[i] / 50.0) * (chartH - 30));
+      if (i === 0) ctx.moveTo(qx, qy);
+      else ctx.lineTo(qx, qy);
+    }
+    ctx.stroke();
+
+    // 下半部：相空间非平衡稳态概率分布环 (NESS Phase Density)
+    var phaseY = 285;
+    var phaseH = 215;
+    ctx.fillStyle = '#0a0f20';
+    ctx.fillRect(18, phaseY, chartW, phaseH);
+    ctx.strokeStyle = '#1e2945';
+    ctx.strokeRect(18, phaseY, chartW, phaseH);
+
+    ctx.fillStyle = '#10b981';
+    ctx.font = '11px monospace';
+    ctx.fillText('马尔可夫相空间概率流 (Probability Flux J = v·p - D∇p)', 28, phaseY + 22);
+
+    var cx = 18 + chartW * 0.5;
+    var cy = phaseY + phaseH * 0.55;
+
+    // 绘制相空间闭合环流
+    for (var r = 20; r <= 80; r += 20) {
+      ctx.strokeStyle = 'rgba(16, 185, 129, ' + (0.8 - r * 0.008) + ')';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r * 1.8, r, sim.agent.angle, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+
+    // 粒子状态在相空间的位置
+    var ag = sim.agent;
+    var stateX = cx + (ag.vx / 80.0) * 80;
+    var stateY = cy + (ag.vy / 80.0) * 50;
+
+    ctx.fillStyle = '#6ee7b7';
+    ctx.beginPath();
+    ctx.arc(stateX, stateY, 6, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.fillStyle = '#f1f5f9';
+    ctx.font = '10px monospace';
+    ctx.fillText('当前微观相空间态 (x, v)', stateX + 10, stateY);
+  }
+
+  /**
+   * 3. 信息论透镜：变分后验 q(μ) vs 先验 p(μ) 的 KL 散度与香农信息
+   */
+  function renderInfoLens(ctx, w, h) {
+    drawPanelTitle(ctx, '变分信息论透镜：变分后验 q(μ) 与 KL 散度几何', 16, 22);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('“变分自由能 F 严格等于相对熵 KL(q || p) 加上惊异度 -ln p(s)：认知收敛即 KL 归零”', 18, 48);
+
+    var areaY = 80;
+    var areaH = 400;
+    var areaW = w - 36;
+
+    ctx.fillStyle = '#0a0f20';
+    ctx.fillRect(18, areaY, areaW, areaH);
+    ctx.strokeStyle = '#1e2945';
+    ctx.strokeRect(18, areaY, areaW, areaH);
+
+    // 绘制高斯分布对比：先验 p(μ) [紫色] vs 变分后验 q(μ) [青色]
+    var baseLineY = areaY + areaH - 60;
+
+    // 先验分布 p(μ) ~ N(priorFood, 1/Pi_p)
+    var priorMean = sim.config.priorFood;
+    var priorSig = Math.sqrt(1.0 / Math.max(0.1, sim.config.precisionPrior));
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 2.0;
+    for (var x = 0; x <= areaW; x += 4) {
+      var muVal = (x / areaW) * 2.5;
+      var pDense = (1.0 / (priorSig * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((muVal - priorMean) / priorSig, 2));
+      var py = baseLineY - Math.min(areaH - 100, pDense * 120.0);
+      if (x === 0) ctx.moveTo(18 + x, py);
+      else ctx.lineTo(18 + x, py);
+    }
+    ctx.stroke();
+
+    // 变分信念分布 q(μ) ~ N(muFood, 1/(Pi_s + Pi_p))
+    var curMean = sim.internal.muFood;
+    var curSig = Math.sqrt(1.0 / Math.max(0.1, sim.config.precisionSensory + sim.config.precisionPrior));
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 2.5;
+    for (var k = 0; k <= areaW; k += 4) {
+      var muK = (k / areaW) * 2.5;
+      var qDense = (1.0 / (curSig * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((muK - curMean) / curSig, 2));
+      var qy = baseLineY - Math.min(areaH - 100, qDense * 120.0);
+      if (k === 0) ctx.moveTo(18 + k, qy);
+      else ctx.lineTo(18 + k, qy);
+    }
+    ctx.stroke();
+
+    // 图例说明
+    ctx.fillStyle = '#a855f7';
+    ctx.font = '11px monospace';
+    ctx.fillText('● 先验期望分布 p(μ) (Homeostatic Target)', 36, areaY + 30);
+
+    ctx.fillStyle = '#06b6d4';
+    ctx.fillText('● 变分后验信念 q(μ) (Subjective Belief)', 36, areaY + 50);
+
+    var klVal = 0.5 * (sim.config.precisionSensory + sim.config.precisionPrior) * Math.pow(curMean - priorMean, 2);
+    ctx.fillStyle = '#fde047';
+    ctx.font = '13px monospace';
+    ctx.fillText('当前信息发散度 D_KL(q || p) = ' + klVal.toFixed(3) + ' nats', 36, areaY + 80);
+  }
+
+  /**
+   * 4. 神经编码透镜：8 通道精度加权预测误差脉冲放电栅格图 (Raster Plot)
+   */
+  function renderNeuroLens(ctx, w, h) {
+    drawPanelTitle(ctx, '计算神经学透镜：8通道精度加权预测误差脉冲示波', 16, 22);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('“神经放电即是预测误差：ξ_i = Π_s · (s_i - g_i(μ))，突触更新为误差归零而服务”', 18, 48);
+
+    var plotY = 75;
+    var plotH = 415;
+    var plotW = w - 36;
+
+    ctx.fillStyle = '#0a0f20';
+    ctx.fillRect(18, plotY, plotW, plotH);
+    ctx.strokeStyle = '#1e2945';
+    ctx.strokeRect(18, plotY, plotW, plotH);
+
+    var rowH = plotH / 8;
+
+    for (var ch = 0; ch < 8; ch++) {
+      var ry = plotY + ch * rowH;
+
+      // 通道分隔线
+      ctx.strokeStyle = 'rgba(30, 41, 69, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(18, ry);
+      ctx.lineTo(18 + plotW, ry);
+      ctx.stroke();
+
+      // 通道名称
+      ctx.fillStyle = '#64748b';
+      ctx.font = '10px monospace';
+      ctx.fillText('Channel ' + (ch + 1) + ' (ξ_' + ch + ')', 26, ry + 16);
+
+      // 放电脉冲波形
+      ctx.beginPath();
+      ctx.strokeStyle = ch % 2 === 0 ? '#38bdf8' : '#a855f7';
+      ctx.lineWidth = 1.4;
+
+      for (var t = 0; t < historyLen; t++) {
+        var px = 18 + 120 + (t / (historyLen - 1)) * (plotW - 130);
+        var spikeVal = timeSeries.spikes[ch][t];
+        var py = ry + rowH - 6 - Math.min(rowH - 10, (spikeVal / 80.0) * (rowH - 10));
+
+        if (t === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+  }
+
+  /**
+   * 5. 具身控制论透镜：感知更新 (Perception) 与具身行动 (Action) 协同相图
+   */
+  function renderCyberLens(ctx, w, h) {
+    drawPanelTitle(ctx, '具身控制论透镜：知觉推断与主动执行的双螺旋闭环', 16, 22);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('“面对预测误差：知觉改变信念适应现实 (dμ/dt)，行动改变物理世界贴合先验 (da/dt)”', 18, 48);
+
+    var areaY = 80;
+    var areaH = 405;
+    var areaW = w - 36;
+
+    ctx.fillStyle = '#0a0f20';
+    ctx.fillRect(18, areaY, areaW, areaH);
+    ctx.strokeStyle = '#1e2945';
+    ctx.strokeRect(18, areaY, areaW, areaH);
+
+    var cx = 18 + areaW * 0.5;
+    var cy = areaY + areaH * 0.5;
+
+    // 绘制十字坐标系：X 轴为知觉更新速率 dμ/dt，Y 轴为行动执行推力 a_thrust
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(18, cy); ctx.lineTo(18 + areaW, cy);
+    ctx.moveTo(cx, areaY); ctx.lineTo(cx, areaY + areaH);
+    ctx.stroke();
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('知觉自适应：改变心智信念 (Perceptual Inference) →', cx + 20, cy - 10);
+    ctx.fillText('↑ 具身主动性：调动肌肉改造世界 (Active Control)', cx + 15, areaY + 25);
+
+    // 绘制双重梯度贡献轨迹
+    var actRate = sim.active.thrust;
+    var percRate = Math.abs(sim.internal.muFood - sim.config.priorFood) * sim.config.learningRateMu;
+
+    var targetPtX = cx + Math.min(areaW * 0.4, percRate * 100);
+    var targetPtY = cy - Math.min(areaH * 0.4, actRate * 160);
+
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.arc(targetPtX, targetPtY, 8, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(targetPtX, targetPtY);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '11px monospace';
+    ctx.fillText('动态协同工作点 (κ_μ ∇_μ F, κ_a ∇_a F)', targetPtX + 12, targetPtY + 4);
+  }
+
+  function drawPanelTitle(ctx, title, x, y) {
+    ctx.fillStyle = '#f1f5f9';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText(title, x, y);
+  }
+
+  // 暴露全局命名空间与自动化探针接口
+  window.FepUI = {
+    init: init
+  };
+
+  window.__probe = function () {
+    return {
+      sim: sim,
+      telem: sim ? sim.getTelemetry() : null,
+      isPlaying: isPlaying,
+      currentLens: currentLens,
+      currentTool: currentTool
+    };
+  };
+
+  // 页面就绪后自启动
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
+  </script>
+</body>
+</html>

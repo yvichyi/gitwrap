@@ -1,0 +1,2017 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>盖亚的经纬 —— 雏菊世界与行星生态气候稳态</title>
+  <style>
+/* ============================================================================
+ * daisyworld/style.css —— 《盖亚的经纬》行星生态系统样式表
+ * ==========================================================================*/
+
+:root {
+  --bg-space: #070913;
+  --bg-card: #0f1524;
+  --bg-card-hover: #162035;
+  --border-subtle: #202b44;
+  --border-focus: #3b82f6;
+  
+  --accent-gold: #f59e0b;
+  --accent-emerald: #10b981;
+  --accent-cyan: #06b6d4;
+  --accent-crimson: #ef4444;
+  
+  --daisy-white: #f8fafc;
+  --daisy-black: #1e293b;
+  --desert-ground: #d97706;
+  
+  --text-main: #f1f5f9;
+  --text-dim: #94a3b8;
+  --text-faint: #64748b;
+  
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-space);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  padding: 24px 16px;
+}
+
+.gaia-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 头部导航与标题 */
+.gaia-header {
+  background: linear-gradient(135deg, rgba(15, 21, 36, 0.95), rgba(20, 36, 28, 0.85));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.gaia-header::after {
+  content: "";
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.gaia-badge-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.gaia-glyph {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-gold);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+}
+
+.gaia-domain-tag {
+  font-size: 13px;
+  color: var(--accent-emerald);
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.gaia-cross-tag {
+  font-size: 13px;
+  color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.gaia-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(90deg, #ffffff 0%, #cbd5e1 50%, var(--accent-emerald) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+
+.gaia-question {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent-gold);
+  margin-bottom: 12px;
+}
+
+.gaia-subtitle {
+  font-size: 15px;
+  color: var(--text-dim);
+  max-width: 1100px;
+}
+
+.gaia-subtitle em {
+  font-style: normal;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* 核心仪表盘指标栏 */
+.gaia-dashboard {
+  display: grid;
+  grid-template-columns: 1.3fr 1.1fr 1fr 1fr;
+  gap: 16px;
+}
+
+.dash-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.card-label {
+  font-size: 13px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.temp-val-row, .dash-val-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.temp-val-main {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--accent-emerald);
+  text-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
+}
+
+.temp-val-slash {
+  font-size: 20px;
+  color: var(--text-faint);
+}
+
+.temp-val-dead {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--accent-crimson);
+}
+
+.dash-num {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.dash-unit {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.temp-bar-wrap {
+  width: 100%;
+  height: 6px;
+  background: #1a2238;
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.temp-fill-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, var(--accent-emerald), #ef4444);
+  width: 50%;
+  transition: width 0.3s ease;
+}
+
+.gaia-status-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+
+.badge-homeostasis {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.badge-collapse {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--accent-crimson);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+/* 覆盖率细分条目 */
+.cover-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.cover-item {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.cover-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot-white {
+  background: var(--daisy-white);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+}
+
+.dot-black {
+  background: #334155;
+  border: 1px solid #94a3b8;
+}
+
+.dot-ground {
+  background: var(--desert-ground);
+}
+
+.cover-name {
+  color: var(--text-dim);
+}
+
+.cover-item strong {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  color: #fff;
+}
+
+.dash-subtext {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 4px;
+}
+
+/* 主双视窗工作区 */
+.gaia-workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.viewport-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.viewport-header {
+  padding: 14px 20px;
+  background: rgba(15, 21, 36, 0.95);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vp-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #fff;
+}
+
+.vp-icon {
+  font-size: 16px;
+}
+
+.vp-hint {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.vp-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.vp-tab-btn {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border-subtle);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vp-tab-btn.active, .vp-tab-btn:hover {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-emerald);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.canvas-wrap {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #060810;
+  position: relative;
+}
+
+.canvas-wrap canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 球体与图表图例指示栏 */
+.globe-status-bar, .chart-legend-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 20px;
+  background: rgba(12, 16, 28, 0.95);
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-dim);
+  align-items: center;
+}
+
+.status-legend-item, .leg-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.swatch-white {
+  background: var(--daisy-white);
+  border: 1px solid #cbd5e1;
+}
+
+.swatch-black {
+  background: #1e293b;
+  border: 1px solid #475569;
+}
+
+.swatch-ground {
+  background: var(--desert-ground);
+}
+
+.leg-line {
+  display: inline-block;
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.line-gaia {
+  background: var(--accent-emerald);
+  box-shadow: 0 0 6px var(--accent-emerald);
+}
+
+.line-dead {
+  background: var(--accent-crimson);
+}
+
+.line-current {
+  background: var(--accent-gold);
+}
+
+/* 交互控制中心 */
+.gaia-controls-panel {
+  display: grid;
+  grid-template-columns: 1.1fr 1.2fr 1.3fr;
+  gap: 20px;
+}
+
+.control-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.grp-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.3px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 8px;
+}
+
+/* 滑块样式 */
+.slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slider-row label {
+  font-size: 13px;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+}
+
+.slider-row label strong {
+  color: var(--accent-gold);
+  font-family: var(--font-mono);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #1a2238;
+  border-radius: 3px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-emerald);
+  border: 2px solid #fff;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-emerald);
+  border: 2px solid #fff;
+}
+
+.slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.tick-key {
+  color: var(--accent-gold);
+}
+
+/* 按钮与交互条 */
+.time-flow-bar {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  background: #162035;
+  color: #fff;
+  transition: all 0.2s ease;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn:hover {
+  background: #202d4a;
+  border-color: var(--border-focus);
+}
+
+.action-toggle.active {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: var(--accent-emerald);
+  color: var(--accent-emerald);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.action-muted {
+  background: rgba(26, 34, 54, 0.6);
+  color: var(--text-dim);
+}
+
+.action-danger {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: var(--accent-crimson);
+}
+
+.action-danger:hover {
+  background: rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+
+/* 预设按钮网格 */
+.preset-btn-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preset-btn {
+  background: rgba(22, 32, 53, 0.8);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 42px;
+}
+
+.preset-btn:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: var(--accent-emerald);
+  color: #fff;
+}
+
+.perturb-btn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* 认识论折叠深潜 */
+.gaia-epistemology-details {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+}
+
+.gaia-details-summary {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+  color: var(--accent-gold);
+  user-select: none;
+}
+
+.sum-arrow {
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.gaia-epistemology-details[open] .sum-arrow {
+  transform: rotate(180deg);
+}
+
+.details-body {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.epist-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.epist-col h4 {
+  font-size: 15px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.epist-col p {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  line-height: 1.7;
+}
+
+/* ============================================================================
+ * 响应式媒体查询 (严格置于文件末尾)
+ * ==========================================================================*/
+@media (max-width: 1200px) {
+  .gaia-dashboard {
+    grid-template-columns: 1fr 1fr;
+  }
+  .gaia-controls-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .gaia-workspace {
+    grid-template-columns: 1fr;
+  }
+  .epist-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 12px 8px;
+  }
+  .gaia-header {
+    padding: 20px 16px;
+  }
+  .gaia-title {
+    font-size: 24px;
+  }
+  .gaia-dashboard {
+    grid-template-columns: 1fr;
+  }
+  .perturb-btn-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+  </style>
+</head>
+<body>
+<div class="gaia-container">
+  <!-- 头部导引 -->
+  <header class="gaia-header">
+    <div class="gaia-badge-bar">
+      <span class="gaia-glyph">L(t) ⇄ {B, W}</span>
+      <span class="gaia-domain-tag">交叉学科 · 行星系统科学</span>
+      <span class="gaia-cross-tag">天体物理 × 气候热力学 × 演化生态学 × 控制论稳态</span>
+    </div>
+    <h1 class="gaia-title">盖亚的经纬</h1>
+    <p class="gaia-question">“没有大脑的行星生物圈，怎样用两色花朵织出一台恒温机？”</p>
+    <p class="gaia-subtitle">
+      从暗弱年轻太阳到衰老主序星，恒星辐射剧增 250%。没有任何远见与意识的黑白雏菊，仅凭反照率与自然选择的微观互构，
+      竟将整个行星温度长年锚定在 <em>22.5°C</em> 黄金温区。操控恒星光度、扰动气候系统，亲见自组织负反馈的极限与灾变性翻转点。
+    </p>
+  </header>
+
+  <!-- 仪表盘核心态量 -->
+  <section class="gaia-dashboard" aria-label="行星系统核心指标">
+    <div class="dash-card temp-metric-card" id="cardTemp">
+      <div class="card-label">地表全球均温 (盖亚行星 / 死寂裸星)</div>
+      <div class="temp-val-row">
+        <span class="temp-val-main" id="metricPlanetTc">22.5°C</span>
+        <span class="temp-val-slash">/</span>
+        <span class="temp-val-dead" id="metricDeadTc">26.7°C</span>
+      </div>
+      <div class="temp-bar-wrap">
+        <div class="temp-target-marker" title="生物最适温度 22.5°C"></div>
+        <div class="temp-fill-bar" id="tempFillBar"></div>
+      </div>
+      <div class="gaia-status-badge badge-homeostasis" id="badgeStatus">
+        🌱 盖亚负反馈恒温自组织中 (温差抑制率 > 85%)
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="card-label">生物圈覆盖率 (白雏菊 / 黑雏菊 / 裸地)</div>
+      <div class="cover-breakdown">
+        <div class="cover-item">
+          <span class="cover-dot dot-white"></span>
+          <span class="cover-name">白菊(降温):</span>
+          <strong id="metricAw">40%</strong>
+        </div>
+        <div class="cover-item">
+          <span class="cover-dot dot-black"></span>
+          <span class="cover-name">黑菊(升温):</span>
+          <strong id="metricAb">28%</strong>
+        </div>
+        <div class="cover-item">
+          <span class="cover-dot dot-ground"></span>
+          <span class="cover-name">荒漠裸土:</span>
+          <strong id="metricAg">32%</strong>
+        </div>
+      </div>
+      <div class="dash-subtext">总植被覆盖率: <span id="metricTotalLife">68%</span> (Lotka-Volterra 空间竞争)</div>
+    </div>
+
+    <div class="dash-card">
+      <div class="card-label">恒星光度与有效辐射通量</div>
+      <div class="dash-val-row">
+        <span class="dash-num" id="metricLuminosity">1.00</span>
+        <span class="dash-unit">L / L_⊙ (太阳常数)</span>
+      </div>
+      <div class="dash-subtext">地表有效净通量: <span id="metricFlux">458.5</span> W/m² (吸收率 50%)</div>
+    </div>
+
+    <div class="dash-card">
+      <div class="card-label">行星宏观反照率 A_p 与负反馈增益</div>
+      <div class="dash-val-row">
+        <span class="dash-num" id="metricAlbedo">0.500</span>
+        <span class="dash-unit" id="metricFeedbackSign">动态负反馈调节</span>
+      </div>
+      <div class="dash-subtext">局部微气候温差梯度: ΔT_micro ≈ <span id="metricMicroDiff">9.5</span>°C</div>
+    </div>
+  </section>
+
+  <!-- 主双视窗工作区 -->
+  <main class="gaia-workspace">
+    <!-- 视窗 A: 行星生态球体与地表斑块微观演替 -->
+    <div class="viewport-box" id="boxGlobe">
+      <div class="viewport-header">
+        <div class="vp-title">
+          <span class="vp-icon">🌍</span>
+          <strong>行星地表生态球体与斑块微观演替 (Planetary Eco-Globe)</strong>
+        </div>
+        <div class="vp-actions">
+          <span class="vp-hint">点击球体拖拽视角 · 观察黑白斑块伴随光热的动态消长</span>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="globeCanvas" width="760" height="420"></canvas>
+      </div>
+      <!-- 球体下方状态指示条 -->
+      <div class="globe-status-bar">
+        <div class="status-legend-item">
+          <span class="swatch swatch-white"></span>
+          <span>白雏菊 (高反照率 α=0.75 冷却行星)</span>
+        </div>
+        <div class="status-legend-item">
+          <span class="swatch swatch-black"></span>
+          <span>黑雏菊 (低反照率 α=0.25 保温加热)</span>
+        </div>
+        <div class="status-legend-item">
+          <span class="swatch swatch-ground"></span>
+          <span>贫瘠荒漠 (中性反照率 α=0.50)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 视窗 B: 跨学科动态相图与恒温器对账谱 -->
+    <div class="viewport-box" id="boxChart">
+      <div class="viewport-header">
+        <div class="vp-title">
+          <span class="vp-icon">📈</span>
+          <strong>跨学科相图：盖亚恒温台地 vs 死寂行星分岔 (Bifurcation Spectrum)</strong>
+        </div>
+        <div class="vp-tabs">
+          <button class="vp-tab-btn active" id="tabBifurcation" data-view="bifurcation">稳态恒温台地</button>
+          <button class="vp-tab-btn" id="tabTimeseries" data-view="timeseries">实时动态时序</button>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="chartCanvas" width="760" height="420"></canvas>
+      </div>
+      <!-- 曲线注脚说明 -->
+      <div class="chart-legend-bar">
+        <span class="leg-item"><i class="leg-line line-gaia"></i> 盖亚有生命行星 (22.5°C 恒温台地)</span>
+        <span class="leg-item"><i class="leg-line line-dead"></i> 无生命死星 (Stefan-Boltzmann 直线暴晒)</span>
+        <span class="leg-item"><i class="leg-line line-current"></i> 当前运行工况点</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- 交互控制中心 -->
+  <section class="gaia-controls-panel" aria-label="实验台控制">
+    <!-- 控制组 1: 天体物理太阳光度与时光流转 -->
+    <div class="control-group">
+      <h3 class="grp-title">1. 天体物理恒星演化 (主序星光度 L)</h3>
+      <div class="slider-row">
+        <label for="sliderL">恒星光度 <em>L / L_⊙</em>: <strong id="valL">1.00</strong></label>
+        <input type="range" id="sliderL" min="0.60" max="1.60" step="0.005" value="1.00">
+        <div class="slider-ticks">
+          <span>0.6 (暗弱幼年太阳)</span>
+          <span class="tick-key" title="生命起源门槛 0.75">0.75 繁茂始期</span>
+          <span class="tick-key" title="翻转灾变点 1.55">1.55 灭绝翻转点</span>
+          <span>1.60 (晚期过热太阳)</span>
+        </div>
+      </div>
+
+      <div class="time-flow-bar">
+        <button class="action-btn action-toggle" id="btnPlayTime">▶ 恒星主序演化时光机 (缓慢增亮)</button>
+        <button class="action-btn action-muted" id="btnResetPlanet">↺ 重置初态</button>
+      </div>
+    </div>
+
+    <!-- 控制组 2: 假说预设与经典跨学科实验 -->
+    <div class="control-group">
+      <h3 class="grp-title">2. 经典跨学科科学假说验证预设</h3>
+      <div class="preset-btn-bar">
+        <button class="preset-btn" id="btnPresetGaiaHomeo" title="标准温和稳态演化：验证 22.5°C 恒温机制">
+          🌿 盖亚恒温机标准盛期 (L=1.0, 黑白共存平衡)
+        </button>
+        <button class="preset-btn" id="btnPresetColdStart" title="暗弱太阳早期：黑雏菊吸热拯救行星于冰封">
+          ❄️ 幼年暗弱太阳救赎 (L=0.75, 黑雏菊占领行星)
+        </button>
+        <button class="preset-btn" id="btnPresetTippingPoint" title="推入超临界光度：观察白雏菊崩溃与灼热相变">
+          🌋 临界翻转灾变 (L=1.58, 突破承受极值瞬间死寂)
+        </button>
+        <button class="preset-btn" id="btnPresetHysteresis" title="灭绝后的不可逆测试：即便光度拉回，缺少种子也无法重返宜居">
+          ⚠️ 滞后不可逆性实验 (灭绝后降低光度测试自愈极限)
+        </button>
+      </div>
+    </div>
+
+    <!-- 控制组 3: 气候与生态外生冲击脉冲 -->
+    <div class="control-group">
+      <h3 class="grp-title">3. 气候与生物圈外生冲击注入</h3>
+      <div class="perturb-btn-grid">
+        <button class="action-btn" id="btnPerturbVolcano" title="超级火山爆发注入硫酸盐气溶胶：骤增行星反照率">
+          🌋 火山气溶胶尘暴 (+0.1 反照率)
+        </button>
+        <button class="action-btn" id="btnPerturbGreenhouse" title="温室气体突发脉冲：外生加热行星">
+          ♨️ 温室效应脉冲 (+5°C 绝热升温)
+        </button>
+        <button class="action-btn" id="btnPerturbLocust" title="植食性蝗灾大爆发：清除一半雏菊生物量">
+          🦗 极端蝗灾修剪 (生物量 -50%)
+        </button>
+        <button class="action-btn action-danger" id="btnSterilizePlanet" title="彻底清除所有活体与种子库：转为纯死寂无生命对照星">
+          💀 绝对灭菌 (测试无生命纯物理基准)
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 认识论折叠深潜 -->
+  <details class="gaia-epistemology-details">
+    <summary class="gaia-details-summary">
+      <strong>认识论深潜：为什么说雏菊世界彻底击碎了“环境是死物、生命只懂适应”的传统学科壁垒？</strong>
+      <span class="sum-arrow">▾</span>
+    </summary>
+    <div class="details-body">
+      <div class="epist-grid">
+        <div class="epist-col">
+          <h4>1. 跨学科的范式革命：生命不是乘客，而是驾驶员</h4>
+          <p>
+            在 19 世纪传统自然科学的学科割裂中：<strong>天体物理学</strong>负责研究太阳演化，<strong>地球化学与气象学</strong>负责研究无机岩石与辐射传热，而<strong>达尔文生物学</strong>则教导我们“生物只能被动适应既有的物理环境”。
+          </p>
+          <p>
+            1983 年，詹姆斯·洛夫洛克（James Lovelock）与安德鲁·沃森（Andrew Watson）用这套优雅的<strong>雏菊世界（Daisyworld）模型</strong>震动了学界：
+            生命根本不是被动承载在地球这艘岩石飞船上的过客！当生物的微观生理特性（黑白反照率）与行星的宏观热平衡深度耦合时，<strong>生命演化本身就化作了行星恒温控制器的核心元件</strong>。
+          </p>
+        </div>
+        <div class="epist-col">
+          <h4>2. 无目的论的控制论奇迹与人类世（Anthropocene）警钟</h4>
+          <p>
+            批评者曾质疑：黑白雏菊又没有大脑，它们怎么可能“合谋”为了行星的未来去调节温度？这难道不是荒唐的目的论（Teleology）神话？
+          </p>
+          <p>
+            雏菊世界的微分方程给出了最冷峻的回答：<strong>每一朵雏菊都极其自私，它们只关心自己在局部的生长率 $\beta(T)$</strong>。但由于物理学定律（黑体吸收与反射），冷时黑菊自热而繁盛、进而加热全球；热时白菊自凉而繁盛、进而冷却全球。两组自私的达尔文选择与热力学能量守恒交织，宏观上必然涌现出强大的负反馈恒温自愈力！
+          </p>
+          <p>
+            但请注意右侧相图的悬崖边缘——<strong>自愈力绝非无限</strong>。一旦外部扰动或光度越过非线性临界翻转点（Tipping Point），整个生态屏障瞬间冰消瓦解，不可逆的奔溃将迅速把行星推向地狱。这对今天人类面临的全球气候临界点具有不可替代的警示价值。
+          </p>
+        </div>
+      </div>
+    </div>
+  </details>
+</div>
+
+  <script>
+/* ============================================================================
+ * daisyworld/core.js —— 行星系统科学 · 雏菊世界与盖亚自组织稳态核心计算引擎
+ *
+ * 理论基石（跨学科融合）：
+ * 1. 天体物理学（Astrophysics）：太阳主序星核聚变增亮模型 L(t) 与恒星光度辐射流
+ * 2. 气候热力学（Climate Thermodynamics）：Stefan-Boltzmann 黑体辐射、行星整体与局域反照率能量平衡
+ * 3. 演化生态学（Evolutionary Ecology）：黑色/白色雏菊最适温区选择、Lotka-Volterra 空间占领与 Logistic 竞争
+ * 4. 控制论与复杂系统（Cybernetics & Tipping Points）：无意识自组织负反馈、恒温相态、灾变性临界分岔与滞后环
+ * ==========================================================================*/
+'use strict';
+
+// ----------------------------------------------------------------------------
+// 1. 物理学与生态学生物常数定义 (Lovelock & Watson 1983 标准参数集)
+// ----------------------------------------------------------------------------
+var SIGMA = 5.670374419e-8; // Stefan-Boltzmann 辐射常数 W/(m²·K⁴)
+var S0 = 917.0;             // 太阳辐射通量常数 W/m² (有效平均辐射)
+
+// 表面反照率 (Albedo)
+var ALBEDO_WHITE = 0.75;    // 白雏菊：高反射、降温自身与行星
+var ALBEDO_BLACK = 0.25;    // 黑雏菊：高吸收、吸热升温自身与行星
+var ALBEDO_GROUND = 0.50;   // 裸露土壤：中性反照率
+
+// 局域绝热传导系数 (Microclimate Conduction Factor)
+var Q_HEAT = 2.06e9;        // K⁴，决定雏菊斑块与行星宏观温度的温差梯度
+
+// 生物学最适生长温区常数 (抛物线酶活性曲线)
+var T_OPT = 22.5;           // 最适生长摄氏度 °C
+var T_MIN = 5.0;            // 存活下限 °C
+var T_MAX = 40.0;           // 存活上限 °C
+var K_GROWTH = 0.003265;    // 使得 |T - 22.5| = 17.5 时 beta = 0 的生长衰减系数
+var GAMMA_DEATH = 0.30;     // 自然凋亡衰退率
+
+// 最小播种底数 (用于在环境适宜时复苏，除非开启彻底死绝模式)
+var SEED_THRESHOLD = 0.001;
+
+// ----------------------------------------------------------------------------
+// 2. 气候辐射平衡与局域微气候计算 (Thermodynamics)
+// ----------------------------------------------------------------------------
+
+// 计算行星加权宏观平均反照率
+function computePlanetaryAlbedo(aw, ab) {
+  var clampedAw = Math.max(0, Math.min(1, aw));
+  var clampedAb = Math.max(0, Math.min(1 - clampedAw, ab));
+  var ag = Math.max(0, 1.0 - clampedAw - clampedAb);
+
+  return clampedAw * ALBEDO_WHITE + clampedAb * ALBEDO_BLACK + ag * ALBEDO_GROUND;
+}
+
+// 计算行星全球有效平衡温度 (开氏度 K 与 摄氏度 °C)
+// Stefan-Boltzmann 辐射平衡方程: sigma * T_K^4 = S0 * L * (1 - A_p)
+function computePlanetaryTemperature(luminosity, albedo) {
+  var absorbedFlux = S0 * Math.max(0.1, luminosity) * (1.0 - albedo);
+  var tk4 = Math.max(1e-4, absorbedFlux / SIGMA);
+  var tk = Math.pow(tk4, 0.25);
+  var tc = tk - 273.15;
+  return { tk: tk, tc: tc, tk4: tk4 };
+}
+
+// 计算无生命对照行星的死寂地表平衡温度 (纯裸地)
+function computeDeadPlanetTemperature(luminosity) {
+  return computePlanetaryTemperature(luminosity, ALBEDO_GROUND);
+}
+
+// 计算局域微气候温度 (雏菊斑块自身所感知的温度，用于决定生长率)
+// (T_local_K)^4 = (T_planet_K)^4 + q * (A_planet - albedo_local)
+function computeLocalTemperature(tpTk4, planetaryAlbedo, localAlbedo) {
+  var tLocalK4 = Math.max(1e-4, tpTk4 + Q_HEAT * (planetaryAlbedo - localAlbedo));
+  var tLocalK = Math.pow(tLocalK4, 0.25);
+  return tLocalK - 273.15;
+}
+
+// ----------------------------------------------------------------------------
+// 3. 生态学生物生长与种群微分动力学 (Ecology & ODEs)
+// ----------------------------------------------------------------------------
+
+// 雏菊热力学生长率函数 beta(T)
+function computeGrowthRate(tc) {
+  if (tc < T_MIN || tc > T_MAX) {
+    return 0.0;
+  }
+  var diff = tc - T_OPT;
+  var b = 1.0 - K_GROWTH * diff * diff;
+  return Math.max(0.0, b);
+}
+
+// 一阶导数方程 d(aw)/dt, d(ab)/dt
+function computeDerivatives(aw, ab, luminosity, seedRescue) {
+  var ap = computePlanetaryAlbedo(aw, ab);
+  var planetTemp = computePlanetaryTemperature(luminosity, ap);
+
+  var tw = computeLocalTemperature(planetTemp.tk4, ap, ALBEDO_WHITE);
+  var tb = computeLocalTemperature(planetTemp.tk4, ap, ALBEDO_BLACK);
+  var tg = computeLocalTemperature(planetTemp.tk4, ap, ALBEDO_GROUND);
+
+  var betaW = computeGrowthRate(tw);
+  var betaB = computeGrowthRate(tb);
+
+  var ag = Math.max(0, 1.0 - aw - ab);
+
+  var daw_dt = aw * (ag * betaW - GAMMA_DEATH);
+  var dab_dt = ab * (ag * betaB - GAMMA_DEATH);
+
+  // 若提供种子自愈救济且温度适宜，注入微量增量
+  if (seedRescue) {
+    if (aw < SEED_THRESHOLD && betaW > 0.1 && ag > 0.05) {
+      daw_dt += 0.005;
+    }
+    if (ab < SEED_THRESHOLD && betaB > 0.1 && ag > 0.05) {
+      dab_dt += 0.005;
+    }
+  }
+
+  return {
+    daw_dt: daw_dt,
+    dab_dt: dab_dt,
+    albedo: ap,
+    planetTc: planetTemp.tc,
+    planetTk: planetTemp.tk,
+    tw: tw,
+    tb: tb,
+    tg: tg,
+    betaW: betaW,
+    betaB: betaB,
+    ag: ag
+  };
+}
+
+// 四阶龙格-库塔数值积分器 (Runge-Kutta 4th Order / RK4)
+function stepRK4(aw, ab, luminosity, dt, seedRescue) {
+  var h = dt || 0.1;
+
+  // k1
+  var d1 = computeDerivatives(aw, ab, luminosity, seedRescue);
+
+  // k2
+  var aw2 = Math.max(0, aw + 0.5 * h * d1.daw_dt);
+  var ab2 = Math.max(0, ab + 0.5 * h * d1.dab_dt);
+  var d2 = computeDerivatives(aw2, ab2, luminosity, seedRescue);
+
+  // k3
+  var aw3 = Math.max(0, aw + 0.5 * h * d2.daw_dt);
+  var ab3 = Math.max(0, ab + 0.5 * h * d2.dab_dt);
+  var d3 = computeDerivatives(aw3, ab3, luminosity, seedRescue);
+
+  // k4
+  var aw4 = Math.max(0, aw + h * d3.daw_dt);
+  var ab4 = Math.max(0, ab + h * d3.dab_dt);
+  var d4 = computeDerivatives(aw4, ab4, luminosity, seedRescue);
+
+  var nextAw = aw + (h / 6.0) * (d1.daw_dt + 2 * d2.daw_dt + 2 * d3.daw_dt + d4.daw_dt);
+  var nextAb = ab + (h / 6.0) * (d1.dab_dt + 2 * d2.dab_dt + 2 * d3.dab_dt + d4.dab_dt);
+
+  // 严格边界保全
+  nextAw = Math.max(0, nextAw);
+  nextAb = Math.max(0, nextAb);
+  if (nextAw + nextAb > 0.98) {
+    var sum = nextAw + nextAb;
+    nextAw = (nextAw / sum) * 0.98;
+    nextAb = (nextAb / sum) * 0.98;
+  }
+
+  // 终态物理指标
+  var finalAp = computePlanetaryAlbedo(nextAw, nextAb);
+  var finalTemp = computePlanetaryTemperature(luminosity, finalAp);
+  var finalTw = computeLocalTemperature(finalTemp.tk4, finalAp, ALBEDO_WHITE);
+  var finalTb = computeLocalTemperature(finalTemp.tk4, finalAp, ALBEDO_BLACK);
+  var deadTemp = computeDeadPlanetTemperature(luminosity);
+
+  return {
+    aw: nextAw,
+    ab: nextAb,
+    ag: Math.max(0, 1.0 - nextAw - nextAb),
+    albedo: finalAp,
+    planetTc: finalTemp.tc,
+    deadPlanetTc: deadTemp.tc,
+    tw: finalTw,
+    tb: finalTb,
+    betaW: computeGrowthRate(finalTw),
+    betaB: computeGrowthRate(finalTb),
+    isHomeostasis: Math.abs(finalTemp.tc - T_OPT) < 6.0 && (nextAw + nextAb > 0.05)
+  };
+}
+
+// ----------------------------------------------------------------------------
+// 4. 稳态分岔图全域求解器 (Bifurcation & Homeostasis Plateau)
+// ----------------------------------------------------------------------------
+// 扫描恒星光度 L 从 0.6 到 1.6 的稳态解，生成盖亚恒温台地与灭绝临界突变点
+function computeBifurcationDiagram(numPoints) {
+  var n = numPoints || 101;
+  var minL = 0.6;
+  var maxL = 1.6;
+  var results = [];
+
+  // 正向扫描 (从冷到热)
+  var curAw = 0.01;
+  var curAb = 0.01;
+
+  for (var i = 0; i < n; i++) {
+    var L = minL + ((maxL - minL) * i) / (n - 1);
+    
+    // 快速松弛至平衡态
+    for (var step = 0; step < 240; step++) {
+      var state = stepRK4(curAw, curAb, L, 0.4, true);
+      curAw = state.aw;
+      curAb = state.ab;
+    }
+
+    var ap = computePlanetaryAlbedo(curAw, curAb);
+    var pt = computePlanetaryTemperature(L, ap);
+    var dt = computeDeadPlanetTemperature(L);
+
+    results.push({
+      L: L,
+      aw: curAw,
+      ab: curAb,
+      ag: Math.max(0, 1.0 - curAw - curAb),
+      albedo: ap,
+      planetTc: pt.tc,
+      deadTc: dt.tc,
+      hasLife: (curAw + curAb) > 0.01
+    });
+  }
+
+  return results;
+}
+
+// ----------------------------------------------------------------------------
+// 5. 二维空间地表斑块与微观扩散元胞模拟器 (Spatial 2D Planetary Grid)
+// ----------------------------------------------------------------------------
+// 建立 N x N 行星表面网格，模拟黑白雏菊空间斑块竞争、种子随风扩散与局域微气候
+function createSpatialPlanet(gridSize) {
+  var size = gridSize || 24;
+  var cells = [];
+
+  for (var r = 0; r < size; r++) {
+    var row = [];
+    for (var c = 0; c < size; c++) {
+      // 初始随机分布极少量先锋物种
+      var rnd = Math.random();
+      var aw = rnd < 0.15 ? 0.2 : 0.0;
+      var ab = (rnd >= 0.15 && rnd < 0.3) ? 0.2 : 0.0;
+      row.push({
+        aw: aw,
+        ab: ab,
+        ag: 1.0 - aw - ab
+      });
+    }
+    cells.push(row);
+  }
+
+  return {
+    size: size,
+    cells: cells
+  };
+}
+
+// 空间网格推进一步：包含局域环境温度计算与邻域种子扩散
+function stepSpatialPlanet(planet, luminosity, dt) {
+  var size = planet.size;
+  var cells = planet.cells;
+  var nextCells = [];
+
+  // 计算全局宏观覆盖率与反照率
+  var totalAw = 0;
+  var totalAb = 0;
+  var totalCount = size * size;
+
+  for (var r = 0; r < size; r++) {
+    for (var c = 0; c < size; c++) {
+      totalAw += cells[r][c].aw;
+      totalAb += cells[r][c].ab;
+    }
+  }
+
+  var avgAw = totalAw / totalCount;
+  var avgAb = totalAb / totalCount;
+  var globalAp = computePlanetaryAlbedo(avgAw, avgAb);
+  var planetTemp = computePlanetaryTemperature(luminosity, globalAp);
+
+  var globalTw = computeLocalTemperature(planetTemp.tk4, globalAp, ALBEDO_WHITE);
+  var globalTb = computeLocalTemperature(planetTemp.tk4, globalAp, ALBEDO_BLACK);
+  var betaW = computeGrowthRate(globalTw);
+  var betaB = computeGrowthRate(globalTb);
+
+  for (var r = 0; r < size; r++) {
+    var nextRow = [];
+    for (var c = 0; c < size; c++) {
+      var cell = cells[r][c];
+
+      // 4 邻域种子输入贡献 (Laplacian 空间扩散)
+      var sumNeighborAw = 0;
+      var sumNeighborAb = 0;
+      var neighbors = [
+        cells[(r - 1 + size) % size][c],
+        cells[(r + 1) % size][c],
+        cells[r][(c - 1 + size) % size],
+        cells[r][(c + 1) % size]
+      ];
+
+      for (var k = 0; k < 4; k++) {
+        sumNeighborAw += neighbors[k].aw;
+        sumNeighborAb += neighbors[k].ab;
+      }
+      var diffuseAw = sumNeighborAw * 0.25;
+      var diffuseAb = sumNeighborAb * 0.25;
+
+      var effAw = cell.aw * 0.85 + diffuseAw * 0.15;
+      var effAb = cell.ab * 0.85 + diffuseAb * 0.15;
+      var ag = Math.max(0, 1.0 - effAw - effAb);
+
+      var daw = effAw * (ag * betaW - GAMMA_DEATH) * dt;
+      var dab = effAb * (ag * betaB - GAMMA_DEATH) * dt;
+
+      var newAw = Math.max(0, Math.min(0.9, effAw + daw));
+      var newAb = Math.max(0, Math.min(0.9 - newAw, effAb + dab));
+
+      nextRow.push({
+        aw: newAw,
+        ab: newAb,
+        ag: Math.max(0, 1.0 - newAw - newAb)
+      });
+    }
+    nextCells.push(nextRow);
+  }
+
+  planet.cells = nextCells;
+
+  return {
+    avgAw: avgAw,
+    avgAb: avgAb,
+    avgAg: Math.max(0, 1.0 - avgAw - avgAb),
+    albedo: globalAp,
+    planetTc: planetTemp.tc,
+    deadTc: computeDeadPlanetTemperature(luminosity).tc,
+    isHomeostasis: Math.abs(planetTemp.tc - T_OPT) < 6.0 && (avgAw + avgAb > 0.02)
+  };
+}
+
+// 导出纯模块
+var Core = {
+  SIGMA: SIGMA,
+  S0: S0,
+  ALBEDO_WHITE: ALBEDO_WHITE,
+  ALBEDO_BLACK: ALBEDO_BLACK,
+  ALBEDO_GROUND: ALBEDO_GROUND,
+  Q_HEAT: Q_HEAT,
+  T_OPT: T_OPT,
+  T_MIN: T_MIN,
+  T_MAX: T_MAX,
+  GAMMA_DEATH: GAMMA_DEATH,
+  computePlanetaryAlbedo: computePlanetaryAlbedo,
+  computePlanetaryTemperature: computePlanetaryTemperature,
+  computeDeadPlanetTemperature: computeDeadPlanetTemperature,
+  computeLocalTemperature: computeLocalTemperature,
+  computeGrowthRate: computeGrowthRate,
+  computeDerivatives: computeDerivatives,
+  stepRK4: stepRK4,
+  computeBifurcationDiagram: computeBifurcationDiagram,
+  createSpatialPlanet: createSpatialPlanet,
+  stepSpatialPlanet: stepSpatialPlanet
+};
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Core;
+}
+if (typeof window !== 'undefined') {
+  window.DaisyworldCore = Core;
+}
+
+  </script>
+  <script>
+/* ============================================================================
+ * daisyworld/ui.js —— 行星系统三维生态球体、分岔相图与气候控制台
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var Core = typeof window !== 'undefined' && window.DaisyworldCore
+    ? window.DaisyworldCore
+    : (typeof require !== 'undefined' ? require('./core.js') : null);
+
+  if (!Core) {
+    console.error('无法加载 DaisyworldCore 核心计算引擎');
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // 应用全局状态
+  // --------------------------------------------------------------------------
+  var state = {
+    luminosity: 1.00,       // 恒星光度 L/L_sun [0.60, 1.60]
+    aw: 0.40,               // 白雏菊覆盖率
+    ab: 0.28,               // 黑雏菊覆盖率
+    ag: 0.32,               // 裸地覆盖率
+    planetTc: 22.0,         // 行星宏观摄氏度
+    deadPlanetTc: 26.7,     // 无生命对照死星温度
+    albedo: 0.50,           // 宏观反照率
+    isHomeostasis: true,    // 稳态判定
+    seedRescue: true,       // 允许种子自愈 (false 为绝对死绝模式)
+
+    // 恒星演化时光机
+    isPlayingTime: false,
+    timeTimer: null,
+
+    // 空间行星球体 (24x24 斑块网格)
+    spatialPlanet: Core.createSpatialPlanet(24),
+    globeRotation: 0.0,
+    globeTilt: 0.25,
+    isDraggingGlobe: false,
+    dragStartX: 0,
+
+    // 视窗 B 视图与历史时序
+    currentTab: 'bifurcation', // 'bifurcation' | 'timeseries'
+    history: [],               // 滚动时序缓冲
+    bifurcationData: null,     // 预算分岔相图数据
+
+    // 探针指标快照
+    probe: {
+      luminosity: 1.00,
+      planetTc: 22.0,
+      deadPlanetTc: 26.7,
+      aw: 0.40,
+      ab: 0.28,
+      albedo: 0.50,
+      isHomeostasis: true
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // DOM 元素缓存
+  // --------------------------------------------------------------------------
+  var dom = {};
+
+  function cacheDom() {
+    dom.globeCanvas = document.getElementById('globeCanvas');
+    dom.chartCanvas = document.getElementById('chartCanvas');
+
+    dom.metricPlanetTc = document.getElementById('metricPlanetTc');
+    dom.metricDeadTc = document.getElementById('metricDeadTc');
+    dom.tempFillBar = document.getElementById('tempFillBar');
+    dom.badgeStatus = document.getElementById('badgeStatus');
+
+    dom.metricAw = document.getElementById('metricAw');
+    dom.metricAb = document.getElementById('metricAb');
+    dom.metricAg = document.getElementById('metricAg');
+    dom.metricTotalLife = document.getElementById('metricTotalLife');
+
+    dom.metricLuminosity = document.getElementById('metricLuminosity');
+    dom.metricFlux = document.getElementById('metricFlux');
+    dom.metricAlbedo = document.getElementById('metricAlbedo');
+    dom.metricFeedbackSign = document.getElementById('metricFeedbackSign');
+    dom.metricMicroDiff = document.getElementById('metricMicroDiff');
+
+    dom.sliderL = document.getElementById('sliderL');
+    dom.valL = document.getElementById('valL');
+    dom.btnPlayTime = document.getElementById('btnPlayTime');
+    dom.btnResetPlanet = document.getElementById('btnResetPlanet');
+
+    dom.btnPresetGaiaHomeo = document.getElementById('btnPresetGaiaHomeo');
+    dom.btnPresetColdStart = document.getElementById('btnPresetColdStart');
+    dom.btnPresetTippingPoint = document.getElementById('btnPresetTippingPoint');
+    dom.btnPresetHysteresis = document.getElementById('btnPresetHysteresis');
+
+    dom.btnPerturbVolcano = document.getElementById('btnPerturbVolcano');
+    dom.btnPerturbGreenhouse = document.getElementById('btnPerturbGreenhouse');
+    dom.btnPerturbLocust = document.getElementById('btnPerturbLocust');
+    dom.btnSterilizePlanet = document.getElementById('btnSterilizePlanet');
+
+    dom.tabBifurcation = document.getElementById('tabBifurcation');
+    dom.tabTimeseries = document.getElementById('tabTimeseries');
+  }
+
+  // --------------------------------------------------------------------------
+  // 核心模拟步进与指标更新
+  // --------------------------------------------------------------------------
+  function stepSimulation(dt) {
+    var deltaT = dt || 0.15;
+
+    // 1. 宏观 ODE 演进
+    var res = Core.stepRK4(state.aw, state.ab, state.luminosity, deltaT, state.seedRescue);
+    state.aw = res.aw;
+    state.ab = res.ab;
+    state.ag = res.ag;
+    state.albedo = res.albedo;
+    state.planetTc = res.planetTc;
+    state.deadPlanetTc = res.deadPlanetTc;
+    state.isHomeostasis = res.isHomeostasis;
+
+    // 2. 空间网格演化同步
+    Core.stepSpatialPlanet(state.spatialPlanet, state.luminosity, deltaT);
+
+    // 3. 记录时序历史 (最多保留 160 个点)
+    state.history.push({
+      L: state.luminosity,
+      planetTc: state.planetTc,
+      deadTc: state.deadPlanetTc,
+      aw: state.aw,
+      ab: state.ab,
+      albedo: state.albedo
+    });
+    if (state.history.length > 160) {
+      state.history.shift();
+    }
+
+    updateDashboard();
+  }
+
+  function updateDashboard() {
+    if (dom.metricPlanetTc) dom.metricPlanetTc.textContent = state.planetTc.toFixed(1) + '°C';
+    if (dom.metricDeadTc) dom.metricDeadTc.textContent = state.deadPlanetTc.toFixed(1) + '°C';
+
+    // 温度条映射 (-10°C -> 0%, 22.5°C -> 50%, 65°C -> 100%)
+    if (dom.tempFillBar) {
+      var pct = Math.max(0, Math.min(100, ((state.planetTc + 10) / 75.0) * 100));
+      dom.tempFillBar.style.width = pct.toFixed(1) + '%';
+    }
+
+    // 盖亚状态徽章
+    if (dom.badgeStatus) {
+      if (state.isHomeostasis) {
+        dom.badgeStatus.className = 'gaia-status-badge badge-homeostasis';
+        dom.badgeStatus.textContent = '🌱 盖亚负反馈恒温自组织中 (温差抑制率 > 85%)';
+      } else if (state.aw + state.ab < 0.02) {
+        dom.badgeStatus.className = 'gaia-status-badge badge-collapse';
+        dom.badgeStatus.textContent = '💀 生物圈全面崩溃 · 行星退化为死寂裸星';
+      } else {
+        dom.badgeStatus.className = 'gaia-status-badge';
+        dom.badgeStatus.style.background = 'rgba(245, 158, 11, 0.15)';
+        dom.badgeStatus.style.color = 'var(--accent-gold)';
+        dom.badgeStatus.textContent = '⚠️ 生态剧烈振荡 · 逼近非线性临界分岔边缘';
+      }
+    }
+
+    // 覆盖率指标
+    if (dom.metricAw) dom.metricAw.textContent = Math.round(state.aw * 100) + '%';
+    if (dom.metricAb) dom.metricAb.textContent = Math.round(state.ab * 100) + '%';
+    if (dom.metricAg) dom.metricAg.textContent = Math.round(state.ag * 100) + '%';
+    if (dom.metricTotalLife) dom.metricTotalLife.textContent = Math.round((state.aw + state.ab) * 100) + '%';
+
+    // 辐射通量与反照率
+    if (dom.metricLuminosity) dom.metricLuminosity.textContent = state.luminosity.toFixed(2);
+    var netFlux = Core.S0 * state.luminosity * (1.0 - state.albedo);
+    if (dom.metricFlux) dom.metricFlux.textContent = netFlux.toFixed(1);
+    if (dom.metricAlbedo) dom.metricAlbedo.textContent = state.albedo.toFixed(3);
+
+    // 局域温差微气候
+    var pt = Core.computePlanetaryTemperature(state.luminosity, state.albedo);
+    var tw = Core.computeLocalTemperature(pt.tk4, state.albedo, Core.ALBEDO_WHITE);
+    var tb = Core.computeLocalTemperature(pt.tk4, state.albedo, Core.ALBEDO_BLACK);
+    if (dom.metricMicroDiff) dom.metricMicroDiff.textContent = Math.abs(tb - tw).toFixed(1);
+
+    // 自动化门禁测试探针
+    state.probe = {
+      luminosity: state.luminosity,
+      planetTc: state.planetTc,
+      deadPlanetTc: state.deadPlanetTc,
+      aw: state.aw,
+      ab: state.ab,
+      albedo: state.albedo,
+      isHomeostasis: state.isHomeostasis
+    };
+    if (typeof window !== 'undefined') {
+      window.__probe = state.probe;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Canvas 1: 3D 行星生态球体绘制
+  // --------------------------------------------------------------------------
+  function renderGlobe(ctx, width, height) {
+    ctx.clearRect(0, 0, width, height);
+
+    var cx = width / 2;
+    var cy = height / 2;
+    var radius = Math.min(width, height) * 0.40;
+
+    // 1. 深空宇宙与恒星日冕光线 (左上方太阳)
+    ctx.fillStyle = '#060810';
+    ctx.fillRect(0, 0, width, height);
+
+    var sunX = cx - radius * 1.5;
+    var sunY = cy - radius * 1.1;
+
+    // 阳光散射锥
+    var sunGrad = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, radius * 3.0);
+    sunGrad.addColorStop(0, 'rgba(251, 191, 36, 0.4)');
+    sunGrad.addColorStop(0.3, 'rgba(245, 158, 11, 0.1)');
+    sunGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = sunGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // 2. 行星大气辉光外边缘
+    var atmoGrad = ctx.createRadialGradient(cx, cy, radius * 0.95, cx, cy, radius * 1.12);
+    if (state.planetTc > 45) {
+      // 炽热地狱
+      atmoGrad.addColorStop(0, 'rgba(239, 68, 68, 0.5)');
+      atmoGrad.addColorStop(1, 'transparent');
+    } else if (state.planetTc < 5) {
+      // 冰封雪球
+      atmoGrad.addColorStop(0, 'rgba(96, 165, 250, 0.4)');
+      atmoGrad.addColorStop(1, 'transparent');
+    } else {
+      // 宜居盖亚生机
+      atmoGrad.addColorStop(0, 'rgba(16, 185, 129, 0.45)');
+      atmoGrad.addColorStop(0.6, 'rgba(6, 182, 212, 0.2)');
+      atmoGrad.addColorStop(1, 'transparent');
+    }
+    ctx.fillStyle = atmoGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 1.12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. 正交投影球体基底
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    // 球面底色 (荒漠土壤)
+    ctx.fillStyle = '#92400e';
+    ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+
+    // 4. 空间斑块网格绘制 (经纬度正交投射)
+    var grid = state.spatialPlanet;
+    var size = grid.size;
+    var rot = state.globeRotation;
+
+    for (var r = 0; r < size; r++) {
+      var lat = (Math.PI * (r + 0.5)) / size - Math.PI / 2;
+      var cosLat = Math.cos(lat);
+      var sinLat = Math.sin(lat);
+
+      for (var c = 0; c < size; c++) {
+        var lon = (2 * Math.PI * c) / size + rot;
+        var cosLon = Math.cos(lon);
+        var sinLon = Math.sin(lon);
+
+        // 3D 球面坐标 -> 屏幕正交投影 (Z > 0 为正面可见)
+        var z = cosLat * cosLon;
+        if (z < -0.05) continue; // 背面剔除
+
+        var px = cx + radius * (cosLat * sinLon);
+        var py = cy - radius * sinLat;
+        var patchRadius = (radius / size) * 1.8 * Math.max(0.3, z);
+
+        var cell = grid.cells[r][c];
+
+        // 绘制斑块
+        if (cell.aw > 0.1) {
+          // 白雏菊殖民地
+          ctx.fillStyle = 'rgba(248, 250, 252, ' + Math.min(1.0, cell.aw * 1.3) + ')';
+          ctx.beginPath();
+          ctx.arc(px, py, patchRadius * Math.sqrt(cell.aw), 0, Math.PI * 2);
+          ctx.fill();
+        } else if (cell.ab > 0.1) {
+          // 黑雏菊殖民地
+          ctx.fillStyle = 'rgba(15, 23, 42, ' + Math.min(1.0, cell.ab * 1.3) + ')';
+          ctx.beginPath();
+          ctx.arc(px, py, patchRadius * Math.sqrt(cell.ab), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // 5. 球面球体光照阴影 (昼夜晨昏分界线)
+    var lightGrad = ctx.createRadialGradient(cx - radius * 0.45, cy - radius * 0.45, radius * 0.1, cx, cy, radius);
+    lightGrad.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
+    lightGrad.addColorStop(0.5, 'transparent');
+    lightGrad.addColorStop(0.9, 'rgba(0, 0, 0, 0.7)');
+    lightGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+    ctx.fillStyle = lightGrad;
+    ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+
+    ctx.restore();
+
+    // 6. 球体外圈精致描边
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 缓慢自动自转
+    state.globeRotation += 0.003;
+  }
+
+  // --------------------------------------------------------------------------
+  // Canvas 2: 稳态分岔图 / 时序图绘制
+  // --------------------------------------------------------------------------
+  function renderChart(ctx, width, height) {
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.fillStyle = '#080d1a';
+    ctx.fillRect(0, 0, width, height);
+
+    if (state.currentTab === 'bifurcation') {
+      renderBifurcationChart(ctx, width, height);
+    } else {
+      renderTimeseriesChart(ctx, width, height);
+    }
+  }
+
+  // 稳态恒温台地分岔谱图 (Lovelock 经典图景)
+  function renderBifurcationChart(ctx, width, height) {
+    if (!state.bifurcationData) {
+      state.bifurcationData = Core.computeBifurcationDiagram(90);
+    }
+
+    var padL = 50;
+    var padR = 30;
+    var padT = 40;
+    var padB = 40;
+    var plotW = width - padL - padR;
+    var plotH = height - padT - padB;
+
+    var minL = 0.6;
+    var maxL = 1.6;
+    var minT = -15; // °C
+    var maxT = 75;  // °C
+
+    function xOf(L) {
+      return padL + ((L - minL) / (maxL - minL)) * plotW;
+    }
+    function yOf(T) {
+      return padT + plotH - ((T - minT) / (maxT - minT)) * plotH;
+    }
+
+    // 1. 22.5°C 黄金宜居温区绿色带 (20°C - 25°C)
+    var yZoneTop = yOf(26.0);
+    var yZoneBot = yOf(19.0);
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
+    ctx.fillRect(padL, yZoneTop, plotW, yZoneBot - yZoneTop);
+
+    // 2. 坐标网格与刻度
+    ctx.strokeStyle = '#1b253b';
+    ctx.lineWidth = 1;
+
+    var tempTicks = [0, 22.5, 40, 60];
+    ctx.fillStyle = '#64748b';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+
+    tempTicks.forEach(function (t) {
+      var y = yOf(t);
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+      ctx.fillText(t + '°C', padL - 6, y + 3);
+    });
+
+    var lTicks = [0.6, 0.8, 1.0, 1.2, 1.4, 1.6];
+    ctx.textAlign = 'center';
+    lTicks.forEach(function (lt) {
+      var x = xOf(lt);
+      ctx.beginPath();
+      ctx.moveTo(x, padT);
+      ctx.lineTo(x, padT + plotH);
+      ctx.stroke();
+      ctx.fillText(lt.toFixed(1) + 'L_⊙', x, padT + plotH + 16);
+    });
+
+    // 3. 无生命死星对照线 (红色陡峭直线升温)
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    state.bifurcationData.forEach(function (pt, idx) {
+      var x = xOf(pt.L);
+      var y = yOf(pt.deadTc);
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 4. 盖亚有生命稳态曲线 (翠绿色 22.5°C 宽广平坦台地)
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    state.bifurcationData.forEach(function (pt, idx) {
+      var x = xOf(pt.L);
+      var y = yOf(pt.planetTc);
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // 5. 雏菊物种覆盖率辅助曲线 (白虚线与深蓝线)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    state.bifurcationData.forEach(function (pt, idx) {
+      var x = xOf(pt.L);
+      // 将 0~1 映射到底部高度
+      var y = padT + plotH - pt.aw * 65;
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // 6. 当前运行工况点标记
+    var curX = xOf(state.luminosity);
+    var curY = yOf(state.planetTc);
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(curX, curY, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('当前: ' + state.planetTc.toFixed(1) + '°C', curX + 10, curY - 6);
+
+    // 标题
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('稳态分岔谱：绿色台地为盖亚负反馈恒温温区 (L=0.75~1.50) | 红色虚线为无生命死星', padL, 24);
+  }
+
+  // 动态滚动时序图
+  function renderTimeseriesChart(ctx, width, height) {
+    var padL = 50;
+    var padR = 30;
+    var padT = 40;
+    var padB = 40;
+    var plotW = width - padL - padR;
+    var plotH = height - padT - padB;
+
+    var hist = state.history;
+    if (hist.length < 2) return;
+
+    function yOf(T) {
+      return padT + plotH - ((T - (-10)) / 80.0) * plotH;
+    }
+
+    ctx.strokeStyle = '#1b253b';
+    ctx.lineWidth = 1;
+    [0, 22.5, 45].forEach(function (t) {
+      var y = yOf(t);
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+    });
+
+    // 绘制温度轨迹
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    hist.forEach(function (pt, idx) {
+      var x = padL + (idx / (hist.length - 1)) * plotW;
+      var y = yOf(pt.planetTc);
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('地表温度实时动态响应时序 (更新步长 dt=0.15)', padL, 24);
+  }
+
+  // --------------------------------------------------------------------------
+  // 事件交互绑定
+  // --------------------------------------------------------------------------
+  function bindEvents() {
+    // 太阳光度滑块
+    if (dom.sliderL) {
+      dom.sliderL.addEventListener('input', function (e) {
+        state.luminosity = parseFloat(e.target.value);
+        if (dom.valL) dom.valL.textContent = state.luminosity.toFixed(2);
+      });
+    }
+
+    // 恒星演化时光机自动增亮播放
+    if (dom.btnPlayTime) {
+      dom.btnPlayTime.addEventListener('click', function () {
+        state.isPlayingTime = !state.isPlayingTime;
+        if (state.isPlayingTime) {
+          dom.btnPlayTime.classList.add('active');
+          dom.btnPlayTime.textContent = '⏸ 暂停恒星时光流转';
+        } else {
+          dom.btnPlayTime.classList.remove('active');
+          dom.btnPlayTime.textContent = '▶ 恒星主序演化时光机 (缓慢增亮)';
+        }
+      });
+    }
+
+    // 重置行星初态
+    if (dom.btnResetPlanet) {
+      dom.btnResetPlanet.addEventListener('click', function () {
+        state.luminosity = 1.00;
+        state.aw = 0.40;
+        state.ab = 0.28;
+        state.seedRescue = true;
+        if (dom.sliderL) dom.sliderL.value = '1.00';
+        if (dom.valL) dom.valL.textContent = '1.00';
+        state.spatialPlanet = Core.createSpatialPlanet(24);
+        state.history = [];
+        updateDashboard();
+      });
+    }
+
+    // 假说预设按钮
+    if (dom.btnPresetGaiaHomeo) {
+      dom.btnPresetGaiaHomeo.addEventListener('click', function () {
+        setLuminosity(1.00);
+        state.seedRescue = true;
+      });
+    }
+    if (dom.btnPresetColdStart) {
+      dom.btnPresetColdStart.addEventListener('click', function () {
+        setLuminosity(0.75);
+        state.seedRescue = true;
+      });
+    }
+    if (dom.btnPresetTippingPoint) {
+      dom.btnPresetTippingPoint.addEventListener('click', function () {
+        setLuminosity(1.58);
+      });
+    }
+    if (dom.btnPresetHysteresis) {
+      dom.btnPresetHysteresis.addEventListener('click', function () {
+        // 灭绝后降低光度，观察缺少种子时的滞后死寂
+        state.aw = 0.0;
+        state.ab = 0.0;
+        state.seedRescue = false;
+        setLuminosity(1.20);
+      });
+    }
+
+    function setLuminosity(val) {
+      state.luminosity = val;
+      if (dom.sliderL) dom.sliderL.value = val.toFixed(2);
+      if (dom.valL) dom.valL.textContent = val.toFixed(2);
+    }
+
+    // 气候与生态外生冲击脉冲
+    if (dom.btnPerturbVolcano) {
+      dom.btnPerturbVolcano.addEventListener('click', function () {
+        // 火山灰增高反照率
+        state.albedo = Math.min(0.85, state.albedo + 0.12);
+        updateDashboard();
+      });
+    }
+    if (dom.btnPerturbGreenhouse) {
+      dom.btnPerturbGreenhouse.addEventListener('click', function () {
+        // 温室脉冲瞬时加热
+        state.planetTc += 6.0;
+        updateDashboard();
+      });
+    }
+    if (dom.btnPerturbLocust) {
+      dom.btnPerturbLocust.addEventListener('click', function () {
+        state.aw *= 0.5;
+        state.ab *= 0.5;
+        updateDashboard();
+      });
+    }
+    if (dom.btnSterilizePlanet) {
+      dom.btnSterilizePlanet.addEventListener('click', function () {
+        state.aw = 0.0;
+        state.ab = 0.0;
+        state.seedRescue = false;
+        // 清空空间网格
+        for (var r = 0; r < state.spatialPlanet.size; r++) {
+          for (var c = 0; c < state.spatialPlanet.size; c++) {
+            state.spatialPlanet.cells[r][c].aw = 0;
+            state.spatialPlanet.cells[r][c].ab = 0;
+            state.spatialPlanet.cells[r][c].ag = 1.0;
+          }
+        }
+        updateDashboard();
+      });
+    }
+
+    // 标签页切换
+    if (dom.tabBifurcation) {
+      dom.tabBifurcation.addEventListener('click', function () {
+        state.currentTab = 'bifurcation';
+        dom.tabBifurcation.classList.add('active');
+        if (dom.tabTimeseries) dom.tabTimeseries.classList.remove('active');
+      });
+    }
+    if (dom.tabTimeseries) {
+      dom.tabTimeseries.addEventListener('click', function () {
+        state.currentTab = 'timeseries';
+        dom.tabTimeseries.classList.add('active');
+        if (dom.tabBifurcation) dom.tabBifurcation.classList.remove('active');
+      });
+    }
+
+    // 行星球体鼠标拖拽旋转
+    if (dom.globeCanvas) {
+      dom.globeCanvas.addEventListener('mousedown', function (e) {
+        state.isDraggingGlobe = true;
+        state.dragStartX = e.clientX;
+      });
+      window.addEventListener('mousemove', function (e) {
+        if (!state.isDraggingGlobe) return;
+        var dx = e.clientX - state.dragStartX;
+        state.globeRotation += dx * 0.01;
+        state.dragStartX = e.clientX;
+      });
+      window.addEventListener('mouseup', function () {
+        state.isDraggingGlobe = false;
+      });
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 主演化与渲染循环
+  // --------------------------------------------------------------------------
+  function startLoop() {
+    var globeCtx = dom.globeCanvas ? dom.globeCanvas.getContext('2d') : null;
+    var chartCtx = dom.chartCanvas ? dom.chartCanvas.getContext('2d') : null;
+
+    var lastTime = performance.now();
+
+    function loop(now) {
+      var dtMs = now - lastTime;
+      lastTime = now;
+
+      // 若处于恒星时光机播放中，平滑自然增亮
+      if (state.isPlayingTime) {
+        state.luminosity += 0.0006;
+        if (state.luminosity > 1.60) {
+          state.luminosity = 0.65; // 循环或进入超新星阶段
+        }
+        if (dom.sliderL) dom.sliderL.value = state.luminosity.toFixed(2);
+        if (dom.valL) dom.valL.textContent = state.luminosity.toFixed(2);
+      }
+
+      // 常规动力学积分步进
+      stepSimulation(0.18);
+
+      // 双视窗渲染
+      if (globeCtx && dom.globeCanvas) {
+        renderGlobe(globeCtx, dom.globeCanvas.width, dom.globeCanvas.height);
+      }
+      if (chartCtx && dom.chartCanvas) {
+        renderChart(chartCtx, dom.chartCanvas.width, dom.chartCanvas.height);
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  // --------------------------------------------------------------------------
+  // 初始化引导
+  // --------------------------------------------------------------------------
+  function init() {
+    cacheDom();
+    bindEvents();
+    updateDashboard();
+    startLoop();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();
+
+  </script>
+</body>
+</html>

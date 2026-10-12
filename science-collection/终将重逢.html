@@ -1,0 +1,2639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>终将重逢</title>
+<meta name="description" content="随机映射：从任意一点出发迭代，你总会走进一个环 —— 全枚举 8⁸ 个映射、闭式推到 10⁸、和 Flajolet–Odlyzko 的常数逐条对账。">
+<style>
+/* ============================================================================
+ * mapping/style.css —— 《终将重逢》
+ * 浅色纸面。数字等宽，正文无衬线。
+ * 三套颜色各管一件事：环（砖红）、尾巴（青蓝）、理论线（琥珀）。
+ * 不借外部字体或图片。
+ * ==========================================================================*/
+
+:root{
+  --bg:#f6f5f2;
+  --panel:#ffffff;
+  --ink:#1c1b19;
+  --ink2:#57534e;
+  --ink3:#8a8279;
+  --line:#ded9d0;
+  --line2:#efece6;
+  --cycle:#a23b1e;     /* 环 —— 主角 */
+  --tail:#1f6f8b;      /* 尾巴 */
+  --mc:#7c3aed;        /* 蒙特卡洛 */
+  --theory:#b45309;    /* 理论线 / 参考线 */
+  --ok:#15803d;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:15px;line-height:1.62;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 20px 80px}
+
+/* ------------------------------------------------------------------ hero */
+.hero{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:20px}
+.hero h1{font-size:34px;line-height:1.2;margin:0 0 6px;letter-spacing:.02em}
+.hero .sub{font-size:15px;color:var(--ink2);margin:0 0 12px}
+.hero .lede{font-size:16px;line-height:1.75;margin:0;max-width:64ch}
+.hero .lede b{color:var(--cycle)}
+.hero .stamp{margin-top:12px;font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+
+/* ------------------------------------------------------------------ tabs */
+.tabs{
+  display:flex;flex-wrap:wrap;gap:6px;
+  padding:10px 0 14px;margin-bottom:16px;border-bottom:1px solid var(--line);
+}
+.tabs button{
+  font-family:var(--sans);font-size:13px;line-height:1.2;
+  padding:8px 12px;min-height:44px;
+  background:var(--panel);color:var(--ink2);
+  border:1px solid var(--line);border-radius:6px;cursor:pointer;
+  white-space:nowrap;
+}
+.tabs button:hover{border-color:var(--ink3);color:var(--ink)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* ------------------------------------------------------------------ panel */
+.panel{display:none}
+.panel.on{display:block}
+.panel h2{font-size:21px;margin:26px 0 4px;letter-spacing:.01em}
+.panel h2:first-child{margin-top:4px}
+.panel h3{font-size:15px;margin:22px 0 6px;color:var(--ink)}
+.panel p{margin:8px 0;max-width:70ch}
+.panel .note{font-size:13.5px;color:var(--ink2)}
+.panel code{font-family:var(--mono);font-size:13px;background:var(--line2);padding:1px 4px;border-radius:3px}
+.sec-no{
+  display:inline-block;font-family:var(--mono);font-size:12px;color:var(--cycle);
+  border:1px solid var(--cycle);border-radius:3px;padding:0 5px;margin-right:8px;vertical-align:2px;
+}
+
+/* ------------------------------------------------------------------ grid */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:14px 0}
+.grid2>div{min-width:0}
+
+/* ------------------------------------------------------------------ bench */
+.bench{
+  display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:20px;
+  align-items:start;margin:16px 0;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;
+}
+.bench>div{min-width:0}
+.ctrls{display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;flex-direction:column;gap:4px}
+.ctrl label{font-size:12.5px;color:var(--ink2)}
+.ctrl .val{font-family:var(--mono);font-size:13px;color:var(--ink)}
+input[type="range"]{width:100%;min-height:44px;accent-color:var(--cycle)}
+select{
+  font-family:var(--sans);font-size:13.5px;padding:7px 8px;min-height:44px;
+  border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink);
+}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.btnrow button{
+  font-family:var(--sans);font-size:13px;padding:9px 11px;min-height:44px;
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--ink2);
+}
+.btnrow button:hover{border-color:var(--cycle);color:var(--cycle)}
+
+/* ------------------------------------------------------------------ readout */
+.ro{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;
+  font-family:var(--mono);font-size:12.5px;color:var(--ink2);
+  background:var(--line2);border-radius:6px;padding:10px 12px;margin-top:4px;
+}
+.ro span{display:block}
+.ro b{color:var(--ink);font-weight:600}
+.ro .k{color:var(--ink3);margin-right:6px}
+.ro .c b{color:var(--cycle)}
+.ro .t b{color:var(--tail)}
+.ro .h b{color:var(--theory)}
+
+/* ------------------------------------------------------------------ chart */
+.chart{margin:10px 0 4px}
+.chart svg{display:block}
+.legend-html{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--ink2);margin:6px 0 2px}
+.legend-html i{display:inline-block;width:16px;height:3px;border-radius:2px;vertical-align:3px;margin-right:5px}
+.legend-html i.sq{height:10px;width:10px;border-radius:2px;vertical-align:1px}
+.legend-html i.dash{background:repeating-linear-gradient(90deg,currentColor 0 4px,transparent 4px 8px)}
+.bar-fill{display:block}
+
+/* ------------------------------------------------------------------ table */
+.tbl-wrap{max-width:100%;overflow-x:auto;margin:12px 0}
+table.dt{border-collapse:collapse;width:100%;font-size:13px}
+table.dt th,table.dt td{
+  padding:6px 10px;border-bottom:1px solid var(--line);text-align:right;
+  white-space:nowrap;font-family:var(--mono);font-size:12.5px;
+}
+table.dt th{color:var(--ink2);font-weight:600;border-bottom:1.5px solid var(--ink3);font-family:var(--sans);font-size:12.5px}
+table.dt td:first-child,table.dt th:first-child{text-align:left}
+table.dt tr.hi td{background:#fdf3ee}
+table.dt tr.bad td{background:#fdecec;color:#8a1c1c}
+table.dt.wrapok td{white-space:normal;overflow-wrap:break-word}
+table.dt.wrapok td:first-child{font-family:var(--sans);font-size:13px}
+table.dt caption{caption-side:top;text-align:left;font-size:12.5px;color:var(--ink3);padding-bottom:6px}
+
+/* ------------------------------------------------------------------ kpi */
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.kpis>div{min-width:0}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:13px 14px}
+.kpi .lab{font-size:12.5px;color:var(--ink2);margin-bottom:4px}
+.kpi .val{font-family:var(--mono);font-size:20px;color:var(--cycle);line-height:1.25;word-break:break-word}
+.kpi .unit{font-size:11.5px;color:var(--ink3);margin-top:3px}
+.kpi .note{font-size:12px;color:var(--ink2);margin-top:7px;line-height:1.55}
+
+/* ------------------------------------------------------------------ lists */
+ol.clist,ol.blist{margin:8px 0;padding-left:22px}
+ol.clist li,ol.blist li{margin:7px 0;max-width:74ch;line-height:1.66}
+ol.blist li{color:var(--ink2);font-size:14px}
+
+/* ------------------------------------------------------------------ tail */
+.tail{margin-top:36px;border-top:2px solid var(--ink);padding-top:6px}
+.tail h2{font-size:20px;margin:26px 0 6px}
+
+/* ------------------------------------------------------------------ narrow */
+@media (max-width:640px){
+  .wrap{padding:16px 13px 60px}
+  .hero h1{font-size:25px}
+  .hero .lede{font-size:14.5px}
+  .bench{grid-template-columns:minmax(0,1fr)}
+  .grid2{grid-template-columns:minmax(0,1fr)}
+  .kpis{grid-template-columns:minmax(0,1fr)}
+  .tabs button{font-size:12.5px;padding:9px 10px;min-height:44px}
+  .ro{grid-template-columns:minmax(0,1fr)}
+  table.dt th,table.dt td{padding:6px 8px;font-size:11.5px}
+  table.dt{white-space:normal}
+  table.dt td,table.dt th{white-space:normal;overflow-wrap:anywhere}
+  table.dt.num td,table.dt.num th{white-space:nowrap}
+  .btnrow button{min-height:44px}
+  select{min-height:44px}
+  input[type="range"]{min-height:44px}
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>终将重逢</h1>
+    <p class="sub">随机映射 · 你总会走进一个环</p>
+    <p class="lede">
+      给 <code>n</code> 个点各配一个像，配法完全随机，就得到一张<b>随机映射</b>。
+      从任意一点出发反复迭代，走过的点一旦重复，就再也回不到新的地方——
+      于是每个点最终都落进一个环。这张图由若干个 <b>ρ 形</b>拼成：一条尾巴接一个环。
+      这一页从零实现整套结构分解，把 <code>n ≤ 8</code> 的<b>全部 8⁸ 个映射</b>逐个走一遍，
+      再把闭式推到 <code>n = 10⁸</code>，和 Flajolet–Odlyzko 的常数逐条对账。
+      结论是：<b>尾巴和环一样长，都是 √n 量级；但环永远比尾巴多恰好 1。</b>
+    </p>
+    <div class="stamp" id="stamp"></div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <!-- ══════════════════════════ 壹 · 重逢 ══════════════════════════ -->
+  <section class="panel" id="p-one">
+    <h2><span class="sec-no">壹</span>重逢：一个具体的长什么样</h2>
+    <p class="note">
+      左边这张图就是一个真实的随机映射：每个点伸出一根箭头指向它的像。
+      环画成圈（砖红），挂在环上的树画成链（青蓝），箭头方向一律指向环。
+      点任何一个点，它走的路会被点亮——<b>它一定会走进某个环，然后绕着走</b>。
+      这条路的长度分成两段：进环之前走了 <code>tail</code> 步，进环之后要绕 <code>cycle</code> 步才回到起点。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-walk"></div>
+        <div class="legend-html" id="lg-walk">
+          <span><i class="sq" style="background:#a23b1e"></i>环上的点（剥掉叶子后剩下的）</span>
+          <span><i class="sq" style="background:#1f6f8b"></i>尾巴上的点（有入度但不在环上）</span>
+          <span><i class="sq" style="background:#c9c3b8"></i>叶子（没有原像的点）</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="walk-n">点数 n</label>
+          <input type="range" id="walk-n" min="6" max="60" step="1" value="24">
+          <span class="val" id="walk-n-val">24</span>
+        </div>
+        <div class="ctrl">
+          <label for="walk-start">从哪一点出发</label>
+          <select id="walk-start"></select>
+        </div>
+        <div class="btnrow">
+          <button type="button" id="walk-seed">换一张映射</button>
+          <button type="button" id="walk-deepest">挑最深的那个点</button>
+        </div>
+        <div class="ro" id="ro-walk"></div>
+      </div>
+    </div>
+    <p class="note" id="walk-note"></p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-walk">
+        <caption id="t-walk-cap">这一张映射的逐点账本</caption>
+        <thead><tr><th>点</th><th>像</th><th>尾巴</th><th>环长</th><th>ρ = 尾 + 环</th><th>在环上</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 贰 · 长度 ══════════════════════════ -->
+  <section class="panel" id="p-two">
+    <h2><span class="sec-no">贰</span>长度：三条长度都是 √n，不是 n</h2>
+    <p class="note">
+      从随机一点出发，要多少步才重逢？先看直觉上的两个候选：如果图是一条长链，那是 <code>O(n)</code>；
+      如果它是随机图，那是 <code>O(log n)</code>。映射都不是——
+      它是 <code>√n</code>，而这条路的具体形状叫 <b>生日问题</b>：
+      每一步现掷一个点，撞上已走过的就停。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-len"></div>
+        <div class="legend-html" id="lg-len">
+          <span><i class="sq" style="background:#1f6f8b"></i>尾巴 / √n（蒙特卡洛）</span>
+          <span><i class="sq" style="background:#a23b1e"></i>ρ / √n（蒙特卡洛）</span>
+          <span><i class="dash" style="color:#b45309"></i>理论值 √(π/8) = 0.626657 与 √(π/2) = 1.253314</span>
+          <span><i class="dash" style="color:#8a8279"></i>如果重逢要 O(n)：√n 这条参考线</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="len-scale">纵轴</label>
+          <select id="len-scale">
+            <option value="norm">除以 √n 后看收敛</option>
+            <option value="abs">绝对长度（对数轴）</option>
+          </select>
+        </div>
+        <div class="ro" id="ro-len"></div>
+      </div>
+    </div>
+    <p class="note" id="len-note"></p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-len">
+        <caption>蒙特卡洛与闭式同表：每档 n 上，两条路算出的归一化长度</caption>
+        <thead><tr><th>n</th><th>样本</th><th>尾巴/√n（MC）</th><th>尾巴/√n（闭式）</th>
+          <th>ρ/√n（MC）</th><th>ρ/√n（闭式）</th><th>绝对 ρ（MC）</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 叁 · 恒等式 ══════════════════════════ -->
+  <section class="panel" id="p-three">
+    <h2><span class="sec-no">叁</span>恒等式：环永远比尾巴多 1</h2>
+    <p class="note">
+      尾巴和环各自的期望都趋于 <code>√(πn/8) ≈ 0.6267√n</code>，两条曲线在对数坐标里几乎重合。
+      但它们的<b>差</b>不是 0，而恰好是 1 —— 而且不是渐近，是<b>对任意 n 精确成立</b>：
+    </p>
+    <p class="note" style="font-family:var(--mono);font-size:15px;color:#1c1b19">
+      E[环长] − E[尾巴] = 1 &nbsp;&nbsp;（n = 1, 2, 3, … 全部成立，残差 ~10⁻¹²，纯浮点噪声）
+    </p>
+    <p class="note">
+      下面是三路独立证据摆在同一个横轴上：<b>全枚举</b>（n ≤ 8，逐个映射走一遍，不用概率论）、
+      <b>闭式</b>（n ≤ 10⁸，直接求和）、<b>蒙特卡洛</b>（带误差棒）。
+      注意大 n 上误差棒已经跨过了 1 —— 那条恒等式在那个尺度上是<b>看不见</b>的。
+    </p>
+    <div class="chart" id="c-gap"></div>
+    <div class="legend-html" id="lg-gap">
+      <span><i class="sq" style="background:#a23b1e"></i>全枚举（n ≤ 8，精确）</span>
+      <span><i class="sq" style="background:#b45309"></i>闭式（n ≤ 10⁸，精确）</span>
+      <span><i class="sq" style="background:#7c3aed"></i>蒙特卡洛 ± 标准误</span>
+      <span><i class="dash" style="color:#15803d"></i>恒等式值 1</span>
+    </div>
+    <p class="note" id="gap-note"></p>
+
+    <h3>第一路：全枚举（n ≤ 8）</h3>
+    <p class="note">
+      <code>n ≤ 8</code> 时映射总共只有 <code>8⁸ = 16,777,216</code> 个。
+      把它们全部生成出来、逐个做结构分解、对每个点都记一笔，得到的期望值是<b>精确</b>的——
+      这里不需要任何概率论。
+    </p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-exact">
+        <caption>全枚举：n = 1…8 的精确期望（每个 n 都把 nⁿ 个映射走完）</caption>
+        <thead><tr><th>n</th><th>映射个数</th><th>E[尾巴]</th><th>E[环长]</th><th>E[ρ]</th>
+          <th>环 − 尾</th><th>2·尾 + 1</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h3>第二路：闭式（推到 10⁸）</h3>
+    <p class="note">
+      全枚举到 <code>n = 8</code> 就用掉了 1677 万个映射；<code>n = 9</code> 是 3.9 亿，
+      <code>n = 12</code> 是 8.9 万亿。但把行走看成「每一步独立均匀地掷，直到撞上」之后，
+      三条期望都能写成闭式（见第肆节），只要 <code>~2.4√n</code> 项：
+    </p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-closed">
+        <caption>闭式：n = 10…10⁸ 的精确期望与二阶修正</caption>
+        <thead><tr><th>n</th><th>E[尾巴]</th><th>E[环长]</th><th>尾巴/√n</th><th>ρ/√n</th>
+          <th>环 − 尾</th><th>E[ρ]−√(πn/2)</th><th>求和项数</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h3>第三路：蒙特卡洛（以及它为什么不够）</h3>
+    <p class="note">
+      每个样本给出一个 <code>C − T</code>，它的方差正比于 <code>n</code>，
+      于是差的标准误 <code>≈ √(n/S)</code>。这意味着<b>要把标准误压到固定精度，样本量必须正比于 n</b>——
+      所以这条恒等式在数值上不可被蒙特卡洛确认。
+    </p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-mc">
+        <caption>蒙特卡洛：与恒等式值 1 的偏离，以及「压到 ±0.05 需要多少样本」</caption>
+        <thead><tr><th>n</th><th>样本</th><th>C − T（实测）</th><th>标准误</th><th>闭式</th>
+          <th>偏离几个 σ</th><th>压到 ±0.05 需要</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 肆 · 为什么 ══════════════════════════ -->
+  <section class="panel" id="p-four">
+    <h2><span class="sec-no">肆</span>为什么恰好是 1：一个对称性</h2>
+    <p class="note">
+      把行走换成等价的说法：<code>x₀</code> 均匀随机，之后每一步<b>独立均匀</b>地掷一个点，
+      直到第一次撞上已经走过的点。这与「先生成整张映射再走」完全同分布——
+      因为凡是第一次访问到的点，它的像都还没被掷过，独立且均匀。
+    </p>
+    <p class="note">
+      设走过的<b>不同</b>点数是 <code>ρ</code>，撞上的那个旧点排在序列的第 <code>T</code> 位。
+      第 <code>m</code> 步才第一次重复、且撞上第 <code>t</code> 个旧点的概率是
+      <code>(n)_m / n^(m+1)</code> —— <b>对每个 t 都一样</b>。于是：
+    </p>
+    <p class="note" style="font-family:var(--mono);font-size:14px;color:#1c1b19">
+      给定 ρ = m，T 在 {0, 1, …, m−1} 上均匀 &nbsp;⟹&nbsp;
+      E[T | m] = (m−1)/2，&nbsp; E[C | m] = (m+1)/2 &nbsp;⟹&nbsp; E[C − T | m] = 1
+    </p>
+    <p class="note">
+      对 m 求平均还是 1，所以 <code>E[C] − E[T] = 1</code> 对任意 n 精确成立。
+      下面左图是 ρ 的精确分布（闭式），右图是<b>现场掷</b>出来的「给定 ρ = m 时 T 的分布」——
+      它应该是一条平线。选一个 m，按下去看。
+    </p>
+    <div class="grid2">
+      <div>
+        <div class="chart" id="c-dist"></div>
+        <div class="legend-html" id="lg-dist">
+          <span><i class="sq" style="background:#1f6f8b"></i>ρ 的精确分布（n = 10⁶）</span>
+          <span><i class="dash" style="color:#b45309"></i>均值位置 √(πn/2)</span>
+        </div>
+      </div>
+      <div>
+        <div class="chart" id="c-cond"></div>
+        <div class="legend-html" id="lg-cond">
+          <span><i class="sq" style="background:#7c3aed"></i>现场掷出的 T 分布（每个桶 ± 标准误）</span>
+          <span><i class="dash" style="color:#15803d"></i>均匀分布应有的高度 1/m</span>
+        </div>
+      </div>
+    </div>
+    <div class="bench">
+      <div>
+        <p class="note" id="cond-note" style="margin-top:0"></p>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="cond-m">固定 ρ = m</label>
+          <select id="cond-m"></select>
+        </div>
+        <div class="ctrl">
+          <label for="cond-s">掷多少次</label>
+          <input type="range" id="cond-s" min="2000" max="200000" step="2000" value="40000">
+          <span class="val" id="cond-s-val">40,000</span>
+        </div>
+        <div class="btnrow">
+          <button type="button" id="cond-run">掷一遍</button>
+          <button type="button" id="cond-reset">清零</button>
+        </div>
+        <div class="ro" id="ro-cond"></div>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-cond">
+        <caption>逐桶账本：每个 T 值出现了几次，期望是 1/m</caption>
+        <thead><tr><th>T</th><th>次数</th><th>频率</th><th>均匀应有的频率</th><th>偏离（σ）</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="note" id="cond-verdict"></p>
+  </section>
+
+  <!-- ══════════════════════════ 伍 · 排列 ══════════════════════════ -->
+  <section class="panel" id="p-five">
+    <h2><span class="sec-no">伍</span>对照：排列从不重逢</h2>
+    <p class="note">
+      把每个点的像限制成<b>双射</b>（排列），图就碎成一堆互不相干的环，一条尾巴都没有。
+      你永远回到出发点，也永远不再遇见别的点。两个世界的差别是量级上的：
+      映射的 ρ 是 <code>1.2533√n</code>，排列的最长环是 <code>0.6243n</code>。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-perm"></div>
+        <div class="legend-html" id="lg-perm">
+          <span><i class="sq" style="background:#a23b1e"></i>映射：ρ / √n</span>
+          <span><i class="sq" style="background:#1f6f8b"></i>排列：最长环 / n</span>
+          <span><i class="dash" style="color:#b45309"></i>Golomb–Dickman 常数 0.6243299885</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="perm-mode">看哪个</label>
+          <select id="perm-mode">
+            <option value="longest">最长环 / n → λ</option>
+            <option value="cyc">期望环数 vs H_n</option>
+          </select>
+        </div>
+        <div class="ro" id="ro-perm"></div>
+      </div>
+    </div>
+    <p class="note" id="perm-note"></p>
+    <h3>排列的期望环数恰好是 H_n</h3>
+    <p class="note">
+      这一条是<b>精确恒等式</b>，不是渐近：n 个点的随机排列，期望环数就是第 n 个调和数。
+      全枚举 n ≤ 10 的全部排列（最大一档 3,628,800 个）逐位吻合。
+    </p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-perm">
+        <caption>排列：全枚举的期望环数 vs H_n；蒙特卡洛的最长环 vs Golomb–Dickman</caption>
+        <thead><tr><th>n</th><th>排列个数 / 样本</th><th>期望环数（实测）</th><th>H_n</th>
+          <th>最长环 / n</th><th>λ = 0.624330</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 陆 · 别的量 ══════════════════════════ -->
+  <section class="panel" id="p-six">
+    <h2><span class="sec-no">陆</span>别的量：叶子、像集、分量</h2>
+    <p class="note">
+      除了「走多久重逢」，还有几个量也能一眼看出来。它们的共同点是：
+      常数都是文献里现成的，本页只负责算出来对上。
+    </p>
+
+    <h3>三成七的点没有原像</h3>
+    <p class="note">
+      一个点若没有任何点指向它，就永远不会被走到（除非从它自己出发）—— 叫<b>叶子</b>。
+      随机映射里叶子的比例趋于 <code>1/e = 0.3678794412</code>，像集则趋于 <code>1 − 1/e = 0.6321205588</code>。
+    </p>
+    <div class="grid2">
+      <div>
+        <div class="chart" id="c-leaf"></div>
+        <div class="legend-html" id="lg-leaf">
+          <span><i class="sq" style="background:#1f6f8b"></i>叶点比例</span>
+          <span><i class="sq" style="background:#a23b1e"></i>像点比例</span>
+          <span><i class="dash" style="color:#b45309"></i>1/e 与 1 − 1/e</span>
+        </div>
+      </div>
+      <div>
+        <div class="chart" id="c-img"></div>
+        <div class="legend-html" id="lg-img">
+          <span><i class="sq" style="background:#7c3aed"></i>第 k 次迭代的像集 / n（实测）</span>
+          <span><i class="dash" style="color:#b45309"></i>理论 1 − τ_k，τ_{k+1} = e^(−1+τ_k)</span>
+        </div>
+      </div>
+    </div>
+    <p class="note" id="leaf-note"></p>
+
+    <h3>分量与巨分量</h3>
+    <p class="note">
+      整个图会碎成若干个互不相连的块（分量）。分量的个数只涨得很慢，约 <code>½ ln n</code>；
+      但其中<b>一个</b>块会吞掉大半张图，占 <code>0.7578230112 n</code>。
+      问题是这个巨分量极不稳定，标准差约 <code>0.19 n</code> —— 单个样本说明不了任何事。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-comp"></div>
+        <div class="legend-html" id="lg-comp">
+          <span><i class="sq" style="background:#a23b1e"></i>最大分量 / n（点）与 ±1 标准差（带）</span>
+          <span><i class="sq" style="background:#1f6f8b"></i>分量个数 / ln n</span>
+          <span><i class="dash" style="color:#b45309"></i>0.7578230112 与 1/2</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="comp-mode">看哪个</label>
+          <select id="comp-mode">
+            <option value="giant">巨分量 / n（含 ±1σ 带）</option>
+            <option value="count">分量个数 / ln n</option>
+            <option value="size">随机点所在分量 / n → 2/3</option>
+          </select>
+        </div>
+        <div class="ro" id="ro-comp"></div>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-comp">
+        <caption>分量：四档规模上的实测值与标准误</caption>
+        <thead><tr><th>n</th><th>样本</th><th>分量个数</th><th>个数/ln n</th>
+          <th>巨分量/n</th><th>±1σ</th><th>所在分量/n</th><th>最大树/n</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="note" id="misc-note"></p>
+  </section>
+
+  <!-- ══════════════════════════ 柒 · 代价与边界 ══════════════════════════ -->
+  <section class="panel" id="p-seven">
+    <h2><span class="sec-no">柒</span>代价：算力买不到精确</h2>
+    <p class="note">
+      全枚举 <code>n = 8</code> 要走过 16,777,216 个映射，<code>n = 9</code> 是 3.9 亿，
+      <code>n = 12</code> 是 8.9 万亿。下面是这堵墙，以及闭式绕过去的方式。
+    </p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-cost"></div>
+        <div class="legend-html" id="lg-cost">
+          <span><i class="sq" style="background:#a23b1e"></i>全枚举要访问的映射个数 nⁿ（对数轴）</span>
+          <span><i class="sq" style="background:#1f6f8b"></i>闭式要加的项数 ~2.4√n</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="cost-mode">看哪个</label>
+          <select id="cost-mode">
+            <option value="wall">全枚举的墙 nⁿ</option>
+            <option value="sim">模拟的代价（样本 × n）</option>
+          </select>
+        </div>
+        <div class="ro" id="ro-cost"></div>
+      </div>
+    </div>
+    <p class="note" id="cost-note"></p>
+    <div class="tbl-wrap">
+      <table class="dt num" id="t-cost">
+        <caption>代价账本：精确枚举的规模，与闭式的项数</caption>
+        <thead><tr><th>n</th><th>映射个数</th><th>记作</th><th>全枚举（实测/外推）</th>
+          <th>闭式项数</th><th>闭式能算吗</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h2 style="margin-top:34px"><span class="sec-no">柒</span>这个装置不声称什么</h2>
+    <ol class="blist" id="blist"></ol>
+  </section>
+
+  <div class="tail">
+    <h2>结论</h2>
+    <ol class="clist" id="clist"></ol>
+
+    <h2>对账：我们算出来的 vs 别人算出来的</h2>
+    <p class="note">
+      每一行左边是本装置某一次真实计算的输出，右边是文献或 OEIS 里的值。
+      随机量的行给的是<b>实测值 ± 标准误</b>，判据是「在 3 个标准误以内」——
+      硬容差在这类量上没有意义，换个种子就会翻脸，而结论其实没变。
+    </p>
+    <div class="tbl-wrap">
+      <table class="dt wrapok" id="t-verify">
+        <caption id="t-verify-cap">逐条对账</caption>
+        <thead><tr><th>量</th><th>本装置</th><th>文献 / OEIS</th><th>来源</th><th>结论</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>/* ============================================================================
+ * mapping/core.js —— 《终将重逢》全部模型
+ *
+ * 对象：一个随机映射 f : [n] → [n]。
+ *   · 从任意一点出发反复迭代，你必然走进一个环 —— 这就是「终将重逢」。
+ *   · 图是若干个 ρ 形（一条尾巴接一个环）。
+ *   · 本文件提供：生成、结构分解（环 / 尾巴 / 分量 / 叶 / 迭代像集）、
+ *     与文献逐条对账用的理论常数、以及小 n 上的**精确全枚举**地面真相。
+ *
+ * UMD：Node 与浏览器共用同一份源码。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.MapCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  var M = {};
+  M.version = 'map-1.1';
+
+  /* ══════════════════════════════════════════════ ① 确定性 PRNG ══════════
+   * 为什么不用 Math.random：标定要可复现，换一台机器、换一个扫描顺序，
+   * 同一个 (种子, 标签) 必须给出同一个映射。xoshiro128** 周期 2^128−1，
+   * 本装置最大需要 ~10^9 个 32 位随机数，远在周期之内。
+   */
+  function splitmix32(a) {
+    return function () {
+      a |= 0; a = (a + 0x9e3779b9) | 0;
+      var t = a ^ (a >>> 16); t = Math.imul(t, 0x21f0aaad);
+      t = t ^ (t >>> 15); t = Math.imul(t, 0x735a2d97);
+      return ((t = t ^ (t >>> 15)) >>> 0);
+    };
+  }
+  function xoshiro128ss(a, b, c, d) {
+    return function () {
+      var t = b << 9, r = a * 5;
+      r = (((r << 7) | (r >>> 25)) * 9) >>> 0;
+      c ^= a; d ^= b; b ^= c; a ^= d; c ^= t;
+      d = (d << 11) | (d >>> 21);
+      return r / 4294967296;
+    };
+  }
+  M.splitmix32 = splitmix32;
+  M.makeRng = function (seed) {
+    var s = splitmix32(seed >>> 0);
+    return xoshiro128ss(s(), s(), s(), s());
+  };
+  function hashTag(tag) {
+    var h = 2166136261 >>> 0, s = String(tag);
+    for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
+    return h >>> 0;
+  }
+  M.hashTag = hashTag;
+  /* 实例由 (种子, 标签) 唯一确定 —— 扫描顺序改变不影响任何单个实例 */
+  M.seedOf = function (seed, tag) {
+    return (Math.imul((seed >>> 0) | 1, 2654435761) ^ hashTag(tag)) >>> 0;
+  };
+
+  /* ══════════════════════════════════════════════ ② 生成映射 ══════════ */
+  M.randomMapping = function (n, rnd) {
+    var f = new Int32Array(n);
+    for (var i = 0; i < n; i++) f[i] = (rnd() * n) | 0;
+    return f;
+  };
+  /* 均匀随机排列（Fisher–Yates）—— 用来做「映射 vs 排列」的对照 */
+  M.randomPermutation = function (n, rnd) {
+    var f = new Int32Array(n), i, j, t;
+    for (i = 0; i < n; i++) f[i] = i;
+    for (i = n - 1; i > 0; i--) {
+      j = (rnd() * (i + 1)) | 0;
+      t = f[i]; f[i] = f[j]; f[j] = t;
+    }
+    return f;
+  };
+  /* 两个极端的确定性映射 —— 用来给「期望值」划出上下界 */
+  M.identityMapping = function (n) {
+    var f = new Int32Array(n); for (var i = 0; i < n; i++) f[i] = i; return f;
+  };
+  M.constantMapping = function (n, c) {
+    var f = new Int32Array(n); for (var i = 0; i < n; i++) f[i] = c | 0; return f;
+  };
+
+  /* ══════════════════════════════════════════════ ③ 结构分解 ══════════ */
+  function inDegrees(f, n, out) {
+    var d = out || new Int32Array(n);
+    d.fill(0);
+    for (var i = 0; i < n; i++) d[f[i]]++;
+    return d;
+  }
+  M.inDegrees = inDegrees;
+
+  /* 剥叶子：反复删掉入度为 0 的点，剩下的**恰好**是环上的点。
+   * 这是本页所有「环」的判定的唯一来源 —— 不做第二份实现。 */
+  function peelCyclic(f, n, indeg, alive, stack) {
+    indeg = indeg || new Int32Array(n);
+    alive = alive || new Uint8Array(n);
+    stack = stack || [];
+    inDegrees(f, n, indeg);
+    var i;
+    for (i = 0; i < n; i++) alive[i] = 1;
+    stack.length = 0;
+    for (i = 0; i < n; i++) if (indeg[i] === 0) stack.push(i);
+    while (stack.length) {
+      var v = stack.pop();
+      alive[v] = 0;
+      var u = f[v];
+      if (--indeg[u] === 0) stack.push(u);
+    }
+    return alive;
+  }
+  M.peelCyclic = peelCyclic;
+
+  /* 环列表：每个环是一个节点数组，按环序排列 */
+  function cyclesOf(f, n, onCycle) {
+    onCycle = onCycle || peelCyclic(f, n);
+    var seen = new Uint8Array(n), out = [];
+    for (var i = 0; i < n; i++) {
+      if (!onCycle[i] || seen[i]) continue;
+      var c = [], x = i;
+      do { seen[x] = 1; c.push(x); x = f[x]; } while (x !== i);
+      out.push(c);
+    }
+    return out;
+  }
+  M.cyclesOf = cyclesOf;
+
+  /* 逐点统计：tail[x] = 从 x 走到环上要走几步；cyc[x] = x 所在环的长度。
+   * 一趟剥叶 + 一趟反向 BFS，O(n)。这是「ρ 的形状」的完整描述。 */
+  function makeScratch(n) {
+    return {
+      indeg: new Int32Array(n), alive: new Uint8Array(n), stack: [],
+      cycLen: new Int32Array(n), depth: new Int32Array(n), root: new Int32Array(n),
+      rhead: new Int32Array(n + 1), rnext: new Int32Array(n), rcnt: new Int32Array(n),
+      queue: new Int32Array(n), seen: new Uint8Array(n),
+      uf: new Int32Array(n), ufsz: new Int32Array(n), cmark: new Uint8Array(n)
+    };
+  }
+  M.makeScratch = makeScratch;
+
+  /* 一趟剥叶 + 一趟反向 BFS，O(n)。返回的三个数组逐位对齐，长度都是 n：
+   *   tail[i]  从 i 走到环上要走几步（环上的点自己是 0）
+   *   cyc[i]   i 所在环的长度（同一个分量的所有点共享）
+   *   onCycle  是否在环上
+   * 「尾巴 + 环」= 从 i 出发走多少步才会重逢。 */
+  function nodeStats(f, n, S) {
+    S = S || makeScratch(n);
+    var i, x, c;
+    var onCycle = peelCyclic(f, n, S.indeg, S.alive, S.stack);
+    var cycLen = S.cycLen, seen = S.seen;
+    seen.fill(0);
+    var cycles = [], nCycleNodes = 0;
+    for (i = 0; i < n; i++) {
+      if (!onCycle[i] || seen[i]) continue;
+      c = 0; x = i;
+      do { seen[x] = 1; c++; x = f[x]; } while (x !== i);
+      x = i;
+      do { cycLen[x] = c; x = f[x]; } while (x !== i);
+      nCycleNodes += c;
+      cycles.push(c);
+    }
+    /* 反向邻接表（CSR）：rhead[v] .. rhead[v+1] 是 v 的前像 */
+    var rhead = S.rhead, rnext = S.rnext, rcnt = S.rcnt;
+    rhead.fill(0);
+    for (i = 0; i < n; i++) rhead[f[i] + 1]++;
+    for (i = 0; i < n; i++) rhead[i + 1] += rhead[i];
+    rcnt.fill(0);
+    for (i = 0; i < n; i++) { var u = f[i]; rnext[rhead[u] + rcnt[u]] = i; rcnt[u]++; }
+    /* BFS：从环上的点往外推深度，顺带把环长与「根」（挂在哪一个环节点上）传播出去 */
+    var depth = S.depth, queue = S.queue, root = S.root, head = 0, tail = 0;
+    depth.fill(-1);
+    for (i = 0; i < n; i++) if (onCycle[i]) { depth[i] = 0; root[i] = i; queue[tail++] = i; }
+    while (head < tail) {
+      var v = queue[head++];
+      for (var e = rhead[v]; e < rhead[v + 1]; e++) {
+        var p = rnext[e];
+        if (depth[p] < 0) {
+          depth[p] = depth[v] + 1; cycLen[p] = cycLen[v]; root[p] = root[v];
+          queue[tail++] = p;
+        }
+      }
+    }
+    /* 最大树：挂在同一个环节点上的点最多的那一棵（FO 的 τ_{n,1}） */
+    var cnt = S.rcnt; cnt.fill(0);
+    var maxTree = 0;
+    for (i = 0; i < n; i++) { var r = root[i]; if (++cnt[r] > maxTree) maxTree = cnt[r]; }
+    return { tail: depth, cyc: cycLen, onCycle: onCycle, cycles: cycles,
+             nCycleNodes: nCycleNodes, root: root, maxTree: maxTree };
+  }
+  M.nodeStats = nodeStats;
+
+  /* 单点行走（可复用的 stamp 缓冲）—— 界面演示与「第一次重逢」都用它 */
+  M.makeWalker = function (n) {
+    var stamp = new Int32Array(n), pos = new Int32Array(n), tick = 0;
+    return {
+      walk: function (f, start) {
+        tick++;
+        var x = start | 0, t = 0;
+        while (stamp[x] !== tick) { stamp[x] = tick; pos[x] = t; x = f[x]; t++; }
+        var p = pos[x];
+        return { tail: p, cycle: t - p, rho: t, meet: x };
+      },
+      reset: function () { tick = 0; }
+    };
+  };
+  /* 惰性行走器：**不生成整张映射**，边走边掷。
+   * 从 start 出发，每步现掷一个均匀的像；只有被访问到的点才"定下来"。
+   * 这与「先均匀随机地生成整张映射、再走」完全同分布（未被访问的点对这条路无影响），
+   * 但代价只有 O(ρ) = O(√n) 而不是 O(n) —— 于是大 n 上可以把样本量提上去。 */
+  M.makeLazyWalker = function (n) {
+    var stamp = new Int32Array(n), pos = new Int32Array(n), tick = 0;
+    return function (rnd, start) {
+      tick++;
+      var x = start | 0, t = 0;
+      while (stamp[x] !== tick) { stamp[x] = tick; pos[x] = t; x = (rnd() * n) | 0; t++; }
+      var p = pos[x];
+      return { tail: p, cycle: t - p, rho: t };
+    };
+  };
+  /* 可复用的迭代像集跟踪器（避免每次分配两个 n 长的数组） */
+  M.makeImageTracker = function (n) {
+    var a = new Uint8Array(n), b = new Uint8Array(n);
+    return function (f, k) {
+      var cur = a, nxt = b, i, j;
+      cur.fill(1);
+      for (j = 0; j < k; j++) {
+        nxt.fill(0);
+        for (i = 0; i < n; i++) if (cur[i]) nxt[f[i]] = 1;
+        var t = cur; cur = nxt; nxt = t;
+      }
+      var c = 0; for (i = 0; i < n; i++) if (cur[i]) c++;
+      return c;
+    };
+  };
+
+  /* 顺带给出「路径」本身（界面画 ρ 用） */
+  M.walkPath = function (f, start) {
+    var seen = Object.create(null), path = [], x = start;
+    while (seen[x] === undefined) { seen[x] = path.length; path.push(x); x = f[x]; }
+    return { path: path, tail: seen[x], cycle: path.length - seen[x] };
+  };
+
+  /* 分量（无向连通块）—— 并查集 */
+  function components(f, n, S) {
+    S = S || makeScratch(n);
+    var uf = S.uf, sz = S.ufsz, i;
+    for (i = 0; i < n; i++) { uf[i] = i; sz[i] = 1; }
+    function find(a) { while (uf[a] !== a) { uf[a] = uf[uf[a]]; a = uf[a]; } return a; }
+    for (i = 0; i < n; i++) {
+      var a = find(i), b = find(f[i]);
+      if (a !== b) { if (sz[a] < sz[b]) { var t = a; a = b; b = t; } uf[b] = a; sz[a] += sz[b]; }
+    }
+    var sizes = [], compOf = new Int32Array(n), mark = S.cmark, sizeByRoot = S.ufsz;
+    mark.fill(0);
+    sizeByRoot.fill(0);
+    for (i = 0; i < n; i++) {
+      var r = find(i);
+      compOf[i] = r;
+      sizeByRoot[r]++;
+      if (!mark[r]) { mark[r] = 1; }
+    }
+    for (i = 0; i < n; i++) if (mark[i]) sizes.push(sizeByRoot[i]);
+    var mx = 0;
+    for (i = 0; i < sizes.length; i++) if (sizes[i] > mx) mx = sizes[i];
+    return { sizes: sizes, count: sizes.length, max: mx, sum: n,
+             compOf: compOf, sizeByRoot: sizeByRoot };
+  }
+  M.components = components;
+
+  /* 第 k 次迭代的像集大小：|f^k([n])|。理论上 → (1 − τ_k)·n，τ_{k+1} = e^{−1+τ_k} */
+  M.kthImageSize = function (f, n, k) {
+    var cur = new Uint8Array(n), nxt = new Uint8Array(n), i, j;
+    cur.fill(1);
+    for (j = 0; j < k; j++) {
+      nxt.fill(0);
+      for (i = 0; i < n; i++) if (cur[i]) nxt[f[i]] = 1;
+      var t = cur; cur = nxt; nxt = t;
+    }
+    var c = 0; for (i = 0; i < n; i++) if (cur[i]) c++;
+    return c;
+  };
+
+  /* ══════════════════════════════════════════════ ④ 一次采样的汇总 ══════ */
+  /* 从「一个随机点」看到的量：tail / cycle / rho。
+   * 注意：这三个量与「从所有点平均」是同分布（对称性），但为了和文献口径一致，
+   * 这里显式地取一个随机起点。 */
+  M.sampleFrom = function (f, n, rnd, S, W) {
+    var st = nodeStats(f, n, S);
+    var comp = components(f, n, S);
+    var x = (rnd() * n) | 0;
+    var tail = st.tail[x], cyc = st.cyc[x];
+    var leaves = 0, i;
+    var d = inDegrees(f, n, S.indeg);
+    for (i = 0; i < n; i++) if (d[i] === 0) leaves++;
+    return {
+      tail: tail, cycle: cyc, rho: tail + cyc,
+      nComp: comp.count, maxComp: comp.max, maxTree: st.maxTree,
+      compSize: comp.sizeByRoot[comp.compOf[x]],
+      core: st.nCycleNodes, leaves: leaves,
+      images: n - leaves
+    };
+  };
+
+  /* ══════════════════════════════════════════════ ⑤ 理论常数 ══════════ */
+  var SQRT_PI = Math.sqrt(Math.PI);
+  M.theory = {
+    /* Flajolet–Odlyzko, "Random Mapping Statistics" (1990)：
+     *   从随机点出发的尾巴长度  ~ √(πn/8)
+     *                      环长  ~ √(πn/8)
+     *                      ρ 长  ~ √(πn/2)
+     *   环上点数（核心）        ~ √(πn/2)
+     *   分量个数                ~ ½ ln n
+     *   终端点（无原像）        ~ n/e
+     *   像点                    ~ (1 − 1/e) n
+     *   随机点所在分量的大小    ~ 2n/3
+     *   最大分量（巨分量）      ~ μ n，μ = 0.7578230112…（OEIS A143297）
+     * 排列（对照）：环个数 = H_n（精确，不是渐近）；最长环 ~ 0.6243299885 n
+     * （Golomb–Dickman 常数，OEIS A084945；Shepp–Lloyd 给出精确表达式）。
+     */
+    tail: function (n) { return SQRT_PI * Math.sqrt(n / 8); },
+    cycle: function (n) { return SQRT_PI * Math.sqrt(n / 8); },
+    rho: function (n) { return SQRT_PI * Math.sqrt(n / 2); },
+    core: function (n) { return SQRT_PI * Math.sqrt(n / 2); },
+    components: function (n) { return 0.5 * Math.log(n); },
+    leaves: function (n) { return n / Math.E; },
+    images: function (n) { return n * (1 - 1 / Math.E); },
+    compSize: function (n) { return 2 * n / 3; },
+    giant: function (n) { return 0.7578230112 * n; },
+    /* 常量本身（对账用） */
+    C_TAIL: Math.sqrt(Math.PI / 8),           /* 0.6266570686… */
+    C_RHO: Math.sqrt(Math.PI / 2),            /* 1.2533141373… */
+    C_COMP: 0.5,                              /* 分量数 / ln n */
+    C_LEAF: 1 / Math.E,                       /* 0.3678794412… */
+    C_GIANT: 0.7578230112,                    /* 0.7578230112… */
+    C_COMPSIZE: 2 / 3,                        /* 0.6666666666… */
+    C_PERMCYCLE: 0.62432998854355087099,      /* Golomb–Dickman */
+    C_BIRTHDAY: Math.sqrt(2 * Math.log(2)),   /* 1.1774100225…（首次碰撞的位置 / √n） */
+    /* 二阶（O(1)）修正：由 ⑤′ 的精确闭式在 n → ∞ 时量出（见 calibrate E7）
+     *   E[ρ] = √(πn/2) − 1/3 + o(1)
+     *   E[T] = √(πn/8) − 2/3 + o(1)
+     *   E[C] = √(πn/8) + 1/3 + o(1)
+     * 三条修正项之差恰好抵消到 1 —— 与 E[C] − E[T] = 1 恒等式相容。 */
+    SHIFT_RHO: -1 / 3,
+    SHIFT_TAIL: -2 / 3,
+    SHIFT_CYCLE: 1 / 3
+  };
+  /* τ_k 递推：τ_0 = 0，τ_{k+1} = e^{−1+τ_k}；|f^k([n])| ~ (1 − τ_k) n */
+  M.tau = function (k) { var t = 0; for (var i = 0; i < k; i++) t = Math.exp(-1 + t); return t; };
+  /* 调和数 H_n —— 排列的期望环数，精确值（不是渐近） */
+  M.harmonic = function (n) { var s = 0; for (var i = 1; i <= n; i++) s += 1 / i; return s; };
+  /* 生日界：在 n 个格子里随机取，第一次碰撞的位置期望 ~ √(πn/2)，
+   * 而「碰撞概率到 1/2」的位置是 √(2 ln 2 · n)。两者差 6.4%，本页两个都报。 */
+  M.birthdayHalf = function (n) { return Math.sqrt(2 * Math.log(2) * n); };
+
+  /* Golomb–Dickman 常数 λ = 0.6243299885…，从积分表示**当场算出来**，不抄小数：
+   *   λ = ∫₀^∞ exp(−t − E₁(t)) dt，E₁(t) = ∫_t^∞ e^{−u}/u du（指数积分）。
+   * 这是「排列的最长环 ~ λn」（Shepp–Lloyd）里的那个 λ。 */
+  M.golombDickman = function () {
+    function E1(t) {
+      if (t <= 0) return Infinity;
+      var k;
+      if (t < 1) {
+        /* 小 t：E₁(t) = −γ − ln t + Σ_{k≥1} (−1)^{k+1} t^k /(k·k!) */
+        var g = 0.57721566490153286061, s = -g - Math.log(t), term = t;
+        for (k = 1; k <= 60; k++) { s += term / k; term *= -t / (k + 1); if (Math.abs(term / k) < 1e-19) break; }
+        return s;
+      }
+      /* 大 t：Numerical Recipes 的连分式 */
+      var FPMIN = 1e-300, EPS = 1e-16, MAXIT = 300;
+      var b = t + 1, c = 1 / FPMIN, d = 1 / b, h = d;
+      for (k = 1; k <= MAXIT; k++) {
+        var a = -k * k;
+        b += 2; d = 1 / (a * d + b); c = b + a / c;
+        var del = c * d; h *= del;
+        if (Math.abs(del - 1) < EPS) break;
+      }
+      return Math.exp(-t) * h;
+    }
+    /* [0,1] 上代换 t = s²（把 1/t 的对数奇性变成光滑的 s³），[1,60] 上中点法 */
+    var s = 0, N = 400000, i, t, dt;
+    dt = 1 / N;
+    for (i = 0; i < N; i++) { t = (i + 0.5) * dt; s += Math.exp(-t * t - E1(t * t)) * 2 * t * dt; }
+    dt = 59 / N;
+    for (i = 0; i < N; i++) { t = 1 + (i + 0.5) * dt; s += Math.exp(-t - E1(t)) * dt; }
+    return s;
+  };
+
+  /* ════════════════════════════════════ ⑤′ 精确闭式（不必枚举） ══════
+   * 把「从随机点出发的行走」改写成：x_0 均匀，此后每一步**独立均匀**地掷一个
+   * [n] 里的点，直到第一次撞上已经走过的点为止。
+   * 这与「先均匀随机地生成整张映射、再走」完全同分布 —— 因为凡是第一次访问到的
+   * 点，它的像都还没被掷过，独立且均匀；而没被访问到的点对这条路毫无影响。
+   *
+   * 设走过的**不同**点数为 ρ，重复的那个旧点在序列里的位置为 T，则环长 C = ρ − T。
+   * 第 m 步才第一次重复、且撞上的是第 t 个旧点，其概率为
+   *     P(ρ = m, T = t) = (n)_m / n^{m+1},   t = 0, 1, …, m−1
+   * —— 对每个 t **都一样**。于是给定 ρ = m，T 在 {0,…,m−1} 上均匀分布：
+   *     E[T | ρ=m] = (m−1)/2,  E[C | ρ=m] = (m+1)/2,  E[C − T | ρ=m] = 1.
+   * 期望对 m 求平均后仍然是 1，所以
+   *     E[C] − E[T] = 1        ★ 对任意 n **精确**成立，不是渐近。
+   * 这是本装置的主结论：尾巴与环**一样长**（都是 √(πn/8) 量级），
+   * 但环永远比尾巴**多恰好 1**。三条闭式：
+   *     E[ρ] = Σ_{m=1..n} (n)_m / n^m
+   *     E[T] = Σ_{m=1..n} [m(m−1)/2] · (n)_m / n^{m+1}
+   *     E[C] = Σ_{m=1..n} [m(m+1)/2] · (n)_m / n^{m+1}
+   * 其中 (n)_m = n(n−1)···(n−m+1)。三项都是正项求和，可以直接算到很大的 n。
+   */
+  M.exactMoments = function (n, opt) {
+    opt = opt || {};
+    var tol = opt.tol || 1e-16;
+    var p = 1, m = 0, terms = 0;
+    /* 三个正项求和各用一次 Neumaier 补偿求和。
+     * 为什么要补偿：闭式是 ~2.4√n 项相加，n = 10⁷ 时朴素求和的绝对误差 ~2e-8，
+     * 会把「E[环长] − E[尾巴] 精确等于 1」这条恒等式糊成 0.99999999。
+     * 补偿之后残差回到 1e-15 量级 —— 页面上才敢写「精确」。 */
+    var rS = 0, rC = 0, tS = 0, tC = 0, cS = 0, cC = 0, u;
+    var guard = Math.ceil(3 * Math.sqrt(n)) + 20;
+    for (m = 1; m <= n; m++) {
+      p *= (n - m + 1) / n;          /* (n)_m / n^m */
+      var q = p / n;                 /* (n)_m / n^{m+1} */
+      u = p;
+      var t1 = rS + u; if (Math.abs(rS) >= Math.abs(u)) rC += (rS - t1) + u; else rC += (u - t1) + rS; rS = t1;
+      u = (m * (m - 1) / 2) * q;
+      var t2 = tS + u; if (Math.abs(tS) >= Math.abs(u)) tC += (tS - t2) + u; else tC += (u - t2) + tS; tS = t2;
+      u = (m * (m + 1) / 2) * q;
+      var t3 = cS + u; if (Math.abs(cS) >= Math.abs(u)) cC += (cS - t3) + u; else cC += (u - t3) + cS; cS = t3;
+      terms = m;
+      if (m >= guard && p < tol * rS) break;   /* 尾项已到浮点噪声以下 */
+    }
+    var rho = rS + rC, tail = tS + tC, cyc = cS + cC;
+    return { n: n, rho: rho, tail: tail, cycle: cyc, gap: cyc - tail, terms: terms };
+  };
+  /* ρ 的精确分布：P(ρ = m) = m·(n)_m / n^{m+1}（m = 1…n）。画图用。 */
+  M.rhoDist = function (n, cap) {
+    cap = cap || n;
+    var p = 1, out = [], m;
+    for (m = 1; m <= n && m <= cap; m++) {
+      p *= (n - m + 1) / n;
+      out.push(m * p / n);
+    }
+    return out;
+  };
+  /* P(ρ > k) = (n)_{k+1} / n^{k+1} —— 生日问题里的「还没撞上」概率，精确值 */
+  M.noCollision = function (n, k) {
+    var p = 1;
+    for (var j = 0; j <= k; j++) { p *= (n - j) / n; if (p === 0) return 0; }
+    return p;
+  };
+
+  /* ══════════════════════════════════════════════ ⑥ 精确地面真相 ══════ */
+  /* 全枚举 n^n 个映射，对每一个做 O(n) 的结构分解，累加精确期望与分布。
+   * 这是本页唯一「不需要概率论」的部分：n ≤ 8 时它是**精确**的。
+   */
+  M.exactAll = function (n, opt) {
+    opt = opt || {};
+    var S = makeScratch(n);
+    var f = new Int32Array(n);
+    var total = Math.pow(n, n);
+    var acc = {
+      n: n, total: total,
+      tailSum: 0, cycleSum: 0, rhoSum: 0, compSum: 0, maxCompSum: 0,
+      leafSum: 0, coreSum: 0, compSizeSum: 0,
+      rhoHist: new Float64Array(n + 1), compHist: new Float64Array(n + 1),
+      maxCompHist: new Float64Array(n + 1), tailHist: new Float64Array(n + 1),
+      coreHist: new Float64Array(n + 1), leafHist: new Float64Array(n + 1)
+    };
+    var i, x;
+    for (;;) {
+      var st = nodeStats(f, n, S);
+      var d = inDegrees(f, n, S.indeg);
+      var leaves = 0;
+      for (i = 0; i < n; i++) if (d[i] === 0) leaves++;
+      var comp = components(f, n, S);
+      var tailS = 0, cycleS = 0;
+      for (i = 0; i < n; i++) { tailS += st.tail[i]; cycleS += st.cyc[i]; }
+      acc.tailSum += tailS; acc.cycleSum += cycleS;
+      acc.rhoSum += tailS + cycleS;
+      acc.compSum += comp.count; acc.maxCompSum += comp.max;
+      acc.leafSum += leaves; acc.coreSum += st.nCycleNodes;
+      acc.compSizeSum += n / comp.count;
+      acc.compHist[comp.count] += 1;
+      acc.maxCompHist[comp.max] += 1;
+      acc.coreHist[st.nCycleNodes] += 1;
+      acc.leafHist[leaves] += 1;
+      /* 逐点直方图（每个映射贡献 n 个样本） */
+      for (i = 0; i < n; i++) {
+        acc.tailHist[st.tail[i]] += 1;
+        acc.rhoHist[st.tail[i] + st.cyc[i]] += 1;
+      }
+      /* 里程表式递增 */
+      var k = n - 1;
+      while (k >= 0 && f[k] === n - 1) { f[k] = 0; k--; }
+      if (k < 0) break;
+      f[k]++;
+    }
+    var T = total * n;
+    acc.tailMean = acc.tailSum / T;
+    acc.cycleMean = acc.cycleSum / T;
+    acc.rhoMean = acc.rhoSum / T;
+    acc.compMean = acc.compSum / total;
+    acc.maxCompMean = acc.maxCompSum / total;
+    acc.leafMean = acc.leafSum / total;
+    acc.coreMean = acc.coreSum / total;
+    acc.compSizeMean = acc.compSizeSum / total;
+    /* 直方图归一化 */
+    ['rhoHist', 'tailHist'].forEach(function (key) {
+      var h = acc[key]; for (var j = 0; j < h.length; j++) h[j] /= T;
+    });
+    ['compHist', 'maxCompHist', 'coreHist', 'leafHist'].forEach(function (key) {
+      var h = acc[key]; for (var j = 0; j < h.length; j++) h[j] /= total;
+    });
+    return acc;
+  };
+
+  /* 全枚举 n! 个排列 —— 「映射 vs 排列」的对照组的精确地面 */
+  M.exactPerms = function (n) {
+    var f = new Int32Array(n), used = new Uint8Array(n);
+    var acc = { n: n, total: 0, cycSum: 0, longestSum: 0, tailBad: 0,
+                cycHist: new Float64Array(n + 1), longestHist: new Float64Array(n + 1) };
+    var i;
+    function rec(k) {
+      if (k === n) {
+        acc.total++;
+        var seen = new Uint8Array(n), longest = 0, cnt = 0;
+        for (i = 0; i < n; i++) {
+          if (seen[i]) continue;
+          var len = 0, x = i;
+          do { seen[x] = 1; x = f[x]; len++; } while (x !== i);
+          cnt++; if (len > longest) longest = len;
+        }
+        acc.cycSum += cnt; acc.longestSum += longest;
+        acc.cycHist[cnt] += 1; acc.longestHist[longest] += 1;
+        return;
+      }
+      for (var v = 0; v < n; v++) {
+        if (used[v]) continue;
+        used[v] = 1; f[k] = v;
+        rec(k + 1);
+        used[v] = 0;
+      }
+    }
+    rec(0);
+    for (i = 0; i <= n; i++) { acc.cycHist[i] /= acc.total; acc.longestHist[i] /= acc.total; }
+    acc.cycMean = acc.cycSum / acc.total;
+    acc.longestMean = acc.longestSum / acc.total;
+    return acc;
+  };
+
+  /* ══════════════════════════════════════════════ ⑦ 代价账本 ══════ */
+  /* 「看一眼」的代价：随机映射要 n 次取值；结构分解要 O(n) 步；
+   * 而精确地面真相要 n^n 个映射 × n 步。 */
+  M.costTable = function (nMax) {
+    var rows = [];
+    for (var n = 2; n <= nMax; n++) {
+      rows.push({
+        n: n,
+        gen: n,                        /* 生成一个映射：n 次取值 */
+        struct: n,                     /* 结构分解：O(n) */
+        exact: Math.pow(n, n) * n,     /* 精确枚举：n^n × n 步 */
+        exactMaps: Math.pow(n, n)
+      });
+    }
+    return rows;
+  };
+
+  return M;
+});
+</script>
+<script>window.__ANALYSIS__ = {"meta":{"title":"终将重逢","subtitle":"随机映射 · 你总会走进一个环","seed":31337,"generatedAt":"2026-10-10T10:19:48.492Z","resultsSavedAt":"2026-10-10T10:19:48.358Z","coreVersion":"map-1.1","allVerifyOk":true,"verifyRows":18,"all8":true,"sources":["Flajolet & Odlyzko, \"Random Mapping Statistics\"（1990）—— 尾巴/环/ρ/叶/分量/巨分量的常数","OEIS A143297（巨分量常数 0.7578230112…）","OEIS A271871（最大树常数 0.4834983471…）","OEIS A084945（Golomb–Dickman 常数 0.6243299885…，排列最长环）","Shepp & Lloyd（1966）—— 排列最长环的精确表达式"]},"kpi":[{"label":"E[环长] − E[尾巴]","value":"= 1","unit":"n = 1…10⁸ 精确","note":"全枚举（n ≤ 8）与闭式（n ≤ 10⁸）两路都对上，残差 ~1e-12。"},{"label":"尾巴 / √n","value":"0.6266","unit":"n = 10⁸","note":"趋于 √(π/8) = 0.6266570686 —— 重逢只要 O(√n) 步。"},{"label":"ρ / √n","value":"1.2533","unit":"n = 10⁸","note":"趋于 √(π/2) = 1.2533141373，恰好是尾巴的两倍。"},{"label":"二阶修正","value":"-0.333","unit":"E[ρ] − √(πn/2)","note":"趋于 −1/3；尾巴是 −2/3，环是 +1/3，差恰好抵消到 1。"},{"label":"全枚举的地面真相","value":"16,777,216","unit":"个映射（n = 8）","note":"n ≤ 8 的每一个映射都走了一遍，不需要概率论。"},{"label":"叶点比例","value":"0.3680","unit":"n = 10⁶","note":"趋于 1/e = 0.3678794412 —— 三成七的点没有原像。"},{"label":"像点比例","value":"0.6320","unit":"n = 10⁶","note":"趋于 1 − 1/e = 0.6321205588。"},{"label":"巨分量 / n","value":"0.7592","unit":"4 档平均","note":"趋于 0.7578230112，但标准差 ≈ 0.19n —— 单个样本说明不了什么。"},{"label":"排列最长环 / n","value":"0.6505","unit":"n = 10⁶","note":"趋于 Golomb–Dickman 常数 0.6243299885。映射是 √n，排列是 n。"},{"label":"把标准误压到 ±0.05 要多少样本","value":"2.6e+8","unit":"n = 10⁶ 时的蒙特卡洛","note":"样本量必须正比于 n —— 所以那条恒等式只能靠闭式确认。"},{"label":"精确闭式的项数","value":"74,026","unit":"n = 10⁸ 时的求和项","note":"~2.4√n 项就够：再往后的项已经在浮点噪声以下。"}],"derived":{"theory":{"C_TAIL":0.6266570686577501,"C_RHO":1.2533141373155001,"C_LEAF":0.36787944117144233,"C_GIANT":0.7578230112,"C_COMPSIZE":0.6666666666666666,"C_PERMCYCLE":0.6243299885435508,"C_BIRTHDAY":1.1774100225154747,"SHIFT_RHO":-0.3333333333333333,"SHIFT_TAIL":-0.6666666666666666,"SHIFT_CYCLE":0.3333333333333333,"golomb":0.6243299883740607},"lenRows":[{"n":100,"S":20000,"tailOverSqrt":0.558745,"tailSE":0.003542,"rhoOverSqrt":1.21719,"rhoSE":0.004399,"tailAbs":5.58745,"rhoAbs":12.1719,"sqrtN":10},{"n":316,"S":20000,"tailOverSqrt":0.585423,"tailSE":0.003642,"rhoOverSqrt":1.227367,"rhoSE":0.004496,"tailAbs":10.4067,"rhoAbs":21.81815,"sqrtN":17.776388834631177},{"n":1000,"S":20000,"tailOverSqrt":0.60676,"tailSE":0.003666,"rhoOverSqrt":1.240135,"rhoSE":0.00458,"tailAbs":19.18745,"rhoAbs":39.2165,"sqrtN":31.622776601683793},{"n":3162,"S":20000,"tailOverSqrt":0.61449,"tailSE":0.003671,"rhoOverSqrt":1.243677,"rhoSE":0.004564,"tailAbs":34.5538,"rhoAbs":69.934,"sqrtN":56.231663678038196},{"n":10000,"S":20000,"tailOverSqrt":0.616196,"tailSE":0.00366,"rhoOverSqrt":1.249331,"rhoSE":0.004577,"tailAbs":61.6196,"rhoAbs":124.9331,"sqrtN":100},{"n":31623,"S":20000,"tailOverSqrt":0.621053,"tailSE":0.003698,"rhoOverSqrt":1.243655,"rhoSE":0.004589,"tailAbs":110.4409,"rhoAbs":221.1574,"sqrtN":177.82856913330883},{"n":100000,"S":20000,"tailOverSqrt":0.625717,"tailSE":0.003701,"rhoOverSqrt":1.243283,"rhoSE":0.004591,"tailAbs":197.86895,"rhoAbs":393.1605,"sqrtN":316.22776601683796},{"n":316228,"S":20000,"tailOverSqrt":0.622337,"tailSE":0.003692,"rhoOverSqrt":1.250082,"rhoSE":0.004602,"tailAbs":349.96585,"rhoAbs":702.9733,"sqrtN":562.3415332340303},{"n":1000000,"S":20000,"tailOverSqrt":0.622593,"tailSE":0.003673,"rhoOverSqrt":1.252792,"rhoSE":0.00465,"tailAbs":622.59265,"rhoAbs":1252.79155,"sqrtN":1000},{"n":10000000,"S":6000,"tailOverSqrt":0.627138,"tailSE":0.006664,"rhoOverSqrt":1.244746,"rhoSE":0.00844,"tailAbs":1983.185667,"rhoAbs":3936.232333,"sqrtN":3162.2776601683795}],"closedAt":[{"n":100,"tailOverSqrt":0.5604980315107977,"rhoOverSqrt":1.2209960630215977,"mcTail":0.558745,"mcRho":1.21719,"mcTailSE":0.003542,"mcRhoSE":0.004399},{"n":316,"tailOverSqrt":0.5893167814893838,"rhoOverSqrt":1.2348879580250776,"mcTail":0.585423,"mcRho":1.227367,"mcTailSE":0.003642,"mcRhoSE":0.004496},{"n":1000,"tailOverSqrt":0.6056269727456176,"rhoOverSqrt":1.2428767220929415,"mcTail":0.60676,"mcRho":1.240135,"mcTailSE":0.003666,"mcRhoSE":0.00458},{"n":3162,"tailOverSqrt":0.6148177843037014,"rhoOverSqrt":1.247419143458186,"mcTail":0.61449,"mcRho":1.243677,"mcTailSE":0.003671,"mcRhoSE":0.004564},{"n":10000,"tailOverSqrt":0.6199956093403604,"rhoOverSqrt":1.2499912186808109,"mcTail":0.616196,"mcRho":1.249331,"mcTailSE":0.00366,"mcRhoSE":0.004577},{"n":31623,"tailOverSqrt":0.6229097884742494,"rhoOverSqrt":1.2514429703374357,"mcTail":0.621053,"mcRho":1.243655,"mcTailSE":0.003698,"mcRhoSE":0.004589},{"n":100000,"tailOverSqrt":0.6245494052967758,"rhoOverSqrt":1.2522610882540184,"mcTail":0.625717,"mcRho":1.243283,"mcTailSE":0.003701,"mcRhoSE":0.004591},{"n":316228,"tailOverSqrt":0.6254717145446058,"rhoOverSqrt":1.2527217078418973,"mcTail":0.622337,"mcRho":1.250082,"mcTailSE":0.003692,"mcRhoSE":0.004602},{"n":1000000,"tailOverSqrt":0.6259904541972086,"rhoOverSqrt":1.2529809083953716,"mcTail":0.622593,"mcRho":1.252792,"mcTailSE":0.003673,"mcRhoSE":0.00465},{"n":10000000,"tailOverSqrt":0.6264462553672345,"rhoOverSqrt":1.2532087385034636,"mcTail":0.627138,"mcRho":1.244746,"mcTailSE":0.006664,"mcRhoSE":0.00844}],"exactRows":[{"n":1,"total":1,"tail":0,"cycle":1,"rho":1,"gap":1,"ms":0},{"n":2,"total":4,"tail":0.25,"cycle":1.25,"rho":1.5,"gap":1,"ms":0},{"n":3,"total":27,"tail":0.444444,"cycle":1.444444,"rho":1.888889,"gap":1,"ms":1},{"n":4,"total":256,"tail":0.609375,"cycle":1.609375,"rho":2.21875,"gap":1,"ms":2},{"n":5,"total":3125,"tail":0.7552,"cycle":1.7552,"rho":2.5104,"gap":1,"ms":17},{"n":6,"total":46656,"tail":0.887346,"cycle":1.887346,"rho":2.774691,"gap":1,"ms":46},{"n":7,"total":823543,"tail":1.009069,"cycle":2.009069,"rho":3.018139,"gap":1,"ms":717},{"n":8,"total":16777216,"tail":1.122509,"cycle":2.122509,"rho":3.245018,"gap":1,"ms":18591}],"closedRows":[{"n":10,"tail":1.33010784,"cycle":2.33010784,"rho":3.6602156800000003,"tailOverSqrt":0.42061703080468166,"cycleOverSqrt":0.7368447968215196,"rhoOverSqrt":1.1574618276262014,"gap":1.0000000000000002,"shiftTail":-0.6515558088030056,"shiftCycle":0.34844419119699466,"shiftRho":-0.3031116176060107,"terms":10},{"n":100,"tail":5.604980315107977,"cycle":6.6049803151079765,"rho":12.209960630215978,"tailOverSqrt":0.5604980315107977,"cycleOverSqrt":0.6604980315107977,"rhoOverSqrt":1.2209960630215977,"gap":0.9999999999999991,"shiftTail":-0.6615903714695239,"shiftCycle":0.3384096285304752,"shiftRho":-0.32318074293902477,"terms":71},{"n":1000,"tail":19.151606463088704,"cycle":20.1516064630887,"rho":39.30321292617812,"tailOverSqrt":0.6056269727456176,"cycleOverSqrt":0.6372497493473013,"rhoOverSqrt":1.2428767220929415,"gap":0.9999999999999964,"shiftTail":-0.6650300249413483,"shiftCycle":0.3349699750586481,"shiftRho":-0.3300600498819861,"terms":247},{"n":10000,"tail":61.99956093403604,"cycle":62.99956093403603,"rho":124.99912186808108,"tailOverSqrt":0.6199956093403604,"cycleOverSqrt":0.6299956093403604,"rhoOverSqrt":1.2499912186808109,"gap":0.9999999999999929,"shiftTail":-0.6661459317389671,"shiftCycle":0.3338540682610258,"shiftRho":-0.3322918634689387,"terms":790},{"n":100000,"tail":197.49986320414413,"cycle":198.49986320414408,"rho":395.9997264083826,"tailOverSqrt":0.6245494052967758,"cycleOverSqrt":0.627711682956944,"rhoOverSqrt":1.2522610882540184,"gap":0.9999999999999432,"shiftTail":-0.6665016761564004,"shiftCycle":0.3334983238435427,"shiftRho":-0.3330033522184408,"terms":2475},{"n":1000000,"tail":625.9904541972086,"cycle":626.9904541972085,"rho":1252.9809083953717,"tailOverSqrt":0.6259904541972086,"cycleOverSqrt":0.6269904541972084,"rhoOverSqrt":1.2529809083953716,"gap":0.9999999999998863,"shiftTail":-0.6666144605414956,"shiftCycle":0.33338553945839067,"shiftRho":-0.3332289201284766,"terms":7699},{"n":10000000,"tail":1980.9969986439417,"cycle":1981.9969986439412,"rho":3962.9939972972998,"tailOverSqrt":0.6264462553672345,"cycleOverSqrt":0.6267624831332512,"rhoOverSqrt":1.2532087385034636,"gap":0.9999999999995453,"shiftTail":-0.6666501590636926,"shiftCycle":0.3333498409358526,"shiftRho":-0.33330030871093186,"terms":23890},{"n":100000000,"tail":6265.904025085684,"cycle":6266.904025085683,"rho":12532.808050264002,"tailOverSqrt":0.6265904025085685,"cycleOverSqrt":0.6266904025085683,"rhoOverSqrt":1.2532808050264002,"gap":0.9999999999990905,"shiftTail":-0.6666614918167397,"shiftCycle":0.3333385081823508,"shiftRho":-0.3333228909996251,"terms":74026}],"mcRows":[{"n":100,"S":2000000,"mcGap":1.0074085,"mcSE":0.005579654004242904,"closedGap":0.9999999999999991,"z":1.327770502322604,"needS":24907,"ms":103},{"n":1000,"S":2000000,"mcGap":0.964022,"mcSE":0.01807347662437302,"closedGap":0.9999999999999964,"z":-1.9906518678028862,"needS":261321,"ms":600},{"n":10000,"S":2000000,"mcGap":0.9770985,"mcSE":0.057556791376089135,"closedGap":0.9999999999999929,"z":-0.39789396615868355,"needS":2650228,"ms":1489},{"n":100000,"S":200000,"mcGap":1.038355,"mcSE":0.5749722060408398,"closedGap":0.9999999999999432,"z":0.06670757229137367,"needS":26447444,"ms":413},{"n":1000000,"S":20000,"mcGap":-1.3561,"mcSE":5.753496049763092,"closedGap":0.9999999999998863,"z":-0.40950753761219943,"needS":264821735,"ms":164}],"distSmall":{"4":{"rho":[0,0.25,0.375,0.28125,0.09375],"comp":[0,0.554688,0.371094,0.070313,0.003906]},"6":{"rho":[0,0.166667,0.277778,0.277778,0.185185,0.07716,0.015432],"comp":[0,0.462449,0.400677,0.11992,0.015968,0.000965,0.000021]},"8":{"rho":[0,0.125,0.21875,0.246094,0.205078,0.128174,0.057678,0.016823,0.002403],"comp":[0,0.405627,0.408438,0.153897,0.028892,0.002971,0.000169,0.000005,0]}},"distBig":{"n":1000000,"stride":3,"m":[1,4,7,10,13,16,19,22,25,28,31,34,37,40,43,46,49,52,55,58,61,64,67,70,73,76,79,82,85,88,91,94,97,100,103,106,109,112,115,118,121,124,127,130,133,136,139,142,145,148,151,154,157,160,163,166,169,172,175,178,181,184,187,190,193,196,199,202,205,208,211,214,217,220,223,226,229,232,235,238,241,244,247,250,253,256,259,262,265,268,271,274,277,280,283,286,289,292,295,298,301,304,307,310,313,316,319,322,325,328,331,334,337,340,343,346,349,352,355,358,361,364,367,370,373,376,379,382,385,388,391,394,397,400,403,406,409,412,415,418,421,424,427,430,433,436,439,442,445,448,451,454,457,460,463,466,469,472,475,478,481,484,487,490,493,496,499,502,505,508,511,514,517,520,523,526,529,532,535,538,541,544,547,550,553,556,559,562,565,568,571,574,577,580,583,586,589,592,595,598,601,604,607,610,613,616,619,622,625,628,631,634,637,640,643,646,649,652,655,658,661,664,667,670,673,676,679,682,685,688,691,694,697,700,703,706,709,712,715,718,721,724,727,730,733,736,739,742,745,748,751,754,757,760,763,766,769,772,775,778,781,784,787,790,793,796,799,802,805,808,811,814,817,820,823,826,829,832,835,838,841,844,847,850,853,856,859,862,865,868,871,874,877,880,883,886,889,892,895,898,901,904,907,910,913,916,919,922,925,928,931,934,937,940,943,946,949,952,955,958,961,964,967,970,973,976,979,982,985,988,991,994,997,1000,1003,1006,1009,1012,1015,1018,1021,1024,1027,1030,1033,1036,1039,1042,1045,1048,1051,1054,1057,1060,1063,1066,1069,1072,1075,1078,1081,1084,1087,1090,1093,1096,1099,1102,1105,1108,1111,1114,1117,1120,1123,1126,1129,1132,1135,1138,1141,1144,1147,1150,1153,1156,1159,1162,1165,1168,1171,1174,1177,1180,1183,1186,1189,1192,1195,1198,1201,1204,1207,1210,1213,1216,1219,1222,1225,1228,1231,1234,1237,1240,1243,1246,1249,1252,1255,1258,1261,1264,1267,1270,1273,1276,1279,1282,1285,1288,1291,1294,1297,1300,1303,1306,1309,1312,1315,1318,1321,1324,1327,1330,1333,1336,1339,1342,1345,1348,1351,1354,1357,1360,1363,1366,1369,1372,1375,1378,1381,1384,1387,1390,1393,1396,1399,1402,1405,1408,1411,1414,1417,1420,1423,1426,1429,1432,1435,1438,1441,1444,1447,1450,1453,1456,1459,1462,1465,1468,1471,1474,1477,1480,1483,1486,1489,1492,1495,1498,1501,1504,1507,1510,1513,1516,1519,1522,1525,1528,1531,1534,1537,1540,1543,1546,1549,1552,1555,1558,1561,1564,1567,1570,1573,1576,1579,1582,1585,1588,1591,1594,1597,1600,1603,1606,1609,1612,1615,1618,1621,1624,1627,1630,1633,1636,1639,1642,1645,1648,1651,1654,1657,1660,1663,1666,1669,1672,1675,1678,1681,1684,1687,1690,1693,1696,1699,1702,1705,1708,1711,1714,1717,1720,1723,1726,1729,1732,1735,1738,1741,1744,1747,1750,1753,1756,1759,1762,1765,1768,1771,1774,1777,1780,1783,1786,1789,1792,1795,1798,1801,1804,1807,1810,1813,1816,1819,1822,1825,1828,1831,1834,1837,1840,1843,1846,1849,1852,1855,1858,1861,1864,1867,1870,1873,1876,1879,1882,1885,1888,1891,1894,1897,1900,1903,1906,1909,1912,1915,1918,1921,1924,1927,1930,1933,1936,1939,1942,1945,1948,1951,1954,1957,1960,1963,1966,1969,1972,1975,1978,1981,1984,1987,1990,1993,1996,1999,2002,2005,2008,2011,2014,2017,2020,2023,2026,2029,2032,2035,2038,2041,2044,2047,2050,2053,2056,2059,2062,2065,2068,2071,2074,2077,2080,2083,2086,2089,2092,2095,2098,2101,2104,2107,2110,2113,2116,2119,2122,2125,2128,2131,2134,2137,2140,2143,2146,2149,2152,2155,2158,2161,2164,2167,2170,2173,2176,2179,2182,2185,2188,2191,2194,2197,2200,2203,2206,2209,2212,2215,2218,2221,2224,2227,2230,2233,2236,2239,2242,2245,2248,2251,2254,2257,2260,2263,2266,2269,2272,2275,2278,2281,2284,2287,2290,2293,2296,2299,2302,2305,2308,2311,2314,2317,2320,2323,2326,2329,2332,2335,2338,2341,2344,2347,2350,2353,2356,2359,2362,2365,2368,2371,2374,2377,2380,2383,2386,2389,2392,2395,2398,2401,2404,2407,2410,2413,2416,2419,2422,2425,2428,2431,2434,2437,2440,2443,2446,2449,2452,2455,2458,2461,2464,2467,2470,2473,2476,2479,2482,2485,2488,2491,2494,2497,2500,2503,2506,2509,2512,2515,2518,2521,2524,2527,2530,2533,2536,2539,2542,2545,2548,2551,2554,2557,2560,2563,2566,2569,2572,2575,2578,2581,2584,2587,2590,2593,2596,2599,2602,2605,2608,2611,2614,2617,2620,2623,2626,2629,2632,2635,2638,2641,2644,2647,2650,2653,2656,2659,2662,2665,2668,2671,2674,2677,2680,2683,2686,2689,2692,2695,2698,2701,2704,2707,2710,2713,2716,2719,2722,2725,2728,2731,2734,2737,2740,2743,2746,2749,2752,2755,2758,2761,2764,2767,2770,2773,2776,2779,2782,2785,2788,2791,2794,2797,2800,2803,2806,2809,2812,2815,2818,2821,2824,2827,2830,2833,2836,2839,2842,2845,2848,2851,2854,2857,2860,2863,2866,2869,2872,2875,2878,2881,2884,2887,2890,2893,2896,2899,2902,2905,2908,2911,2914,2917,2920,2923,2926,2929,2932,2935,2938,2941,2944,2947,2950,2953,2956,2959,2962,2965,2968,2971,2974,2977,2980,2983,2986,2989,2992,2995,2998,3001,3004,3007,3010,3013,3016,3019,3022,3025,3028,3031,3034,3037,3040,3043,3046,3049,3052,3055,3058,3061,3064,3067,3070,3073,3076,3079,3082,3085,3088,3091,3094,3097,3100,3103,3106,3109,3112,3115,3118,3121,3124,3127,3130,3133,3136,3139,3142,3145,3148,3151,3154,3157,3160,3163,3166,3169,3172,3175,3178,3181,3184,3187,3190,3193,3196,3199,3202,3205,3208,3211,3214,3217,3220,3223,3226,3229,3232,3235,3238,3241,3244,3247,3250,3253,3256,3259,3262,3265,3268,3271,3274,3277,3280,3283,3286,3289,3292,3295,3298,3301,3304,3307,3310,3313,3316,3319,3322,3325,3328,3331,3334,3337,3340,3343,3346,3349,3352,3355,3358,3361,3364,3367,3370,3373,3376,3379,3382,3385,3388,3391,3394,3397,3400,3403,3406,3409,3412,3415,3418,3421,3424,3427,3430,3433,3436,3439,3442,3445,3448,3451,3454,3457,3460,3463,3466,3469,3472,3475,3478,3481,3484,3487,3490,3493,3496,3499,3502,3505,3508,3511,3514,3517,3520,3523,3526,3529,3532,3535,3538,3541,3544,3547,3550,3553,3556,3559,3562,3565,3568,3571,3574,3577,3580,3583,3586,3589,3592,3595,3598],"p":[0.000001,0.000003999976,0.000006999853,0.00000999955,0.00001299899,0.00001599808,0.00001899675,0.00002199492,0.0000249925,0.00002798942,0.00003098559,0.00003398093,0.00003697537,0.00003996881,0.00004296119,0.00004595241,0.00004894241,0.00005193109,0.00005491838,0.0000579042,0.00006088847,0.0000638711,0.00006685202,0.00006983115,0.0000728084,0.0000757837,0.00007875697,0.00008172812,0.00008469708,0.00008766377,0.00009062811,0.00009359001,0.0000965494,0.00009950621,0.0001024603,0.0001054117,0.0001083603,0.0001113059,0.0001142486,0.0001171882,0.0001201247,0.0001230579,0.0001259879,0.0001289145,0.0001318376,0.0001347572,0.0001376732,0.0001405855,0.000143494,0.0001463987,0.0001492995,0.0001521963,0.000155089,0.0001579776,0.0001608619,0.000163742,0.0001666177,0.0001694889,0.0001723557,0.0001752178,0.0001780752,0.0001809279,0.0001837758,0.0001866188,0.0001894568,0.0001922898,0.0001951176,0.0001979403,0.0002007577,0.0002035697,0.0002063764,0.0002091775,0.0002119732,0.0002147631,0.0002175474,0.000220326,0.0002230986,0.0002258654,0.0002286262,0.0002313809,0.0002341296,0.000236872,0.0002396081,0.000242338,0.0002450614,0.0002477784,0.0002504888,0.0002531926,0.0002558898,0.0002585802,0.0002612638,0.0002639405,0.0002666103,0.0002692731,0.0002719288,0.0002745773,0.0002772187,0.0002798528,0.0002824795,0.0002850989,0.0002877108,0.0002903151,0.0002929119,0.000295501,0.0002980824,0.0003006561,0.0003032219,0.0003057797,0.0003083296,0.0003108715,0.0003134053,0.000315931,0.0003184484,0.0003209576,0.0003234585,0.0003259509,0.000328435,0.0003309105,0.0003333775,0.0003358358,0.0003382855,0.0003407264,0.0003431586,0.0003455819,0.0003479963,0.0003504017,0.0003527982,0.0003551856,0.0003575638,0.0003599329,0.0003622928,0.0003646433,0.0003669846,0.0003693165,0.0003716389,0.0003739518,0.0003762553,0.0003785491,0.0003808333,0.0003831078,0.0003853725,0.0003876275,0.0003898726,0.0003921079,0.0003943332,0.0003965485,0.0003987539,0.0004009491,0.0004031343,0.0004053092,0.000407474,0.0004096285,0.0004117727,0.0004139066,0.0004160301,0.0004181431,0.0004202457,0.0004223378,0.0004244193,0.0004264903,0.0004285506,0.0004306002,0.0004326391,0.0004346673,0.0004366846,0.0004386912,0.0004406868,0.0004426716,0.0004446454,0.0004466082,0.00044856,0.0004505007,0.0004524304,0.0004543489,0.0004562563,0.0004581525,0.0004600374,0.0004619111,0.0004637735,0.0004656246,0.0004674643,0.0004692926,0.0004711095,0.000472915,0.000474709,0.0004764914,0.0004782623,0.0004800217,0.0004817695,0.0004835056,0.0004852301,0.0004869429,0.0004886441,0.0004903334,0.0004920111,0.0004936769,0.000495331,0.0004969732,0.0004986036,0.0005002221,0.0005018287,0.0005034234,0.0005050061,0.0005065769,0.0005081357,0.0005096826,0.0005112173,0.0005127401,0.0005142508,0.0005157494,0.0005172359,0.0005187103,0.0005201726,0.0005216227,0.0005230607,0.0005244865,0.0005259001,0.0005273015,0.0005286907,0.0005300676,0.0005314323,0.0005327847,0.0005341249,0.0005354528,0.0005367683,0.0005380716,0.0005393626,0.0005406412,0.0005419075,0.0005431615,0.0005444031,0.0005456323,0.0005468492,0.0005480537,0.0005492458,0.0005504255,0.0005515929,0.0005527478,0.0005538903,0.0005550205,0.0005561382,0.0005572435,0.0005583363,0.0005594168,0.0005604848,0.0005615404,0.0005625836,0.0005636144,0.0005646327,0.0005656386,0.0005666321,0.0005676131,0.0005685817,0.0005695379,0.0005704817,0.0005714131,0.000572332,0.0005732386,0.0005741327,0.0005750144,0.0005758838,0.0005767407,0.0005775853,0.0005784175,0.0005792373,0.0005800447,0.0005808398,0.0005816226,0.000582393,0.0005831511,0.0005838968,0.0005846303,0.0005853514,0.0005860602,0.0005867568,0.0005874411,0.0005881131,0.0005887729,0.0005894205,0.0005900558,0.000590679,0.0005912899,0.0005918887,0.0005924753,0.0005930497,0.000593612,0.0005941622,0.0005947003,0.0005952264,0.0005957403,0.0005962422,0.0005967321,0.0005972099,0.0005976758,0.0005981297,0.0005985716,0.0005990016,0.0005994197,0.0005998259,0.0006002202,0.0006006026,0.0006009732,0.000601332,0.000601679,0.0006020143,0.0006023378,0.0006026496,0.0006029497,0.0006032381,0.0006035149,0.00060378,0.0006040336,0.0006042756,0.000604506,0.0006047249,0.0006049323,0.0006051283,0.0006053128,0.0006054859,0.0006056477,0.000605798,0.0006059371,0.0006060648,0.0006061813,0.0006062865,0.0006063806,0.0006064634,0.0006065351,0.0006065957,0.0006066452,0.0006066837,0.0006067111,0.0006067275,0.000606733,0.0006067275,0.0006067112,0.000606684,0.0006066459,0.0006065971,0.0006065375,0.0006064672,0.0006063862,0.0006062945,0.0006061922,0.0006060794,0.0006059559,0.000605822,0.0006056776,0.0006055228,0.0006053575,0.0006051819,0.0006049959,0.0006047997,0.0006045932,0.0006043765,0.0006041496,0.0006039126,0.0006036655,0.0006034083,0.0006031411,0.0006028639,0.0006025768,0.0006022797,0.0006019728,0.0006016561,0.0006013296,0.0006009934,0.0006006474,0.0006002918,0.0005999266,0.0005995518,0.0005991675,0.0005987737,0.0005983704,0.0005979577,0.0005975357,0.0005971044,0.0005966637,0.0005962139,0.0005957548,0.0005952866,0.0005948093,0.0005943229,0.0005938275,0.0005933232,0.0005928099,0.0005922877,0.0005917567,0.0005912169,0.0005906684,0.0005901112,0.0005895453,0.0005889708,0.0005883877,0.0005877961,0.000587196,0.0005865875,0.0005859707,0.0005853455,0.000584712,0.0005840703,0.0005834203,0.0005827623,0.0005820961,0.0005814219,0.0005807397,0.0005800495,0.0005793514,0.0005786454,0.0005779317,0.0005772102,0.0005764809,0.000575744,0.0005749994,0.0005742473,0.0005734877,0.0005727206,0.000571946,0.0005711641,0.0005703749,0.0005695783,0.0005687746,0.0005679636,0.0005671455,0.0005663204,0.0005654882,0.000564649,0.0005638029,0.0005629498,0.00056209,0.0005612234,0.00056035,0.0005594699,0.0005585832,0.0005576899,0.00055679,0.0005558837,0.0005549709,0.0005540518,0.0005531263,0.0005521945,0.0005512564,0.0005503122,0.0005493618,0.0005484054,0.0005474429,0.0005464744,0.0005454999,0.0005445196,0.0005435334,0.0005425415,0.0005415438,0.0005405404,0.0005395314,0.0005385167,0.0005374966,0.0005364709,0.0005354398,0.0005344034,0.0005333615,0.0005323144,0.0005312621,0.0005302046,0.0005291419,0.0005280741,0.0005270013,0.0005259235,0.0005248408,0.0005237532,0.0005226607,0.0005215634,0.0005204615,0.0005193548,0.0005182434,0.0005171275,0.0005160071,0.0005148821,0.0005137527,0.000512619,0.0005114808,0.0005103384,0.0005091917,0.0005080409,0.0005068859,0.0005057268,0.0005045636,0.0005033965,0.0005022254,0.0005010504,0.0004998715,0.0004986889,0.0004975024,0.0004963123,0.0004951185,0.0004939212,0.0004927202,0.0004915157,0.0004903078,0.0004890965,0.0004878817,0.0004866637,0.0004854424,0.0004842179,0.0004829901,0.0004817593,0.0004805254,0.0004792884,0.0004780484,0.0004768055,0.0004755597,0.0004743111,0.0004730596,0.0004718054,0.0004705485,0.000469289,0.0004680268,0.000466762,0.0004654947,0.000464225,0.0004629528,0.0004616782,0.0004604013,0.000459122,0.0004578406,0.0004565569,0.0004552711,0.0004539831,0.0004526931,0.000451401,0.000450107,0.000448811,0.0004475132,0.0004462134,0.0004449119,0.0004436086,0.0004423036,0.000440997,0.0004396887,0.0004383788,0.0004370673,0.0004357544,0.00043444,0.0004331241,0.0004318069,0.0004304884,0.0004291686,0.0004278475,0.0004265252,0.0004252018,0.0004238772,0.0004225516,0.0004212249,0.0004198972,0.0004185685,0.0004172389,0.0004159085,0.0004145772,0.0004132451,0.0004119122,0.0004105786,0.0004092444,0.0004079095,0.000406574,0.0004052379,0.0004039013,0.0004025643,0.0004012268,0.0003998888,0.0003985505,0.0003972119,0.000395873,0.0003945338,0.0003931944,0.0003918549,0.0003905151,0.0003891753,0.0003878354,0.0003864955,0.0003851555,0.0003838156,0.0003824758,0.0003811361,0.0003797965,0.0003784571,0.000377118,0.000375779,0.0003744404,0.0003731021,0.0003717641,0.0003704265,0.0003690894,0.0003677527,0.0003664165,0.0003650808,0.0003637456,0.0003624111,0.0003610772,0.0003597439,0.0003584113,0.0003570795,0.0003557484,0.000354418,0.0003530885,0.0003517599,0.0003504321,0.0003491052,0.0003477793,0.0003464543,0.0003451303,0.0003438074,0.0003424855,0.0003411647,0.0003398451,0.0003385265,0.0003372092,0.0003358931,0.0003345782,0.0003332645,0.0003319522,0.0003306412,0.0003293315,0.0003280232,0.0003267164,0.0003254109,0.0003241069,0.0003228044,0.0003215034,0.000320204,0.0003189061,0.0003176098,0.0003163151,0.0003150221,0.0003137307,0.0003124411,0.0003111531,0.0003098669,0.0003085825,0.0003072998,0.000306019,0.00030474,0.0003034629,0.0003021877,0.0003009144,0.000299643,0.0002983736,0.0002971062,0.0002958408,0.0002945774,0.000293316,0.0002920568,0.0002907996,0.0002895445,0.0002882916,0.0002870409,0.0002857923,0.0002845459,0.0002833017,0.0002820598,0.0002808201,0.0002795828,0.0002783477,0.0002771149,0.0002758845,0.0002746565,0.0002734308,0.0002722075,0.0002709867,0.0002697683,0.0002685523,0.0002673388,0.0002661278,0.0002649193,0.0002637133,0.0002625099,0.000261309,0.0002601107,0.000258915,0.0002577219,0.0002565314,0.0002553436,0.0002541584,0.0002529759,0.0002517961,0.000250619,0.0002494446,0.0002482729,0.000247104,0.0002459379,0.0002447745,0.0002436139,0.0002424562,0.0002413012,0.0002401491,0.0002389998,0.0002378534,0.0002367099,0.0002355692,0.0002344315,0.0002332967,0.0002321647,0.0002310358,0.0002299097,0.0002287866,0.0002276665,0.0002265494,0.0002254353,0.0002243242,0.0002232161,0.000222111,0.000221009,0.00021991,0.000218814,0.0002177212,0.0002166314,0.0002155447,0.0002144611,0.0002133805,0.0002123032,0.0002112289,0.0002101578,0.0002090898,0.0002080249,0.0002069633,0.0002059048,0.0002048494,0.0002037973,0.0002027483,0.0002017025,0.00020066,0.0001996206,0.0001985845,0.0001975516,0.0001965219,0.0001954955,0.0001944723,0.0001934523,0.0001924357,0.0001914223,0.0001904121,0.0001894052,0.0001884016,0.0001874013,0.0001864043,0.0001854106,0.0001844202,0.0001834331,0.0001824492,0.0001814688,0.0001804916,0.0001795177,0.0001785472,0.00017758,0.0001766161,0.0001756556,0.0001746984,0.0001737446,0.0001727941,0.0001718469,0.0001709031,0.0001699627,0.0001690256,0.0001680919,0.0001671615,0.0001662345,0.0001653109,0.0001643906,0.0001634737,0.0001625602,0.0001616501,0.0001607433,0.0001598399,0.0001589398,0.0001580432,0.0001571499,0.00015626,0.0001553735,0.0001544904,0.0001536106,0.0001527342,0.0001518612,0.0001509916,0.0001501253,0.0001492625,0.000148403,0.0001475469,0.0001466941,0.0001458448,0.0001449988,0.0001441562,0.000143317,0.0001424811,0.0001416486,0.0001408195,0.0001399937,0.0001391713,0.0001383523,0.0001375366,0.0001367243,0.0001359154,0.0001351098,0.0001343076,0.0001335087,0.0001327131,0.0001319209,0.0001311321,0.0001303466,0.0001295644,0.0001287855,0.00012801,0.0001272378,0.000126469,0.0001257034,0.0001249412,0.0001241823,0.0001234267,0.0001226744,0.0001219254,0.0001211797,0.0001204373,0.0001196982,0.0001189624,0.0001182298,0.0001175006,0.0001167746,0.0001160518,0.0001153324,0.0001146162,0.0001139032,0.0001131935,0.000112487,0.0001117838,0.0001110838,0.000110387,0.0001096935,0.0001090032,0.0001083161,0.0001076322,0.0001069514,0.0001062739,0.0001055996,0.0001049285,0.0001042605,0.0001035957,0.0001029341,0.0001022756,0.0001016203,0.0001009681,0.0001003191,0.00009967319,0.00009903042,0.00009839077,0.00009775424,0.00009712081,0.00009649048,0.00009586325,0.00009523911,0.00009461805,0.00009400006,0.00009338513,0.00009277327,0.00009216446,0.00009155869,0.00009095597,0.00009035627,0.0000897596,0.00008916594,0.00008857529,0.00008798765,0.00008740299,0.00008682133,0.00008624264,0.00008566692,0.00008509417,0.00008452437,0.00008395752,0.00008339361,0.00008283263,0.00008227458,0.00008171944,0.00008116721,0.00008061788,0.00008007144,0.00007952789,0.00007898721,0.0000784494,0.00007791445,0.00007738235,0.00007685309,0.00007632666,0.00007580306,0.00007528228,0.00007476431,0.00007424914,0.00007373676,0.00007322716,0.00007272034,0.00007221628,0.00007171498,0.00007121643,0.00007072062,0.00007022754,0.00006973719,0.00006924954,0.00006876461,0.00006828236,0.00006780281,0.00006732593,0.00006685173,0.00006638018,0.00006591128,0.00006544503,0.00006498141,0.00006452041,0.00006406203,0.00006360626,0.00006315308,0.0000627025,0.00006225449,0.00006180905,0.00006136617,0.00006092584,0.00006048805,0.0000600528,0.00005962007,0.00005918986,0.00005876215,0.00005833693,0.00005791421,0.00005749396,0.00005707618,0.00005666086,0.00005624798,0.00005583755,0.00005542955,0.00005502397,0.0000546208,0.00005422004,0.00005382167,0.00005342568,0.00005303207,0.00005264082,0.00005225192,0.00005186538,0.00005148117,0.00005109929,0.00005071973,0.00005034247,0.00004996752,0.00004959485,0.00004922446,0.00004885635,0.0000484905,0.0000481269,0.00004776554,0.00004740641,0.00004704951,0.00004669483,0.00004634234,0.00004599206,0.00004564396,0.00004529803,0.00004495428,0.00004461268,0.00004427323,0.00004393591,0.00004360073,0.00004326767,0.00004293672,0.00004260787,0.00004228111,0.00004195643,0.00004163383,0.00004131329,0.00004099481,0.00004067837,0.00004036397,0.00004005159,0.00003974123,0.00003943288,0.00003912652,0.00003882216,0.00003851977,0.00003821936,0.00003792091,0.00003762441,0.00003732985,0.00003703722,0.00003674652,0.00003645774,0.00003617086,0.00003588588,0.00003560278,0.00003532157,0.00003504222,0.00003476473,0.0000344891,0.0000342153,0.00003394334,0.00003367321,0.00003340489,0.00003313837,0.00003287365,0.00003261072,0.00003234957,0.00003209018,0.00003183256,0.00003157669,0.00003132256,0.00003107017,0.0000308195,0.00003057055,0.00003032331,0.00003007776,0.00002983391,0.00002959173,0.00002935123,0.00002911239,0.00002887521,0.00002863967,0.00002840577,0.0000281735,0.00002794285,0.00002771381,0.00002748637,0.00002726053,0.00002703628,0.0000268136,0.00002659249,0.00002637294,0.00002615494,0.00002593848,0.00002572356,0.00002551017,0.00002529829,0.00002508793,0.00002487906,0.00002467169,0.00002446581,0.0000242614,0.00002405845,0.00002385697,0.00002365694,0.00002345836,0.00002326121,0.00002306548,0.00002287118,0.00002267829,0.0000224868,0.00002229671,0.000022108,0.00002192067,0.00002173472,0.00002155012,0.00002136689,0.000021185,0.00002100445,0.00002082523,0.00002064734,0.00002047076,0.00002029549,0.00002012153,0.00001994885,0.00001977747,0.00001960736,0.00001943852,0.00001927094,0.00001910462,0.00001893955,0.00001877571,0.00001861311,0.00001845174,0.00001829158,0.00001813263,0.00001797489,0.00001781834,0.00001766299,0.00001750881,0.00001735581,0.00001720397,0.00001705329,0.00001690377,0.00001675539,0.00001660815,0.00001646204,0.00001631706,0.00001617319,0.00001603043,0.00001588878,0.00001574822,0.00001560875,0.00001547036,0.00001533305,0.00001519681,0.00001506163,0.00001492751,0.00001479443,0.00001466239,0.00001453139,0.00001440142,0.00001427247,0.00001414454,0.00001401761,0.00001389169,0.00001376676,0.00001364282,0.00001351987,0.00001339789,0.00001327687,0.00001315683,0.00001303774,0.0000129196,0.0000128024,0.00001268615,0.00001257082,0.00001245643,0.00001234295,0.00001223038,0.00001211872,0.00001200797,0.00001189811,0.00001178913,0.00001168104,0.00001157383,0.00001146749,0.00001136202,0.0000112574,0.00001115364,0.00001105073,0.00001094866,0.00001084742,0.00001074702,0.00001064744,0.00001054868,0.00001045073,0.00001035359,0.00001025725,0.00001016171,0.00001006696,0.000009973001,0.000009879818,0.00000978741,0.000009695771,0.000009604896,0.00000951478,0.000009425416,0.000009336801,0.000009248928,0.000009161792,0.000009075388,0.000008989712,0.000008904757,0.000008820518,0.000008736991,0.00000865417,0.00000857205,0.000008490627,0.000008409895,0.000008329848,0.000008250484,0.000008171795,0.000008093778,0.000008016427,0.000007939738,0.000007863705,0.000007788325,0.000007713592,0.000007639501,0.000007566048,0.000007493229,0.000007421037,0.00000734947,0.000007278521,0.000007208187,0.000007138463,0.000007069345,0.000007000827,0.000006932906,0.000006865577,0.000006798835,0.000006732677,0.000006667097,0.000006602092,0.000006537657,0.000006473787,0.000006410479,0.000006347729,0.000006285531,0.000006223882,0.000006162778,0.000006102214,0.000006042187,0.000005982691,0.000005923724,0.000005865281,0.000005807358,0.000005749952,0.000005693057,0.00000563667,0.000005580788,0.000005525405],"scaled":[0.001,0.003999976,0.006999853,0.00999955,0.01299899,0.01599808,0.01899675,0.02199492,0.0249925,0.02798942,0.03098559,0.03398093,0.03697537,0.03996881,0.04296119,0.04595241,0.04894241,0.05193109,0.05491838,0.0579042,0.06088847,0.0638711,0.06685202,0.06983115,0.0728084,0.0757837,0.07875697,0.08172812,0.08469708,0.08766377,0.09062811,0.09359001,0.0965494,0.09950621,0.1024603,0.1054117,0.1083603,0.1113059,0.1142486,0.1171882,0.1201247,0.1230579,0.1259879,0.1289145,0.1318376,0.1347572,0.1376732,0.1405855,0.143494,0.1463987,0.1492995,0.1521963,0.155089,0.1579776,0.1608619,0.163742,0.1666177,0.1694889,0.1723557,0.1752178,0.1780752,0.1809279,0.1837758,0.1866188,0.1894568,0.1922898,0.1951176,0.1979403,0.2007577,0.2035697,0.2063764,0.2091775,0.2119732,0.2147631,0.2175474,0.220326,0.2230986,0.2258654,0.2286262,0.2313809,0.2341296,0.236872,0.2396081,0.242338,0.2450614,0.2477784,0.2504888,0.2531926,0.2558898,0.2585802,0.2612638,0.2639405,0.2666103,0.2692731,0.2719288,0.2745773,0.2772187,0.2798528,0.2824795,0.2850989,0.2877108,0.2903151,0.2929119,0.295501,0.2980824,0.3006561,0.3032219,0.3057797,0.3083296,0.3108715,0.3134053,0.315931,0.3184484,0.3209576,0.3234585,0.3259509,0.328435,0.3309105,0.3333775,0.3358358,0.3382855,0.3407264,0.3431586,0.3455819,0.3479963,0.3504017,0.3527982,0.3551856,0.3575638,0.3599329,0.3622928,0.3646433,0.3669846,0.3693165,0.3716389,0.3739518,0.3762553,0.3785491,0.3808333,0.3831078,0.3853725,0.3876275,0.3898726,0.3921079,0.3943332,0.3965485,0.3987539,0.4009491,0.4031343,0.4053092,0.407474,0.4096285,0.4117727,0.4139066,0.4160301,0.4181431,0.4202457,0.4223378,0.4244193,0.4264903,0.4285506,0.4306002,0.4326391,0.4346673,0.4366846,0.4386912,0.4406868,0.4426716,0.4446454,0.4466082,0.44856,0.4505007,0.4524304,0.4543489,0.4562563,0.4581525,0.4600374,0.4619111,0.4637735,0.4656246,0.4674643,0.4692926,0.4711095,0.472915,0.474709,0.4764914,0.4782623,0.4800217,0.4817695,0.4835056,0.4852301,0.4869429,0.4886441,0.4903334,0.4920111,0.4936769,0.495331,0.4969732,0.4986036,0.5002221,0.5018287,0.5034234,0.5050061,0.5065769,0.5081357,0.5096826,0.5112173,0.5127401,0.5142508,0.5157494,0.5172359,0.5187103,0.5201726,0.5216227,0.5230607,0.5244865,0.5259001,0.5273015,0.5286907,0.5300676,0.5314323,0.5327847,0.5341249,0.5354528,0.5367683,0.5380716,0.5393626,0.5406412,0.5419075,0.5431615,0.5444031,0.5456323,0.5468492,0.5480537,0.5492458,0.5504255,0.5515929,0.5527478,0.5538903,0.5550205,0.5561382,0.5572435,0.5583363,0.5594168,0.5604848,0.5615404,0.5625836,0.5636144,0.5646327,0.5656386,0.5666321,0.5676131,0.5685817,0.5695379,0.5704817,0.5714131,0.572332,0.5732386,0.5741327,0.5750144,0.5758838,0.5767407,0.5775853,0.5784175,0.5792373,0.5800447,0.5808398,0.5816226,0.582393,0.5831511,0.5838968,0.5846303,0.5853514,0.5860602,0.5867568,0.5874411,0.5881131,0.5887729,0.5894205,0.5900558,0.590679,0.5912899,0.5918887,0.5924753,0.5930497,0.593612,0.5941622,0.5947003,0.5952264,0.5957403,0.5962422,0.5967321,0.5972099,0.5976758,0.5981297,0.5985716,0.5990016,0.5994197,0.5998259,0.6002202,0.6006026,0.6009732,0.601332,0.601679,0.6020143,0.6023378,0.6026496,0.6029497,0.6032381,0.6035149,0.60378,0.6040336,0.6042756,0.604506,0.6047249,0.6049323,0.6051283,0.6053128,0.6054859,0.6056477,0.605798,0.6059371,0.6060648,0.6061813,0.6062865,0.6063806,0.6064634,0.6065351,0.6065957,0.6066452,0.6066837,0.6067111,0.6067275,0.606733,0.6067275,0.6067112,0.606684,0.6066459,0.6065971,0.6065375,0.6064672,0.6063862,0.6062945,0.6061922,0.6060794,0.6059559,0.605822,0.6056776,0.6055228,0.6053575,0.6051819,0.6049959,0.6047997,0.6045932,0.6043765,0.6041496,0.6039126,0.6036655,0.6034083,0.6031411,0.6028639,0.6025768,0.6022797,0.6019728,0.6016561,0.6013296,0.6009934,0.6006474,0.6002918,0.5999266,0.5995518,0.5991675,0.5987737,0.5983704,0.5979577,0.5975357,0.5971044,0.5966637,0.5962139,0.5957548,0.5952866,0.5948093,0.5943229,0.5938275,0.5933232,0.5928099,0.5922877,0.5917567,0.5912169,0.5906684,0.5901112,0.5895453,0.5889708,0.5883877,0.5877961,0.587196,0.5865875,0.5859707,0.5853455,0.584712,0.5840703,0.5834203,0.5827623,0.5820961,0.5814219,0.5807397,0.5800495,0.5793514,0.5786454,0.5779317,0.5772102,0.5764809,0.575744,0.5749994,0.5742473,0.5734877,0.5727206,0.571946,0.5711641,0.5703749,0.5695783,0.5687746,0.5679636,0.5671455,0.5663204,0.5654882,0.564649,0.5638029,0.5629498,0.56209,0.5612234,0.56035,0.5594699,0.5585832,0.5576899,0.55679,0.5558837,0.5549709,0.5540518,0.5531263,0.5521945,0.5512564,0.5503122,0.5493618,0.5484054,0.5474429,0.5464744,0.5454999,0.5445196,0.5435334,0.5425415,0.5415438,0.5405404,0.5395314,0.5385167,0.5374966,0.5364709,0.5354398,0.5344034,0.5333615,0.5323144,0.5312621,0.5302046,0.5291419,0.5280741,0.5270013,0.5259235,0.5248408,0.5237532,0.5226607,0.5215634,0.5204615,0.5193548,0.5182434,0.5171275,0.5160071,0.5148821,0.5137527,0.512619,0.5114808,0.5103384,0.5091917,0.5080409,0.5068859,0.5057268,0.5045636,0.5033965,0.5022254,0.5010504,0.4998715,0.4986889,0.4975024,0.4963123,0.4951185,0.4939212,0.4927202,0.4915157,0.4903078,0.4890965,0.4878817,0.4866637,0.4854424,0.4842179,0.4829901,0.4817593,0.4805254,0.4792884,0.4780484,0.4768055,0.4755597,0.4743111,0.4730596,0.4718054,0.4705485,0.469289,0.4680268,0.466762,0.4654947,0.464225,0.4629528,0.4616782,0.4604013,0.459122,0.4578406,0.4565569,0.4552711,0.4539831,0.4526931,0.451401,0.450107,0.448811,0.4475132,0.4462134,0.4449119,0.4436086,0.4423036,0.440997,0.4396887,0.4383788,0.4370673,0.4357544,0.43444,0.4331241,0.4318069,0.4304884,0.4291686,0.4278475,0.4265252,0.4252018,0.4238772,0.4225516,0.4212249,0.4198972,0.4185685,0.4172389,0.4159085,0.4145772,0.4132451,0.4119122,0.4105786,0.4092444,0.4079095,0.406574,0.4052379,0.4039013,0.4025643,0.4012268,0.3998888,0.3985505,0.3972119,0.395873,0.3945338,0.3931944,0.3918549,0.3905151,0.3891753,0.3878354,0.3864955,0.3851555,0.3838156,0.3824758,0.3811361,0.3797965,0.3784571,0.377118,0.375779,0.3744404,0.3731021,0.3717641,0.3704265,0.3690894,0.3677527,0.3664165,0.3650808,0.3637456,0.3624111,0.3610772,0.3597439,0.3584113,0.3570795,0.3557484,0.354418,0.3530885,0.3517599,0.3504321,0.3491052,0.3477793,0.3464543,0.3451303,0.3438074,0.3424855,0.3411647,0.3398451,0.3385265,0.3372092,0.3358931,0.3345782,0.3332645,0.3319522,0.3306412,0.3293315,0.3280232,0.3267164,0.3254109,0.3241069,0.3228044,0.3215034,0.320204,0.3189061,0.3176098,0.3163151,0.3150221,0.3137307,0.3124411,0.3111531,0.3098669,0.3085825,0.3072998,0.306019,0.30474,0.3034629,0.3021877,0.3009144,0.299643,0.2983736,0.2971062,0.2958408,0.2945774,0.293316,0.2920568,0.2907996,0.2895445,0.2882916,0.2870409,0.2857923,0.2845459,0.2833017,0.2820598,0.2808201,0.2795828,0.2783477,0.2771149,0.2758845,0.2746565,0.2734308,0.2722075,0.2709867,0.2697683,0.2685523,0.2673388,0.2661278,0.2649193,0.2637133,0.2625099,0.261309,0.2601107,0.258915,0.2577219,0.2565314,0.2553436,0.2541584,0.2529759,0.2517961,0.250619,0.2494446,0.2482729,0.247104,0.2459379,0.2447745,0.2436139,0.2424562,0.2413012,0.2401491,0.2389998,0.2378534,0.2367099,0.2355692,0.2344315,0.2332967,0.2321647,0.2310358,0.2299097,0.2287866,0.2276665,0.2265494,0.2254353,0.2243242,0.2232161,0.222111,0.221009,0.21991,0.218814,0.2177212,0.2166314,0.2155447,0.2144611,0.2133805,0.2123032,0.2112289,0.2101578,0.2090898,0.2080249,0.2069633,0.2059048,0.2048494,0.2037973,0.2027483,0.2017025,0.20066,0.1996206,0.1985845,0.1975516,0.1965219,0.1954955,0.1944723,0.1934523,0.1924357,0.1914223,0.1904121,0.1894052,0.1884016,0.1874013,0.1864043,0.1854106,0.1844202,0.1834331,0.1824492,0.1814688,0.1804916,0.1795177,0.1785472,0.17758,0.1766161,0.1756556,0.1746984,0.1737446,0.1727941,0.1718469,0.1709031,0.1699627,0.1690256,0.1680919,0.1671615,0.1662345,0.1653109,0.1643906,0.1634737,0.1625602,0.1616501,0.1607433,0.1598399,0.1589398,0.1580432,0.1571499,0.15626,0.1553735,0.1544904,0.1536106,0.1527342,0.1518612,0.1509916,0.1501253,0.1492625,0.148403,0.1475469,0.1466941,0.1458448,0.1449988,0.1441562,0.143317,0.1424811,0.1416486,0.1408195,0.1399937,0.1391713,0.1383523,0.1375366,0.1367243,0.1359154,0.1351098,0.1343076,0.1335087,0.1327131,0.1319209,0.1311321,0.1303466,0.1295644,0.1287855,0.12801,0.1272378,0.126469,0.1257034,0.1249412,0.1241823,0.1234267,0.1226744,0.1219254,0.1211797,0.1204373,0.1196982,0.1189624,0.1182298,0.1175006,0.1167746,0.1160518,0.1153324,0.1146162,0.1139032,0.1131935,0.112487,0.1117838,0.1110838,0.110387,0.1096935,0.1090032,0.1083161,0.1076322,0.1069514,0.1062739,0.1055996,0.1049285,0.1042605,0.1035957,0.1029341,0.1022756,0.1016203,0.1009681,0.1003191,0.09967319,0.09903042,0.09839077,0.09775424,0.09712081,0.09649048,0.09586325,0.09523911,0.09461805,0.09400006,0.09338513,0.09277327,0.09216446,0.09155869,0.09095597,0.09035627,0.0897596,0.08916594,0.08857529,0.08798765,0.08740299,0.08682133,0.08624264,0.08566692,0.08509417,0.08452437,0.08395752,0.08339361,0.08283263,0.08227458,0.08171944,0.08116721,0.08061788,0.08007144,0.07952789,0.07898721,0.0784494,0.07791445,0.07738235,0.07685309,0.07632666,0.07580306,0.07528228,0.07476431,0.07424914,0.07373676,0.07322716,0.07272034,0.07221628,0.07171498,0.07121643,0.07072062,0.07022754,0.06973719,0.06924954,0.06876461,0.06828236,0.06780281,0.06732593,0.06685173,0.06638018,0.06591128,0.06544503,0.06498141,0.06452041,0.06406203,0.06360626,0.06315308,0.0627025,0.06225449,0.06180905,0.06136617,0.06092584,0.06048805,0.0600528,0.05962007,0.05918986,0.05876215,0.05833693,0.05791421,0.05749396,0.05707618,0.05666086,0.05624798,0.05583755,0.05542955,0.05502397,0.0546208,0.05422004,0.05382167,0.05342568,0.05303207,0.05264082,0.05225192,0.05186538,0.05148117,0.05109929,0.05071973,0.05034247,0.04996752,0.04959485,0.04922446,0.04885635,0.0484905,0.0481269,0.04776554,0.04740641,0.04704951,0.04669483,0.04634234,0.04599206,0.04564396,0.04529803,0.04495428,0.04461268,0.04427323,0.04393591,0.04360073,0.04326767,0.04293672,0.04260787,0.04228111,0.04195643,0.04163383,0.04131329,0.04099481,0.04067837,0.04036397,0.04005159,0.03974123,0.03943288,0.03912652,0.03882216,0.03851977,0.03821936,0.03792091,0.03762441,0.03732985,0.03703722,0.03674652,0.03645774,0.03617086,0.03588588,0.03560278,0.03532157,0.03504222,0.03476473,0.0344891,0.0342153,0.03394334,0.03367321,0.03340489,0.03313837,0.03287365,0.03261072,0.03234957,0.03209018,0.03183256,0.03157669,0.03132256,0.03107017,0.0308195,0.03057055,0.03032331,0.03007776,0.02983391,0.02959173,0.02935123,0.02911239,0.02887521,0.02863967,0.02840577,0.0281735,0.02794285,0.02771381,0.02748637,0.02726053,0.02703628,0.0268136,0.02659249,0.02637294,0.02615494,0.02593848,0.02572356,0.02551017,0.02529829,0.02508793,0.02487906,0.02467169,0.02446581,0.0242614,0.02405845,0.02385697,0.02365694,0.02345836,0.02326121,0.02306548,0.02287118,0.02267829,0.0224868,0.02229671,0.022108,0.02192067,0.02173472,0.02155012,0.02136689,0.021185,0.02100445,0.02082523,0.02064734,0.02047076,0.02029549,0.02012153,0.01994885,0.01977747,0.01960736,0.01943852,0.01927094,0.01910462,0.01893955,0.01877571,0.01861311,0.01845174,0.01829158,0.01813263,0.01797489,0.01781834,0.01766299,0.01750881,0.01735581,0.01720397,0.01705329,0.01690377,0.01675539,0.01660815,0.01646204,0.01631706,0.01617319,0.01603043,0.01588878,0.01574822,0.01560875,0.01547036,0.01533305,0.01519681,0.01506163,0.01492751,0.01479443,0.01466239,0.01453139,0.01440142,0.01427247,0.01414454,0.01401761,0.01389169,0.01376676,0.01364282,0.01351987,0.01339789,0.01327687,0.01315683,0.01303774,0.0129196,0.0128024,0.01268615,0.01257082,0.01245643,0.01234295,0.01223038,0.01211872,0.01200797,0.01189811,0.01178913,0.01168104,0.01157383,0.01146749,0.01136202,0.0112574,0.01115364,0.01105073,0.01094866,0.01084742,0.01074702,0.01064744,0.01054868,0.01045073,0.01035359,0.01025725,0.01016171,0.01006696,0.009973001,0.009879818,0.00978741,0.009695771,0.009604896,0.00951478,0.009425416,0.009336801,0.009248928,0.009161792,0.009075388,0.008989712,0.008904757,0.008820518,0.008736991,0.00865417,0.00857205,0.008490627,0.008409895,0.008329848,0.008250484,0.008171795,0.008093778,0.008016427,0.007939738,0.007863705,0.007788325,0.007713592,0.007639501,0.007566048,0.007493229,0.007421037,0.00734947,0.007278521,0.007208187,0.007138463,0.007069345,0.007000827,0.006932906,0.006865577,0.006798835,0.006732677,0.006667097,0.006602092,0.006537657,0.006473787,0.006410479,0.006347729,0.006285531,0.006223882,0.006162778,0.006102214,0.006042187,0.005982691,0.005923724,0.005865281,0.005807358,0.005749952,0.005693057,0.00563667,0.005580788,0.005525405]},"permRows":[{"n":1,"total":1,"cyc":1,"harmonic":1,"longest":1},{"n":2,"total":2,"cyc":1.5,"harmonic":1.5,"longest":0.75},{"n":3,"total":6,"cyc":1.833333,"harmonic":1.833333,"longest":0.722222},{"n":4,"total":24,"cyc":2.083333,"harmonic":2.083333,"longest":0.697917},{"n":5,"total":120,"cyc":2.283333,"harmonic":2.283333,"longest":0.685},{"n":6,"total":720,"cyc":2.45,"harmonic":2.45,"longest":0.673843},{"n":7,"total":5040,"cyc":2.592857,"harmonic":2.592857,"longest":0.667885},{"n":8,"total":40320,"cyc":2.717857,"harmonic":2.717857,"longest":0.662026},{"n":9,"total":362880,"cyc":2.828968,"harmonic":2.828968,"longest":0.658291},{"n":10,"total":3628800,"cyc":2.928968,"harmonic":2.928968,"longest":0.654756}],"permMC":[{"n":1000,"S":2000,"cyc":7.4905,"harmonic":7.485470860550343,"longest":0.620891,"longestSE":0.004258,"mapRho":1.244467,"mapTail":0.595536},{"n":10000,"S":2000,"cyc":9.7875,"harmonic":9.787606036044348,"longest":0.622717,"longestSE":0.004251,"mapRho":1.23714,"mapTail":0.61587},{"n":100000,"S":200,"cyc":11.655,"harmonic":12.090146129863335,"longest":0.629852,"longestSE":0.013726,"mapRho":1.239075,"mapTail":0.613656},{"n":1000000,"S":20,"cyc":13,"harmonic":14.392726722864989,"longest":0.650533,"longestSE":0.053309,"mapRho":1.4229,"mapTail":0.59825}],"leafRows":[{"n":1000,"S":400,"leaf":0.368425,"image":0.631575,"leafErr":0.0005455588285576685,"imageErr":-0.0005455588285576685},{"n":10000,"S":400,"leaf":0.367466,"image":0.632535,"leafErr":-0.0004134411714423192,"imageErr":0.0004144411714422924},{"n":100000,"S":100,"leaf":0.368105,"image":0.631895,"leafErr":0.0002255588285576815,"imageErr":-0.0002255588285576815},{"n":1000000,"S":16,"leaf":0.368017,"image":0.631983,"leafErr":0.000137558828557649,"imageErr":-0.00013755882855770452}],"kthRows":[{"k":1,"measured":0.631983,"theory":0.6321205588285577,"tau":0.36787944117144233,"n":1000000},{"k":2,"measured":0.468397,"theory":0.46853639461338437,"tau":0.5314636053866156,"n":1000000},{"k":3,"measured":0.373953,"theory":0.3740823052826776,"tau":0.6259176947173224,"n":1000000},{"k":4,"measured":0.311945,"theory":0.31207970997505563,"tau":0.6879202900249444,"n":1000000},{"k":5,"measured":0.267976,"theory":0.2680768156757172,"tau":0.7319231843242828,"n":1000000},{"k":6,"measured":0.235071,"theory":0.23515097354853465,"tau":0.7648490264514654,"n":1000000},{"k":7,"measured":0.209478,"theory":0.20954849664850883,"tau":0.7904515033514912,"n":1000000},{"k":8,"measured":0.189,"theory":0.18904968989271764,"tau":0.8109503101072824,"n":1000000}],"compRows":[{"n":1000,"S":2000,"comp":4.0765,"compSE":0.037971,"compOverLn":0.590134,"giant":0.768037,"giantSE":0.004247,"giantSD":0.18992,"compSize":0.674292,"compSizeSE":0.006709,"maxTree":0.503219,"maxTreeSE":0.004997},{"n":10000,"S":2000,"comp":5.3125,"compSE":0.043942,"compOverLn":0.576797,"giant":0.746533,"giantSE":0.004259,"giantSD":0.190483,"compSize":0.650619,"compSizeSE":0.006646,"maxTree":0.47348,"maxTreeSE":0.004846},{"n":100000,"S":300,"comp":6.426667,"compSE":0.129331,"compOverLn":0.558213,"giant":0.734084,"giantSE":0.012227,"giantSD":0.211776,"compSize":0.649007,"compSizeSE":0.017675,"maxTree":0.479427,"maxTreeSE":0.012744},{"n":1000000,"S":30,"comp":7.666667,"compSE":0.438009,"compOverLn":0.554932,"giant":0.788097,"giantSE":0.035638,"giantSD":0.195195,"compSize":0.734818,"compSizeSE":0.05018,"maxTree":0.522718,"maxTreeSE":0.036842}],"giantMean":0.75918775,"giantSDBand":0.211776,"halfRows":[{"n":100,"kHalf":11,"halfOverSqrt":1.1,"rhoOverSqrt":1.2209960630215977,"ratio":1.1099964209287252},{"n":10000,"kHalf":117,"halfOverSqrt":1.17,"rhoOverSqrt":1.2499912186808109,"ratio":1.068368562975052},{"n":1000000,"kHalf":1176,"halfOverSqrt":1.176,"rhoOverSqrt":1.2529809083953716,"ratio":1.0654599561185134}],"costRows":[{"n":1000,"measured":true,"sim100":0.012905,"sim1000":0.129052},{"n":10000,"measured":true,"sim100":0.129052,"sim1000":1.290519},{"n":100000,"measured":true,"sim100":1.290519,"sim1000":12.905194},{"n":1000000,"measured":true,"sim100":12.905194,"sim1000":129.051936},{"n":10000000,"measured":false,"sim100":129.051936,"sim1000":1290.519359}],"exactWall":[{"n":8,"mapsLog10":7.22472,"measured":true,"sec":18.591,"years":5.891132405506122e-7,"maps":16777216},{"n":9,"mapsLog10":8.588183,"measured":false,"sec":429.30449908965824,"years":0.000013603838666110802,"maps":387420489},{"n":10,"mapsLog10":10,"measured":false,"sec":11081.099510192871,"years":0.0003511388543549849,"maps":10000000000},{"n":11,"mapsLog10":11.45532,"measured":false,"sec":316156.70134598616,"years":0.010018401315245335,"maps":285311670611},{"n":12,"mapsLog10":12.950175,"measured":false,"sec":9880019.631,"years":0.3130789296714579,"maps":8916100448256},{"n":14,"mapsLog10":16.045792,"measured":false,"sec":12313325339.195078,"years":390.1857346311214,"maps":11112006825558016},{"n":16,"mapsLog10":19.26592,"measured":false,"sec":20441020671983.617,"years":647736.8580621979,"maps":18446744073709552000},{"n":20,"mapsLog10":26.0206,"measured":false,"sec":116193749999999990000,"years":3681957753441.326,"maps":1.048576e+26}],"throughput":{"n":200000,"genMs":1.552621,"structMs":24.257767,"perNodeMs":0.00012905193589743592},"smallN":[8,16,32,64,128],"sizes":[100,316,1000,3162,10000,31623,100000,316228,1000000,10000000]},"conclusions":[{"head":"重逢是迟早的，而且很快","body":"从任意一点出发反复迭代，走过的点一旦重复，就再也不会离开那个环 —— 所以每个人最后都落进一个环。但代价只有 O(√n)：n = 10⁸ 时尾巴长度除以 √n 是 0.6266，正向 √(π/8) = 0.6266570686 收敛。如果重逢要 O(n) 步，那 10⁸ 个点要走一亿步；实际只要约 6.3 万步。"},{"head":"尾巴和环一样长 —— 但环永远多 1","body":"尾巴（走到环上要几步）与环长各自的期望都趋于 √(πn/8) ≈ 0.6267√n，两条曲线在对数坐标里几乎重合。它们的**差**却不是 0 而恰好是 1：E[环长] − E[尾巴] = 1，对任意 n 精确成立，没有渐近符号，也没有 o(1)。n ≤ 8 的全枚举与 n ≤ 10⁸ 的闭式两路独立确认，残差 ~1e-12（纯浮点噪声）。"},{"head":"为什么恰好是 1 —— 一个对称性","body":"把行走看成「每一步独立均匀地掷一个点，直到撞上走过的点」。设走过 ρ 个不同点、撞上的旧点排在第 T 位。第 m 步才第一次重复、且撞上第 t 个旧点的概率是 (n)_m / n^{m+1} —— 对每个 t 都一样。于是给定 ρ = m，T 在 {0,1,…,m−1} 上均匀：E[T|m] = (m−1)/2，E[C|m] = (m+1)/2，差恒为 1。自检里用 20 万条行走逐档核过这条均匀性（每个 m 至少 300 个样本，最大偏离 4.5 个标准误以内）。"},{"head":"这条恒等式只能由闭式确认，蒙特卡洛看不见它","body":"每个样本给一个 C − T，它的方差正比于 n，于是差的标准误 ≈ √(n/S)。n = 10⁶ 时用 20,000 个样本，标准误是 5.75 —— 比要检验的那个「1」还大；要把标准误压到 ±0.05 需要 2.6e+8 个样本。小 n 上经验与闭式是吻合的：n = 100 时 200 万个样本给出 1.0074 ± 0.0056，离 1 有 1.33 个标准误，却离 0 有 180 个。"},{"head":"同样是「随机」，映射和排列是两回事","body":"把每个点的像限制成双射（排列），尾巴就恒等于 0 —— 你永远回到出发点，也永远不再遇见别的点。排列的最长环占 0.62~0.65 个 n（n = 10⁶ 时 0.6505），趋于 Golomb–Dickman 常数 0.6243299885；而映射的 ρ 只占 1.2533√n。而且排列的期望环数是 H_n，精确 —— 全枚举 n ≤ 10 的 3,628,800 个排列逐位吻合，不是渐近。"},{"head":"三成七的点没有原像","body":"n = 10⁶ 时叶点比例 0.368017，像点比例 0.631983，分别趋于 1/e = 0.3678794412 与 1 − 1/e = 0.6321205588。再迭代一次，像集缩到 63.20%，之后按 τ_{k+1} = e^{−1+τ_k} 慢慢收缩：第 4 次迭代还有 31.19%，而理论是 31.21%。τ_k → 1 慢得离谱 —— 1 − τ_k ≈ 2/k，要迭代几千次才把 99.9% 的点盖住。"},{"head":"巨分量很大，但极不稳定","body":"四档规模上最大分量的比例平均 0.7592，与文献的 0.7578230112 相符。但它的标准差 ≈ 0.19n：n = 1000 时两万个样本给出 0.7680 ± 0.0042，换个规模就跳到 0.7341。这类量只有跨规模平均才敢下结论，单次观测说明不了任何事。"},{"head":"把精确推到 10⁸ 靠的是闭式，不是算力","body":"全枚举 n = 8 要 16,777,216 个映射，n = 9 是 3.9 亿个，n = 12 是 8.9 万亿个 —— 精确枚举在 n = 12 就撞墙。而闭式只要 74,026 项（~2.4√n）就能把 n = 10⁸ 的期望值算到 1e-12。算力买不到精确，结构才能。"}],"boundaries":[{"head":"「≈」的地方都写了误差","body":"页面上凡是收敛性的数字都带样本量与标准误。E[尾巴]/√n 在 n = 10⁷ 上是 0.6271 ± 0.0067，与 √(π/8) = 0.626657 相差不到 0.1 个标准误 —— 但这不是「相等」，是「在 0.6% 的精度内看不出差别」。真正相等的是闭式，不是测量。"},{"head":"巨分量与最大树的文献值只做量级对照","body":"0.7578230112（A143297）与 0.4834983471（A271871）是文献常数，本装置只在 4 档规模上取了几十个到两千个样本，标准误 0.4%~3.7%。这足以看出「在同一量级」，不足以把常数验到小数点后四位 —— 页面上没有声称验到了。"},{"head":"二阶修正 −1/3 是量出来的，不是证出来的","body":"E[ρ] − √(πn/2) → −1/3 这一条，本装置给的是 n = 10…10⁸ 上的数值证据（−0.323 → −0.33332）以及它与恒等式的相容性（−1/3 = −2/3 + 1/3）。它的严格证明不在本装置的范围里。"},{"head":"恒等式的证明只用了一个对称性","body":"E[环长] − E[尾巴] = 1 的证明是「给定 ρ = m，T 在 {0,…,m−1} 上均匀」。这条均匀性成立的前提是「行走的每一步是独立均匀的」，而这只在**随机映射**上成立。换成别的随机图模型（例如每个点出度固定的 k-out），结论会变，本装置不声称适用。"},{"head":"没有声称任何映射是「典型的」","body":"期望值是全体映射的平均。单个映射可能极不典型：常数映射的尾巴期望是 (n−1)/2 而不是 0.6267√n，恒等映射的尾巴是 0、分量数是 n。页面上给的实例图只是某一个映射，不代表分布。"},{"head":"蒙特卡洛的「看不见」是结论，不是缺陷","body":"E8 显示在 n = 10⁶ 上要把标准误压到 ±0.05 需要 2.6 亿个样本，而样本量必须正比于 n。这意味着这条恒等式在数值上**不可被蒙特卡洛确认**（大 n 时），只能靠闭式。这不是本装置跑得不够多，是估计量的方差本身不允许。"}],"verifyTable":[{"name":"尾巴 / √n → √(π/8)","ours":"0.626590","theirs":"0.6266570686","source":"Flajolet–Odlyzko 1990","ok":true},{"name":"ρ / √n → √(π/2)","ours":"1.253281","theirs":"1.2533141373","source":"Flajolet–Odlyzko 1990","ok":true},{"name":"E[ρ] − √(πn/2) → −1/3","ours":"-0.33332","theirs":"−0.333333","source":"Flajolet–Odlyzko 的二阶项","ok":true},{"name":"E[尾巴] − √(πn/8) → −2/3","ours":"-0.66666","theirs":"−0.666667","source":"由 E[ρ] = E[尾] + E[环] 与恒等式推出","ok":true},{"name":"E[环长] − √(πn/8) → +1/3","ours":"0.33334","theirs":"+0.333333","source":"由 E[环] = E[尾] + 1 与尾巴的二阶项推出","ok":true},{"name":"叶点比例 → 1/e","ours":"0.368017","theirs":"0.3678794412","source":"Flajolet–Odlyzko 1990","ok":true},{"name":"像点比例 → 1 − 1/e","ours":"0.631983","theirs":"0.6321205588","source":"Flajolet–Odlyzko 1990","ok":true},{"name":"分量数 / ln n → 1/2","ours":"0.5549","theirs":"0.5（慢）","source":"Flajolet–Odlyzko 1990","ok":true},{"name":"巨分量 / n","ours":"0.7592","theirs":"0.7578230112","source":"OEIS A143297（Flajolet–Odlyzko 常数）","ok":true},{"name":"随机点所在分量 / n → 2/3","ours":"0.7348 ± 0.0502","theirs":"0.6666667","source":"Flajolet–Odlyzko 1990","ok":true},{"name":"最大树 / n","ours":"0.5227 ± 0.0368","theirs":"0.4834983471","source":"OEIS A271871","ok":true},{"name":"排列最长环 / n → λ","ours":"0.6505 ± 0.0533","theirs":"0.6243299884","source":"Golomb–Dickman 常数，OEIS A084945；Shepp–Lloyd","ok":true},{"name":"排列的期望环数 = H_n","ours":"2.928968","theirs":"2.928968","source":"精确恒等式（不是渐近）","ok":true},{"name":"全枚举的 E[环] − E[尾]","ours":"1.000000000","theirs":"1（精确）","source":"本装置发现，闭式给出证明","ok":true},{"name":"闭式在大 n 上的 E[环] − E[尾]","ours":"1.000000000","theirs":"1（精确）","source":"同一恒等式，由闭式推到 n = 10⁸","ok":true},{"name":"半程位置 / √n → √(2 ln 2)","ours":"1.17600","theirs":"1.1774100","source":"生日问题（碰撞概率 = 1/2）","ok":true},{"name":"τ_k 递推：τ₁ = 1/e","ours":"0.367879441171","theirs":"0.367879441171","source":"τ_{k+1} = e^{−1+τ_k}，像点比例 1 − τ_k","ok":true},{"name":"全枚举的映射总数（n=8）","ours":"16,777,216","theirs":"8⁸ = 16,777,216","source":"全枚举地面真相","ok":true}]};</script>
+<script>/* ============================================================================
+ * mapping/ui.js —— 界面：渲染 + 交互 + 探针
+ *
+ * 守住的规矩（都是别的装置上踩出来的）：
+ *   · openTag 只用来开 <svg>；形状一律用自带闭合的 tag()
+ *   · 图表按容器的真实像素宽渲染；setTab / resize 时幂等重画
+ *   · 图例放 HTML，条数要和图上真正画的系列数一致
+ *   · 页面上不读时钟；任何"多久"都来自 Node 侧标定烤进 analysis.json 的数
+ *   · 填表用 tBodies[0].innerHTML，绝不碰 table.innerHTML（会连 caption/thead 一起删）
+ *   · 局部变量不许叫 A / D（会遮蔽分析全局）
+ *   · 行内 **粗体** 用惰性匹配 —— 正文里出现单个 * 时不能整段放弃
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var A = window.__ANALYSIS__;
+  var D = A.derived;
+  var Core = window.MapCore;
+
+  /* ============================================================ 小工具 */
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function attrsStr(o) {
+    var s = '', k;
+    for (k in o) {
+      if (!Object.prototype.hasOwnProperty.call(o, k)) continue;
+      if (o[k] === undefined || o[k] === null) continue;
+      s += ' ' + k + '="' + String(o[k]).replace(/"/g, '&quot;') + '"';
+    }
+    return s;
+  }
+  function tag(name, attrs, text) {
+    return '<' + name + attrsStr(attrs) + '>' + (text === undefined ? '' : esc(text)) + '</' + name + '>';
+  }
+  /* 只允许开 <svg>：拿它去发 line/rect/circle/path 会让图元互相嵌套，
+     而 SVG 形状元素不渲染子元素 —— 图上只剩最外一个，DOM 里却一个不少，
+     四层静态检查全部放行。形状一律用自带闭合的 tag()。 */
+  function openTag(name, attrs) { return '<' + name + attrsStr(attrs) + '>'; }
+  function setText(id, s) { var e = $(id); if (e) e.textContent = s; }
+  function setHTML(id, s) { var e = $(id); if (e) e.innerHTML = s; }
+  function setTBody(id, inner) {
+    var t = $(id);
+    if (!t) return;
+    var tb = t.tBodies[0];
+    /* 没有 tbody 就报错，不许退回容器 innerHTML —— 那会把 caption 和 thead 一起删掉，
+       而只看 <td> 的探针（行数 / 折行 / 列数）全都发现不了。 */
+    if (!tb) throw new Error('表 #' + id + ' 没有 tbody');
+    tb.innerHTML = inner;
+  }
+  /* 行内标记：**粗体** 与 `代码`。匹配必须惰性 —— 贪心版本在正文出现
+     单个 * 时会整段放弃，把 ** 原样漏到页面上。 */
+  function md(s) {
+    var t = esc(s);
+    t = t.replace(/\*\*([\s\S]+?)\*\*/g, '<b>$1</b>');
+    t = t.replace(/`([^`]+?)`/g, '<code>$1</code>');
+    return t;
+  }
+  function fmt(x, d) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return Number(x).toFixed(d === undefined ? 4 : d);
+  }
+  function fmtInt(x) {
+    if (x === null || x === undefined || !isFinite(x)) return '—';
+    return Number(x).toLocaleString('en-US');
+  }
+  function sci(x, d) {
+    if (typeof x === 'string') return x;
+    if (x === undefined || x === null) return '—';
+    if (typeof x !== 'number' || Number.isNaN(x)) return 'NaN';
+    if (!isFinite(x)) return x > 0 ? '∞' : '−∞';
+    if (x === 0) return '0';
+    var s = Number(x).toExponential(d === undefined ? 2 : d).split('e');
+    return s[0] + '×10^' + (s[1][0] === '-' ? '−' : '') + String(Math.abs(+s[1]));
+  }
+  function pctS(x, d) {
+    if (typeof x !== 'number' || !isFinite(x)) return '—';
+    return (x * 100).toFixed(d === undefined ? 2 : d) + '%';
+  }
+  function chartWidth(host) { return Math.max(240, Math.round(host.clientWidth || 640)); }
+  function fillSelect(id, pairs, want) {
+    var e = $(id);
+    if (!e) return;
+    e.innerHTML = pairs.map(function (p) {
+      return tag('option', { value: String(p[0]) }, String(p[1]));
+    }).join('');
+    if (want !== undefined) e.value = String(want);
+  }
+
+  /* ============================================================ 坐标与刻度 */
+  function sc(x0, x1, a, b) {
+    var d = (x1 - x0) || 1;
+    return function (v) { return a + (v - x0) / d * (b - a); };
+  }
+  function logsc(x0, x1, a, b) {
+    var l0 = Math.log10(x0), l1 = Math.log10(x1);
+    return function (v) { return a + (Math.log10(Math.max(v, 1e-300)) - l0) / (l1 - l0) * (b - a); };
+  }
+  function niceTicks(lo, hi, count) {
+    var span = hi - lo;
+    if (!(span > 0)) return [lo];
+    var step = Math.pow(10, Math.floor(Math.log10(span / count)));
+    var err = span / count / step;
+    if (err >= 5) step *= 10; else if (err >= 2) step *= 5; else if (err >= 1) step *= 2;
+    var t = [], v = Math.ceil(lo / step - 1e-9) * step;
+    for (; v <= hi + step * 1e-9; v += step) t.push(+v.toPrecision(12));
+    return t;
+  }
+  function tickTxt(v) {
+    var a = Math.abs(v);
+    if (a === 0) return '0';
+    if (a >= 1000) return String(Math.round(v));
+    if (a >= 1) return String(+v.toFixed(2));
+    if (a >= 0.01) return String(+v.toFixed(3));
+    return sci(v, 0);
+  }
+  /* 对数轴不能只画整十次幂：范围窄于 2 个数量级时会只剩 1~2 根刻度。
+     跨 <3 个数量级就补 2×/5×。 */
+  function logTicks(lo, hi) {
+    var out = [], e, m;
+    var span = Math.log10(hi) - Math.log10(lo);
+    if (span < 3) {
+      for (e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++) {
+        [1, 2, 5].forEach(function (mm) {
+          var v = mm * Math.pow(10, e);
+          if (v >= lo * 0.999 && v <= hi * 1.001) out.push(v);
+        });
+      }
+    } else {
+      for (e = Math.ceil(Math.log10(lo)); e <= Math.floor(Math.log10(hi)); e++) out.push(Math.pow(10, e));
+    }
+    return out;
+  }
+  /* 标签格式按**整根轴**统一决定，否则同一根轴上会混出 10^-4 和 0.001 */
+  function logTickTxtFactory(lo, hi) {
+    var allInt = true, e;
+    for (e = Math.ceil(Math.log10(lo)); e <= Math.floor(Math.log10(hi)); e++) if (e < 0) allInt = false;
+    var span = Math.log10(hi) - Math.log10(lo);
+    /* 整十次幂、指数又小 —— 直接写整数。但指数一大就不能写整数了：
+       "1000000000000000000" 有 19 个字符，锚在轴端会横向溢出整个 svg，
+       还会压住旋转的纵轴标题（c-cost 的 1…10²⁷ 就是这么炸的）。
+       所以只在 10^5 以内写整数，其余一律 10^k —— 同一根轴只会走一个分支。 */
+    if (span < 3 && Math.log10(hi) <= 5) {
+      if (allInt) return function (v) { return String(Math.round(v)); };
+      return function (v) {
+        var ev = Math.round(Math.log10(v));
+        if (ev >= 0 && ev <= 5) return String(+v.toPrecision(3));
+        return sci(v, 0);
+      };
+    }
+    return function (v) { return '10^' + Math.round(Math.log10(v)); };
+  }
+  function thin(ticks, span, minGap) {
+    var maxN = Math.max(2, Math.floor(span / minGap));
+    if (ticks.length <= maxN) return ticks;
+    var step = Math.ceil(ticks.length / maxN);
+    return ticks.filter(function (_, i) { return i % step === 0; });
+  }
+  function frame(w, h, pad, xr, yr, opt) {
+    opt = opt || {};
+    var X = opt.xlog ? logsc(xr[0], xr[1], pad.l, w - pad.r)
+                     : sc(xr[0], xr[1], pad.l, w - pad.r);
+    var Y = opt.ylog ? logsc(yr[0], yr[1], h - pad.b, pad.t)
+                     : sc(yr[0], yr[1], h - pad.b, pad.t);
+    /* 轴端点挂在 X 上：hline() 靠它决定横线画多长、标签锚在哪儿。
+       以前要调用点自己补这两行，漏补一次就画到 x = NaN（浏览器当 0 处理），
+       标签直接压住旋转的纵轴标题，而"元素在不在"那一层检查照样放行。 */
+    X.axis0 = pad.l; X.axis1 = w - pad.r;
+    var s = '';
+    s += tag('rect', { x: pad.l, y: pad.t, width: w - pad.l - pad.r, height: h - pad.t - pad.b,
+                       fill: '#ffffff', stroke: '#ded9d0', 'stroke-width': 1 });
+    var xTxt = opt.xlog ? logTickTxtFactory(xr[0], xr[1]) : tickTxt;
+    var yTxt = opt.ylog ? logTickTxtFactory(yr[0], yr[1]) : tickTxt;
+    var xt = opt.xticks ? opt.xticks.slice()
+                        : (opt.xlog ? logTicks(xr[0], xr[1]) : niceTicks(xr[0], xr[1], opt.xn || 6));
+    if (!opt.xticks) xt = thin(xt, w - pad.l - pad.r, opt.xgap || 46);
+    xt.forEach(function (v) {
+      var x = X(v);
+      if (x < pad.l - 0.5 || x > w - pad.r + 0.5) return;
+      /* 端点刻度改成 start / end 对齐：锚在正中间会让标签探出轴外
+         （"10000000" 往右出界），最左那根还会撞上纵轴的 "0"。 */
+      var anchor = 'middle';
+      if (x - pad.l < 16) anchor = 'start';
+      else if ((w - pad.r) - x < 16) anchor = 'end';
+      s += tag('line', { x1: x, y1: h - pad.b, x2: x, y2: h - pad.b + 4, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('line', { x1: x, y1: pad.t, x2: x, y2: h - pad.b, stroke: '#efece6', 'stroke-width': 1 });
+      s += tag('text', { x: x, y: h - pad.b + 14, 'text-anchor': anchor, 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, xTxt(v));
+    });
+    var yt = opt.ylog ? logTicks(yr[0], yr[1]) : niceTicks(yr[0], yr[1], opt.yn || 5);
+    yt = thin(yt, h - pad.t - pad.b, 19);
+    yt.forEach(function (v) {
+      var y = Y(v);
+      if (y < pad.t - 0.5 || y > h - pad.b + 0.5) return;
+      s += tag('line', { x1: pad.l - 4, y1: y, x2: pad.l, y2: y, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('line', { x1: pad.l, y1: y, x2: w - pad.r, y2: y, stroke: '#efece6', 'stroke-width': 1 });
+      s += tag('text', { x: pad.l - 6, y: y + 3.5, 'text-anchor': 'end', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, yTxt(v));
+    });
+    if (opt.xlab) s += tag('text', { x: (pad.l + w - pad.r) / 2, y: h - 3, 'text-anchor': 'middle',
+                                     'font-size': 11.5, fill: '#57534e', class: 'tick' }, opt.xlab);
+    if (opt.ylab) s += tag('text', { x: 11, y: (pad.t + h - pad.b) / 2, 'text-anchor': 'middle',
+                                     'font-size': 11.5, fill: '#57534e', class: 'tick',
+                                     transform: 'rotate(-90 11 ' + ((pad.t + h - pad.b) / 2) + ')' }, opt.ylab);
+    return { X: X, Y: Y, body: s };
+  }
+  function poly(pts, color, wdt, dash) {
+    if (!pts.length) return '';
+    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2); }).join(' ');
+    return tag('path', { d: d, fill: 'none', stroke: color, 'stroke-width': wdt || 2,
+                         'stroke-dasharray': dash || 'none', 'stroke-linejoin': 'round' });
+  }
+  function dot(x, y, color, r, shape) {
+    if (!isFinite(x) || !isFinite(y)) return '';
+    if (shape === 'sq') return tag('rect', { x: x - (r || 3), y: y - (r || 3), width: 2 * (r || 3), height: 2 * (r || 3), fill: color });
+    if (shape === 'dia') {
+      var k = r || 3.4;
+      return tag('path', { d: 'M' + x + ' ' + (y - k) + 'L' + (x + k) + ' ' + y + 'L' + x + ' ' + (y + k) + 'L' + (x - k) + ' ' + y + 'Z', fill: color });
+    }
+    return tag('circle', { cx: x, cy: y, r: r || 3, fill: color });
+  }
+  function hline(X, Y, y, color, dash, lab) {
+    var s = tag('line', { x1: X.axis0, y1: Y(y), x2: X.axis1, y2: Y(y), stroke: color,
+                          'stroke-width': 1.6, 'stroke-dasharray': dash || '5 4' });
+    if (lab) s += tag('text', { x: X.axis1 - 4, y: Y(y) - 4, 'text-anchor': 'end', 'font-size': 10.5,
+                                fill: color, class: 'tick' }, lab);
+    return s;
+  }
+  function errBar(x, y0, y1, color) {
+    if (!isFinite(y0) || !isFinite(y1)) return '';
+    return tag('line', { x1: x, y1: y0, x2: x, y2: y1, stroke: color, 'stroke-width': 1.4 }) +
+      tag('line', { x1: x - 3, y1: y0, x2: x + 3, y2: y0, stroke: color, 'stroke-width': 1.4 }) +
+      tag('line', { x1: x - 3, y1: y1, x2: x + 3, y2: y1, stroke: color, 'stroke-width': 1.4 });
+  }
+  function svgOpen(w, h) {
+    /* 不写 xmlns：HTML 解析器会把内联 <svg> 自动放进 SVG 命名空间，
+       而写出命名空间网址会让"产物无外链"那条门禁误报。 */
+    return openTag('svg', { viewBox: '0 0 ' + w + ' ' + h, width: w, height: h, role: 'img' });
+  }
+  var COLOR = { cycle: '#a23b1e', tail: '#1f6f8b', mc: '#7c3aed', theory: '#b45309',
+                ok: '#15803d', leaf: '#c9c3b8', line: '#ded9d0', line2: '#efece6',
+                ink: '#1c1b19', ink2: '#57534e', ink3: '#8a8279' };
+
+  /* ============================================================ 重画登记 */
+  var REDRAW = [];
+  function onRedraw(fn) { REDRAW.push(fn); }
+  function redrawAll() {
+    REDRAW.forEach(function (f) {
+      try { f(); } catch (e) { window.__uiErr = String((e && e.stack) || e); }
+    });
+  }
+
+  /* ============================================================ 壹 · 重逢 */
+  var WALK = { n: 24, seed: 1, start: 0, f: null, st: null, comp: null, indeg: null, lay: null };
+
+  function walkBuild() {
+    var rnd = Core.makeRng(Core.seedOf(WALK.seed, 'walk-' + WALK.n));
+    WALK.f = Core.randomMapping(WALK.n, rnd);
+    WALK.st = Core.nodeStats(WALK.f, WALK.n);
+    WALK.comp = Core.components(WALK.f, WALK.n);
+    WALK.indeg = Core.inDegrees(WALK.f, WALK.n);
+    WALK.lay = walkLayout(WALK.f, WALK.n, WALK.st, WALK.comp);
+    if (WALK.start >= WALK.n) WALK.start = 0;
+  }
+  /* 布局：每个分量画一个环（圆），树沿半径往外挂。
+     坐标先按"自然单位"排，最后统一缩放到容器里 —— 这样 n 变了也不会挤成一团。 */
+  function walkLayout(f, n, st, comp) {
+    var R0 = 20, STEP = 24, GAP = 26, PAD = 16;
+    var cycList = Core.cyclesOf(f, n, st.onCycle);
+    var byRoot = {};
+    cycList.forEach(function (c) { var r = comp.compOf[c[0]]; (byRoot[r] = byRoot[r] || []).push(c); });
+    var attach = {};
+    for (var v = 0; v < n; v++) {
+      if (st.onCycle[v]) continue;
+      var rr = st.root[v];
+      (attach[rr] = attach[rr] || []).push(v);
+    }
+    Object.keys(attach).forEach(function (k) {
+      attach[k].sort(function (a, b) { return st.tail[a] - st.tail[b] || a - b; });
+    });
+    var pos = new Array(n), comps = [], cursorX = PAD;
+    var roots = Object.keys(byRoot).map(Number);
+    roots.sort(function (a, b) { return (comp.sizeByRoot[b] || 0) - (comp.sizeByRoot[a] || 0); });
+    roots.forEach(function (r) {
+      var all = [];
+      byRoot[r].forEach(function (c) { all = all.concat(c); });
+      var k = all.length;
+      var R = Math.max(R0, k * 7.5);
+      var maxDepth = 0;
+      all.forEach(function (cn) {
+        (attach[cn] || []).forEach(function (x) { if (st.tail[x] > maxDepth) maxDepth = st.tail[x]; });
+      });
+      var cx = cursorX + R + PAD, cy = 0;
+      var ang = {};
+      all.forEach(function (cn, i) {
+        var a = -Math.PI / 2 + 2 * Math.PI * i / k;
+        ang[cn] = a;
+        pos[cn] = { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) };
+      });
+      all.forEach(function (cn) {
+        var list = attach[cn] || [], byD = {};
+        list.forEach(function (x) { (byD[st.tail[x]] = byD[st.tail[x]] || []).push(x); });
+        Object.keys(byD).forEach(function (dk) {
+          var arr = byD[dk];
+          var half = Math.min(0.62, 1.1 / Math.max(2, arr.length)) * (Math.PI * 2 / k) * 0.85;
+          arr.forEach(function (x, j) {
+            var off = arr.length === 1 ? 0 : (j / (arr.length - 1) - 0.5) * 2 * half;
+            var a = ang[cn] + off, rad = R + (+dk) * STEP;
+            pos[x] = { x: cx + rad * Math.cos(a), y: cy + rad * Math.sin(a) };
+          });
+        });
+      });
+      var halfW = R + maxDepth * STEP + PAD;
+      comps.push({ root: r, cx: cx, cy: cy, R: R, cycle: all, halfW: halfW,
+                   maxDepth: maxDepth, size: comp.sizeByRoot[r] || 0 });
+      cursorX += 2 * halfW + GAP;
+    });
+    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    pos.forEach(function (p) {
+      if (!p) return;
+      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+    });
+    if (!isFinite(minX)) { minX = maxX = minY = maxY = 0; }
+    return { pos: pos, comps: comps, bbox: { minX: minX, maxX: maxX, minY: minY, maxY: maxY } };
+  }
+
+  function renderWalk() {
+    var host = $('c-walk');
+    if (!host) return;
+    var f = WALK.f, n = WALK.n, st = WALK.st, lay = WALK.lay;
+    var w = chartWidth(host);
+    var h = Math.round(Math.max(250, Math.min(400, 190 + n * 2.6)));
+    var pad = { l: 10, r: 10, t: 10, b: 10 };
+    var bw = Math.max(lay.bbox.maxX - lay.bbox.minX, 40);
+    var bh = Math.max(lay.bbox.maxY - lay.bbox.minY, 40);
+    var availW = w - pad.l - pad.r - 16, availH = h - pad.t - pad.b - 16;
+    var scl = Math.min(availW / (bw + 2 * 26), availH / (bh + 2 * 26), 2.0);
+    scl = Math.max(scl, 0.22);
+    var ox = pad.l + 8 + (availW - bw * scl) / 2 - lay.bbox.minX * scl;
+    var oy = pad.t + 8 + (availH - bh * scl) / 2 - lay.bbox.minY * scl;
+    function P(v) { return { x: ox + lay.pos[v].x * scl, y: oy + lay.pos[v].y * scl }; }
+
+    var walk = Core.walkPath(f, WALK.start);
+    var path = walk.path, pathSet = {};
+    path.forEach(function (v, i) { pathSet[v] = i; });
+    var onPathCycle = {};
+    for (var i = walk.tail; i < path.length; i++) onPathCycle[path[i]] = 1;
+
+    var s = '';
+    /* 树边 */
+    for (var v = 0; v < n; v++) {
+      if (st.onCycle[v]) continue;
+      var a = P(v), b = P(f[v]);
+      s += tag('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: COLOR.line, 'stroke-width': 1.2 });
+    }
+    /* 环 */
+    lay.comps.forEach(function (c) {
+      s += tag('circle', { cx: ox + c.cx * scl, cy: oy + c.cy * scl, r: c.R * scl,
+                           fill: 'none', stroke: COLOR.line, 'stroke-width': 1.2 });
+    });
+    /* 高亮：尾巴段（青蓝）+ 整圈环（砖红） */
+    if (walk.tail > 0) {
+      var tp = [];
+      for (var j = 0; j <= walk.tail; j++) tp.push([P(path[j]).x, P(path[j]).y]);
+      s += poly(tp, COLOR.tail, 2.6);
+    }
+    var entry = path[walk.tail];
+    var ec = null;
+    lay.comps.forEach(function (c) { if (c.cycle.indexOf(entry) >= 0) ec = c; });
+    if (ec) s += tag('circle', { cx: ox + ec.cx * scl, cy: oy + ec.cy * scl, r: ec.R * scl,
+                                 fill: 'none', stroke: COLOR.cycle, 'stroke-width': 2.6 });
+    /* 点 */
+    var dotR = Math.max(2.4, Math.min(5.5, 3.6 * Math.max(scl, 0.7)));
+    for (v = 0; v < n; v++) {
+      var p = P(v);
+      var kind = st.onCycle[v] ? 'cycle' : (WALK.indeg[v] === 0 ? 'leaf' : 'tail');
+      var col = kind === 'cycle' ? COLOR.cycle : (kind === 'leaf' ? COLOR.leaf : COLOR.tail);
+      if (pathSet[v] !== undefined) {
+        s += tag('circle', { cx: p.x, cy: p.y, r: dotR + 2.6, fill: 'none',
+                             stroke: pathSet[v] === 0 ? COLOR.ink : col, 'stroke-width': 1.8 });
+      }
+      s += tag('circle', { cx: p.x, cy: p.y, r: dotR, fill: col, 'data-node': v, 'data-kind': kind });
+      if (v === WALK.start) {
+        s += tag('text', { x: p.x, y: p.y - dotR - 5, 'text-anchor': 'middle', 'font-size': 10.5,
+                           fill: COLOR.ink, class: 'tick' }, '起');
+      }
+    }
+    host.innerHTML = svgOpen(w, h) + s + '</svg>';
+
+    /* 读数条 */
+    var maxTail = 0, maxTailAt = 0, leaves = 0;
+    for (v = 0; v < n; v++) {
+      if (st.tail[v] > maxTail) { maxTail = st.tail[v]; maxTailAt = v; }
+      if (WALK.indeg[v] === 0) leaves++;
+    }
+    setHTML('ro-walk',
+      '<span class="k">n</span><span>' + n + '</span>' +
+      '<span class="k">分量</span><span>' + WALK.comp.count + '</span>' +
+      '<span class="k">核心</span><span>' + st.nCycleNodes + '</span>' +
+      '<span class="k">叶</span><span>' + leaves + '</span>' +
+      '<span class="k t">尾巴</span><span class="t"><b>' + walk.tail + '</b></span>' +
+      '<span class="k c">环长</span><span class="c"><b>' + walk.cycle + '</b></span>' +
+      '<span class="k">ρ</span><span><b>' + (walk.tail + walk.cycle) + '</b></span>' +
+      '<span class="k">起点</span><span>' + WALK.start + '</span>');
+
+    var cycLen = walk.cycle;
+    setText('walk-note',
+      '这一张映射有 ' + n + ' 个点、' + WALK.comp.count + ' 个分量，其中最大的分量有 ' +
+      WALK.comp.max + ' 个点。最深的那个点是 ' + maxTailAt + '，从它出发要走 ' + maxTail + ' 步才上环。' +
+      '当前起点 ' + WALK.start + ' 的尾巴是 ' + walk.tail + ' 步，进环之后还要绕 ' + cycLen +
+      ' 步才回到它自己 —— 所以它第 ' + (walk.tail + walk.cycle) + ' 步才第一次重逢。' +
+      '全页所有关于「多久重逢」的期望值，都是把这件事在' + fmtInt(D.exactRows[D.exactRows.length - 1].total) +
+      '个映射上平均出来的。');
+
+    /* 逐点表 */
+    var rows = '';
+    for (v = 0; v < n; v++) {
+      var onP = pathSet[v] !== undefined;
+      rows += '<tr' + (onP ? ' class="hi"' : '') + '>' +
+        '<td>' + v + '</td><td>' + f[v] + '</td>' +
+        '<td>' + st.tail[v] + '</td><td>' + st.cyc[v] + '</td>' +
+        '<td>' + (st.tail[v] + st.cyc[v]) + '</td>' +
+        '<td>' + (st.onCycle[v] ? '是' : '否') + '</td></tr>';
+    }
+    setTBody('t-walk', rows);
+    setText('t-walk-cap', '这一张映射的逐点账本（n = ' + n + '，高亮行是起点 ' + WALK.start + ' 走的路）');
+    var sel = $('walk-start');
+    if (sel && sel.options.length !== n) {
+      var keep = WALK.start;
+      fillSelect('walk-start', (function () {
+        var out = [];
+        for (var q = 0; q < n; q++) out.push([q, '点 ' + q]);
+        return out;
+      })(), keep);
+    }
+  }
+
+  /* ============================================================ 贰 · 长度 */
+  var LEN = { mode: 'norm' };
+
+  function renderLen() {
+    var host = $('c-len');
+    if (!host) return;
+    var w = chartWidth(host), h = 320;
+    var pad = { l: 46, r: 14, t: 14, b: 34 };
+    var rows = D.lenRows;
+    if (!rows.length) { host.innerHTML = svgOpen(w, h) + '</svg>'; return; }
+    var s = '';
+    if (LEN.mode === 'norm') {
+      var f2 = frame(w, h, pad, [100, 1e7], [0, 1.45],
+        { xlog: true, xn: 7, xlab: 'n（对数）', ylab: '长度 / √n', ygap: 22 });
+      s = f2.body;
+      s += hline(f2.X, f2.Y, D.theory.C_TAIL, COLOR.theory, '6 4', '√(π/8) = 0.626657');
+      s += hline(f2.X, f2.Y, D.theory.C_RHO, COLOR.theory, '6 4', '√(π/2) = 1.253314');
+      var t1 = [], t2 = [];
+      rows.forEach(function (r) {
+        t1.push([f2.X(r.n), f2.Y(r.tailOverSqrt)]);
+        t2.push([f2.X(r.n), f2.Y(r.rhoOverSqrt)]);
+        s += dot(f2.X(r.n), f2.Y(r.tailOverSqrt), COLOR.tail, 3.4);
+        s += dot(f2.X(r.n), f2.Y(r.rhoOverSqrt), COLOR.cycle, 3.4);
+      });
+      s += poly(t1, COLOR.tail, 1.8);
+      s += poly(t2, COLOR.cycle, 1.8);
+    } else {
+      var f3 = frame(w, h, pad, [100, 1e7], [1, 1e7],
+        { xlog: true, ylog: true, xn: 7, xlab: 'n（对数）', ylab: '绝对长度（对数）' });
+      s = f3.body;
+      var thT = [], thR = [], refN = [];
+      [100, 316, 1000, 3162, 10000, 31623, 100000, 316228, 1000000, 3162278, 1e7].forEach(function (nn) {
+        thT.push([f3.X(nn), f3.Y(D.theory.C_TAIL * Math.sqrt(nn))]);
+        thR.push([f3.X(nn), f3.Y(D.theory.C_RHO * Math.sqrt(nn))]);
+        refN.push([f3.X(nn), f3.Y(nn)]);
+      });
+      s += poly(refN, COLOR.ink3, 1.6, '4 4');
+      s += poly(thT, COLOR.theory, 1.6, '6 4');
+      s += poly(thR, COLOR.theory, 1.6, '6 4');
+      var a1 = [], a2 = [];
+      rows.forEach(function (r) {
+        a1.push([f3.X(r.n), f3.Y(r.tailAbs)]);
+        a2.push([f3.X(r.n), f3.Y(r.rhoAbs)]);
+        s += dot(f3.X(r.n), f3.Y(r.tailAbs), COLOR.tail, 3.4);
+        s += dot(f3.X(r.n), f3.Y(r.rhoAbs), COLOR.cycle, 3.4);
+      });
+      s += poly(a1, COLOR.tail, 1.8);
+      s += poly(a2, COLOR.cycle, 1.8);
+    }
+    host.innerHTML = svgOpen(w, h) + s + '</svg>';
+
+    var last = rows[rows.length - 1];
+    var cl = D.closedAt[D.closedAt.length - 1];
+    setHTML('ro-len',
+      '<span class="k">最大 n</span><span>' + fmtInt(last.n) + '</span>' +
+      '<span class="k">样本</span><span>' + fmtInt(last.S) + '</span>' +
+      '<span class="k t">尾/√n（MC）</span><span class="t"><b>' + fmt(last.tailOverSqrt, 4) + '</b></span>' +
+      '<span class="k t">尾/√n（闭式）</span><span class="t"><b>' + fmt(cl.tailOverSqrt, 4) + '</b></span>' +
+      '<span class="k c">ρ/√n（MC）</span><span class="c"><b>' + fmt(last.rhoOverSqrt, 4) + '</b></span>' +
+      '<span class="k c">ρ/√n（闭式）</span><span class="c"><b>' + fmt(cl.rhoOverSqrt, 4) + '</b></span>');
+    setText('len-note',
+      '把 n 从 100 提到 10⁷（十万倍），尾巴除以 √n 从 ' + fmt(rows[0].tailOverSqrt, 4) +
+      ' 爬到 ' + fmt(last.tailOverSqrt, 4) + '，正向 0.6266570686 靠。' +
+      '注意它靠得多慢：分母只涨了 316 倍，所以还没到 0.6267 —— 这条收敛是 O(1/√n) 的，' +
+      '闭式在 n = 10⁸ 上也只到 ' + fmt(D.closedRows[D.closedRows.length - 1].tailOverSqrt, 6) + '。' +
+      '对照那条灰虚线：如果重逢要 O(n) 步，长度会随 n 一路涨到 10⁷，而不是停在几千。');
+
+    var trs = '';
+    rows.forEach(function (r, i) {
+      var cc = D.closedAt[i];
+      trs += '<tr><td>' + fmtInt(r.n) + '</td><td>' + fmtInt(r.S) + '</td>' +
+        '<td>' + fmt(r.tailOverSqrt, 5) + ' ± ' + fmt(r.tailSE, 5) + '</td>' +
+        '<td>' + fmt(cc.tailOverSqrt, 5) + '</td>' +
+        '<td>' + fmt(r.rhoOverSqrt, 5) + ' ± ' + fmt(r.rhoSE, 5) + '</td>' +
+        '<td>' + fmt(cc.rhoOverSqrt, 5) + '</td>' +
+        '<td>' + fmtInt(Math.round(r.rhoAbs)) + '</td></tr>';
+    });
+    setTBody('t-len', trs);
+  }
+
+  /* ============================================================ 叁 · 恒等式 */
+  function renderGap() {
+    var host = $('c-gap');
+    if (!host) return;
+    var w = chartWidth(host), h = 330;
+    var pad = { l: 46, r: 16, t: 14, b: 36 };
+    var f2 = frame(w, h, pad, [1, 1e8], [-9, 9],
+      { xlog: true, xn: 8, xlab: 'n（对数）', ylab: 'E[环长] − E[尾巴]' });
+    var s = f2.body;
+    s += hline(f2.X, f2.Y, 1, COLOR.ok, '6 4', '恒等式：恰好 1');
+    s += hline(f2.X, f2.Y, 0, COLOR.ink3, '2 3', '');
+    /* 蒙特卡洛（带误差棒） */
+    D.mcRows.forEach(function (r) {
+      var x = f2.X(r.n);
+      var y0 = f2.Y(Math.max(r.mcGap - r.mcSE, -9)), y1 = f2.Y(Math.min(r.mcGap + r.mcSE, 9));
+      s += errBar(x, y0, y1, COLOR.mc);
+      s += dot(x, f2.Y(r.mcGap), COLOR.mc, 3.4);
+    });
+    /* 闭式 */
+    var cp = [];
+    D.closedRows.forEach(function (r) {
+      cp.push([f2.X(r.n), f2.Y(r.gap)]);
+      s += dot(f2.X(r.n), f2.Y(r.gap), COLOR.theory, 3.6, 'dia');
+    });
+    s += poly(cp, COLOR.theory, 1.6);
+    /* 全枚举 */
+    D.exactRows.forEach(function (r) {
+      s += dot(f2.X(r.n), f2.Y(r.gap), COLOR.cycle, 3.6, 'sq');
+    });
+    host.innerHTML = svgOpen(w, h) + s + '</svg>';
+
+    var mcl = D.mcRows[D.mcRows.length - 1];
+    var big = D.closedRows[D.closedRows.length - 1];
+    setText('gap-note',
+      '横轴跨 8 个数量级。砖红方块（n ≤ 8 的全枚举）与琥珀菱形（n ≤ 10⁸ 的闭式）都趴在 y = 1 这条绿线上，' +
+      '一点都没散 —— 因为它们算的是同一个精确值。紫点是蒙特卡洛：n ≤ 10⁴ 时误差棒还收得住，' +
+      '到 n = ' + fmtInt(mcl.n) + ' 已经是 ' + fmt(mcl.mcGap, 2) + ' ± ' + fmt(mcl.mcSE, 2) +
+      '，棒子跨过了 0 也跨过了 1 —— 在那个尺度上，蒙特卡洛既看不见 1，也看不见 0。');
+
+    var e = '';
+    D.exactRows.forEach(function (r) {
+      e += '<tr><td>' + r.n + '</td><td>' + fmtInt(r.total) + '</td>' +
+        '<td>' + fmt(r.tail, 6) + '</td><td>' + fmt(r.cycle, 6) + '</td><td>' + fmt(r.rho, 6) + '</td>' +
+        '<td>' + fmt(r.gap, 9) + '</td><td>' + fmt(2 * r.tail + 1, 9) + '</td></tr>';
+    });
+    setTBody('t-exact', e);
+
+    var c = '';
+    D.closedRows.forEach(function (r) {
+      c += '<tr><td>' + fmtInt(r.n) + '</td><td>' + fmt(r.tail, 4) + '</td><td>' + fmt(r.cycle, 4) + '</td>' +
+        '<td>' + fmt(r.tailOverSqrt, 6) + '</td><td>' + fmt(r.rhoOverSqrt, 6) + '</td>' +
+        '<td>' + fmt(r.gap, 9) + '</td><td>' + fmt(r.shiftRho, 5) + '</td><td>' + fmtInt(r.terms) + '</td></tr>';
+    });
+    setTBody('t-closed', c);
+
+    var m = '';
+    D.mcRows.forEach(function (r) {
+      m += '<tr><td>' + fmtInt(r.n) + '</td><td>' + fmtInt(r.S) + '</td>' +
+        '<td>' + fmt(r.mcGap, 4) + '</td><td>± ' + fmt(r.mcSE, 4) + '</td>' +
+        '<td>' + fmt(r.closedGap, 9) + '</td>' +
+        '<td>' + (r.mcSE > 1 ? '看不出（σ > 1）' : fmt(r.z, 2) + ' σ') + '</td>' +
+        '<td>' + sci(r.needS, 1) + '</td></tr>';
+    });
+    setTBody('t-mc', m);
+  }
+
+  /* ============================================================ 肆 · 为什么 */
+  var COND = { m: 20, S: 40000, NU: 2000, counts: null, total: 0, rnd: null, lw: null };
+
+  function renderDist() {
+    var host = $('c-dist');
+    if (!host) return;
+    var w = chartWidth(host), h = 250;
+    var pad = { l: 42, r: 12, t: 12, b: 32 };
+    var d = D.distBig;
+    if (!d) { host.innerHTML = svgOpen(w, h) + '</svg>'; return; }
+    var sn = Math.sqrt(d.n);
+    var xs = [], ys = [];
+    for (var i = 0; i < d.m.length; i++) {
+      xs.push(d.m[i] / sn);
+      ys.push(d.scaled[i]);
+    }
+    var ymax = 0;
+    ys.forEach(function (v) { if (v > ymax) ymax = v; });
+    ymax = Math.max(ymax * 1.15, 0.1);
+    var f2 = frame(w, h, pad, [0, 3.6], [0, ymax],
+      { xlab: 'ρ / √n', ylab: '√n · P(ρ = m)', yn: 5 });
+    var s = f2.body;
+    var pts = [];
+    for (i = 0; i < xs.length; i++) pts.push([f2.X(xs[i]), f2.Y(ys[i])]);
+    s += poly(pts, COLOR.tail, 2);
+    s += tag('line', { x1: f2.X(D.theory.C_RHO), y1: pad.t, x2: f2.X(D.theory.C_RHO), y2: h - pad.b,
+                       stroke: COLOR.theory, 'stroke-width': 1.6, 'stroke-dasharray': '5 4' });
+    s += tag('text', { x: f2.X(D.theory.C_RHO) + 4, y: pad.t + 11, 'font-size': 10.5,
+                       fill: COLOR.theory, class: 'tick' }, '均值 √(π/2)');
+    s += tag('line', { x1: f2.X(1), y1: pad.t, x2: f2.X(1), y2: h - pad.b,
+                       stroke: COLOR.ink3, 'stroke-width': 1, 'stroke-dasharray': '2 3' });
+    host.innerHTML = svgOpen(w, h) + s + '</svg>';
+  }
+
+  function condReset() {
+    COND.counts = new Array(COND.m).fill(0);
+    COND.total = 0;
+    renderCond();
+  }
+  function condRun() {
+    if (!COND.lw) COND.lw = Core.makeLazyWalker(COND.NU);
+    if (!COND.rnd) COND.rnd = Core.makeRng(Core.seedOf(77, 'cond'));
+    var n = COND.NU, S = COND.S;
+    for (var i = 0; i < S; i++) {
+      var w2 = COND.lw(COND.rnd, (COND.rnd() * n) | 0);
+      if (w2.rho === COND.m) { COND.counts[w2.tail]++; COND.total++; }
+    }
+    renderCond();
+  }
+  function renderCond() {
+    var host = $('c-cond');
+    if (!host) return;
+    var w = chartWidth(host), h = 250;
+    var pad = { l: 42, r: 12, t: 12, b: 32 };
+    var m = COND.m, cnt = COND.counts || new Array(m).fill(0), tot = COND.total || 0;
+    var unif = 1 / m;
+    var ymax = Math.max(unif * 2.2, 0.05);
+    var f2 = frame(w, h, pad, [0, m - 1], [0, ymax],
+      { xlab: 'T（撞上的是第几个旧点）', ylab: '频率', xn: 6, ygap: 46 });
+    var s = f2.body;
+    var bw = Math.max(2, (w - pad.l - pad.r) / m * 0.72);
+    var se = tot > 0 ? Math.sqrt(unif * (1 - unif) / tot) : 0;
+    /* ±2σ 带 */
+    if (tot > 0) {
+      var yTop = f2.Y(Math.min(unif + 2 * se, ymax)), yBot = f2.Y(Math.max(unif - 2 * se, 0));
+      s += tag('rect', { x: pad.l, y: yTop, width: w - pad.l - pad.r, height: Math.max(1, yBot - yTop),
+                         fill: COLOR.ok, opacity: 0.10 });
+    }
+    for (var i = 0; i < m; i++) {
+      var fr = tot > 0 ? cnt[i] / tot : 0;
+      var y0 = f2.Y(0), y1 = f2.Y(fr);
+      s += tag('rect', { x: f2.X(i) - bw / 2, y: y1, width: bw, height: Math.max(0, y0 - y1),
+                         fill: COLOR.mc, opacity: 0.85, class: 'bar-fill',
+                         'data-key': String(i), 'data-want': Math.round(y0 - y1) });
+    }
+    s += hline(f2.X, f2.Y, unif, COLOR.ok, '5 4', '均匀应为 ' + fmt(unif, 4));
+    host.innerHTML = svgOpen(w, h) + s + '</svg>';
+
+    var zmax = 0, zAt = 0;
+    for (i = 0; i < m; i++) {
+      if (tot === 0) break;
+      var z = (cnt[i] / tot - unif) / (se || 1);
+      if (Math.abs(z) > Math.abs(zmax)) { zmax = z; zAt = i; }
+    }
+    setHTML('ro-cond',
+      '<span class="k">固定 ρ</span><span>' + m + '</span>' +
+      '<span class="k">落在该桶的样本</span><span>' + fmtInt(tot) + '</span>' +
+      '<span class="k">每格应占</span><span>1/' + m + ' = ' + fmt(unif, 4) + '</span>' +
+      '<span class="k">最大偏离</span><span>' + (tot ? fmt(zmax, 2) + ' σ（T=' + zAt + '）' : '—') + '</span>');
+    setText('cond-note',
+      '这里现场掷：每一步独立均匀地取一个 1…' + COND.NU + ' 的点，直到撞上走过的，' +
+      '然后只留下那些「走过了恰好 ' + m + ' 个不同点」的样本，看撞上的那个旧点排在第几位。' +
+      '如果那条均匀性成立，每个位置应该占 1/' + m + ' = ' + fmt(unif, 4) + '。');
+    var verdict = tot === 0 ? '还没掷。按「掷一遍」。'
+      : ('掷了 ' + fmtInt(tot) + ' 个落在 ρ = ' + m + ' 的样本，最大偏离 ' + fmt(zmax, 2) +
+         ' 个标准误（T = ' + zAt + '）—— ' +
+         (Math.abs(zmax) < 3.5 ? '在均匀分布的正常抖动范围里。' : '这一格偏得有点多，再掷一遍看看。'));
+    setText('cond-verdict', verdict);
+
+    var trs = '';
+    for (i = 0; i < m; i++) {
+      var f3 = tot > 0 ? cnt[i] / tot : 0;
+      var zz = tot > 0 ? (f3 - unif) / (se || 1) : 0;
+      trs += '<tr><td>' + i + '</td><td>' + fmtInt(cnt[i]) + '</td><td>' + fmt(tot ? f3 : 0, 4) + '</td>' +
+        '<td>' + fmt(unif, 4) + '</td><td>' + (tot ? fmt(zz, 2) : '—') + '</td></tr>';
+    }
+    setTBody('t-cond', trs);
+  }
+
+  /* ============================================================ 伍 · 排列 */
+  var PERM = { mode: 'longest' };
+
+  function renderPerm() {
+    var host = $('c-perm');
+    if (!host) return;
+    var w = chartWidth(host), h = 300;
+    var pad = { l: 48, r: 16, t: 14, b: 34 };
+    var s = '';
+    if (PERM.mode === 'longest') {
+      var f2 = frame(w, h, pad, [100, 1e6], [0.4, 1.4],
+        { xlog: true, xlab: 'n（对数）', ylab: '归一化长度' });
+      s = f2.body;
+      s += hline(f2.X, f2.Y, D.theory.C_RHO, COLOR.theory, '6 4', '映射 ρ/√n → 1.253314');
+      s += hline(f2.X, f2.Y, D.theory.golomb, COLOR.ok, '6 4', '排列最长环/n → 0.624330');
+      var a = [], b = [];
+      D.permMC.forEach(function (r) {
+        a.push([f2.X(r.n), f2.Y(r.mapRho)]);
+        b.push([f2.X(r.n), f2.Y(r.longest)]);
+        s += dot(f2.X(r.n), f2.Y(r.mapRho), COLOR.cycle, 3.6);
+        s += dot(f2.X(r.n), f2.Y(r.longest), COLOR.tail, 3.6);
+        s += errBar(f2.X(r.n), f2.Y(Math.max(r.longest - r.longestSE, 0.4)),
+                    f2.Y(Math.min(r.longest + r.longestSE, 1.4)), COLOR.tail);
+      });
+      s += poly(a, COLOR.cycle, 1.8);
+      s += poly(b, COLOR.tail, 1.8);
+    } else {
+      var f3 = frame(w, h, pad, [1, 10], [0, 3.4],
+        { xlab: 'n', ylab: '期望环数' });
+      s = f3.body;
+      var a2 = [], b2 = [];
+      D.permRows.forEach(function (r) {
+        a2.push([f3.X(r.n), f3.Y(r.cyc)]);
+        b2.push([f3.X(r.n), f3.Y(r.harmonic)]);
+        s += dot(f3.X(r.n), f3.Y(r.cyc), COLOR.cycle, 3.6);
+      });
+      s += poly(b2, COLOR.ok, 1.8, '5 4');
+      s += poly(a2, COLOR.cycle, 1.8);
+    }
+    host.innerHTML = svgOpen(w, h) + s + '</svg>';
+
+    var pl = D.permMC[D.permMC.length - 1];
+    setHTML('ro-perm',
+      '<span class="k">最大 n</span><span>' + fmtInt(pl.n) + '</span>' +
+      '<span class="k">样本</span><span>' + fmtInt(pl.S) + '</span>' +
+      '<span class="k t">排列最长环/n</span><span class="t"><b>' + fmt(pl.longest, 4) + '</b></span>' +
+      '<span class="k c">映射 ρ/√n</span><span class="c"><b>' + fmt(pl.mapRho, 4) + '</b></span>' +
+      '<span class="k">λ</span><span>' + fmt(D.theory.golomb, 6) + '</span>' +
+      '<span class="k">比值</span><span>' + fmt(pl.longest / D.theory.golomb, 4) + '</span>');
+    setText('perm-note',
+      '同样的 n = ' + fmtInt(pl.n) + '：映射走 ' + fmt(pl.mapRho * Math.sqrt(pl.n), 0) +
+      ' 步就能重逢，排列却要走 ' + fmt(pl.longest * pl.n, 0) + ' 步才绕完最长的一个环。' +
+      '相差 ' + fmt((pl.longest * pl.n) / (pl.mapRho * Math.sqrt(pl.n)), 0) + ' 倍 —— ' +
+      '这就是「像可以重复」和「像必须互不相同」的差别。');
+
+    var trs = '';
+    D.permRows.forEach(function (r) {
+      trs += '<tr><td>' + r.n + '</td><td>' + fmtInt(r.total) + '</td>' +
+        '<td>' + fmt(r.cyc, 6) + '</td><td>' + fmt(r.harmonic, 6) + '</td>' +
+        '<td>' + fmt(r.longest, 4) + '</td><td>' + fmt(D.theory.golomb, 6) + '</td></tr>';
+    });
+    D.permMC.forEach(function (r) {
+      trs += '<tr class="hi"><td>' + fmtInt(r.n) + '</td><td>' + fmtInt(r.S) + '</td>' +
+        '<td>' + fmt(r.cyc, 3) + '（H_n = ' + fmt(r.harmonic, 3) + '）</td><td>' + fmt(r.harmonic, 6) + '</td>' +
+        '<td>' + fmt(r.longest, 4) + ' ± ' + fmt(r.longestSE, 4) + '</td><td>' + fmt(D.theory.golomb, 6) + '</td></tr>';
+    });
+    setTBody('t-perm', trs);
+  }
+
+  /* ============================================================ 陆 · 别的量 */
+  function renderLeaf() {
+    var host = $('c-leaf');
+    if (!host) return;
+    var w = chartWidth(host), h = 250;
+    var pad = { l: 44, r: 14, t: 14, b: 34 };
+    var f2 = frame(w, h, pad, [0, 3.6], [0, 0.75],
+      { xlab: 'log₁₀ n', ylab: '比例' });
+    var s = f2.body;
+    s += hline(f2.X, f2.Y, 1 / Math.E, COLOR.theory, '6 4', '1/e = 0.367879');
+    s += hline(f2.X, f2.Y, 1 - 1 / Math.E, COLOR.theory, '6 4', '1 − 1/e = 0.632121');
+    var rows = D.leafRows;
+    var gw = (w - pad.l - pad.r) / Math.max(rows.length, 1) * 0.32;
+    rows.forEach(function (r, i) {
+      var xc = f2.X(i + 0.5);
+      var y0 = f2.Y(0);
+      var yl = f2.Y(r.leaf), yi = f2.Y(r.image);
+      s += tag('rect', { x: xc - gw - 2, y: yl, width: gw, height: Math.max(0, y0 - yl),
+                         fill: COLOR.tail, class: 'bar-fill', 'data-key': 'leaf-' + r.n,
+                         'data-want': Math.round(y0 - yl) });
+      s += tag('rect', { x: xc + 2, y: yi, width: gw, height: Math.max(0, y0 - yi),
+                         fill: COLOR.cycle, class: 'bar-fill', 'data-key': 'img-' + r.n,
+                         'data-want': Math.round(y0 - yi) });
+      s += tag('text', { x: xc, y: h - pad.b + 14, 'text-anchor': 'middle', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, '10^' + Math.round(Math.log10(r.n)));
+    });
+    host.innerHTML = svgOpen(w, h) + s + '</svg>';
+
+    var l0 = rows[0], ll = rows[rows.length - 1];
+    setText('leaf-note',
+      '四档规模上，叶点比例从 ' + fmt(l0.leaf, 5) + ' 走到 ' + fmt(ll.leaf, 5) + '，与 1/e 的差是 ' +
+      sci(ll.leafErr, 2) + '；像点比例 ' + fmt(ll.image, 5) + '，与 1 − 1/e 的差是 ' + sci(ll.imageErr, 2) + '。' +
+      '右边那张是迭代的像集：每迭代一次就有一批点被"漏掉"，第 k 次的像集占 (1 − τ_k)n，' +
+      '其中 τ 按 τ_{k+1} = e^(−1+τ_k) 递推。τ_k 涨得极慢（1 − τ_k ≈ 2/k），' +
+      '要迭代几千次才把 99.9% 的点盖住。');
+  }
+
+  function renderImg() {
+    var host = $('c-img');
+    if (!host) return;
+    var w = chartWidth(host), h = 250;
+    var pad = { l: 44, r: 14, t: 14, b: 34 };
+    var f2 = frame(w, h, pad, [0, D.kthRows.length + 1], [0, 1.08],
+      /* 刻度直接给整数 k：交给 niceTicks 只会给出 0/2/4/6/8，
+         而每根柱子下面又各画了一个 1…8 的标签 —— "2""4""6""8" 就两两完全重合。 */
+      { xlab: '迭代次数 k', ylab: '像集 / n',
+        xticks: (function () { var a = []; for (var q = 0; q <= D.kthRows.length; q++) a.push(q); return a; })() });
+    var s = f2.body;
+    var th = [[f2.X(0), f2.Y(1)]];
+    var gw = (w - pad.l - pad.r) / (D.kthRows.length + 2) * 0.56;
+    s += tag('rect', { x: f2.X(0) - gw / 2, y: f2.Y(1), width: gw, height: Math.max(0, f2.Y(0) - f2.Y(1)),
+                       fill: COLOR.mc, opacity: 0.85, class: 'bar-fill', 'data-key': 'k0',
+                       'data-want': Math.round(f2.Y(0) - f2.Y(1)) });
+    D.kthRows.forEach(function (r, i) {
+      var xc = f2.X(r.k);
+      s += tag('rect', { x: xc - gw / 2, y: f2.Y(r.measured), width: gw,
+                         height: Math.max(0, f2.Y(0) - f2.Y(r.measured)),
+                         fill: COLOR.mc, opacity: 0.85, class: 'bar-fill', 'data-key': 'k' + r.k,
+                         'data-want': Math.round(f2.Y(0) - f2.Y(r.measured)) });
+      th.push([xc, f2.Y(r.theory)]);
+    });
+    s += poly(th, COLOR.theory, 2, '5 4');
+    host.innerHTML = svgOpen(w, h) + s + '</svg>';
+  }
+
+  var COMP = { mode: 'giant' };
+
+  function renderComp() {
+    var host = $('c-comp');
+    if (!host) return;
+    var w = chartWidth(host), h = 300;
+    var pad = { l: 48, r: 16, t: 14, b: 34 };
+    var rows = D.compRows;
+    var s = '';
+    if (COMP.mode === 'giant') {
+      var f2 = frame(w, h, pad, [1000, 1e6], [0, 1.05],
+        { xlog: true, xlab: 'n（对数）', ylab: '最大分量 / n' });
+      s = f2.body;
+      s += hline(f2.X, f2.Y, D.theory.C_GIANT, COLOR.theory, '6 4', '0.7578230112');
+      var band = [];
+      rows.forEach(function (r) {
+        var x = f2.X(r.n);
+        var lo = Math.max(r.giant - r.giantSD, 0), hi = Math.min(r.giant + r.giantSD, 1.05);
+        s += tag('rect', { x: x - 7, y: f2.Y(hi), width: 14, height: Math.max(0, f2.Y(lo) - f2.Y(hi)),
+                           fill: COLOR.cycle, opacity: 0.16 });
+        band.push([x, f2.Y(r.giant)]);
+        s += dot(x, f2.Y(r.giant), COLOR.cycle, 4);
+      });
+      s += poly(band, COLOR.cycle, 1.6);
+      s += tag('text', { x: pad.l + 6, y: pad.t + 13, 'font-size': 10.5, fill: COLOR.ink2,
+                         class: 'tick' }, '带子 = ±1 个标准差 ≈ ±0.19n');
+    } else if (COMP.mode === 'count') {
+      var f3 = frame(w, h, pad, [1000, 1e6], [0.45, 0.65],
+        { xlog: true, xlab: 'n（对数）', ylab: '分量个数 / ln n' });
+      s = f3.body;
+      s += hline(f3.X, f3.Y, 0.5, COLOR.theory, '6 4', '1/2');
+      var cp = [];
+      rows.forEach(function (r) {
+        cp.push([f3.X(r.n), f3.Y(r.compOverLn)]);
+        s += dot(f3.X(r.n), f3.Y(r.compOverLn), COLOR.tail, 4);
+        s += errBar(f3.X(r.n), f3.Y(r.compOverLn - r.compSE / Math.log(r.n)),
+                    f3.Y(r.compOverLn + r.compSE / Math.log(r.n)), COLOR.tail);
+      });
+      s += poly(cp, COLOR.tail, 1.8);
+    } else {
+      var f4 = frame(w, h, pad, [1000, 1e6], [0.55, 0.8],
+        { xlog: true, xlab: 'n（对数）', ylab: '随机点所在分量 / n' });
+      s = f4.body;
+      s += hline(f4.X, f4.Y, 2 / 3, COLOR.theory, '6 4', '2/3');
+      var sp = [];
+      rows.forEach(function (r) {
+        sp.push([f4.X(r.n), f4.Y(r.compSize)]);
+        s += dot(f4.X(r.n), f4.Y(r.compSize), COLOR.mc, 4);
+        s += errBar(f4.X(r.n), f4.Y(r.compSize - r.compSizeSE), f4.Y(r.compSize + r.compSizeSE), COLOR.mc);
+      });
+      s += poly(sp, COLOR.mc, 1.8);
+    }
+    host.innerHTML = svgOpen(w, h) + s + '</svg>';
+
+    var last = rows[rows.length - 1];
+    setHTML('ro-comp',
+      '<span class="k">最大 n</span><span>' + fmtInt(last.n) + '</span>' +
+      '<span class="k">样本</span><span>' + fmtInt(last.S) + '</span>' +
+      '<span class="k">巨分量/n</span><span><b>' + fmt(last.giant, 4) + ' ± ' + fmt(last.giantSE, 4) + '</b></span>' +
+      '<span class="k">σ（单样本）</span><span>' + fmt(last.giantSD, 3) + ' n</span>' +
+      '<span class="k">四档平均</span><span>' + fmt(D.giantMean, 4) + '</span>' +
+      '<span class="k">文献值</span><span>' + fmt(D.theory.C_GIANT, 10) + '</span>');
+
+    var trs = '';
+    rows.forEach(function (r) {
+      trs += '<tr><td>' + fmtInt(r.n) + '</td><td>' + fmtInt(r.S) + '</td>' +
+        '<td>' + fmt(r.comp, 3) + ' ± ' + fmt(r.compSE, 3) + '</td><td>' + fmt(r.compOverLn, 4) + '</td>' +
+        '<td>' + fmt(r.giant, 4) + '</td><td>± ' + fmt(r.giantSD, 3) + '</td>' +
+        '<td>' + fmt(r.compSize, 4) + '</td><td>' + fmt(r.maxTree, 4) + '</td></tr>';
+    });
+    setTBody('t-comp', trs);
+    setText('misc-note',
+      '巨分量的四档平均是 ' + fmt(D.giantMean, 4) + '，文献值 0.7578230112 —— 但请看 ±1σ 那一列：' +
+      '标准差是 ' + fmt(D.giantSDBand, 3) + 'n 量级，所以单档的 ' + fmt(last.giant, 4) +
+      ' 与文献值的差完全说明不了任何事。分量个数的比例从 0.590（n=10³）缓慢降到 ' +
+      fmt(last.compOverLn, 4) + '（n=10⁶），朝着 1/2 走但走得很慢 —— 这一条本页只报趋势，不报常数。');
+  }
+
+  /* ============================================================ 柒 · 代价 */
+  var COST = { mode: 'wall' };
+
+  function renderCost() {
+    var host = $('c-cost');
+    if (!host) return;
+    var w = chartWidth(host), h = 300;
+    var pad = { l: 56, r: 16, t: 14, b: 34 };
+    var s = '';
+    if (COST.mode === 'wall') {
+      var f2 = frame(w, h, pad, [1, 20], [1, 1e27],
+        { ylog: true, xlab: 'n', ylab: '要访问的映射个数' });
+      s = f2.body;
+      var ex = [], cf = [];
+      D.exactWall.forEach(function (r) {
+        ex.push([f2.X(r.n), f2.Y(r.maps)]);
+        s += dot(f2.X(r.n), f2.Y(r.maps), r.measured ? COLOR.cycle : COLOR.theory,
+                 r.measured ? 4 : 3.4, r.measured ? 'sq' : 'dia');
+      });
+      s += poly(ex, COLOR.theory, 1.8);
+      for (var nn = 1; nn <= 20; nn++) {
+        var terms = C_terms(nn);
+        cf.push([f2.X(nn), f2.Y(Math.max(terms, 1))]);
+      }
+      s += poly(cf, COLOR.tail, 2);
+      s += tag('text', { x: pad.l + 6, y: pad.t + 13, 'font-size': 10.5, fill: COLOR.ink2,
+                         class: 'tick' }, '方块 = 本机实测（n ≤ 8）；菱形 = 外推');
+    } else {
+      var f3 = frame(w, h, pad, [1000, 1e7], [1e-3, 1e4],
+        { xlog: true, ylog: true, xlab: 'n（对数）', ylab: '100 个样本的秒数（对数）' });
+      s = f3.body;
+      var sp = [];
+      D.costRows.forEach(function (r) {
+        sp.push([f3.X(r.n), f3.Y(Math.max(r.sim100, 1e-4))]);
+        s += dot(f3.X(r.n), f3.Y(Math.max(r.sim100, 1e-4)), r.measured ? COLOR.cycle : COLOR.theory,
+                 3.6, r.measured ? 'sq' : 'dia');
+      });
+      s += poly(sp, COLOR.cycle, 1.8);
+      s += tag('text', { x: pad.l + 6, y: pad.t + 13, 'font-size': 10.5, fill: COLOR.ink2,
+                         class: 'tick' }, '本机标定：每节点 ~' + fmt(D.throughput.perNodeMs * 1e6, 0) + ' 纳秒');
+    }
+    host.innerHTML = svgOpen(w, h) + s + '</svg>';
+
+    var measured = null, n12 = null;
+    D.exactWall.forEach(function (r) {
+      if (r.measured) measured = r;
+      if (r.n === 12) n12 = r;
+    });
+    var lastE = D.exactWall[D.exactWall.length - 1];
+    var lastC = D.closedRows[D.closedRows.length - 1];
+    setHTML('ro-cost',
+      '<span class="k">n=8 实测</span><span>' + fmt(measured.sec, 1) + ' 秒</span>' +
+      '<span class="k">n=12 要</span><span>' + sci(n12.years, 2) + ' 年</span>' +
+      '<span class="k">n=20 要</span><span>' + sci(lastE.years, 2) + ' 年</span>' +
+      '<span class="k">闭式 n=10⁸</span><span><b>' + fmtInt(lastC.terms) + ' 项</b></span>');
+    setText('cost-note',
+      '全枚举的代价是 nⁿ，涨得比任何指数都快：n = 8 是 1677 万个映射（本机实测 ' +
+      fmt(measured.sec, 1) + ' 秒），n = 12 就要 ' + sci(n12.years, 2) +
+      ' 年，n = 20 要 ' + sci(lastE.years, 2) + ' 年。' +
+      '而闭式只要 ~2.4√n 项 —— n = 10⁸ 时是 ' + fmtInt(lastC.terms) +
+      ' 项，一次求和就到 1e-12。这条线不是"近似"，是把同一个精确值换了个算法。');
+
+    var trs = '';
+    D.exactWall.forEach(function (r, i) {
+      var cr = null;
+      D.closedRows.forEach(function (q) { if (q.n === r.n) cr = q; });
+      var terms = cr ? cr.terms : C_terms(r.n);
+      var how = r.measured ? fmt(r.sec, 1) + ' 秒（实测）'
+        : (r.sec < 3600 ? fmt(r.sec, 0) + ' 秒' : (r.sec < 31557600 ? fmt(r.sec / 86400, 1) + ' 天'
+          : sci(r.years, 2) + ' 年'));
+      trs += '<tr' + (r.measured ? ' class="hi"' : '') + '><td>' + r.n + '</td>' +
+        '<td>' + sci(r.maps, 2) + '</td><td>10^' + fmt(r.mapsLog10, 1) + '</td>' +
+        '<td>' + how + '</td><td>' + fmtInt(terms) + '</td><td>是</td></tr>';
+    });
+    setTBody('t-cost', trs);
+  }
+  /* 闭式的项数 —— 直接问模型，不在这里重写一份截断规则。
+     重写过一次：`for(m=1;m<=n;m++)` 跑完后 m 是 n+1，于是 n=10⁸ 那一格
+     会显示 100,000,001 项而不是 74,026 项，而"行数对、列数对"照样通过。 */
+  function C_terms(n) { return Core.exactMoments(n).terms; }
+
+  /* ============================================================ 公共：KPI / 列表 / 验证表 */
+  function renderStamp() {
+    var m = A.meta;
+    setText('stamp',
+      'core ' + (m.coreVersion || '?') + ' · 标定 ' + (m.resultsSavedAt || '?').slice(0, 19).replace('T', ' ') +
+      ' · 验证 ' + m.verifyRows + ' 行' + (m.allVerifyOk ? ' 全绿' : ' 有失败'));
+  }
+  function renderKPI() {
+    setHTML('kpis', A.kpi.map(function (k) {
+      return '<div class="kpi"><div class="lab">' + esc(k.label) + '</div>' +
+        '<div class="val">' + esc(k.value) + '</div>' +
+        '<div class="unit">' + esc(k.unit) + '</div>' +
+        '<div class="note">' + md(k.note) + '</div></div>';
+    }).join(''));
+  }
+  function renderList(id, arr) {
+    setHTML(id, arr.map(function (x) {
+      return '<li><b>' + esc(x.head) + '</b>　' + md(x.body) + '</li>';
+    }).join(''));
+  }
+  function renderVerify() {
+    setTBody('t-verify', A.verifyTable.map(function (v) {
+      return '<tr' + (v.ok ? '' : ' class="bad"') + '>' +
+        '<td>' + esc(v.name) + '</td><td>' + esc(v.ours) + '</td><td>' + esc(v.theirs) + '</td>' +
+        '<td>' + esc(v.source) + '</td><td>' + (v.ok ? '对上了' : '不符') + '</td></tr>';
+    }).join(''));
+    setText('t-verify-cap', '逐条对账：' + A.verifyTable.length + ' 行，' +
+      A.verifyTable.filter(function (v) { return v.ok; }).length + ' 行对上');
+  }
+
+  /* ============================================================ tabs */
+  var TABS = [
+    ['p-one', '壹 重逢'],
+    ['p-two', '贰 长度'],
+    ['p-three', '叁 恒等式'],
+    ['p-four', '肆 为什么'],
+    ['p-five', '伍 排列'],
+    ['p-six', '陆 别的量'],
+    ['p-seven', '柒 代价与边界']
+  ];
+  var RENDERERS = {
+    'p-one': renderWalk, 'p-two': renderLen, 'p-three': renderGap,
+    'p-four': function () { renderDist(); renderCond(); },
+    'p-five': renderPerm, 'p-six': function () { renderLeaf(); renderImg(); renderComp(); },
+    'p-seven': renderCost
+  };
+  var curTab = 'p-one';
+  function buildTabs() {
+    var nav = $('tabs');
+    if (!nav) return;
+    nav.innerHTML = TABS.map(function (t) {
+      return tag('button', { type: 'button', 'data-tab': t[0], role: 'tab',
+                             'aria-selected': t[0] === curTab ? 'true' : 'false' }, t[1]);
+    }).join('');
+  }
+  function setTab(id) {
+    curTab = id;
+    TABS.forEach(function (t) {
+      var sec = $(t[0]);
+      if (sec) sec.className = 'panel' + (t[0] === id ? ' on' : '');
+      var b = document.querySelector('#tabs button[data-tab="' + t[0] + '"]');
+      if (b) b.setAttribute('aria-selected', t[0] === id ? 'true' : 'false');
+    });
+    /* 面板可见之后再画 —— 懒渲染的面板在隐藏时 clientWidth 是 0 */
+    if (RENDERERS[id]) RENDERERS[id]();
+  }
+
+  /* ============================================================ 控件 */
+  function bindControls() {
+    var nav = $('tabs');
+    if (nav) nav.addEventListener('click', function (e) {
+      var b = e.target && e.target.closest ? e.target.closest('button[data-tab]') : null;
+      if (b) setTab(b.getAttribute('data-tab'));
+    });
+
+    var wn = $('walk-n');
+    if (wn) wn.addEventListener('input', function () {
+      WALK.n = +wn.value; setText('walk-n-val', String(WALK.n));
+      WALK.start = 0; walkBuild(); if (curTab === 'p-one') renderWalk();
+    });
+    var ws = $('walk-start');
+    if (ws) ws.addEventListener('change', function () {
+      WALK.start = +ws.value; if (curTab === 'p-one') renderWalk();
+    });
+    var wseed = $('walk-seed');
+    if (wseed) wseed.addEventListener('click', function () {
+      WALK.seed++; WALK.start = 0; walkBuild(); if (curTab === 'p-one') renderWalk();
+    });
+    var wdeep = $('walk-deepest');
+    if (wdeep) wdeep.addEventListener('click', function () {
+      var best = 0;
+      for (var v = 0; v < WALK.n; v++) if (WALK.st.tail[v] > WALK.st.tail[best]) best = v;
+      WALK.start = best;
+      var sel = $('walk-start'); if (sel) sel.value = String(best);
+      if (curTab === 'p-one') renderWalk();
+    });
+
+    var ls = $('len-scale');
+    if (ls) ls.addEventListener('change', function () {
+      LEN.mode = ls.value; if (curTab === 'p-two') renderLen();
+    });
+    var pm = $('perm-mode');
+    if (pm) pm.addEventListener('change', function () {
+      PERM.mode = pm.value; if (curTab === 'p-five') renderPerm();
+    });
+    var cm = $('comp-mode');
+    if (cm) cm.addEventListener('change', function () {
+      COMP.mode = cm.value; if (curTab === 'p-six') renderComp();
+    });
+    var km = $('cost-mode');
+    if (km) km.addEventListener('change', function () {
+      COST.mode = km.value; if (curTab === 'p-seven') renderCost();
+    });
+
+    var cm2 = $('cond-m');
+    if (cm2) cm2.addEventListener('change', function () {
+      COND.m = +cm2.value; condReset();
+    });
+    var cs = $('cond-s');
+    if (cs) cs.addEventListener('input', function () {
+      COND.S = +cs.value; setText('cond-s-val', fmtInt(COND.S));
+    });
+    var cr = $('cond-run');
+    if (cr) cr.addEventListener('click', function () { condRun(); });
+    var crs = $('cond-reset');
+    if (crs) crs.addEventListener('click', function () { condReset(); });
+  }
+
+  var rzTimer = null;
+  window.addEventListener('resize', function () {
+    if (rzTimer) clearTimeout(rzTimer);
+    rzTimer = setTimeout(function () { if (RENDERERS[curTab]) RENDERERS[curTab](); }, 90);
+  });
+
+  /* ============================================================ 探针 */
+  function collectCharts() {
+    var out = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (!h.id) return;
+      var sv = h.querySelector('svg');
+      if (!sv) { out.push({ id: h.id, hostW: h.clientWidth, svgW: 0, ok: false, texts: 0 }); return; }
+      var hostW = Math.round(h.clientWidth), svgW = Math.round(sv.getBoundingClientRect().width);
+      out.push({ id: h.id, hostW: hostW, svgW: svgW, ok: Math.abs(hostW - svgW) <= 1 && hostW > 0,
+                 texts: sv.querySelectorAll('text').length });
+    });
+    return out;
+  }
+  function visibleCharts() {
+    return collectCharts().filter(function (c) {
+      var h = $(c.id);
+      return h && h.offsetParent !== null && c.hostW > 0;
+    });
+  }
+  function collectBars() {
+    var out = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (!h.id || h.offsetParent === null) return;
+      h.querySelectorAll('.bar-fill').forEach(function (r) {
+        var bb = r.getBoundingClientRect();
+        out.push({ id: h.id, key: r.getAttribute('data-key') || '',
+                   bbox: +bb.width.toFixed(2), bboxH: +bb.height.toFixed(2),
+                   want: +(r.getAttribute('data-want') || 0) });
+      });
+    });
+    return out;
+  }
+  function strayScan() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      for (var i = 0; i < h.children.length; i++) {
+        if (h.children[i].tagName.toLowerCase() !== 'svg') bad.push(h.id + ':' + h.children[i].tagName);
+      }
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function nanTicks() {
+    var bad = [];
+    document.querySelectorAll('.chart svg text').forEach(function (t) {
+      if (/NaN|Infinity|undefined/.test(t.textContent || '')) bad.push((t.textContent || '').slice(0, 24));
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function tickOverlap() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (h.offsetParent === null) return;
+      var ts = Array.prototype.slice.call(h.querySelectorAll('text.tick'));
+      var boxes = ts.map(function (t) { var r = t.getBoundingClientRect(); return { r: r, s: t.textContent }; });
+      for (var i = 0; i < boxes.length; i++) {
+        for (var j = i + 1; j < boxes.length; j++) {
+          var a = boxes[i].r, b = boxes[j].r;
+          var ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+          var oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          if (ox > 1.2 && oy > 1.2) bad.push(h.id + ': "' + boxes[i].s + '" × "' + boxes[j].s + '"');
+        }
+      }
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function textFit() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      var sv = h.querySelector('svg');
+      if (!sv || h.offsetParent === null) return;
+      var sr = sv.getBoundingClientRect();
+      sv.querySelectorAll('text').forEach(function (t) {
+        var r = t.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) return;
+        if (r.left < sr.left - 1 || r.right > sr.right + 1 || r.top < sr.top - 1 || r.bottom > sr.bottom + 1) {
+          bad.push(h.id + ': "' + (t.textContent || '').slice(0, 20) + '"');
+        }
+      });
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function tabsFit() {
+    var nav = $('tabs');
+    if (!nav) return { ok: true, bad: [] };
+    var nr = nav.getBoundingClientRect(), bad = [];
+    nav.querySelectorAll('button').forEach(function (b) {
+      var r = b.getBoundingClientRect();
+      if (r.right > nr.right + 1 || r.left < nr.left - 1) bad.push(b.textContent);
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function overflowScan() {
+    var de = document.documentElement, bad = [], scrolled = [];
+    document.querySelectorAll('.bench, .panel, .grid2').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      if (e.scrollWidth > e.clientWidth + 1) bad.push((e.id || e.className) + ' ' + e.scrollWidth + '>' + e.clientWidth);
+    });
+    document.querySelectorAll('.tbl-wrap').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      if (e.scrollWidth > e.clientWidth + 1) {
+        var t = e.querySelector('table');
+        scrolled.push((t ? t.id : 'tbl') + ' ' + e.scrollWidth + '>' + e.clientWidth);
+      }
+    });
+    return { ok: de.scrollWidth <= de.clientWidth + 1,
+             doc: { scroll: de.scrollWidth, client: de.clientWidth }, bad: bad, scrolled: scrolled };
+  }
+  function wrapScan() {
+    var bad = [];
+    document.querySelectorAll('table.dt.num').forEach(function (t) {
+      if (t.offsetParent === null) return;
+      t.querySelectorAll('td').forEach(function (c) {
+        var r = c.getBoundingClientRect();
+        if (r.height > 34) bad.push((t.id || 'tbl') + ':' + (c.textContent || '').slice(0, 14));
+      });
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function touchScan() {
+    var small = [];
+    document.querySelectorAll('.tabs button, .btnrow button, select, input[type="range"]').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      var r = e.getBoundingClientRect();
+      if (r.height > 0 && r.height < 44) small.push((e.id || e.textContent || e.tagName).slice(0, 18) + ' ' + r.height.toFixed(0));
+    });
+    return { ok: small.length === 0, bad: small };
+  }
+  function tablesScan() {
+    var out = [];
+    document.querySelectorAll('table.dt').forEach(function (t) {
+      if (!t.id) return;
+      var tb = t.tBodies[0];
+      out.push({ id: t.id, thead: !!t.tHead, caption: !!t.caption,
+                 cols: (t.tHead && t.tHead.rows[0]) ? t.tHead.rows[0].cells.length : 0,
+                 rows: tb ? tb.rows.length : 0 });
+    });
+    return out;
+  }
+  /* 数字表要有一条"空值 / 破折号"探针：字段映射漏一项，整列会静默变成 "—"，
+     行数对、元素数对、折行与溢出探针全部放行。 */
+  function dashScan() {
+    var out = [];
+    document.querySelectorAll('table.dt').forEach(function (t) {
+      if (!t.id || t.offsetParent === null) return;
+      var dash = 0, blank = 0, n = 0;
+      t.querySelectorAll('td').forEach(function (c) {
+        n++;
+        var tx = (c.textContent || '').trim();
+        if (tx === '—') dash++;
+        if (tx === '') blank++;
+      });
+      if (dash || blank) out.push({ id: t.id, cells: n, dash: dash, blank: blank });
+    });
+    return out;
+  }
+  function textsScan() {
+    var out = [];
+    document.querySelectorAll('.panel.on .note, .panel.on h2, .panel.on .ro, .kpi .note, .kpi .val, #stamp').forEach(function (e) {
+      var t = (e.textContent || '').trim();
+      if (t) out.push(t.slice(0, 90));
+    });
+    return out;
+  }
+  /* 泄漏扫描要盖住"读数条"和"表格格子"：只扫 .note 会漏掉整列 undefined。 */
+  function htmlLeaks() {
+    var bad = [];
+    document.querySelectorAll('.panel.on .note, .panel.on .ro, .kpi .note, .kpi .val, ' +
+      'ol.clist li, ol.blist li, table.dt td, table.dt caption, #stamp').forEach(function (e) {
+      var t = e.textContent || '';
+      if (/\*\*|<b>|<\/b>|<code>|NaN|undefined|\[object/.test(t)) bad.push(t.slice(0, 40));
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 5) };
+  }
+  function legendsScan() {
+    var out = {};
+    document.querySelectorAll('.legend-html').forEach(function (e) {
+      if (!e.id) return;
+      out[e.id] = e.querySelectorAll('span').length;
+    });
+    return out;
+  }
+  function countsScan() {
+    var c = {};
+    c.kpi = document.querySelectorAll('#kpis .kpi').length;
+    c.concl = document.querySelectorAll('#clist li').length;
+    c.bound = document.querySelectorAll('#blist li').length;
+    c.verify = document.querySelectorAll('#t-verify tbody tr').length;
+    c.tabs = document.querySelectorAll('#tabs button').length;
+    c.panels = document.querySelectorAll('.panel').length;
+    c.walk = document.querySelectorAll('#t-walk tbody tr').length;
+    c.len = document.querySelectorAll('#t-len tbody tr').length;
+    c.exact = document.querySelectorAll('#t-exact tbody tr').length;
+    c.closed = document.querySelectorAll('#t-closed tbody tr').length;
+    c.mc = document.querySelectorAll('#t-mc tbody tr').length;
+    c.cond = document.querySelectorAll('#t-cond tbody tr').length;
+    c.perm = document.querySelectorAll('#t-perm tbody tr').length;
+    c.comp = document.querySelectorAll('#t-comp tbody tr').length;
+    c.cost = document.querySelectorAll('#t-cost tbody tr').length;
+    c.walkDots = document.querySelectorAll('#c-walk circle[data-node]').length;
+    return c;
+  }
+
+  window.__probe = {
+    version: '1.0',
+    tabIds: function () { return TABS.map(function (t) { return t[0]; }); },
+    setTab: setTab,
+    curTab: function () { return curTab; },
+    walkSet: function (n, start, seed) {
+      if (n !== undefined) { WALK.n = n; var e = $('walk-n'); if (e) e.value = String(n); setText('walk-n-val', String(n)); }
+      if (seed !== undefined) WALK.seed = seed;
+      if (n !== undefined || seed !== undefined) { WALK.start = 0; walkBuild(); }
+      if (start !== undefined) {
+        WALK.start = start;
+        var s = $('walk-start'); if (s) s.value = String(start);
+      }
+      if (curTab === 'p-one') renderWalk();
+      var st = WALK.st, nv = WALK.n;
+      var maxTail = 0, maxAt = 0, leaves = 0, core = 0;
+      for (var v = 0; v < nv; v++) {
+        if (st.tail[v] > maxTail) { maxTail = st.tail[v]; maxAt = v; }
+        if (WALK.indeg[v] === 0) leaves++;
+        if (st.onCycle[v]) core++;
+      }
+      var wl = Core.walkPath(WALK.f, WALK.start);
+      return { n: nv, comps: WALK.comp.count, maxComp: WALK.comp.max, leaves: leaves, core: core,
+               start: WALK.start, tail: wl.tail, cycle: wl.cycle, rho: wl.tail + wl.cycle,
+               maxTail: maxTail, maxTailAt: maxAt, dots: document.querySelectorAll('#c-walk circle[data-node]').length };
+    },
+    lenMode: function (m) {
+      if (m) { LEN.mode = m; var e = $('len-scale'); if (e) e.value = m; }
+      if (curTab === 'p-two') renderLen();
+      var r = D.lenRows[D.lenRows.length - 1];
+      return { mode: LEN.mode, rows: D.lenRows.length, lastN: r.n,
+               mcTail: r.tailOverSqrt, mcRho: r.rhoOverSqrt, closedTail: D.theory.C_TAIL };
+    },
+    gapInfo: function () {
+      if (curTab === 'p-three') renderGap();
+      return { exact: D.exactRows.length, closed: D.closedRows.length, mc: D.mcRows.length,
+               exactGap: D.exactRows[D.exactRows.length - 1].gap,
+               closedGap: D.closedRows[D.closedRows.length - 1].gap,
+               mcLast: D.mcRows[D.mcRows.length - 1] };
+    },
+    condSet: function (m, S) {
+      if (m !== undefined) { COND.m = m; var e = $('cond-m'); if (e) e.value = String(m); condReset(); }
+      if (S !== undefined) { COND.S = S; var s = $('cond-s'); if (s) s.value = String(S); setText('cond-s-val', fmtInt(S)); }
+      if (curTab === 'p-four') renderCond();
+      return { m: COND.m, S: COND.S, bins: COND.m };
+    },
+    condRun: function () {
+      condRun();
+      var cnt = COND.counts, tot = COND.total, unif = 1 / COND.m;
+      var se = tot > 0 ? Math.sqrt(unif * (1 - unif) / tot) : 0;
+      var zmax = 0, zAt = 0, sum = 0;
+      for (var i = 0; i < cnt.length; i++) {
+        sum += cnt[i];
+        var z = tot > 0 ? (cnt[i] / tot - unif) / (se || 1) : 0;
+        if (Math.abs(z) > Math.abs(zmax)) { zmax = z; zAt = i; }
+      }
+      return { m: COND.m, samples: COND.S, landed: tot, sumCounts: sum,
+               uniform: unif, maxZ: zmax, maxZAt: zAt, se: se };
+    },
+    permMode: function (m) {
+      if (m) { PERM.mode = m; var e = $('perm-mode'); if (e) e.value = m; }
+      if (curTab === 'p-five') renderPerm();
+      return { mode: PERM.mode, exactRows: D.permRows.length, mcRows: D.permMC.length,
+               golomb: D.theory.golomb };
+    },
+    compMode: function (m) {
+      if (m) { COMP.mode = m; var e = $('comp-mode'); if (e) e.value = m; }
+      if (curTab === 'p-six') renderComp();
+      return { mode: COMP.mode, rows: D.compRows.length, giantMean: D.giantMean,
+               giantSD: D.giantSDBand };
+    },
+    costMode: function (m) {
+      if (m) { COST.mode = m; var e = $('cost-mode'); if (e) e.value = m; }
+      if (curTab === 'p-seven') renderCost();
+      return { mode: COST.mode, exactRows: D.exactWall.length, closedTerms: C_terms(1e8) };
+    },
+    core: function () {
+      /* 页内模型自检：全部用页面自带的那一份 core 当场算 */
+      var e1 = Core.exactMoments(8), e2 = Core.exactMoments(1000000);
+      var f = Core.constantMapping(64, 7);
+      var stc = Core.nodeStats(f, 64);
+      var idm = Core.identityMapping(64);
+      return {
+        gap8: e1.gap, gap1e6: e2.gap,
+        tail8: e1.tail, cycle8: e1.cycle,
+        constantCore: stc.nCycleNodes,
+        identityComps: Core.components(idm, 64).count,
+        tau1: Core.tau(1), invE: 1 / Math.E,
+        cTail: Core.theory.C_TAIL, cRho: Core.theory.C_RHO,
+        noCollision365: Core.noCollision(365, 22),
+        rhoDist20: Core.rhoDist(20).reduce(function (a, b) { return a + b; }, 0)
+      };
+    },
+    counts: countsScan,
+    tables: tablesScan,
+    legends: legendsScan,
+    charts: visibleCharts,
+    allCharts: collectCharts,
+    bars: collectBars,
+    stray: strayScan,
+    nanTicks: nanTicks,
+    tickOverlap: tickOverlap,
+    textFit: textFit,
+    tabsFit: tabsFit,
+    overflow: overflowScan,
+    wrapScan: wrapScan,
+    touch: touchScan,
+    texts: textsScan,
+    htmlLeaks: htmlLeaks,
+    dashes: dashScan,
+    viewport: function () { return { w: window.innerWidth, h: window.innerHeight }; }
+  };
+
+  /* ============================================================ boot */
+  function boot() {
+    buildTabs();
+    renderStamp();
+    renderKPI();
+    renderList('clist', A.conclusions);
+    renderList('blist', A.boundaries);
+    renderVerify();
+    fillSelect('cond-m', (function () {
+      var out = [];
+      for (var m = 4; m <= 60; m += 2) out.push([m, 'ρ = ' + m]);
+      return out;
+    })(), '20');
+    COND.m = 20;
+    walkBuild();
+    bindControls();
+    condReset();
+    setTab('p-one');
+    redrawAll();
+    window.__ready = true;
+  }
+  try {
+    boot();
+  } catch (e) {
+    window.__bootError = String((e && e.message) || e);
+    window.__bootStack = String((e && e.stack) || '').slice(0, 600);
+    var st = $('stamp');
+    if (st) st.textContent = '启动失败：' + window.__bootError;
+  }
+})();
+</script>
+</body>
+</html>

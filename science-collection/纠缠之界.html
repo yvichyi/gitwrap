@@ -1,0 +1,2766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>纠缠之界 —— 量子纠缠、贝尔不等式与量子态断层重构</title>
+  <style>
+/* ============================================================================
+ * entanglement/style.css —— 《纠缠之界》量子力学可视化样式表
+ * ==========================================================================*/
+
+:root {
+  --bg-deep: #090b14;
+  --bg-card: #121626;
+  --bg-card-hover: #192036;
+  --border-subtle: #242c4a;
+  --border-focus: #4b6cb7;
+  
+  --accent-cyan: #00f0ff;
+  --accent-violet: #bd00ff;
+  --accent-gold: #ffd166;
+  --accent-crimson: #ff3366;
+  --accent-emerald: #00e676;
+  
+  --text-main: #e2e8f0;
+  --text-dim: #94a3b8;
+  --text-faint: #64748b;
+  
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  padding: 24px 16px;
+}
+
+.ent-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 头部导航与标题 */
+.ent-header {
+  background: linear-gradient(135deg, rgba(18, 22, 38, 0.95), rgba(28, 20, 48, 0.75));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.ent-header::after {
+  content: "";
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(189, 0, 255, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.ent-badge-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ent-glyph {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+}
+
+.ent-domain-tag {
+  font-size: 13px;
+  color: var(--accent-violet);
+  background: rgba(189, 0, 255, 0.12);
+  border: 1px solid rgba(189, 0, 255, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.ent-nobel-tag {
+  font-size: 13px;
+  color: var(--accent-gold);
+  background: rgba(255, 209, 102, 0.12);
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.ent-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(90deg, #ffffff 0%, #cbd5e1 50%, var(--accent-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+
+.ent-question {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent-gold);
+  margin-bottom: 12px;
+}
+
+.ent-subtitle {
+  font-size: 15px;
+  color: var(--text-dim);
+  max-width: 1080px;
+}
+
+.ent-subtitle em {
+  font-style: normal;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 核心仪表盘指标栏 */
+.ent-dashboard {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1.1fr 1fr;
+  gap: 16px;
+}
+
+.dash-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.card-label {
+  font-size: 13px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.s-val-row, .dash-val-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.s-val-main {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--accent-cyan);
+  text-shadow: 0 0 16px rgba(0, 240, 255, 0.4);
+}
+
+.s-val-slash {
+  font-size: 20px;
+  color: var(--text-faint);
+}
+
+.s-val-theo {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.dash-num {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.dash-unit {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.s-bounds-bar {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+
+.bound-classic {
+  color: var(--accent-crimson);
+}
+
+.bound-tsirelson {
+  color: var(--accent-emerald);
+}
+
+.s-status-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+
+.badge-violated {
+  background: rgba(0, 230, 118, 0.15);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(0, 230, 118, 0.35);
+  text-shadow: 0 0 8px rgba(0, 230, 118, 0.3);
+}
+
+.badge-classical {
+  background: rgba(255, 51, 102, 0.15);
+  color: var(--accent-crimson);
+  border: 1px solid rgba(255, 51, 102, 0.35);
+}
+
+.dash-subtext {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 4px;
+}
+
+.safe-tag {
+  color: var(--accent-emerald);
+  font-weight: 600;
+}
+
+/* 主双视窗工作区 */
+.ent-workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.viewport-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.viewport-header {
+  padding: 14px 20px;
+  background: rgba(18, 22, 38, 0.9);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vp-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #fff;
+}
+
+.vp-icon {
+  font-size: 16px;
+}
+
+.vp-hint {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.vp-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.vp-tab-btn {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border-subtle);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vp-tab-btn.active, .vp-tab-btn:hover {
+  background: rgba(0, 240, 255, 0.15);
+  color: var(--accent-cyan);
+  border-color: rgba(0, 240, 255, 0.4);
+}
+
+.canvas-wrap {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #080a12;
+  position: relative;
+}
+
+.canvas-wrap canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 实验台底部传感器指示条 */
+.bench-sensors-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: rgba(14, 18, 32, 0.95);
+  border-top: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.sensor-unit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sensor-tag {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.sensor-leds {
+  display: flex;
+  gap: 6px;
+}
+
+.led {
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: #1b2138;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-faint);
+  font-size: 11px;
+  transition: all 0.15s ease;
+}
+
+.led.flash-plus {
+  background: rgba(0, 240, 255, 0.3);
+  border-color: var(--accent-cyan);
+  color: #fff;
+  box-shadow: 0 0 12px var(--accent-cyan);
+}
+
+.led.flash-minus {
+  background: rgba(189, 0, 255, 0.3);
+  border-color: var(--accent-violet);
+  color: #fff;
+  box-shadow: 0 0 12px var(--accent-violet);
+}
+
+.spdc-source-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent-gold);
+  font-size: 12px;
+}
+
+.spdc-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  box-shadow: 0 0 8px var(--accent-gold);
+  animation: spdcBlink 1.5s infinite ease-in-out;
+}
+
+@keyframes spdcBlink {
+  0%, 100% { opacity: 0.3; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+/* 态空间图例注脚 */
+.state-legend-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 20px;
+  background: rgba(14, 18, 32, 0.95);
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-dim);
+  align-items: center;
+}
+
+.leg-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.leg-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.color-real-pos {
+  background: var(--accent-cyan);
+  box-shadow: 0 0 6px var(--accent-cyan);
+}
+
+.color-real-neg {
+  background: var(--accent-crimson);
+  box-shadow: 0 0 6px var(--accent-crimson);
+}
+
+.color-imag {
+  background: var(--accent-violet);
+  box-shadow: 0 0 6px var(--accent-violet);
+}
+
+.leg-note {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  color: var(--text-faint);
+}
+
+/* 交互控制中心 */
+.ent-controls-panel {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1.4fr;
+  gap: 20px;
+}
+
+.control-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.grp-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.3px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 8px;
+}
+
+/* 态选择器网格 */
+.state-btn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.state-btn {
+  background: rgba(24, 30, 52, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 8px;
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  transition: all 0.2s ease;
+  min-height: 52px;
+}
+
+.state-btn strong {
+  font-size: 13px;
+}
+
+.state-btn small {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.state-btn:hover {
+  background: rgba(36, 44, 74, 0.9);
+  border-color: var(--border-focus);
+}
+
+.state-btn.active {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+}
+
+.state-btn.active strong {
+  color: var(--accent-cyan);
+}
+
+/* 滑块样式 */
+.slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slider-row label {
+  font-size: 13px;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+}
+
+.slider-row label strong {
+  color: #fff;
+  font-family: var(--font-mono);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #1e263d;
+  border-radius: 3px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-cyan);
+  border: 2px solid #fff;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-cyan);
+  border: 2px solid #fff;
+}
+
+.slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.tick-key {
+  color: var(--accent-gold);
+}
+
+/* 测角预设按钮栏 */
+.preset-btn-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preset-btn {
+  background: rgba(24, 30, 52, 0.8);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 40px;
+}
+
+.preset-btn:hover {
+  background: rgba(0, 240, 255, 0.15);
+  border-color: var(--accent-cyan);
+  color: #fff;
+}
+
+/* 四角拨盘网格 */
+.angle-dials-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.angle-card {
+  background: rgba(14, 18, 32, 0.8);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.angle-tag {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.angle-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.angle-deg {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  min-width: 48px;
+  text-align: right;
+}
+
+/* 光子脉冲按钮组 */
+.photon-btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  background: #1a2238;
+  color: #fff;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.action-btn:hover {
+  background: #25304e;
+  border-color: var(--border-focus);
+}
+
+.action-primary {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(189, 0, 255, 0.2));
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.action-primary:hover {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.35), rgba(189, 0, 255, 0.35));
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.3);
+}
+
+.action-toggle.active {
+  background: rgba(0, 230, 118, 0.25);
+  border-color: var(--accent-emerald);
+  color: var(--accent-emerald);
+  box-shadow: 0 0 12px rgba(0, 230, 118, 0.3);
+}
+
+.action-muted {
+  background: rgba(30, 36, 56, 0.5);
+  color: var(--text-dim);
+}
+
+/* 四角符合计数矩阵表 */
+.coincidence-matrix-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(10, 13, 22, 0.9);
+}
+
+.coincidence-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: right;
+}
+
+.coincidence-table th, .coincidence-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(36, 44, 74, 0.6);
+}
+
+.coincidence-table th {
+  background: rgba(18, 24, 42, 0.9);
+  color: var(--text-dim);
+  font-weight: 600;
+  text-align: right;
+}
+
+.coincidence-table th:first-child, .coincidence-table td:first-child {
+  text-align: left;
+}
+
+.coincidence-table td {
+  color: #fff;
+}
+
+.coincidence-table .e-exp {
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+.coincidence-table .e-theo {
+  color: var(--text-faint);
+}
+
+/* 认识论折叠深潜 */
+.ent-epistemology-details {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+}
+
+.ent-details-summary {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+  color: var(--accent-gold);
+  user-select: none;
+}
+
+.sum-arrow {
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.ent-epistemology-details[open] .sum-arrow {
+  transform: rotate(180deg);
+}
+
+.details-body {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.epist-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.epist-col h4 {
+  font-size: 15px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.epist-col p {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  line-height: 1.7;
+}
+
+.epist-col code {
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--accent-cyan);
+}
+
+/* ============================================================================
+ * 响应式媒体查询 (严格置于文件末尾)
+ * ==========================================================================*/
+@media (max-width: 1200px) {
+  .ent-dashboard {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ent-controls-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .ent-workspace {
+    grid-template-columns: 1fr;
+  }
+  .epist-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 12px 8px;
+  }
+  .ent-header {
+    padding: 20px 16px;
+  }
+  .ent-title {
+    font-size: 24px;
+  }
+  .ent-dashboard {
+    grid-template-columns: 1fr;
+  }
+  .state-btn-grid {
+    grid-template-columns: 1fr;
+  }
+  .angle-dials-grid {
+    grid-template-columns: 1fr;
+  }
+  .photon-btn-row {
+    grid-template-columns: 1fr;
+  }
+  .bench-sensors-bar {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+  </style>
+</head>
+<body>
+<div class="ent-container">
+  <!-- 头部导引 -->
+  <header class="ent-header">
+    <div class="ent-badge-bar">
+      <span class="ent-glyph">|Ψ⁻⟩ ⊗ |Φ⟩</span>
+      <span class="ent-domain-tag">物理 · 量子信息科学</span>
+      <span class="ent-nobel-tag">2022 诺贝尔物理学奖原理</span>
+    </div>
+    <h1 class="ent-title">纠缠之界</h1>
+    <p class="ent-question">“幽灵般的超距作用”，怎样用两台互不通信的偏振仪测出破绽？</p>
+    <p class="ent-subtitle">
+      两颗飞向相反方向的纠缠光子，在被测量前并无确定偏振。操纵空间分离的 Alice 与 Bob 偏振分析仪，
+      在单光子符合计数与复密度矩阵断层重构中，直面局域实在论的边界 <em>S ≤ 2</em> 与齐列尔森极限 <em>S = 2√2</em>。
+    </p>
+  </header>
+
+  <!-- 仪表盘核心态量 -->
+  <section class="ent-dashboard" aria-label="量子态核心指标">
+    <div class="dash-card s-metric-card" id="cardCHSH">
+      <div class="card-label">CHSH 贝尔参数 S (实验 / 理论)</div>
+      <div class="s-val-row">
+        <span class="s-val-main" id="metricSExp">2.828</span>
+        <span class="s-val-slash">/</span>
+        <span class="s-val-theo" id="metricSTheo">2.828</span>
+      </div>
+      <div class="s-bounds-bar">
+        <div class="bound-mark bound-classic" title="经典实在论上限 S=2.0">经典界 2.000</div>
+        <div class="bound-mark bound-tsirelson" title="齐列尔森量子极限 2√2 ≈ 2.828">量子界 2.828</div>
+      </div>
+      <div class="s-status-badge badge-violated" id="badgeViolation">
+        ⚡ 贝尔不等式违背 · 证实量子非定域性
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="card-label">PPT 纠缠准则与负度 𝒩(ρ)</div>
+      <div class="dash-val-row">
+        <span class="dash-num" id="metricNegativity">0.500</span>
+        <span class="dash-unit" id="metricEntStatus">强纠缠态</span>
+      </div>
+      <div class="dash-subtext">部分转置最小本征值 λ_min: <span id="metricMinEval">-0.500</span></div>
+    </div>
+
+    <div class="dash-card">
+      <div class="card-label">无信号定理 (No-Signaling) 监控</div>
+      <div class="dash-val-row">
+        <span class="dash-num" id="metricAliceMarginal">50.0%</span>
+        <span class="dash-unit">Alice P(A=+)</span>
+      </div>
+      <div class="dash-subtext">与 Bob 测角完全解耦 · <span class="safe-tag">相对论因果律守恒</span></div>
+    </div>
+
+    <div class="dash-card">
+      <div class="card-label">光子计数统计流</div>
+      <div class="dash-val-row">
+        <span class="dash-num" id="metricTotalPhotons">0</span>
+        <span class="dash-unit">对符合脉冲</span>
+      </div>
+      <div class="dash-subtext">实时符合率: <span id="metricCoincidenceRate">100%</span> 有效关联</div>
+    </div>
+  </section>
+
+  <!-- 主双视窗工作区 -->
+  <main class="ent-workspace">
+    <!-- 视窗 A: 空间光学实验台 -->
+    <div class="viewport-box" id="boxOpticalBench">
+      <div class="viewport-header">
+        <div class="vp-title">
+          <span class="vp-icon">🔬</span>
+          <strong>空间光学实验台 (Alice ⟵ SPDC 源 ⟶ Bob)</strong>
+        </div>
+        <div class="vp-actions">
+          <span class="vp-hint">点击角度刻度盘或拖动滑块调整偏振轴</span>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="benchCanvas" width="760" height="420"></canvas>
+      </div>
+      <!-- 偏振探测器符合指示条 -->
+      <div class="bench-sensors-bar">
+        <div class="sensor-unit" id="sensorA">
+          <span class="sensor-tag">Alice 通道</span>
+          <div class="sensor-leds">
+            <span class="led led-plus" id="ledA_plus">H (+)</span>
+            <span class="led led-minus" id="ledA_minus">V (−)</span>
+          </div>
+        </div>
+        <div class="spdc-source-pill">
+          <span class="spdc-pulse-dot" id="spdcDot"></span>
+          <span>BBO 晶体自发参量下转换</span>
+        </div>
+        <div class="sensor-unit" id="sensorB">
+          <span class="sensor-tag">Bob 通道</span>
+          <div class="sensor-leds">
+            <span class="led led-plus" id="ledB_plus">H (+)</span>
+            <span class="led led-minus" id="ledB_minus">V (−)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 视窗 B: 态空间与量子断层扫描 -->
+    <div class="viewport-box" id="boxStateSpace">
+      <div class="viewport-header">
+        <div class="vp-title">
+          <span class="vp-icon">📊</span>
+          <strong>量子态空间：3D 密度矩阵 ρ 与 CHSH 关联曲线</strong>
+        </div>
+        <div class="vp-tabs">
+          <button class="vp-tab-btn active" id="tabTomography" data-view="tomo">4×4 密度矩阵</button>
+          <button class="vp-tab-btn" id="tabCurve" data-view="curve">CHSH 关联曲线 E(θ)</button>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="stateCanvas" width="760" height="420"></canvas>
+      </div>
+      <!-- 辅助基底对照注脚 -->
+      <div class="state-legend-bar" id="stateLegend">
+        <span class="leg-item"><i class="leg-swatch color-real-pos"></i> 实部正 (Re > 0)</span>
+        <span class="leg-item"><i class="leg-swatch color-real-neg"></i> 实部负 (Re < 0)</span>
+        <span class="leg-item"><i class="leg-swatch color-imag"></i> 虚部 (|Im| > 0)</span>
+        <span class="leg-item leg-note">基底: |HH⟩, |HV⟩, |VH⟩, |VV⟩</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- 交互控制中心 -->
+  <section class="ent-controls-panel" aria-label="实验台控制">
+    <!-- 控制组 1: 量子态制备与噪声 -->
+    <div class="control-group">
+      <h3 class="grp-title">1. 量子态制备与环境退相干</h3>
+      <div class="state-btn-grid" id="stateSelectorGrid">
+        <button class="state-btn active" data-state="psiMinus" title="贝尔单态 (|01⟩ - |10⟩)/√2 (旋转不变完全反对称)">
+          <strong>|Ψ⁻⟩ 贝尔单态</strong>
+          <small>E = -cos(2Δθ)</small>
+        </button>
+        <button class="state-btn" data-state="phiPlus" title="贝尔三重态 (|00⟩ + |11⟩)/√2">
+          <strong>|Φ⁺⟩ 贝尔三重态</strong>
+          <small>E = +cos(2Δθ)</small>
+        </button>
+        <button class="state-btn" data-state="werner" title="Werner 混合态：p·|Ψ⁻⟩⟨Ψ⁻| + (1-p)·I/4">
+          <strong>Werner 混合态</strong>
+          <small>可控纠缠纯度相变</small>
+        </button>
+        <button class="state-btn" data-state="product" title="经典可分离直积态 |H⟩|V⟩ (服从局域实在论)">
+          <strong>|HV⟩ 直积分离态</strong>
+          <small>经典定域上限 S ≤ 2</small>
+        </button>
+      </div>
+
+      <div class="slider-row" id="rowWernerP">
+        <label for="sliderP">Werner 纠缠纯度 <em>p</em>: <strong id="valP">1.00</strong></label>
+        <input type="range" id="sliderP" min="0" max="1" step="0.01" value="1.00">
+        <div class="slider-ticks">
+          <span>0 (完全混合)</span>
+          <span class="tick-key" title="PPT 纠缠下界 1/3">1/3 纠缠临界</span>
+          <span class="tick-key" title="CHSH 破缺下界 1/√2">1/√2 破缺界</span>
+          <span>1.0 (纯态)</span>
+        </div>
+      </div>
+
+      <div class="slider-row">
+        <label for="sliderDephase">退相干阻尼系数 <em>γ</em>: <strong id="valDephase">0.00</strong></label>
+        <input type="range" id="sliderDephase" min="0" max="1" step="0.01" value="0.00">
+      </div>
+    </div>
+
+    <!-- 控制组 2: 偏振仪测角设置 -->
+    <div class="control-group">
+      <h3 class="grp-title">2. 双臂偏振分析仪测角 (Alice vs Bob)</h3>
+      <div class="preset-btn-bar">
+        <button class="preset-btn" id="btnPresetOptimal" title="Aspect 1982 经典设置：达到最大破缺 2√2">
+          🎯 最优破缺构型 (0°, 45° vs 22.5°, 67.5°)
+        </button>
+        <button class="preset-btn" id="btnPresetParallel" title="平行/垂直测角设置：展现确定性反关联">
+          📐 极值平行 (0°, 90° vs 0°, 90°)
+        </button>
+        <button class="preset-btn" id="btnPresetDecoupled" title="局域非违背设置：各轴无偏">
+          ⚖️ 平衡基 (0°, 45° vs 0°, 45°)
+        </button>
+      </div>
+
+      <div class="angle-dials-grid">
+        <div class="angle-card">
+          <span class="angle-tag">Alice 测量角 a₁</span>
+          <div class="angle-input-wrap">
+            <input type="range" id="sliderA1" min="0" max="180" step="0.5" value="0">
+            <span class="angle-deg" id="valA1">0.0°</span>
+          </div>
+        </div>
+        <div class="angle-card">
+          <span class="angle-tag">Alice 测量角 a₂</span>
+          <div class="angle-input-wrap">
+            <input type="range" id="sliderA2" min="0" max="180" step="0.5" value="45">
+            <span class="angle-deg" id="valA2">45.0°</span>
+          </div>
+        </div>
+        <div class="angle-card">
+          <span class="angle-tag">Bob 测量角 b₁</span>
+          <div class="angle-input-wrap">
+            <input type="range" id="sliderB1" min="0" max="180" step="0.5" value="22.5">
+            <span class="angle-deg" id="valB1">22.5°</span>
+          </div>
+        </div>
+        <div class="angle-card">
+          <span class="angle-tag">Bob 测量角 b₂</span>
+          <div class="angle-input-wrap">
+            <input type="range" id="sliderB2" min="0" max="180" step="0.5" value="67.5">
+            <span class="angle-deg" id="valB2">67.5°</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 控制组 3: 光子脉冲激发与统计采样 -->
+    <div class="control-group">
+      <h3 class="grp-title">3. 光子激发与蒙特卡洛统计</h3>
+      <div class="photon-btn-row">
+        <button class="action-btn" id="btnFireSingle">⚡ 发射单对光子</button>
+        <button class="action-btn action-toggle" id="btnStreamToggle">▶ 连续脉冲流</button>
+        <button class="action-btn action-primary" id="btnRunBurst">🚀 10,000 发瞬时累积</button>
+        <button class="action-btn action-muted" id="btnResetCounts">↺ 清空统计</button>
+      </div>
+
+      <!-- 四角关联计数矩阵表 -->
+      <div class="coincidence-matrix-wrap">
+        <table class="coincidence-table">
+          <thead>
+            <tr>
+              <th>测量角组 (a, b)</th>
+              <th>N(+, +)</th>
+              <th>N(+, −)</th>
+              <th>N(−, +)</th>
+              <th>N(−, −)</th>
+              <th>实验 E_exp</th>
+              <th>理论 E_theo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="row11">
+              <td>a₁=0.0°, b₁=22.5°</td>
+              <td class="cnt-pp">0</td>
+              <td class="cnt-pm">0</td>
+              <td class="cnt-mp">0</td>
+              <td class="cnt-mm">0</td>
+              <td class="e-exp">-0.707</td>
+              <td class="e-theo">-0.707</td>
+            </tr>
+            <tr id="row12">
+              <td>a₁=0.0°, b₂=67.5°</td>
+              <td class="cnt-pp">0</td>
+              <td class="cnt-pm">0</td>
+              <td class="cnt-mp">0</td>
+              <td class="cnt-mm">0</td>
+              <td class="e-exp">+0.707</td>
+              <td class="e-theo">+0.707</td>
+            </tr>
+            <tr id="row21">
+              <td>a₂=45.0°, b₁=22.5°</td>
+              <td class="cnt-pp">0</td>
+              <td class="cnt-pm">0</td>
+              <td class="cnt-mp">0</td>
+              <td class="cnt-mm">0</td>
+              <td class="e-exp">-0.707</td>
+              <td class="e-theo">-0.707</td>
+            </tr>
+            <tr id="row22">
+              <td>a₂=45.0°, b₂=67.5°</td>
+              <td class="cnt-pp">0</td>
+              <td class="cnt-pm">0</td>
+              <td class="cnt-mp">0</td>
+              <td class="cnt-mm">0</td>
+              <td class="e-exp">-0.707</td>
+              <td class="e-theo">-0.707</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 认识论折叠深潜 -->
+  <details class="ent-epistemology-details">
+    <summary class="ent-details-summary">
+      <strong>认识论深潜：为什么量子纠缠无法传递超光速信息？为何爱因斯坦的局域隐变量假说被证伪？</strong>
+      <span class="sum-arrow">▾</span>
+    </summary>
+    <div class="details-body">
+      <div class="epist-grid">
+        <div class="epist-col">
+          <h4>1. 局域实在论与贝尔的绝杀</h4>
+          <p>
+            1935 年，爱因斯坦、波多尔斯基和罗森（EPR）提出假说：如果两个粒子分开后具有完美关联，那么该偏振状态必定在分离前就已被某种尚未发现的“局域隐变量”（λ）确定，否则就必须承认存在违背相对论因果律的“幽灵超距作用”。
+          </p>
+          <p>
+            1964 年，约翰·贝尔用纯代数证明：<strong>任何基于局域实在论的数学模型，其测量相关性绝不可能超过 S ≤ 2</strong>。而在 1982 年阿斯佩（Aspect）以及 2015 年无漏洞贝尔实验中，量子力学均以 <em>S ≈ 2.828</em> 的确凿结果宣告：客观世界在底层是非局域的，定域隐变量假说彻底破产。
+          </p>
+        </div>
+        <div class="epist-col">
+          <h4>2. 无信号定理（No-Signaling Theorem）的相对论盾牌</h4>
+          <p>
+            如果两端存在“超距纠缠”，我们能否利用纠缠瞬时向比邻星发送莫尔斯电码？
+          </p>
+          <p>
+            答案是<strong>绝对不能</strong>。请观察仪表盘上的 Alice 单边概率：Alice 处的约化密度矩阵为 <code>ρ_A = Tr_B(ρ) = I/2</code>。这意味着，<strong>无论 Bob 在十亿光年外将偏振器旋至何种角度，Alice 本地测得 (+) 或 (−) 的概率永远是 50:50 的纯粹真随机数</strong>。
+          </p>
+          <p>
+            只有当 Alice 和 Bob 拿着各自的测量时间记录本，坐下来通过亚光速的经典信道对账（符合计数）时，那份超越时空的神秘关联才会浮现。相对论因果律在此得到了最精巧的捍卫。
+          </p>
+        </div>
+      </div>
+    </div>
+  </details>
+</div>
+
+  <script>
+/* ============================================================================
+ * entanglement/core.js —— 量子纠缠、贝尔不等式与量子态断层重构核心数学与量子计算引擎
+ *
+ * 理论基石：
+ * 1. 复合希尔伯特空间 H = C² ⊗ C² 中的纯态与混合态密度矩阵 ρ
+ * 2. 泡利自旋矩阵 σ_x, σ_y, σ_z 与任意空间方向投影测度 P(θ)
+ * 3. 偏振光学单光子偏振态基底与贝尔态簇 (|Φ⁺⟩, |Φ⁻⟩, |Ψ⁺⟩, |Ψ⁻⟩)
+ * 4. Werner 混合态与退相干噪声模型 (Depolarizing, Dephasing)
+ * 5. Clauser-Horne-Shimony-Holt (CHSH) 关联函数 E(a, b) 与 S 参数
+ * 6. Peres-Horodecki 正部分转置准则 (PPT) 与纠缠负度 Negativity N(ρ)
+ * 7. 蒙特卡洛单光子符合计数统计与有限样本断层重构 (Tomography)
+ * 8. 无信号定理 (No-Signaling Theorem) 严格验证：边缘测度与远程选择解耦
+ * ==========================================================================*/
+'use strict';
+
+// ----------------------------------------------------------------------------
+// 1. 复数与四维复矩阵代数
+// ----------------------------------------------------------------------------
+function complex(re, im) {
+  return { re: re || 0, im: im || 0 };
+}
+
+function cAdd(a, b) {
+  return { re: a.re + b.re, im: a.im + b.im };
+}
+
+function cSub(a, b) {
+  return { re: a.re - b.re, im: a.im - b.im };
+}
+
+function cMul(a, b) {
+  return {
+    re: a.re * b.re - a.im * b.im,
+    im: a.re * b.im + a.im * b.re
+  };
+}
+
+function cScale(a, s) {
+  return { re: a.re * s, im: a.im * s };
+}
+
+function cConj(a) {
+  return { re: a.re, im: -a.im };
+}
+
+function cAbsSq(a) {
+  return a.re * a.re + a.im * a.im;
+}
+
+function cAbs(a) {
+  return Math.sqrt(cAbsSq(a));
+}
+
+// 创建 4x4 零复矩阵
+function zeros4x4() {
+  var m = [];
+  for (var i = 0; i < 4; i++) {
+    var row = [];
+    for (var j = 0; j < 4; j++) {
+      row.push(complex(0, 0));
+    }
+    m.push(row);
+  }
+  return m;
+}
+
+// 4x4 矩阵求迹 Tr(M)
+function trace4x4(m) {
+  var tr = complex(0, 0);
+  for (var i = 0; i < 4; i++) {
+    tr = cAdd(tr, m[i][i]);
+  }
+  return tr;
+}
+
+// 4x4 矩阵相加
+function add4x4(a, b) {
+  var res = zeros4x4();
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 4; j++) {
+      res[i][j] = cAdd(a[i][j], b[i][j]);
+    }
+  }
+  return res;
+}
+
+// 4x4 矩阵数乘
+function scale4x4(m, s) {
+  var res = zeros4x4();
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 4; j++) {
+      res[i][j] = cScale(m[i][j], s);
+    }
+  }
+  return res;
+}
+
+// 4x4 矩阵乘法
+function matMul4x4(a, b) {
+  var res = zeros4x4();
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 4; j++) {
+      var sum = complex(0, 0);
+      for (var k = 0; k < 4; k++) {
+        sum = cAdd(sum, cMul(a[i][k], b[k][j]));
+      }
+      res[i][j] = sum;
+    }
+  }
+  return res;
+}
+
+// 4x4 纯态矢投影算子 |psi><psi|
+function pureStateDensity(psi) {
+  var rho = zeros4x4();
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 4; j++) {
+      rho[i][j] = cMul(psi[i], cConj(psi[j]));
+    }
+  }
+  return rho;
+}
+
+// ----------------------------------------------------------------------------
+// 2. 量子态定义与生成器
+// ----------------------------------------------------------------------------
+// 标准计算基底:
+// |0> = |H> (水平偏振), |1> = |V> (垂直偏振)
+// |00> = |HH>, |01> = |HV>, |10> = |VH>, |11> = |VV>
+
+var INV_SQRT2 = 1.0 / Math.sqrt(2);
+
+var BELL_STATES = {
+  // |Phi+> = (|00> + |11>) / sqrt(2)
+  phiPlus: [
+    complex(INV_SQRT2, 0),
+    complex(0, 0),
+    complex(0, 0),
+    complex(INV_SQRT2, 0)
+  ],
+  // |Phi-> = (|00> - |11>) / sqrt(2)
+  phiMinus: [
+    complex(INV_SQRT2, 0),
+    complex(0, 0),
+    complex(0, 0),
+    complex(-INV_SQRT2, 0)
+  ],
+  // |Psi+> = (|01> + |10>) / sqrt(2)
+  psiPlus: [
+    complex(0, 0),
+    complex(INV_SQRT2, 0),
+    complex(INV_SQRT2, 0),
+    complex(0, 0)
+  ],
+  // |Psi-> = (|01> - |10>) / sqrt(2) [标准单态 Singlet]
+  psiMinus: [
+    complex(0, 0),
+    complex(INV_SQRT2, 0),
+    complex(-INV_SQRT2, 0),
+    complex(0, 0)
+  ]
+};
+
+// 4x4 单位阵 / 4 (完全混合态)
+function maximallyMixedState() {
+  var rho = zeros4x4();
+  for (var i = 0; i < 4; i++) {
+    rho[i][i] = complex(0.25, 0);
+  }
+  return rho;
+}
+
+// Werner 混合态: rho_W(p) = p |psi><psi| + (1 - p) * I/4
+function createWernerState(baseStateKey, p) {
+  var clampedP = Math.max(0, Math.min(1, p));
+  var psi = BELL_STATES[baseStateKey] || BELL_STATES.psiMinus;
+  var pureRho = pureStateDensity(psi);
+  var mixedRho = maximallyMixedState();
+  return add4x4(scale4x4(pureRho, clampedP), scale4x4(mixedRho, 1 - clampedP));
+}
+
+// 可分离直积态 |H>|V> = |01>
+function createProductState(stateType) {
+  var psi = [complex(0, 0), complex(0, 0), complex(0, 0), complex(0, 0)];
+  if (stateType === 'HH') {
+    psi[0] = complex(1, 0);
+  } else if (stateType === 'HV') {
+    psi[1] = complex(1, 0);
+  } else if (stateType === 'VH') {
+    psi[2] = complex(1, 0);
+  } else if (stateType === 'VV') {
+    psi[3] = complex(1, 0);
+  } else if (stateType === 'plus_plus') {
+    // |+>|+> = 1/2 (|00> + |01> + |10> + |11>)
+    psi = [complex(0.5, 0), complex(0.5, 0), complex(0.5, 0), complex(0.5, 0)];
+  } else {
+    psi[1] = complex(1, 0); // 默认 |HV>
+  }
+  return pureStateDensity(psi);
+}
+
+// 退相干噪声通道作用于密度矩阵
+// dephasing: 离角元 (相干项) 衰减 factor = 1 - gamma
+function applyDephasing(rho, gamma) {
+  var res = zeros4x4();
+  var factor = Math.max(0, Math.min(1, 1 - gamma));
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 4; j++) {
+      if (i === j) {
+        res[i][j] = rho[i][j];
+      } else {
+        res[i][j] = cScale(rho[i][j], factor);
+      }
+    }
+  }
+  // 重新归一化迹
+  var tr = trace4x4(res).re;
+  if (tr > 1e-9) {
+    return scale4x4(res, 1 / tr);
+  }
+  return res;
+}
+
+// ----------------------------------------------------------------------------
+// 3. 偏振投影测量与张量积
+// ----------------------------------------------------------------------------
+// 空间偏振角 theta 对应的单量子比特基底:
+// |theta+> = cos(theta)|H> + sin(theta)|V>
+// |theta-> = -sin(theta)|H> + cos(theta)|V>
+// 投影算子 P+(theta) = |theta+><theta+|
+// [cos²(theta), cos(theta)sin(theta)]
+// [cos(theta)sin(theta), sin²(theta)]
+function singleQubitProjector(thetaRad, outcome) {
+  var c = Math.cos(thetaRad);
+  var s = Math.sin(thetaRad);
+  if (outcome === 1) { // +1 (平行于偏振轴)
+    return [
+      [complex(c * c, 0), complex(c * s, 0)],
+      [complex(c * s, 0), complex(s * s, 0)]
+    ];
+  } else { // -1 (垂直于偏振轴)
+    return [
+      [complex(s * s, 0), complex(-c * s, 0)],
+      [complex(-c * s, 0), complex(c * c, 0)]
+    ];
+  }
+}
+
+// 2x2 矩阵的克罗内克张量积 (Kronecker Product) A ⊗ B => 4x4 矩阵
+function tensorProduct2x2(a, b) {
+  var res = zeros4x4();
+  for (var i = 0; i < 2; i++) {
+    for (var j = 0; j < 2; j++) {
+      for (var k = 0; k < 2; k++) {
+        for (var l = 0; l < 2; l++) {
+          var row = i * 2 + k;
+          var col = j * 2 + l;
+          res[row][col] = cMul(a[i][j], b[k][l]);
+        }
+      }
+    }
+  }
+  return res;
+}
+
+// 计算联合测量投影算子 Pi(a, b, mA, mB) = Pi_A(a, mA) ⊗ Pi_B(b, mB)
+function jointProjector(angleARad, angleBRad, mA, mB) {
+  var pA = singleQubitProjector(angleARad, mA);
+  var pB = singleQubitProjector(angleBRad, mB);
+  return tensorProduct2x2(pA, pB);
+}
+
+// 根据密度矩阵 rho 与测量角 a, b 计算 4 种出射通道的精确联合概率
+// P(++, +-, -+, --)
+function computeJointProbabilities(rho, angleADeg, angleBDeg) {
+  var aRad = (angleADeg * Math.PI) / 180.0;
+  var bRad = (angleBDeg * Math.PI) / 180.0;
+
+  var outcomes = [
+    { mA: 1, mB: 1, key: 'pp' },
+    { mA: 1, mB: -1, key: 'pm' },
+    { mA: -1, mB: 1, key: 'mp' },
+    { mA: -1, mB: -1, key: 'mm' }
+  ];
+
+  var probs = {};
+  var sum = 0;
+  outcomes.forEach(function (oc) {
+    var proj = jointProjector(aRad, bRad, oc.mA, oc.mB);
+    var rhoProj = matMul4x4(rho, proj);
+    var tr = trace4x4(rhoProj).re;
+    var p = Math.max(0, tr);
+    probs[oc.key] = p;
+    sum += p;
+  });
+
+  // 保证严格数值概率归一化
+  if (sum > 1e-9) {
+    outcomes.forEach(function (oc) {
+      probs[oc.key] /= sum;
+    });
+  } else {
+    probs.pp = probs.pm = probs.mp = probs.mm = 0.25;
+  }
+
+  // 计算 Alice 与 Bob 的单边边缘概率 (Marginal Probabilities)
+  // Alice P(A=+) = P(++) + P(+-)
+  // Alice P(A=-) = P(-+) + P(--)
+  probs.alicePlus = probs.pp + probs.pm;
+  probs.aliceMinus = probs.mp + probs.mm;
+
+  // Bob P(B=+) = P(++) + P(-+)
+  // Bob P(B=-) = P(+-) + P(--)
+  probs.bobPlus = probs.pp + probs.mp;
+  probs.bobMinus = probs.pm + probs.mm;
+
+  // 关联期望值 E(a, b) = P(++) + P(--) - P(+-) - P(-+)
+  probs.correlation = (probs.pp + probs.mm) - (probs.pm + probs.mp);
+
+  return probs;
+}
+
+// ----------------------------------------------------------------------------
+// 4. CHSH 不等式与贝尔参数 S
+// ----------------------------------------------------------------------------
+// 标准 CHSH 参数定义:
+// S = E(a1, b1) - E(a1, b2) + E(a2, b1) + E(a2, b2)
+// 局域实在论上限: |S| <= 2
+// 齐列尔森量子极限 (Tsirelson's bound): |S| <= 2 * sqrt(2) ≈ 2.828427
+function computeCHSH(rho, a1Deg, a2Deg, b1Deg, b2Deg) {
+  var e11 = computeJointProbabilities(rho, a1Deg, b1Deg).correlation;
+  var e12 = computeJointProbabilities(rho, a1Deg, b2Deg).correlation;
+  var e21 = computeJointProbabilities(rho, a2Deg, b1Deg).correlation;
+  var e22 = computeJointProbabilities(rho, a2Deg, b2Deg).correlation;
+
+  // 贝尔量 S
+  var sVal = e11 - e12 + e21 + e22;
+
+  return {
+    e11: e11,
+    e12: e12,
+    e21: e21,
+    e22: e22,
+    S: sVal,
+    absS: Math.abs(sVal),
+    classicalBound: 2.0,
+    tsirelsonBound: 2.0 * Math.SQRT2,
+    isViolated: Math.abs(sVal) > 2.00001
+  };
+}
+
+// 扫描相对测量夹角 Delta Theta 从 0 到 180 度的理论关联曲线
+function computeCorrelationCurve(rho, numPoints) {
+  var pts = [];
+  var n = numPoints || 73; // 默认每 2.5 度一个采样点
+  for (var i = 0; i < n; i++) {
+    var deltaDeg = (180.0 * i) / (n - 1);
+    var prob = computeJointProbabilities(rho, 0, deltaDeg);
+    pts.push({
+      deltaDeg: deltaDeg,
+      deltaRad: (deltaDeg * Math.PI) / 180.0,
+      correlation: prob.correlation,
+      pp: prob.pp,
+      pm: prob.pm,
+      mp: prob.mp,
+      mm: prob.mm
+    });
+  }
+  return pts;
+}
+
+// ----------------------------------------------------------------------------
+// 5. Peres-Horodecki (PPT) 准则与纠缠度量 (Negativity)
+// ----------------------------------------------------------------------------
+// 对第二个子系统 (Bob) 实施部分转置 (Partial Transpose):
+// (rho^TB)_{iA jB, kA lB} = rho_{iA lB, kA jB}
+// 4x4 矩阵块结构:
+// | A  B |^TB    | A  B^T |
+// | C  D |    =  | C  D^T |
+function partialTransposeB(rho) {
+  var pt = zeros4x4();
+  for (var iA = 0; iA < 2; iA++) {
+    for (var jB = 0; jB < 2; jB++) {
+      for (var kA = 0; kA < 2; kA++) {
+        for (var lB = 0; lB < 2; lB++) {
+          var row = iA * 2 + jB;
+          var col = kA * 2 + lB;
+          var srcRow = iA * 2 + lB;
+          var srcCol = kA * 2 + jB;
+          pt[row][col] = rho[srcRow][srcCol];
+        }
+      }
+    }
+  }
+  return pt;
+}
+
+// 对 4x4 厄米实部对称近似矩阵进行雅可比特征值迭代求解 (Jacobi Eigenvalue Algorithm)
+// (对于标准贝尔基态与 Werner 态，虚部多为零或具有严格对称性)
+function computeEigenvalues4x4(mat) {
+  // 提取厄米实对称部分 A = (M + M^H) / 2
+  var n = 4;
+  var a = [];
+  for (var i = 0; i < n; i++) {
+    var r = [];
+    for (var j = 0; j < n; j++) {
+      r.push(0.5 * (mat[i][j].re + mat[j][i].re));
+    }
+    a.push(r);
+  }
+
+  // 雅可比对角化
+  var maxIter = 50;
+  for (var iter = 0; iter < maxIter; iter++) {
+    var maxOff = 0;
+    var p = 0;
+    var q = 1;
+    for (var i = 0; i < n; i++) {
+      for (var j = i + 1; j < n; j++) {
+        var off = Math.abs(a[i][j]);
+        if (off > maxOff) {
+          maxOff = off;
+          p = i;
+          q = j;
+        }
+      }
+    }
+    if (maxOff < 1e-11) break;
+
+    var app = a[p][p];
+    var aqq = a[q][q];
+    var apq = a[p][q];
+    var phi = 0.5 * Math.atan2(2 * apq, aqq - app);
+    var c = Math.cos(phi);
+    var s = Math.sin(phi);
+
+    // 旋转行与列
+    for (var k = 0; k < n; k++) {
+      if (k !== p && k !== q) {
+        var akp = a[k][p];
+        var akq = a[k][q];
+        a[k][p] = a[p][k] = c * akp - s * akq;
+        a[k][q] = a[q][k] = s * akp + c * akq;
+      }
+    }
+    a[p][p] = c * c * app - 2 * s * c * apq + s * s * aqq;
+    a[q][q] = s * s * app + 2 * s * c * apq + c * c * aqq;
+    a[p][q] = a[q][p] = 0;
+  }
+
+  var evals = [a[0][0], a[1][1], a[2][2], a[3][3]];
+  evals.sort(function (x, y) { return x - y; });
+  return evals;
+}
+
+// 计算纠缠负度 Negativity: N(rho) = sum(max(0, -lambda_i))
+// 若 N > 0，则该两比特量子态必定纠缠 (Peres-Horodecki 定理在 2x2 维充分必要)
+function computeEntanglementMetrics(rho) {
+  var pt = partialTransposeB(rho);
+  var evals = computeEigenvalues4x4(pt);
+  var negSum = 0;
+  var minEval = evals[0];
+  evals.forEach(function (ev) {
+    if (ev < 0) {
+      negSum += Math.abs(ev);
+    }
+  });
+
+  return {
+    eigenvalues: evals,
+    minEigenvalue: minEval,
+    negativity: negSum,
+    isEntangled: negSum > 1e-6
+  };
+}
+
+// ----------------------------------------------------------------------------
+// 6. 蒙特卡洛单光子流与符合计数模拟器
+// ----------------------------------------------------------------------------
+function samplePhotonPair(rho, angleADeg, angleBDeg, rng) {
+  var random = rng || Math.random;
+  var probs = computeJointProbabilities(rho, angleADeg, angleBDeg);
+  var r = random();
+
+  var outcome;
+  if (r < probs.pp) {
+    outcome = { alice: 1, bob: 1, key: 'pp' };
+  } else if (r < probs.pp + probs.pm) {
+    outcome = { alice: 1, bob: -1, key: 'pm' };
+  } else if (r < probs.pp + probs.pm + probs.mp) {
+    outcome = { alice: -1, bob: 1, key: 'mp' };
+  } else {
+    outcome = { alice: -1, bob: -1, key: 'mm' };
+  }
+  return outcome;
+}
+
+// 模拟 N 发光子对的快速爆发累积
+function simulatePhotonRun(rho, a1Deg, a2Deg, b1Deg, b2Deg, shotCountPerSetting, rng) {
+  var shots = shotCountPerSetting || 1000;
+  var random = rng || Math.random;
+
+  var pairs = [
+    { a: a1Deg, b: b1Deg, id: '11' },
+    { a: a1Deg, b: b2Deg, id: '12' },
+    { a: a2Deg, b: b1Deg, id: '21' },
+    { a: a2Deg, b: b2Deg, id: '22' }
+  ];
+
+  var results = {};
+  var totalShots = 0;
+
+  pairs.forEach(function (pair) {
+    var counts = { pp: 0, pm: 0, mp: 0, mm: 0 };
+    var prob = computeJointProbabilities(rho, pair.a, pair.b);
+    for (var i = 0; i < shots; i++) {
+      var r = random();
+      if (r < prob.pp) counts.pp++;
+      else if (r < prob.pp + prob.pm) counts.pm++;
+      else if (r < prob.pp + prob.pm + prob.mp) counts.mp++;
+      else counts.mm++;
+    }
+    var total = counts.pp + counts.pm + counts.mp + counts.mm;
+    var eExp = total > 0 ? (counts.pp + counts.mm - counts.pm - counts.mp) / total : 0;
+    results[pair.id] = {
+      counts: counts,
+      total: total,
+      correlationExp: eExp,
+      correlationTheory: prob.correlation
+    };
+    totalShots += total;
+  });
+
+  var sExp = results['11'].correlationExp - results['12'].correlationExp +
+             results['21'].correlationExp + results['22'].correlationExp;
+
+  return {
+    pairs: results,
+    totalShots: totalShots,
+    sExp: sExp,
+    absSExp: Math.abs(sExp)
+  };
+}
+
+// ----------------------------------------------------------------------------
+// 7. 量子态断层重构 (Quantum State Tomography) 估算
+// ----------------------------------------------------------------------------
+// 利用统计采样重建 4x4 密度矩阵：在无噪声时完全匹配理论 ρ
+function reconstructDensityMatrix(rho, noiseFactor) {
+  var noise = noiseFactor || 0;
+  var recon = zeros4x4();
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 4; j++) {
+      var dRe = (Math.random() - 0.5) * 2 * noise;
+      var dIm = (Math.random() - 0.5) * 2 * noise;
+      recon[i][j] = complex(rho[i][j].re + dRe, rho[i][j].im + dIm);
+    }
+  }
+  // 强制厄米性 M = (M + M^H)/2 与正定保迹 Tr=1
+  for (var i = 0; i < 4; i++) {
+    for (var j = i; j < 4; j++) {
+      if (i === j) {
+        recon[i][j] = complex(Math.max(0, recon[i][j].re), 0);
+      } else {
+        var avgRe = 0.5 * (recon[i][j].re + recon[j][i].re);
+        var avgIm = 0.5 * (recon[i][j].im - recon[j][i].im);
+        recon[i][j] = complex(avgRe, avgIm);
+        recon[j][i] = complex(avgRe, -avgIm);
+      }
+    }
+  }
+  var tr = trace4x4(recon).re;
+  if (tr > 1e-9) {
+    return scale4x4(recon, 1 / tr);
+  }
+  return rho;
+}
+
+// 导出纯模块
+var Core = {
+  complex: complex,
+  cAdd: cAdd,
+  cSub: cSub,
+  cMul: cMul,
+  cScale: cScale,
+  cConj: cConj,
+  cAbsSq: cAbsSq,
+  cAbs: cAbs,
+  zeros4x4: zeros4x4,
+  trace4x4: trace4x4,
+  add4x4: add4x4,
+  scale4x4: scale4x4,
+  matMul4x4: matMul4x4,
+  pureStateDensity: pureStateDensity,
+  BELL_STATES: BELL_STATES,
+  maximallyMixedState: maximallyMixedState,
+  createWernerState: createWernerState,
+  createProductState: createProductState,
+  applyDephasing: applyDephasing,
+  singleQubitProjector: singleQubitProjector,
+  tensorProduct2x2: tensorProduct2x2,
+  jointProjector: jointProjector,
+  computeJointProbabilities: computeJointProbabilities,
+  computeCHSH: computeCHSH,
+  computeCorrelationCurve: computeCorrelationCurve,
+  partialTransposeB: partialTransposeB,
+  computeEigenvalues4x4: computeEigenvalues4x4,
+  computeEntanglementMetrics: computeEntanglementMetrics,
+  samplePhotonPair: samplePhotonPair,
+  simulatePhotonRun: simulatePhotonRun,
+  reconstructDensityMatrix: reconstructDensityMatrix
+};
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Core;
+}
+if (typeof window !== 'undefined') {
+  window.EntanglementCore = Core;
+}
+
+  </script>
+  <script>
+/* ============================================================================
+ * entanglement/ui.js —— 交互式量子光学实验台、三维密度矩阵断层图与事件控制器
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var Core = typeof window !== 'undefined' && window.EntanglementCore
+    ? window.EntanglementCore
+    : (typeof require !== 'undefined' ? require('./core.js') : null);
+
+  if (!Core) {
+    console.error('无法加载 EntanglementCore 核心计算引擎');
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // 应用全局状态
+  // --------------------------------------------------------------------------
+  var state = {
+    stateKey: 'psiMinus', // 'psiMinus' | 'phiPlus' | 'werner' | 'product'
+    p: 1.0,               // Werner 纠缠纯度 [0, 1]
+    dephase: 0.0,         // 相位退相干阻尼 [0, 1]
+    
+    // 偏振分析仪测角 (物理空间角度，单位度)
+    a1: 0.0,
+    a2: 45.0,
+    b1: 22.5,
+    b2: 67.5,
+
+    // 活跃测角对 (当前单对激发流使用的设置)
+    activePairIdx: 0, // 0: '11', 1: '12', 2: '21', 3: '22'
+    pairKeys: ['11', '12', '21', '22'],
+
+    // 四角对实验计数统计
+    counts: {
+      '11': { pp: 0, pm: 0, mp: 0, mm: 0, total: 0 },
+      '12': { pp: 0, pm: 0, mp: 0, mm: 0, total: 0 },
+      '21': { pp: 0, pm: 0, mp: 0, mm: 0, total: 0 },
+      '22': { pp: 0, pm: 0, mp: 0, mm: 0, total: 0 }
+    },
+    totalPhotons: 0,
+
+    // 动画与流
+    isStreaming: false,
+    streamTimer: null,
+    flyingPhotons: [],
+
+    // 视窗 B 当前标签页
+    currentView: 'tomo', // 'tomo' | 'curve'
+
+    // 探针指标快照
+    probe: {
+      SExp: 0,
+      STheo: 0,
+      isViolated: false,
+      negativity: 0,
+      aliceMarginal: 0.5,
+      totalPhotons: 0
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // DOM 元素缓存
+  // --------------------------------------------------------------------------
+  var dom = {};
+
+  function cacheDom() {
+    dom.benchCanvas = document.getElementById('benchCanvas');
+    dom.stateCanvas = document.getElementById('stateCanvas');
+    
+    dom.metricSExp = document.getElementById('metricSExp');
+    dom.metricSTheo = document.getElementById('metricSTheo');
+    dom.badgeViolation = document.getElementById('badgeViolation');
+    dom.cardCHSH = document.getElementById('cardCHSH');
+    dom.metricNegativity = document.getElementById('metricNegativity');
+    dom.metricEntStatus = document.getElementById('metricEntStatus');
+    dom.metricMinEval = document.getElementById('metricMinEval');
+    dom.metricAliceMarginal = document.getElementById('metricAliceMarginal');
+    dom.metricTotalPhotons = document.getElementById('metricTotalPhotons');
+    dom.metricCoincidenceRate = document.getElementById('metricCoincidenceRate');
+
+    dom.tabTomography = document.getElementById('tabTomography');
+    dom.tabCurve = document.getElementById('tabCurve');
+    dom.stateLegend = document.getElementById('stateLegend');
+
+    dom.stateBtns = document.querySelectorAll('.state-btn');
+    dom.sliderP = document.getElementById('sliderP');
+    dom.valP = document.getElementById('valP');
+    dom.rowWernerP = document.getElementById('rowWernerP');
+    dom.sliderDephase = document.getElementById('sliderDephase');
+    dom.valDephase = document.getElementById('valDephase');
+
+    dom.sliderA1 = document.getElementById('sliderA1');
+    dom.valA1 = document.getElementById('valA1');
+    dom.sliderA2 = document.getElementById('sliderA2');
+    dom.valA2 = document.getElementById('valA2');
+    dom.sliderB1 = document.getElementById('sliderB1');
+    dom.valB1 = document.getElementById('valB1');
+    dom.sliderB2 = document.getElementById('sliderB2');
+    dom.valB2 = document.getElementById('valB2');
+
+    dom.btnPresetOptimal = document.getElementById('btnPresetOptimal');
+    dom.btnPresetParallel = document.getElementById('btnPresetParallel');
+    dom.btnPresetDecoupled = document.getElementById('btnPresetDecoupled');
+
+    dom.btnFireSingle = document.getElementById('btnFireSingle');
+    dom.btnStreamToggle = document.getElementById('btnStreamToggle');
+    dom.btnRunBurst = document.getElementById('btnRunBurst');
+    dom.btnResetCounts = document.getElementById('btnResetCounts');
+
+    dom.ledAPlus = document.getElementById('ledA_plus');
+    dom.ledAMinus = document.getElementById('ledA_minus');
+    dom.ledBPlus = document.getElementById('ledB_plus');
+    dom.ledBMinus = document.getElementById('ledB_minus');
+
+    dom.tableRows = {
+      '11': document.getElementById('row11'),
+      '12': document.getElementById('row12'),
+      '21': document.getElementById('row21'),
+      '22': document.getElementById('row22')
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // 量子态核心获取器
+  // --------------------------------------------------------------------------
+  function getActiveDensityMatrix() {
+    var rho;
+    if (state.stateKey === 'werner') {
+      rho = Core.createWernerState('psiMinus', state.p);
+    } else if (state.stateKey === 'product') {
+      rho = Core.createProductState('HV');
+    } else {
+      var psi = Core.BELL_STATES[state.stateKey] || Core.BELL_STATES.psiMinus;
+      rho = Core.pureStateDensity(psi);
+    }
+
+    if (state.dephase > 1e-4) {
+      rho = Core.applyDephasing(rho, state.dephase);
+    }
+    return rho;
+  }
+
+  // 获取指定 pair 键对应的偏振角度
+  function getAnglesForPair(pairKey) {
+    if (pairKey === '11') return { a: state.a1, b: state.b1 };
+    if (pairKey === '12') return { a: state.a1, b: state.b2 };
+    if (pairKey === '21') return { a: state.a2, b: state.b1 };
+    return { a: state.a2, b: state.b2 }; // '22'
+  }
+
+  // --------------------------------------------------------------------------
+  // 指标与面板数据刷新
+  // --------------------------------------------------------------------------
+  function updateDashboard() {
+    var rho = getActiveDensityMatrix();
+    
+    // 1. 理论 CHSH 计算
+    var chshTheo = Core.computeCHSH(rho, state.a1, state.a2, state.b1, state.b2);
+    state.probe.STheo = chshTheo.S;
+
+    // 2. 实验 CHSH 累积计算
+    var eExp = {};
+    state.pairKeys.forEach(function (pk) {
+      var c = state.counts[pk];
+      if (c.total > 0) {
+        eExp[pk] = (c.pp + c.mm - c.pm - c.mp) / c.total;
+      } else {
+        // 无计数时默认等于理论值便于初态展示
+        var ang = getAnglesForPair(pk);
+        eExp[pk] = Core.computeJointProbabilities(rho, ang.a, ang.b).correlation;
+      }
+    });
+
+    var sExp = eExp['11'] - eExp['12'] + eExp['21'] + eExp['22'];
+    state.probe.SExp = sExp;
+    var absSExp = Math.abs(sExp);
+    var isViolated = absSExp > 2.0001;
+    state.probe.isViolated = isViolated;
+
+    // DOM 更新
+    if (dom.metricSExp) dom.metricSExp.textContent = sExp.toFixed(3);
+    if (dom.metricSTheo) dom.metricSTheo.textContent = chshTheo.S.toFixed(3);
+
+    if (dom.badgeViolation) {
+      if (isViolated) {
+        dom.badgeViolation.className = 's-status-badge badge-violated';
+        dom.badgeViolation.textContent = '⚡ 贝尔不等式违背 · 证实量子非定域性';
+      } else {
+        dom.badgeViolation.className = 's-status-badge badge-classical';
+        dom.badgeViolation.textContent = '🔒 符合局域实在论 · 可用定域隐变量解释';
+      }
+    }
+
+    // 3. PPT 纠缠准则与负度
+    var ent = Core.computeEntanglementMetrics(rho);
+    state.probe.negativity = ent.negativity;
+    if (dom.metricNegativity) dom.metricNegativity.textContent = ent.negativity.toFixed(3);
+    if (dom.metricMinEval) dom.metricMinEval.textContent = ent.minEigenvalue.toFixed(3);
+    if (dom.metricEntStatus) {
+      if (ent.negativity > 0.4) {
+        dom.metricEntStatus.textContent = '最大纠缠态';
+        dom.metricEntStatus.style.color = 'var(--accent-cyan)';
+      } else if (ent.negativity > 0.001) {
+        dom.metricEntStatus.textContent = '部分纠缠态';
+        dom.metricEntStatus.style.color = 'var(--accent-gold)';
+      } else {
+        dom.metricEntStatus.textContent = '可分离经典态';
+        dom.metricEntStatus.style.color = 'var(--text-faint)';
+      }
+    }
+
+    // 4. 无信号定理边缘测度
+    var curAng = getAnglesForPair(state.pairKeys[state.activePairIdx]);
+    var prob = Core.computeJointProbabilities(rho, curAng.a, curAng.b);
+    state.probe.aliceMarginal = prob.alicePlus;
+    if (dom.metricAliceMarginal) {
+      dom.metricAliceMarginal.textContent = (prob.alicePlus * 100).toFixed(1) + '%';
+    }
+
+    // 5. 光子总计数
+    state.probe.totalPhotons = state.totalPhotons;
+    if (dom.metricTotalPhotons) dom.metricTotalPhotons.textContent = state.totalPhotons.toLocaleString();
+
+    // 6. 表格行刷新
+    state.pairKeys.forEach(function (pk) {
+      var row = dom.tableRows[pk];
+      if (!row) return;
+      var c = state.counts[pk];
+      var ang = getAnglesForPair(pk);
+      var probPair = Core.computeJointProbabilities(rho, ang.a, ang.b);
+
+      row.children[0].textContent = 'a' + pk[0] + '=' + ang.a.toFixed(1) + '°, b' + pk[1] + '=' + ang.b.toFixed(1) + '°';
+      row.children[1].textContent = c.pp;
+      row.children[2].textContent = c.pm;
+      row.children[3].textContent = c.mp;
+      row.children[4].textContent = c.mm;
+      row.children[5].textContent = (eExp[pk] >= 0 ? '+' : '') + eExp[pk].toFixed(3);
+      row.children[6].textContent = (probPair.correlation >= 0 ? '+' : '') + probPair.correlation.toFixed(3);
+    });
+
+    // 暴露自动化挂载探针
+    if (typeof window !== 'undefined') {
+      window.__probe = {
+        SExp: state.probe.SExp,
+        STheo: state.probe.STheo,
+        isViolated: state.probe.isViolated,
+        negativity: state.probe.negativity,
+        aliceMarginal: state.probe.aliceMarginal,
+        totalPhotons: state.probe.totalPhotons,
+        stateKey: state.stateKey,
+        isStreaming: state.isStreaming
+      };
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 单光子激发与符合逻辑
+  // --------------------------------------------------------------------------
+  function firePhotonPair() {
+    var rho = getActiveDensityMatrix();
+    // 轮转四组测角设置以构建完整 CHSH 实验矩阵
+    var pairKey = state.pairKeys[state.activePairIdx];
+    state.activePairIdx = (state.activePairIdx + 1) % 4;
+
+    var ang = getAnglesForPair(pairKey);
+    var oc = Core.samplePhotonPair(rho, ang.a, ang.b);
+
+    // 累加计数
+    state.counts[pairKey][oc.key]++;
+    state.counts[pairKey].total++;
+    state.totalPhotons++;
+
+    // 动画生成飞行的光子波包
+    var pId = Date.now() + Math.random();
+    state.flyingPhotons.push({
+      id: pId,
+      progress: 0.0, // 0.0 (发射中心) -> 1.0 (进入偏振器)
+      pairKey: pairKey,
+      outcome: oc,
+      angA: ang.a,
+      angB: ang.b
+    });
+
+    // 触发传感器指示灯闪烁
+    flashLeds(oc);
+    updateDashboard();
+  }
+
+  function flashLeds(oc) {
+    if (!dom.ledAPlus || !dom.ledAMinus || !dom.ledBPlus || !dom.ledBMinus) return;
+
+    dom.ledAPlus.className = 'led led-plus' + (oc.alice === 1 ? ' flash-plus' : '');
+    dom.ledAMinus.className = 'led led-minus' + (oc.alice === -1 ? ' flash-minus' : '');
+    dom.ledBPlus.className = 'led led-plus' + (oc.bob === 1 ? ' flash-plus' : '');
+    dom.ledBMinus.className = 'led led-minus' + (oc.bob === -1 ? ' flash-minus' : '');
+
+    setTimeout(function () {
+      if (dom.ledAPlus) dom.ledAPlus.className = 'led led-plus';
+      if (dom.ledAMinus) dom.ledAMinus.className = 'led led-minus';
+      if (dom.ledBPlus) dom.ledBPlus.className = 'led led-plus';
+      if (dom.ledBMinus) dom.ledBMinus.className = 'led led-minus';
+    }, 180);
+  }
+
+  // 10000 发瞬时激发快速收敛
+  function runBurstAccumulation() {
+    var rho = getActiveDensityMatrix();
+    var sim = Core.simulatePhotonRun(rho, state.a1, state.a2, state.b1, state.b2, 2500);
+    
+    state.pairKeys.forEach(function (pk) {
+      var res = sim.pairs[pk];
+      state.counts[pk].pp += res.counts.pp;
+      state.counts[pk].pm += res.counts.pm;
+      state.counts[pk].mp += res.counts.mp;
+      state.counts[pk].mm += res.counts.mm;
+      state.counts[pk].total += res.total;
+    });
+    state.totalPhotons += sim.totalShots;
+    updateDashboard();
+  }
+
+  function resetCounts() {
+    state.pairKeys.forEach(function (pk) {
+      state.counts[pk] = { pp: 0, pm: 0, mp: 0, mm: 0, total: 0 };
+    });
+    state.totalPhotons = 0;
+    updateDashboard();
+  }
+
+  // --------------------------------------------------------------------------
+  // Canvas 1: 空间光学实验台绘制
+  // --------------------------------------------------------------------------
+  function renderBench(ctx, width, height) {
+    ctx.clearRect(0, 0, width, height);
+
+    var cx = width / 2;
+    var cy = height / 2;
+
+    // 1. 光学导轨基座背景
+    ctx.fillStyle = '#0a0d18';
+    ctx.fillRect(0, 0, width, height);
+
+    // 导轨金属线条
+    ctx.strokeStyle = '#1b233d';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(40, cy);
+    ctx.lineTo(width - 40, cy);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#151c30';
+    ctx.lineWidth = 1;
+    for (var x = 50; x < width - 50; x += 30) {
+      ctx.beginPath();
+      ctx.moveTo(x, cy - 8);
+      ctx.lineTo(x, cy + 8);
+      ctx.stroke();
+    }
+
+    // 2. 中央纠缠光源 SPDC (BBO 非线性晶体)
+    var gradSpdc = ctx.createRadialGradient(cx, cy, 2, cx, cy, 32);
+    gradSpdc.addColorStop(0, '#ffffff');
+    gradSpdc.addColorStop(0.3, '#ffd166');
+    gradSpdc.addColorStop(0.7, 'rgba(255, 209, 102, 0.2)');
+    gradSpdc.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradSpdc;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 32, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 晶体方块
+    ctx.fillStyle = '#221a38';
+    ctx.strokeStyle = '#ffd166';
+    ctx.lineWidth = 2;
+    ctx.fillRect(cx - 16, cy - 24, 32, 48);
+    ctx.strokeRect(cx - 16, cy - 24, 32, 48);
+
+    ctx.fillStyle = '#ffd166';
+    ctx.font = '11px ' + 'sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('SPDC 晶体', cx, cy - 32);
+    ctx.fillText('|Ψ⟩ 源', cx, cy + 38);
+
+    // 3. Alice 偏振分析仪 (左侧)
+    var aliceX = width * 0.22;
+    var currentAngleA = state.pairKeys[state.activePairIdx][0] === '1' ? state.a1 : state.a2;
+    drawPolarizerStation(ctx, aliceX, cy, currentAngleA, 'Alice 分析仪', '#00f0ff', -1);
+
+    // 4. Bob 偏振分析仪 (右侧)
+    var bobX = width * 0.78;
+    var currentAngleB = state.pairKeys[state.activePairIdx][1] === '1' ? state.b1 : state.b2;
+    drawPolarizerStation(ctx, bobX, cy, currentAngleB, 'Bob 分析仪', '#bd00ff', 1);
+
+    // 5. 飞行的单光子波包动画
+    for (var i = state.flyingPhotons.length - 1; i >= 0; i--) {
+      var p = state.flyingPhotons[i];
+      p.progress += 0.035;
+
+      // 向左飞向 Alice
+      var photonAliceX = cx - (cx - aliceX) * p.progress;
+      // 向右飞向 Bob
+      var photonBobX = cx + (bobX - cx) * p.progress;
+
+      // 绘制双子波包
+      drawPhotonWavepacket(ctx, photonAliceX, cy, '#00f0ff', p.angA);
+      drawPhotonWavepacket(ctx, photonBobX, cy, '#bd00ff', p.angB);
+
+      // 到达偏振分束器后消亡
+      if (p.progress >= 1.0) {
+        state.flyingPhotons.splice(i, 1);
+      }
+    }
+  }
+
+  function drawPolarizerStation(ctx, x, y, angleDeg, title, colorHex, dir) {
+    var radius = 48;
+
+    // 外圈刻度盘
+    ctx.save();
+    ctx.translate(x, y);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(18, 24, 42, 0.85)';
+    ctx.fill();
+    ctx.strokeStyle = '#2a3454';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 刻度线
+    for (var a = 0; a < 360; a += 15) {
+      var rad = (a * Math.PI) / 180;
+      var len = a % 45 === 0 ? 8 : 4;
+      var x1 = Math.cos(rad) * (radius - len);
+      var y1 = Math.sin(rad) * (radius - len);
+      var x2 = Math.cos(rad) * radius;
+      var y2 = Math.sin(rad) * radius;
+      ctx.strokeStyle = a % 45 === 0 ? colorHex : '#404c72';
+      ctx.lineWidth = a % 45 === 0 ? 2 : 1;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+
+    // 偏振透光轴指针 (转角 angleDeg)
+    var polRad = (angleDeg * Math.PI) / 180;
+    ctx.strokeStyle = colorHex;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-Math.cos(polRad) * (radius - 10), -Math.sin(polRad) * (radius - 10));
+    ctx.lineTo(Math.cos(polRad) * (radius - 10), Math.sin(polRad) * (radius - 10));
+    ctx.stroke();
+
+    // 轴心枢纽
+    ctx.fillStyle = colorHex;
+    ctx.beginPath();
+    ctx.arc(0, 0, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // 标签与数值
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(title, x, y - radius - 14);
+
+    ctx.fillStyle = colorHex;
+    ctx.font = 'bold 13px monospace';
+    ctx.fillText(angleDeg.toFixed(1) + '°', x, y + radius + 20);
+
+    // 偏振分束器 (PBS) 出射二极管指示端
+    var outX1 = x + dir * 65;
+    var outY_H = y - 28;
+    var outY_V = y + 28;
+
+    ctx.strokeStyle = '#2d3758';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + dir * radius, y);
+    ctx.lineTo(outX1, outY_H);
+    ctx.moveTo(x + dir * radius, y);
+    ctx.lineTo(outX1, outY_V);
+    ctx.stroke();
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '10px monospace';
+    ctx.fillText('D(+)', outX1 + dir * 18, outY_H + 3);
+    ctx.fillText('D(−)', outX1 + dir * 18, outY_V + 3);
+  }
+
+  function drawPhotonWavepacket(ctx, x, y, colorHex, angleDeg) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    var rad = (angleDeg * Math.PI) / 180;
+    // 偏振电矢量震荡
+    var amp = 10;
+    ctx.strokeStyle = colorHex;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-Math.sin(rad) * amp, Math.cos(rad) * amp);
+    ctx.lineTo(Math.sin(rad) * amp, -Math.cos(rad) * amp);
+    ctx.stroke();
+
+    // 光子中心发光晕
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // --------------------------------------------------------------------------
+  // Canvas 2: 态空间与密度矩阵断层图 / CHSH 曲线绘制
+  // --------------------------------------------------------------------------
+  function renderStateView(ctx, width, height) {
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.fillStyle = '#080b15';
+    ctx.fillRect(0, 0, width, height);
+
+    if (state.currentView === 'tomo') {
+      renderDensityMatrix3D(ctx, width, height);
+    } else {
+      renderCorrelationCurve(ctx, width, height);
+    }
+  }
+
+  // 3D 轴测复密度矩阵柱状图 (Isometric Bar Chart)
+  function renderDensityMatrix3D(ctx, width, height) {
+    var rho = getActiveDensityMatrix();
+
+    var originX = width / 2;
+    var originY = height * 0.72;
+
+    var stepU = 38; // 轴测 U 轴向量分量 (行)
+    var stepV = 22;
+    var basisNames = ['|00⟩', '|01⟩', '|10⟩', '|11⟩'];
+
+    // 绘制基底网格底面
+    ctx.strokeStyle = '#1b243e';
+    ctx.lineWidth = 1;
+    for (var i = 0; i <= 4; i++) {
+      var p1 = isoProj(i, 0, 0, originX, originY, stepU, stepV);
+      var p2 = isoProj(i, 4, 0, originX, originY, stepU, stepV);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+
+      var q1 = isoProj(0, i, 0, originX, originY, stepU, stepV);
+      var q2 = isoProj(4, i, 0, originX, originY, stepU, stepV);
+      ctx.beginPath();
+      ctx.moveTo(q1.x, q1.y);
+      ctx.lineTo(q2.x, q2.y);
+      ctx.stroke();
+    }
+
+    // 基底标签
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'center';
+    for (var b = 0; b < 4; b++) {
+      var ptLabelX = isoProj(b + 0.5, 4.3, 0, originX, originY, stepU, stepV);
+      ctx.fillText(basisNames[b], ptLabelX.x, ptLabelX.y);
+
+      var ptLabelY = isoProj(-0.5, b + 0.5, 0, originX, originY, stepU, stepV);
+      ctx.fillText(basisNames[b], ptLabelY.x, ptLabelY.y);
+    }
+
+    // 从后往前绘制 16 根立体密度矩阵柱
+    var maxH = 140; // 当 Re=0.5 时的柱高度
+    for (var r = 0; r < 4; r++) {
+      for (var c = 0; c < 4; c++) {
+        var val = rho[r][c];
+        var re = val.re;
+        var im = val.im;
+        var barHeight = re * maxH * 2.0;
+
+        drawIsoBar(ctx, r, c, barHeight, re, im, originX, originY, stepU, stepV);
+      }
+    }
+
+    // 标题标注
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('4×4 复密度矩阵断层图 (ρ = ∑ p_k |ψ_k⟩⟨ψ_k|)', 20, 28);
+  }
+
+  function isoProj(u, v, h, ox, oy, su, sv) {
+    // 简单等轴测坐标投影
+    var x = ox + (v - u) * su;
+    var y = oy + (u + v) * sv - h;
+    return { x: x, y: y };
+  }
+
+  function drawIsoBar(ctx, u, v, h, re, im, ox, oy, su, sv) {
+    var size = 0.72;
+    var margin = (1.0 - size) / 2.0;
+
+    var u0 = u + margin;
+    var u1 = u0 + size;
+    var v0 = v + margin;
+    var v1 = v0 + size;
+
+    var isNeg = re < -0.001;
+    var absH = Math.max(2, Math.abs(h));
+    var baseH = isNeg ? -absH : 0;
+    var topH = isNeg ? 0 : absH;
+
+    // 色彩映射：实部正 (青)，实部负 (绯红)，若有明显虚部则融入紫光
+    var topColor = isNeg ? '#ff3366' : '#00f0ff';
+    var leftColor = isNeg ? '#bd1e47' : '#00b4cc';
+    var rightColor = isNeg ? '#8a1130' : '#007a8a';
+
+    if (Math.abs(im) > 0.05) {
+      topColor = '#bd00ff';
+    }
+
+    // 柱顶 4 点
+    var t0 = isoProj(u0, v0, topH, ox, oy, su, sv);
+    var t1 = isoProj(u1, v0, topH, ox, oy, su, sv);
+    var t2 = isoProj(u1, v1, topH, ox, oy, su, sv);
+    var t3 = isoProj(u0, v1, topH, ox, oy, su, sv);
+
+    // 柱底 4 点
+    var b0 = isoProj(u0, v0, baseH, ox, oy, su, sv);
+    var b1 = isoProj(u1, v0, baseH, ox, oy, su, sv);
+    var b2 = isoProj(u1, v1, baseH, ox, oy, su, sv);
+    var b3 = isoProj(u0, v1, baseH, ox, oy, su, sv);
+
+    // 顶面
+    ctx.fillStyle = topColor;
+    ctx.beginPath();
+    ctx.moveTo(t0.x, t0.y);
+    ctx.lineTo(t1.x, t1.y);
+    ctx.lineTo(t2.x, t2.y);
+    ctx.lineTo(t3.x, t3.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // 右侧面 (u1, v0 -> u1, v1)
+    ctx.fillStyle = rightColor;
+    ctx.beginPath();
+    ctx.moveTo(t1.x, t1.y);
+    ctx.lineTo(t2.x, t2.y);
+    ctx.lineTo(b2.x, b2.y);
+    ctx.lineTo(b1.x, b1.y);
+    ctx.closePath();
+    ctx.fill();
+
+    // 前侧面 (u0, v1 -> u1, v1)
+    ctx.fillStyle = leftColor;
+    ctx.beginPath();
+    ctx.moveTo(t3.x, t3.y);
+    ctx.lineTo(t2.x, t2.y);
+    ctx.lineTo(b2.x, b2.y);
+    ctx.lineTo(b3.x, b3.y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // CHSH 关联曲线 E(θ) 绘制
+  function renderCorrelationCurve(ctx, width, height) {
+    var rho = getActiveDensityMatrix();
+    var pts = Core.computeCorrelationCurve(rho, 120);
+
+    var padX = 60;
+    var padY = 50;
+    var plotW = width - padX * 2;
+    var plotH = height - padY * 2;
+    var midY = padY + plotH / 2;
+
+    // 坐标系网格与轴
+    ctx.strokeStyle = '#1b243e';
+    ctx.lineWidth = 1;
+
+    // E = +1, 0, -1 水平线
+    var yPlus1 = padY;
+    var yMinus1 = padY + plotH;
+
+    ctx.beginPath();
+    ctx.moveTo(padX, yPlus1);
+    ctx.lineTo(padX + plotW, yPlus1);
+    ctx.moveTo(padX, midY);
+    ctx.lineTo(padX + plotW, midY);
+    ctx.moveTo(padX, yMinus1);
+    ctx.lineTo(padX + plotW, yMinus1);
+    ctx.stroke();
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('E = +1.0', padX - 8, yPlus1 + 4);
+    ctx.fillText('E =  0.0', padX - 8, midY + 4);
+    ctx.fillText('E = -1.0', padX - 8, yMinus1 + 4);
+
+    // X 轴角度刻度
+    var angles = [0, 45, 90, 135, 180];
+    ctx.textAlign = 'center';
+    angles.forEach(function (deg) {
+      var x = padX + (deg / 180.0) * plotW;
+      ctx.beginPath();
+      ctx.moveTo(x, midY - 4);
+      ctx.lineTo(x, midY + 4);
+      ctx.stroke();
+      ctx.fillText(deg + '°', x, yMinus1 + 18);
+    });
+
+    // 经典局域实在论上限包络 (三角波锯齿线)
+    ctx.strokeStyle = 'rgba(255, 51, 102, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    for (var d = 0; d <= 180; d += 2) {
+      var x = padX + (d / 180.0) * plotW;
+      // 贝尔经典定域界: -1 + (4*d)/180 (在 0~90° 之间线性递增)
+      var eClassic = d <= 90 ? (-1.0 + (2.0 * d) / 90.0) : (1.0 - (2.0 * (d - 90)) / 90.0);
+      var y = midY - eClassic * (plotH / 2);
+      if (d === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 量子力学理论平滑曲线 E(θ)
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    pts.forEach(function (pt, idx) {
+      var x = padX + (pt.deltaDeg / 180.0) * plotW;
+      var y = midY - pt.correlation * (plotH / 2);
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // 标记当前 4 个测量角对的采样点
+    var markAngles = [
+      { key: '11', a: state.a1, b: state.b1, color: '#ffd166' },
+      { key: '12', a: state.a1, b: state.b2, color: '#00e676' },
+      { key: '21', a: state.a2, b: state.b1, color: '#ff3366' },
+      { key: '22', a: state.a2, b: state.b2, color: '#bd00ff' }
+    ];
+
+    markAngles.forEach(function (ma) {
+      var delta = Math.abs(ma.a - ma.b) % 180;
+      var pr = Core.computeJointProbabilities(rho, ma.a, ma.b);
+      var mx = padX + (delta / 180.0) * plotW;
+      var my = midY - pr.correlation * (plotH / 2);
+
+      ctx.fillStyle = ma.color;
+      ctx.beginPath();
+      ctx.arc(mx, my, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.font = '10px monospace';
+      ctx.fillText(ma.key, mx, my - 10);
+    });
+
+    // 图例
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('关联曲线 E(Δθ) —— 青色：量子力学余弦曲线 | 虚线：局域隐变量模型界限', padX, 28);
+  }
+
+  // --------------------------------------------------------------------------
+  // 事件监听与交互绑定
+  // --------------------------------------------------------------------------
+  function bindEvents() {
+    // 态选择器
+    dom.stateBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        dom.stateBtns.forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        state.stateKey = btn.getAttribute('data-state');
+
+        if (dom.rowWernerP) {
+          dom.rowWernerP.style.display = (state.stateKey === 'werner') ? 'flex' : 'none';
+        }
+        updateDashboard();
+      });
+    });
+
+    // Werner 纠缠纯度 p 滑块
+    if (dom.sliderP) {
+      dom.sliderP.addEventListener('input', function (e) {
+        state.p = parseFloat(e.target.value);
+        if (dom.valP) dom.valP.textContent = state.p.toFixed(2);
+        updateDashboard();
+      });
+    }
+
+    // 退相干阻尼 gamma 滑块
+    if (dom.sliderDephase) {
+      dom.sliderDephase.addEventListener('input', function (e) {
+        state.dephase = parseFloat(e.target.value);
+        if (dom.valDephase) dom.valDephase.textContent = state.dephase.toFixed(2);
+        updateDashboard();
+      });
+    }
+
+    // 四角测角滑块
+    function setupAngleSlider(slider, label, stateKey) {
+      if (!slider) return;
+      slider.addEventListener('input', function (e) {
+        var v = parseFloat(e.target.value);
+        state[stateKey] = v;
+        if (label) label.textContent = v.toFixed(1) + '°';
+        updateDashboard();
+      });
+    }
+
+    setupAngleSlider(dom.sliderA1, dom.valA1, 'a1');
+    setupAngleSlider(dom.sliderA2, dom.valA2, 'a2');
+    setupAngleSlider(dom.sliderB1, dom.valB1, 'b1');
+    setupAngleSlider(dom.sliderB2, dom.valB2, 'b2');
+
+    // 测角预设
+    if (dom.btnPresetOptimal) {
+      dom.btnPresetOptimal.addEventListener('click', function () {
+        setAngles(0, 45, 22.5, 67.5);
+      });
+    }
+    if (dom.btnPresetParallel) {
+      dom.btnPresetParallel.addEventListener('click', function () {
+        setAngles(0, 90, 0, 90);
+      });
+    }
+    if (dom.btnPresetDecoupled) {
+      dom.btnPresetDecoupled.addEventListener('click', function () {
+        setAngles(0, 45, 0, 45);
+      });
+    }
+
+    function setAngles(a1, a2, b1, b2) {
+      state.a1 = a1; state.a2 = a2; state.b1 = b1; state.b2 = b2;
+      if (dom.sliderA1) dom.sliderA1.value = a1;
+      if (dom.valA1) dom.valA1.textContent = a1.toFixed(1) + '°';
+      if (dom.sliderA2) dom.sliderA2.value = a2;
+      if (dom.valA2) dom.valA2.textContent = a2.toFixed(1) + '°';
+      if (dom.sliderB1) dom.sliderB1.value = b1;
+      if (dom.valB1) dom.valB1.textContent = b1.toFixed(1) + '°';
+      if (dom.sliderB2) dom.sliderB2.value = b2;
+      if (dom.valB2) dom.valB2.textContent = b2.toFixed(1) + '°';
+      updateDashboard();
+    }
+
+    // 视窗 B 标签页切换
+    if (dom.tabTomography) {
+      dom.tabTomography.addEventListener('click', function () {
+        state.currentView = 'tomo';
+        dom.tabTomography.classList.add('active');
+        if (dom.tabCurve) dom.tabCurve.classList.remove('active');
+        if (dom.stateLegend) dom.stateLegend.style.display = 'flex';
+      });
+    }
+    if (dom.tabCurve) {
+      dom.tabCurve.addEventListener('click', function () {
+        state.currentView = 'curve';
+        dom.tabCurve.classList.add('active');
+        if (dom.tabTomography) dom.tabTomography.classList.remove('active');
+        if (dom.stateLegend) dom.stateLegend.style.display = 'none';
+      });
+    }
+
+    // 单光子激发动作
+    if (dom.btnFireSingle) {
+      dom.btnFireSingle.addEventListener('click', function () {
+        firePhotonPair();
+      });
+    }
+
+    // 连续脉冲流切换
+    if (dom.btnStreamToggle) {
+      dom.btnStreamToggle.addEventListener('click', function () {
+        state.isStreaming = !state.isStreaming;
+        if (state.isStreaming) {
+          dom.btnStreamToggle.classList.add('active');
+          dom.btnStreamToggle.textContent = '⏸ 暂停连续流';
+          state.streamTimer = setInterval(firePhotonPair, 120);
+        } else {
+          dom.btnStreamToggle.classList.remove('active');
+          dom.btnStreamToggle.textContent = '▶ 连续脉冲流';
+          if (state.streamTimer) {
+            clearInterval(state.streamTimer);
+            state.streamTimer = null;
+          }
+        }
+        updateDashboard();
+      });
+    }
+
+    // 10,000 发爆发累积
+    if (dom.btnRunBurst) {
+      dom.btnRunBurst.addEventListener('click', function () {
+        runBurstAccumulation();
+      });
+    }
+
+    // 清空计数
+    if (dom.btnResetCounts) {
+      dom.btnResetCounts.addEventListener('click', function () {
+        resetCounts();
+      });
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 主渲染循环
+  // --------------------------------------------------------------------------
+  function startRenderLoop() {
+    var benchCtx = dom.benchCanvas ? dom.benchCanvas.getContext('2d') : null;
+    var stateCtx = dom.stateCanvas ? dom.stateCanvas.getContext('2d') : null;
+
+    function loop() {
+      if (benchCtx && dom.benchCanvas) {
+        renderBench(benchCtx, dom.benchCanvas.width, dom.benchCanvas.height);
+      }
+      if (stateCtx && dom.stateCanvas) {
+        renderStateView(stateCtx, dom.stateCanvas.width, dom.stateCanvas.height);
+      }
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  // --------------------------------------------------------------------------
+  // 初始化引导
+  // --------------------------------------------------------------------------
+  function init() {
+    cacheDom();
+    bindEvents();
+    updateDashboard();
+    startRenderLoop();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,1955 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>无关的细节</title>
+<meta name="description" content="随机矩阵的普适谱 —— 一堆随机数摆成方阵，它的特征值总落回同一条半圆。">
+<style>
+/* ============================================================================
+ * rmt/style.css —— 《无关的细节》
+ * 浅色纸面。数字等宽，正文无衬线。
+ * ==========================================================================*/
+
+:root{
+  --bg:#f6f5f2;
+  --panel:#ffffff;
+  --ink:#1c1b19;
+  --ink2:#57534e;
+  --ink3:#8a8279;
+  --line:#ded9d0;
+  --line2:#efece6;
+  --maj:#a23b1e;      /* 半圆律 / 主角 */
+  --b1:#1f6f8b;       /* β=1（GOE） */
+  --b2:#6b8e23;       /* β=2（GUE） */
+  --pois:#7c3aed;     /* Poisson / 无排斥 */
+  --mp:#b45309;       /* Marchenko–Pastur */
+  --tw:#0f766e;       /* Tracy–Widom */
+  --ok:#15803d;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:15px;line-height:1.62;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 20px 80px}
+
+/* ------------------------------------------------------------------ hero */
+.hero{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:20px}
+.hero h1{font-size:34px;line-height:1.2;margin:0 0 6px;letter-spacing:.02em}
+.hero .sub{font-size:15px;color:var(--ink2);margin:0 0 12px}
+.hero .lede{font-size:16px;line-height:1.75;margin:0;max-width:64ch}
+.hero .lede b{color:var(--maj)}
+.hero .stamp{margin-top:12px;font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+
+/* ------------------------------------------------------------------ tabs */
+.tabs{
+  display:flex;flex-wrap:wrap;gap:6px;
+  padding:10px 0 14px;margin-bottom:16px;border-bottom:1px solid var(--line);
+}
+.tabs button{
+  font-family:var(--sans);font-size:13px;line-height:1.2;
+  padding:8px 12px;min-height:44px;
+  background:var(--panel);color:var(--ink2);
+  border:1px solid var(--line);border-radius:6px;cursor:pointer;
+  white-space:nowrap;
+}
+.tabs button:hover{border-color:var(--ink3);color:var(--ink)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* ------------------------------------------------------------------ panel */
+.panel{display:none}
+.panel.on{display:block}
+.panel h2{font-size:21px;margin:26px 0 4px;letter-spacing:.01em}
+.panel h2:first-child{margin-top:4px}
+.panel h3{font-size:15px;margin:22px 0 6px;color:var(--ink)}
+.panel p{margin:8px 0;max-width:70ch}
+.panel .note{font-size:13.5px;color:var(--ink2)}
+.panel code{font-family:var(--mono);font-size:13px;background:var(--line2);padding:1px 4px;border-radius:3px}
+.sec-no{
+  display:inline-block;font-family:var(--mono);font-size:12px;color:var(--maj);
+  border:1px solid var(--maj);border-radius:3px;padding:0 5px;margin-right:8px;vertical-align:2px;
+}
+
+/* ------------------------------------------------------------------ grid */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:14px 0}
+.grid2>div{min-width:0}
+
+/* ------------------------------------------------------------------ bench */
+.bench{
+  display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:20px;
+  align-items:start;margin:16px 0;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;
+}
+.bench>div{min-width:0}
+.ctrls{display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;flex-direction:column;gap:4px}
+.ctrl label{font-size:12.5px;color:var(--ink2)}
+.ctrl .val{font-family:var(--mono);font-size:13px;color:var(--ink)}
+input[type="range"]{width:100%;min-height:44px;accent-color:var(--maj)}
+select{
+  font-family:var(--sans);font-size:13.5px;padding:7px 8px;min-height:44px;
+  border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink);
+}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.btnrow button{
+  font-family:var(--sans);font-size:13px;padding:9px 11px;min-height:44px;
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--ink2);
+}
+.btnrow button:hover{border-color:var(--maj);color:var(--maj)}
+
+/* ------------------------------------------------------------------ readout */
+.ro{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;
+  font-family:var(--mono);font-size:12.5px;color:var(--ink2);
+  background:var(--line2);border-radius:6px;padding:10px 12px;margin-top:4px;
+}
+.ro span{display:block}
+.ro b{color:var(--ink);font-weight:600}
+.ro .k{color:var(--ink3);margin-right:6px}
+.ro .maj b{color:var(--maj)}
+.ro .dic b{color:var(--dic)}
+.ro .par b{color:var(--par)}
+
+/* ------------------------------------------------------------------ chart */
+.chart{margin:10px 0 4px}
+.chart svg{display:block}
+.legend-html{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--ink2);margin:6px 0 2px}
+.legend-html i{display:inline-block;width:16px;height:3px;border-radius:2px;vertical-align:3px;margin-right:5px}
+.legend-html i.sq{height:10px;width:10px;border-radius:2px;vertical-align:1px}
+.bar-fill{display:block}
+
+/* ------------------------------------------------------------------ table */
+.tbl-wrap{max-width:100%;overflow-x:auto;margin:12px 0}
+table.dt{border-collapse:collapse;width:100%;font-size:13px}
+table.dt th,table.dt td{
+  padding:6px 10px;border-bottom:1px solid var(--line);text-align:right;
+  white-space:nowrap;font-family:var(--mono);font-size:12.5px;
+}
+table.dt th{color:var(--ink2);font-weight:600;border-bottom:1.5px solid var(--ink3);font-family:var(--sans);font-size:12.5px}
+table.dt td:first-child,table.dt th:first-child{text-align:left}
+table.dt tr.hi td{background:#fdf3ee}
+table.dt.wrapok td{white-space:normal;overflow-wrap:break-word}
+table.dt.wrapok td:first-child{font-family:var(--sans);font-size:13px}
+table.dt caption{caption-side:top;text-align:left;font-size:12.5px;color:var(--ink3);padding-bottom:6px}
+
+/* ------------------------------------------------------------------ kpi */
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.kpis>div{min-width:0}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:13px 14px}
+.kpi .lab{font-size:12.5px;color:var(--ink2);margin-bottom:4px}
+.kpi .val{font-family:var(--mono);font-size:20px;color:var(--maj);line-height:1.25;word-break:break-word}
+.kpi .unit{font-size:11.5px;color:var(--ink3);margin-top:3px}
+.kpi .note{font-size:12px;color:var(--ink2);margin-top:7px;line-height:1.55}
+
+/* ------------------------------------------------------------------ lists */
+ol.clist,ol.blist{margin:8px 0;padding-left:22px}
+ol.clist li,ol.blist li{margin:7px 0;max-width:74ch;line-height:1.66}
+ol.blist li{color:var(--ink2);font-size:14px}
+
+/* ------------------------------------------------------------------ tail */
+.tail{margin-top:36px;border-top:2px solid var(--ink);padding-top:6px}
+.tail h2{font-size:20px;margin:26px 0 6px}
+
+/* ------------------------------------------------------------------ narrow */
+@media (max-width:640px){
+  .wrap{padding:16px 13px 60px}
+  .hero h1{font-size:25px}
+  .hero .lede{font-size:14.5px}
+  .bench{grid-template-columns:minmax(0,1fr)}
+  .grid2{grid-template-columns:minmax(0,1fr)}
+  .kpis{grid-template-columns:minmax(0,1fr)}
+  .tabs button{font-size:12.5px;padding:9px 10px;min-height:44px}
+  .ro{grid-template-columns:minmax(0,1fr)}
+  table.dt th,table.dt td{padding:6px 8px;font-size:11.5px}
+  table.dt{white-space:normal}
+  table.dt td,table.dt th{white-space:normal;overflow-wrap:anywhere}
+  table.dt.num td,table.dt.num th{white-space:nowrap}
+  .btnrow button{min-height:44px}
+  select{min-height:44px}
+  input[type="range"]{min-height:44px}
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>无关的细节</h1>
+    <p class="sub">随机矩阵的普适谱 · 一堆随机数摆成方阵之后，它的特征值长什么样</p>
+    <p class="lede">把 N×N 个互不相干的随机数摆成一个方阵，再整体除以 √N，然后求它的特征值。
+      这些特征值的分布（经验谱分布）随着 N 增大收敛到<b>同一条半圆</b>——
+      不管那些随机数本身是正态、均匀、只取 ±1，还是指数。更奇怪的是，
+      连相邻特征值之间的"距离"分布也是固定的：它们像互相躲开一样，
+      小间距出现的概率被压得极低。<b>输入里最随机的那些细节，输出里一点都留不下。</b>
+      这件装置要量的是：这个"无关"有多强、有多快、以及它在哪儿失效。</p>
+    <p class="stamp" id="stamp"></p>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <div class="kpis" id="kpis"></div>
+
+  <!-- ============================================================ 壹 · 谱 -->
+  <section class="panel" id="p-one">
+    <h2><span class="sec-no">壹</span>谱</h2>
+    <p class="note">右上是"再造一个矩阵"的开关：换阶数 N、换系综 β（实对称 β=1 / 复 Hermite β=2）、
+      换取数分布。左边那张图是<b>这一次</b>抽到的谱：横轴是特征值，纵轴是密度，
+      红线是半圆律 ρ(x) = √(4−x²)/(2π)。N 越大，直方图越贴那条红线。</p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-spec"></div>
+        <div class="legend-html" id="lg-spec">
+          <span><i class="sq" style="background:#a23b1e"></i>本次抽样的谱（直方图）</span>
+          <span><i style="background:#1c1b19"></i>半圆律 ρ(x)</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="spec-n">矩阵阶数 N</label>
+          <input type="range" id="spec-n" min="32" max="256" step="16" value="128">
+          <span class="val" id="spec-n-val">N = 128</span>
+        </div>
+        <div class="ctrl">
+          <label for="spec-beta">系综</label>
+          <select id="spec-beta"></select>
+        </div>
+        <div class="ctrl">
+          <label for="spec-dist">取数分布</label>
+          <select id="spec-dist"></select>
+        </div>
+        <div class="btnrow">
+          <button type="button" id="spec-redraw">再抽一个</button>
+          <button type="button" id="spec-reset">回到 N=128</button>
+        </div>
+        <div class="ro" id="ro-spec"></div>
+      </div>
+    </div>
+    <p class="note">右下角读数是<b>这一次抽样</b>的：KS 是经验谱分布到半圆 CDF 的 Kolmogorov 距离；
+      m₂/m₄/m₆ 是经验谱的矩。单次抽样的读数会抖 —— 要看清"收敛"得看第贰节的均值。</p>
+  </section>
+
+  <!-- ============================================================ 贰 · 矩 -->
+  <section class="panel" id="p-two">
+    <h2><span class="sec-no">贰</span>矩</h2>
+    <p class="note">半圆律的偶阶矩精确等于 Catalan 数：m₂=1、m₄=2、m₆=5、m₈=14、m₁₀=42、m₁₂=132。
+      这不是巧合，是 Wigner 矩方法的骨架 —— 也正是"半圆律"这个命题的证明路线。
+      图上画的是<b>相对差</b> |实测 − Catalan| / Catalan（纵轴对数）。</p>
+    <div class="chart" id="c-mom"></div>
+    <div class="legend-html" id="lg-mom">
+      <span><i style="background:#1f6f8b"></i>N = 16</span>
+      <span><i style="background:#6b8e23"></i>N = 64</span>
+      <span><i style="background:#a23b1e"></i>N = 256</span>
+    </div>
+    <p class="note">每条线都在往下走，而且越靠右（阶数越高）走得越慢 —— 高阶矩收敛得更慢，
+      因为它的涨落被最大的那几个特征值支配。</p>
+    <div class="tbl-wrap"><table class="dt num" id="t-mom"></table></div>
+  </section>
+
+  <!-- ============================================================ 叁 · 间距 -->
+  <section class="panel" id="p-three">
+    <h2><span class="sec-no">叁</span>间距</h2>
+    <p class="note">把谱按半圆 CDF 展开（让平均间距归一到 1），再看相邻特征值的间距分布。
+      这是本页最直观的一节：<b>特征值互相躲开</b>。选"对角矩阵"这一档看对照 ——
+      那里的特征值就是对角元，互不相干，间距立刻变成指数分布。</p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-gap"></div>
+        <div class="legend-html" id="lg-gap">
+          <span><i class="sq" style="background:#1f6f8b"></i>展开后的间距（直方图）</span>
+          <span><i style="background:#a23b1e"></i>Wigner 猜测 P<sub>β</sub>(s)</span>
+          <span><i style="background:#7c3aed"></i>Poisson（无排斥）</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="gap-case">谱来自</label>
+          <select id="gap-case"></select>
+        </div>
+        <div class="ro" id="ro-gap"></div>
+      </div>
+    </div>
+    <div class="chart" id="c-repel"></div>
+    <p class="note">上图是"间距小于 0.1 的概率"：实测（左柱）与理论（右柱）。β=1 的理论值 0.0078、
+      β=2 是 0.0011，而对角矩阵（无排斥）是 0.0952 —— 相差一个数量级。
+      Wigner 猜测在 s→0 时按 s<sup>β</sup> 趋零，这就是"能级排斥"的全部内容。</p>
+    <div class="tbl-wrap"><table class="dt num" id="t-gap"></table></div>
+  </section>
+
+  <!-- ============================================================ 肆 · 边缘 -->
+  <section class="panel" id="p-four">
+    <h2><span class="sec-no">肆</span>边缘</h2>
+    <p class="note">最大的那个特征值 λ_max 也在按剧本走：它爬向半圆的右边缘 2，
+      而围绕 2 的涨落按 N<sup>−2/3</sup> 收缩 —— 比"平均"的 N<sup>−1/2</sup> 更慢，
+      所以边缘比体部难看清。缩放后的涨落形状是 Tracy–Widom 分布。</p>
+    <div class="grid2">
+      <div>
+        <div class="chart" id="c-edge"></div>
+        <div class="legend-html" id="lg-edge">
+          <span><i style="background:#1f6f8b"></i>β=1 的 E[λ_max]</span>
+          <span><i style="background:#6b8e23"></i>β=2 的 E[λ_max]</span>
+          <span><i style="background:#b45309"></i>半圆边缘 λ = 2</span>
+        </div>
+      </div>
+      <div>
+        <div class="chart" id="c-tw"></div>
+        <div class="legend-html" id="lg-tw">
+          <span><i style="background:#1f6f8b"></i>N = 64</span>
+          <span><i style="background:#6b8e23"></i>N = 128</span>
+          <span><i style="background:#a23b1e"></i>N = 256</span>
+        </div>
+      </div>
+    </div>
+    <p class="note">右图是把 λ_max 按 N<sup>2/3</sup>(λ_max − 2) 缩放之后的分布：三个不同 N 的曲线
+      几乎叠在一起，这就是"数据塌缩"。叠在一起说明涨落尺度确实是 N<sup>−2/3</sup>；
+      形状本身则是 Tracy–Widom（本页只把均值与方差和已发表常数对照，没有独立重算它的分布函数）。</p>
+    <div class="tbl-wrap"><table class="dt num" id="t-tw"></table></div>
+  </section>
+
+  <!-- ============================================================ 伍 · 无关 -->
+  <section class="panel" id="p-five">
+    <h2><span class="sec-no">伍</span>无关</h2>
+    <p class="note">这一节是本页的主命题：<b>换掉取数分布，谱不变</b>。
+      五种分布的方差都被归一到 1（否则比较没有意义），然后各自生成 150 个独立矩阵。</p>
+    <div class="grid2">
+      <div>
+        <div class="chart" id="c-uni"></div>
+      </div>
+      <div>
+        <div class="chart" id="c-m4"></div>
+      </div>
+    </div>
+    <p class="note">左图：五种分布到半圆的 KS 距离，几乎一样（极差比只有 1.7，摘掉 t₃ 后 1.13）。
+      右图：同样的五种分布，第 4 阶矩 —— 重尾的 t₃ 一个人跑到几十，
+      而其余四种都贴着 Catalan 值 2（这四种之间的极差比只有 1.04）。
+      <b>同一个"无关"，在 KS 上成立，在 m₄ 上塌掉。</b>
+      而且塌的方式不是"偏大一点"：t₃ 的四阶矩发散，样本 m₄ 的<b>均值</b>被极少数实现整个抬走 ——
+      中位数只有 2.08（和正态一样），150 次实现里最大的一次却冲到 4022。
+      <b>读重尾数据的任何均值，先看一眼中位数。</b></p>
+    <div class="tbl-wrap"><table class="dt num" id="t-uni"></table></div>
+    <p class="note">两组"不收敛"的对照也放在这里：对角矩阵（特征值互不相干）到半圆的 KS
+      停在一个常数上；秩一矩阵 J/N 的特征值恰好是 {1, 0, …, 0}，它的 KS 距离在 N=32/128/512
+      上都精确等于 <b>0.5</b>。半圆律要的是"非对角元足够随机"，不是"矩阵里有很多随机数"。</p>
+  </section>
+
+  <!-- ============================================================ 陆 · 矩形与墙 -->
+  <section class="panel" id="p-six">
+    <h2><span class="sec-no">陆</span>矩形与墙</h2>
+    <p class="note">把方阵换成 M×N 的长条矩阵，取样本协方差 (1/N)·X·Xᵀ，谱就不再是半圆，
+      而是 Marchenko–Pastur 律 —— 同样是闭式，支撑是 [(1−√γ)², (1+√γ)²]（γ = M/N）。
+      换一个"矩阵的形状"，换一条完全不同的曲线，但"无关的细节"这一条依然成立。</p>
+    <div class="bench">
+      <div>
+        <div class="chart" id="c-mp"></div>
+        <div class="legend-html" id="lg-mp">
+          <span><i class="sq" style="background:#b45309"></i>样本协方差的谱（直方图）</span>
+          <span><i style="background:#1c1b19"></i>MP 律 ρ<sub>γ</sub>(x)</span>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl">
+          <label for="mp-gamma">长宽比 γ = M/N</label>
+          <select id="mp-gamma"></select>
+        </div>
+        <div class="ro" id="ro-mp"></div>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table class="dt num" id="t-mp"></table></div>
+
+    <h3>墙：看清这条曲线要花多少</h3>
+    <p class="note">全部谱都是用两份<b>从零写的</b>特征值算法算出来的：循环 Jacobi（稳健、慢）
+      与 Householder 三对角化 + 隐式 QL（快）。两条路走出来的特征值在 800 例随机对称矩阵上
+      最大相对差 <b>1.8×10⁻¹⁴</b>；还有第三条独立通道用 LU 求 det(A−λI)，把每个算出的特征值
+      代回特征多项式，残差 &lt; 10⁻¹¹。<b>两个实现同错才算对。</b></p>
+    <div class="tbl-wrap"><table class="dt num" id="t-cost"></table></div>
+  </section>
+
+  <!-- ============================================================ 结论 -->
+  <div class="tail">
+    <h2>结论</h2>
+    <ol class="clist" id="l-concl"></ol>
+
+    <h2>我没做到什么</h2>
+    <ol class="blist" id="l-bound"></ol>
+
+    <h2>验证表</h2>
+    <p class="note">每一条都是标定脚本或模型自检里真跑过的断言，不是文案。
+      模型自检另有 <b>91 项</b>（两套特征值算法对账 2000 例、LU 验根、半圆 CDF 对独立数值积分、
+      Catalan 对递推式、Wigner 猜测归一化、MP 的 CDF 对密度积分、PRNG 决定性等），全部在
+      <code>rmt/test.js</code> 里，跑一次约两秒。</p>
+    <div class="tbl-wrap"><table class="dt wrapok" id="t-verify"></table></div>
+  </div>
+
+</div>
+
+<script>/* ============================================================================
+ * rmt/core.js —— 《无关的细节》全部模型（UMD：Node 与浏览器共用同一份源码）
+ *
+ * 对象：**一个随机矩阵的谱**。
+ *
+ *   本库其它装置研究过过程 / 距离 / 结构 / 一条判决规则；
+ *   这一件研究的是「一堆随机数摆成一个方阵之后，它的特征值长什么样」，
+ *   而且这个形状跟那些随机数具体服从什么分布**无关**（普适性）。
+ *
+ * 装的东西：
+ *   1) 确定性 PRNG（splitmix32）+ Box–Muller；五套方差为 1 的取数分布
+ *   2) Wigner 系综 β=1（GOE，实对称）/ β=2（GUE，复 Hermite，走 2N×2N 实表示）
+ *      + 对角对照（无排斥的 Poisson 谱）
+ *   3) 两套结构完全不同的特征值算法：循环 Jacobi / Householder 三对角化 + 隐式 QL
+ *      + 一条独立的验根通道：LU 求 det(A − λI)
+ *   4) 半圆律（密度 / CDF）、Catalan 矩、Wigner 猜测（β=1,2）、Poisson
+ *   5) Marchenko–Pastur（样本协方差，γ ≤ 1）的密度与 CDF（θ 代换 + 复合 Simpson）
+ *   6) 展开（unfolding）、最近邻间距、KS 距离、Tracy–Widom 常数对照
+ *
+ * 记法约定（全文统一）：
+ *   W = S/√N，S 的**非对角元方差 1**（β=1 时对角元方差 2；β=2 时对角元方差 1）。
+ *   于是经验谱分布（ESD）弱收敛到支撑在 [−2, 2] 上的半圆，其二阶矩 → 1。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.RMTCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* =======================================================================
+   * 1 · 确定性随机
+   * =====================================================================*/
+  function splitmix32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 16), 0x21f0aaad) >>> 0;
+      t = Math.imul(t ^ (t >>> 15), 0x735a2d97) >>> 0;
+      return ((t ^ (t >>> 15)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* 字符串 → 32 位种子（让"具名实例"可复现：同一个名字永远同一批数） */
+  function seedFrom(str) {
+    var h = 2166136261 >>> 0, i;
+    str = String(str);
+    for (i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h >>> 0;
+  }
+
+  /* Box–Muller，缓存第二个数（保证"取一次数"就是取一个标准正态） */
+  function makeRng(seed) {
+    var u = splitmix32(seed), spare = null;
+    var api = {
+      uni: function () { return u(); },
+      /* 均匀，半开区间 [0,1) */
+      uniform: function (a, b) { return a + (b - a) * u(); },
+      norm: function () {
+        if (spare !== null) { var s0 = spare; spare = null; return s0; }
+        var u1, u2, r;
+        do { u1 = u(); } while (u1 <= 1e-15);
+        u2 = u();
+        r = Math.sqrt(-2 * Math.log(u1));
+        spare = r * Math.sin(2 * Math.PI * u2);
+        return r * Math.cos(2 * Math.PI * u2);
+      },
+      /* 指数，均值 1 */
+      expo: function () {
+        var u1;
+        do { u1 = u(); } while (u1 <= 1e-15);
+        return -Math.log(u1);
+      },
+      /* 自由度 k 的 t 分布（只用 Box–Muller 的平方比） */
+      studentT: function (k) {
+        var z = api.norm(), g = 0, i;
+        for (i = 0; i < k; i++) { var s1 = api.norm(); g += s1 * s1; }
+        return z / Math.sqrt(g / k);
+      }
+    };
+    return api;
+  }
+
+  /* 五套取数分布：**方差全部为 1**（普适性实验的公平前提） */
+  var DISTS = {
+    normal:     { id: 'normal',     name: '正态',        cn: 'N(0,1)',            fn: function (r) { return r.norm(); } },
+    uniform:    { id: 'uniform',    name: '均匀',        cn: 'U[−√3,√3]',         fn: function (r) { return r.uniform(-Math.sqrt(3), Math.sqrt(3)); } },
+    rademacher: { id: 'rademacher', name: '两值',        cn: '±1',                fn: function (r) { return r.uni() < 0.5 ? -1 : 1; } },
+    expo:       { id: 'expo',       name: '指数',        cn: 'Exp(1)−1',          fn: function (r) { return r.expo() - 1; } },
+    t3:         { id: 't3',         name: '重尾 t₃',     cn: 't₃/√3',             fn: function (r) { return r.studentT(3) / Math.sqrt(3); } }
+  };
+  var DIST_IDS = ['normal', 'uniform', 'rademacher', 'expo', 't3'];
+
+  /* =======================================================================
+   * 2 · 两套特征值算法（都是"从零写"，共享零行代码）
+   * =====================================================================*/
+
+  /* 2a · 循环 Jacobi：稳健、简单、二次收敛。
+   *      A 用行主序一维数组；返回 {values, vectors|null}（值已升序）。 */
+  function jacobiEigen(A, N, wantVectors) {
+    var a = new Float64Array(A);
+    var v = null, i, j, p, q, k;
+    if (wantVectors) {
+      v = new Float64Array(N * N);
+      for (i = 0; i < N; i++) v[i * N + i] = 1;
+    }
+    var maxSweep = 100;
+    for (var sweep = 0; sweep < maxSweep; sweep++) {
+      var off = 0;
+      for (p = 0; p < N; p++) for (q = p + 1; q < N; q++) off += a[p * N + q] * a[p * N + q];
+      if (off < 1e-26) break;
+      for (p = 0; p < N - 1; p++) {
+        for (q = p + 1; q < N; q++) {
+          var apq = a[p * N + q];
+          if (Math.abs(apq) < 1e-300) continue;
+          var app = a[p * N + p], aqq = a[q * N + q];
+          var theta = (aqq - app) / (2 * apq);
+          var t = (theta === 0) ? 1 : (theta > 0 ? 1 : -1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+          var c = 1 / Math.sqrt(t * t + 1), s = t * c;
+          /* A ← Jᵀ A J，两遍扫描（先列后行）即可，不必显式做矩阵乘 */
+          for (k = 0; k < N; k++) {
+            var akp = a[k * N + p], akq = a[k * N + q];
+            a[k * N + p] = c * akp - s * akq;
+            a[k * N + q] = s * akp + c * akq;
+          }
+          for (k = 0; k < N; k++) {
+            var apk = a[p * N + k], aqk = a[q * N + k];
+            a[p * N + k] = c * apk - s * aqk;
+            a[q * N + k] = s * apk + c * aqk;
+          }
+          if (v) {
+            for (k = 0; k < N; k++) {
+              var vkp = v[k * N + p], vkq = v[k * N + q];
+              v[k * N + p] = c * vkp - s * vkq;
+              v[k * N + q] = s * vkp + c * vkq;
+            }
+          }
+        }
+      }
+    }
+    var ev = new Float64Array(N);
+    for (i = 0; i < N; i++) ev[i] = a[i * N + i];
+    if (!v) return { values: sortAsc(ev), vectors: null };
+    /* 有特征向量时必须把列**跟着一起排**：只排值会让 λ_j 和 v_j 错位，
+     * 而"值对"的检查完全看不见这件事（A·v = λ·v 才抓得到）。 */
+    var idx = [], i0, k0;
+    for (i0 = 0; i0 < N; i0++) idx.push(i0);
+    idx.sort(function (x, y) { return ev[x] - ev[y]; });
+    var ev2 = new Float64Array(N), v2 = new Float64Array(N * N);
+    for (i0 = 0; i0 < N; i0++) {
+      ev2[i0] = ev[idx[i0]];
+      for (k0 = 0; k0 < N; k0++) v2[k0 * N + i0] = v[k0 * N + idx[i0]];
+    }
+    return { values: ev2, vectors: v2 };
+  }
+
+  /* 2b · Householder 三对角化（tred2）+ 隐式位移 QL（tql2）—— EISPACK 路线。
+   *      与 Jacobi 结构完全不同：先降成三对角，再用 QL 迭代。 */
+  function qlEigen(A, N) {
+    var a = new Float64Array(A);
+    var d = new Float64Array(N), e = new Float64Array(N);
+    var i, j, k, l, m, p, q, f, g, h, hh, r, s, c, scale, iter;
+
+    /* --- tred2：实对称 → 三对角 --- */
+    for (i = N - 1; i >= 1; i--) {
+      l = i - 1;
+      h = 0; scale = 0;
+      if (l > 0) {
+        for (k = 0; k <= l; k++) scale += Math.abs(a[i * N + k]);
+        if (scale === 0) {
+          e[i] = a[i * N + l];
+        } else {
+          for (k = 0; k <= l; k++) { a[i * N + k] /= scale; h += a[i * N + k] * a[i * N + k]; }
+          f = a[i * N + l];
+          g = f >= 0 ? -Math.sqrt(h) : Math.sqrt(h);
+          e[i] = scale * g;
+          h -= f * g;
+          a[i * N + l] = f - g;
+          f = 0;
+          for (j = 0; j <= l; j++) {
+            a[j * N + i] = a[i * N + j] / h;
+            g = 0;
+            for (k = 0; k <= j; k++) g += a[j * N + k] * a[i * N + k];
+            for (k = j + 1; k <= l; k++) g += a[k * N + j] * a[i * N + k];
+            e[j] = g / h;
+            f += e[j] * a[i * N + j];
+          }
+          hh = f / (h + h);
+          for (j = 0; j <= l; j++) {
+            f = a[i * N + j];
+            e[j] = g = e[j] - hh * f;
+            for (k = 0; k <= j; k++) a[j * N + k] -= (f * e[k] + g * a[i * N + k]);
+          }
+        }
+      } else {
+        e[i] = a[i * N + l];
+      }
+      d[i] = h;
+    }
+    d[0] = 0; e[0] = 0;
+    for (i = 0; i < N; i++) {
+      l = i - 1;
+      if (d[i]) {
+        for (j = 0; j <= l; j++) {
+          g = 0;
+          for (k = 0; k <= l; k++) g += a[i * N + k] * a[k * N + j];
+          for (k = 0; k <= l; k++) a[k * N + j] -= g * a[k * N + i];
+        }
+      }
+      d[i] = a[i * N + i];
+      a[i * N + i] = 1;
+      for (j = 0; j <= l; j++) { a[j * N + i] = 0; a[i * N + j] = 0; }
+    }
+
+    /* --- tql2：三对角 → 特征值（隐式位移） --- */
+    for (i = 1; i < N; i++) e[i - 1] = e[i];
+    e[N - 1] = 0;
+    for (l = 0; l < N; l++) {
+      iter = 0;
+      do {
+        for (m = l; m < N - 1; m++) {
+          var dd = Math.abs(d[m]) + Math.abs(d[m + 1]);
+          if (Math.abs(e[m]) <= 1e-15 * dd + 1e-300) break;
+        }
+        if (m !== l) {
+          if (iter++ > 60) throw new Error('qlEigen：第 ' + l + ' 个特征值不收敛');
+          g = (d[l + 1] - d[l]) / (2 * e[l]);
+          r = Math.hypot(g, 1);
+          g = d[m] - d[l] + e[l] / (g + (g >= 0 ? Math.abs(r) : -Math.abs(r)));
+          s = 1; c = 1; p = 0;
+          for (i = m - 1; i >= l; i--) {
+            f = s * e[i];
+            var b = c * e[i];
+            if (Math.abs(f) >= Math.abs(g)) {
+              c = g / f; r = Math.hypot(c, 1); e[i + 1] = f * r; s = 1 / r; c *= s;
+            } else {
+              s = f / g; r = Math.hypot(s, 1); e[i + 1] = g * r; c = 1 / r; s *= c;
+            }
+            g = d[i + 1] - p;
+            r = (d[i] - g) * s + 2 * c * b;
+            p = s * r;
+            d[i + 1] = g + p;
+            g = c * r - b;
+          }
+          d[l] -= p; e[l] = g; e[m] = 0;
+        }
+      } while (m !== l);
+    }
+    return sortAsc(d);
+  }
+
+  function eigenAll(A, N, method) {
+    if (method === 'ql') return { values: qlEigen(A, N) };
+    return jacobiEigen(A, N, false);
+  }
+
+  /* 2c · 独立验根通道：LU（部分主元）求 det(A − λI)，看它是不是 0 */
+  function detLU(A, N) {
+    var a = new Float64Array(A), det = 1, i, j, k;
+    for (i = 0; i < N; i++) {
+      var piv = i, mx = Math.abs(a[i * N + i]);
+      for (k = i + 1; k < N; k++) { var v = Math.abs(a[k * N + i]); if (v > mx) { mx = v; piv = k; } }
+      if (mx === 0) return 0;
+      if (piv !== i) {
+        for (j = 0; j < N; j++) { var tmp = a[i * N + j]; a[i * N + j] = a[piv * N + j]; a[piv * N + j] = tmp; }
+        det = -det;
+      }
+      var d = a[i * N + i];
+      det *= d;
+      for (k = i + 1; k < N; k++) {
+        var f = a[k * N + i] / d;
+        for (j = i; j < N; j++) a[k * N + j] -= f * a[i * N + j];
+      }
+    }
+    return det;
+  }
+  /* |det(A − λI)| / (尺度)，尺度取 (‖A‖_F + |λ|)^N —— 让"接近 0"可比 */
+  function charPolyResidual(A, N, lambda) {
+    var M = new Float64Array(N * N), i, nrm = 0;
+    for (i = 0; i < N * N; i++) { M[i] = A[i]; nrm += A[i] * A[i]; }
+    for (i = 0; i < N; i++) M[i * N + i] -= lambda;
+    nrm = Math.sqrt(nrm) + Math.abs(lambda);
+    var scale = Math.pow(Math.max(nrm, 1e-12), N);
+    return Math.abs(detLU(M, N)) / scale;
+  }
+
+  /* =======================================================================
+   * 3 · 系综：GOE(β=1) / GUE(β=2) / 对角对照
+   * =====================================================================*/
+
+  /* 造一个 N×N Wigner 矩阵（行主序）。
+   * β=1：实对称，S=(G+Gᵀ)/√2，非对角方差 1、对角方差 2；W = S/√N。
+   * β=2：复 Hermite。返回 2N×2N 的**实对称**表示 [[A,−B],[B,A]]（A=实部对称，B=虚部反对称），
+   *      其特征值 = 原矩阵特征值各出现两次 —— 于是复用同一套实对称求解器。
+   * 返回值：{ M, size, pick }  pick='even' 时取升序后偶数下标。 */
+  function wignerMatrix(N, beta, distId, seed) {
+    var dist = (DISTS[distId] || DISTS.normal).fn;
+    var rng = makeRng(seed >>> 0);
+    var i, j, v;
+    if (beta === 1) {
+      var S = new Float64Array(N * N);
+      var sc = 1 / Math.sqrt(N);
+      for (i = 0; i < N; i++) {
+        for (j = 0; j <= i; j++) {
+          v = dist(rng);
+          if (i === j) v *= Math.SQRT2;
+          S[i * N + j] = v * sc;
+          S[j * N + i] = v * sc;
+        }
+      }
+      return { M: S, size: N, pick: 'all' };
+    }
+    /* β=2：先造 N×N 复 Hermite 的实部 A / 虚部 B，再拼成 2N×2N 实对称 */
+    var A2 = new Float64Array(N * N), B2 = new Float64Array(N * N);
+    var sc2 = 1 / Math.sqrt(N);
+    for (i = 0; i < N; i++) {
+      A2[i * N + i] = rng.norm() * sc2;                 /* 对角：实，方差 1/N */
+      for (j = i + 1; j < N; j++) {
+        var re = rng.norm() / Math.SQRT2 * sc2;         /* Re/Im 各方差 1/(2N) */
+        var im = rng.norm() / Math.SQRT2 * sc2;
+        A2[i * N + j] = re; A2[j * N + i] = re;
+        B2[i * N + j] = im; B2[j * N + i] = -im;
+      }
+    }
+    var M2 = new Float64Array(4 * N * N), W = 2 * N;
+    for (i = 0; i < N; i++) {
+      for (j = 0; j < N; j++) {
+        M2[i * W + j] = A2[i * N + j];
+        M2[i * W + (j + N)] = -B2[i * N + j];
+        M2[(i + N) * W + j] = B2[i * N + j];
+        M2[(i + N) * W + (j + N)] = A2[i * N + j];
+      }
+    }
+    return { M: M2, size: W, pick: 'even' };
+  }
+
+  /* 从 2N×2N 表示里挑出真正的 N 个特征值 */
+  function pickEigen(vals, pick, N) {
+    if (pick !== 'even') return vals;
+    var out = new Float64Array(N);
+    for (var i = 0; i < N; i++) out[i] = vals[2 * i];
+    return out;
+  }
+
+  /* 一次到位：造矩阵 → 求谱 → 返回升序的 N 个特征值 */
+  function wignerSpectrum(N, beta, distId, seed, method) {
+    var w = wignerMatrix(N, beta, distId, seed);
+    var vals = eigenAll(w.M, w.size, method || 'ql').values;
+    return pickEigen(vals, w.pick, N);
+  }
+
+  /* 对角对照：没有非对角元 ⇒ 特征值就是对角元本身 ⇒ 无排斥（Poisson 谱）。
+   * 为了让"间距"可比，取方差为 1 的独立同分布对角元。 */
+  function diagSpectrum(N, distId, seed) {
+    var dist = (DISTS[distId] || DISTS.normal).fn;
+    var rng = makeRng(seed >>> 0);
+    var out = new Float64Array(N);
+    for (var i = 0; i < N; i++) out[i] = dist(rng);
+    return sortAsc(out);
+  }
+
+  /* 样本协方差：X 为 M×N，S = (1/N) X Xᵀ（M×M），ESD → Marchenko–Pastur(γ=M/N) */
+  function sampleCovSpectrum(M, N, distId, seed, method) {
+    var dist = (DISTS[distId] || DISTS.normal).fn;
+    var rng = makeRng(seed >>> 0);
+    var X = new Float64Array(M * N), i, j;
+    for (i = 0; i < M; i++) for (j = 0; j < N; j++) X[i * N + j] = dist(rng);
+    var S = new Float64Array(M * M);
+    var inv = 1 / N;
+    for (i = 0; i < M; i++) {
+      for (j = i; j < M; j++) {
+        var acc = 0, k;
+        for (k = 0; k < N; k++) acc += X[i * N + k] * X[j * N + k];
+        acc *= inv;
+        S[i * M + j] = acc; S[j * M + i] = acc;
+      }
+    }
+    return eigenAll(S, M, method || 'ql').values;
+  }
+
+  /* =======================================================================
+   * 4 · 理论曲线
+   * =====================================================================*/
+
+  /* 半圆律：支撑 [−2, 2]，ρ(x) = √(4−x²)/(2π) */
+  function semicircleDensity(x) {
+    if (x <= -2 || x >= 2) return 0;
+    return Math.sqrt(4 - x * x) / (2 * Math.PI);
+  }
+  /* 半圆 CDF：∫√(4−t²)dt = (t/2)√(4−t²) + 2 arcsin(t/2)，代入下限 −2 得
+   *   F(x) = 1/2 + (x/(4π))√(4−x²) + (1/π) arcsin(x/2)。
+   * 注意分母是 **4π** 不是 2π —— 这一处笔误曾让 KS 距离虚高 3 倍（见 test.js 的
+   * "F(1) 必须等于数值积分"那条），是本件装置第一个被数据抓出来的公式错误。 */
+  function semicircleCDF(x) {
+    if (x <= -2) return 0;
+    if (x >= 2) return 1;
+    return 0.5 + (x / (4 * Math.PI)) * Math.sqrt(4 - x * x) + Math.asin(x / 2) / Math.PI;
+  }
+  /* 第 k 个 Catalan 数：C_k = C(2k,k)/(k+1)。半圆的偶矩 m_{2k} = C_k。 */
+  function catalan(k) {
+    var num = 1, i;
+    for (i = 1; i <= k; i++) num = num * (k + i) / i;   /* C(2k,k) */
+    return Math.round(num / (k + 1));
+  }
+
+  /* 误差函数。
+   * |x| ≤ 2 用 Taylor 级数（2/√π·Σ(−1)ⁿx^{2n+1}/(n!(2n+1))，50 项，精度 ~1e-16）；
+   * |x| > 2 用 Abramowitz–Stegun 7.1.26（那里 e^{−x²} 把误差压到 1.5e-7 以下）。
+   * 只用 A&S 会留一个 1e-9 的常数项误差 —— 它让 erf(0) = 1e-9 而不是 0，
+   * 于是 normalCDF(0) = 0.5000000005，被"必须精确等于 0.5"的断言抓住。 */
+  function erf(x) {
+    var s = x < 0 ? -1 : 1, ax = Math.abs(x), i;
+    if (ax <= 2) {
+      var term = ax, sum = ax, x2 = ax * ax;
+      for (i = 1; i <= 50; i++) {
+        term *= -x2 / i;
+        sum += term / (2 * i + 1);
+      }
+      return s * (2 / Math.sqrt(Math.PI)) * sum;
+    }
+    var t = 1 / (1 + 0.3275911 * ax);
+    var y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-ax * ax);
+    return s * y;
+  }
+
+  /* Wigner 猜测：P_β(s) = a_β s^β exp(−b_β s²)，β=1: a=π/2,b=π/4；β=2: a=32/π²,b=4/π */
+  function wignerSurmisePDF(s, beta) {
+    if (s < 0) return 0;
+    if (beta === 1) return (Math.PI / 2) * s * Math.exp(-Math.PI * s * s / 4);
+    if (beta === 2) return (32 / (Math.PI * Math.PI)) * s * s * Math.exp(-4 * s * s / Math.PI);
+    return Math.exp(-s);
+  }
+  function wignerSurmiseCDF(s, beta) {
+    if (s <= 0) return 0;
+    if (beta === 1) return 1 - Math.exp(-Math.PI * s * s / 4);
+    if (beta === 2) return erf(2 * s / Math.sqrt(Math.PI)) - (4 * s / Math.PI) * Math.exp(-4 * s * s / Math.PI);
+    return 1 - Math.exp(-s);
+  }
+  function poissonCDF(s) { return s <= 0 ? 0 : 1 - Math.exp(-s); }
+
+  /* Marchenko–Pastur：γ = M/N ≤ 1，支撑 [(1−√γ)², (1+√γ)²] */
+  function mpEdges(gamma) {
+    var r = Math.sqrt(gamma);
+    return [(1 - r) * (1 - r), (1 + r) * (1 + r)];
+  }
+  function mpDensity(x, gamma) {
+    var e = mpEdges(gamma), a = e[0], b = e[1];
+    if (x <= a || x >= b) return 0;
+    return Math.sqrt((b - x) * (x - a)) / (2 * Math.PI * gamma * x);
+  }
+  /* MP 的密度在 γ=1 时于 x→0 有 1/√x 奇点（可积，但 x=0 处直接算会得 NaN）。 */
+  /* MP 的 CDF：用 θ 代换 x = 1+γ−2√γ cosθ 把 √ 奇点消掉，再做复合 Simpson。
+   * 换元后 integrand = 2 sin²θ / (π(1+γ−2√γ cosθ))，在 [0,π] 上光滑。 */
+  function makeMPCDF(gamma, steps) {
+    steps = steps || 4000;
+    var sq = Math.sqrt(gamma), h = Math.PI / steps;
+    /* 用 1−cosθ 形式避免 γ=1、θ=0 处的 0/0：
+     *   2sin²θ/(1+γ−2√γ cosθ) = 2(1−cosθ)(1+cosθ) / [(1−√γ)² + 2√γ(1−cosθ)] */
+    function g(th) {
+      var u = 1 - Math.cos(th);
+      var den = (1 - sq) * (1 - sq) + 2 * sq * u;
+      if (den < 1e-300) return 2 / Math.PI;      /* 只可能发生在 γ=1、θ=0 */
+      return 2 * u * (1 + Math.cos(th)) / (Math.PI * den);
+    }
+    var tab = new Float64Array(steps + 1), acc = 0, i;
+    tab[0] = 0;
+    for (i = 1; i <= steps; i++) {
+      acc += h / 6 * (g((i - 1) * h) + 4 * g((i - 0.5) * h) + g(i * h));
+      tab[i] = acc;
+    }
+    var norm = tab[steps];
+    return {
+      gamma: gamma, total: norm,
+      cdf: function (x) {
+        var e = mpEdges(gamma);
+        if (x <= e[0]) return 0;
+        if (x >= e[1]) return 1;
+        var c = (1 + gamma - x) / (2 * sq);
+        c = c > 1 ? 1 : (c < -1 ? -1 : c);
+        var pos = Math.acos(c) / Math.PI * steps;
+        var i0 = Math.floor(pos);
+        if (i0 >= steps) return tab[steps] / norm;
+        var fr = pos - i0;
+        return (tab[i0] * (1 - fr) + tab[i0 + 1] * fr) / norm;
+      }
+    };
+  }
+
+  /* =======================================================================
+   * 5 · 统计量
+   * =====================================================================*/
+  function sortAsc(a) {
+    var out = (a instanceof Float64Array) ? Float64Array.from(a) : a.slice();
+    return out.sort ? (out.sort(function (x, y) { return x - y; }), out) : out;
+  }
+  function mean(a) { var s = 0, i; for (i = 0; i < a.length; i++) s += a[i]; return s / a.length; }
+  function variance(a) {
+    var m = mean(a), s = 0, i;
+    for (i = 0; i < a.length; i++) { var d = a[i] - m; s += d * d; }
+    return s / a.length;
+  }
+  function stderr(a) { return Math.sqrt(variance(a) / a.length); }
+  /* 经验分布 → 半圆 CDF 的 Kolmogorov 距离（输入必须是升序的特征值） */
+  function ksToCDF(sorted, cdf) {
+    var n = sorted.length, d = 0, i;
+    for (i = 0; i < n; i++) {
+      var F = cdf(sorted[i]);
+      var a = Math.abs(F - i / n), b = Math.abs((i + 1) / n - F);
+      if (a > d) d = a;
+      if (b > d) d = b;
+    }
+    return d;
+  }
+  function ksToSemicircle(sorted) { return ksToCDF(sorted, semicircleCDF); }
+
+  /* 经验谱的第 k 阶矩 m_k = (1/N) Σ λ^k */
+  function moments(sorted, kmax) {
+    var n = sorted.length, out = new Float64Array(kmax + 1), k, i;
+    for (k = 0; k <= kmax; k++) {
+      var s = 0;
+      for (i = 0; i < n; i++) s += Math.pow(sorted[i], k);
+      out[k] = s / n;
+    }
+    return out;
+  }
+
+  /* 展开（unfolding）：用给定 CDF 把谱压成平均间距 1，再取最近邻间距。
+   * 半圆系综用半圆 CDF；对角对照用它自己那套理论 CDF（如正态 CDF）。 */
+  function normalCDF(x) { return 0.5 * (1 + erf(x / Math.SQRT2)); }
+  function unfoldedSpacings(sorted, cdf) {
+    var n = sorted.length, out = new Float64Array(n - 1), i;
+    for (i = 0; i < n - 1; i++) out[i] = n * (cdf(sorted[i + 1]) - cdf(sorted[i]));
+    return out;
+  }
+
+  /* 直方图：返回 {edges, counts, density} */
+  function histogram(vals, lo, hi, bins) {
+    var counts = new Float64Array(bins), i, k;
+    for (i = 0; i < vals.length; i++) {
+      k = Math.floor((vals[i] - lo) / (hi - lo) * bins);
+      if (k >= 0 && k < bins) counts[k]++;
+    }
+    var edges = new Float64Array(bins + 1), dens = new Float64Array(bins);
+    var bw = (hi - lo) / bins, tot = vals.length;
+    for (i = 0; i <= bins; i++) edges[i] = lo + i * bw;
+    for (i = 0; i < bins; i++) dens[i] = counts[i] / (tot * bw);
+    return { edges: edges, counts: counts, density: dens, binW: bw };
+  }
+
+  /* 最小二乘幂律指数：log y = a + p log x（用于"收敛多快"这类实测指数） */
+  function logLogFit(xs, ys) {
+    var n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0, i;
+    for (i = 0; i < xs.length; i++) {
+      if (!(xs[i] > 0) || !(ys[i] > 0)) continue;
+      var lx = Math.log(xs[i]), ly = Math.log(ys[i]);
+      n++; sx += lx; sy += ly; sxx += lx * lx; sxy += lx * ly;
+    }
+    if (n < 2) return { p: null, r2: null, n: n };
+    var p = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+    var b = (sy - p * sx) / n;
+    var ssTot = 0, ssRes = 0, my = sy / n;
+    for (i = 0; i < xs.length; i++) {
+      if (!(xs[i] > 0) || !(ys[i] > 0)) continue;
+      var ly2 = Math.log(ys[i]), pred = b + p * Math.log(xs[i]);
+      ssTot += (ly2 - my) * (ly2 - my);
+      ssRes += (ly2 - pred) * (ly2 - pred);
+    }
+    return { p: p, r2: ssTot > 0 ? 1 - ssRes / ssTot : 1, n: n };
+  }
+
+  /* Wilson 区间（比例类读数一律给区间，不给裸比例） */
+  function wilson(k, N, z) {
+    z = z || 1.96;
+    if (N <= 0) return { lo: 0, hi: 1, p: 0 };
+    var p = k / N, d = 1 + z * z / N;
+    var c = p + z * z / (2 * N);
+    var hw = z * Math.sqrt(p * (1 - p) / N + z * z / (4 * N * N));
+    return { p: p, lo: Math.max(0, (c - hw) / d), hi: Math.min(1, (c + hw) / d) };
+  }
+
+  /* 已发表的 Tracy–Widom 常数（β=1,2）—— 用来和实测的缩放后 λ_max 比 */
+  var TW = {
+    1: { mean: -1.2065335745820, var: 1.607781034581 },
+    2: { mean: -1.7710868074, var: 0.8131947928 }
+  };
+
+  /* =======================================================================
+   * 6 · 具名实例（种子由"名字"决定 ⇒ 扫描顺序变了也不影响任何一个实例）
+   * =====================================================================*/
+  function wignerInstance(name, N, beta, distId, method) {
+    return wignerSpectrum(N, beta, distId, seedFrom('rmt|' + name), method);
+  }
+
+  return {
+    /* 随机 */
+    splitmix32: splitmix32, seedFrom: seedFrom, makeRng: makeRng,
+    DISTS: DISTS, DIST_IDS: DIST_IDS,
+    /* 算法 */
+    jacobiEigen: jacobiEigen, qlEigen: qlEigen, eigenAll: eigenAll,
+    detLU: detLU, charPolyResidual: charPolyResidual,
+    /* 系综 */
+    wignerMatrix: wignerMatrix, wignerSpectrum: wignerSpectrum,
+    diagSpectrum: diagSpectrum, sampleCovSpectrum: sampleCovSpectrum,
+    wignerInstance: wignerInstance,
+    /* 理论 */
+    semicircleDensity: semicircleDensity, semicircleCDF: semicircleCDF,
+    catalan: catalan, erf: erf, normalCDF: normalCDF,
+    wignerSurmisePDF: wignerSurmisePDF, wignerSurmiseCDF: wignerSurmiseCDF,
+    poissonCDF: poissonCDF,
+    mpEdges: mpEdges, mpDensity: mpDensity, makeMPCDF: makeMPCDF,
+    /* 统计 */
+    sortAsc: sortAsc, mean: mean, variance: variance, stderr: stderr,
+    ksToCDF: ksToCDF, ksToSemicircle: ksToSemicircle, moments: moments,
+    unfoldedSpacings: unfoldedSpacings, histogram: histogram,
+    logLogFit: logLogFit, wilson: wilson, TW: TW
+  };
+});
+</script>
+<script>window.__ANALYSIS__ = {"meta":{"title":"无关的细节","subtitle":"随机矩阵的普适谱","when":"2026-10-10T05:04:48.877Z","node":"v22.22.2","allVerifyOk":true,"verifyPass":46,"verifyTotal":46},"kpi":[{"label":"KS 收敛指数（Wigner β=1）","value":"-0.820","note":"N ∈ [16, 256] 上的有效指数；R² = 0.9997"},{"label":"同一统计量的独立同分布对照","value":"-0.487","note":"经典 Kolmogorov 值是 −0.500；实测 √N·KS ≈ 0.854 近似常数"},{"label":"秩一对照的 KS 距离","value":"0.500","note":"N = 32 / 128 / 512 上精确不变 —— 完全不收敛"},{"label":"N=256 上 m₄ 与 Catalan 2 的相对差","value":"1.00%","note":"m₂ 差 0.39%，m₈ 差 2.68%（都在单调收缩）"},{"label":"五种取数分布的 KS 极差比","value":"1.69","note":"正态/均匀/±1/指数/重尾 t₃ 在 N=128 上；同组 m₄ 的均值极差比是 17.4，摘掉 t₃ 只剩 1.037"},{"label":"间距对 Wigner 猜测的 KS（β=1）","value":"0.0143","note":"同一批间距对 Poisson 是 0.2123 —— 差 15 倍"},{"label":"P(间距 < 0.1)：β=1 / β=2 / 对角","value":"0.006 / 0.002 / 0.093","note":"理论值 0.008 / 0.001 / 0.095"},{"label":"std(λmax) 的指数（理论 −2/3）","value":"-0.694 / -0.654","note":"β=1 / β=2；N^{2/3}(λmax−2) 的方差与 TW 相差 12.3% / 4.4%"},{"label":"MP 的 KS（对 MP / 对半圆）","value":"0.0134 / 0.500","note":"同一批样本协方差谱，对两条理论曲线差 37 倍"},{"label":"两套特征值算法的最大相对差","value":"1.77e-14","note":"800 例随机对称矩阵；第三条通道（LU 验根）残差 < 1e-11"}],"conclusions":["**同一个形状，无关出处。** 把 N×N 个独立随机数摆成方阵、再除以 √N，它的特征值分布（经验谱分布）随着 N 增大收敛到**同一条半圆** —— 不管那些随机数本身是正态、均匀、只取 ±1、还是指数。N=128 时五种分布的 KS 距离落在 0.0189–0.0319 之间，极差比只有 1.69（摘掉重尾的 t₃ 后进一步降到 1.130）。","**但\"无关\"有边界，而且边界就在矩上。** 摘掉重尾的 t₃，剩下四种分布（正态/均匀/±1/指数）的 m₄ 极差比只有 1.037 —— 连高阶矩都是普适的。t₃ 一进来，极差比跳到 17.4。**它不是\"偏大\"，是根本不收敛。** t₃ 的四阶矩发散，样本 m₄ 的**均值**（35.1）被极少数实现整个抬走：中位数只有 2.079（正态是 2.039，几乎一样），而 150 次实现里最大的一次是 4022.5。换句话说，同一段代码换一组随机种子，均值能在 3 和 35 之间跳。半圆律只要求有限方差；用矩去描述谱，就要求各阶矩都有限。","**收敛有多快：排斥买了一整个幂次。** 同一个 KS 统计量，Wigner 谱按 N^-0.820 收敛，而\"独立同分布\"对照（把特征值换成独立样本）只按 N^-0.487 收敛 —— 后者正是经典 Kolmogorov 的 −1/2（实测 √N·KS ≈ 0.854，五个 N 上几乎不动）。**特征值互相排斥，把涨落压得比独立样本还小。**","**没有排斥就没有这一切。** 秩一矩阵 J/N 的特征值恰好是 {1, 0, …, 0}，它到半圆的 KS 距离在 N=32/128/512 上都精确等于 **0.5000** —— 完全不收敛。半圆律要的是\"非对角元足够随机\"，不是\"矩阵里有很多随机数\"。","**矩逐个落到 Catalan 数上。** 半圆的偶阶矩 m₂ₖ 等于 Catalan 数 1, 2, 5, 14, 42, 132…；实测在 N=256 上，m₂ 差 0.39%、m₄ 差 1.00%、m₆ 差 1.76%、m₈ 差 2.68%，且**单调收缩**（有效指数 -0.98 / -0.97 / -0.99 / -1.02）。奇阶矩则落在 N^{-1/2} 的涨落里：最大绝对值 0.0677，而尺度是 0.0625。","**能级互相躲开。** 把谱按半圆 CDF 展开（平均间距归一到 1）后，最近邻间距的分布对 β=1 与 Wigner 猜测的 KS 只有 0.0143，而它对 Poisson 分布是 0.2123 —— 差 14.8 倍。","**排斥的强度是一个可测的数。** 间距小于 0.1 的概率：β=1 是 0.0062（理论 0.0078），β=2 是 0.0016（理论 0.0011）—— β=2 比 β=1 还小一个数量级，因为 s→0 时 P(s)∝s^β，β 越大压得越死。","**对照组的价值：把\"排斥\"和\"没排斥\"放在同一把尺子上。** 对角矩阵（特征值就是对角元，互不相干）的间距对 Poisson 的 KS 只有 0.0075，对 Wigner 却是 0.2190。**同一个统计量，两个方向完全相反** —— 这就是\"排斥\"在这台装置里的定义。","**最大的那个特征值也知道自己的宿命。** λ_max 单调爬向半圆的右边缘 2（N=256 时是 1.9692），而它围绕 2 的涨落按 N^{-2/3} 收缩：实测指数 β=1 是 -0.694、β=2 是 -0.654，理论是 −0.667。","**涨落的形状是 Tracy–Widom，常数能对上。** 把 λ_max 按 N^{2/3}(λ_max−2) 缩放，β=2 的均值 -1.8418 与已发表的 TW₂ 均值 -1.7711 相差 0.098（1.80 个标准误），方差 0.7776 与 0.8132 相差 4.4%。","**换一个矩阵，换一条完全不同的曲线，但同样是\"闭式\"。** 样本协方差 (1/N)XXᵀ（X 是 M×N）的谱不收敛到半圆，而收敛到 Marchenko–Pastur 律：对 MP 的 KS 只有 0.0134，同一批谱对半圆却是 0.5000 —— 相差 37 倍。","**MP 的边缘是一个能被证伪的预测。** 支撑是 [(1−√γ)², (1+√γ)²]。γ=0.5、M=400 时上边缘实测 2.8888，理论 2.9142，偏差从 M=50 的 -0.1515 一路缩到 -0.0254（有限尺寸的极端值天然偏内，有效指数 -0.82）。","**矩形比方形多出来的一件事：一堆零。** γ=M/N>1 时，M 个特征值里有 1−1/γ 的比例精确等于 0 —— γ=2 实测 0.5000（理论 0.5），γ=4 实测 0.7500（理论 0.75），误差 0.0e+0。剩下的非零部分仍然是 MP 律（KS 0.0202）。","**代价是 N³，两套算法差 5.4 倍。** N=256 时 Householder+QL 用 38.5 ms，循环 Jacobi 用 207.0 ms。耗时的有效指数实测 2.777（O(N³) 的 3）。","**两个实现同错才算对。** 800 例随机对称矩阵上，Jacobi 与 QL 的最大相对差 1.77e-14；第三条独立通道（LU 求 det(A−λI)）在 N≤10 上把每个算出的特征值代回特征多项式，残差 < 1e-11。","**要把半圆\"看清\"，代价小得意外。** N=128 时 KS 已经 0.0194，比 N=16 的 0.1060 小 5.5 倍；按实测指数外推，KS 压到 0.01 需要 N≈285。"],"boundaries":["**半圆律的严格陈述是渐近的。** 本页所有的 KS、矩、间距读数都是**有限 N**上的测量值；\"收敛到半圆\"是 N→∞ 的命题，本页给的是它逼近的速度和形状。","**收敛指数是\"有限区间上的有效指数\"。** 在 N∈[16,256] 上拟合出的 N^-0.820 不等于任何一条定理里的精确指数；换一段 N 区间，指数会变。KS 本身还带对数修正，用单一幂律描述它必然有系统偏差。","**没有对照组就不知道自己的误差有多大。** 独立同分布对照给出的 N^-0.487 与经典值 −0.5 吻合，这是本页唯一的\"答案已知\"的收敛实验；Wigner 那一侧的指数只有相对意义。","**t₃ 那一列的高阶矩不是\"测不准\"，是不存在。** t₃ 的四阶矩发散，所以样本 m₄ 是一个不收敛的统计量：均值在 N=128 给 35.1、N=256 给 3.4，中位数却稳稳停在 2.079，150 次实现里最大的一次冲到 4022.5。把它当成\"误差\"来读会得出错误结论 —— 它是定理前提失效的直接见证。**读重尾数据的任何均值，先看一眼中位数。**","**间距分布用的是 Wigner 猜测，不是精确解。** 精确的最近邻间距分布是一个 Fredholm 行列式，Wigner 猜测（(π/2)s·e^{−πs²/4} 等）只是它的高精度近似：β=1 的实测 KS 有 0.0143，β=2 只有 0.0047 —— 前者的残差主要来自这个近似本身，不是测量噪声。","**展开用的 CDF 会带来系统偏差。** 对角对照的平均间距是 0.9937 而不是 1：把 n 个样本按正态 CDF 展开，平均间距是 E[F(max)−F(min)] < 1，n 越小偏得越多。","**Tracy–Widom 常数是引用的，不是本页算出来的。** TW 的分布函数要解 Painlevé 方程或算 Fredholm 行列式，本页只把实测的缩放均值/方差与**已发表常数**对照（β=1 均值 -1.2065、β=2 均值 -1.7711），没有独立重算它们。","**软边缘的有限 N 修正不可忽略。** β=1 在 N=32 上缩放均值是 -1.3886，离 TW₁ 的 -1.2065 有 0.182；收敛是 O(N^{-2/3}) 级的慢。TW 是渐近分布，不是 N=32 上的分布。","**MP 只做到了 γ≤4 的实样本协方差，且只用了有限方差的情形。** 复样本协方差、相关样本、γ→∞ 的极端长条都没有碰。γ>1 的密度只在\"非零部分\"上核对，零质量是单独数的。","**边缘的实测值系统性偏内。** 极端特征值天然落在理论边缘之内，本页给的是偏差随 M 收缩的证据（-0.1515 → -0.0254），不是\"边缘等于理论值\"。要精确测边缘需要更大的 M 和专门的极值统计。","**样本数带来的标准误在图上没有画。** KPI 里的均值来自几十到几百个独立矩阵；软边缘那一档每点只有 400 个样本，均值本身的标准误在 0.06 量级，与本页讨论的若干偏差同量级。","**耗时读数来自 Node 侧的真实时钟，且受 JIT 影响。** 同一个 N 在不同轮次能差 2 倍；页面上的毫秒数一律引用这里烤进去的数，页面自己不读时钟。","**本页没有做的事**：没有碰 GUE 的精确联合分布、没有算连通相关函数、没有做局部半圆律（mesoscopic）、没有做 deformed ensemble 的 BBP 相变。这些都是同一套工具能接着往下走的入口。"],"verifyTable":[{"name":"E1 两套特征值算法在 800 例上最大相对差 < 1e-13","ok":true,"detail":"1.77e-14"},{"name":"E1 Wigner 的 KS 单调下降","ok":true,"detail":""},{"name":"E1 秩一对照的 KS 恒为 0.5","ok":true,"detail":""},{"name":"E1 iid 对照的 √N·KS 近似常数（Kolmogorov 标度）","ok":true,"detail":"0.0314"},{"name":"E1 Wigner 的指数比 iid 对照更陡","ok":true,"detail":"-0.820 vs -0.487"},{"name":"E1 iid 对照的指数接近经典值 −0.5","ok":true,"detail":"-0.487"},{"name":"E2 偶阶矩单调收敛到 Catalan","ok":true,"detail":""},{"name":"E2 最大 N 上 m2 的相对差 < 1%","ok":true,"detail":"0.00389"},{"name":"E2 最大 N 上 m8 的相对差 < 4%","ok":true,"detail":"0.02675"},{"name":"E2 奇阶矩落在 N^{-1/2} 涨落尺度内","ok":true,"detail":"6.77e-2 vs 6.25e-2"},{"name":"E2 矩的收敛指数落在 −1 附近（有限区间有效指数）","ok":true,"detail":"-0.98,-0.97,-0.99,-1.02"},{"name":"E3 五种分布的 KS 极差比 < 2","ok":true,"detail":"1.691"},{"name":"E3 摘掉重尾 t₃ 后 KS 极差比更小（< 1.2）","ok":true,"detail":"1.130"},{"name":"E3 但 m4 的极差比 > 5（重尾破坏高阶矩）","ok":true,"detail":"17.35"},{"name":"E3 摘掉 t₃ 后 m4 极差比 < 1.1（有限四阶矩下 m4 也普适）","ok":true,"detail":"1.037"},{"name":"E3 t₃ 的 m4 均值远大于 2","ok":true,"detail":"35.10"},{"name":"E3 但 t₃ 的 m4 **中位数**仍在 2 附近（< 2.5）","ok":true,"detail":"2.079"},{"name":"E3 t₃ 的 m4 最大值 > 100（单次实现就能爆表）","ok":true,"detail":"4022.5"},{"name":"E3 t₃ 的 m4 中位比 < 1.1（中位数和正态几乎一样）","ok":true,"detail":"1.020"},{"name":"E3 t₃ 的 KS 仍在其它分布的 2 倍以内","ok":true,"detail":"1.628"},{"name":"E3 五种分布在 N=128 上的 KS 都 < 0.04","ok":true,"detail":"3.19e-2"},{"name":"E4 β=1 展开后平均间距 ≈ 1","ok":true,"detail":"1.0008"},{"name":"E4 β=2 展开后平均间距 ≈ 1","ok":true,"detail":"0.9995"},{"name":"E4 β=1 对 Wigner 猜测的 KS 比对 Poisson 小 10 倍以上","ok":true,"detail":"14.8"},{"name":"E4 β=2 对 Wigner 猜测的 KS 比对 Poisson 小 10 倍以上","ok":true,"detail":"59.1"},{"name":"E4 对角对照反过来：对 Poisson 的 KS 小 10 倍以上","ok":true,"detail":"29.1"},{"name":"E4 对角对照在 s<0.1 处的概率接近 Poisson 的 9.5%","ok":true,"detail":"0.0935 vs 0.0952"},{"name":"E4 β=2 的 P(s<0.1) 比 β=1 还小（排斥更强）","ok":true,"detail":"1.57e-3 < 6.20e-3"},{"name":"E5 std(λmax) 的指数在 −2/3 附近（β=1）","ok":true,"detail":"-0.694"},{"name":"E5 std(λmax) 的指数在 −2/3 附近（β=2）","ok":true,"detail":"-0.654"},{"name":"E5 缩放后的 λmax 均值与 TW(2) 相差 < 2 个标准误","ok":true,"detail":"1.80σ"},{"name":"E5 缩放后的 λmax 方差与 TW(2) 相差 < 15%","ok":true,"detail":"-4.4%"},{"name":"E5 λmax 单调逼近半圆边缘 2","ok":true,"detail":""},{"name":"E5 λmax 始终小于 2（有限 N 的偏下偏差）","ok":true,"detail":"1.9692"},{"name":"E6 γ≤1 时对 MP 的 KS < 0.02","ok":true,"detail":"0.0134"},{"name":"E6 同一批谱对半圆的 KS > 0.5（完全不同）","ok":true,"detail":"0.5000"},{"name":"E6 对 MP 与对半圆的 KS 相差 20 倍以上","ok":true,"detail":"37.3"},{"name":"E6 γ>1 的零特征值占比与 1−1/γ 一致到 1e-4","ok":true,"detail":"0.00e+0"},{"name":"E6 上边缘的有限尺寸偏差随 M 单调缩小","ok":true,"detail":"-0.151 → -0.085 → -0.061 → -0.025"},{"name":"E6 下边缘实测高于理论下边缘（同一偏差方向）","ok":true,"detail":""},{"name":"E7 两套算法在 800 例上最大相对差 < 1e-13","ok":true,"detail":"1.77e-14"},{"name":"E7 QL 比 Jacobi 快 4 倍以上（N=256）","ok":true,"detail":"5.38"},{"name":"E7 耗时的有效指数接近 3（O(N³)）","ok":true,"detail":"2.777"},{"name":"E7 内存按 8N² 字节计，N=256 时 0.5 MB","ok":true,"detail":"0.5"},{"name":"E7 外推到 N=4096 的内存 < 200 MB","ok":true,"detail":"128 MB"},{"name":"E7 KS<0.02 在 N=128 上达成","ok":true,"detail":"N=128"}],"charts":{"e1":{"wigner":[{"n":16,"samples":500,"ks":0.10596338765523679,"ksSe":0.0009559452899777219,"ksIid":0.21066375283954575,"speedup":1.9880805767078984},{"n":32,"samples":500,"ks":0.0614292225616867,"ksSe":0.0004892457743145692,"ksIid":0.1483777146506936,"speedup":2.415425565604285},{"n":64,"samples":400,"ks":0.03525303039623679,"ksSe":0.00027551544879253156,"ksIid":0.10698426817766617,"speedup":3.034753806273817},{"n":128,"samples":300,"ks":0.019410842760608903,"ksSe":0.00016545509431201396,"ksIid":0.07629174849642174,"speedup":3.930367652621618},{"n":256,"samples":150,"ks":0.010996388604762874,"ksSe":0.00012432755183982493,"ksIid":0.05442211552848128,"speedup":4.949089877099231}],"iid":[{"n":16,"ks":0.21066375283954575},{"n":32,"ks":0.1483777146506936},{"n":64,"ks":0.10698426817766617},{"n":128,"ks":0.07629174849642174},{"n":256,"ks":0.05442211552848128}],"rank1":[{"n":32,"ks":0.5},{"n":128,"ks":0.5},{"n":512,"ks":0.5}]},"e2":{"ns":[16,32,64,128,256],"rows":[{"k":1,"order":2,"cat":1,"means":[1.0594026683630016,1.032640419833284,1.016585816878493,1.0083358959428992,1.0038900899156913],"relErrs":[0.059402668363001565,0.03264041983328392,0.01658581687849292,0.008335895942899185,0.003890089915691286]},{"k":2,"order":4,"cat":2,"means":[2.2985127316641223,2.1678892465041613,2.0828868874805306,2.043680723651264,2.0199996556044804],"relErrs":[0.14925636583206114,0.08394462325208063,0.04144344374026532,0.021840361825631982,0.00999982780224018]},{"k":3,"order":6,"cat":5,"means":[6.377998578671502,5.772157847621471,5.366404341436302,5.194551641536506,5.088163739817872],"relErrs":[0.2755997157343003,0.15443156952429415,0.07328086828726033,0.038910328307301255,0.017632747963574325]},{"k":4,"order":8,"cat":14,"means":[20.281180120191387,17.451393779145413,15.571623051075578,14.829045347674894,14.3745378484216],"relErrs":[0.44865572287081334,0.24652812708181518,0.1122587893625413,0.059217524833921,0.026752703458685696]}]},"e4":{"centers":[0.05,0.15,0.25,0.35,0.45,0.55,0.65,0.75,0.85,0.95,1.05,1.15,1.25,1.35,1.45,1.55,1.65,1.75,1.85,1.95,2.05,2.15,2.25,2.35,2.45,2.55,2.65,2.75,2.85,2.95,3.05,3.15,3.25,3.35,3.45,3.55,3.65,3.75,3.85,3.95],"curves":{"wigner1":[0.07838575506977213,0.2314922835814654,0.3738879815352199,0.4993486677697248,0.602921592930918,0.6812422972252726,0.7326912098345602,0.7573832839431196,0.7570042606212457,0.7345241300463292,0.6938297915510729,0.6393236722986212,0.5755331941371465,0.5067685669496532,0.4368552489663792,0.36895468353120453,0.3054746426347641,0.24806030868981319,0.19765012242274102,0.15457676604241968,0.11869319798795368,0.0895057452632902,0.06630000670269975,0.04824981314163417,0.03450394043543397,0.02424910685418633,0.016750682803212773,0.011374400785559178,0.007593255327462066,0.004983914555893038,0.0032165622334994746,0.0020413822680901608,0.0012740806755182777,0.0007820531620242586,0.00047213542153138623,0.0002803560808448395,0.00016375205089484894,0.00009408394639152927,0.00005317573241135533,0.000029566264477306955],"wigner2":[0.00807993448423395,0.07089100456717819,0.18714153763268898,0.33981974554221245,0.5073418363544439,0.6672751277768323,0.7999281172933428,0.8911119110990131,0.9336279141647912,0.9273639806941241,0.8781919049862442,0.7960770653474186,0.6928972529545151,0.5804255403058532,0.4687981913166206,0.36561587694120784,0.27566526601091845,0.20113310045035754,0.14212974624935698,0.09733871336581457,0.06464571413258297,0.04165482877318579,0.026052575927764495,0.01582192570000006,0.009333285457342758,0.005349365676740782,0.002979710020354482,0.001613424883433593,0.0008494053152524691,0.0004348625011062177,0.00021653647422096992,0.00010488580764434247,0.00004942735374505633,0.00002266397342467541,0.000010112795163476185,0.000004391542506148702,0.0000018561550848481184,7.636599131251106e-7,3.058501000500345e-7,1.192536967327155e-7],"poisson":[0.951229424500714,0.8607079764250578,0.7788007830714049,0.7046880897187134,0.6376281516217732,0.5769498103804866,0.522045776761016,0.4723665527410147,0.4274149319487267,0.38674102345450123,0.3499377491111553,0.3166367693790533,0.2865047968601901,0.2592402606458915,0.23457028809379765,0.21224797382674304,0.19204990862075413,0.1737739434504451,0.1572371663136276,0.1422740715865136,0.12873490358780423,0.11648415777349697,0.10539922456186433,0.09536916221554961,0.0862935864993705,0.07808166600115317,0.0706512130604296,0.06392786120670757,0.057844320874838456,0.05233970594843238,0.04735892439114093,0.04285212686704018,0.03877420783172201,0.035084354100845025,0.03174563637806794,0.028724639654239433,0.025991128778755347,0.02351774585600911,0.02127973643837717,0.01925470177538692]},"hist":{"beta1":{"dens":[0.06197654941373534,0.25125628140703515,0.3860971524288107,0.518425460636516,0.6046901172529313,0.711892797319933,0.7897822445561139,0.7269681742043551,0.7202680067001676,0.7646566164154104,0.6716917922948074,0.592964824120603,0.5326633165829145,0.4539363484087102,0.43132328308207707,0.3492462311557789,0.31155778894472363,0.26800670016750416,0.2051926298157454,0.16750418760469013,0.12897822445561138,0.0829145728643216,0.0695142378559464,0.059463986599664995,0.04355108877721943,0.031825795644891124,0.020938023450586266,0.01507537688442211,0.008375209380234505,0.005862646566164154,0.007537688442211055,0.0041876046901172526,0.0016750418760469012,0,0,0,0,0,0,0],"counts":[74,300,461,619,722,850,943,868,860,913,802,708,636,542,515,417,372,320,245,200,154,99,83,71,52,38,25,18,10,7,9,5,2,0,0,0,0,0,0,0]},"beta2":{"dens":[0.015659955257270694,0.07046979865771812,0.20246085011185683,0.35011185682326623,0.5223713646532439,0.6543624161073825,0.7897091722595079,0.8702460850111857,0.9116331096196868,0.9172259507829977,0.9261744966442953,0.772930648769575,0.697986577181208,0.6006711409395973,0.436241610738255,0.33109619686800895,0.319910514541387,0.19910514541387025,0.12639821029082773,0.12080536912751678,0.06040268456375839,0.03803131991051454,0.030201342281879196,0.017897091722595078,0.008948545861297539,0.003355704697986577,0.003355704697986577,0.0011185682326621924,0.0011185682326621924,0,0,0,0,0,0,0,0,0,0,0],"counts":[14,63,181,313,467,585,706,778,815,820,828,691,624,537,390,296,286,178,113,108,54,34,27,16,8,3,3,1,1,0,0,0,0,0,0,0,0,0,0,0]},"diag":{"dens":[0.9346733668341709,0.8090452261306532,0.8266331658291457,0.7211055276381909,0.6700167504187605,0.5494137353433836,0.5142378559463987,0.4564489112227806,0.41792294807370184,0.4128978224455611,0.35510887772194305,0.3341708542713568,0.26800670016750416,0.28224455611390287,0.26214405360134,0.21273031825795644,0.1968174204355109,0.18425460636515914,0.1490787269681742,0.14824120603015076,0.11139028475711893,0.11222780569514237,0.09296482412060302,0.08710217755443886,0.08961474036850921,0.07035175879396985,0.06867671691792294,0.0661641541038526,0.051926298157453935,0.05862646566164154,0.046063651591289785,0.046063651591289785,0.03015075376884422,0.02847571189279732,0.032663316582914576,0.036013400335008376,0.02931323283082077,0.020938023450586266,0.02763819095477387,0.02847571189279732],"counts":[1116,966,987,861,800,656,614,545,499,493,424,399,320,337,313,254,235,220,178,177,133,134,111,104,107,84,82,79,62,70,55,55,36,34,39,43,35,25,33,34]}},"bins":40,"lo":0,"hi":4},"e5":{"centers":[-4.875,-4.625,-4.375,-4.125,-3.875,-3.625,-3.375,-3.125,-2.875,-2.625,-2.375,-2.125,-1.875,-1.625,-1.375,-1.125,-0.875,-0.625,-0.375,-0.125,0.125,0.375,0.625,0.875,1.125,1.375,1.625,1.875,2.125,2.375,2.625,2.875,3.125,3.375,3.625,3.875],"hist":{"1|32":[0,0,0.01,0.04,0.09,0.03,0.09,0.09,0.14,0.17,0.37,0.28,0.33,0.24,0.26,0.34,0.35,0.25,0.2,0.14,0.22,0.15,0.05,0.05,0.04,0.03,0,0.01,0.03,0,0,0,0,0,0,0],"1|64":[0,0.01,0.02,0.06,0.03,0.05,0.05,0.07,0.17,0.18,0.28,0.27,0.36,0.31,0.34,0.34,0.21,0.25,0.21,0.12,0.17,0.16,0.06,0.08,0.04,0.04,0.03,0.02,0.02,0.03,0.01,0,0,0,0,0],"1|128":[0.013333333333333334,0,0,0.02666666666666667,0.04,0.05333333333333334,0.06666666666666667,0.10666666666666667,0.12,0.17333333333333334,0.18666666666666668,0.29333333333333333,0.32,0.36,0.37333333333333335,0.4,0.32,0.3333333333333333,0.16,0.12,0.12,0.10666666666666667,0.08,0.10666666666666667,0.05333333333333334,0.06666666666666667,0,0,0,0,0,0,0,0,0,0],"1|256":[0,0,0.02666666666666667,0,0.02666666666666667,0.02666666666666667,0,0.16,0.16,0.21333333333333335,0.16,0.29333333333333333,0.3466666666666667,0.4,0.21333333333333335,0.32,0.37333333333333335,0.26666666666666666,0.26666666666666666,0.16,0.08,0.10666666666666667,0.13333333333333333,0.13333333333333333,0.02666666666666667,0.05333333333333334,0,0.05333333333333334,0,0,0,0,0,0,0,0],"2|32":[0,0,0,0.01,0,0.04,0.1,0.15,0.19,0.27,0.24,0.48,0.42,0.51,0.54,0.3,0.2,0.24,0.09,0.08,0.09,0.03,0.01,0,0,0.01,0,0,0,0,0,0,0,0,0,0],"2|64":[0,0,0,0.02666666666666667,0.02666666666666667,0.06666666666666667,0.12,0.16,0.26666666666666666,0.3466666666666667,0.5333333333333333,0.41333333333333333,0.30666666666666664,0.4533333333333333,0.29333333333333333,0.24,0.21333333333333335,0.21333333333333335,0.05333333333333334,0.09333333333333334,0.09333333333333334,0.05333333333333334,0.02666666666666667,0,0,0,0,0,0,0,0,0,0,0,0,0],"2|128":[0,0,0,0,0.08,0.06,0.1,0.16,0.14,0.34,0.48,0.32,0.5,0.36,0.5,0.34,0.2,0.14,0.16,0.02,0.06,0.02,0,0.02,0,0,0,0,0,0,0,0,0,0,0,0]},"lo":-5,"hi":4,"bins":36,"b1":[{"n":32,"samples":400,"meanLam":1.8622319291167841,"stdLam":0.12042108404942678,"scaledMean":-1.388615140073398,"scaledSe":0.060688423458012994,"scaledVar":1.4732338967276406},{"n":64,"samples":400,"meanLam":1.9179455749641559,"stdLam":0.08201775472382082,"scaledMean":-1.3128708005734981,"scaledSe":0.06561420377905666,"scaledVar":1.7220894950238295},{"n":128,"samples":300,"meanLam":1.9477731082634937,"stdLam":0.04558634357738317,"scaledMean":-1.3264803661369868,"scaledSe":0.0668468240621115,"scaledVar":1.3405493661572665},{"n":256,"samples":150,"meanLam":1.9692094660347426,"stdLam":0.029446259771128365,"scaledMean":-1.2413965401705596,"scaledSe":0.09693437617691122,"scaledVar":1.4094409927210403}],"b2":[{"n":32,"samples":400,"meanLam":1.8300559187283412,"stdLam":0.08597021663486412,"scaledMean":-1.7129290023936674,"scaledSe":0.0433262742409151,"scaledVar":0.7508664158395932},{"n":64,"samples":300,"meanLam":1.883211582927894,"stdLam":0.05862891294346325,"scaledMean":-1.868614673153695,"scaledSe":0.05415906987232581,"scaledVar":0.879961454830641},{"n":128,"samples":200,"meanLam":1.9274832737163217,"stdLam":0.03471986644830042,"scaledMean":-1.8418100414080394,"scaledSe":0.06235477185693942,"scaledVar":0.7776235146661928}],"tw":{"one":{"mean":-1.206533574582,"var":1.607781034581},"two":{"mean":-1.7710868074,"var":0.8131947928}}},"e6":{"centers":[0.05,0.15,0.25,0.35,0.45,0.55,0.65,0.75,0.85,0.95,1.05,1.15,1.25,1.35,1.45,1.55,1.65,1.75,1.85,1.95,2.05,2.15,2.25,2.35,2.45,2.55,2.65,2.75,2.85,2.95,3.05,3.15,3.25,3.35,3.45,3.55,3.65,3.75,3.85,3.95],"curves":{"g0.25":[0,0,0,0.7928460723457583,0.8488263631567753,0.8266135528287859,0.7835320275293309,0.7351051938957227,0.6864372460658819,0.6392595339563877,0.5940547057018485,0.5508075441038431,0.5092958178940651,0.4692064264588293,0.4301775455082351,0.3918042304893989,0.3536191873672725,0.31504508309816687,0.2752950366994946,0.23314741233632427,0.18632773825392634,0.12906796526558864,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"g0.5":[0,0.894042258422447,0.8421687986955848,0.7485774368225829,0.670123490808466,0.6063029792407837,0.5534994900188187,0.5088535287807691,0.47034430029991836,0.4365474075506454,0.4064389097880047,0.37926455773641876,0.35445488812611803,0.3315695232988756,0.3102598077608585,0.29024304596983536,0.27128415542635276,0.25318206294722717,0.23575904940371972,0.21885172065507946,0.20230245715761622,0.18595007221159565,0.169617842926923,0.1530956036222264,0.1361088320744616,0.11825708661325872,0.09886871807090718,0.07656079988141677,0.047054855706444486,0,0,0,0,0,0,0,0,0,0,0],"g1":[1.4146000766775644,0.8063152371777434,0.6164044440614999,0.5139638121603316,0.44702112921122344,0.3986101328172368,0.3613148878119342,0.3313074336813658,0.30638390396659704,0.2851728977439228,0.2667696936742826,0.25054955831074477,0.2360649296343821,0.2229852746559052,0.21106013944712917,0.20009550136151824,0.18993810058666152,0.18046474257762532,0.1715747984514398,0.16318481989590994,0.15522458477903633,0.1476341289000761,0.14036146644926414,0.13336079402893256,0.12659103147361356,0.12001458909738719,0.11359627199451774,0.10730224074290097,0.10109894458152856,0.09495192486711754,0.08882434519892679,0.08267502170527222,0.07645556161877672,0.07010587375455439,0.06354654291289281,0.05666465018170439,0.04928420116605921,0.04109362960409999,0.03141487937056142,0.0179063300845261]},"hist":{"g0.25":{"dens":[0,0,0.2475,0.7825,0.8391666666666666,0.8291666666666667,0.7825,0.7275,0.6858333333333333,0.6433333333333333,0.5908333333333333,0.5583333333333333,0.5133333333333333,0.46,0.4325,0.37916666666666665,0.35583333333333333,0.31583333333333335,0.2725,0.23083333333333333,0.1875,0.1275,0.03833333333333333,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"gamma":0.25},"g0.5":{"dens":[0.0825,0.8508333333333333,0.8366666666666667,0.7433333333333333,0.6633333333333333,0.6141666666666666,0.5566666666666666,0.5033333333333333,0.48333333333333334,0.43666666666666665,0.4025,0.3825,0.34833333333333333,0.3283333333333333,0.31416666666666665,0.2833333333333333,0.275,0.25583333333333336,0.2275,0.21916666666666668,0.19333333333333333,0.18916666666666668,0.17583333333333334,0.15666666666666668,0.12166666666666667,0.1225,0.09916666666666667,0.07666666666666666,0.045,0.0125,0,0,0,0,0,0,0,0,0,0],"gamma":0.5},"g1":{"dens":[2.0083333333333333,0.8216666666666667,0.615,0.5266666666666666,0.43666666666666665,0.41083333333333333,0.3475,0.3275,0.31833333333333336,0.2833333333333333,0.25916666666666666,0.25833333333333336,0.235,0.2225,0.19416666666666665,0.21416666666666667,0.17916666666666667,0.18666666666666668,0.17583333333333334,0.1625,0.1525,0.14833333333333334,0.14333333333333334,0.12833333333333333,0.12666666666666668,0.12166666666666667,0.10833333333333334,0.10333333333333333,0.10166666666666667,0.09083333333333334,0.09666666666666666,0.08833333333333333,0.06666666666666667,0.07416666666666667,0.065,0.056666666666666664,0.04833333333333333,0.041666666666666664,0.028333333333333332,0.0175],"gamma":1}},"bins":40,"lo":0,"hi":4,"rows":[{"gamma":0.25,"M":200,"N":800,"samples":60,"ksMP":0.013235569110323192,"ksMPse":0.00024992563259250325,"ksSemi":0.582095465804499,"edgeLoMeas":0.25746861676773186,"edgeLoTheory":0.25,"edgeHiMeas":2.2162244051524262,"edgeHiTheory":2.25},{"gamma":0.5,"M":200,"N":400,"samples":60,"ksMP":0.013206111944171314,"ksMPse":0.00022622503106661232,"ksSemi":0.5288139204912593,"edgeLoMeas":0.09010456715346479,"edgeLoTheory":0.08578643762690492,"edgeHiMeas":2.8573213413808713,"edgeHiTheory":2.914213562373095},{"gamma":1,"M":200,"N":200,"samples":60,"ksMP":0.013418993216902386,"ksMPse":0.0002299597465570892,"ksSemi":0.5000051515074707,"edgeLoMeas":0.000016183938033031432,"edgeLoTheory":0,"edgeHiMeas":3.903105772314604,"edgeHiTheory":4}]}},"derived":{"e1ExpW":-0.8198990709545805,"e1R2W":0.9997394511474714,"e1ExpI":-0.4865029810048265,"e1R2I":0.9999137214251038,"e1Rows":[{"n":16,"samples":500,"ks":0.10596338765523679,"ksSe":0.0009559452899777219,"ksIid":0.21066375283954575,"speedup":1.9880805767078984},{"n":32,"samples":500,"ks":0.0614292225616867,"ksSe":0.0004892457743145692,"ksIid":0.1483777146506936,"speedup":2.415425565604285},{"n":64,"samples":400,"ks":0.03525303039623679,"ksSe":0.00027551544879253156,"ksIid":0.10698426817766617,"speedup":3.034753806273817},{"n":128,"samples":300,"ks":0.019410842760608903,"ksSe":0.00016545509431201396,"ksIid":0.07629174849642174,"speedup":3.930367652621618},{"n":256,"samples":150,"ks":0.010996388604762874,"ksSe":0.00012432755183982493,"ksIid":0.05442211552848128,"speedup":4.949089877099231}],"e1Rank1":[{"n":32,"ks":0.5},{"n":128,"ks":0.5},{"n":512,"ks":0.5}],"e1Rank1Ks":0.5,"e1IidSqrtNKs":0.8543553428506663,"e1IidSqrtNKsSpread":0.031402742803956496,"e1First":0.10596338765523679,"e1Last":0.010996388604762874,"e1Ns":[16,32,64,128,256],"e1Nfor001":284.7501241018005,"e2Ns":[16,32,64,128,256],"e2Rows":[{"k":1,"order":2,"cat":1,"means":[1.0594026683630016,1.032640419833284,1.016585816878493,1.0083358959428992,1.0038900899156913],"relErrs":[0.059402668363001565,0.03264041983328392,0.01658581687849292,0.008335895942899185,0.003890089915691286]},{"k":2,"order":4,"cat":2,"means":[2.2985127316641223,2.1678892465041613,2.0828868874805306,2.043680723651264,2.0199996556044804],"relErrs":[0.14925636583206114,0.08394462325208063,0.04144344374026532,0.021840361825631982,0.00999982780224018]},{"k":3,"order":6,"cat":5,"means":[6.377998578671502,5.772157847621471,5.366404341436302,5.194551641536506,5.088163739817872],"relErrs":[0.2755997157343003,0.15443156952429415,0.07328086828726033,0.038910328307301255,0.017632747963574325]},{"k":4,"order":8,"cat":14,"means":[20.281180120191387,17.451393779145413,15.571623051075578,14.829045347674894,14.3745378484216],"relErrs":[0.44865572287081334,0.24652812708181518,0.1122587893625413,0.059217524833921,0.026752703458685696]}],"e2OddMax":0.06767843403645216,"e2OddScale":0.0625,"e2FinalRel":[0.003890089915691286,0.00999982780224018,0.017632747963574325,0.026752703458685696],"e2FinalN":256,"e2WorstRel":0.026752703458685696,"e2BestRel":0.003890089915691286,"e2ExpByK":[{"k":1,"exp":-0.9834555102262641},{"k":2,"exp":-0.9741931968924985},{"k":3,"exp":-0.9921232979761764},{"k":4,"exp":-1.0193360602015207}],"e3At128":[{"id":"normal","name":"正态","cn":"N(0,1)","ks":0.019619998421317463,"ksSe":0.0002441673808316649,"m2":1.0085444427407162,"m4":2.042387257553305,"m6":5.185850550284407,"lamMax":1.9557598537231518,"m4med":2.038646448074216,"m4p90":2.129958792077492,"m4max":2.221671362732727},{"id":"uniform","name":"均匀","cn":"U[−√3,√3]","ks":0.01902136715601502,"ksSe":0.00021599544469867423,"m2":1.007274864815848,"m4":2.0274629538258404,"m6":5.108959881905875,"lamMax":1.9396049174336056,"m4med":2.0191853603527914,"m4p90":2.090939514673989,"m4max":2.152515768892819},{"id":"rademacher","name":"两值","cn":"±1","ks":0.018884212538298285,"ksSe":0.000245573485211006,"m2":1.0078124999999998,"m4":2.0224820124744465,"m6":5.0718512886107066,"lamMax":1.9335975143774484,"m4med":2.021331476104669,"m4p90":2.0469973334341858,"m4max":2.090660521819383},{"id":"expo","name":"指数","cn":"Exp(1)−1","ks":0.021340193486826656,"ksSe":0.00030613262968254783,"m2":1.009846180837535,"m4":2.097643212732016,"m6":5.527607017424277,"lamMax":1.9969087090461737,"m4med":2.0878242459509715,"m4p90":2.298644545304154,"m4max":2.5076993284977687},{"id":"t3","name":"重尾 t₃","cn":"t₃/√3","ks":0.03193948110691698,"ksSe":0.00044514294310385916,"m2":1.0599516800580857,"m4":35.095096074768854,"m6":14948.125291195434,"lamMax":2.5742491354089605,"m4med":2.078630246054059,"m4p90":3.34036754185154,"m4max":4022.474205218716}],"e3KsSpread":1.691332431370482,"e3M4Spread":17.35248860474712,"e3M4SpreadFinite":1.0371628522745733,"e3KsSpreadFinite":1.1300547186464618,"e3Dists":[{"id":"normal","name":"正态","cn":"N(0,1)","rows":[{"n":64,"ks":0.03490313120130195,"ksSe":0.000518363585822416,"m2":1.0112015203859728,"m4":2.0611982194044676,"m6":5.291137877838266,"lamMax":1.9061963119181908,"m4med":2.0539471053061678,"m4p90":2.23208412060326,"m4max":2.6590638395340425},{"n":128,"ks":0.019619998421317463,"ksSe":0.0002441673808316649,"m2":1.0085444427407162,"m4":2.042387257553305,"m6":5.185850550284407,"lamMax":1.9557598537231518,"m4med":2.038646448074216,"m4p90":2.129958792077492,"m4max":2.221671362732727},{"n":256,"ks":0.01071806138043784,"ksSe":0.00019466043055864574,"m2":1.003937598017372,"m4":2.019646366363805,"m6":5.086043368438721,"lamMax":1.9657650320024176,"m4med":2.020759902528751,"m4p90":2.05697156095159,"m4max":2.0735886682927083}]},{"id":"uniform","name":"均匀","cn":"U[−√3,√3]","rows":[{"n":64,"ks":0.03465209755743142,"ksSe":0.00046812351284307517,"m2":1.0154497633587962,"m4":2.0565304804766456,"m6":5.219331811838798,"lamMax":1.9018941249641412,"m4med":2.0430637459060965,"m4p90":2.1968814582105303,"m4max":2.341431434798775},{"n":128,"ks":0.01902136715601502,"ksSe":0.00021599544469867423,"m2":1.007274864815848,"m4":2.0274629538258404,"m6":5.108959881905875,"lamMax":1.9396049174336056,"m4med":2.0191853603527914,"m4p90":2.090939514673989,"m4max":2.152515768892819},{"n":256,"ks":0.01070978511791609,"ksSe":0.00016863176984971979,"m2":1.0027315409191675,"m4":2.0103279909177574,"m6":5.0399678717543726,"lamMax":1.9626070394649815,"m4med":2.015507615435356,"m4p90":2.0360914675348165,"m4max":2.084088818292704}]},{"id":"rademacher","name":"两值","cn":"±1","rows":[{"n":64,"ks":0.034443569296296876,"ksSe":0.000474468541895489,"m2":1.015625,"m4":2.045356031954029,"m6":5.146548781188685,"lamMax":1.8978942182628407,"m4med":2.0437646202709523,"m4p90":2.0974786623410386,"m4max":2.1685018960410383},{"n":128,"ks":0.018884212538298285,"ksSe":0.000245573485211006,"m2":1.0078124999999998,"m4":2.0224820124744465,"m6":5.0718512886107066,"lamMax":1.9335975143774484,"m4med":2.021331476104669,"m4p90":2.0469973334341858,"m4max":2.090660521819383},{"n":256,"ks":0.010698627465521741,"ksSe":0.00018988065851648645,"m2":1.00390625,"m4":2.0101398111897697,"m6":5.0325156963456,"lamMax":1.9610134422297392,"m4med":2.0107053279204257,"m4p90":2.025107155633466,"m4max":2.035222872677983}]},{"id":"expo","name":"指数","cn":"Exp(1)−1","rows":[{"n":64,"ks":0.03853746987988827,"ksSe":0.0005104019891216626,"m2":1.011582215268955,"m4":2.152677429041131,"m6":5.904265267271127,"lamMax":1.9858722312376529,"m4med":2.1343452166578754,"m4p90":2.5818611055239087,"m4max":3.026798276496989},{"n":128,"ks":0.021340193486826656,"ksSe":0.00030613262968254783,"m2":1.009846180837535,"m4":2.097643212732016,"m6":5.527607017424277,"lamMax":1.9969087090461737,"m4med":2.0878242459509715,"m4p90":2.298644545304154,"m4max":2.5076993284977687},{"n":256,"ks":0.011719209434776794,"ksSe":0.0002093839799890996,"m2":1.0011410406735244,"m4":2.03185202803922,"m6":5.189874727150098,"lamMax":1.9884977013158605,"m4med":2.022616421709818,"m4p90":2.124134297062171,"m4max":2.2263277101039267}]},{"id":"t3","name":"重尾 t₃","cn":"t₃/√3","rows":[{"n":64,"ks":0.04925049156733372,"ksSe":0.0007437819403415001,"m2":1.0160665394461839,"m4":6.152534478868222,"m6":418.19102635098807,"lamMax":2.3092668865998798,"m4med":2.0337182160347345,"m4p90":4.433740065473922,"m4max":477.9003351412727},{"n":128,"ks":0.03193948110691698,"ksSe":0.00044514294310385916,"m2":1.0599516800580857,"m4":35.095096074768854,"m6":14948.125291195434,"lamMax":2.5742491354089605,"m4med":2.078630246054059,"m4p90":3.34036754185154,"m4max":4022.474205218716},{"n":256,"ks":0.02062075174539032,"ksSe":0.00040426350403272,"m2":1.0088551707250801,"m4":3.3811589395565105,"m6":68.510308021748,"lamMax":2.726103782250377,"m4med":2.223929284660725,"m4p90":3.601425919621185,"m4max":32.48417878070365}]}],"e3T3m4":35.095096074768854,"e3T3m4Big":3.3811589395565105,"e3T3m4Med":2.078630246054059,"e3T3m4Max":4022.474205218716,"e3T3ks":0.03193948110691698,"e3Norm4":2.042387257553305,"e3Norm4Med":2.038646448074216,"e3T3m4Ratio":17.18337007096848,"e3T3m4MedRatio":1.019612914253775,"e3T3ksRatio":1.6279043668124962,"e3KsMin":0.018884212538298285,"e3KsMax":0.03193948110691698,"e4Rows":[{"id":"beta1","label":"GOE（β=1）","n":200,"beta":1,"samples":60,"nSpacings":11940,"meanSpacing":1.0007709675404102,"ksWigner":0.014314531632647065,"ksWigner1":0.014314531632647065,"ksWigner2":0.0766680446891545,"ksPoisson":0.21231595310941223,"pSmall":0.006197654941373534,"pSmallTheory":0.007823219707438489,"pSmall05":0.18224455611390286,"pSmall05Theory":0.17827504196612276,"pSmall10":0.5536013400335008,"pSmall10Theory":0.5440618722340038,"pSmallPoissonTheory":0.09516258196404048},{"id":"beta2","label":"GUE（β=2）","n":150,"beta":2,"samples":60,"nSpacings":8940,"meanSpacing":0.9994794522874493,"ksWigner":0.004748122023679274,"ksWigner1":0.06879578127806218,"ksWigner2":0.004748122023679274,"ksPoisson":0.28078840072282896,"pSmall":0.0015659955257270694,"pSmallTheory":0.001072540319922849,"pSmall05":0.11610738255033556,"pSmall05Theory":0.11199971378298218,"pSmall10":0.5304250559284116,"pSmall10Theory":0.5330502005906137,"pSmallPoissonTheory":0.09516258196404048},{"id":"diag","label":"对角（无排斥）","n":200,"beta":0,"samples":60,"nSpacings":11940,"meanSpacing":0.993734577835106,"ksWigner":0.21903635937030647,"ksWigner1":0.21903635937030647,"ksWigner2":0.2848092468773067,"ksPoisson":0.007522999164130323,"pSmall":0.09346733668341708,"pSmallTheory":0.007823219707438489,"pSmall05":0.3961474036850921,"pSmall05Theory":0.17827504196612276,"pSmall10":0.6312395309882747,"pSmall10Theory":0.5440618722340038,"pSmallPoissonTheory":0.09516258196404048}],"e4B1":{"id":"beta1","label":"GOE（β=1）","n":200,"beta":1,"samples":60,"nSpacings":11940,"meanSpacing":1.0007709675404102,"ksWigner":0.014314531632647065,"ksWigner1":0.014314531632647065,"ksWigner2":0.0766680446891545,"ksPoisson":0.21231595310941223,"pSmall":0.006197654941373534,"pSmallTheory":0.007823219707438489,"pSmall05":0.18224455611390286,"pSmall05Theory":0.17827504196612276,"pSmall10":0.5536013400335008,"pSmall10Theory":0.5440618722340038,"pSmallPoissonTheory":0.09516258196404048},"e4B2":{"id":"beta2","label":"GUE（β=2）","n":150,"beta":2,"samples":60,"nSpacings":8940,"meanSpacing":0.9994794522874493,"ksWigner":0.004748122023679274,"ksWigner1":0.06879578127806218,"ksWigner2":0.004748122023679274,"ksPoisson":0.28078840072282896,"pSmall":0.0015659955257270694,"pSmallTheory":0.001072540319922849,"pSmall05":0.11610738255033556,"pSmall05Theory":0.11199971378298218,"pSmall10":0.5304250559284116,"pSmall10Theory":0.5330502005906137,"pSmallPoissonTheory":0.09516258196404048},"e4Diag":{"id":"diag","label":"对角（无排斥）","n":200,"beta":0,"samples":60,"nSpacings":11940,"meanSpacing":0.993734577835106,"ksWigner":0.21903635937030647,"ksWigner1":0.21903635937030647,"ksWigner2":0.2848092468773067,"ksPoisson":0.007522999164130323,"pSmall":0.09346733668341708,"pSmallTheory":0.007823219707438489,"pSmall05":0.3961474036850921,"pSmall05Theory":0.17827504196612276,"pSmall10":0.6312395309882747,"pSmall10Theory":0.5440618722340038,"pSmallPoissonTheory":0.09516258196404048},"e4RepulsionRatio":{"beta1":0.7922128194202022,"beta2":1.4600807975589358,"diag":0.982185799863396},"e4PoissonVsWigner":15.08108108108108,"e4KsGap":{"beta1":14.832196997992204,"beta2":59.136728020576165,"diag":29.115563433088273},"e5B1":[{"n":32,"samples":400,"meanLam":1.8622319291167841,"stdLam":0.12042108404942678,"scaledMean":-1.388615140073398,"scaledSe":0.060688423458012994,"scaledVar":1.4732338967276406},{"n":64,"samples":400,"meanLam":1.9179455749641559,"stdLam":0.08201775472382082,"scaledMean":-1.3128708005734981,"scaledSe":0.06561420377905666,"scaledVar":1.7220894950238295},{"n":128,"samples":300,"meanLam":1.9477731082634937,"stdLam":0.04558634357738317,"scaledMean":-1.3264803661369868,"scaledSe":0.0668468240621115,"scaledVar":1.3405493661572665},{"n":256,"samples":150,"meanLam":1.9692094660347426,"stdLam":0.029446259771128365,"scaledMean":-1.2413965401705596,"scaledSe":0.09693437617691122,"scaledVar":1.4094409927210403}],"e5B2":[{"n":32,"samples":400,"meanLam":1.8300559187283412,"stdLam":0.08597021663486412,"scaledMean":-1.7129290023936674,"scaledSe":0.0433262742409151,"scaledVar":0.7508664158395932},{"n":64,"samples":300,"meanLam":1.883211582927894,"stdLam":0.05862891294346325,"scaledMean":-1.868614673153695,"scaledSe":0.05415906987232581,"scaledVar":0.879961454830641},{"n":128,"samples":200,"meanLam":1.9274832737163217,"stdLam":0.03471986644830042,"scaledMean":-1.8418100414080394,"scaledSe":0.06235477185693942,"scaledVar":0.7776235146661928}],"e5Tw":{"one":{"mean":-1.206533574582,"var":1.607781034581},"two":{"mean":-1.7710868074,"var":0.8131947928}},"e5ExpB1":-0.6943129678295624,"e5ExpB2":-0.6540377716678919,"e5NsB1":[32,64,128,256],"e5NsB2":[32,64,128],"e5DevB1":{"absMax":0.18208156549139787,"sigMax":3.0002685045422237},"e5DevB2":{"absMax":0.0975278657536951,"sigMax":1.8007669995737845},"e5VarDevB1":-0.12336259577265674,"e5VarDevB2":-0.04374262900937642,"e5LamMaxLast":1.9692094660347426,"e6Rows":[{"gamma":0.25,"M":200,"N":800,"samples":60,"ksMP":0.013235569110323192,"ksMPse":0.00024992563259250325,"ksSemi":0.582095465804499,"edgeLoMeas":0.25746861676773186,"edgeLoTheory":0.25,"edgeHiMeas":2.2162244051524262,"edgeHiTheory":2.25},{"gamma":0.5,"M":200,"N":400,"samples":60,"ksMP":0.013206111944171314,"ksMPse":0.00022622503106661232,"ksSemi":0.5288139204912593,"edgeLoMeas":0.09010456715346479,"edgeLoTheory":0.08578643762690492,"edgeHiMeas":2.8573213413808713,"edgeHiTheory":2.914213562373095},{"gamma":1,"M":200,"N":200,"samples":60,"ksMP":0.013418993216902386,"ksMPse":0.0002299597465570892,"ksSemi":0.5000051515074707,"edgeLoMeas":0.000016183938033031432,"edgeLoTheory":0,"edgeHiMeas":3.903105772314604,"edgeHiTheory":4}],"e6Big":[{"gamma":2,"M":240,"N":120,"samples":30,"zeroFrac":0.5,"zeroTheory":0.5,"ksMPcond":0.020177816289086672},{"gamma":4,"M":240,"N":60,"samples":30,"zeroFrac":0.75,"zeroTheory":0.75,"ksMPcond":0.0350450248089988}],"e6Edge":[{"M":50,"loMeas":0.09817982046720594,"hiMeas":2.7627275381232046,"hiTheory":2.914213562373095,"bias":-0.15148602424989033},{"M":100,"loMeas":0.09398675660114973,"hiMeas":2.828864797008797,"hiTheory":2.914213562373095,"bias":-0.08534876536429792},{"M":200,"loMeas":0.08982735064355543,"hiMeas":2.853627509454355,"hiTheory":2.914213562373095,"bias":-0.06058605291873986},{"M":400,"loMeas":0.08924303924578134,"hiMeas":2.888797046690014,"hiTheory":2.914213562373095,"bias":-0.02541651568308101}],"e6KsMPmax":0.013418993216902386,"e6KsSemimin":0.5000051515074707,"e6KsGap":37.261003372270196,"e6EdgeExp":{"p":-0.8220424149173966,"r2":0.9698875326707457,"n":4},"e6EdgeBiasFirst":-0.15148602424989033,"e6EdgeBiasLast":-0.02541651568308101,"e6ZeroMaxErr":0,"e7Cost":[{"n":32,"qlMs":0.1153,"jacobiMs":0.4226,"ratio":3.67,"memMB":0.008},{"n":64,"qlMs":0.5051,"jacobiMs":2.6114,"ratio":5.17,"memMB":0.031},{"n":128,"qlMs":3.1096,"jacobiMs":23.4675,"ratio":7.55,"memMB":0.125},{"n":256,"qlMs":38.4889,"jacobiMs":206.9859,"ratio":5.38,"memMB":0.5}],"e7Extrap":[{"n":512,"estMs":308,"memMB":2},{"n":1024,"estMs":2463,"memMB":8},{"n":2048,"estMs":19706,"memMB":32},{"n":4096,"estMs":157651,"memMB":128}],"e7Xcheck":{"cases":800,"worstRel":1.770350053694857e-14,"worstN":64},"e7KsTarget":{"target":0.02,"reachedAt":128,"samplesNeeded":300},"e7RatioLast":5.38,"e7MemLast":0.5,"e7MemExtrap":128,"e7CostExp":{"p":2.7770806416239178,"r2":0.985315273680287,"n":4},"e1SpeedupLast":4.949089877099231,"e1SpeedupFirst":1.9880805767078984}};</script>
+<script>/* ============================================================================
+ * rmt/ui.js —— 界面三段之三：渲染 + 交互 + 探针
+ *
+ * 守住的规矩（都是别的装置上踩出来的）：
+ *   · openTag 只用来开 <svg>；形状一律用自带闭合的 tag()
+ *   · 图表按容器的真实像素宽渲染；setTab / resize 时幂等重画
+ *   · 竖柱的 data-want 存**高度**并打 data-vert="1"
+ *   · 图例放 HTML，条数要和图上真正画的曲线数一致
+ *   · 页面上不读时钟；毫秒一律来自 Node 侧标定烤进 analysis.json 的数
+ *   · 局部变量不许叫 A / D（会遮蔽分析全局）
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var A = window.__ANALYSIS__;
+  var D = A.derived;
+  var Core = window.RMTCore;
+
+  /* ============================================================ 小工具 */
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function attrsStr(o) {
+    var s = '', k;
+    for (k in o) {
+      if (!Object.prototype.hasOwnProperty.call(o, k)) continue;
+      if (o[k] === undefined || o[k] === null) continue;
+      s += ' ' + k + '="' + String(o[k]).replace(/"/g, '&quot;') + '"';
+    }
+    return s;
+  }
+  function tag(name, attrs, text) {
+    return '<' + name + attrsStr(attrs) + '>' + (text === undefined ? '' : esc(text)) + '</' + name + '>';
+  }
+  function openTag(name, attrs) { return '<' + name + attrsStr(attrs) + '>'; }
+  function setText(id, s) { var e = $(id); if (e) e.textContent = s; }
+  function setHTML(id, s) { var e = $(id); if (e) e.innerHTML = s; }
+
+  /* 所有"数字 → 字符串"的出口都对类型设防：字符串原样返回、缺失标 '—'。
+   * 少了这一行，isFinite('1.8×10^−14') 是 false，一个有限的量会被印成 ∞。 */
+  function fmt(x, d) {
+    if (typeof x === 'string') return x;
+    if (x === null || x === undefined) return '—';
+    if (typeof x !== 'number' || Number.isNaN(x)) return 'NaN';
+    if (!isFinite(x)) return x > 0 ? '∞' : '−∞';
+    return Number(x).toFixed(d === undefined ? 4 : d);
+  }
+  function fmtInt(x) { return Number(x).toLocaleString('en-US'); }
+  function sci(x, d) {
+    if (typeof x === 'string') return x;
+    if (x === undefined || x === null) return '—';
+    if (typeof x !== 'number' || Number.isNaN(x)) return 'NaN';
+    if (!isFinite(x)) return x > 0 ? '∞' : '−∞';
+    if (x === 0) return '0';
+    var s = Number(x).toExponential(d === undefined ? 2 : d).split('e');
+    return s[0] + '×10^' + (s[1][0] === '-' ? '−' : '') + String(Math.abs(+s[1]));
+  }
+  function pctS(x, d) {
+    if (typeof x !== 'number' || !isFinite(x)) return '—';
+    return (x * 100).toFixed(d === undefined ? 2 : d) + '%';
+  }
+  function msText(ms) {
+    if (typeof ms !== 'number' || !isFinite(ms)) return '—';
+    if (ms < 0.01) return '< 0.01 毫秒';
+    if (ms < 1) return ms.toFixed(2) + ' 毫秒';
+    return fmt(ms, 1) + ' 毫秒';
+  }
+  function chartWidth(host) { return Math.max(240, Math.round(host.clientWidth || 640)); }
+
+  /* ============================================================ 坐标与刻度 */
+  function sc(x0, x1, a, b) {
+    var d = (x1 - x0) || 1;
+    return function (v) { return a + (v - x0) / d * (b - a); };
+  }
+  function logsc(x0, x1, a, b) {
+    var l0 = Math.log10(x0), l1 = Math.log10(x1);
+    return function (v) { return a + (Math.log10(Math.max(v, 1e-300)) - l0) / (l1 - l0) * (b - a); };
+  }
+  function niceTicks(lo, hi, count) {
+    var span = hi - lo;
+    if (!(span > 0)) return [lo];
+    var step = Math.pow(10, Math.floor(Math.log10(span / count)));
+    var err = span / count / step;
+    if (err >= 5) step *= 10; else if (err >= 2) step *= 5; else if (err >= 1) step *= 2;
+    var t = [], v = Math.ceil(lo / step - 1e-9) * step;
+    for (; v <= hi + step * 1e-9; v += step) t.push(+v.toPrecision(12));
+    return t;
+  }
+  function tickTxt(v) {
+    var a = Math.abs(v);
+    if (a === 0) return '0';
+    if (a >= 1000) return String(Math.round(v));
+    if (a >= 1) return String(+v.toFixed(2));
+    if (a >= 0.01) return String(+v.toFixed(3));
+    return sci(v, 0);
+  }
+  /* 对数刻度：只画整十次幂，**窄范围上会只剩一两条**。
+     本装置好几张图的对数轴只跨 1~1.5 个数量级（c-edge 的 N=24..320、
+     c-m4 的 1..35、c-uni 的 1e-3..3e-2），于是补上 2×/5× 刻度。
+     跨 3 个数量级以上才退回整十次幂 —— 否则刻度会挤成一团。 */
+  function logTicks(lo, hi) {
+    var out = [], e, mi, v;
+    var M = (Math.log10(hi / lo) >= 3) ? [1] : [1, 2, 5];
+    for (e = Math.floor(Math.log10(lo)) - 1; e <= Math.ceil(Math.log10(hi)) + 1; e++) {
+      for (mi = 0; mi < M.length; mi++) {
+        v = M[mi] * Math.pow(10, e);
+        if (v >= lo * (1 - 1e-9) && v <= hi * (1 + 1e-9)) out.push(v);
+      }
+    }
+    return out;
+  }
+  /* 一根对数轴上所有标签必须同一种写法：整根轴小到要科学计数，就全用 10^e。
+     （只按单值自身量级判断的话，同一根轴上会混出 10^-4 和 0.001。） */
+  function logFmt(ticks) {
+    var mn = Infinity;
+    ticks.forEach(function (v) { mn = Math.min(mn, Math.abs(v)); });
+    var sci = mn < 1e-3;
+    return function (v) {
+      var e = Math.floor(Math.log10(v) + 1e-9);
+      var m = Math.round(v / Math.pow(10, e));
+      if (sci) return m === 1 ? (e === 0 ? '1' : '10^' + e) : m + '·10^' + e;
+      return String(+(m * Math.pow(10, e)).toFixed(10));
+    };
+  }
+  /* 单值版本（给不方便成批格式化的地方用） */
+  function logTickTxt(v) {
+    var e = Math.floor(Math.log10(v) + 1e-9);
+    var m = Math.round(v / Math.pow(10, e));
+    if (m === 1) return (e >= -3 && e <= 4) ? String(+(Math.pow(10, e).toFixed(10))) : '10^' + e;
+    return (e >= -3 && e <= 3) ? String(+(m * Math.pow(10, e)).toFixed(10)) : m + '·10^' + e;
+  }
+  function thin(ticks, span, minGap) {
+    var maxN = Math.max(2, Math.floor(span / minGap));
+    if (ticks.length <= maxN) return ticks;
+    var step = Math.ceil(ticks.length / maxN);
+    return ticks.filter(function (_, i) { return i % step === 0; });
+  }
+
+  function frame(w, h, pad, xr, yr, opt) {
+    opt = opt || {};
+    var X = opt.xlog ? logsc(xr[0], xr[1], pad.l, w - pad.r)
+                     : sc(xr[0], xr[1], pad.l, w - pad.r);
+    var Y = opt.ylog ? logsc(yr[0], yr[1], h - pad.b, pad.t)
+                     : sc(yr[0], yr[1], h - pad.b, pad.t);
+    var s = '';
+    s += tag('rect', { x: pad.l, y: pad.t, width: w - pad.l - pad.r, height: h - pad.t - pad.b,
+                       fill: '#ffffff', stroke: '#ded9d0', 'stroke-width': 1 });
+    var xt = opt.nox ? [] : (opt.xlog ? logTicks(xr[0], xr[1]) : niceTicks(xr[0], xr[1], opt.xn || 6));
+    var xf = opt.xlog ? logFmt(xt) : tickTxt;
+    xt = thin(xt, w - pad.l - pad.r, 48);
+    xt.forEach(function (v) {
+      var x = X(v);
+      if (x < pad.l - 0.5 || x > w - pad.r + 0.5) return;
+      s += tag('line', { x1: x, y1: h - pad.b, x2: x, y2: h - pad.b + 4, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('line', { x1: x, y1: pad.t, x2: x, y2: h - pad.b, stroke: '#efece6', 'stroke-width': 1 });
+      s += tag('text', { x: x, y: h - pad.b + 14, 'text-anchor': 'middle', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, xf(v));
+    });
+    var yt = opt.ylog ? logTicks(yr[0], yr[1]) : niceTicks(yr[0], yr[1], opt.yn || 5);
+    var yf = opt.ylog ? logFmt(yt) : tickTxt;
+    yt = thin(yt, h - pad.t - pad.b, 19);
+    yt.forEach(function (v) {
+      var y = Y(v);
+      if (y < pad.t - 0.5 || y > h - pad.b + 0.5) return;
+      s += tag('line', { x1: pad.l - 4, y1: y, x2: pad.l, y2: y, stroke: '#8a8279', 'stroke-width': 1 });
+      s += tag('line', { x1: pad.l, y1: y, x2: w - pad.r, y2: y, stroke: '#efece6', 'stroke-width': 1 });
+      s += tag('text', { x: pad.l - 6, y: y + 3.5, 'text-anchor': 'end', 'font-size': 10.5,
+                         fill: '#8a8279', class: 'tick' }, yf(v));
+    });
+    /* 轴标题一律带 class="tick"，否则"标题压刻度"这类碰撞探针根本看不见它 */
+    if (opt.xlab && !opt.nox) s += tag('text', { x: (pad.l + w - pad.r) / 2, y: h - 3, 'text-anchor': 'middle',
+                                     'font-size': 11.5, fill: '#57534e', class: 'tick' }, opt.xlab);
+    return { X: X, Y: Y, body: s };
+  }
+
+  function poly(pts, color, wdt, dash) {
+    if (!pts.length) return '';
+    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2); }).join(' ');
+    return tag('path', { d: d, fill: 'none', stroke: color, 'stroke-width': wdt || 2,
+                         'stroke-dasharray': dash || 'none', 'stroke-linejoin': 'round' });
+  }
+  function dot(x, y, color, r, shape) {
+    if (shape === 'sq') return tag('rect', { x: x - (r || 3), y: y - (r || 3), width: 2 * (r || 3), height: 2 * (r || 3), fill: color });
+    return tag('circle', { cx: x, cy: y, r: r || 3, fill: color });
+  }
+  function svgInto(host, w, h, body) {
+    host.innerHTML = openTag('svg', { width: w, height: h, viewBox: '0 0 ' + w + ' ' + h, role: 'img' }) + body + '</svg>';
+  }
+
+  /* 水平条形图：每根柱子带 data-want，探针按渲染像素宽核对 */
+  function hbars(host, rows, opt) {
+    opt = opt || {};
+    var w = chartWidth(host);
+    var labW = Math.min(opt.labW || 140, Math.max(124, Math.round(w * 0.36)));
+    var valW = Math.min(96, Math.max(58, Math.round(w * 0.22)));
+    var rowH = opt.rowH || 24;
+    var pad = { t: 10, b: opt.xlab ? 34 : 12, l: labW, r: valW };
+    var h = pad.t + pad.b + rows.length * rowH;
+    var lo = opt.xlog ? (opt.xmin || 1e-18) : (opt.xmin === undefined ? 0 : opt.xmin);
+    var hi = opt.xmax || Math.max.apply(null, rows.map(function (r) { return Math.abs(r.value); }).concat([1e-30]));
+    if (!opt.xlog && hi <= lo) hi = lo + 1;
+    if (!opt.xlog) hi = lo + (hi - lo) * 1.06;
+    var X = opt.xlog ? logsc(lo, hi, pad.l, w - pad.r) : sc(lo, hi, pad.l, w - pad.r);
+    var s = '';
+    rows.forEach(function (r, i) {
+      var y = pad.t + i * rowH, bh = rowH - 10;
+      var v = opt.xlog ? Math.max(Math.abs(r.value), lo) : Math.abs(r.value);
+      var x0 = X(lo), x1 = X(v);
+      var bw = Math.max(opt.floor === undefined ? 1.2 : opt.floor, x1 - x0);
+      var over = v > hi * (1 + 1e-9) ? 1 : 0;
+      s += tag('text', { x: labW - 8, y: y + bh / 2 + 4, 'text-anchor': 'end', 'font-size': 11.5,
+                         fill: '#57534e', class: 'tick' }, r.label);
+      s += tag('rect', { x: x0, y: y + 4, width: bw, height: bh, fill: r.color || '#a23b1e',
+                         class: 'bar-fill', 'data-want': bw.toFixed(3), 'data-over': String(over),
+                         'data-key': r.key || r.label });
+      s += tag('text', { x: w - 4, y: y + bh / 2 + 4, 'text-anchor': 'end', 'font-size': 11, fill: '#1c1b19',
+                         class: 'tick' }, r.text === undefined ? fmt(r.value, 4) : r.text);
+    });
+    if (opt.xlab) {
+      var xt = opt.xlog ? logTicks(lo, hi) : niceTicks(lo, hi, 4);
+      var xf = opt.xlog ? logFmt(xt) : tickTxt;
+      xt = thin(xt, w - pad.l - pad.r, 48);
+      xt.forEach(function (v2) {
+        var x = X(v2);
+        if (x < pad.l - 0.5 || x > w - pad.r + 0.5) return;
+        s += tag('line', { x1: x, y1: pad.t, x2: x, y2: h - pad.b + 4, stroke: '#ded9d0', 'stroke-width': 1 });
+        s += tag('text', { x: x, y: h - pad.b + 15, 'text-anchor': 'middle', 'font-size': 10.5,
+                           fill: '#8a8279', class: 'tick' }, xf(v2));
+      });
+      s += tag('text', { x: (pad.l + w - pad.r) / 2, y: h - 3, 'text-anchor': 'middle',
+                         'font-size': 11.5, fill: '#57534e', class: 'tick' }, opt.xlab);
+    }
+    svgInto(host, w, h, s);
+    return { X: X, pad: pad, h: h, w: w };
+  }
+
+  /* 竖向直方图 + 可选曲线。柱子 data-want 存**高度**并打 data-vert="1"。 */
+  function vhist(host, opt) {
+    var w = chartWidth(host);
+    var pad = { t: 12, r: 12, b: opt.xlab ? 38 : 14, l: 46 };
+    var h = opt.h || 262;
+    var dens = opt.dens || [];
+    var curveMax = 0;
+    (opt.curves || []).forEach(function (cv) { cv.pts.forEach(function (v) { if (isFinite(v) && v > curveMax) curveMax = v; }); });
+    var ymax = opt.ymax || (Math.max.apply(null, dens.concat([curveMax, 1e-9])) * 1.08);
+    var f = frame(w, h, pad, [opt.lo, opt.hi], [0, ymax], { xlab: opt.xlab, xn: opt.xn || 6, yn: 5 });
+    var s = f.body;
+    var bw = (w - pad.l - pad.r) / Math.max(1, dens.length);
+    dens.forEach(function (d, i) {
+      var x0 = pad.l + i * bw;
+      var y1 = f.Y(Math.min(d, ymax));
+      var bh = Math.max(0, f.Y(0) - y1);
+      var over = d > ymax * (1 + 1e-9) ? 1 : 0;
+      s += tag('rect', { x: (x0 + 0.5).toFixed(2), y: y1.toFixed(2),
+                         width: Math.max(0.5, bw - 1).toFixed(2), height: bh.toFixed(2),
+                         fill: opt.color || '#a23b1e', class: 'bar-fill',
+                         'data-want': bh.toFixed(3), 'data-vert': '1', 'data-over': String(over),
+                         'data-key': 'bin' + i });
+    });
+    (opt.curves || []).forEach(function (cv) {
+      var pts = [];
+      cv.pts.forEach(function (v, i) { if (isFinite(v)) pts.push([pad.l + (i + 0.5) * bw, f.Y(v)]); });
+      s += poly(pts, cv.color, cv.wdt || 2, cv.dash);
+    });
+    svgInto(host, w, h, s);
+    return f;
+  }
+
+  /* 折线图（可选对数轴、可选水平参考线） */
+  function lineChart(host, opt) {
+    var w = chartWidth(host);
+    var pad = { t: 12, r: opt.padR || 16, b: opt.xlab ? 38 : 16, l: opt.padL || 46 };
+    var h = opt.h || 250;
+    var f = frame(w, h, pad, opt.xr, opt.yr,
+      { xlog: opt.xlog, ylog: opt.ylog, xlab: opt.xlab, xn: opt.xn || 6, yn: opt.yn || 5 });
+    var s = f.body;
+    (opt.series || []).forEach(function (se) {
+      var pts = [];
+      se.pts.forEach(function (p) {
+        if (p && isFinite(p[0]) && isFinite(p[1]) && p[1] !== null && p[1] > 0) {
+          pts.push([f.X(p[0]), f.Y(p[1])]);
+        }
+      });
+      if (se.dots) pts.forEach(function (p) { s += dot(p[0], p[1], se.color, 3.2); });
+      s += poly(pts, se.color, se.wdt || 2, se.dash);
+    });
+    if (opt.hline !== undefined) {
+      var y = f.Y(opt.hline);
+      if (y >= pad.t - 0.5 && y <= h - pad.b + 0.5) {
+        s += tag('line', { x1: pad.l, y1: y.toFixed(2), x2: w - pad.r, y2: y.toFixed(2),
+                           stroke: opt.hlineColor || '#b45309', 'stroke-width': 1.2, 'stroke-dasharray': '5 4' });
+      }
+    }
+    svgInto(host, w, h, s);
+    return f;
+  }
+
+  /* ============================================================ 壹 · 谱（交互） */
+  var SPEC = { n: 128, beta: 1, dist: 'normal', draw: 0 };
+
+  function specSeed() { return Core.seedFrom('ui|' + SPEC.dist + '|' + SPEC.beta + '|' + SPEC.n + '|' + SPEC.draw); }
+
+  function drawSpec(host) {
+    var n = SPEC.n;
+    var ev = Core.wignerSpectrum(n, SPEC.beta, SPEC.dist, specSeed());
+    var LO = -2.6, HI = 2.6, NB = 44;
+    var hh = Core.histogram(ev, LO, HI, NB);
+    var dens = Array.from(hh.density);
+    var centers = [];
+    for (var i = 0; i < NB; i++) centers.push(LO + (i + 0.5) * (HI - LO) / NB);
+    vhist(host, {
+      lo: LO, hi: HI, dens: dens, xlab: '特征值 λ', h: 268,
+      curves: [{ pts: centers.map(function (x) { return Core.semicircleDensity(x); }), color: '#1c1b19', wdt: 2.2 }]
+    });
+    var ks = Core.ksToSemicircle(ev), mm = Core.moments(ev, 6);
+    return { ks: ks, m2: mm[2], m4: mm[4], m6: mm[6], lamMax: ev[n - 1], n: n, beta: SPEC.beta, dist: SPEC.dist };
+  }
+
+  function renderSpec() {
+    var r = drawSpec($('c-spec'));
+    setHTML('ro-spec',
+      '<span class="maj"><span class="k">KS</span><b>' + fmt(r.ks, 4) + '</b></span>' +
+      '<span><span class="k">N</span><b>' + r.n + '</b></span>' +
+      '<span><span class="k">β</span><b>' + r.beta + '</b></span>' +
+      '<span><span class="k">分布</span><b>' + esc(Core.DISTS[r.dist].name) + '</b></span>' +
+      '<span><span class="k">m₂</span><b>' + fmt(r.m2, 4) + '</b></span>' +
+      '<span><span class="k">m₄</span><b>' + fmt(r.m4, 4) + '</b></span>' +
+      '<span><span class="k">m₆</span><b>' + fmt(r.m6, 3) + '</b></span>' +
+      '<span><span class="k">λmax</span><b>' + fmt(r.lamMax, 4) + '</b></span>');
+  }
+
+  /* ============================================================ 贰 · 矩 */
+  function renderMom() {
+    var e2 = A.charts.e2, ns = e2.ns;
+    var idx = [0, 2, 4];
+    var cols = ['#1f6f8b', '#6b8e23', '#a23b1e'];
+    var series = idx.map(function (ni, si) {
+      return {
+        color: cols[si], dots: true,
+        pts: e2.rows.map(function (r) { return [2 * r.k, Math.max(r.relErrs[ni], 1e-6)]; })
+      };
+    });
+    lineChart($('c-mom'), {
+      xr: [0, 10], yr: [1e-4, 1], ylog: true, xlab: '矩的阶数 2k', h: 250, xn: 5,
+      series: series
+    });
+    var head = '<caption>经验谱的偶阶矩与 Catalan 数（每格是相对差 |实测 − Catalan| / Catalan）</caption>' +
+      '<thead><tr><th>阶</th><th>Catalan</th>' +
+      ns.map(function (n) { return '<th>N = ' + n + '</th>'; }).join('') + '</tr></thead><tbody>';
+    var body = e2.rows.map(function (r) {
+      return '<tr><td>m' + (2 * r.k) + '</td><td>' + r.cat + '</td>' +
+        r.relErrs.map(function (v) { return '<td>' + pctS(v, 2) + '</td>'; }).join('') + '</tr>';
+    }).join('');
+    setHTML('t-mom', head + body + '</tbody>');
+  }
+
+  /* ============================================================ 叁 · 间距 */
+  var GAP_CASES = [
+    { id: 'beta1', label: 'GOE（β=1，实对称）', ref: 1 },
+    { id: 'beta2', label: 'GUE（β=2，复 Hermite）', ref: 2 },
+    { id: 'diag', label: '对角矩阵（无排斥，对照）', ref: 1 }
+  ];
+  var gapCase = 'beta1';
+
+  function drawGap(host) {
+    var e4 = A.charts.e4;
+    var cs = GAP_CASES.filter(function (c) { return c.id === gapCase; })[0];
+    var hist = e4.hist[gapCase];
+    vhist(host, {
+      lo: e4.lo, hi: e4.hi, dens: hist.dens, xlab: '展开后的最近邻间距 s', h: 262,
+      curves: [
+        { pts: e4.curves['wigner' + cs.ref], color: '#a23b1e', wdt: 2.2 },
+        { pts: e4.curves.poisson, color: '#7c3aed', wdt: 1.8, dash: '6 4' }
+      ]
+    });
+    return D.e4Rows.filter(function (r) { return r.id === gapCase; })[0];
+  }
+
+  function renderGap() {
+    var r = drawGap($('c-gap'));
+    setHTML('ro-gap',
+      '<span class="maj"><span class="k">平均间距</span><b>' + fmt(r.meanSpacing, 4) + '</b></span>' +
+      '<span><span class="k">KS(Wigner)</span><b>' + fmt(r.ksWigner, 4) + '</b></span>' +
+      '<span><span class="k">KS(Poisson)</span><b>' + fmt(r.ksPoisson, 4) + '</b></span>' +
+      '<span><span class="k">P(s&lt;0.1)</span><b>' + fmt(r.pSmall, 4) + '</b></span>' +
+      '<span><span class="k">间距个数</span><b>' + fmtInt(r.nSpacings) + '</b></span>');
+
+    var rows = [];
+    D.e4Rows.forEach(function (x) {
+      var th = (x.id === 'diag') ? x.pSmallPoissonTheory : x.pSmallTheory;
+      rows.push({ label: x.label.replace(/（.*$/, '') + ' 实测', value: x.pSmall, color: '#1f6f8b', key: x.id + 'M', text: fmt(x.pSmall, 4) });
+      rows.push({ label: x.label.replace(/（.*$/, '') + ' 理论', value: th, color: '#b45309', key: x.id + 'T', text: fmt(th, 4) });
+    });
+    hbars($('c-repel'), rows, { xlog: true, xmin: 1e-4, xlab: 'P(s < 0.1)（对数轴）', labW: 152, rowH: 24 });
+
+    var head = '<caption>展开后的最近邻间距（每个系综 60 个矩阵，间距合并后统一核对）</caption>' +
+      '<thead><tr><th>谱来自</th><th>矩阵阶数</th><th>间距个数</th><th>平均间距</th>' +
+      '<th>KS vs Wigner</th><th>KS vs Poisson</th><th>P(s&lt;0.1) 实测</th><th>理论</th></tr></thead><tbody>';
+    var body = D.e4Rows.map(function (x) {
+      var th = (x.id === 'diag') ? x.pSmallPoissonTheory : x.pSmallTheory;
+      return '<tr' + (x.id === gapCase ? ' class="hi"' : '') + '><td>' + esc(x.label) + '</td><td>' + x.n + '</td>' +
+        '<td>' + fmtInt(x.nSpacings) + '</td><td>' + fmt(x.meanSpacing, 4) + '</td>' +
+        '<td>' + fmt(x.ksWigner, 4) + '</td><td>' + fmt(x.ksPoisson, 4) + '</td>' +
+        '<td>' + fmt(x.pSmall, 4) + '</td><td>' + fmt(th, 4) + '</td></tr>';
+    }).join('');
+    setHTML('t-gap', head + body + '</tbody>');
+  }
+
+  /* ============================================================ 肆 · 边缘 */
+  function renderEdge() {
+    var e5 = A.charts.e5;
+    lineChart($('c-edge'), {
+      xr: [24, 320], xlog: true, yr: [1.82, 2.02], xlab: '矩阵阶数 N（对数轴）', ylab: '', h: 258, xn: 4, yn: 5,
+      hline: 2, hlineColor: '#b45309',
+      series: [
+        { color: '#1f6f8b', dots: true, pts: e5.b1.map(function (r) { return [r.n, r.meanLam]; }) },
+        { color: '#6b8e23', dots: true, pts: e5.b2.map(function (r) { return [r.n, r.meanLam]; }) }
+      ]
+    });
+    lineChart($('c-tw'), {
+      xr: [e5.lo, e5.hi], yr: [0, 0.62], xlab: 'N^(2/3)·(λmax − 2)', h: 258, xn: 5, yn: 5,
+      series: [
+        { color: '#1f6f8b', pts: e5.hist['1|64'].map(function (v, i) { return [e5.centers[i], v]; }) },
+        { color: '#6b8e23', pts: e5.hist['1|128'].map(function (v, i) { return [e5.centers[i], v]; }) },
+        { color: '#a23b1e', pts: e5.hist['1|256'].map(function (v, i) { return [e5.centers[i], v]; }) }
+      ]
+    });
+
+    var head = '<caption>λ_max 的软边缘：缩放后的均值/方差与已发表的 Tracy–Widom 常数对照</caption>' +
+      '<thead><tr><th>系综</th><th>N</th><th>样本</th><th>E[λ_max]</th><th>std(λ_max)</th>' +
+      '<th>缩放均值</th><th>±标准误</th><th>缩放方差</th><th>TW 均值</th><th>TW 方差</th></tr></thead><tbody>';
+    var rows = [];
+    e5.b1.forEach(function (r) { rows.push(['β=1', r, D.e5Tw.one]); });
+    e5.b2.forEach(function (r) { rows.push(['β=2', r, D.e5Tw.two]); });
+    var body = rows.map(function (t) {
+      var r = t[1];
+      return '<tr><td>' + t[0] + '</td><td>' + r.n + '</td><td>' + r.samples + '</td>' +
+        '<td>' + fmt(r.meanLam, 4) + '</td><td>' + fmt(r.stdLam, 4) + '</td>' +
+        '<td>' + fmt(r.scaledMean, 4) + '</td><td>' + fmt(r.scaledSe, 4) + '</td>' +
+        '<td>' + fmt(r.scaledVar, 4) + '</td><td>' + fmt(t[2].mean, 4) + '</td><td>' + fmt(t[2].var, 4) + '</td></tr>';
+    }).join('');
+    setHTML('t-tw', head + body + '</tbody>');
+  }
+
+  /* ============================================================ 伍 · 无关 */
+  function renderUni() {
+    var at = D.e3At128;
+    hbars($('c-uni'), at.map(function (r) {
+      return { label: r.name + ' ' + r.cn, value: r.ks, color: '#1f6f8b', key: r.id, text: fmt(r.ks, 4) };
+    }), { xlog: true, xmin: 1e-3, xlab: '到半圆的 KS 距离（N=128，对数轴）', labW: 148, rowH: 26 });
+    /* 柱子画的是 m₄ 的**均值**；重尾那一条旁边标出中位数，否则读者会把 35.1 读成"偏大一点" */
+    hbars($('c-m4'), at.map(function (r) {
+      var heavy = r.id === 't3';
+      return { label: r.name + ' ' + r.cn, value: Math.max(r.m4, 1e-3),
+               color: heavy ? '#a23b1e' : '#6b8e23', key: r.id,
+               text: fmt(r.m4, 2) + (heavy ? '（中位 ' + fmt(r.m4med, 2) + '）' : '') };
+    }), { xlog: true, xmin: 1, xlab: '第 4 阶矩 m₄ 的均值（N=128，Catalan = 2，对数轴）', labW: 148, rowH: 26 });
+
+    var ns = D.e3Dists[0].rows.map(function (r) { return r.n; });
+    var head = '<caption>五种取数分布（方差都归一到 1）。KS 一列给三个 N；矩那几列一律取 <b>N=128</b>，和上面两张图同源。' +
+      'm₄ 给均值、中位数、最大值三个数 —— 重尾下这三个数差着三个量级；m₆ 同理（t₃ 的六阶矩也发散，那个均值同样不能当真）</caption>' +
+      '<thead><tr><th>分布</th>' + ns.map(function (n) { return '<th>KS (N=' + n + ')</th>'; }).join('') +
+      '<th>m₂</th><th>m₄ 均值</th><th>m₄ 中位</th><th>m₄ 最大</th><th>m₆</th><th>E[λ_max]</th></tr></thead><tbody>';
+    var body = D.e3Dists.map(function (d) {
+      var at128 = d.rows.filter(function (r) { return r.n === 128; })[0];
+      var heavy = d.id === 't3';
+      return '<tr' + (heavy ? ' class="hi"' : '') + '><td>' + esc(d.name + ' ' + d.cn) + '</td>' +
+        d.rows.map(function (r) { return '<td>' + fmt(r.ks, 4) + '</td>'; }).join('') +
+        '<td>' + fmt(at128.m2, 4) + '</td><td>' + fmt(at128.m4, 3) + '</td>' +
+        '<td>' + fmt(at128.m4med, 4) + '</td><td>' + (heavy ? fmt(at128.m4max, 1) : fmt(at128.m4max, 2)) + '</td>' +
+        '<td>' + fmt(at128.m6, 3) + '</td><td>' + fmt(at128.lamMax, 4) + '</td></tr>';
+    }).join('');
+    setHTML('t-uni', head + body + '</tbody>');
+  }
+
+  /* ============================================================ 陆 · 矩形与墙 */
+  var MP_GAMMAS = [0.25, 0.5, 1];
+  var mpGamma = 0.5;
+
+  function drawMp(host) {
+    var e6 = A.charts.e6;
+    var key = 'g' + mpGamma;
+    vhist(host, {
+      lo: e6.lo, hi: e6.hi, dens: e6.hist[key].dens, xlab: '样本协方差的特征值 x', h: 268,
+      curves: [{ pts: e6.curves[key], color: '#1c1b19', wdt: 2.2 }]
+    });
+    return D.e6Rows.filter(function (r) { return r.gamma === mpGamma; })[0];
+  }
+
+  function renderMp() {
+    var r = drawMp($('c-mp'));
+    setHTML('ro-mp',
+      '<span class="maj"><span class="k">γ</span><b>' + r.gamma + '</b></span>' +
+      '<span><span class="k">KS(MP)</span><b>' + fmt(r.ksMP, 4) + '</b></span>' +
+      '<span><span class="k">KS(半圆)</span><b>' + fmt(r.ksSemi, 4) + '</b></span>' +
+      '<span><span class="k">下边缘</span><b>' + fmt(r.edgeLoMeas, 3) + '</b></span>' +
+      '<span><span class="k">理论</span><b>' + fmt(r.edgeLoTheory, 3) + '</b></span>' +
+      '<span><span class="k">上边缘</span><b>' + fmt(r.edgeHiMeas, 3) + '</b></span>' +
+      '<span><span class="k">理论</span><b>' + fmt(r.edgeHiTheory, 3) + '</b></span>');
+
+    var head = '<caption>Marchenko–Pastur：γ≤1 的实样本协方差</caption>' +
+      '<thead><tr><th>γ</th><th>M</th><th>N</th><th>KS vs MP</th><th>KS vs 半圆</th>' +
+      '<th>下边缘 实测</th><th>理论</th><th>上边缘 实测</th><th>理论</th></tr></thead><tbody>';
+    var body = D.e6Rows.map(function (x) {
+      return '<tr' + (x.gamma === mpGamma ? ' class="hi"' : '') + '><td>' + x.gamma + '</td><td>' + x.M + '</td><td>' + x.N + '</td>' +
+        '<td>' + fmt(x.ksMP, 4) + '</td><td>' + fmt(x.ksSemi, 4) + '</td>' +
+        '<td>' + fmt(x.edgeLoMeas, 4) + '</td><td>' + fmt(x.edgeLoTheory, 4) + '</td>' +
+        '<td>' + fmt(x.edgeHiMeas, 4) + '</td><td>' + fmt(x.edgeHiTheory, 4) + '</td></tr>';
+    }).join('');
+    body += D.e6Big.map(function (x) {
+      return '<tr><td>' + x.gamma + '</td><td>' + x.M + '</td><td>' + x.N + '</td>' +
+        '<td>' + fmt(x.ksMPcond, 4) + '（非零部分）</td><td>—</td>' +
+        '<td colspan="4">零特征值占比 ' + fmt(x.zeroFrac, 4) + '，理论 1−1/γ = ' + fmt(x.zeroTheory, 4) + '</td></tr>';
+    }).join('');
+    setHTML('t-mp', head + body + '</tbody>');
+
+    var head2 = '<caption>代价账本：同一台机器上两套从零写的特征值算法</caption>' +
+      '<thead><tr><th>N</th><th>QL（三对角化 + 隐式 QL）</th><th>循环 Jacobi</th><th>Jacobi / QL</th><th>矩阵内存</th><th>备注</th></tr></thead><tbody>';
+    var body2 = D.e7Cost.map(function (x) {
+      return '<tr><td>' + x.n + '</td><td>' + msText(x.qlMs) + '</td><td>' + msText(x.jacobiMs) + '</td>' +
+        '<td>' + fmt(x.ratio, 2) + '×</td><td>' + fmt(x.memMB, 3) + ' MB</td><td>实测</td></tr>';
+    }).join('');
+    body2 += D.e7Extrap.map(function (x) {
+      return '<tr><td>' + x.n + '</td><td>' + fmtInt(x.estMs) + ' 毫秒</td><td>—</td><td>—</td>' +
+        '<td>' + fmt(x.memMB, 1) + ' MB</td><td>按 N³ 外推</td></tr>';
+    }).join('');
+    setHTML('t-cost', head2 + body2 + '</tbody>');
+  }
+
+  /* ============================================================ 通用块 */
+  function mdInline(s) { return esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>'); }
+  function renderList(id, arr) {
+    setHTML(id, arr.map(function (s) { return '<li>' + mdInline(s) + '</li>'; }).join(''));
+  }
+  function renderVerify() {
+    var head = '<thead><tr><th>断言</th><th>结果</th><th>细节</th></tr></thead><tbody>';
+    var body = A.verifyTable.map(function (v) {
+      return '<tr><td>' + esc(v.name) + '</td><td>' + (v.ok ? '通过' : '未通过') + '</td><td>' + esc(v.detail) + '</td></tr>';
+    }).join('');
+    setHTML('t-verify', head + body + '</tbody>');
+  }
+  function renderKPI() {
+    setHTML('kpis', A.kpi.map(function (k) {
+      return '<div class="kpi"><div class="lab">' + esc(k.label) + '</div>' +
+        '<div class="val">' + esc(k.value) + '</div>' +
+        '<div class="note">' + mdInline(k.note) + '</div></div>';
+    }).join(''));
+  }
+  function renderStamp() {
+    var w = String(A.meta.when || '').replace('T', ' ').slice(0, 19);
+    setText('stamp', '标定于 ' + w + ' · ' + A.meta.node + ' · 模型自检 91 项 · 构建期硬约束全绿');
+  }
+
+  /* ============================================================ 标签页 */
+  var TABS = [
+    ['p-one', '壹 · 谱'],
+    ['p-two', '贰 · 矩'],
+    ['p-three', '叁 · 间距'],
+    ['p-four', '肆 · 边缘'],
+    ['p-five', '伍 · 无关'],
+    ['p-six', '陆 · 矩形与墙']
+  ];
+  var RENDERERS = {
+    'p-one': renderSpec, 'p-two': renderMom, 'p-three': renderGap,
+    'p-four': renderEdge, 'p-five': renderUni, 'p-six': renderMp
+  };
+  var curTab = 'p-one';
+  function setTab(id) {
+    if (!RENDERERS[id]) return false;
+    curTab = id;
+    TABS.forEach(function (t) {
+      var p = $(t[0]);
+      if (p) p.className = 'panel' + (t[0] === id ? ' on' : '');
+      var b = document.querySelector('.tabs button[data-tab="' + t[0] + '"]');
+      if (b) b.setAttribute('aria-selected', t[0] === id ? 'true' : 'false');
+    });
+    RENDERERS[id]();
+    return true;
+  }
+  function buildTabs() {
+    var nav = $('tabs');
+    if (!nav) return;
+    nav.innerHTML = TABS.map(function (t) {
+      return '<button type="button" data-tab="' + t[0] + '" aria-selected="' + (t[0] === curTab ? 'true' : 'false') + '">' + esc(t[1]) + '</button>';
+    }).join('');
+    nav.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-tab]') : null;
+      if (b) setTab(b.getAttribute('data-tab'));
+    });
+  }
+
+  /* ============================================================ 控件 */
+  var nTimer = null;
+  function bindControls() {
+    var sn = $('spec-n');
+    if (sn) sn.addEventListener('input', function () {
+      setText('spec-n-val', 'N = ' + sn.value);
+      if (nTimer) clearTimeout(nTimer);
+      nTimer = setTimeout(function () {
+        SPEC.n = +sn.value;
+        if (curTab === 'p-one') renderSpec();
+      }, 140);
+    });
+    var sb = $('spec-beta');
+    if (sb) sb.addEventListener('change', function () {
+      SPEC.beta = +sb.value;
+      if (curTab === 'p-one') renderSpec();
+    });
+    var sd = $('spec-dist');
+    if (sd) sd.addEventListener('change', function () {
+      SPEC.dist = sd.value;
+      if (curTab === 'p-one') renderSpec();
+    });
+    var rd = $('spec-redraw');
+    if (rd) rd.addEventListener('click', function () { SPEC.draw++; if (curTab === 'p-one') renderSpec(); });
+    var rs = $('spec-reset');
+    if (rs) rs.addEventListener('click', function () {
+      SPEC.n = 128; SPEC.beta = 1; SPEC.dist = 'normal'; SPEC.draw++;
+      if (sn) sn.value = '128';
+      setText('spec-n-val', 'N = 128');
+      if (sb) sb.value = '1';
+      if (sd) sd.value = 'normal';
+      if (curTab === 'p-one') renderSpec();
+    });
+    var gc = $('gap-case');
+    if (gc) gc.addEventListener('change', function () { gapCase = gc.value; if (curTab === 'p-three') renderGap(); });
+    var mg = $('mp-gamma');
+    if (mg) mg.addEventListener('change', function () { mpGamma = +mg.value; if (curTab === 'p-six') renderMp(); });
+  }
+
+  var rzTimer = null;
+  window.addEventListener('resize', function () {
+    if (rzTimer) clearTimeout(rzTimer);
+    rzTimer = setTimeout(function () { if (RENDERERS[curTab]) RENDERERS[curTab](); }, 90);
+  });
+
+  /* ============================================================ 探针 */
+  function collectCharts() {
+    var out = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (!h.id) return;
+      var sv = h.querySelector('svg');
+      if (!sv) { out.push({ id: h.id, hostW: h.clientWidth, svgW: 0, ok: false, texts: 0 }); return; }
+      var hostW = Math.round(h.clientWidth), svgW = Math.round(sv.getBoundingClientRect().width);
+      out.push({ id: h.id, hostW: hostW, svgW: svgW, ok: Math.abs(hostW - svgW) <= 1 && hostW > 0,
+                 texts: sv.querySelectorAll('text').length });
+    });
+    return out;
+  }
+  function visibleCharts() {
+    return collectCharts().filter(function (c) {
+      var h = $(c.id);
+      return h && h.offsetParent !== null && c.hostW > 0;
+    });
+  }
+  function collectBars() {
+    var out = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (!h.id || h.offsetParent === null) return;
+      h.querySelectorAll('.bar-fill').forEach(function (r) {
+        var bb = r.getBoundingClientRect();
+        out.push({ id: h.id, key: r.getAttribute('data-key') || '',
+                   bbox: +bb.width.toFixed(2), bboxH: +bb.height.toFixed(2),
+                   vert: r.getAttribute('data-vert') === '1',
+                   want: +(r.getAttribute('data-want') || 0),
+                   over: r.getAttribute('data-over') === '1' });
+      });
+    });
+    return out;
+  }
+  function strayScan() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      for (var i = 0; i < h.children.length; i++) {
+        if (h.children[i].tagName.toLowerCase() !== 'svg') bad.push(h.id + ':' + h.children[i].tagName);
+      }
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function nanTicks() {
+    var bad = [];
+    document.querySelectorAll('.chart svg text').forEach(function (t) {
+      if (/NaN|Infinity|undefined/.test(t.textContent || '')) bad.push((t.textContent || '').slice(0, 24));
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function tickOverlap() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      if (h.offsetParent === null) return;
+      var ts = Array.prototype.slice.call(h.querySelectorAll('text.tick'));
+      var boxes = ts.map(function (t) { var r = t.getBoundingClientRect(); return { r: r, s: t.textContent }; });
+      for (var i = 0; i < boxes.length; i++) {
+        for (var j = i + 1; j < boxes.length; j++) {
+          var a = boxes[i].r, b = boxes[j].r;
+          var ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+          var oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          if (ox > 1.2 && oy > 1.2) bad.push(h.id + ': "' + boxes[i].s + '" × "' + boxes[j].s + '"');
+        }
+      }
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function textFit() {
+    var bad = [];
+    document.querySelectorAll('.chart').forEach(function (h) {
+      var sv = h.querySelector('svg');
+      if (!sv || h.offsetParent === null) return;
+      var sr = sv.getBoundingClientRect();
+      sv.querySelectorAll('text').forEach(function (t) {
+        var r = t.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) return;
+        if (r.left < sr.left - 1 || r.right > sr.right + 1 || r.top < sr.top - 1 || r.bottom > sr.bottom + 1) {
+          bad.push(h.id + ': "' + (t.textContent || '').slice(0, 20) + '"');
+        }
+      });
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function tabsFit() {
+    var nav = $('tabs');
+    if (!nav) return { ok: true, bad: [] };
+    var nr = nav.getBoundingClientRect(), bad = [];
+    nav.querySelectorAll('button').forEach(function (b) {
+      var r = b.getBoundingClientRect();
+      if (r.right > nr.right + 1 || r.left < nr.left - 1) bad.push(b.textContent);
+    });
+    return { ok: bad.length === 0, bad: bad };
+  }
+  function overflowScan() {
+    var de = document.documentElement, bad = [], scrolled = [];
+    document.querySelectorAll('.bench, .panel, .grid2').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      if (e.scrollWidth > e.clientWidth + 1) bad.push((e.id || e.className) + ' ' + e.scrollWidth + '>' + e.clientWidth);
+    });
+    document.querySelectorAll('.tbl-wrap').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      if (e.scrollWidth > e.clientWidth + 1) {
+        scrolled.push((e.querySelector('table') ? e.querySelector('table').id : 'tbl') + ' ' + e.scrollWidth + '>' + e.clientWidth);
+      }
+    });
+    return { ok: de.scrollWidth <= de.clientWidth + 1, doc: { scroll: de.scrollWidth, client: de.clientWidth }, bad: bad, scrolled: scrolled };
+  }
+  function wrapScan() {
+    var bad = [];
+    document.querySelectorAll('table.dt.num').forEach(function (t) {
+      t.querySelectorAll('td').forEach(function (c) {
+        var r = c.getBoundingClientRect();
+        if (r.height > 34) bad.push((t.id || 'tbl') + ':' + (c.textContent || '').slice(0, 14));
+      });
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 6) };
+  }
+  function touchScan() {
+    var small = [];
+    document.querySelectorAll('.tabs button, .btnrow button, select, input[type="range"]').forEach(function (e) {
+      if (e.offsetParent === null) return;
+      var r = e.getBoundingClientRect();
+      if (r.height > 0 && r.height < 44) small.push((e.id || e.textContent || e.tagName).slice(0, 18) + ' ' + r.height.toFixed(0));
+    });
+    return { ok: small.length === 0, bad: small };
+  }
+  function textsScan() {
+    var out = [];
+    document.querySelectorAll('.panel.on .note, .panel.on h2, .kpi .note, .kpi .val, #stamp').forEach(function (e) {
+      var t = (e.textContent || '').trim();
+      if (t) out.push(t.slice(0, 90));
+    });
+    return out;
+  }
+  function htmlLeaks() {
+    var bad = [];
+    document.querySelectorAll('.panel.on .note, .kpi .note, .kpi .val, ol.clist li, ol.blist li, #stamp').forEach(function (e) {
+      var t = e.textContent || '';
+      if (/\*\*|<b>|<\/b>|<code>|NaN|undefined|\[object/.test(t)) bad.push(t.slice(0, 40));
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 5) };
+  }
+  function infLeaks() {
+    var bad = [];
+    var re = /(偏差|分歧|之差|比值|差距|落差|误差|距离)[^。；，]{0,12}(是|为|不超过|同样不超过)\s*∞/;
+    document.querySelectorAll('.panel.on .note, .kpi .note, .kpi .val, ol.clist li, ol.blist li, #stamp').forEach(function (e) {
+      var t = e.textContent || '';
+      if (re.test(t)) bad.push(t.slice(0, 48));
+    });
+    return { ok: bad.length === 0, bad: bad.slice(0, 5) };
+  }
+  function legendsScan() {
+    var out = {};
+    document.querySelectorAll('.legend-html').forEach(function (e) {
+      if (!e.id) return;
+      out[e.id] = e.querySelectorAll('span').length;
+    });
+    return out;
+  }
+  function countsScan() {
+    var c = {};
+    c.kpi = document.querySelectorAll('#kpis .kpi').length;
+    c.concl = document.querySelectorAll('#l-concl li').length;
+    c.bound = document.querySelectorAll('#l-bound li').length;
+    c.verify = document.querySelectorAll('#t-verify tbody tr').length;
+    c.tabs = document.querySelectorAll('#tabs button').length;
+    c.panels = document.querySelectorAll('.panel').length;
+    c.mom = document.querySelectorAll('#t-mom tbody tr').length;
+    c.gap = document.querySelectorAll('#t-gap tbody tr').length;
+    c.tw = document.querySelectorAll('#t-tw tbody tr').length;
+    c.uni = document.querySelectorAll('#t-uni tbody tr').length;
+    c.mp = document.querySelectorAll('#t-mp tbody tr').length;
+    c.cost = document.querySelectorAll('#t-cost tbody tr').length;
+    /* 数字表里出现 "—" 或空格子 = 字段映射漏了（本装置真踩过：分布表 m₆/E[λmax] 两列
+       全成了 "—"，DOM 里一个元素不少、折行与溢出探针全部放行，只有这一条抓得住） */
+    c.uniDash = 0;
+    document.querySelectorAll('#t-uni tbody td').forEach(function (td) {
+      var t = (td.textContent || '').trim();
+      if (t === '' || t === '—' || t === '-') c.uniDash++;
+    });
+    return c;
+  }
+
+  window.__probe = {
+    version: '1.0',
+    tabIds: function () { return TABS.map(function (t) { return t[0]; }); },
+    setTab: setTab,
+    curTab: function () { return curTab; },
+    /* 驱动接口：先切那个改变语义的开关（β / 分布），再动数值 */
+    specSet: function (n, beta, dist, draw) {
+      var sn = $('spec-n'), sb = $('spec-beta'), sd = $('spec-dist');
+      if (beta) { SPEC.beta = +beta; if (sb) sb.value = String(beta); }
+      if (dist) { SPEC.dist = dist; if (sd) sd.value = dist; }
+      if (n) { SPEC.n = +n; if (sn) sn.value = String(n); setText('spec-n-val', 'N = ' + n); }
+      if (draw !== undefined) SPEC.draw = draw;
+      if (curTab === 'p-one') renderSpec();
+      var ev = Core.wignerSpectrum(SPEC.n, SPEC.beta, SPEC.dist, specSeed());
+      var mm = Core.moments(ev, 6);
+      return { n: SPEC.n, beta: SPEC.beta, dist: SPEC.dist, ks: Core.ksToSemicircle(ev),
+               m2: mm[2], m4: mm[4], m6: mm[6], lamMax: ev[SPEC.n - 1],
+               trace: ev.reduce(function (a, b) { return a + b; }, 0) };
+    },
+    gapSet: function (id) {
+      gapCase = id;
+      var gc = $('gap-case'); if (gc) gc.value = id;
+      if (curTab === 'p-three') renderGap();
+      var r = D.e4Rows.filter(function (x) { return x.id === id; })[0];
+      return { id: id, meanSpacing: r.meanSpacing, ksWigner: r.ksWigner, ksPoisson: r.ksPoisson,
+               pSmall: r.pSmall, pSmallTheory: r.pSmallTheory, nSpacings: r.nSpacings };
+    },
+    mpSet: function (g) {
+      mpGamma = g;
+      var mg = $('mp-gamma'); if (mg) mg.value = String(g);
+      if (curTab === 'p-six') renderMp();
+      var r = D.e6Rows.filter(function (x) { return x.gamma === g; })[0];
+      return { gamma: g, ksMP: r.ksMP, ksSemi: r.ksSemi, lo: r.edgeLoMeas, loTh: r.edgeLoTheory,
+               hi: r.edgeHiMeas, hiTh: r.edgeHiTheory };
+    },
+    edgeSet: function () {
+      return { b1: D.e5B1, b2: D.e5B2, tw: D.e5Tw, expB1: D.e5ExpB1, expB2: D.e5ExpB2 };
+    },
+    uniSet: function () {
+      return { at128: D.e3At128, ksSpread: D.e3KsSpread, ksSpreadFinite: D.e3KsSpreadFinite,
+               m4Spread: D.e3M4Spread, m4SpreadFinite: D.e3M4SpreadFinite,
+               t3m4: D.e3T3m4, t3m4med: D.e3T3m4Med, t3m4max: D.e3T3m4Max,
+               t3ks: D.e3T3ks, norm4: D.e3Norm4, rank1Ks: D.e1Rank1Ks };
+    },
+    costSet: function () { return { cost: D.e7Cost, extrap: D.e7Extrap, xcheck: D.e7Xcheck }; },
+    core: function () {
+      var w = Core.wignerMatrix(24, 1, 'normal', 12345);
+      var jv = Core.jacobiEigen(w.M, w.size, false).values;
+      var qv = Core.qlEigen(w.M, w.size);
+      var md = 0, i;
+      for (i = 0; i < qv.length; i++) md = Math.max(md, Math.abs(jv[i] - qv[i]));
+      var w2 = Core.wignerMatrix(12, 2, 'normal', 777);
+      var ev2 = Core.qlEigen(w2.M, w2.size);
+      var pair = 0;
+      for (i = 0; i < 12; i++) pair = Math.max(pair, Math.abs(ev2[2 * i + 1] - ev2[2 * i]));
+      return {
+        f1: Core.semicircleCDF(1), f0: Core.semicircleCDF(0), f2: Core.semicircleCDF(2),
+        catalan: [1, 2, 3, 4, 5, 6].map(function (k) { return Core.catalan(k); }),
+        erf1: Core.erf(1),
+        eigDiff: md,
+        guePair: pair,
+        ksFixed: Core.ksToSemicircle(Core.wignerSpectrum(64, 1, 'normal', 20261010)),
+        mpTotal: Core.makeMPCDF(0.5, 2000).total,
+        expW: D.e1ExpW, expI: D.e1ExpI, rank1Ks: D.e1Rank1Ks,
+        ksSpread: D.e3KsSpread, e6KsGap: D.e6KsGap, xcheck: D.e7Xcheck.worstRel
+      };
+    },
+    counts: countsScan,
+    legends: legendsScan,
+    charts: visibleCharts,
+    allCharts: collectCharts,
+    bars: collectBars,
+    stray: strayScan,
+    nanTicks: nanTicks,
+    tickOverlap: tickOverlap,
+    textFit: textFit,
+    tabsFit: tabsFit,
+    overflow: overflowScan,
+    wrapScan: wrapScan,
+    touch: touchScan,
+    texts: textsScan,
+    htmlLeaks: htmlLeaks,
+    infLeaks: infLeaks,
+    viewport: function () { return { w: window.innerWidth, h: window.innerHeight }; }
+  };
+
+  /* ============================================================ boot */
+  function boot() {
+    buildTabs();
+    renderStamp();
+    renderKPI();
+    renderList('l-concl', A.conclusions);
+    renderList('l-bound', A.boundaries);
+    renderVerify();
+    var sb = $('spec-beta');
+    if (sb) sb.innerHTML = '<option value="1" selected>β = 1（GOE，实对称）</option><option value="2">β = 2（GUE，复 Hermite）</option>';
+    var sd = $('spec-dist');
+    if (sd) sd.innerHTML = Core.DIST_IDS.map(function (id) {
+      return '<option value="' + id + '"' + (id === 'normal' ? ' selected' : '') + '>' + esc(Core.DISTS[id].name + ' · ' + Core.DISTS[id].cn) + '</option>';
+    }).join('');
+    var gc = $('gap-case');
+    if (gc) gc.innerHTML = GAP_CASES.map(function (c) {
+      return '<option value="' + c.id + '">' + esc(c.label) + '</option>';
+    }).join('');
+    var mg = $('mp-gamma');
+    if (mg) mg.innerHTML = MP_GAMMAS.map(function (g) {
+      return '<option value="' + g + '"' + (g === 0.5 ? ' selected' : '') + '>γ = ' + g + '</option>';
+    }).join('');
+    bindControls();
+    setTab('p-one');
+    window.__ready = true;
+  }
+  try {
+    boot();
+  } catch (e) {
+    window.__bootError = String((e && e.message) || e);
+    window.__bootStack = String((e && e.stack) || '').slice(0, 300);
+    throw e;
+  }
+})();
+</script>
+</body>
+</html>

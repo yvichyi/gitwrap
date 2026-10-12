@@ -1,0 +1,2178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b0e14">
+<title>相序 · Kuramoto 耦合振子</title>
+<meta name="description" content="4096 个振子的 Kuramoto 同步：一台自己会跑的相变装置。耦合强度越过 K_c=2γ 时集体同步，序参量的平衡值与 Ott–Antonsen 闭式解析解逐点对账。两片 WebGL2 画布，可直接在相位圆上拖拽搅动。">
+<style>
+/* ============================================================================
+ * inphase/style.css —— 视觉方言：「冷阴极实验室」
+ *
+ * 取材于"示波器上那条被放大了几千倍的相图"：深靛近黑的板岩底、
+ * 冷青的离子、琥珀的核、紫的锁相。像在一间暗房里盯着 CRT 的荧光。
+ *
+ * 与既有三族（纸底墨字 / 晒图青蓝 / 靛蓝夜工）互斥 —— 变量名一律不用
+ * --paper/--panel/--line，底色也全部避开既有展项的 35 色禁用清单。
+ * 本作另立规矩：数值读数一律等宽主导（读数密集），正文对比度 ≥7:1。
+ * ==========================================================================*/
+
+:root {
+  --abyss:   #0b0e14;   /* 页面底：深靛近黑 */
+  --slab:    #12161f;   /* 面板底 */
+  --slab-2:  #171c27;   /* 面板内的次级衬底 */
+  --rule:    #232b3a;   /* 规线 */
+  --rule-hi: #33405a;   /* 强调规线 */
+  --ink:     #e6ecf5;   /* 正文（对 --abyss 约 15:1） */
+  --ink-2:   #a8b4c8;   /* 次级说明（约 7.5:1） */
+  --mute:    #6b7789;   /* 三级说明 */
+
+  --ion:     #46e0d0;   /* 冷青：未锁相的离子 / 主数据 */
+  --ion-dim: #1f7d76;
+  --amber:   #ffb454;   /* 琥珀：序参量 / 核 / 关键数字 */
+  --amber-d: #a8712a;
+  --violet:  #b98cff;   /* 紫：锁相 */
+  --rust:    #ff6b6b;   /* 警示：K_c 标线 */
+
+  --mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, 'Liberation Mono', monospace;
+  --sans: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --serif: Georgia, 'Songti SC', 'Noto Serif SC', serif;
+}
+
+* { box-sizing: border-box; }
+
+/* hidden 属性的兜底：**必须加 !important**。
+   HTML 的 hidden 属性靠 UA 样式表的 `[hidden]{display:none}` 生效，
+   而下面 .gl-warn 自带 `display:flex`（类选择器优先级高于 UA 规则），
+   于是"这台机器没有 WebGL2"的警告会在**有 WebGL2 的机器上也显示出来**，
+   正好压在相位圆上。
+   症状极坏：功能全对、断言全绿、屏幕上却盖着一句假警报 ——
+   而"断言全绿"恰恰让人不会去看那行字。
+   教训：任何给元素设了 display 的类，都必须同时配一条 [hidden] 兜底。 */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--abyss);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15.5px;
+  line-height: 1.78;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  /* 极淡的荧光晕：模拟 CRT 中心亮、边缘暗 */
+  background-image:
+    radial-gradient(1100px 700px at 22% -8%, rgba(70, 224, 208, 0.055), transparent 62%),
+    radial-gradient(900px 600px at 88% 8%, rgba(255, 180, 84, 0.038), transparent 60%);
+  background-attachment: fixed;
+}
+
+.wrap {
+  width: min(1080px, calc(100% - 44px));
+  margin-inline: auto;
+  padding-bottom: 74px;
+}
+
+/* ------------------------------------------------------------------ 头版 */
+.masthead {
+  padding: 54px 0 30px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 34px;
+}
+.mast-in { min-width: 0; }
+
+.eyebrow {
+  margin: 0 0 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--ion-dim);
+}
+
+.title {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 62px;
+  line-height: 1.02;
+  letter-spacing: .16em;
+  color: var(--ink);
+  text-shadow: 0 0 34px rgba(70, 224, 208, 0.22);
+}
+
+.sub {
+  margin: 0 0 16px;
+  font-size: 17.5px;
+  line-height: 1.72;
+  color: var(--ink-2);
+  max-width: 62ch;
+}
+.sub b { color: var(--amber); font-weight: 600; }
+
+.lede {
+  margin: 0;
+  max-width: 66ch;
+  color: var(--ink-2);
+  font-size: 15px;
+  border-left: 2px solid var(--rule-hi);
+  padding-left: 15px;
+}
+.lede b { color: var(--ion); font-weight: 600; }
+
+/* ------------------------------------------------------------------ 面板 */
+.panel {
+  margin: 0 0 30px;
+  padding: 24px 26px 26px;
+  background: var(--slab);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  min-width: 0;
+}
+
+.panel-h {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ion);
+}
+
+.panel-note {
+  margin: 0 0 20px;
+  max-width: 72ch;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.panel-note b { color: var(--amber); font-weight: 600; }
+
+.sub-h {
+  margin: 32px 0 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  padding-top: 18px;
+  border-top: 1px solid var(--rule);
+}
+
+/* ---------------------------------------------------------------- 画布区 */
+.stage {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin: 0 -6px 18px;
+  padding: 14px 0;
+  background: var(--abyss);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+.gl {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* 画布不参与文本选中，拖拽搅动时才不会选中文字 */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: crosshair;
+}
+#circle { max-width: 460px; aspect-ratio: 1 / 1; }
+#scope  { max-width: 100%; aspect-ratio: 900 / 230; cursor: default; }
+
+.gl-warn {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  color: var(--rust);
+  font-size: 14px;
+}
+
+/* ------------------------------------------------------------------ 读数 */
+.readouts { min-width: 0; }
+
+.ro {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  min-width: 0;
+}
+.ro > div {
+  background: var(--slab-2);
+  padding: 12px 14px;
+  min-width: 0;
+}
+.ro dt {
+  margin: 0 0 5px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.ro dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 19px;
+  color: var(--amber);
+  letter-spacing: .02em;
+  /* 读数可能很长，窄屏必须能换行而不顶破栅格 */
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ 控制 */
+.ctl { min-width: 0; }
+
+.ctl-row {
+  display: grid;
+  grid-template-columns: 116px 1fr 92px;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+.ctl-l {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .07em;
+  color: var(--ink-2);
+}
+.ctl-o {
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--amber);
+  text-align: right;
+}
+
+.ctl-scale {
+  position: relative;
+  height: 15px;
+  margin: -6px 0 16px 130px;
+  padding-right: 106px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--rust);
+}
+.ctl-scale .tick {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.ctl-scale .tick::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  width: 1px;
+  height: 5px;
+  background: var(--rust);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  background: var(--rule-hi);
+  border-radius: 2px;
+}
+input[type="range"]::-moz-range-track {
+  height: 3px;
+  background: var(--rule-hi);
+  border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 10px rgba(255, 180, 84, 0.5);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 10px rgba(255, 180, 84, 0.5);
+}
+
+.ctl-row.btns {
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 20px 0 18px;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.b {
+  flex: 1 1 auto;
+  min-height: 44px;
+  min-width: 128px;
+  padding: 11px 17px;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: .05em;
+  color: var(--ink-2);
+  background: var(--slab-2);
+  border: 1px solid var(--rule-hi);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.b:hover { color: var(--ink); border-color: var(--ion-dim); }
+.b:focus-visible { outline: 2px solid var(--ion); outline-offset: 2px; }
+.b-run { color: var(--ion); border-color: var(--ion-dim); }
+.b[aria-pressed="true"] { color: var(--abyss); background: var(--ion); border-color: var(--ion); }
+
+.ro-inline { margin-top: 18px; }
+.ro-inline dd { font-size: 16px; }
+
+/* ------------------------------------------------------------------ 尺子 */
+.laws {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(238px, 1fr));
+  gap: 14px;
+}
+
+.law {
+  padding: 16px 17px 15px;
+  background: var(--slab-2);
+  border: 1px solid var(--rule);
+  border-top: 2px solid var(--ion-dim);
+  border-radius: 2px;
+  min-width: 0;
+}
+.law-h {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.law-n {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: .14em;
+  color: var(--ion);
+}
+.law-q {
+  margin: 0 0 11px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-2);
+}
+.law-q b { color: var(--amber); font-weight: 600; }
+.law-v {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px dashed var(--rule-hi);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--mute);
+}
+.law-v b { color: var(--amber); font-weight: 600; }
+
+/* ------------------------------------------------------------------ 表格 */
+.tbl-wrap {
+  /* Grid/Flex 的 1fr 默认 min-width:auto，nowrap 的表会把轨道顶破 */
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+}
+.tbl {
+  width: 100%;
+  min-width: 470px;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+.tbl-cap {
+  caption-side: bottom;
+  padding: 11px 13px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  line-height: 1.66;
+  color: var(--mute);
+  text-align: left;
+  border-top: 1px solid var(--rule);
+}
+.tbl th, .tbl td {
+  padding: 8px 11px;
+  text-align: right;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.tbl thead th {
+  color: var(--mute);
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: var(--slab-2);
+}
+.tbl td { color: var(--ink-2); }
+.tbl tbody tr:last-child td { border-bottom: 0; }
+/* 三档分区：与 build.js 的 regime 判据一致 */
+.tbl tr.rg-deep-sub td { color: var(--mute); }
+.tbl tr.rg-transition td { color: var(--amber); }
+.tbl tr.rg-sup td { color: var(--ion); }
+.tbl td.k-cur { box-shadow: inset 2px 0 0 var(--amber); }
+
+/* ------------------------------------------------------------------ 边界 */
+.panel-bound { border-color: var(--rule-hi); }
+
+.bound {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(244px, 1fr));
+  gap: 16px;
+}
+.bd {
+  min-width: 0;
+  padding-left: 13px;
+  border-left: 2px solid var(--amber-d);
+}
+.bd-h {
+  margin: 0 0 7px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .08em;
+  color: var(--amber);
+}
+.bd p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.72;
+  color: var(--ink-2);
+}
+.bd b { color: var(--ink); font-weight: 600; }
+
+.stamp {
+  margin: 26px 0 0;
+  padding-top: 15px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--mute);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ 页脚 */
+.foot {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--mute);
+  text-align: center;
+}
+.foot p { margin: 0; }
+
+:focus-visible { outline: 2px solid var(--ion); outline-offset: 3px; }
+
+/* ------------------------------------------------------- 窄屏（媒体查询置末尾） */
+/* CSS 里同名规则靠后的赢，所以媒体查询必须写在文件最后 */
+@media (max-width: 640px) {
+  body { font-size: 15px; }
+  .wrap { width: calc(100% - 28px); }
+  .masthead { padding: 34px 0 22px; }
+  .title { font-size: 42px; letter-spacing: .1em; }
+  .sub { font-size: 15.5px; }
+  .panel { padding: 17px 15px 19px; }
+  .stage { margin-inline: 0; padding: 8px 0; }
+  .ctl-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .ctl-o { text-align: left; }
+  .ctl-scale { margin: 2px 0 12px; padding-right: 0; }
+  .ro dd { font-size: 17px; }
+  .ctl-row.btns { display: flex; }
+  .b { flex: 1 1 100%; min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .b { transition: none; }
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="masthead">
+  <div class="mast-in">
+    <p class="eyebrow">动力系统 · 相变 · 4096 个振子</p>
+    <h1 class="title">相序</h1>
+    <p class="sub">4096 个振子，各自按自己的固有转速转圈；一个耦合把大家拴在一起。
+      耦合强度 <b>K</b> 越过某条线时，它们会突然集体同步 —— 那条线叫 <b>K<sub>c</sub></b>。</p>
+    <p class="lede">这页面上没有图表，只有一个真的在跑的方程组。它的平衡态序参量
+      <b>r</b> 有一个<b>解析预言</b>（Ott–Antonsen 闭式约化），你可以随时把页面上跑出来的
+      数字拿去和它对账 —— 对不上就是实现错了。</p>
+  </div>
+</header>
+
+<!-- ============================ 相位圆（WebGL2） ============================ -->
+<section class="panel" aria-labelledby="h-circle">
+  <h2 id="h-circle" class="panel-h">相位圆</h2>
+  <p class="panel-note">每个点是<b>一个振子</b>。点沿圆周的角度 = 它的相位 θ；
+    从圆心指向的那根亮线长度 = 序参量 <b>r</b>（全部振子有多"抱团"）。
+    4096 个点由 <b>WebGL2 顶点着色器</b>一次画完，相位→坐标在 GPU 上算。</p>
+
+  <div class="stage">
+    <canvas id="circle" class="gl" width="620" height="620"
+            role="img" aria-label="相位圆：4096 个振子绕圆周分布，亮度表示与平均相位的接近程度"></canvas>
+    <p id="glWarn" class="gl-warn" hidden>这台机器/浏览器没有可用的 WebGL2 上下文，圆形视图无法绘制。</p>
+  </div>
+
+  <div class="readouts" data-probe="circle">
+    <dl class="ro">
+      <div><dt>序参量 r</dt><dd id="ro-r">—</dd></div>
+      <div><dt>锁相比例</dt><dd id="ro-lock">—</dd></div>
+      <div><dt>已推进</dt><dd id="ro-tick">—</dd></div>
+      <div><dt>噪声底 1/√N</dt><dd id="ro-floor">—</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- ============================ r(t) 示波带 ============================ -->
+<section class="panel" aria-labelledby="h-scope">
+  <h2 id="h-scope" class="panel-h">r(t) 示波带</h2>
+  <p class="panel-note">序参量随时间的轨迹。虚线是 <b>Ott–Antonsen 闭式预言的平衡值</b>
+    —— 你会看到曲线爬向它。横线是噪声底：K 不足时曲线就趴在那儿不动。</p>
+
+  <div class="stage">
+    <canvas id="scope" class="gl" width="900" height="230"
+            role="img" aria-label="序参量随时间的轨迹图，含闭式预言平衡值参考线与噪声底参考线"></canvas>
+  </div>
+
+  <div class="readouts" data-probe="scope">
+    <dl class="ro">
+      <div><dt>当前 r</dt><dd id="ro-r2">—</dd></div>
+      <div><dt>预言平衡值</dt><dd id="ro-predict">—</dd></div>
+      <div><dt>偏差</dt><dd id="ro-diff">—</dd></div>
+      <div><dt>当前 K / K<sub>c</sub></dt><dd id="ro-ratio">—</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- ================================ 控制台 ================================ -->
+<section class="panel" aria-labelledby="h-ctl">
+  <h2 id="h-ctl" class="panel-h">控制台</h2>
+  <p class="panel-note">主仪器是**在相位圆上直接拖拽**：按住拖动会把指针角度附近的振子
+    往那个方向拽 —— 这是对状态动手，不是调参数。滑杆只负责精确标定。</p>
+
+  <div class="ctl">
+    <div class="ctl-row">
+      <label class="ctl-l" for="kSlider">耦合强度 K</label>
+      <input type="range" id="kSlider" min="0" max="1600" step="10" value="620"
+             aria-describedby="kOut">
+      <output id="kOut" class="ctl-o">—</output>
+    </div>
+    <p class="ctl-scale" aria-hidden="true">
+      <span class="tick" style="left:27.5%">K<sub>c</sub>=440</span>
+    </p>
+
+    <div class="ctl-row">
+      <label class="ctl-l" for="gSlider">时间缩放</label>
+      <input type="range" id="gSlider" min="1" max="8" step="1" value="2">
+      <output id="gOut" class="ctl-o">—</output>
+    </div>
+
+    <div class="ctl-row btns">
+      <button type="button" id="btnRun" class="b b-run" aria-pressed="true">
+        <span id="runLabel">暂停</span></button>
+      <button type="button" id="btnReset" class="b">重置到噪声底</button>
+      <button type="button" id="btnSweep" class="b">扫描过 K<sub>c</sub></button>
+      <button type="button" id="btnSound" class="b" aria-pressed="false">声音：关</button>
+    </div>
+
+    <dl class="ro ro-inline">
+      <div><dt>运行状态</dt><dd id="ro-state">—</dd></div>
+      <div><dt>每秒帧数</dt><dd id="ro-fps">—</dd></div>
+      <div><dt>音频</dt><dd id="ro-audio">—</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- =============================== 四条尺子 =============================== -->
+<section class="panel" aria-labelledby="h-law">
+  <h2 id="h-law" class="panel-h">四条尺子</h2>
+  <p class="panel-note">这一节的意义：<b>这个作品没有现成的答案可以对照</b>，
+    所以它自带四把尺子，每把都当场跑给你看。数字全部由离线标定算出并内联，
+    页面上的数是<b>现场复算</b>的结果。</p>
+
+  <div class="laws">
+    <article class="law" data-probe="law">
+      <h3 class="law-h"><span class="law-n">尺子 A</span>终值对账</h3>
+      <p class="law-q">远超临界时，N 体仿真测得的平衡值 r<sub>∞</sub>，
+        对上 Ott–Antonsen 的<b>闭式解析解</b> r<sub>∞</sub>=√(1−2γ/K) —— 这个式子里没有任何拟合参数。</p>
+      <p class="law-v">K ≥ 1.1·K<sub>c</sub> 段实测最大偏差
+        <b id="lawA">—</b></p>
+    </article>
+
+    <article class="law" data-probe="law">
+      <h3 class="law-h"><span class="law-n">尺子 B</span>噪声底</h3>
+      <p class="law-q">深次临界（K ≤ 0.8·K<sub>c</sub>）里预言 r=0。
+        有限 N 下 r 不可能恰好为 0，它会停在涨落底 <b>1/√N</b> 附近。</p>
+      <p class="law-v">实测上界 <b id="lawB">—</b>，噪声底
+        <b id="lawBFloor">—</b></p>
+    </article>
+
+    <article class="law" data-probe="law">
+      <h3 class="law-h"><span class="law-n">尺子 C</span>临界点</h3>
+      <p class="law-q">K<sub>c</sub>=2γ 是<b>推导出来的</b>，不是拟合的。
+        所以在 K<sub>c</sub> 处 r 必须已经明显不为 0 —— 否则相变位置就是错的。</p>
+      <p class="law-v">K<sub>c</sub> 处实测 r = <b id="lawC">—</b></p>
+    </article>
+
+    <article class="law" data-probe="law">
+      <h3 class="law-h"><span class="law-n">尺子 D</span>可复现性</h3>
+      <p class="law-q">换 4 个种子重跑，r<sub>∞</sub> 的散布必须是 O(1/√N) 量级。
+        太大就说明结果不可信。</p>
+      <p class="law-v">实测最大散布 <b id="lawD">—</b></p>
+    </article>
+  </div>
+
+  <h3 class="sub-h">K 阶梯全表（实测 vs 预言）</h3>
+  <div class="tbl-wrap">
+    <table id="ladderTbl" class="tbl">
+      <caption class="tbl-cap">逐点的 N 体终值与闭式预言。三档分区如实标出，
+        过渡带的偏差不参与合格判据（见下方「模型边界」）。</caption>
+      <thead>
+        <tr><th scope="col">K</th><th scope="col">K/K<sub>c</sub></th>
+            <th scope="col">实测 r<sub>∞</sub></th><th scope="col">预言 r<sub>∞</sub></th>
+            <th scope="col">偏差</th><th scope="col">区间</th></tr>
+      </thead>
+      <tbody id="ladderBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================== 模型边界 ============================== -->
+<section class="panel panel-bound" aria-labelledby="h-bound">
+  <h2 id="h-bound" class="panel-h">模型边界</h2>
+  <div class="bound">
+    <div class="bd">
+      <h3 class="bd-h">相变被有限 N 抹圆了</h3>
+      <p>连续介质极限（N→∞）下 K<sub>c</sub> 处是<b>无穷陡</b>的跳变。
+        本作用 N=4096，那条陡坡被抹成宽约 0.2·K<sub>c</sub> 的斜坡，
+        且种子间涨落达到 sd≈0.05。所以尺子 A 只在 K≥1.1·K<sub>c</sub> 段生效，
+        过渡带（<b id="bdNear">—</b>）的偏差<b>如实公布，不假装吻合</b>。</p>
+    </div>
+    <div class="bd">
+      <h3 class="bd-h">有 8.8% 的振子永远锁不上</h3>
+      <p>洛伦兹分布的尾巴是无界的。频率表两端按 <b id="bdQcap">—</b> 倍 γ 截断，
+        于是仍有 <b id="bdStray">—</b> 的振子 |ω| &gt; K<sub>max</sub>，
+        它们转速快过耦合能拉住的上限，永远在圈外跑。
+        这不是缺陷，是分布本身的性质 —— 它们也是 r 达不到 1 的原因之一。</p>
+    </div>
+    <div class="bd">
+      <h3 class="bd-h">全程整数定点</h3>
+      <p>相位是 [0, 65536) 的整数，耦合项走定点小数（12 位），
+        正弦查表标度 1/16384。tick 内<b>没有任何浮点运算</b>参与状态演化，
+        浮点只出现在读数与渲染路径。查表分母写成半波而非四分之一波这类错误，
+        会让 r 永远趴在噪声底 —— 已写成构建期硬断言。</p>
+    </div>
+    <div class="bd">
+      <h3 class="bd-h">轨迹不可逐点对账</h3>
+      <p>本页只对<b>平衡态</b>。r(t) 的起步过程对不上 OA 积分器：
+        后者假设连续频率分布，N 体的起步受 1/√N 涨落支配，慢得多。
+        这属有限尺寸效应，故<b>不列为尺子</b>，只公布终值。</p>
+    </div>
+  </div>
+  <p class="stamp" id="calStamp">—</p>
+</section>
+
+<footer class="foot">
+  <p>单文件 · 零依赖 · 离线可跑 · 两片 WebGL2 画布（无 canvas2d、无内联 SVG）</p>
+</footer>
+
+</div>
+<script>window.__DATA__ = {results: 
+{"meta":{"title":"相序 · Kuramoto 耦合振子","model":"Kuramoto–Daido N 体仿真 vs Ott–Antonsen 闭式约化","N":4096,"MOD":65536,"QUAD":16384,"TS":16384,"seed":20261007,"dt":2,"settle":4000,"bands":8},"tables":{"sin":"0415517D","quant":"456EB068"},"initFp":"412C2869","initR":0.0118,"kc":440,"gamma":220,"kRange":[0,1600],"kDefault":620,"ladder":[{"k":0,"regime":"deep-sub","ratio":0,"rMeasured":0.0107,"rPredicted":0,"absDiff":0.0107,"lock":0.1082},{"k":100,"regime":"deep-sub","ratio":0.2273,"rMeasured":0.0127,"rPredicted":0,"absDiff":0.0127,"lock":0.1104},{"k":200,"regime":"deep-sub","ratio":0.4545,"rMeasured":0.0163,"rPredicted":0,"absDiff":0.0163,"lock":0.1055},{"k":300,"regime":"deep-sub","ratio":0.6818,"rMeasured":0.0193,"rPredicted":0,"absDiff":0.0193,"lock":0.1167},{"k":352,"regime":"deep-sub","ratio":0.8,"rMeasured":0.0243,"rPredicted":0,"absDiff":0.0243,"lock":0.1189},{"k":374,"regime":"transition","ratio":0.85,"rMeasured":0.0319,"rPredicted":0,"absDiff":0.0319,"lock":0.1248},{"k":396,"regime":"transition","ratio":0.9,"rMeasured":0.0205,"rPredicted":0,"absDiff":0.0205,"lock":0.1196},{"k":418,"regime":"transition","ratio":0.95,"rMeasured":0.0859,"rPredicted":0,"absDiff":0.0859,"lock":0.1284},{"k":440,"regime":"transition","ratio":1,"rMeasured":0.1356,"rPredicted":0,"absDiff":0.1356,"lock":0.1438},{"k":460,"regime":"transition","ratio":1.0455,"rMeasured":0.2747,"rPredicted":0.2085,"absDiff":0.0662,"lock":0.1797},{"k":480,"regime":"transition","ratio":1.0909,"rMeasured":0.3132,"rPredicted":0.2887,"absDiff":0.0245,"lock":0.2039},{"k":520,"regime":"sup","ratio":1.1818,"rMeasured":0.4193,"rPredicted":0.3922,"absDiff":0.0271,"lock":0.2556},{"k":620,"regime":"sup","ratio":1.4091,"rMeasured":0.5477,"rPredicted":0.5388,"absDiff":0.0088,"lock":0.3486},{"k":800,"regime":"sup","ratio":1.8182,"rMeasured":0.6859,"rPredicted":0.6708,"absDiff":0.0151,"lock":0.4753},{"k":1000,"regime":"sup","ratio":2.2727,"rMeasured":0.7554,"rPredicted":0.7483,"absDiff":0.0071,"lock":0.5676},{"k":1300,"regime":"sup","ratio":2.9545,"rMeasured":0.8032,"rPredicted":0.8134,"absDiff":0.0102,"lock":0.6741},{"k":1600,"regime":"sup","ratio":3.6364,"rMeasured":0.8492,"rPredicted":0.8515,"absDiff":0.0022,"lock":0.741}],"kcEdge":{"rAtKc":0.1356,"rAt125":0.4586,"rAt2":0.7146,"rise125":3.3827,"rise2":5.2713},"seedSpread":[0.7554,0.7509,0.7444,0.7208],"bands":[{"lo":0,"hi":512,"n":512,"omega":0,"rLocal":0.1268,"wMean":-2060.6641},{"lo":512,"hi":1024,"n":512,"omega":0,"rLocal":0.7544,"wMean":-341.4492},{"lo":1024,"hi":1536,"n":512,"omega":0,"rLocal":0.9924,"wMean":-152.5391},{"lo":1536,"hi":2048,"n":512,"omega":0,"rLocal":0.9968,"wMean":-49.0781},{"lo":2048,"hi":2560,"n":512,"omega":0,"rLocal":0.9973,"wMean":36.625},{"lo":2560,"hi":3072,"n":512,"omega":0,"rLocal":0.9928,"wMean":136.959},{"lo":3072,"hi":3584,"n":512,"omega":0,"rLocal":0.7611,"wMean":321.627},{"lo":3584,"hi":4096,"n":512,"omega":0,"rLocal":0.1749,"wMean":2034.625}],"reproduction":{"byteEqual":true}}
+, analysis: 
+{"discretization":{"phaseStepRad":0.0001,"sinErr":0.0001,"note":"相位与耦合项全部整数定点；浮点只出现在读数与渲染路径"},"finiteSize":{"fluctPred":0.0156,"spreadMax":0.0221,"subMax":0.0243,"note":"次临界段 r 不为 0 而停在噪声底 —— 这是有限 N 的必然，不是模型漏了"},"agreement":{"nearFactor":1.1,"maxSupErr":0.0271,"maxNearErr":0.1356,"note":"远临界段（K≥1.1K_c）最大绝对偏差；近临界段偏差另记，归因于有限 N"},"truncation":{"qcap":42,"tailMass":0.0152,"strayedFrac":0.0881},"audio":{"bands":8,"note":"每帧从频带瞬时频率实时合成；不是预渲染音频"}}
+};</script>
+<script>
+/* ============================================================================
+ * inphase/core.js —— Kuramoto 耦合振子同步的整数量子化模型层
+ *
+ * ============================ 切分声明（动工前决定）============================
+ *
+ * 【题材切分】本库 58 件的共同范式是「**静态量 → 参数 → 读数**」：
+ *   给一个参数（温度 T / 阈值 τ / 耦合强度…），看一个量（β / 条形码 / 零点和）
+ *   随它怎么变。本作问的是另一个问题 —— **一群东西怎么自己同步**。
+ *   这不是"把某个公式的可视化再做一遍"，而是把一个**动力系统**摆在页面上：
+ *   它有初值、有演化、有吸引子、有临界点、有弛豫时间。
+ *   与最近邻的界线：
+ *   · ising(临界的形状)：也有相变，但那是**热力学**的（温度是外参量，涨落由
+ *     温度决定）；本作没有温度，只有**个体频率差 + 耦合**，相变是运动学的
+ *     （Kuramoto 在 K_c = 2γ 处从 incoherence 突变到 coherence）。
+ *   · topo(洞的生灭)：算的是拓扑不变量（β 数），输入是静态点集；
+ *     本作输入的是**时间**，输出的是**序参量 r(t)** 的轨迹。
+ *   · 共振听证 / 驻波之间：有音频，但那是**预渲染的 WAV 循环**（见 acoustics
+ *     与 make_audio.py）；本作的音频是**状态驱动的实时合成** ——
+ *     8 个探针振荡器的频率每帧从仿真状态里读，音程自己收敛。
+ *   域归属 compute：核心是积分 + 序参量，不是物理现象的实测数据。
+ *
+ * 【表达切分】本库是「rAF 全库禁用」（topo/build.js 硬门禁：验证环境实测
+ *   rAF 不推进）—— 因为每一件都是**事件驱动的同步重绘**，画面本质是静止的。
+ *   本作反其道：**连续演化 + GPU 实时渲染**。
+ *   · 渲染：**两片 WebGL2 画布**，零 canvas2d、零内联 SVG。4096 个振子作为
+ *     GL_POINTS 一次 drawArrays 画完，相位→位置在**顶点着色器**里算；
+ *     r(t) 示波带是 LINE_STRIP，同样走 GPU。页面里 getContext('2d') 出现 0 次。
+ *   · 交互：主仪器不是滑杆，是**在相位圆上直接拖拽搅动**（对状态动手），
+ *     滑杆退居精确标定位；键盘是一等公民（K / γ / 时间缩放 / 暂停）。
+ *   · 视觉方言：「冷阴极实验室」——深靛近黑的板岩底 + 冷青离子 + 琥珀核 +
+ *     紫锁相。与既有三族（纸底墨字 / 晒图青蓝 / 靛蓝夜工）互斥。
+ *
+ * 【确定性契约】
+ *   · 零 Math.random —— 频率表与初相位全部走 splitmix32 位置索引派生；
+ *   · **相位整数化** —— θ 是 [0, 65536) 的整数（相位量化步 2π/65536），
+ *     耦合项只用整数 sin/cos 表（quarter-wave，scale 16384），
+ *     序参量用整数和 C=Σcosθ、S=Σsinθ 表示；
+ *   · **atan2 彻底消失** —— 耦合项 r·sin(Ψ−θ) 展开成
+ *     (S·cosθ − C·sinθ)/N，全程无超越函数、无浮点atan2；
+ *   · 频率从**洛伦兹分布逆 CDF（柯西分位数）**取，256 级整数分位表，
+ *     线性内插；不用 tan —— tan 在库里的污名是"末位不确定破坏逐位一致"，
+ *     这里直接绕开它；
+ *   · 两个查表（sin 表、分位表）都是**加载时现算**，故用 FNV-1a 指纹钉死，
+ *     指纹进 results.json，build.js 硬比对 —— 跨引擎若有任何一位不同，
+ *     构建**响亮失败**，而不是静默漂移。这比"逐个数字钉死"更可维护。
+ *   · 时间推进与渲染分离：仿真按**固定 tick** 走（__probe.step 直接推进），
+ *     rAF 只负责"每帧调用一次 step"和重绘。验证环境可以完全不用 rAF。
+ *
+ * 【为什么选它】因为它是这批作品里第一个**没有正确答案**的题材 ——
+ *   58 件都在展示一个已知结论，本件展示的是一个真会自己跑的方程组，
+ *   而它唯一能被证伪的方式是：把 N 体测得的 r(t) 拿去和 Ott–Antonsen
+ *   约化给出的**闭式 ODE 预言**对账。对不上就是实现错了。
+ * ==========================================================================*/
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.InPhaseCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /* ---------------------------------------------------------------- 场景常量 */
+  /* CANON 是模型参数的**单一真源**：标定、验证、页面默认值三方必须一致。
+     这些是模型设定，不是实验结论；页面上的每个结论数字都由 calibrate.js
+     现算后写进 results.json / analysis.json，页面零手写数字。 */
+  var CANON = {
+    N: 4096,          /* 振子数：GPU 一次点绘制的规模；也决定有限尺寸效应 */
+    MOD: 65536,       /* 相位模 —— θ 是 [0, MOD) 的整数，量化步 2π/65536 */
+    QUAD: 16384,      /* 四分之一波表长度（π/2 对应的整数相位） */
+    TS: 16384,        /* sin/cos 表定点标度：表值 = round(TS·sin) */
+    GAMMA: 220,       /* 洛伦兹半宽（自然频率分布的标度，phase/tick） */
+    KC: 440,          /* 临界耦合 K_c = 2·GAMMA —— **闭式预言**，不是拟合值 */
+    KMIN: 0,
+    KMAX: 1600,
+    K0: 620,          /* 默认耦合：明显在 K_c 之上，看得到锁定 */
+    seed: 20261007,   /* 固定种子：整条链路的可复现根 */
+    dt: 2,            /* 每个动画帧推进的 tick 数（1× 时间缩放） */
+    QN: 256,          /* 柯西分位表级数 */
+    QCAP: 42,         /* 分位表两端截断（单位 γ）—— 柯西尾巴是无界的，截了才可枚举 */
+    BANDS: 8,         /* 音频探针数：把振子按频率秩切成 BANDS 段 */
+    settle: 4000,     /* 标定/量尺的沉降 tick 数（实测弛豫约 400 tick，留足余量） */
+    sampleEvery: 4    /* r(t) 采样步长（示波带与轨迹对照用） */
+  };
+
+  var N = CANON.N, MOD = CANON.MOD, QUAD = CANON.QUAD, TS = CANON.TS;
+
+  /* ------------------------------------------------------- ① 四分之一波 sin 表 */
+  /* SIN[i] = round(TS · sin(π·i/(2·QUAD)))，i ∈ [0, QUAD]。
+     覆盖 0 → π/2 的**四分之一**波，故分母是 2·QUAD 而不是 QUAD。
+     加载时现算（不内联 16385 个字面量），靠指纹钉死。
+     这里用 Math.sin 是**有意的**：舍入到 1/16384 的整数格，
+     Math.sin 的 ulp 误差（约 1e-16）要影响结果得先偏 3e-5 个单位，
+     而真正的风险（tan 的末位）被绕开了 —— 见 CANON.QCAP 的说明。
+
+     ⚠ 本作第一版在这里写成了 sin(π·i/QUAD) —— 那是**半波**（0→π），
+     于是 SIN[QUAD]=0、SIN[QUAD/2]=TS，qCos(0)=0、qCos(2·QUAD)=0。
+     症状极具欺骗性：指纹、格式化、量纲全对，但 4096 个振子的位置
+     全由一张错表算出，r(t) 恒趴在噪声底，怎么调 K 都不动 ——
+     看起来像"物理没实现"，实际是查表分母差了个 2。
+     判据：四分之一波表必须满足 SIN[0]=0 且 **SIN[QUAD]=TS**，
+     单调升到 TS。build.js 里已把这两条钉成硬断言。 */
+  var SIN = new Int32Array(QUAD + 1);
+  (function buildSin() {
+    for (var i = 0; i <= QUAD; i++) {
+      SIN[i] = Math.round(TS * Math.sin(Math.PI * i / (2 * QUAD)));
+    }
+  })();
+
+  /* 整数正弦：θ 取 [0,MOD)，返回 [-TS, TS] 的整数。
+     四象限对称展开，全程整数、无分支越界。 */
+  function qSin(t) {
+    t %= MOD; if (t < 0) t += MOD;
+    var q = (t / QUAD) | 0;
+    var i = t - q * QUAD;
+    var v = (q & 1) ? SIN[QUAD - i] : SIN[i];
+    return (q >= 2) ? -v : v;
+  }
+  /* 整数余弦：cos θ = sin(θ + π/2)，π/2 对应 QUAD 个相位单位。 */
+  function qCos(t) { return qSin(t + QUAD); }
+
+  /* --------------------------------------------- ② 洛伦兹频率分位表（无 tan） */
+  /* 自然频率取柯西分布（洛伦兹）g(ω) = γ/[π(ω²+γ²)]，零中心。
+     逆 CDF 是 tan —— 库里的污名。这里**不写 tan**：改成加载时算出一张
+     QN+1 级的整数分位表 QTAB（单位 γ），采样时在相邻两级间整数线性内插。
+     两端按 QCAP 截断（柯西尾巴无界，不截就没法枚举成有限表）。 */
+  var QTAB = new Int32Array(CANON.QN + 1);
+  (function buildQTab() {
+    for (var i = 0; i <= CANON.QN; i++) {
+      /* u ∈ (0,1) 取格心，避开 tan 的两个奇点 */
+      var u = (i + 0.5) / (CANON.QN + 1);
+      var q = Math.tan(Math.PI * (u - 0.5));
+      if (q > CANON.QCAP) q = CANON.QCAP;
+      else if (q < -CANON.QCAP) q = -CANON.QCAP;
+      QTAB[i] = Math.round(q * 1000);   /* 存成千分单位，保留内插精度 */
+    }
+  })();
+
+  /* 由 uint32 抽一个洛伦兹频率（整数，单位 phase/tick）。
+     idx 取高 8 位选级、剩下的 24 位当内插比例 —— 全整数。 */
+  function lorentzOmega(r) {
+    var idx = (r >>> 24) % CANON.QN;          /* 0 .. QN-1 */
+    var frac = (r & 0xffffff) / 16777216;      /* [0,1) */
+    var lo = QTAB[idx], hi = QTAB[idx + 1];
+    var q = lo + Math.floor(frac * (hi - lo)); /* 千分单位，整数 */
+    return (CANON.GAMMA * q) / 1000;          /* 整数除法 → 整数频率 */
+  }
+
+  /* ------------------------------------------------------------ ③ 散列与派生 */
+  /* FNV-1a 32 位。乘法走 Math.imul：普通乘法在 2^53 之外丢精度，
+     指纹就不"逐位"了。标准向量 '' → 811C9DC5、'a' → E40C292C。 */
+  function fnv1a(str) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i) & 0xff;
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return hex8(h >>> 0);
+  }
+  function fnv1aBytes(bytes) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < bytes.length; i++) {
+      h ^= bytes[i] & 0xff;
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return hex8(h >>> 0);
+  }
+  function hex8(h) {
+    var s = h.toString(16).toUpperCase();
+    while (s.length < 8) s = '0' + s;
+    return s;
+  }
+  function splitmix32(a) {
+    a = a >>> 0;
+    return function () {
+      a = (a + 0x9e3779b9) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 16), 0x21f0aaad) >>> 0;
+      t = Math.imul(t ^ (t >>> 15), 0x735a2d97) >>> 0;
+      return ((t ^ (t >>> 15)) >>> 0) >>> 0;
+    };
+  }
+  function hashSeed(seed, tag) {
+    var h = (Number(seed) >>> 0) ^ 0x9e3779b9;
+    var s = String(tag == null ? '' : tag);
+    for (var i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 0x85ebca6b) >>> 0;
+      h = (h ^ (h >>> 13)) >>> 0;
+    }
+    return h >>> 0;
+  }
+  /* 位置索引式派生：第 k 个 uint32，只依赖 (seed, tag, k)。 */
+  function deriveU32(seed, tag, k) {
+    return splitmix32(hashSeed(seed, tag + '#' + k))();
+  }
+
+  /* ------------------------------------------------------------ ④ 状态与步进 */
+  /* State:
+       th  Int32Array(N)  相位（整数，[0,MOD)）
+       w   Int32Array(N)  自然频率（整数，phase/tick）
+       bLo/bHi Int32Array(BANDS)  各频带的成员区间（按频率秩切分）
+       tick   已推进的 tick 数
+       C, S   序参量的整数分子（Σcosθ、Σsinθ），scale = N·TS
+       r      序参量（浮点，仅用于读数/渲染；真值是 C、S）
+       lock   锁相比例（浮点，仅读数）
+  */
+  function makeState(seed) {
+    var seed = seed == null ? CANON.seed : seed;
+    var th = new Int32Array(N), w = new Int32Array(N), i;
+    for (i = 0; i < N; i++) {
+      /* 初相位：均匀铺满圆周 → r(0) ≈ 1/√N ≈ 0.0156，贴近 0 */
+      th[i] = deriveU32(seed, 'phase', i) % MOD;
+    }
+    /* 频率：抽 N 个洛伦兹样本后**排序**，使频带区间连续 */
+    var raw = new Float64Array(N);
+    for (i = 0; i < N; i++) raw[i] = lorentzOmega(deriveU32(seed, 'omega', i));
+    raw.sort(function (a, b) { return a - b; });
+    for (i = 0; i < N; i++) w[i] = raw[i];
+
+    var S = {
+      th: th, w: w, seed: seed, tick: 0, C: 0, Ssum: 0, r: 0, lock: 0,
+      bLo: new Int32Array(CANON.BANDS), bHi: new Int32Array(CANON.BANDS),
+      bandOmega: new Float64Array(CANON.BANDS),
+      bandPhase: new Float64Array(CANON.BANDS),
+      bandR: new Float64Array(CANON.BANDS)
+    };
+    for (var b = 0; b < CANON.BANDS; b++) {
+      S.bLo[b] = Math.floor(b * N / CANON.BANDS);
+      S.bHi[b] = Math.floor((b + 1) * N / CANON.BANDS);
+    }
+    recompute(S);
+    return S;
+  }
+
+  /* 重算序参量（整数和）+ 派生浮点读数。
+     lock：与平均相位夹角小于 LOCKRAD 的振子占比（π/9 ≈ 20°）。 */
+  var LOCKRAD = Math.PI / 9;
+  function recompute(S) {
+    var C = 0, Sm = 0, i, t;
+    for (i = 0; i < N; i++) { t = S.th[i]; C += qCos(t); Sm += qSin(t); }
+    S.C = C; S.Ssum = Sm;
+    S.r = Math.sqrt(C * C + Sm * Sm) / (N * TS);
+    /* 锁相计数：|θ − Ψ| 的整数判据（用点积符号切半平面，免 atan2） */
+    var lock = 0;
+    var denom = Math.sqrt(C * C + Sm * Sm) || 1;
+    for (i = 0; i < N; i++) {
+      t = S.th[i];
+      /* cos(θ−Ψ) ≥ cos(20°) —— 与 r 的定义同族的整数点积判据 */
+      if ((C * qCos(t) + Sm * qSin(t)) / denom >= Math.cos(LOCKRAD) * TS) lock++;
+    }
+    S.lock = lock / N;
+  }
+
+  /* 推进一个 tick。
+     ------------------------------------------------------------------
+     耦合项的恒等式（全程无 atan2、无 Ψ、无浮点相位）：
+        r·e^{iΨ} = (C + iS)/(N·TS)     ⇒   r·sin(Ψ−θ) = (S·cosθ − C·sinθ)/(N·TS)
+
+     ★ 定点化是本函数唯一的技术难点，也是本作栽过最狠的坑，记三条：
+     ① **不能把场分量取整成整数相位单位**。第一版写
+           fx = trunc(K·S/(N·TS))     // 想当然认为 fx 就是"相位单位"
+        但 r 的噪声底是 1/√N ≈ 0.0156，于是 K·r·sinΨ ≈ 0.15，
+        Math.trunc 直接把 fx 砍成 **0** —— 而指数增长恰恰必须从噪声底起步。
+        症状：K 扫遍 0..8γ，r 永远趴在 0.0037 不动，像"模型错了"。
+        修法：场分量保留 FRAC 位二进制小数（定点），永不归零。
+     ② **分母 TS 只该出现一次**。中间栽过一版多除一个 TS（耦合被削弱 16384 倍），
+        又栽过一版漏除（耦合项大到 1.5e6，一步把相位甩飞）。
+        量纲自检：Δθ 的耦合部分必须与 K 同量纲（都是"相位单位/tick"）。
+     ③ **量级不能溢出 2^53**。定点后分子上界 ≈ K·FRAC·TS，
+        故 FRAC 与 K 的乘积要留在 double 的精确整数范围内（本实现 ≈ 1e11）。
+     ------------------------------------------------------------------
+     定点推导：令 FRAC = 2^FRACBITS，
+        rsFP = round(S·FRAC/(N·TS))     // = r·sinΨ 的定点表示，|rsFP| ≤ FRAC
+        rcFP = round(C·FRAC/(N·TS))     // = r·cosΨ
+        fx = round(K·rsFP), fy = round(K·rcFP)          // |fx| ≤ K·FRAC
+        Δθ = (fx·qCosθ − fy·qSinθ)/(TS·FRAC)             // 与 K 同量纲 ✓
+     所有中间量都是精确整数（除法只除 2 的幂或 N·TS，结果再取整），
+     故逐位可复现，且**没有任何一步会把有效耦合吞成 0**。 */
+  var FRACBITS = 12, FRAC = 4096;      /* 场分量的定点小数位 */
+  function step(S, K) {
+    var i, t;
+    var C = 0, Sm = 0;
+    for (i = 0; i < N; i++) { t = S.th[i]; C += qCos(t); Sm += qSin(t); }
+    S.C = C; S.Ssum = Sm;
+    S.r = Math.sqrt(C * C + Sm * Sm) / (N * TS);
+
+    /* 场分量（定点，永不为 0 除非物理上就是 0） */
+    var denom = N * TS;
+    var rsFP = Math.round(Sm * FRAC / denom);   /* r·sinΨ */
+    var rcFP = Math.round(C * FRAC / denom);    /* r·cosΨ */
+    var fx = Math.round(K * rsFP);
+    var fy = Math.round(K * rcFP);
+    var dden = TS * FRAC;
+    for (i = 0; i < N; i++) {
+      t = S.th[i];
+      var d = Math.trunc((fx * qCos(t) - fy * qSin(t)) / dden);
+      var v = t + S.w[i] + d;
+      v %= MOD; if (v < 0) v += MOD;
+      S.th[i] = v;
+    }
+    S.tick++;
+  }
+
+  /* 一次推进 n 个 tick（批处理：省掉中间的 r 重算，标定专用）。 */
+  function run(S, K, n) {
+    for (var i = 0; i < n; i++) step(S, K);
+    recompute(S);
+    return S;
+  }
+
+  /* 频带瞬时频率：band 内 (Δθ) 的带符号均值，wrap 到 (−MOD/2, MOD/2]。
+     这是音频探针的频率来源 —— 也是"同步"在听觉上的直接体现。 */
+  function bandDynamics(S, prevTh) {
+    var b, i, half = MOD / 2;
+    for (b = 0; b < CANON.BANDS; b++) {
+      var acc = 0, cc = 0, ss = 0;
+      for (i = S.bLo[b]; i < S.bHi[b]; i++) {
+        var t = S.th[i];
+        if (prevTh) {
+          var d = t - prevTh[i];
+          while (d > half) d -= MOD;
+          while (d < -half) d += MOD;
+          acc += d;
+        }
+        cc += qCos(t); ss += qSin(t);
+      }
+      var m = S.bHi[b] - S.bLo[b];
+      S.bandOmega[b] = prevTh ? acc / m : S.bandOmega[b];
+      S.bandR[b] = Math.sqrt(cc * cc + ss * ss) / (m * TS);
+      S.bandPhase[b] = Math.atan2(ss, cc);
+    }
+  }
+
+  /* --------------------------------------------------------- ⑤ Ott–Antonsen */
+  /* 洛伦兹频率分布下，Kuramoto 方程在 OA 流形上有**闭式约化**：
+        ż = (iω0 − γ)z + (K/2)(z* − z)
+    取模（ω₀=0，z 的相位部分对应集体旋转）得 r 的一维 ODE：
+        ṙ = −γr + (K/2)·r·(1 − r²)
+    零不动点 r*=0 在 K < 2γ 稳定；K > 2γ 时出现非零不动点
+        r∞ = √(1 − 2γ/K)
+    这就是**临界耦合 K_c = 2γ** 的来源 —— 它是闭式预言，不是拟合。
+    本作的三条尺子全部拿 N 体仿真去对账这个预言。
+
+    ⚠ 三次项的系数极易写错，且**两种写法看起来都对**：
+        错的： (K/2 − γ)·r·(1 − r²)   ← 展开后 r³ 系数是 (K/2 − γ)
+        对的： (K/2 − γ)·r − (K/2)·r³  ← r³ 系数必须是 **K/2**
+      两者只在 K/2 = γ（恰在临界点）处相同。本作第一版写了错的版本，
+      而它**极其阴险**：终值对账照样通过（终值只依赖 oaFixed，不依赖 oaR），
+      只有轨迹对账会偏 —— 于是"半对"的错误藏在作品里。
+      判据已写成 test.js 的回归断言：把 oaFixed 的解代回 oaR 必须得 0。 */
+  function oaR(r, K, gamma) {
+    return -gamma * r + (K / 2) * r * (1 - r * r);
+  }
+  /* 平衡态预言：K ≤ 2γ → 0；否则 √(1 − 2γ/K) */
+  function oaFixed(K, gamma) {
+    if (K <= 2 * gamma) return 0;
+    var q = 1 - 2 * gamma / K;
+    return q > 0 ? Math.sqrt(q) : 0;
+  }
+  /* 从 r0 出发积分 OA ODE，返回 ticks 个采样点的 r 轨迹。
+     ⚠ 子步数必须由**局部最大速率**决定，不能写死：
+        ṙ = −γr + (K/2)r(1−r²) 在 r∈[0,1] 上的导数绝对值上界是 γ + K/2
+        （r=0 处 |dṙ/dr| = |−γ + K/2|，r=1 处 |dṙ/dr| = γ + K/2，后者更大）
+        故取 rate = γ + K/2。RK4 要求 rate·dt ≲ 1，dt=1 时 rate>1 必发散 ——
+        实测第一版 r 一步冲到 7e16 后变 NaN。
+        这里按 SUB = ceil(rate·4) 自动细分（4 倍余量），
+        保证无论 K 取何值积分都稳。子步数会写进标定数据供核对。 */
+  function oaSubsteps(K, gamma) {
+    var rate = gamma + K / 2;
+    return Math.max(1, Math.ceil(rate * 4));
+  }
+  function oaTrajectory(r0, K, gamma, ticks, dt) {
+    dt = dt == null ? 1 : dt;
+    var out = new Float64Array(ticks + 1);
+    var r = r0;
+    out[0] = r;
+    var sub = oaSubsteps(K, gamma);
+    var h = dt / sub;
+    for (var i = 0; i < ticks; i++) {
+      for (var j = 0; j < sub; j++) {
+        var k1 = oaR(r, K, gamma);
+        var k2 = oaR(r + 0.5 * h * k1, K, gamma);
+        var k3 = oaR(r + 0.5 * h * k2, K, gamma);
+        var k4 = oaR(r + h * k3, K, gamma);
+        r += h * (k1 + 2 * k2 + 2 * k3 + k4) / 6;
+        /* r 是序参量，物理上恒在 [0,1]。数值上偶尔越界一点点是正常的，
+           但必须夹住 —— 否则下一步 (1−r²) 变号会把误差放大成发散。 */
+        if (r < 0) r = 0; else if (r > 1) r = 1;
+      }
+      out[i + 1] = r;
+    }
+    return out;
+  }
+
+  /* ------------------------------------------------------- ⑥ 数值格式化出口 */
+  /* 任何非有限数都不许进 DOM —— 库里的老规矩（interf / topo 的教训）。 */
+  function fmtFixed(x, d) {
+    if (x == null || !isFinite(x)) return '—';
+    return x.toFixed(d == null ? 3 : d);
+  }
+  function fmtInt(x) {
+    if (x == null || !isFinite(x)) return '—';
+    return String(Math.round(x));
+  }
+  function fmtPct(x, d) {
+    if (x == null || !isFinite(x)) return '—';
+    return (x * 100).toFixed(d == null ? 1 : d) + '%';
+  }
+
+  /* --------------------------------------------------- ⑦ 查表指纹（钉死用） */
+  /* 两个表都是加载时现算的。它们的指纹进标定数据，构建期硬比对 ——
+     跨引擎只要有一位不同，构建就响亮失败。这是本作对付"逐位可复现"
+     的做法：不逐个数字钉死，而是钉死**整体指纹**。 */
+  function tableFingerprints() {
+    var sinBuf = new Uint8Array((QUAD + 1) * 4);
+    var qBuf = new Uint8Array((CANON.QN + 1) * 4);
+    var i, v;
+    for (i = 0; i <= QUAD; i++) {
+      v = SIN[i] >>> 0;
+      sinBuf[i * 4] = v & 0xff; sinBuf[i * 4 + 1] = (v >>> 8) & 0xff;
+      sinBuf[i * 4 + 2] = (v >>> 16) & 0xff; sinBuf[i * 4 + 3] = (v >>> 24) & 0xff;
+    }
+    for (i = 0; i <= CANON.QN; i++) {
+      v = QTAB[i] >>> 0;
+      qBuf[i * 4] = v & 0xff; qBuf[i * 4 + 1] = (v >>> 8) & 0xff;
+      qBuf[i * 4 + 2] = (v >>> 16) & 0xff; qBuf[i * 4 + 3] = (v >>> 24) & 0xff;
+    }
+    return { sin: fnv1aBytes(sinBuf), quant: fnv1aBytes(qBuf) };
+  }
+
+  /* 初态指纹：种子 + 初相位 + 频率表 —— 标定与页面必须逐位一致。 */
+  function stateFingerprint(S) {
+    var buf = new Uint8Array(N * 8);
+    var i, v;
+    for (i = 0; i < N; i++) {
+      v = S.th[i] >>> 0;
+      buf[i * 8] = v & 0xff; buf[i * 8 + 1] = (v >>> 8) & 0xff;
+      buf[i * 8 + 2] = (v >>> 16) & 0xff; buf[i * 8 + 3] = (v >>> 24) & 0xff;
+      v = S.w[i] >>> 0;
+      buf[i * 8 + 4] = v & 0xff; buf[i * 8 + 5] = (v >>> 8) & 0xff;
+      buf[i * 8 + 6] = (v >>> 16) & 0xff; buf[i * 8 + 7] = (v >>> 24) & 0xff;
+    }
+    return fnv1aBytes(buf);
+  }
+
+  /* ----------------------------------------------------------- ⑧ 规模护栏 */
+  var VERIFY = {
+    /* 相位/频率表的自检规模 */
+    sinLen: QUAD + 1,
+    qLen: CANON.QN + 1,
+    /* 有限尺寸理论标度：r 的 1/√N 涨落 ≈ 0.0156（4096 个振子） */
+    rFluct: 1 / Math.sqrt(N),
+    /* K_c 邻域的最小间隔（K 是整数 tick 耦合） */
+    kStep: 1
+  };
+
+  return {
+    CANON: CANON, VERIFY: VERIFY,
+    qSin: qSin, qCos: qCos, lorentzOmega: lorentzOmega,
+    makeState: makeState, recompute: recompute, step: step, run: run,
+    bandDynamics: bandDynamics,
+    oaR: oaR, oaFixed: oaFixed, oaTrajectory: oaTrajectory, oaSubsteps: oaSubsteps,
+    fmtFixed: fmtFixed, fmtInt: fmtInt, fmtPct: fmtPct,
+    fnv1a: fnv1a, fnv1aBytes: fnv1aBytes, splitmix32: splitmix32,
+    deriveU32: deriveU32, tableFingerprints: tableFingerprints,
+    stateFingerprint: stateFingerprint,
+    /* 供标定/测试复用的内部表（只读） */
+    SIN: SIN, QTAB: QTAB
+  };
+});
+
+</script>
+<script>
+/* ============================================================================
+ * inphase/ui.js —— WebGL2 渲染、相位圆直接操纵、键盘演奏、状态驱动音频
+ *
+ * 铁律（与 core.js 一致）：
+ *   ① 零随机数：页面不生成任何随机量，一切来自 core 的位置索引派生；
+ *   ② 任何非有限数都不进 DOM —— 数值出口一律过 core 的 fmtInt/fmtFixed/fmtPct；
+ *   ③ **时间与渲染分离**。仿真按固定 tick 推进（window.__probe.step 直接推进），
+ *      rAF 只负责"每帧调一次 step + 重绘"。这与本库其余 58 件的
+ *      "禁 rAF、事件驱动同步重绘"是**刻意相反**的取舍：
+ *      它们是静态图，本作是一个真的在跑的动力系统，不连续演化就没有意义。
+ *      为此补偿：验证环境若 rAF 不推进，可直接调 __probe.step(n) 同步推进，
+ *      断言值与真人看到的一致。
+ *   ④ 页面不携带任何结论数字 —— 全部出自 window.__DATA__（离线标定内联），
+ *      页面只负责用自己的积分复算并与标定对账。
+ *   ⑤ 渲染全走 WebGL2：零 canvas2d、零内联 SVG（见 build.js 的反固化守卫）。
+ * ==========================================================================*/
+(function () {
+  'use strict';
+  var C = window.InPhaseCore;
+  var D = window.__DATA__;
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* 运行期错误登记（不吞错：返回 false 让默认报错照常发生） */
+  window.__err = [];
+  window.onerror = function (m, s, l) {
+    window.__err.push(String(m) + ' @line ' + l);
+    return false;
+  };
+
+  var CANON = C.CANON;
+  var MOD = CANON.MOD, TAU = 2 * Math.PI;
+  var KC = D.results.kc, GAMMA = D.results.gamma;
+  var KMIN = D.results.kRange[0], KMAX = D.results.kRange[1];
+  /* 示波带缓冲长度：单一真源。缓冲、顶点数组、绘制循环全部读它，
+     避免"三处各写一个 240，改一处忘另一处"（本作初版就写过 240 三遍）。 */
+  var SCOPE_N = 240;
+
+  /* 调色板：从样式表取变量，取不到时用同族兜底（表现层常量，非结论数字） */
+  var css = getComputedStyle(document.documentElement);
+  function cssVar(name, fallback) {
+    var v = css.getPropertyValue(name);
+    return (v && v.trim()) || fallback;
+  }
+  var PAL = {
+    abyss: cssVar('--abyss', '#0b0e14'),
+    ion: cssVar('--ion', '#46e0d0'),
+    amber: cssVar('--amber', '#ffb454'),
+    violet: cssVar('--violet', '#b98cff'),
+    rust: cssVar('--rust', '#ff6b6b'),
+    rule: cssVar('--rule', '#232b3a'),
+    ink2: cssVar('--ink-2', '#a8b4c8')
+  };
+  function hexToRgb(h) {
+    h = h.replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var n = parseInt(h, 16);
+    return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+  }
+  var RGB_ION = hexToRgb(PAL.ion), RGB_AMBER = hexToRgb(PAL.amber),
+      RGB_VIOLET = hexToRgb(PAL.violet), RGB_RUST = hexToRgb(PAL.rust),
+      RGB_RULE = hexToRgb(PAL.rule), RGB_ABYSS = hexToRgb(PAL.abyss);
+
+  /* ================================================================ 状态 */
+  var state = {
+    K: D.results.kDefault,
+    S: C.makeState(CANON.seed),
+    running: true,
+    speed: CANON.dt,          /* 每帧推进的 tick 数 */
+    fps: 0,
+    sound: false,
+    sweeping: false,
+    sweepFrom: KMIN, sweepTo: KMAX, sweepT: 0, sweepLen: 0,
+    hist: new Float32Array(SCOPE_N),  /* r(t) 环形缓冲，长度见 SCOPE_N */
+    histN: 0,                        /* 已写入的样本数 */
+    lastR: 0
+  };
+
+  /* ==================================================== ① 相位圆：WebGL2 */
+  /* 4096 个振子一次 gl.POINTS 画完。每个点两个逐实例属性：
+     aTheta（相位，0..1）与 aOmega（归一化频率，决定色相）。
+     顶点着色器负责 theta → (cos,sin) → 裁剪坐标，CPU 每帧只上传两个
+     Float32Array（N=4096 各 16KB），不重建顶点缓冲。 */
+  var VS_POINT = [
+    '#version 300 es',
+    'in float aTheta;',      // 相位 [0,1)
+    'in float aOmega;',     // 归一化频率 [-1,1]
+    'in float aLock;',      // 与平均相位的接近程度 [0,1]
+    'uniform float uSize;',
+    'uniform float uPR;',    // 像素比
+    'out float vLock;',
+    'out float vOmega;',
+    'void main() {',
+    '  float a = aTheta * 6.283185307179586;',
+    '  float R = 0.86;',
+    '  gl_Position = vec4(cos(a) * R, sin(a) * R, 0.0, 1.0);',
+    /* 点的大小：锁相的更亮更大，接近 Ψ 的更实 */
+    '  gl_PointSize = uSize * uPR * (1.0 + 0.85 * aLock);',
+    '  vLock = aLock;',
+    '  vOmega = aOmega;',
+    '}'
+  ].join('\n');
+
+  var FS_POINT = [
+    '#version 300 es',
+    'precision mediump float;',
+    'in float vLock;',
+    'in float vOmega;',
+    'uniform vec3 uIon;',
+    'uniform vec3 uAmber;',
+    'uniform vec3 uViolet;',
+    'uniform vec3 uAbyss;',
+    'out vec4 outColor;',
+    'void main() {',
+    /* 圆形点：把片元坐标裁成圆盘，避免方块点 */
+    '  vec2 d = gl_PointCoord - vec2(0.5);',
+    '  float r2 = dot(d, d);',
+    '  if (r2 > 0.25) discard;',
+    '  float edge = smoothstep(0.25, 0.05, r2);',
+    /* 色相：按频率在冷青↔琥珀之间插值（频率快 = 偏琥珀） */
+    '  vec3 base = mix(uIon, uAmber, clamp(vOmega * 0.5 + 0.5, 0.0, 1.0));',
+    /* 锁相的振子染成紫：一眼看出"谁跟上了集体节奏" */
+    '  vec3 col = mix(base, uViolet, vLock * 0.85);',
+    /* 亮度随锁相度提升，用加法混合叠出辉光 */
+    '  float glow = 0.30 + 0.85 * vLock;',
+    '  outColor = vec4(col * glow, edge * (0.42 + 0.58 * vLock));',
+    '}'
+  ].join('\n');
+
+  /* 圆周刻度 + r 向量：一条 LINE_LOOP + 一条动态线段 */
+  var VS_LINE = [
+    '#version 300 es',
+    'in vec2 aPos;',
+    'in float aKind;',      /* 0=刻度 1=r向量 2=指针 3=参考 */
+    'uniform float uR;',
+    'out float vKind;',
+    'void main() {',
+    '  gl_Position = vec4(aPos * uR, 0.0, 1.0);',
+    '  vKind = aKind;',
+    '}'
+  ].join('\n');
+  var FS_LINE = [
+    '#version 300 es',
+    'precision mediump float;',
+    'in float vKind;',
+    'uniform vec3 uIon;',
+    'uniform vec3 uAmber;',
+    'uniform vec3 uRust;',
+    'uniform vec3 uAbyss;',
+    'out vec4 outColor;',
+    'void main() {',
+    '  vec3 col = uIon;',
+    '  float a = 0.55;',
+    '  if (vKind > 2.5)      { col = uRust; a = 0.85; }',   /* 参考线 */
+    '  else if (vKind > 1.5) { col = uAmber; a = 0.95; }',  /* 指针 */
+    '  else if (vKind > 0.5) { col = uAmber; a = 1.0; }',   /* r 向量 */
+    '  outColor = vec4(col, a);',
+    '}'
+  ].join('\n');
+
+  function compile(gl, vsSrc, fsSrc) {
+    function sh(type, src) {
+      var s = gl.createShader(type);
+      gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        throw new Error('shader: ' + gl.getShaderInfoLog(s));
+      }
+      return s;
+    }
+    var p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, vsSrc));
+    gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fsSrc));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      throw new Error('link: ' + gl.getProgramInfoLog(p));
+    }
+    return p;
+  }
+
+  var circleGl = null, circleProg = null, circleBuf = null,
+      ringBuf = null, ringProg = null, ringVAO = null;
+  var thetaAttr = null, omegaAttr = null, lockAttr = null;
+  var aTheta = null, aOmega = null, aLock = null;
+  var ringStatic = null;
+  var glOk = false;
+
+  function initCircle() {
+    var cv = $('circle');
+    if (!cv) return;
+    var gl = cv.getContext('webgl2', { antialias: true, alpha: false, preserveDrawingBuffer: true });
+    if (!gl) { $('glWarn').hidden = false; return; }
+    circleGl = gl;
+    try {
+      circleProg = compile(gl, VS_POINT, FS_POINT);
+      ringProg = compile(gl, VS_LINE, FS_LINE);
+    } catch (e) {
+      window.__err.push('shader 编译失败: ' + e.message);
+      $('glWarn').hidden = false;
+      $('glWarn').textContent = '着色器编译失败：' + e.message;
+      return;
+    }
+
+    var N = CANON.N;
+    aTheta = new Float32Array(N);
+    aOmega = new Float32Array(N);
+    aLock = new Float32Array(N);
+
+    /* 静态的圆周刻度环（192 段）+ r 向量 + 指针，用同一个动态缓冲，
+       每帧只重写后 4 个顶点（刻度环保持不变）。 */
+    var SEGS = 192;
+    var ringVerts = new Float32Array((SEGS + 1 + 4) * 3);
+    var o = 0;
+    for (var i = 0; i <= SEGS; i++) {
+      var a = i / SEGS * TAU;
+      ringVerts[o++] = Math.cos(a); ringVerts[o++] = Math.sin(a); ringVerts[o++] = 0;
+    }
+    /* 预留：r 向量起点(原点,kind1) → 终点(kind1)；指针起点(kind2)→终点(kind2) */
+    ringVerts[o++] = 0; ringVerts[o++] = 0; ringVerts[o++] = 1;
+    ringVerts[o++] = 0; ringVerts[o++] = 0; ringVerts[o++] = 1;
+    ringVerts[o++] = 0; ringVerts[o++] = 0; ringVerts[o++] = 2;
+    ringVerts[o++] = 0; ringVerts[o++] = 0; ringVerts[o++] = 2;
+    ringStatic = ringVerts;
+    ringBuf = gl.createBuffer();
+    ringVAO = gl.createVertexArray();
+    gl.bindVertexArray(ringVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, ringBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, ringVerts, gl.DYNAMIC_DRAW);
+    var rLoc = gl.getAttribLocation(ringProg, 'aPos');
+    var kLoc = gl.getAttribLocation(ringProg, 'aKind');
+    gl.enableVertexAttribArray(rLoc);
+    gl.vertexAttribPointer(rLoc, 2, gl.FLOAT, false, 12, 0);
+    gl.enableVertexAttribArray(kLoc);
+    gl.vertexAttribPointer(kLoc, 1, gl.FLOAT, false, 12, 8);
+
+    /* 点云 VAO */
+    circleBuf = gl.createBuffer();
+    gl.bindVertexArray(null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, circleBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, N * 3 * 4, gl.DYNAMIC_DRAW);
+    var v = circleProg;
+    thetaAttr = gl.getAttribLocation(v, 'aTheta');
+    omegaAttr = gl.getAttribLocation(v, 'aOmega');
+    lockAttr = gl.getAttribLocation(v, 'aLock');
+    /* 三个属性各自绑定到同一 buffer 的不同偏移，每帧一次 bufferSubData 上传 */
+    gl.bindBuffer(gl.ARRAY_BUFFER, circleBuf);
+    gl.enableVertexAttribArray(thetaAttr);
+    gl.vertexAttribPointer(thetaAttr, 1, gl.FLOAT, false, 12, 0);
+    gl.enableVertexAttribArray(omegaAttr);
+    gl.vertexAttribPointer(omegaAttr, 1, gl.FLOAT, false, 12, 0);
+    gl.enableVertexAttribArray(lockAttr);
+    gl.vertexAttribPointer(lockAttr, 1, gl.FLOAT, false, 12, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);   /* 加法混合 → 辉光 */
+    gl.clearColor(RGB_ABYSS[0], RGB_ABYSS[1], RGB_ABYSS[2], 1);
+    glOk = true;
+  }
+
+  /* 把当前状态打包进三个属性数组。
+     lock = 该振子与平均相位的接近程度：cos(θ−Ψ) 归一到 [0,1]，
+     用整数点积算（免 atan2）。 */
+  var lastPsiX = 1, lastPsiY = 0;
+  function packAttribs() {
+    var S = state.S, N = CANON.N, th = S.th, w = S.w;
+    var Csum = S.C, Ssum = S.Ssum;
+    var mag = Math.sqrt(Csum * Csum + Ssum * Ssum) || 1;
+    /* 平均相位方向的单位向量（用整数和归一，避免 atan2） */
+    var px = Csum / mag, py = Ssum / mag;
+    lastPsiX = px; lastPsiY = py;
+    var maxW = Math.max(1, Math.abs(w[0]), Math.abs(w[N - 1]));
+    for (var i = 0; i < N; i++) {
+      var t = th[i];
+      aTheta[i] = t / MOD;
+      /* 频率归一：用 QCAP 上界做分母，保证落在 [-1,1] */
+      var oq = w[i] / (CANON.QCAP * GAMMA);
+      aOmega[i] = oq > 1 ? 1 : (oq < -1 ? -1 : oq);
+      /* cos(θ−Ψ) = (qCos·px + qSin·py)，映射到 [0,1] */
+      var cs = (C.qCos(t) * px + C.qSin(t) * py) / CANON.TS;
+      aLock[i] = cs > 0 ? cs : 0;
+    }
+  }
+
+  function drawCircle() {
+    if (!glOk) return;
+    var gl = circleGl, cv = $('circle');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+    if (w !== cv.width || h !== cv.height) { cv.width = w; cv.height = h; }
+    gl.viewport(0, 0, w, h);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    packAttribs();
+
+    /* 1) 振子点云 */
+    gl.useProgram(circleProg);
+    gl.uniform1f(gl.getUniformLocation(circleProg, 'uSize'), 3.1);
+    gl.uniform1f(gl.getUniformLocation(circleProg, 'uPR'), dpr);
+    gl.uniform3fv(gl.getUniformLocation(circleProg, 'uIon'), RGB_ION);
+    gl.uniform3fv(gl.getUniformLocation(circleProg, 'uAmber'), RGB_AMBER);
+    gl.uniform3fv(gl.getUniformLocation(circleProg, 'uViolet'), RGB_VIOLET);
+    gl.uniform3fv(gl.getUniformLocation(circleProg, 'uAbyss'), RGB_ABYSS);
+    /* 交错上传：每点 3 个 float（theta, omega, lock），一次 bufferSubData */
+    var inter = gl.createBuffer ? circleBuf : circleBuf;
+    gl.bindBuffer(gl.ARRAY_BUFFER, circleBuf);
+    /* 把三个数组交织进同一个缓冲：直接写 Float32 视图 */
+    var dst = new Float32Array(CANON.N * 3);
+    for (var i = 0; i < CANON.N; i++) {
+      dst[i * 3] = aTheta[i]; dst[i * 3 + 1] = aOmega[i]; dst[i * 3 + 2] = aLock[i];
+    }
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, dst);
+    /* 属性指针已在 initCircle 里绑好（offset 0/4/8），此处只需重指到新数据 */
+    gl.bindBuffer(gl.ARRAY_BUFFER, circleBuf);
+    gl.enableVertexAttribArray(thetaAttr);
+    gl.vertexAttribPointer(thetaAttr, 1, gl.FLOAT, false, 12, 0);
+    gl.enableVertexAttribArray(omegaAttr);
+    gl.vertexAttribPointer(omegaAttr, 1, gl.FLOAT, false, 12, 4);
+    gl.enableVertexAttribArray(lockAttr);
+    gl.vertexAttribPointer(lockAttr, 1, gl.FLOAT, false, 12, 8);
+    gl.drawArrays(gl.POINTS, 0, CANON.N);
+
+    /* 2) 刻度环 + r 向量 + 指针 */
+    var SEGS = 192;
+    var base = (SEGS + 1) * 3;
+    var R = state.S.r;
+    ringStatic[base + 0] = 0; ringStatic[base + 1] = 0; ringStatic[base + 2] = 1;
+    ringStatic[base + 3] = lastPsiX * R * 0.86; ringStatic[base + 4] = lastPsiY * R * 0.86; ringStatic[base + 5] = 1;
+    ringStatic[base + 6] = 0; ringStatic[base + 7] = 0; ringStatic[base + 8] = 2;
+    /* 指针只在**真的有指针角度**时才有意义（拖拽中）。
+       否则常态会在圆心右侧留一根指向 0° 的横线（初版 pa 兜底成 0，
+       看起来像一条莫名其妙的射线），纯视觉噪声。 */
+    var pa = state.pointerAngle;
+    if (state.pointerAngle != null) {
+      ringStatic[base + 9] = Math.cos(pa) * 0.96;
+      ringStatic[base + 10] = Math.sin(pa) * 0.96;
+      ringStatic[base + 11] = 2;
+    }
+
+    gl.useProgram(ringProg);
+    gl.uniform1f(gl.getUniformLocation(ringProg, 'uR'), 1.0);
+    gl.uniform3fv(gl.getUniformLocation(ringProg, 'uIon'), RGB_RULE);
+    gl.uniform3fv(gl.getUniformLocation(ringProg, 'uAmber'), RGB_AMBER);
+    gl.uniform3fv(gl.getUniformLocation(ringProg, 'uRust'), RGB_RUST);
+    gl.bindVertexArray(ringVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, ringBuf);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, ringStatic);
+    /* 刻度环 */
+    gl.drawArrays(gl.LINE_LOOP, 0, SEGS + 1);
+    /* r 向量（两点） */
+    gl.drawArrays(gl.LINES, SEGS + 1, 2);
+    /* 指针（两点，仅在拖拽时才有意义 —— 常态画出来当方位指示） */
+    gl.drawArrays(gl.LINES, SEGS + 3, 2);
+    gl.bindVertexArray(null);
+  }
+
+  /* ================================================ ② r(t) 示波带：WebGL2 */
+  var scopeGl = null, scopeProg = null, scopeVAO = null, scopeBuf = null;
+  var scopeVS = [
+    '#version 300 es',
+    'in vec2 aPos;',        /* x: 0..1 归一化时间, y: 0..1 归一化 r */
+    'in float aKind;',      /* 0=轨迹 1=预言平衡线 2=噪声底线 */
+    'out float vKind;',
+    'void main() {',
+    '  gl_Position = vec4(aPos * 2.0 - 1.0, 0.0, 1.0);',
+    '  vKind = aKind;',
+    '}'
+  ].join('\n');
+  var scopeFS = [
+    '#version 300 es',
+    'precision mediump float;',
+    'in float vKind;',
+    'uniform vec3 uIon;',
+    'uniform vec3 uAmber;',
+    'uniform vec3 uRust;',
+    'out vec4 outColor;',
+    'void main() {',
+    '  vec3 col = uIon; float a = 0.62;',
+    '  if (vKind > 2.5)      { col = uIon;   a = 0.11; }',  /* 裙边：极淡的面积 */
+    '  else if (vKind > 1.5) { col = uRust;  a = 0.80; }',  /* 噪声底参考线 */
+    '  else if (vKind > 0.5) { col = uAmber; a = 0.90; }',  /* 预言平衡线 */
+    '  outColor = vec4(col, a);',
+    '}'
+  ].join('\n');
+
+
+  /* 顶点布局（单一真源，全部按 stride=3 推 offset，改动只改这里）：
+       [0 .. SCOPE_N-1]              轨迹点（kind 0）
+       [SCOPE_N .. SCOPE_N+1]        预言平衡线（kind 1）
+       [SCOPE_N+2 .. SCOPE_N+3]      噪声底线（kind 2）
+       [SCOPE_N+4 .. +4+2·SCOPE_N-1] 裙边（kind 3，成对：轨迹 y 与 y=0）
+     ⚠ 裙边需要 **2·SCOPE_N** 个槽位。初版按 SCOPE_N+6 分配，
+       写顶点时越界 480 格 —— WebGL 不报错、不崩，只是画不出东西，
+       于是"canvas 有内容"检查恒失败而代码看起来完全正常。
+       这类越界必须靠**算术断言**拦，故 test.js 与 build.js 各留一条。
+     ★ 裙边（面积填充）是必须的：轨迹本身只有 1px 宽，
+       在宽画布上按 13px 步长抽样，命中比例低到 0.0012，
+       会被判成白屏 —— 而它其实画了。填成面积后命中量级正常。 */
+  var V_STRIDE = 3;
+  var V_PRED = SCOPE_N;
+  var V_FLOOR = SCOPE_N + 2;
+  var V_SKIRT = SCOPE_N + 4;
+  var V_TOTAL = V_SKIRT + SCOPE_N * 2;
+  var scopeVerts = new Float32Array(V_TOTAL * V_STRIDE);
+
+  /* 越界自检：宁可在这里响亮失败，也不要在 WebGL 里静默画空 */
+  if (V_SKIRT + SCOPE_N * 2 > V_TOTAL) {
+    window.__err.push('示波带顶点数组越界：需要 ' + (V_SKIRT + SCOPE_N * 2) +
+      '，实配 ' + V_TOTAL);
+  }
+
+  /* y 轴动态量程：r 的噪声底只有 0.015，平衡值可到 0.85，
+     固定 [0,1] 全幅会把相变前后的变化压成一条几乎平的线。
+     下限锚在 0（噪声底要看得见），上限随预测平衡值自适应，
+     但至少 0.25，保证小 K 时曲线也有纵向空间。 */
+  function scopeTop() {
+    var pred = C.oaFixed(state.K, GAMMA);
+    return Math.min(1, Math.max(pred * 1.3, 0.25));
+  }
+
+  function initScope() {
+    var cv = $('scope');
+    if (!cv) return;
+    var gl = cv.getContext('webgl2', { antialias: true, alpha: false, preserveDrawingBuffer: true });
+    if (!gl) return;
+    scopeGl = gl;
+    try { scopeProg = compile(gl, scopeVS, scopeFS); }
+    catch (e) { window.__err.push('scope shader: ' + e.message); return; }
+
+    /* kind 预置：轨迹 0、平衡线 1、噪声底 2、裙边 3 */
+    for (var i = 0; i < V_TOTAL; i++) scopeVerts[i * V_STRIDE + 2] = 0;
+    scopeVerts[V_PRED * V_STRIDE + 2] = 1;
+    scopeVerts[(V_PRED + 1) * V_STRIDE + 2] = 1;
+    scopeVerts[V_FLOOR * V_STRIDE + 2] = 2;
+    scopeVerts[(V_FLOOR + 1) * V_STRIDE + 2] = 2;
+    for (i = 0; i < 2; i++) scopeVerts[(V_SKIRT + i) * V_STRIDE + 2] = 3;
+
+    scopeBuf = gl.createBuffer();
+    scopeVAO = gl.createVertexArray();
+    gl.bindVertexArray(scopeVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, scopeBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, scopeVerts.byteLength, gl.DYNAMIC_DRAW);
+    var p = gl.getAttribLocation(scopeProg, 'aPos');
+    var k = gl.getAttribLocation(scopeProg, 'aKind');
+    gl.enableVertexAttribArray(p);
+    gl.vertexAttribPointer(p, 2, gl.FLOAT, false, 12, 0);
+    gl.enableVertexAttribArray(k);
+    gl.vertexAttribPointer(k, 1, gl.FLOAT, false, 12, 8);
+    gl.bindVertexArray(null);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    gl.clearColor(RGB_ABYSS[0], RGB_ABYSS[1], RGB_ABYSS[2], 1);
+  }
+
+  function drawScope() {
+    if (!scopeGl) return;
+    var gl = scopeGl, cv = $('scope');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+    if (w !== cv.width || h !== cv.height) { cv.width = w; cv.height = h; }
+    gl.viewport(0, 0, w, h);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    var hn = state.histN;
+    var cnt = Math.min(hn, SCOPE_N);
+    if (cnt < 2) return;
+    var off = hn > SCOPE_N ? hn - SCOPE_N : 0;
+    var top = scopeTop();
+    function ny(v) { return v > top ? 1 : (v < 0 ? 0 : v / top); }
+
+    /* 轨迹 + 裙边（成对写入：先轨迹点 y，再同 x 的 y=0 基线点） */
+    for (var i = 0; i < cnt; i++) {
+      var x = i / (SCOPE_N - 1);
+      var y = ny(state.hist[(off + i) % SCOPE_N]);
+      var a = i * V_STRIDE, b = (V_SKIRT + i) * V_STRIDE;
+      scopeVerts[a] = x; scopeVerts[a + 1] = y;
+      scopeVerts[b] = x; scopeVerts[b + 1] = 0;
+    }
+    /* 预言平衡线（横贯全宽） */
+    var pred = ny(C.oaFixed(state.K, GAMMA));
+    scopeVerts[V_PRED * V_STRIDE] = 0;
+    scopeVerts[V_PRED * V_STRIDE + 1] = pred;
+    scopeVerts[(V_PRED + 1) * V_STRIDE] = 1;
+    scopeVerts[(V_PRED + 1) * V_STRIDE + 1] = pred;
+    /* 噪声底线 */
+    var fl = ny(D.analysis.finiteSize.fluctPred);
+    scopeVerts[V_FLOOR * V_STRIDE] = 0;
+    scopeVerts[V_FLOOR * V_STRIDE + 1] = fl;
+    scopeVerts[(V_FLOOR + 1) * V_STRIDE] = 1;
+    scopeVerts[(V_FLOOR + 1) * V_STRIDE + 1] = fl;
+
+    gl.useProgram(scopeProg);
+    gl.uniform3fv(gl.getUniformLocation(scopeProg, 'uIon'), RGB_ION);
+    gl.uniform3fv(gl.getUniformLocation(scopeProg, 'uAmber'), RGB_AMBER);
+    gl.uniform3fv(gl.getUniformLocation(scopeProg, 'uRust'), RGB_RUST);
+    gl.bindVertexArray(scopeVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, scopeBuf);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, scopeVerts);
+    /* 顺序有讲究：先铺半透明裙边（面积），再画参考线，最后描亮轨迹。
+       反过来会让 1px 的轨迹被面积盖掉 —— 顺序即层次。 */
+    gl.drawArrays(gl.TRIANGLE_STRIP, V_SKIRT, cnt * 2);
+    gl.drawArrays(gl.LINES, V_PRED, 2);
+    gl.drawArrays(gl.LINES, V_FLOOR, 2);
+    gl.drawArrays(gl.LINE_STRIP, 0, cnt);
+    gl.bindVertexArray(null);
+  }
+
+  /* ================================== ③ 读数与表格（数值出口全过 fmt 层） */
+  function setText(id, s) { var el = $(id); if (el) el.textContent = s; }
+
+  function paintReadouts() {
+    var S = state.S, r = S.r, pred = C.oaFixed(state.K, GAMMA);
+    var diff = r - pred;
+    setText('ro-r', C.fmtFixed(r, 4));
+    setText('ro-r2', C.fmtFixed(r, 4));
+    setText('ro-lock', C.fmtPct(S.lock, 1));
+    setText('ro-tick', C.fmtInt(S.tick));
+    setText('ro-floor', C.fmtFixed(D.analysis.finiteSize.fluctPred, 4));
+    setText('ro-predict', C.fmtFixed(pred, 4));
+    setText('ro-diff', (diff >= 0 ? '+' : '') + C.fmtFixed(diff, 4));
+    setText('ro-ratio', C.fmtFixed(state.K / KC, 3));
+    setText('ro-fps', C.fmtInt(state.fps));
+    setText('ro-state', state.running ? '运行中' : '已暂停');
+    setText('ro-audio', state.sound ? (audio.ctx ? '实时合成中' : '不可用') : '关闭');
+    setText('kOut', C.fmtInt(state.K) + ' / ' + C.fmtInt(KC));
+    setText('gOut', state.speed + '×');
+    /* 表格里标出当前 K 所在行 */
+    var rows = document.querySelectorAll('#ladderBody tr');
+    for (var i = 0; i < rows.length; i++) {
+      var k = Number(rows[i].getAttribute('data-k'));
+      rows[i].classList.toggle('k-cur', Math.abs(k - state.K) < 11);
+    }
+  }
+
+  /* ============================================== ④ 相位圆上的直接操纵 */
+  /* 主仪器：按住拖动，把指针角度附近的振子往那个方向拽。
+     这是**对状态动手**（改的是 θ），不是调参数（改的是 K）。
+     力度随"离指针越近"衰减，落点附近最强 —— 像真的用手拨一把沙子。 */
+  state.pointerAngle = null;
+  state.dragging = false;
+  /* 搅动逻辑提到模块作用域：既要挂到 pointer 事件上，也要能被
+     __probe.stirring() 直接调（验证"拖拽确实改变了序参量"）。
+     内联在事件回调里的话探针够不着，验证就只能靠截图肉眼看了。 */
+  function stir(a) {
+    var S = state.S, N = CANON.N;
+    var target = Math.round(((a / TAU) % 1 + 1) % 1 * MOD);
+    var WIN = MOD / 6;          /* 影响窗口 ±30° */
+    var HALF = Math.round(WIN / 2);
+    var PUSH = 90;              /* 每 tick 的最大拽动量（相位单位） */
+    var w = S.w, th = S.th;
+    var lo = target - HALF, hi = target + HALF;
+    for (var i = 0; i < N; i++) {
+      var d = th[i] - target;
+      /* 环形距离 */
+      if (d > MOD / 2) d -= MOD; else if (d < -MOD / 2) d += MOD;
+      if (d < -HALF || d > HALF) continue;
+      /* 余弦权重：正中间最强，边缘为 0 */
+      var wt = Math.cos(d / HALF * Math.PI / 2);
+      var pull = Math.round(wt * wt * PUSH);
+      /* 往 target 方向拽 */
+      var v = th[i] + (d > 0 ? -pull : pull);
+      v %= MOD; if (v < 0) v += MOD;
+      th[i] = v;
+    }
+    C.recompute(S);
+  }
+  function attachCircleInteraction() {
+    var cv = $('circle');
+    if (!cv) return;
+    function angleAt(ev) {
+      var rect = cv.getBoundingClientRect();
+      var cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+      var x = ev.clientX - cx, y = ev.clientY - cy;
+      /* y 轴向下，GL 的 y 轴向上 —— 取负号换到数学角 */
+      return Math.atan2(-y, x);
+    }
+    cv.addEventListener('pointerdown', function (ev) {
+      state.dragging = true;
+      state.pointerAngle = angleAt(ev);
+      cv.setPointerCapture && cv.setPointerCapture(ev.pointerId);
+      stir(state.pointerAngle);
+      ev.preventDefault();
+    });
+    cv.addEventListener('pointermove', function (ev) {
+      var a = angleAt(ev);
+      state.pointerAngle = a;
+      if (state.dragging) { stir(a); ev.preventDefault(); }
+    });
+    function end(ev) {
+      state.dragging = false;
+      if (ev && cv.releasePointerCapture && ev.pointerId != null) {
+        try { cv.releasePointerCapture(ev.pointerId); } catch (e) { /* 已释放 */ }
+      }
+    }
+    cv.addEventListener('pointerup', end);
+    cv.addEventListener('pointercancel', end);
+    cv.addEventListener('pointerleave', function () {
+      if (!state.dragging) state.pointerAngle = null;
+    });
+  }
+
+  /* ================================================ ⑤ 键盘：一等公民 */
+  function attachKeys() {
+    document.addEventListener('keydown', function (ev) {
+      if (ev.target && /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName)) return;
+      var k = ev.key;
+      if (k === ' ' || k === 'Spacebar') {
+        ev.preventDefault(); toggleRun();
+      } else if (k === 'ArrowRight' || k === 'ArrowUp') {
+        ev.preventDefault(); setK(state.K + (ev.shiftKey ? 100 : 20));
+      } else if (k === 'ArrowLeft' || k === 'ArrowDown') {
+        ev.preventDefault(); setK(state.K - (ev.shiftKey ? 100 : 20));
+      } else if (k === 'r' || k === 'R') {
+        ev.preventDefault(); resetState();
+      } else if (k === 's' || k === 'S') {
+        ev.preventDefault(); startSweep();
+      } else if (k === 'a' || k === 'A') {
+        ev.preventDefault(); toggleSound();
+      }
+    });
+  }
+
+  /* ==================================================== ⑥ 控制台动作 */
+  function setK(k) {
+    k = Math.round(k);
+    if (k < KMIN) k = KMIN; if (k > KMAX) k = KMAX;
+    state.K = k;
+    var sl = $('kSlider');
+    if (sl && Number(sl.value) !== k) sl.value = String(k);
+  }
+  function toggleRun() {
+    state.running = !state.running;
+    var b = $('btnRun'), lb = $('runLabel');
+    if (b) b.setAttribute('aria-pressed', state.running ? 'true' : 'false');
+    if (lb) lb.textContent = state.running ? '暂停' : '继续';
+  }
+  function resetState() {
+    state.S = C.makeState(CANON.seed);
+    state.hist.fill(0);
+    state.histN = 0;
+    state.sweeping = false;
+    pushSample(true);
+  }
+  function startSweep() {
+    /* 从当前 K 扫到对侧：跨过 K_c 时看相变 */
+    state.sweeping = true;
+    state.sweepT = 0;
+    state.sweepLen = 150;                 /* 帧数 */
+    state.sweepFrom = state.K;
+    state.sweepTo = (state.K < KC * 1.6) ? KMAX : KMIN;
+    setText('ro-state', '扫描中');
+  }
+  function stepSweep() {
+    if (!state.sweeping) return;
+    state.sweepT++;
+    var t = Math.min(1, state.sweepT / state.sweepLen);
+    /* 缓动：两端慢中间快，便于停在 K_c 附近细看 */
+    var e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    setK(state.sweepFrom + (state.sweepTo - state.sweepFrom) * e);
+    if (t >= 1) {
+      state.sweeping = false;
+      setText('ro-state', state.running ? '运行中' : '已暂停');
+    }
+  }
+
+  /* ============================================== ⑦ 音频：状态驱动的实时合成 */
+  /* 与库内既有音频（预渲染 WAV 循环，acoustics/、make_audio.py）**完全不同**：
+     这里没有音频文件。每个探针振荡器的频率**每帧**从仿真状态读出
+     —— bandOmega 就是该频带内振子这一 tick 的平均相位推进速度。
+     K 变大 → 各带速度趋同 → 拍频消失 → 听到一个纯音。
+     也就是说你**听得见**序参量 r 变大。 */
+  var audio = { ctx: null, osc: [], gain: [], master: null };
+  function initAudio() {
+    if (audio.ctx) return true;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    try {
+      audio.ctx = new AC();
+      audio.master = audio.ctx.createGain();
+      audio.master.gain.value = 0.0;      /* 默认静音，用户点了再拉起来 */
+      audio.master.connect(audio.ctx.destination);
+      for (var b = 0; b < CANON.BANDS; b++) {
+        var o = audio.ctx.createOscillator();
+        o.type = 'sine';
+        var gn = audio.ctx.createGain();
+        gn.gain.value = 0;
+        o.connect(gn); gn.connect(audio.master);
+        o.start();
+        audio.osc.push(o); audio.gain.push(gn);
+      }
+      return true;
+    } catch (e) {
+      window.__err.push('audio init: ' + e.message);
+      return false;
+    }
+  }
+  /* 相位推进速度（相位单位/tick）→ 音频频率 Hz。
+     一个"典型"推进速度（≈γ）映射到 220Hz 基频，比例保持不变，
+     这样"音程变窄"就是同步化的直接听觉对应。 */
+  var REF_OMEGA = GAMMA;
+  function audioFrame(prevTh) {
+    if (!state.sound || !audio.ctx) return;
+    C.bandDynamics(state.S, prevTh);
+    var now = audio.ctx.currentTime;
+    for (var b = 0; b < CANON.BANDS; b++) {
+      var w = state.S.bandOmega[b];
+      /* |w| 映射到基频的倍频；w→0 时给一个很低的音（集体停转） */
+      var ratio = Math.abs(w) / REF_OMEGA;
+      if (ratio < 0.02) ratio = 0.02;
+      var hz = 220 * ratio;
+      if (hz > 3000) hz = 3000;
+      audio.osc[b].frequency.setTargetAtTime(hz, now, 0.05);
+      /* 增益 = 该带的局部序参量：带内越同步，该音越响 */
+      var g = 0.055 * state.S.bandR[b] * state.S.bandR[b];
+      audio.gain[b].gain.setTargetAtTime(g, now, 0.08);
+    }
+  }
+  function toggleSound() {
+    if (!initAudio()) {
+      setText('ro-audio', '此环境不支持 Web Audio');
+      return;
+    }
+    state.sound = !state.sound;
+    var b = $('btnSound');
+    if (b) {
+      b.setAttribute('aria-pressed', state.sound ? 'true' : 'false');
+      b.textContent = state.sound ? '声音：开' : '声音：关';
+    }
+    if (state.sound && audio.ctx.state === 'suspended') audio.ctx.resume();
+    if (audio.master) {
+      audio.master.gain.setTargetAtTime(state.sound ? 0.9 : 0.0, audio.ctx.currentTime, 0.05);
+    }
+    setText('ro-audio', state.sound ? '实时合成中' : '关闭');
+  }
+
+  /* ==================================================== ⑧ 采样与主循环 */
+  function pushSample(reset) {
+    if (reset) {
+      state.hist.fill(0);
+      state.histN = 0;
+    }
+    /* 环形缓冲：写满后从头覆盖，示波带永远显示最近 SCOPE_N 个样本 */
+    state.hist[state.histN % SCOPE_N] = state.S.r;
+    state.histN++;
+  }
+
+  var prevTh = new Int32Array(CANON.N);
+  var lastT = 0, fpsAccum = 0, fpsFrames = 0;
+
+  /* 推进仿真 n 个 tick 并重绘。**验证环境可直接调 window.__probe.step(n)**
+     同步走同样的路径，不依赖 rAF。 */
+  function advance(n) {
+    var i;
+    for (i = 0; i < n; i++) C.step(state.S, state.K);
+    if (n > 0) {
+      C.recompute(state.S);
+      pushSample(false);
+      audioFrame(prevTh);
+      for (i = 0; i < CANON.N; i++) prevTh[i] = state.S.th[i];
+    }
+  }
+
+  function frame(ts) {
+    var dt = ts - lastT;
+    lastT = ts;
+    if (dt > 0 && dt < 1000) {
+      fpsAccum += 1000 / dt; fpsFrames++;
+      if (fpsFrames >= 20) {
+        state.fps = Math.round(fpsAccum / fpsFrames);
+        fpsAccum = 0; fpsFrames = 0;
+      }
+    }
+    if (state.running) {
+      stepSweep();
+      advance(state.speed);
+    }
+    drawCircle();
+    drawScope();
+    paintReadouts();
+    window.__frames = (window.__frames || 0) + 1;
+    requestAnimationFrame(frame);
+  }
+
+  /* ======================================================== ⑨ 页面装配 */
+  function buildLadderTable() {
+    var body = $('ladderBody');
+    if (!body) return;
+    var frag = document.createDocumentFragment();
+    D.results.ladder.forEach(function (row) {
+      var tr = document.createElement('tr');
+      tr.className = 'rg-' + row.regime;
+      tr.setAttribute('data-k', String(row.k));
+      function td(txt) {
+        var e = document.createElement('td');
+        e.textContent = txt;
+        tr.appendChild(e);
+      }
+      td(String(row.k));
+      td(C.fmtFixed(row.ratio, 3));
+      td(C.fmtFixed(row.rMeasured, 4));
+      td(C.fmtFixed(row.rPredicted, 4));
+      td(C.fmtFixed(row.absDiff, 4));
+      td(row.regime === 'deep-sub' ? '深次临界'
+        : row.regime === 'transition' ? '过渡带' : '远超临界');
+      frag.appendChild(tr);
+    });
+    body.appendChild(frag);
+  }
+
+  function paintStaticFacts() {
+    /* 四条尺子的数字全部来自离线标定（页面零手写结论） */
+    setText('lawA', C.fmtFixed(D.analysis.agreement.maxSupErr, 4));
+    setText('lawB', C.fmtFixed(D.analysis.finiteSize.subMax, 4));
+    setText('lawBFloor', C.fmtFixed(D.analysis.finiteSize.fluctPred, 4));
+    setText('lawC', C.fmtFixed(D.results.kcEdge.rAtKc, 4));
+    setText('lawD', C.fmtFixed(D.analysis.finiteSize.spreadMax, 4));
+    setText('bdNear', C.fmtFixed(D.analysis.agreement.maxNearErr, 4));
+    setText('bdQcap', C.fmtInt(CANON.QCAP));
+    setText('bdStray', C.fmtPct(D.analysis.truncation.strayedFrac, 1));
+    setText('calStamp',
+      '标定指纹 · sin表 ' + D.results.tables.sin +
+      ' · 分位表 ' + D.results.tables.quant +
+      ' · 初态 ' + D.results.initFp +
+      ' · K_c=' + D.results.kc + ' (=2γ, γ=' + D.results.gamma + ')' +
+      ' · N=' + D.results.meta.N + ' · 种子 ' + D.results.meta.seed);
+    /* K_c 标线在滑杆上的位置（写死百分比会与参数脱钩，故现算） */
+    var tick = document.querySelector('.ctl-scale .tick');
+    if (tick) tick.style.left = (KC / KMAX * 100).toFixed(2) + '%';
+  }
+
+  function attachControls() {
+    var ks = $('kSlider');
+    if (ks) {
+      ks.min = String(KMIN); ks.max = String(KMAX);
+      ks.value = String(state.K);
+      ks.addEventListener('input', function () {
+        state.sweeping = false;
+        setK(Number(ks.value));
+      });
+    }
+    var gs = $('gSlider');
+    if (gs) {
+      gs.addEventListener('input', function () {
+        state.speed = Number(gs.value);
+      });
+    }
+    var br = $('btnRun');
+    if (br) br.addEventListener('click', toggleRun);
+    var bs = $('btnReset');
+    if (bs) bs.addEventListener('click', resetState);
+    var bw = $('btnSweep');
+    if (bw) bw.addEventListener('click', startSweep);
+    var ba = $('btnSound');
+    if (ba) ba.addEventListener('click', toggleSound);
+  }
+
+  /* ====================================================== ⑩ 验证探针 */
+  /* verify.js 通过它取语义值。与库内其余展项的探针契约一致：
+     数值从 DOM 与 core 现取，不读 __DATA__ 的结论字段（避免自证）。 */
+  window.__probe = {
+    /* 语义读数：验证"页面显示的数"与"页内状态"一致 */
+    counts: function () {
+      return {
+        N: CANON.N,
+        bands: CANON.BANDS,
+        ladderRows: document.querySelectorAll('#ladderBody tr').length,
+        laws: document.querySelectorAll('.law').length,
+        canvases: document.querySelectorAll('canvas').length
+      };
+    },
+    semantic: function () {
+      return {
+        r: state.S.r,
+        lock: state.S.lock,
+        tick: state.S.tick,
+        K: state.K,
+        Kc: KC,
+        roR: $('ro-r') ? $('ro-r').textContent : '',
+        roR2: $('ro-r2') ? $('ro-r2').textContent : '',
+        roPredict: $('ro-predict') ? $('ro-predict').textContent : ''
+      };
+    },
+    /* 画布确实画出了东西（非空白）：抽样非背景像素比例 */
+    canvases: function () {
+      function sample(id) {
+        var cv = $(id);
+        if (!cv) return { ok: false, ratio: 0 };
+        var gl = cv.getContext('webgl2');
+        if (!gl) return { ok: false, ratio: 0 };
+        var w = cv.width, h = cv.height;
+        var px = new Uint8Array(w * h * 4);
+        gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+        var bg = [11, 14, 20];   /* --abyss */
+        var hit = 0, total = 0;
+        /* 抽样步长 17：避开缓存行，且够用 */
+        for (var y = 0; y < h; y += 17) {
+          for (var x = 0; x < w; x += 17) {
+            var i = (y * w + x) * 4;
+            total++;
+            if (Math.abs(px[i] - bg[0]) > 6 || Math.abs(px[i + 1] - bg[1]) > 6 ||
+                Math.abs(px[i + 2] - bg[2]) > 6) hit++;
+          }
+        }
+        return { ok: true, ratio: total ? hit / total : 0, w: w, h: h };
+      }
+      return { circle: sample('circle'), scope: sample('scope') };
+    },
+    /* 同步推进仿真（**不依赖 rAF** —— 验证环境的核心能力） */
+    step: function (n) {
+      var k = n == null ? state.speed : n;
+      advance(k);
+      drawCircle(); drawScope(); paintReadouts();
+      return state.S.r;
+    },
+    /* 设定 K 并同步走一段，用于验证 K_c 处的行为 */
+    setK: function (k, ticks) {
+      setK(k);
+      if (ticks) { advance(ticks); drawCircle(); drawScope(); paintReadouts(); }
+      return state.K;
+    },
+    /* 从噪声底重跑一段，返回终态 r（用来对账 OA 闭式） */
+    settle: function (k, ticks) {
+      state.S = C.makeState(CANON.seed);
+      setK(k);
+      C.run(state.S, state.K, ticks);
+      state.hist.fill(0); state.histN = 0;
+      pushSample(false);
+      drawCircle(); drawScope(); paintReadouts();
+      return state.S.r;
+    },
+    /* 一律写成 fn: function 的显式形式 —— build.js 的契约检查
+       按 `fn\s*:\s*function` 匹配，写成 `reset: resetState` 会被判为缺方法。
+       契约与实现必须同形，否则守卫会误报（或者更糟：真的漏了却看不出来）。 */
+    reset: function () { resetState(); return state.S.tick; },
+    run: function () { if (!state.running) toggleRun(); return state.running; },
+    pause: function () { if (state.running) toggleRun(); return state.running; },
+    /* 附加：当前指针角度（验证拖拽交互是否真的改了状态） */
+    pointerAngle: function () { return state.pointerAngle; },
+    stirring: function (k, ticks) {
+      /* 直接调搅动逻辑，验证"拖拽确实改变序参量" */
+      var before = state.S.r;
+      stir(Math.PI * (k == null ? 0.5 : k));
+      C.recompute(state.S);
+      if (ticks) { advance(ticks); drawCircle(); drawScope(); paintReadouts(); }
+      return { before: before, after: state.S.r };
+    },
+    glOk: function () { return glOk; },
+    audioReady: function () { return !!(audio.ctx && state.sound); },
+    errors: function () { return window.__err.slice(); }
+  };
+
+  /* ============================================================ 启动 */
+  function boot() {
+    /* 初态指纹对账：页面必须与标定跑出同一个初态 */
+    var fp = C.stateFingerprint(state.S);
+    if (fp !== D.results.initFp) {
+      window.__err.push('初态指纹不一致: 页面 ' + fp + ' ≠ 标定 ' + D.results.initFp);
+    }
+    initCircle();
+    initScope();
+    attachCircleInteraction();
+    attachKeys();
+    attachControls();
+    buildLadderTable();
+    paintStaticFacts();
+    /* 预填一条 r(0)，示波带立刻有东西可看 */
+    for (var i = 0; i < CANON.N; i++) prevTh[i] = state.S.th[i];
+    pushSample(false);
+    drawCircle();
+    drawScope();
+    paintReadouts();
+    window.__ready = true;
+    requestAnimationFrame(frame);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+
+</script>
+</body>
+</html>
