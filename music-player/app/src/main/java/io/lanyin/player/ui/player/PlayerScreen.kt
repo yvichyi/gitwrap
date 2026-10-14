@@ -14,12 +14,13 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -41,10 +43,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -56,10 +60,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,20 +76,26 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import io.lanyin.player.ui.design.Backdrop
+import io.lanyin.player.ui.design.Hairline
 import io.lanyin.player.ui.design.IconAction
-import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.LikeButton
+import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.LocalOrientationController
 import io.lanyin.player.ui.design.PlayPauseButton
 import io.lanyin.player.ui.design.SeekBar
+import io.lanyin.player.ui.design.SurfaceTone
+import io.lanyin.player.ui.design.ThemedIcon
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.sharedPlayer
-import io.lanyin.player.ui.design.Hairline
-import io.lanyin.player.ui.design.SurfaceTone
 import io.lanyin.player.ui.design.themedSurface
+import io.lanyin.player.ui.home.chineseNumber
 import io.lanyin.player.ui.theme.DockKind
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.ui.theme.LyricSize
 import io.lanyin.player.ui.theme.PlayerSkin
+import java.time.LocalDateTime
+import java.time.format.TextStyle as JavaTextStyle
+import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -205,7 +220,7 @@ private fun PortraitPlayer(
             .padding(horizontal = 24.dp),
     ) {
         PlayerTopBar(
-            landscape = false, onCollapse = onCollapse, onRotate = onRotate,
+            onCollapse = onCollapse, onRotate = onRotate,
             onToggleLyrics = if (skin == PlayerSkin.LYRICS) null else ({ showLyrics = !showLyrics }),
             lyricsShown = lyricsOnly, modifier = dismissDrag,
         )
@@ -218,7 +233,7 @@ private fun PortraitPlayer(
             if (lyrics) {
                 LyricsView(
                     lines = state.lyrics, currentIndex = state.currentLyricIndex, progress = state::lineProgress,
-                    onSeek = state::seekTo, textStyle = lyricTextStyle(22, lyricScale),
+                    onSeek = state::seekTo, textStyle = lyricTextStyle(LyricSize.BASE_SP, lyricScale),
                     modifier = Modifier.fillMaxSize(), anchorFraction = 0.4f,
                 )
             } else {
@@ -241,10 +256,10 @@ private fun PortraitPlayer(
 }
 
 /**
- * Landscape is a stage plus one control bar. The artwork and lyrics share the stage, with the
- * active lyric level with the artwork's centre; title, like, progress and transport sit together
- * in a single bar styled like the mini player. When the chrome hides, the stage takes the room
- * and only a hairline of progress remains.
+ * Landscape is a stage plus one control bar. The artwork sits in a spectrum halo on the left; the
+ * right column carries the track header, the lyrics (active line level with the artwork's centre)
+ * and what plays next. When the chrome hides, the stage takes the room, the header trades its
+ * tags for a desk clock, and only a hairline of progress remains.
  */
 @Composable
 private fun LandscapePlayer(
@@ -258,7 +273,6 @@ private fun LandscapePlayer(
     lyricScale: Float,
 ) {
     val style = Lanyin.style
-    val lyricStyle = lyricTextStyle(22, lyricScale)
     Column(
         Modifier
             .fillMaxSize()
@@ -266,26 +280,53 @@ private fun LandscapePlayer(
             .padding(horizontal = 28.dp, vertical = 8.dp),
     ) {
         AnimatedVisibility(chromeVisible, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-            PlayerTopBar(landscape = true, onCollapse = onCollapse, onRotate = onRotate, onToggleLyrics = null, lyricsShown = true, modifier = dismissDrag)
+            LandscapeTopBar(state, onCollapse, onRotate, modifier = dismissDrag)
         }
         Row(Modifier.weight(1f).fillMaxWidth()) {
             if (skin == PlayerSkin.LYRICS) {
-                LyricsView(
-                    state.lyrics, state.currentLyricIndex, state::lineProgress, state::seekTo,
-                    textStyle = lyricTextStyle(26, lyricScale),
-                    modifier = Modifier.fillMaxSize(), centered = true, anchorFraction = 0.46f,
-                )
+                Box(Modifier.fillMaxSize()) {
+                    // No artwork to ring, so the spectrum rises faintly from the floor instead.
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth(0.56f)
+                            .height(56.dp)
+                            .spectrumFloor(state.isPlaying, alpha = 0.4f),
+                    )
+                    StageLyrics(
+                        state, chromeVisible,
+                        textStyle = lyricTextStyle(LyricSize.BASE_SP * 1.2f, lyricScale),
+                        centered = true,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             } else {
-                Box(
-                    Modifier.weight(0.42f).fillMaxHeight().then(dismissDrag).padding(vertical = 6.dp),
+                BoxWithConstraints(
+                    Modifier.weight(0.42f).fillMaxHeight().then(dismissDrag),
                     contentAlignment = Alignment.Center,
                 ) {
-                    PlayerArtwork(skin, state.isPlaying, spin, state.coverSeed, Modifier.fillMaxHeight().sharedPlayer("artwork", zIndex = 1f))
+                    // Leave room around the artwork for the spectrum halo, whichever side is short.
+                    val halo = 20.dp
+                    val side = minOf(maxHeight * 0.82f, maxWidth - halo * 2)
+                    val artSize = if (skin == PlayerSkin.CASSETTE) {
+                        Modifier.width(minOf(maxWidth - halo * 2, maxHeight * 0.82f * 1.58f))
+                    } else {
+                        Modifier.size(side)
+                    }
+                    PlayerArtwork(
+                        skin, state.isPlaying, spin, state.coverSeed,
+                        artSize
+                            .spectrumHalo(skin, state.isPlaying)
+                            .sharedPlayer("artwork", zIndex = 1f),
+                    )
                 }
-                Spacer(Modifier.width(40.dp))
-                LyricsView(
-                    state.lyrics, state.currentLyricIndex, state::lineProgress, state::seekTo,
-                    textStyle = lyricStyle, modifier = Modifier.weight(0.58f).fillMaxHeight(), anchorFraction = 0.5f,
+                Spacer(Modifier.width(36.dp))
+                // Left-aligned beside the artwork, so header, lyrics and next-up share one edge.
+                StageLyrics(
+                    state, chromeVisible,
+                    textStyle = lyricTextStyle(LyricSize.BASE_SP, lyricScale),
+                    centered = false,
+                    modifier = Modifier.weight(0.58f).fillMaxHeight(),
                 )
             }
         }
@@ -303,45 +344,208 @@ private fun LandscapePlayer(
     }
 }
 
+/**
+ * Track header, lyrics and the next-up line in one column. The lyrics' anchor is worked out from
+ * the measured header and footer so the active line stays at the stage's vertical centre, level
+ * with the artwork, while the chrome folds in and out.
+ */
+@Composable
+private fun StageLyrics(
+    state: DemoPlayerState,
+    chromeVisible: Boolean,
+    textStyle: TextStyle,
+    centered: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    var headerPx by remember { mutableIntStateOf(0) }
+    var footerPx by remember { mutableIntStateOf(0) }
+    BoxWithConstraints(modifier) {
+        val total = constraints.maxHeight
+        val lyricsPx = (total - headerPx - footerPx).coerceAtLeast(1)
+        val anchor = ((total / 2f - headerPx) / lyricsPx).coerceIn(0.25f, 0.75f)
+        Column(Modifier.fillMaxSize()) {
+            TrackHeader(state, chromeVisible, Modifier.onSizeChanged { headerPx = it.height }.padding(bottom = 6.dp))
+            LyricsView(
+                state.lyrics, state.currentLyricIndex, state::lineProgress, state::seekTo,
+                textStyle = textStyle, modifier = Modifier.weight(1f).fillMaxWidth(),
+                centered = centered, anchorFraction = anchor,
+            )
+            NextUp(state, Modifier.align(Alignment.End).onSizeChanged { footerPx = it.height })
+        }
+    }
+}
+
+/** Title and artist; on the right, quality tags and the heart, or a desk clock when idle. */
+@Composable
+private fun TrackHeader(state: DemoPlayerState, chromeVisible: Boolean, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    Row(modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                state.title, style = style.type.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true),
+            )
+            Text(
+                "${state.artist} · ${state.album}", style = style.type.caption, color = c.muted,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        AnimatedContent(
+            targetState = chromeVisible,
+            transitionSpec = { fadeIn(tween(500, delayMillis = 150)) togetherWith fadeOut(tween(200)) },
+            contentAlignment = Alignment.CenterEnd,
+            label = "headerTrailing",
+        ) { visible ->
+            if (visible) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    QualityTags(state)
+                    LikeButton(state.liked, onToggle = { state.liked = !state.liked })
+                }
+            } else {
+                DeskClock()
+            }
+        }
+    }
+}
+
+/** 「无损」 plus the stream format: a chip in most themes, a quiet tracked label in 墨. */
+@Composable
+private fun QualityTags(state: DemoPlayerState) {
+    val style = Lanyin.style
+    if (style.quietSections) {
+        Text("${state.quality} · ${state.format}", style = style.type.label, color = style.colors.muted)
+    } else {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(state.format, style = style.type.caption, color = style.colors.muted)
+            Spacer(Modifier.width(8.dp))
+            QualityChip(state.quality)
+        }
+    }
+}
+
+@Composable
+private fun QualityChip(text: String) {
+    val style = Lanyin.style
+    val c = style.colors
+    Text(
+        text,
+        style = style.type.caption.copy(fontWeight = FontWeight.SemiBold),
+        color = c.accent,
+        modifier = Modifier
+            .clip(style.chipShape)
+            .border(1.dp, c.accent.copy(alpha = 0.6f), style.chipShape)
+            .padding(horizontal = 10.dp, vertical = 3.dp),
+    )
+}
+
+/** Shown while the landscape stage is idle, so a phone on a stand doubles as a bedside clock. */
+@Composable
+private fun DeskClock(modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val now by rememberMinuteClock()
+    val weekday = now.dayOfWeek.getDisplayName(JavaTextStyle.SHORT, Locale.CHINA)
+    val date = if (style.quietSections) {
+        "${chineseNumber(now.monthValue)}月${chineseNumber(now.dayOfMonth)}日 $weekday"
+    } else {
+        "${now.monthValue}月${now.dayOfMonth}日 $weekday"
+    }
+    Column(modifier, horizontalAlignment = Alignment.End) {
+        Text(
+            "%02d:%02d".format(now.hour, now.minute),
+            style = style.type.display.copy(fontFamily = style.numeric, fontSize = 28.sp, lineHeight = 30.sp),
+            color = c.content.copy(alpha = 0.86f),
+        )
+        Text(date, style = style.type.caption, color = c.muted)
+    }
+}
+
+/** The current time, updated on the minute. */
+@Composable
+private fun rememberMinuteClock(): State<LocalDateTime> = produceState(LocalDateTime.now()) {
+    while (true) {
+        val now = LocalDateTime.now()
+        value = now
+        delay(((60 - now.second) * 1000L - now.nano / 1_000_000).coerceAtLeast(200L))
+    }
+}
+
+@Composable
+private fun NextUp(state: DemoPlayerState, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    Row(modifier.padding(top = 6.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("下一首", style = style.type.label, color = c.muted)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            "${state.nextTitle} · ${state.nextArtist}", style = style.type.caption,
+            color = c.content.copy(alpha = 0.72f), maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** Collapse, where the track is playing from, and the screen actions. */
+@Composable
+private fun LandscapeTopBar(state: DemoPlayerState, onCollapse: () -> Unit, onRotate: () -> Unit, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        IconAction(LineIcon.ChevronDown, "收起", onCollapse, iconSize = 30.dp)
+        Spacer(Modifier.width(4.dp))
+        Row(
+            if (style.quietSections) Modifier
+            else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Flat).padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ThemedIcon(LineIcon.Note, null, tint = c.muted, size = 15.dp)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                buildAnnotatedString {
+                    append(state.playlistName)
+                    withStyle(SpanStyle(color = c.muted, fontFamily = style.numeric)) {
+                        append("   ${state.trackNumber} / ${state.trackCount}")
+                    }
+                },
+                style = if (style.quietSections) style.type.label else style.type.caption,
+                maxLines = 1,
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        IconAction(LineIcon.Rotate, "切换到竖屏", onRotate)
+        IconAction(LineIcon.More, "更多", {})
+    }
+}
+
 @Composable
 private fun LandscapeControlBar(state: DemoPlayerState, modifier: Modifier = Modifier) {
     val style = Lanyin.style
-    val c = style.colors
     val docked = style.dock == DockKind.Docked
     Column(modifier) {
         if (docked) Hairline()
         Row(
             Modifier
                 .fillMaxWidth()
-                .height(68.dp)
+                .height(60.dp)
                 .then(if (docked) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome))
-                .padding(start = if (docked) 0.dp else 22.dp, end = if (docked) 0.dp else 8.dp),
+                .padding(start = if (docked) 0.dp else 18.dp, end = if (docked) 0.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.weight(0.3f)) {
-                Text(
-                    state.title, style = style.type.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true),
-                )
-                Text("${state.artist} · ${state.album}", style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            LikeButton(state.liked, onToggle = { state.liked = !state.liked })
-            SeekBar(state::positionMs, state.durationMs, state.isPlaying, state::seekTo, Modifier.weight(0.7f).padding(horizontal = 8.dp))
-            TransportControls(state, playSize = 48.dp, Modifier.width(260.dp))
+            SeekBar(state::positionMs, state.durationMs, state.isPlaying, state::seekTo, Modifier.weight(1f).padding(end = 12.dp))
+            TransportControls(state, playSize = 46.dp, Modifier.width(264.dp))
         }
     }
 }
 
 /** Lyric face at [baseSp] (scaled by the user's 歌词大小), line height 1.36×. */
 @Composable
-private fun lyricTextStyle(baseSp: Int, scale: Float) = MaterialTheme.typography.headlineSmall.copy(
+private fun lyricTextStyle(baseSp: Float, scale: Float) = MaterialTheme.typography.headlineSmall.copy(
     fontSize = (baseSp * scale).sp,
     lineHeight = (baseSp * scale * 1.36f).sp,
 )
 
 @Composable
 private fun PlayerTopBar(
-    landscape: Boolean,
     onCollapse: () -> Unit,
     onRotate: () -> Unit,
     onToggleLyrics: (() -> Unit)?,
@@ -356,21 +560,13 @@ private fun PlayerTopBar(
         if (style.quietSections) {
             Text("无损", style = style.type.label, color = c.muted)
         } else {
-            Text(
-                "无损",
-                style = style.type.caption.copy(fontWeight = FontWeight.SemiBold),
-                color = c.accent,
-                modifier = Modifier
-                    .clip(style.chipShape)
-                    .border(1.dp, c.accent.copy(alpha = 0.6f), style.chipShape)
-                    .padding(horizontal = 10.dp, vertical = 3.dp),
-            )
+            QualityChip("无损")
         }
         Spacer(Modifier.width(4.dp))
         if (onToggleLyrics != null) {
             IconAction(LineIcon.Lyrics, if (lyricsShown) "显示封面" else "显示歌词", onToggleLyrics, tint = if (lyricsShown) c.accent else c.content)
         }
-        IconAction(LineIcon.Rotate, if (landscape) "切换到竖屏" else "切换到横屏", onRotate)
+        IconAction(LineIcon.Rotate, "切换到横屏", onRotate)
         IconAction(LineIcon.More, "更多", {})
     }
 }

@@ -42,6 +42,14 @@ class SkinsTest {
     }
 
     @Test
+    fun `default lyric size is compact and sizes ascend`() {
+        assertEquals(18f, LyricSize.Default.sp, 0.01f)
+        assertTrue(LyricSize.entries.zipWithNext().all { (a, b) -> a.sp < b.sp })
+        // Even the large size stays at the old default so a line still fits beside the artwork.
+        assertTrue(LyricSize.LARGE.sp <= 22f)
+    }
+
+    @Test
     fun `chinese numerals for the ink date`() {
         assertEquals("一", io.lanyin.player.ui.home.chineseNumber(1))
         assertEquals("十", io.lanyin.player.ui.home.chineseNumber(10))

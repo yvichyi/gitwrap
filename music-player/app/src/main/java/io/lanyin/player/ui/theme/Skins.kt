@@ -36,13 +36,20 @@ enum class PlayerSkin(val id: String, val label: String, val description: String
     }
 }
 
-/** Lyric text size on the now-playing page, as a multiple of the 22sp base. */
+/**
+ * Lyric text size on the now-playing page, as a multiple of [BASE_SP]. Chinese glyphs fill their
+ * em square, so 18sp already reads like a 20–22sp Latin line; the active line is enlarged a
+ * little further by the theme's [LyricStyle.activeScale].
+ */
 enum class LyricSize(val id: String, val label: String, val scale: Float) {
     SMALL("small", "小", 0.86f),
     MEDIUM("medium", "中", 1f),
     LARGE("large", "大", 1.22f);
 
+    val sp: Float get() = BASE_SP * scale
+
     companion object {
+        const val BASE_SP = 18f
         val Default = MEDIUM
         fun fromId(id: String?): LyricSize = entries.firstOrNull { it.id == id } ?: Default
     }

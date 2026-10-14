@@ -38,6 +38,15 @@ class DemoPlayerState {
     val durationMs = 64_000L
     val lyrics: List<LyricLine> = demoLyrics
 
+    // Where the track came from and what follows; filled from the play queue in M2.
+    val playlistName = "演示歌单"
+    val trackNumber = 3
+    val trackCount = 12
+    val nextTitle = "潮汐（伴奏）"
+    val nextArtist = "澜音"
+    val quality = "无损"
+    val format = "FLAC · 44.1kHz"
+
     var isPlaying by mutableStateOf(false)
         private set
     var positionMs by mutableLongStateOf(0L)

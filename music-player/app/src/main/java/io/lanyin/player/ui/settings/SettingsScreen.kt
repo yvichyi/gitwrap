@@ -120,8 +120,8 @@ fun SettingsScreen(settings: UiSettings, repository: SettingsRepository, onBack:
                     }
                     // What the player will show at this size.
                     val preview = androidx.compose.material3.MaterialTheme.typography.headlineSmall.copy(
-                        fontSize = (22 * settings.lyricSize.scale).sp,
-                        lineHeight = (22 * settings.lyricSize.scale * 1.36f).sp,
+                        fontSize = settings.lyricSize.sp.sp,
+                        lineHeight = (settings.lyricSize.sp * 1.36f).sp,
                         fontFamily = if (style.lyric.serif) style.display else null,
                         fontWeight = if (style.lyric.serif) FontWeight.Medium else FontWeight.Bold,
                     )
