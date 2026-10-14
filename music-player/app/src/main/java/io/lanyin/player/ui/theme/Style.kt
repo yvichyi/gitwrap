@@ -238,8 +238,10 @@ private val neon = LanyinColors(
     content = Color(0xFFECEAFF), muted = Color(0xFF8E8AB5), accent = Color(0xFF00EAFF), accentAlt = Color(0xFFFF2E97),
     onAccent = Color(0xFF03030A), outline = Color(0x5500EAFF), like = Color(0xFFFF2E97), vinyl = Color(0xFF050508),
 )
+// Paper is a warm off-white and the sky a dusty peach, so mustard stays an accent rather than
+// the colour of the whole page.
 private val duskLight = LanyinColors(
-    bg = Color(0xFFF5E8D3), bgDeep = Color(0xFFF1C795), surface = Color(0xFFFFF4E2), surfaceAlt = Color(0xFFF0DFC4),
+    bg = Color(0xFFF6EEE4), bgDeep = Color(0xFFEFC9B0), surface = Color(0xFFFFF9F1), surfaceAlt = Color(0xFFEFE3D3),
     content = Color(0xFF2B1A10), muted = Color(0xFF725546), accent = Color(0xFFD8561F), accentAlt = Color(0xFFE5A532),
     onAccent = Color(0xFFFFF4E2), outline = Color(0xFF2B1A10), like = Color(0xFFCC3F25), vinyl = Color(0xFF2A1A12),
 )

@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
@@ -94,6 +95,8 @@ fun MiniPlayer(
                 )
                 AnimatedContent(
                     targetState = state.currentLine?.text ?: state.artist,
+                    // Keep the outgoing line from sliding up over the title.
+                    modifier = Modifier.clipToBounds(),
                     transitionSpec = {
                         (fadeIn(tween(200)) + slideInVertically { it }) togetherWith (fadeOut(tween(120)) + slideOutVertically { -it })
                     },

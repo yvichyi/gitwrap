@@ -233,10 +233,10 @@ private val longLyrics = timed(
 
 internal val demoQueue = listOf(
     DemoTrack("澜音试播", "澜音", "潮汐 · 演示", coverSeed = 3, durationMs = 64_000, lyrics = demoLyrics),
-    DemoTrack("潮汐（伴奏）", "澜音", "潮汐 · 演示", coverSeed = 7, durationMs = 46_000, lyrics = emptyList()),
+    DemoTrack("潮汐（伴奏）", "澜音", "潮汐 · 演示", coverSeed = 6, durationMs = 46_000, lyrics = emptyList()),
     DemoTrack("落日磁带", "澜音乐队", "黄昏 · 演示", coverSeed = 5, durationMs = 50_000, lyrics = sunsetLyrics, quality = "极高", format = "MP3 · 320kbps"),
     DemoTrack(
         "一首名字特别长、用来看看排版会不会被挤坏的歌", "澜音 / 很多很多位合作歌手", "排版测试 · 一张名字同样不短的专辑",
-        coverSeed = 9, durationMs = 40_000, lyrics = longLyrics, quality = "Hi-Res", format = "FLAC · 24bit/96kHz",
+        coverSeed = 8, durationMs = 40_000, lyrics = longLyrics, quality = "Hi-Res", format = "FLAC · 24bit/96kHz",
     ),
 )

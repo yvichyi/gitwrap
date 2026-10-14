@@ -62,7 +62,7 @@ private fun FloatArray.levelAt(m: Float): Float {
 }
 
 /** Points along an outline with their outward normals, as flat x,y pairs. */
-internal class OutlineSamples(val points: FloatArray, val normals: FloatArray, val closed: Boolean) {
+internal class OutlineSamples(val points: FloatArray, val normals: FloatArray) {
     val count: Int get() = points.size / 2
 }
 
@@ -108,19 +108,7 @@ internal fun superellipseSamples(cx: Float, cy: Float, a: Float, b: Float, n: Fl
         normals[i * 2] = nx
         normals[i * 2 + 1] = ny
     }
-    return OutlineSamples(points, normals, closed = true)
-}
-
-/** [count] points along a horizontal line at [y], pointing up. */
-internal fun baselineSamples(left: Float, right: Float, y: Float, count: Int): OutlineSamples {
-    val points = FloatArray(count * 2)
-    val normals = FloatArray(count * 2)
-    for (i in 0 until count) {
-        points[i * 2] = left + (right - left) * (i + 0.5f) / count
-        points[i * 2 + 1] = y
-        normals[i * 2 + 1] = -1f
-    }
-    return OutlineSamples(points, normals, closed = false)
+    return OutlineSamples(points, normals)
 }
 
 /** The shape a skin's artwork draws inside its bounds, so the halo can hug it. */
@@ -176,37 +164,10 @@ fun Modifier.spectrumHalo(skin: PlayerSkin, playing: Boolean): Modifier {
     }
 }
 
-/** The same spectrum as a strip rising from the bottom edge, for skins without artwork. */
-@Composable
-fun Modifier.spectrumFloor(playing: Boolean, alpha: Float = 0.55f): Modifier {
-    val style = Lanyin.style
-    val clock = rememberFrameClock(playing)
-    val energy = animateFloatAsState(if (playing) 1f else 0f, tween(900), label = "spectrumEnergy")
-    return drawWithCache {
-        val count = (style.markCount() * size.width / (size.height * 9f)).toInt().coerceIn(24, 160)
-        val samples = baselineSamples(0f, size.width, size.height, count)
-        val reach = size.height * 0.8f
-        val levels = FloatArray(SPECTRUM_BANDS)
-        val echo = FloatArray(SPECTRUM_BANDS)
-        onDrawBehind {
-            demoSpectrum(clock.floatValue, levels)
-            demoSpectrum(clock.floatValue - 0.35f, echo)
-            drawSpectrum(style, samples, levels, echo, energy.value, reach, alpha)
-        }
-    }
-}
-
-/**
- * Band position for sample [i]: mirrored so both halves of a ring (or both ends of a strip) share
- * the treble, with the bass at the top of a ring and the middle of a strip.
- */
+/** Band position for sample [i]: mirrored so both halves of the ring share the treble, bass at the top. */
 private fun OutlineSamples.bandAt(i: Int): Float {
     val u = i / count.toFloat()
-    return if (closed) {
-        if (u <= 0.5f) u * 2f else (1f - u) * 2f
-    } else {
-        abs(u - 0.5f) * 2f
-    }
+    return if (u <= 0.5f) u * 2f else (1f - u) * 2f
 }
 
 private fun DrawScope.drawSpectrum(
@@ -258,15 +219,10 @@ private fun DrawScope.drawSpectrum(
                     outer.lineTo(px(i, o), py(i, o)); inner.lineTo(px(i, 0f), py(i, 0f)); trail.lineTo(px(i, t), py(i, t))
                 }
             }
-            if (samples.closed) {
-                outer.close(); inner.close(); trail.close()
-            } else {
-                // Close the strip along its baseline.
-                outer.lineTo(p[(n - 1) * 2], p[(n - 1) * 2 + 1]); outer.lineTo(p[0], p[1]); outer.close()
-            }
+            outer.close(); inner.close(); trail.close()
             val band = Path().apply {
                 addPath(outer)
-                if (samples.closed) addPath(inner)
+                addPath(inner)
                 fillType = PathFillType.EvenOdd
             }
             drawPath(band, c.accent.copy(alpha = alpha * 0.14f))

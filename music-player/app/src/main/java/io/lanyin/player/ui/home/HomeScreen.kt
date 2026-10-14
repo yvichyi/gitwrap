@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -177,9 +178,10 @@ private fun ConnectLine(onLogin: () -> Unit, modifier: Modifier) {
             Box(Modifier.size(8.dp).background(c.accentAlt, if (hairline) androidx.compose.ui.graphics.RectangleShape else CircleShape))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("还没有连接网易云音乐", style = style.type.body)
-                Text("登录后同步歌单、红心与每日推荐", style = style.type.caption, color = c.muted)
+                Text("未连接网易云音乐", style = style.type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("登录后同步歌单、红心和每日推荐", style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+            Spacer(Modifier.width(12.dp))
             TextLink("扫码登录", onLogin)
         }
         if (hairline) Hairline()
@@ -247,7 +249,7 @@ private fun QuickEntries(day: Int, onLogin: () -> Unit, modifier: Modifier) {
         "我喜欢" to { ThemedIcon(LineIcon.Heart, null, size = 26.dp) },
         "排行榜" to { ThemedIcon(LineIcon.Chart, null, size = 26.dp) },
     )
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(if (hairline) 0.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(if (hairline) 0.dp else 10.dp), verticalAlignment = Alignment.CenterVertically) {
         entries.forEachIndexed { i, (label, visual) ->
             if (hairline && i > 0) {
                 Box(Modifier.width(1.dp).height(36.dp).background(c.outline))
@@ -255,13 +257,13 @@ private fun QuickEntries(day: Int, onLogin: () -> Unit, modifier: Modifier) {
             Column(
                 Modifier
                     .weight(1f)
-                    .then(if (hairline) Modifier.pressable(onClick = onLogin) else Modifier.aspectRatio(1f).themedSurface(tone = SurfaceTone.Flat, onClick = onLogin))
-                    .padding(vertical = if (hairline) 4.dp else 12.dp),
+                    .then(if (hairline) Modifier.pressable(onClick = onLogin) else Modifier.heightIn(min = 76.dp).themedSurface(tone = SurfaceTone.Flat, onClick = onLogin))
+                    .padding(vertical = if (hairline) 4.dp else 12.dp, horizontal = 2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
             ) {
                 Box(Modifier.height(30.dp), contentAlignment = Alignment.Center) { visual() }
-                Text(label, style = style.type.caption, maxLines = 1, softWrap = false)
+                Text(label, style = style.type.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }

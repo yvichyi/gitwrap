@@ -32,7 +32,10 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w392dp-h850dp-port-xhdpi")
-class ThemeSweepTest(private val theme: AppTheme, private val mode: ThemeMode) {
+open class ThemeSweepTest(private val theme: AppTheme, private val mode: ThemeMode) {
+
+    /** Output folder under build/outputs/roborazzi. */
+    protected open val folder = "sweep"
 
     companion object {
         @JvmStatic
@@ -67,7 +70,7 @@ class ThemeSweepTest(private val theme: AppTheme, private val mode: ThemeMode) {
 
     private fun shot(page: String) {
         compose.mainClock.advanceTimeBy(1_200)
-        compose.onRoot().captureRoboImage("build/outputs/roborazzi/sweep/${tag}_$page.png")
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/$folder/${tag}_$page.png")
     }
 
     private fun open(matcher: androidx.compose.ui.test.SemanticsMatcher) {
@@ -115,4 +118,13 @@ class ThemeSweepTest(private val theme: AppTheme, private val mode: ThemeMode) {
         app(startExpanded = true)
         shot("7land")
     }
+}
+
+/**
+ * The same sweep on a narrower phone with the system font size turned up, as many phones ship:
+ * fixed-height boxes that fit at 1.0 clip their text here.
+ */
+@Config(sdk = [35], qualifiers = "w360dp-h780dp-port-xhdpi", fontScale = 1.3f)
+class LargeTextSweepTest(theme: AppTheme, mode: ThemeMode) : ThemeSweepTest(theme, mode) {
+    override val folder = "sweep-large"
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -69,12 +70,32 @@ private fun DrawScope.drawTide(style: LanyinStyle, t: Float, e: Float, page: Boo
     glowBlob(c.bgDeep.copy(alpha = 0.95f * a), Offset(w * (0.15f + 0.08f * sin(t * 0.23f)), h * spread * (0.12f + 0.05f * cos(t * 0.19f))), w * 0.95f)
     glowBlob(c.accent.copy(alpha = (if (style.dark) 0.24f else 0.20f) * a), Offset(w * (0.88f + 0.06f * cos(t * 0.17f)), h * spread * (0.26f + 0.07f * sin(t * 0.21f))), w * 0.8f)
     glowBlob(c.accentAlt.copy(alpha = (if (style.dark) 0.18f else 0.14f) * a), Offset(w * (0.3f + 0.12f * sin(t * 0.13f + 1f)), h * spread * (0.6f + 0.06f * cos(t * 0.11f))), w * 0.85f)
-    if (page) return
+    if (page) {
+        drawSwells(style, t, e, top = 0.84f, strength = 0.7f)
+        return
+    }
 
-    // Three slow swells along the bottom, the "澜" itself. They rise while music plays.
+    // Landscape: a moon over the right of the stage, where left-aligned lyrics leave room.
+    if (w > h) {
+        val moon = Offset(w * 0.86f, h * 0.24f)
+        val r = h * 0.075f
+        glowBlob(Color.White.copy(alpha = if (style.dark) 0.16f else 0.35f), moon, r * 4f)
+        // A lit orb rather than a flat disc: bright at the core, soft at the rim.
+        val core = if (style.dark) Color(0xFFEAF2FF) else Color.White
+        drawCircle(Brush.radialGradient(listOf(core.copy(alpha = 0.95f), core.copy(alpha = 0.55f)), moon, r), r, moon)
+    }
+
+    drawSwells(style, t, e, top = 0.8f, strength = 1f)
+}
+
+/** Three slow swells along the bottom, the "澜" itself. They rise while music plays. */
+private fun DrawScope.drawSwells(style: LanyinStyle, t: Float, e: Float, top: Float, strength: Float) {
+    val c = style.colors
+    val w = size.width
+    val h = size.height
     val step = 6f
     for (layer in 0..2) {
-        val baseY = h * (0.80f + 0.05f * layer)
+        val baseY = h * (top + 0.05f * layer)
         val amp = (8f + 18f * e) * density * (1f - 0.22f * layer)
         val k = (2 * PI / (w * (1.1f + 0.35f * layer))).toFloat()
         val phase = t * (0.45f + 0.2f * layer) + layer * 1.7f
@@ -88,7 +109,7 @@ private fun DrawScope.drawTide(style: LanyinStyle, t: Float, e: Float, page: Boo
             lineTo(w, h)
             close()
         }
-        drawPath(path, (if (layer == 1) c.accentAlt else c.accent).copy(alpha = if (style.dark) 0.09f else 0.08f))
+        drawPath(path, (if (layer == 1) c.accentAlt else c.accent).copy(alpha = (if (style.dark) 0.09f else 0.08f) * strength))
     }
 }
 
@@ -98,22 +119,40 @@ private fun DrawScope.drawInk(style: LanyinStyle, t: Float, page: Boolean) {
     val h = size.height
     drawRect(c.bg)
     glowBlob(c.content.copy(alpha = if (style.dark) 0.05f else 0.045f), Offset(w * 0.85f, h * 0.12f), w * 0.8f * (1f + 0.03f * sin(t * 0.4f)))
-    if (page) return
+    if (page || w <= h) return
 
-    // An ensō around where the artwork sits (left half in landscape, upper middle in portrait).
-    val landscape = w > h
-    val center = when {
-        page -> Offset(w * 0.88f, h * 0.08f)
-        landscape -> Offset(w * 0.22f, h * 0.46f)
-        else -> Offset(w * 0.5f, h * 0.36f)
+    // 远山: three ridges fading into mist across the right of the stage, nearest darkest.
+    val ink = c.content
+    for (layer in 0..2) {
+        val base = h * (0.62f + layer * 0.1f)
+        val amp = h * (0.2f - layer * 0.045f)
+        val from = w * (0.4f + 0.06f * layer)
+        val ridge = Path().apply {
+            moveTo(from, h)
+            var x = from
+            while (x <= w + 8f) {
+                val u = (x - from) / (w - from)
+                // Peaks from a few slow sines, eased in from the left so the range starts low.
+                val peaks = 0.55f + 0.3f * sin(u * 7.1f + layer * 2.1f) + 0.15f * sin(u * 17.3f + layer)
+                // Rise out of the ground at the left rather than starting on a cliff.
+                val rise = (u / 0.3f).coerceIn(0f, 1f).let { it * it * (3f - 2f * it) }
+                lineTo(x, h - (h - (base - amp * peaks)) * rise)
+                x += 6f
+            }
+            lineTo(w, h)
+            close()
+        }
+        val alpha = (if (style.dark) 0.07f else 0.06f) * (1f + layer * 0.5f)
+        drawPath(ridge, Brush.verticalGradient(listOf(ink.copy(alpha = alpha), ink.copy(alpha = 0f)), startY = base - amp, endY = h))
     }
-    val radius = when {
-        page -> w * 0.3f
-        landscape -> h * 0.3f
-        else -> w * 0.47f
-    }
-    rotate(degrees = -70f + t * 4f, pivot = center) {
-        drawPath(ensoPath(center, radius, radius * 0.13f), c.content.copy(alpha = if (style.dark) 0.09f else 0.07f))
+    // A band of mist drifting slowly across the foot of the hills.
+    val drift = (t * 6f * density) % w
+    for (k in 0..1) {
+        val x = -w * 0.3f + drift + k * w
+        drawOval(
+            Brush.radialGradient(listOf(c.bg.copy(alpha = 0.7f), c.bg.copy(alpha = 0f)), Offset(x + w * 0.3f, h * 0.8f), w * 0.3f),
+            Offset(x, h * 0.72f), Size(w * 0.6f, h * 0.16f),
+        )
     }
 }
 
@@ -176,6 +215,13 @@ private fun DrawScope.drawSakura(style: LanyinStyle, t: Float, e: Float, page: B
     val h = size.height
     drawRect(Brush.verticalGradient(listOf(c.bg, c.bg, c.bgDeep)))
     glowBlob(c.accent.copy(alpha = 0.12f), Offset(w * 0.9f, h * 0.05f), w * 0.7f)
+    // 樱's signature, as the sun is 暮's: a branch in bloom reaching in from the right. On pages it
+    // sits in the top corner behind the header buttons; on the landscape stage, right of the lyrics
+    // and below the top bar.
+    when {
+        page -> drawBlossomBranch(style, t, topRight = Offset(w * 1.03f, -h * 0.01f), width = w * 0.46f, height = h * 0.085f, strength = 0.6f)
+        w > h -> drawBlossomBranch(style, t, topRight = Offset(w * 1.02f, h * 0.2f), width = w * 0.25f, height = h * 0.36f, strength = 1f)
+    }
     val count = if (page) 6 else 16
     val margin = 24f * density
     for (i in 0 until count) {
@@ -187,6 +233,34 @@ private fun DrawScope.drawSakura(style: LanyinStyle, t: Float, e: Float, page: B
         val tint = lerp(c.accent, Color.White, if (style.dark) 0.15f else 0.35f * hash01(i, 7))
         val alpha = if (page) 0.16f + 0.2f * hash01(i, 10) else 0.14f + 0.22f * hash01(i, 10)
         drawPetal(Offset(x, y), sizePx, rotation = hash01(i, 8) * 360f + t * (40f + 60f * hash01(i, 9)), color = tint.copy(alpha = alpha))
+    }
+}
+
+/** A blossoming branch drawn into the box hanging left and down from [topRight]. */
+private fun DrawScope.drawBlossomBranch(style: LanyinStyle, t: Float, topRight: Offset, width: Float, height: Float, strength: Float) {
+    val c = style.colors
+    fun at(x: Float, y: Float) = Offset(topRight.x - width * (1f - x), topRight.y + height * y)
+    val wood = lerp(c.content, c.accentAlt, 0.35f).copy(alpha = (if (style.dark) 0.45f else 0.35f) * strength)
+    val stem = Path().apply {
+        val a = at(1f, 0f); moveTo(a.x, a.y)
+        val c1 = at(0.72f, 0.2f); val c2 = at(0.5f, 0.26f); val e = at(0.08f, 0.7f)
+        cubicTo(c1.x, c1.y, c2.x, c2.y, e.x, e.y)
+    }
+    val twig = Path().apply {
+        val a = at(0.62f, 0.2f); moveTo(a.x, a.y)
+        val q = at(0.5f, 0.55f); val e = at(0.54f, 0.92f)
+        quadraticTo(q.x, q.y, e.x, e.y)
+    }
+    drawPath(stem, wood, style = Stroke(4f * density, cap = StrokeCap.Round))
+    drawPath(twig, wood, style = Stroke(2.5f * density, cap = StrokeCap.Round))
+    val petal = lerp(c.accent, Color.White, if (style.dark) 0.25f else 0.45f).copy(alpha = (if (style.dark) 0.55f else 0.7f) * strength)
+    val unit = minOf(width, height * 1.6f)
+    val sway = 2f * density * sin(t * 0.7f)
+    listOf(
+        Offset(0.86f, 0.08f) to 0.1f, Offset(0.66f, 0.2f) to 0.085f, Offset(0.4f, 0.4f) to 0.095f,
+        Offset(0.12f, 0.66f) to 0.075f, Offset(0.52f, 0.6f) to 0.07f, Offset(0.55f, 0.9f) to 0.06f,
+    ).forEachIndexed { i, (p, r) ->
+        drawBlossom(at(p.x, p.y) + Offset(sway, 0f), unit * r, i * 23f + t * 3f, petal, c.accent.copy(alpha = 0.8f * strength))
     }
 }
 
@@ -202,6 +276,28 @@ private fun DrawScope.drawNeon(style: LanyinStyle, t: Float, e: Float, page: Boo
     }
     // Sky glow.
     drawRect(Brush.verticalGradient(0f to Color.Transparent, 0.75f to c.bgDeep, 1f to c.accentAlt.copy(alpha = 0.35f), startY = 0f, endY = horizon))
+    if (!page && w > h) {
+        val sun = Offset(w * 0.8f, horizon)
+        val r = h * 0.26f
+        glowBlob(c.accentAlt.copy(alpha = 0.25f), sun, r * 1.8f)
+        val disc = Path().apply { addOval(androidx.compose.ui.geometry.Rect(sun, r)) }
+        val fill = Brush.verticalGradient(
+            listOf(lerp(c.accentAlt, Color(0xFFFFD36E), 0.5f).copy(alpha = 0.55f), c.accentAlt.copy(alpha = 0.4f)),
+            startY = sun.y - r, endY = sun.y,
+        )
+        clipPath(disc) {
+            // Solid crown, then slices that thin toward the horizon.
+            var top = sun.y - r
+            var gap = r * 0.035f
+            var slice = r * 0.5f
+            while (top < horizon) {
+                drawRect(fill, Offset(sun.x - r, top), Size(r * 2, minOf(slice, horizon - top)))
+                top += slice + gap
+                slice *= 0.62f
+                gap *= 1.15f
+            }
+        }
+    }
     drawLine(c.accentAlt.copy(alpha = if (page) 0.45f else 0.8f), Offset(0f, horizon), Offset(w, horizon), strokeWidth = 1.5f * density)
     // Perspective grid floor, scrolling toward the viewer.
     val vanishing = Offset(w / 2f, horizon)
@@ -241,20 +337,24 @@ private fun DrawScope.drawDusk(style: LanyinStyle, t: Float, e: Float, page: Boo
     val landscape = w > h
     val radius = when {
         page -> w * 0.15f
-        landscape -> h * 0.42f
+        landscape -> h * 0.24f
         else -> w * 0.3f
     }
     val center = when {
         page -> Offset(w * 0.95f, h * 0.02f)
-        landscape -> Offset(w * 0.07f, h * 0.84f + bob)
+        landscape -> Offset(w * 0.9f, h * 0.5f + bob)
         else -> Offset(w * 0.8f, h * 0.2f + bob)
     }
     val sun = Path().apply { addOval(androidx.compose.ui.geometry.Rect(center, radius)) }
     // At night the sun is an ember: sunk into the sky so it glows without glaring.
-    val sink = if (style.dark) 0.5f else 0f
+    val sink = if (style.dark) 0.5f else 0.3f
     clipPath(sun) {
         drawRect(
-            Brush.verticalGradient(listOf(lerp(c.accentAlt, c.bgDeep, sink), lerp(c.accent, c.bgDeep, sink)), startY = center.y - radius, endY = center.y + radius),
+            // Orange shading to burnt orange; the mustard only tints the crown.
+            Brush.verticalGradient(
+                listOf(lerp(lerp(c.accentAlt, c.accent, 0.4f), c.bgDeep, sink), lerp(c.accent, c.bgDeep, sink)),
+                startY = center.y - radius, endY = center.y + radius,
+            ),
         )
         for (k in 0 until 6) {
             val bandY = center.y + radius * (0.12f + k * 0.15f)

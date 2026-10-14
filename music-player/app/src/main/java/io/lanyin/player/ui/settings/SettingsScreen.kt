@@ -121,8 +121,9 @@ fun SettingsScreen(settings: UiSettings, repository: SettingsRepository, onBack:
                     }
                     // What the player will show at this size.
                     val preview = androidx.compose.material3.MaterialTheme.typography.headlineSmall.copy(
-                        fontSize = settings.lyricSize.sp.sp,
-                        lineHeight = (settings.lyricSize.sp * 1.36f).sp,
+                        // Same size as the player: the in-app setting, not the system font scale.
+                        fontSize = (settings.lyricSize.sp / androidx.compose.ui.platform.LocalDensity.current.fontScale).sp,
+                        lineHeight = (settings.lyricSize.sp * 1.36f / androidx.compose.ui.platform.LocalDensity.current.fontScale).sp,
                         fontFamily = if (style.lyric.serif) style.display else null,
                         fontWeight = if (style.lyric.serif) FontWeight.Medium else FontWeight.Bold,
                     )
@@ -167,7 +168,13 @@ private fun ThemeCard(theme: AppTheme, mode: ThemeMode, selected: Boolean, onCli
                 .clip(inner)
                 .pressable(onClick = onClick),
         ) {
-            LanyinTheme(theme = theme, mode = mode, applySystemBars = false) { ThemeThumbnail() }
+            // A miniature: drawn at a fixed text size so a large system font can't burst it.
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, fontScale = 1f),
+            ) {
+                LanyinTheme(theme = theme, mode = mode, applySystemBars = false) { ThemeThumbnail() }
+            }
         }
         Text(
             theme.label,
@@ -244,7 +251,7 @@ private fun SkinCard(skin: PlayerSkin, selected: Boolean, spin: io.lanyin.player
             }
         }
         Text(skin.label, style = style.type.body.copy(fontWeight = FontWeight.Medium), modifier = Modifier.padding(top = 6.dp))
-        Text(skin.description, style = style.type.caption.copy(fontSize = 11.sp), color = c.muted, minLines = 2, maxLines = 2)
+        Text(skin.description, style = style.type.caption.copy(fontSize = 11.sp), color = c.muted, minLines = 2, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
     }
 }
 

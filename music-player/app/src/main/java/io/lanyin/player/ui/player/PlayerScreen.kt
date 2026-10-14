@@ -6,6 +6,7 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -32,6 +33,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -94,6 +96,7 @@ import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.sharedPlayer
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.theme.DockKind
+import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.LyricSize
 import io.lanyin.player.ui.theme.PlayerSkin
@@ -253,13 +256,16 @@ private fun PortraitPlayer(
                         // Sit a little low so artwork and lyrics read as one group.
                         contentAlignment = BiasAlignment(0f, 0.45f),
                     ) {
-                        SwipeToSkip(state) {
-                            PlayerArtwork(
-                                skin, state.isPlaying, spin, state.coverSeed,
-                                artSize(skin, maxWidth, maxHeight)
-                                    .sharedPlayer("artwork", zIndex = 1f)
-                                    .pressable { showLyrics = true },
-                            )
+                        Box(artSize(skin, maxWidth, maxHeight).artworkBackdrop(skin), contentAlignment = Alignment.Center) {
+                            SwipeToSkip(state) {
+                                PlayerArtwork(
+                                    skin, state.isPlaying, spin, state.coverSeed,
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .sharedPlayer("artwork", zIndex = 1f)
+                                        .pressable { showLyrics = true },
+                                )
+                            }
                         }
                     }
                     // A short window onto the lyrics: the line being sung with its neighbours.
@@ -329,22 +335,12 @@ private fun LandscapePlayer(
                 .pointerInput(Unit) { detectTapGestures { onToggleChrome() } },
         ) {
             if (skin == PlayerSkin.LYRICS) {
-                Box(Modifier.fillMaxSize()) {
-                    // No artwork to ring, so the spectrum rises faintly from the floor instead.
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth(0.56f)
-                            .height(56.dp)
-                            .spectrumFloor(state.isPlaying, alpha = 0.4f),
-                    )
-                    StageLyrics(
-                        state, chromeVisible,
-                        textStyle = lyricTextStyle(LyricSize.BASE_SP * 1.2f, lyricScale),
-                        centered = true,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+                StageLyrics(
+                    state, chromeVisible,
+                    textStyle = lyricTextStyle(LyricSize.BASE_SP * 1.2f, lyricScale),
+                    centered = true,
+                    modifier = Modifier.fillMaxSize(),
+                )
             } else {
                 BoxWithConstraints(
                     Modifier.weight(0.42f).fillMaxHeight().then(dismissDrag),
@@ -363,21 +359,35 @@ private fun LandscapePlayer(
                     }
                 }
                 Spacer(Modifier.width(36.dp))
-                // Left-aligned beside the artwork so the lyrics read as one column.
-                StageLyrics(
-                    state, chromeVisible,
-                    textStyle = lyricTextStyle(LyricSize.BASE_SP, lyricScale),
-                    centered = false,
-                    modifier = Modifier.weight(0.58f).fillMaxHeight(),
-                )
+                val inscribed = Lanyin.style.edge == EdgeKind.Hairline && !chromeVisible
+                val inscriptionRoom by animateDpAsState(if (inscribed) 76.dp else 0.dp, tween(400), label = "inscriptionRoom")
+                Box(Modifier.weight(0.58f).fillMaxHeight()) {
+                    // Left-aligned beside the artwork so the lyrics read as one column.
+                    StageLyrics(
+                        state, chromeVisible,
+                        textStyle = lyricTextStyle(LyricSize.BASE_SP, lyricScale),
+                        centered = false,
+                        modifier = Modifier.fillMaxSize().padding(end = inscriptionRoom),
+                    )
+                    InscriptionOverlay(inscribed, state, Modifier.align(Alignment.TopEnd).padding(top = 12.dp))
+                }
             }
         }
         AnimatedVisibility(chromeVisible, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
             LandscapeControlBar(state, Modifier.padding(top = 8.dp))
         }
         AnimatedVisibility(!chromeVisible, enter = fadeIn(tween(600)), exit = fadeOut(tween(150))) {
-            ImmersiveStatus(state)
+            // 墨 writes the title in its inscription instead.
+            ImmersiveStatus(state, showTitle = !(Lanyin.style.edge == EdgeKind.Hairline && skin != PlayerSkin.LYRICS))
         }
+    }
+}
+
+/** 墨's inscription, fading in a moment after the stage goes full screen. */
+@Composable
+private fun InscriptionOverlay(visible: Boolean, state: DemoPlayerState, modifier: Modifier = Modifier) {
+    AnimatedVisibility(visible, modifier, enter = fadeIn(tween(900, delayMillis = 300)), exit = fadeOut(tween(200))) {
+        Inscription(state)
     }
 }
 
@@ -486,16 +496,20 @@ private fun StageFooter(state: DemoPlayerState, centered: Boolean) {
 
 /** What is playing and the time, in place of the bars while the stage is full screen. */
 @Composable
-private fun ImmersiveStatus(state: DemoPlayerState) {
+private fun ImmersiveStatus(state: DemoPlayerState, showTitle: Boolean = true) {
     val style = Lanyin.style
     val c = style.colors
     val now by rememberMinuteClock()
     Column {
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                buildAnnotatedString {
-                    append(state.title)
-                    withStyle(SpanStyle(color = c.muted)) { append("  ·  ${state.artist}") }
+                if (showTitle) {
+                    buildAnnotatedString {
+                        append(state.title)
+                        withStyle(SpanStyle(color = c.muted)) { append("  ·  ${state.artist}") }
+                    }
+                } else {
+                    buildAnnotatedString { withStyle(SpanStyle(color = c.muted)) { append("${state.playlistName}  ${state.trackNumber} / ${state.trackCount}") } }
                 },
                 style = style.type.caption,
                 color = c.content.copy(alpha = 0.8f),
@@ -533,7 +547,7 @@ private fun rememberMinuteClock(): State<LocalTime> = produceState(LocalTime.now
 private fun LandscapeTopBar(state: DemoPlayerState, onCollapse: () -> Unit, onRotate: () -> Unit, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    Row(modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
         IconAction(LineIcon.ChevronDown, "收起", onCollapse, iconSize = 30.dp)
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
@@ -605,12 +619,17 @@ private fun LandscapeControlBar(state: DemoPlayerState, modifier: Modifier = Mod
     }
 }
 
-/** Lyric face at [baseSp] (scaled by the user's 歌词大小), line height 1.36×. */
+/**
+ * Lyric face at [baseSp] scaled by the user's 歌词大小, line height 1.36×. It deliberately ignores
+ * the system font scale: many phones ship with a large default font, which made lyrics far bigger
+ * than intended, and 歌词大小 already lets anyone who wants them bigger say so.
+ */
 @Composable
-private fun lyricTextStyle(baseSp: Float, scale: Float) = MaterialTheme.typography.headlineSmall.copy(
-    fontSize = (baseSp * scale).sp,
-    lineHeight = (baseSp * scale * 1.36f).sp,
-)
+private fun lyricTextStyle(baseSp: Float, scale: Float): TextStyle {
+    val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+    val size = baseSp * scale / fontScale
+    return MaterialTheme.typography.headlineSmall.copy(fontSize = size.sp, lineHeight = (size * 1.36f).sp)
+}
 
 @Composable
 private fun PlayerTopBar(

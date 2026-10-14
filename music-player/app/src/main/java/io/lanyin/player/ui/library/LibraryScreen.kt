@@ -102,9 +102,10 @@ private fun Profile(onLogin: () -> Unit, modifier: Modifier) {
         }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text("未登录", style = style.type.title)
-            Text("同步你的歌单与红心", style = style.type.caption, color = c.muted)
+            Text("未登录", style = style.type.title, maxLines = 1)
+            Text("同步你的歌单与红心", style = style.type.caption, color = c.muted, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
+        Spacer(Modifier.width(12.dp))
         ThemedButton("登录", onLogin)
     }
 }
