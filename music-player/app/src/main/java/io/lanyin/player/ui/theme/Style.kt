@@ -148,7 +148,7 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             cardShape = RoundedCornerShape(24.dp), chipShape = CircleShape, artShape = RoundedCornerShape(20.dp),
             edge = EdgeKind.Glass, backdrop = BackdropKind.Tide, seek = SeekKind.Wave,
             button = ButtonKind.Glow, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = false, activeScale = 1.04f, inactiveAlpha = 0.42f, blurStep = 0.7.dp, staggerMs = 38, glow = false, serif = false),
+            lyric = LyricStyle(centered = false, activeScale = 1.1f, inactiveAlpha = 0.42f, blurStep = 0.7.dp, staggerMs = 38, glow = false, serif = false),
             motion = Motion(0.82f, 420f), bouncy = Motion(0.58f, 380f), pressScale = 0.94f,
             iconStroke = 1.8f,
         )
@@ -160,7 +160,7 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             cardShape = RectangleShape, chipShape = RectangleShape, artShape = RectangleShape,
             edge = EdgeKind.Hairline, backdrop = BackdropKind.Ink, seek = SeekKind.Hairline,
             button = ButtonKind.Outline, nav = NavKind.Text,
-            lyric = LyricStyle(centered = true, activeScale = 1f, inactiveAlpha = 0.34f, blurStep = 0.dp, staggerMs = 0, glow = false, serif = true),
+            lyric = LyricStyle(centered = true, activeScale = 1.06f, inactiveAlpha = 0.34f, blurStep = 0.dp, staggerMs = 0, glow = false, serif = true),
             motion = Motion(1f, 700f), bouncy = Motion(0.9f, 600f), pressScale = 0.98f,
             iconStroke = 1.3f, dock = DockKind.Docked, margin = 24.dp, quietSections = true,
         )
@@ -172,7 +172,7 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             cardShape = RoundedCornerShape(28.dp), chipShape = CircleShape, artShape = RoundedCornerShape(32.dp),
             edge = EdgeKind.Soft, backdrop = BackdropKind.Sakura, seek = SeekKind.Pill,
             button = ButtonKind.Blob, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = true, activeScale = 1.08f, inactiveAlpha = 0.5f, blurStep = 0.5.dp, staggerMs = 55, glow = false, serif = false),
+            lyric = LyricStyle(centered = true, activeScale = 1.12f, inactiveAlpha = 0.5f, blurStep = 0.5.dp, staggerMs = 55, glow = false, serif = false),
             motion = Motion(0.7f, 450f), bouncy = Motion(0.42f, 420f), pressScale = 0.9f,
             iconStroke = 2f,
         )
@@ -184,7 +184,7 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             cardShape = CutCornerShape(14.dp), chipShape = CutCornerShape(10.dp), artShape = CutCornerShape(18.dp),
             edge = EdgeKind.Glow, backdrop = BackdropKind.Neon, seek = SeekKind.Segments,
             button = ButtonKind.NeonRing, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = false, activeScale = 1f, inactiveAlpha = 0.35f, blurStep = 0.6.dp, staggerMs = 18, glow = true, serif = false),
+            lyric = LyricStyle(centered = false, activeScale = 1.08f, inactiveAlpha = 0.35f, blurStep = 0.6.dp, staggerMs = 18, glow = true, serif = false),
             motion = Motion(0.85f, 1100f), bouncy = Motion(0.55f, 900f), pressScale = 0.95f,
             iconStroke = 1.6f,
         )
@@ -196,7 +196,7 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             cardShape = RoundedCornerShape(18.dp), chipShape = CircleShape, artShape = RoundedCornerShape(14.dp),
             edge = EdgeKind.Retro, backdrop = BackdropKind.Dusk, seek = SeekKind.Tape,
             button = ButtonKind.Retro, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = false, activeScale = 1.03f, inactiveAlpha = 0.5f, blurStep = 0.dp, staggerMs = 45, glow = false, serif = true),
+            lyric = LyricStyle(centered = false, activeScale = 1.08f, inactiveAlpha = 0.5f, blurStep = 0.dp, staggerMs = 45, glow = false, serif = true),
             motion = Motion(0.85f, 320f), bouncy = Motion(0.6f, 300f), pressScale = 1f,
             iconStroke = 2.2f,
         )

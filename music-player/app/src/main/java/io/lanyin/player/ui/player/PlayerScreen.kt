@@ -93,6 +93,7 @@ fun PlayerScreen(
     keepScreenOnInLandscape: Boolean,
     onCollapse: () -> Unit,
     modifier: Modifier = Modifier,
+    lyricScale: Float = 1f,
 ) {
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val style = Lanyin.style
@@ -176,9 +177,9 @@ fun PlayerScreen(
         ) {
             Backdrop(Modifier.matchParentSize(), live = true, playing = state.isPlaying)
             if (landscape) {
-                LandscapePlayer(state, skin, spin, chromeVisible, dismissDrag, onCollapse, onRotate)
+                LandscapePlayer(state, skin, spin, chromeVisible, dismissDrag, onCollapse, onRotate, lyricScale)
             } else {
-                PortraitPlayer(state, skin, spin, dismissDrag, onCollapse, onRotate)
+                PortraitPlayer(state, skin, spin, dismissDrag, onCollapse, onRotate, lyricScale)
             }
         }
     }
@@ -192,6 +193,7 @@ private fun PortraitPlayer(
     dismissDrag: Modifier,
     onCollapse: () -> Unit,
     onRotate: () -> Unit,
+    lyricScale: Float,
 ) {
     var showLyrics by rememberSaveable { mutableStateOf(false) }
     val lyricsOnly = skin == PlayerSkin.LYRICS || showLyrics
@@ -216,7 +218,7 @@ private fun PortraitPlayer(
             if (lyrics) {
                 LyricsView(
                     lines = state.lyrics, currentIndex = state.currentLyricIndex, progress = state::lineProgress,
-                    onSeek = state::seekTo, textStyle = MaterialTheme.typography.headlineSmall.copy(fontSize = 26.sp, lineHeight = 34.sp),
+                    onSeek = state::seekTo, textStyle = lyricTextStyle(22, lyricScale),
                     modifier = Modifier.fillMaxSize(), anchorFraction = 0.4f,
                 )
             } else {
@@ -253,9 +255,10 @@ private fun LandscapePlayer(
     dismissDrag: Modifier,
     onCollapse: () -> Unit,
     onRotate: () -> Unit,
+    lyricScale: Float,
 ) {
     val style = Lanyin.style
-    val lyricStyle = MaterialTheme.typography.headlineSmall.copy(fontSize = 28.sp, lineHeight = 36.sp)
+    val lyricStyle = lyricTextStyle(22, lyricScale)
     Column(
         Modifier
             .fillMaxSize()
@@ -269,7 +272,7 @@ private fun LandscapePlayer(
             if (skin == PlayerSkin.LYRICS) {
                 LyricsView(
                     state.lyrics, state.currentLyricIndex, state::lineProgress, state::seekTo,
-                    textStyle = lyricStyle.copy(fontSize = 32.sp, lineHeight = 42.sp),
+                    textStyle = lyricTextStyle(26, lyricScale),
                     modifier = Modifier.fillMaxSize(), centered = true, anchorFraction = 0.46f,
                 )
             } else {
@@ -328,6 +331,13 @@ private fun LandscapeControlBar(state: DemoPlayerState, modifier: Modifier = Mod
         }
     }
 }
+
+/** Lyric face at [baseSp] (scaled by the user's 歌词大小), line height 1.36×. */
+@Composable
+private fun lyricTextStyle(baseSp: Int, scale: Float) = MaterialTheme.typography.headlineSmall.copy(
+    fontSize = (baseSp * scale).sp,
+    lineHeight = (baseSp * scale * 1.36f).sp,
+)
 
 @Composable
 private fun PlayerTopBar(

@@ -178,6 +178,7 @@ fun LanyinApp(
                             spin = spin,
                             keepScreenOnInLandscape = settings.keepScreenOnInLandscape,
                             onCollapse = { expanded = false },
+                            lyricScale = settings.lyricSize.scale,
                         )
                     } else if (onTopLevel) {
                         val onSelectTab: (Int) -> Unit = { i ->

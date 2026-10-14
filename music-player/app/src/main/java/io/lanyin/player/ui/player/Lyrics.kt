@@ -139,7 +139,7 @@ fun LyricsView(
             ),
     ) {
         val anchorPx = constraints.maxHeight * anchorFraction
-        val gapPx = with(androidx.compose.ui.platform.LocalDensity.current) { 18.dp.roundToPx() }
+        val gapPx = with(androidx.compose.ui.platform.LocalDensity.current) { (textStyle.fontSize.toPx() * 0.6f).toInt() }
         Layout(
             content = {
                 lines.forEachIndexed { i, line ->
@@ -232,7 +232,7 @@ private fun LyricRow(
         if (line.translation != null) {
             Text(
                 line.translation,
-                style = textStyle.copy(fontSize = textStyle.fontSize * 0.52f, fontWeight = FontWeight.Normal, textAlign = align),
+                style = textStyle.copy(fontSize = textStyle.fontSize * 0.58f, lineHeight = textStyle.fontSize * 0.8f, fontWeight = FontWeight.Normal, textAlign = align),
                 color = c.content.copy(alpha = (ls.inactiveAlpha + 0.3f * activeAmount).coerceAtMost(0.75f)),
                 modifier = Modifier.padding(top = 4.dp),
             )

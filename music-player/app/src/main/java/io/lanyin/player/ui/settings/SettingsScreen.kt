@@ -53,6 +53,7 @@ import io.lanyin.player.ui.theme.AppTheme
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.LanyinTheme
+import io.lanyin.player.ui.theme.LyricSize
 import io.lanyin.player.ui.theme.PlayerSkin
 import io.lanyin.player.ui.theme.ThemeMode
 import kotlinx.coroutines.launch
@@ -109,7 +110,30 @@ fun SettingsScreen(settings: UiSettings, repository: SettingsRepository, onBack:
 
             item { SectionTitle("播放", Modifier.padding(start = m, end = m, top = 36.dp)) }
             item {
+                Column(Modifier.padding(start = m, end = m, top = 14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("歌词大小", style = style.type.body, modifier = Modifier.weight(1f))
+                        ChoiceRow(LyricSize.entries.map { it.label }, settings.lyricSize.label, { label ->
+                            val size = LyricSize.entries.first { it.label == label }
+                            scope.launch { repository.setLyricSize(size) }
+                        })
+                    }
+                    // What the player will show at this size.
+                    val preview = androidx.compose.material3.MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = (22 * settings.lyricSize.scale).sp,
+                        lineHeight = (22 * settings.lyricSize.scale * 1.36f).sp,
+                        fontFamily = if (style.lyric.serif) style.display else null,
+                        fontWeight = if (style.lyric.serif) FontWeight.Medium else FontWeight.Bold,
+                    )
+                    Column(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+                        Text("让歌词一行一行亮起", style = preview, color = if (style.edge == EdgeKind.Hairline) c.content else c.accent)
+                        Text("唱片在掌心慢慢转动", style = preview, color = c.content.copy(alpha = style.lyric.inactiveAlpha))
+                    }
+                }
+            }
+            item {
                 Column(Modifier.padding(start = m, end = m, top = 6.dp).then(if (style.edge == EdgeKind.Hairline) Modifier else Modifier.padding(top = 8.dp).themedSurface(tone = SurfaceTone.Flat).padding(horizontal = 16.dp))) {
+                    if (style.edge == EdgeKind.Hairline) Hairline()
                     ToggleRow("打开播放页时自动横屏", "也可以随时点播放页右上角的旋转按钮", settings.autoLandscape) {
                         scope.launch { repository.setAutoLandscape(it) }
                     }

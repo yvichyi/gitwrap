@@ -92,6 +92,13 @@ class ScreenshotTest {
             io.lanyin.player.ui.settings.SettingsScreen(UiSettings(theme = AppTheme.INK, themeMode = ThemeMode.LIGHT), repo, onBack = {})
         }
     }
+    @Config(qualifiers = "w392dp-h1500dp-port-xhdpi")
+    @Test fun ink_settings_full() {
+        val repo = repo()
+        capture("ink_settings_full", AppTheme.INK, ThemeMode.LIGHT) {
+            io.lanyin.player.ui.settings.SettingsScreen(UiSettings(theme = AppTheme.INK, themeMode = ThemeMode.LIGHT), repo, onBack = {})
+        }
+    }
     @Test fun ink_port_vinyl_light() = capture("ink_port_vinyl_light", AppTheme.INK, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL) }
     @Test fun ink_port_cover_dark() = capture("ink_port_cover_dark", AppTheme.INK, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
 
@@ -132,6 +139,11 @@ class ScreenshotTest {
     @Test fun ink_land_vinyl_idle() {
         // After five idle seconds the chrome folds away and the stage takes the room.
         capture("ink_land_vinyl_idle", AppTheme.INK, ThemeMode.LIGHT, settle = 6_500) { Player(PlayerSkin.VINYL) }
+    }
+
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun ink_land_vinyl_large_lyrics() = capture("ink_land_vinyl_large_lyrics", AppTheme.INK, ThemeMode.LIGHT) {
+        PlayerScreen(playingAt(14_000), PlayerSkin.VINYL, rememberSpinState(true), keepScreenOnInLandscape = true, onCollapse = {}, lyricScale = io.lanyin.player.ui.theme.LyricSize.LARGE.scale)
     }
 
     // Home, inside the real shell, for every theme.

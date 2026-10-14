@@ -36,6 +36,18 @@ enum class PlayerSkin(val id: String, val label: String, val description: String
     }
 }
 
+/** Lyric text size on the now-playing page, as a multiple of the 22sp base. */
+enum class LyricSize(val id: String, val label: String, val scale: Float) {
+    SMALL("small", "小", 0.86f),
+    MEDIUM("medium", "中", 1f),
+    LARGE("large", "大", 1.22f);
+
+    companion object {
+        val Default = MEDIUM
+        fun fromId(id: String?): LyricSize = entries.firstOrNull { it.id == id } ?: Default
+    }
+}
+
 enum class ThemeMode(val id: String, val label: String) {
     SYSTEM("system", "跟随系统"),
     LIGHT("light", "浅色"),

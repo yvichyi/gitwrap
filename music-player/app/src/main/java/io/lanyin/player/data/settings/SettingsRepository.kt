@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.lanyin.player.ui.theme.AppTheme
+import io.lanyin.player.ui.theme.LyricSize
 import io.lanyin.player.ui.theme.PlayerSkin
 import io.lanyin.player.ui.theme.ThemeMode
 import java.io.IOException
@@ -25,6 +26,7 @@ data class UiSettings(
     /** Rotate to landscape whenever the player opens. */
     val autoLandscape: Boolean = false,
     val keepScreenOnInLandscape: Boolean = true,
+    val lyricSize: LyricSize = LyricSize.Default,
 )
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -39,6 +41,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 themeMode = ThemeMode.fromId(prefs[THEME_MODE]),
                 autoLandscape = prefs[AUTO_LANDSCAPE] ?: false,
                 keepScreenOnInLandscape = prefs[KEEP_SCREEN_ON] ?: true,
+                lyricSize = LyricSize.fromId(prefs[LYRIC_SIZE]),
             )
         }
 
@@ -52,11 +55,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setKeepScreenOnInLandscape(enabled: Boolean) = dataStore.edit { it[KEEP_SCREEN_ON] = enabled }
 
+    suspend fun setLyricSize(size: LyricSize) = dataStore.edit { it[LYRIC_SIZE] = size.id }
+
     private companion object {
         val THEME = stringPreferencesKey("app_skin")
         val PLAYER_SKIN = stringPreferencesKey("player_skin")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val AUTO_LANDSCAPE = booleanPreferencesKey("auto_landscape")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on_landscape")
+        val LYRIC_SIZE = stringPreferencesKey("lyric_size")
     }
 }

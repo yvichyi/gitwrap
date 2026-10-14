@@ -11,6 +11,8 @@ class SkinsTest {
         AppTheme.entries.forEach { assertEquals(it, AppTheme.fromId(it.id)) }
         PlayerSkin.entries.forEach { assertEquals(it, PlayerSkin.fromId(it.id)) }
         ThemeMode.entries.forEach { assertEquals(it, ThemeMode.fromId(it.id)) }
+        LyricSize.entries.forEach { assertEquals(it, LyricSize.fromId(it.id)) }
+        assertEquals(LyricSize.MEDIUM, LyricSize.fromId(null))
     }
 
     @Test
