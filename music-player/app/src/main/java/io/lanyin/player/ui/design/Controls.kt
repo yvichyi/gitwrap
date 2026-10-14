@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.RectangleShape
 import io.lanyin.player.ui.theme.EdgeKind
@@ -230,7 +231,7 @@ fun SeekBar(
 
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         val shown = dragFraction?.let { (it * durationMs).toLong() / 1000 } ?: seconds
-        Text(formatTime(shown * 1000), style = timeStyle)
+        TimeLabel(shown * 1000, timeStyle)
         Canvas(
             Modifier
                 .weight(1f)
@@ -262,7 +263,27 @@ fun SeekBar(
                 SeekKind.Tape -> drawTapeTrack(f, c.accent, c.content, c.surface)
             }
         }
-        Text(formatTime(durationMs), style = timeStyle)
+        TimeLabel(durationMs, timeStyle)
+    }
+}
+
+/** Elapsed or total time; 暮 shows it as a little tape counter. */
+@Composable
+private fun TimeLabel(ms: Long, style: TextStyle) {
+    val s = Lanyin.style
+    if (s.seek == SeekKind.Tape) {
+        val total = (ms / 1000).coerceAtLeast(0)
+        Text(
+            "%02d:%02d".format(total / 60, total % 60),
+            style = style.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, letterSpacing = 0.08.em, fontWeight = FontWeight.Bold),
+            color = s.colors.surface,
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(s.colors.content)
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+        )
+    } else {
+        Text(formatTime(ms), style = style)
     }
 }
 

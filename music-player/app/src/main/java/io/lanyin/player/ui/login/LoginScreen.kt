@@ -94,7 +94,7 @@ private fun QrFrame(modifier: Modifier) {
     Box(
         modifier
             .size(232.dp)
-            .then(if (hairline) Modifier.border(1.dp, c.outline) else Modifier.themedSurface())
+            .then(if (hairline) Modifier.border(1.dp, c.outline) else Modifier.themedSurface(tone = io.lanyin.player.ui.design.SurfaceTone.Flat))
             .padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {

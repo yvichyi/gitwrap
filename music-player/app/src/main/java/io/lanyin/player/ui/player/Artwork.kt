@@ -171,17 +171,24 @@ fun Cassette(spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier) {
         if (style.edge == EdgeKind.Retro) drawRoundRect(c.content, Offset(5.dp.toPx(), 5.dp.toPx()), size, corner)
         drawRoundRect(c.surfaceAlt, cornerRadius = corner)
         drawRoundRect(c.content.copy(alpha = if (style.edge == EdgeKind.Retro) 1f else 0.3f), cornerRadius = corner, style = Stroke(2.dp.toPx()))
-        // Label from the cover art.
+        // A real tape label: paper, two colour bands, a line to write the title on.
         val labelTopLeft = Offset(w * 0.07f, h * 0.08f)
         val labelSize = Size(w * 0.86f, h * 0.56f)
         val label = Path().apply {
             addRoundRect(androidx.compose.ui.geometry.RoundRect(androidx.compose.ui.geometry.Rect(labelTopLeft, labelSize), CornerRadius(h * 0.04f)))
         }
         clipPath(label) {
-            translate(labelTopLeft.x, labelTopLeft.y - (labelSize.width - labelSize.height) / 2f) {
-                withLabelSize(labelSize.width) { drawCoverArt(style, coverSeed) }
-            }
+            drawRect(c.surface, labelTopLeft, labelSize)
+            drawRect(c.accent, Offset(labelTopLeft.x, labelTopLeft.y + labelSize.height * 0.1f), Size(labelSize.width, labelSize.height * 0.1f))
+            drawRect(c.accentAlt, Offset(labelTopLeft.x, labelTopLeft.y + labelSize.height * 0.2f), Size(labelSize.width, labelSize.height * 0.07f))
         }
+        drawLine(
+            c.content.copy(alpha = 0.35f),
+            Offset(labelTopLeft.x + labelSize.width * 0.12f, labelTopLeft.y + labelSize.height * 0.88f),
+            Offset(labelTopLeft.x + labelSize.width * 0.88f, labelTopLeft.y + labelSize.height * 0.88f),
+            1.5.dp.toPx(),
+        )
+        drawRoundRect(c.content.copy(alpha = 0.5f), labelTopLeft, labelSize, CornerRadius(h * 0.04f), style = Stroke(1.dp.toPx()))
         // Tape window with two turning reels.
         val window = Size(w * 0.56f, h * 0.24f)
         val windowTopLeft = Offset((w - window.width) / 2f, h * 0.24f)

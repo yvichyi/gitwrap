@@ -31,6 +31,7 @@ import io.lanyin.player.ui.design.Hairline
 import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.PageTitle
 import io.lanyin.player.ui.design.SectionTitle
+import io.lanyin.player.ui.design.SurfaceTone
 import io.lanyin.player.ui.design.ThemeMotif
 import io.lanyin.player.ui.design.ThemedButton
 import io.lanyin.player.ui.design.ThemedIcon
@@ -87,22 +88,22 @@ private fun Profile(onLogin: () -> Unit, modifier: Modifier) {
     Row(
         modifier
             .fillMaxWidth()
-            .then(if (hairline) Modifier else Modifier.themedSurface().padding(16.dp)),
+            .then(if (hairline) Modifier else Modifier.themedSurface(tone = SurfaceTone.Flat).padding(16.dp)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             Modifier
                 .size(56.dp)
                 .clip(CircleShape)
-                .then(if (hairline) Modifier.border(1.dp, c.outline, CircleShape) else Modifier.background(style.accentBrush())),
+                .then(if (hairline) Modifier.border(1.dp, c.outline, CircleShape) else Modifier.themedSurface(shape = CircleShape, tone = SurfaceTone.Flat)),
             contentAlignment = Alignment.Center,
         ) {
-            ThemedIcon(LineIcon.User, null, tint = if (hairline) c.muted else c.onAccent, size = 26.dp)
+            ThemedIcon(LineIcon.User, null, tint = c.muted, size = 26.dp)
         }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             Text("未登录", style = style.type.title)
-            Text("连接网易云音乐，同步你的音乐库", style = style.type.caption, color = c.muted)
+            Text("同步你的歌单与红心", style = style.type.caption, color = c.muted)
         }
         ThemedButton("登录", onLogin)
     }
@@ -114,7 +115,7 @@ private fun EntryList(onClick: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val hairline = style.edge == EdgeKind.Hairline
-    Column(modifier.fillMaxWidth().then(if (hairline) Modifier else Modifier.themedSurface().padding(horizontal = 16.dp))) {
+    Column(modifier.fillMaxWidth().then(if (hairline) Modifier else Modifier.themedSurface(tone = SurfaceTone.Flat).padding(horizontal = 16.dp))) {
         entries.forEachIndexed { i, e ->
             if (i > 0 || hairline) Hairline()
             Row(

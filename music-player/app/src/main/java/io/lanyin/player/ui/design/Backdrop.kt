@@ -104,7 +104,7 @@ private fun DrawScope.drawInk(style: LanyinStyle, t: Float, page: Boolean) {
     val landscape = w > h
     val center = when {
         page -> Offset(w * 0.88f, h * 0.08f)
-        landscape -> Offset(w * 0.22f, h * 0.38f)
+        landscape -> Offset(w * 0.22f, h * 0.46f)
         else -> Offset(w * 0.5f, h * 0.36f)
     }
     val radius = when {
@@ -235,13 +235,13 @@ private fun DrawScope.drawDusk(style: LanyinStyle, t: Float, e: Float, page: Boo
     val bob = sin(t * 0.8f) * 6f * density * e
     val landscape = w > h
     val radius = when {
-        page -> w * 0.24f
+        page -> w * 0.17f
         landscape -> h * 0.42f
         else -> w * 0.3f
     }
     val center = when {
-        page -> Offset(w * 0.84f, h * 0.09f)
-        landscape -> Offset(w * 0.93f, h * 0.9f + bob)
+        page -> Offset(w * 0.9f, h * 0.035f)
+        landscape -> Offset(w * 0.07f, h * 0.84f + bob)
         else -> Offset(w * 0.8f, h * 0.2f + bob)
     }
     val sun = Path().apply { addOval(androidx.compose.ui.geometry.Rect(center, radius)) }

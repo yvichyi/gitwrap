@@ -111,6 +111,29 @@ class ScreenshotTest {
         compose.onRoot().captureRoboImage("build/outputs/roborazzi/ink_transition_1.png")
     }
 
+    // 暮, page by page.
+    @Test fun dusk_home_dark() = app(AppTheme.DUSK, ThemeMode.DARK)
+    @Test fun dusk_search_light() = capture("dusk_search_light", AppTheme.DUSK, ThemeMode.LIGHT) { io.lanyin.player.ui.search.SearchScreen() }
+    @Test fun dusk_library_light() = capture("dusk_library_light", AppTheme.DUSK, ThemeMode.LIGHT) { io.lanyin.player.ui.library.LibraryScreen(onLogin = {}) }
+    @Test fun dusk_login_dark() = capture("dusk_login_dark", AppTheme.DUSK, ThemeMode.DARK) { LoginScreen(onBack = {}) }
+    @Test fun dusk_settings_light() {
+        val repo = repo()
+        capture("dusk_settings_light", AppTheme.DUSK, ThemeMode.LIGHT) {
+            io.lanyin.player.ui.settings.SettingsScreen(UiSettings(theme = AppTheme.DUSK, themeMode = ThemeMode.LIGHT), repo, onBack = {})
+        }
+    }
+    @Test fun dusk_port_cassette_light() = capture("dusk_port_cassette_light", AppTheme.DUSK, ThemeMode.LIGHT) { Player(PlayerSkin.CASSETTE) }
+    @Test fun dusk_port_vinyl_dark() = capture("dusk_port_vinyl_dark", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
+
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun dusk_land_cover_dark() = capture("dusk_land_cover_dark", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun ink_land_vinyl_idle() {
+        // After five idle seconds the chrome folds away and the stage takes the room.
+        capture("ink_land_vinyl_idle", AppTheme.INK, ThemeMode.LIGHT, settle = 6_500) { Player(PlayerSkin.VINYL) }
+    }
+
     // Home, inside the real shell, for every theme.
     @Test fun home_tide_light() = app(AppTheme.TIDE, ThemeMode.LIGHT)
     @Test fun home_tide_dark() = app(AppTheme.TIDE, ThemeMode.DARK)

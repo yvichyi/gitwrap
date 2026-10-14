@@ -174,20 +174,69 @@ private fun DrawScope.duskCover(style: LanyinStyle, seed: Int) {
     val c = style.colors
     val w = size.width
     val h = size.height
-    drawRect(c.surface)
-    // Seventies rainbow: concentric arcs rising from the bottom edge.
-    val bands = listOf(c.content, c.accent, c.accentAlt, lerp(c.accentAlt, c.surface, 0.5f))
-    val thickness = w * 0.085f
-    val center = Offset(w * (0.5f + 0.18f * (hash01(seed, 1) - 0.5f)), h * 1.02f)
-    bands.forEachIndexed { i, color ->
-        val r = w * 0.62f - i * thickness
-        drawArc(
-            color = color, startAngle = 180f, sweepAngle = 180f, useCenter = false,
-            topLeft = Offset(center.x - r, center.y - r), size = Size(r * 2, r * 2),
-            style = Stroke(thickness),
-        )
+    // Four seventies record sleeves, so a shelf of them doesn't repeat.
+    when (seed % 4) {
+        0 -> {
+            drawRect(c.surface)
+            val bands = listOf(c.content, c.accent, c.accentAlt, lerp(c.accentAlt, c.surface, 0.5f))
+            val thickness = w * 0.085f
+            val center = Offset(w * (0.5f + 0.18f * (hash01(seed, 1) - 0.5f)), h * 1.02f)
+            bands.forEachIndexed { i, color ->
+                val r = w * 0.62f - i * thickness
+                drawArc(color, 180f, 180f, false, Offset(center.x - r, center.y - r), Size(r * 2, r * 2), style = Stroke(thickness))
+            }
+            drawCircle(c.accent, radius = w * 0.07f, center = Offset(w * 0.78f, h * 0.2f))
+        }
+        1 -> {
+            // Striped sun setting over dark ground.
+            drawRect(Brush.verticalGradient(listOf(c.accentAlt, c.accent), endY = h * 0.72f))
+            val sun = Offset(w * 0.5f, h * 0.62f)
+            val r = w * 0.3f
+            drawCircle(c.surface, r, sun)
+            for (k in 0 until 4) {
+                val y = sun.y - r * 0.05f + k * r * 0.2f
+                drawRect(lerp(c.accentAlt, c.accent, (y / (h * 0.72f)).coerceIn(0f, 1f)), Offset(sun.x - r, y), Size(r * 2, r * (0.04f + k * 0.03f)))
+            }
+            drawRect(c.content, Offset(0f, h * 0.72f), Size(w, h * 0.28f))
+        }
+        2 -> {
+            // Groovy waves: four wavy stripes.
+            drawRect(c.surface)
+            val colors = listOf(c.content, c.accent, c.accentAlt, lerp(c.accentAlt, c.surface, 0.5f))
+            val band = h * 0.1f
+            colors.forEachIndexed { i, color ->
+                val baseY = h * (0.3f + i * 0.12f)
+                val path = Path().apply {
+                    moveTo(0f, baseY)
+                    var x = 0f
+                    while (x <= w) {
+                        lineTo(x, baseY + h * 0.06f * sin((x / w) * 2f * PI.toFloat() + hash01(seed, 2) * 3f))
+                        x += w / 40f
+                    }
+                    var back = w
+                    while (back >= 0f) {
+                        lineTo(back, baseY + band + h * 0.06f * sin((back / w) * 2f * PI.toFloat() + hash01(seed, 2) * 3f))
+                        back -= w / 40f
+                    }
+                    close()
+                }
+                drawPath(path, color)
+            }
+        }
+        else -> {
+            // A daisy on mustard.
+            drawRect(c.accentAlt)
+            val center = Offset(w * (0.42f + 0.16f * hash01(seed, 3)), h * (0.44f + 0.12f * hash01(seed, 4)))
+            val petalLength = w * 0.2f
+            for (k in 0 until 12) {
+                rotate(k * 30f, center) {
+                    drawOval(c.surface, Offset(center.x - w * 0.045f, center.y - petalLength - w * 0.04f), Size(w * 0.09f, petalLength))
+                }
+            }
+            drawCircle(c.accent, w * 0.075f, center)
+            drawCircle(c.content, w * 0.075f, center, style = Stroke(w * 0.012f))
+        }
     }
-    drawCircle(c.accent, radius = w * 0.07f, center = Offset(w * 0.78f, h * 0.2f))
 }
 
 /** The theme's signature shape as a one-colour line drawing, for empty states. */

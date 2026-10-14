@@ -35,8 +35,10 @@ import io.lanyin.player.ui.theme.LanyinStyle
 val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
 
 enum class SurfaceTone {
-    /** Content cards inside a page. */
+    /** The one card a screen is about: gets the theme's full shadow or glow. */
     Card,
+    /** Secondary cards and fields: same fill and edge, no shadow or glow, so they don't compete. */
+    Flat,
     /** Floating bars over content: glass in 澜. */
     Chrome,
     /** Call-to-action fill. */
@@ -67,10 +69,12 @@ fun Modifier.themedSurface(
     val haze = LocalHazeState.current
 
     // 1. Decoration that stays put while the surface itself moves on press.
-    var m = when (style.edge) {
-        EdgeKind.Retro -> retroShadow(shape, c.content, 4.dp)
-        EdgeKind.Glow -> neonGlow(shape, if (tone == SurfaceTone.Accent) c.accent else c.accent.copy(alpha = 0.55f))
-        EdgeKind.Soft -> shadow(
+    val flat = tone == SurfaceTone.Flat
+    var m = when {
+        flat -> this
+        style.edge == EdgeKind.Retro -> retroShadow(shape, c.content, 4.dp)
+        style.edge == EdgeKind.Glow -> neonGlow(shape, if (tone == SurfaceTone.Accent) c.accent else c.accent.copy(alpha = 0.55f))
+        style.edge == EdgeKind.Soft -> shadow(
             elevation = if (tone == SurfaceTone.Card) 10.dp else 18.dp, shape = shape,
             ambientColor = c.accent.copy(alpha = 0.25f), spotColor = c.accent.copy(alpha = 0.35f),
         )
@@ -78,11 +82,11 @@ fun Modifier.themedSurface(
     }
     // 2. Press feedback: retro surfaces sink into their shadow, others shrink (墨 also fades).
     m = m.graphicsLayer {
-        if (style.edge == EdgeKind.Retro) {
+        if (style.edge == EdgeKind.Retro && !flat) {
             translationX = 4.dp.toPx() * press
             translationY = 4.dp.toPx() * press
         } else {
-            val s = 1f - (1f - style.pressScale) * press
+            val s = 1f - (1f - minOf(style.pressScale, 0.97f)) * press
             scaleX = s
             scaleY = s
         }
@@ -104,7 +108,7 @@ fun Modifier.themedSurface(
     m = when (style.edge) {
         EdgeKind.Glass -> m.border(1.dp, Color.White.copy(alpha = if (style.dark) 0.10f else 0.65f), shape)
         EdgeKind.Hairline -> m.border(1.dp, if (tone == SurfaceTone.Accent) c.content else c.outline, shape)
-        EdgeKind.Glow -> m.border(1.dp, c.accent.copy(alpha = if (tone == SurfaceTone.Accent) 1f else 0.6f), shape)
+        EdgeKind.Glow -> m.border(1.dp, c.accent.copy(alpha = if (tone == SurfaceTone.Accent) 1f else if (flat) 0.35f else 0.6f), shape)
         EdgeKind.Retro -> m.border(2.dp, c.content, shape)
         EdgeKind.Soft -> m
     }

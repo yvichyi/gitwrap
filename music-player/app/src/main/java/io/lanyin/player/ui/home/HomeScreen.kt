@@ -43,6 +43,7 @@ import io.lanyin.player.ui.design.IconAction
 import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.PlayPauseButton
 import io.lanyin.player.ui.design.SectionTitle
+import io.lanyin.player.ui.design.SurfaceTone
 import io.lanyin.player.ui.design.TextLink
 import io.lanyin.player.ui.design.ThemedIcon
 import io.lanyin.player.ui.design.formatTime
@@ -131,7 +132,15 @@ private fun Header(now: LocalDateTime, onOpenSettings: () -> Unit, onLogin: () -
             Text(greeting(now.hour), style = style.type.display)
             Text(date, style = style.type.caption, color = c.muted, modifier = Modifier.padding(top = 6.dp))
         }
-        IconAction(LineIcon.Sliders, "设置", onOpenSettings, tint = c.muted)
+        if (style.edge == EdgeKind.Hairline) {
+            IconAction(LineIcon.Sliders, "设置", onOpenSettings, tint = c.muted)
+        } else {
+            Box(
+                Modifier.size(40.dp).themedSurface(shape = CircleShape, tone = SurfaceTone.Flat, onClick = onOpenSettings),
+                contentAlignment = Alignment.Center,
+            ) { ThemedIcon(LineIcon.Sliders, "设置", tint = c.muted, size = 20.dp) }
+            Spacer(Modifier.width(10.dp))
+        }
         Box(
             Modifier
                 .size(40.dp)
@@ -160,7 +169,7 @@ private fun ConnectLine(onLogin: () -> Unit, modifier: Modifier) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .then(if (hairline) Modifier else Modifier.themedSurface())
+                .then(if (hairline) Modifier else Modifier.themedSurface(tone = SurfaceTone.Flat))
                 .padding(horizontal = if (hairline) 0.dp else 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -246,7 +255,7 @@ private fun QuickEntries(day: Int, onLogin: () -> Unit, modifier: Modifier) {
             Column(
                 Modifier
                     .weight(1f)
-                    .then(if (hairline) Modifier.pressable(onClick = onLogin) else Modifier.aspectRatio(1f).themedSurface(onClick = onLogin))
+                    .then(if (hairline) Modifier.pressable(onClick = onLogin) else Modifier.aspectRatio(1f).themedSurface(tone = SurfaceTone.Flat, onClick = onLogin))
                     .padding(vertical = if (hairline) 4.dp else 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),

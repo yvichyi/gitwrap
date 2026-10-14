@@ -109,7 +109,7 @@ fun SettingsScreen(settings: UiSettings, repository: SettingsRepository, onBack:
 
             item { SectionTitle("播放", Modifier.padding(start = m, end = m, top = 36.dp)) }
             item {
-                Column(Modifier.padding(start = m, end = m, top = 6.dp).then(if (style.edge == EdgeKind.Hairline) Modifier else Modifier.padding(top = 8.dp).themedSurface().padding(horizontal = 16.dp))) {
+                Column(Modifier.padding(start = m, end = m, top = 6.dp).then(if (style.edge == EdgeKind.Hairline) Modifier else Modifier.padding(top = 8.dp).themedSurface(tone = SurfaceTone.Flat).padding(horizontal = 16.dp))) {
                     ToggleRow("打开播放页时自动横屏", "也可以随时点播放页右上角的旋转按钮", settings.autoLandscape) {
                         scope.launch { repository.setAutoLandscape(it) }
                     }
@@ -205,7 +205,8 @@ private fun SkinCard(skin: PlayerSkin, selected: Boolean, spin: io.lanyin.player
                 if (hairline) {
                     Modifier.border(if (selected) 1.5.dp else 1.dp, if (selected) c.content else c.outline).pressable(onClick = onClick)
                 } else {
-                    Modifier.themedSurface(onClick = onClick).then(if (selected) Modifier.border(2.dp, c.accent, style.cardShape) else Modifier)
+                    Modifier.themedSurface(tone = if (selected) SurfaceTone.Card else SurfaceTone.Flat, onClick = onClick)
+                        .then(if (selected && style.edge != EdgeKind.Retro) Modifier.border(2.dp, c.accent, style.cardShape) else Modifier)
                 },
             )
             .padding(10.dp),

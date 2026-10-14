@@ -15,6 +15,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +75,10 @@ import io.lanyin.player.ui.design.PlayPauseButton
 import io.lanyin.player.ui.design.SeekBar
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.sharedPlayer
+import io.lanyin.player.ui.design.Hairline
+import io.lanyin.player.ui.design.SurfaceTone
+import io.lanyin.player.ui.design.themedSurface
+import io.lanyin.player.ui.theme.DockKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.PlayerSkin
 import kotlin.coroutines.cancellation.CancellationException
@@ -233,6 +238,12 @@ private fun PortraitPlayer(
     }
 }
 
+/**
+ * Landscape is a stage plus one control bar. The artwork and lyrics share the stage, with the
+ * active lyric level with the artwork's centre; title, like, progress and transport sit together
+ * in a single bar styled like the mini player. When the chrome hides, the stage takes the room
+ * and only a hairline of progress remains.
+ */
 @Composable
 private fun LandscapePlayer(
     state: DemoPlayerState,
@@ -243,48 +254,77 @@ private fun LandscapePlayer(
     onCollapse: () -> Unit,
     onRotate: () -> Unit,
 ) {
+    val style = Lanyin.style
     val lyricStyle = MaterialTheme.typography.headlineSmall.copy(fontSize = 28.sp, lineHeight = 36.sp)
     Column(
         Modifier
             .fillMaxSize()
             .displayCutoutPadding()
-            .padding(horizontal = 28.dp, vertical = 10.dp),
+            .padding(horizontal = 28.dp, vertical = 8.dp),
     ) {
         AnimatedVisibility(chromeVisible, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
             PlayerTopBar(landscape = true, onCollapse = onCollapse, onRotate = onRotate, onToggleLyrics = null, lyricsShown = true, modifier = dismissDrag)
         }
         Row(Modifier.weight(1f).fillMaxWidth()) {
             if (skin == PlayerSkin.LYRICS) {
-                Column(Modifier.fillMaxSize()) {
-                    LyricsView(
-                        state.lyrics, state.currentLyricIndex, state::lineProgress, state::seekTo,
-                        textStyle = lyricStyle.copy(fontSize = 32.sp, lineHeight = 42.sp),
-                        modifier = Modifier.weight(1f).fillMaxWidth(), centered = true, anchorFraction = 0.42f,
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TrackTitle(state, Modifier.weight(1f))
-                        AnimatedVisibility(chromeVisible) { TransportControls(state, playSize = 52.dp, Modifier.widthIn(max = 340.dp)) }
-                    }
-                }
-            } else {
-                Column(Modifier.weight(0.42f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.weight(1f).fillMaxWidth().then(dismissDrag), contentAlignment = Alignment.Center) {
-                        PlayerArtwork(skin, state.isPlaying, spin, state.coverSeed, Modifier.fillMaxHeight().sharedPlayer("artwork", zIndex = 1f))
-                    }
-                    TrackTitle(state, Modifier.fillMaxWidth())
-                    AnimatedVisibility(chromeVisible, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-                        TransportControls(state, playSize = 52.dp, Modifier.fillMaxWidth())
-                    }
-                }
-                Spacer(Modifier.width(36.dp))
                 LyricsView(
                     state.lyrics, state.currentLyricIndex, state::lineProgress, state::seekTo,
-                    textStyle = lyricStyle, modifier = Modifier.weight(0.58f).fillMaxHeight(),
+                    textStyle = lyricStyle.copy(fontSize = 32.sp, lineHeight = 42.sp),
+                    modifier = Modifier.fillMaxSize(), centered = true, anchorFraction = 0.46f,
+                )
+            } else {
+                Box(
+                    Modifier.weight(0.42f).fillMaxHeight().then(dismissDrag).padding(vertical = 6.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    PlayerArtwork(skin, state.isPlaying, spin, state.coverSeed, Modifier.fillMaxHeight().sharedPlayer("artwork", zIndex = 1f))
+                }
+                Spacer(Modifier.width(40.dp))
+                LyricsView(
+                    state.lyrics, state.currentLyricIndex, state::lineProgress, state::seekTo,
+                    textStyle = lyricStyle, modifier = Modifier.weight(0.58f).fillMaxHeight(), anchorFraction = 0.5f,
                 )
             }
         }
         AnimatedVisibility(chromeVisible, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-            SeekBar(state::positionMs, state.durationMs, state.isPlaying, state::seekTo)
+            LandscapeControlBar(state, Modifier.padding(top = 8.dp))
+        }
+        AnimatedVisibility(!chromeVisible, enter = fadeIn(tween(600)), exit = fadeOut(tween(150))) {
+            val c = style.colors
+            Canvas(Modifier.fillMaxWidth().height(2.dp)) {
+                val f = (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
+                drawRect(c.content.copy(alpha = 0.12f))
+                drawRect(c.accent, size = androidx.compose.ui.geometry.Size(size.width * f, size.height))
+            }
+        }
+    }
+}
+
+@Composable
+private fun LandscapeControlBar(state: DemoPlayerState, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val docked = style.dock == DockKind.Docked
+    Column(modifier) {
+        if (docked) Hairline()
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(68.dp)
+                .then(if (docked) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome))
+                .padding(start = if (docked) 0.dp else 22.dp, end = if (docked) 0.dp else 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(0.3f)) {
+                Text(
+                    state.title, style = style.type.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true),
+                )
+                Text("${state.artist} · ${state.album}", style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            LikeButton(state.liked, onToggle = { state.liked = !state.liked })
+            SeekBar(state::positionMs, state.durationMs, state.isPlaying, state::seekTo, Modifier.weight(0.7f).padding(horizontal = 8.dp))
+            TransportControls(state, playSize = 48.dp, Modifier.width(260.dp))
         }
     }
 }

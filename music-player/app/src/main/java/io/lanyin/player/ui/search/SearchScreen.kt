@@ -30,6 +30,7 @@ import io.lanyin.player.ui.design.ChoiceRow
 import io.lanyin.player.ui.design.Hairline
 import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.PageTitle
+import io.lanyin.player.ui.design.SurfaceTone
 import io.lanyin.player.ui.design.ThemeMotif
 import io.lanyin.player.ui.design.ThemedIcon
 import io.lanyin.player.ui.design.themedSurface
@@ -79,7 +80,7 @@ private fun SearchField(query: String, onQuery: (String) -> Unit, modifier: Modi
             Modifier
                 .fillMaxWidth()
                 .height(52.dp)
-                .then(if (hairline) Modifier else Modifier.themedSurface(shape = style.chipShape).padding(horizontal = 18.dp)),
+                .then(if (hairline) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Flat).padding(horizontal = 18.dp)),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ThemedIcon(LineIcon.Search, null, tint = c.muted, size = 22.dp)
