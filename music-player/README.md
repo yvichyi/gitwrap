@@ -2,20 +2,33 @@
 
 接入网易云音乐的第三方 Android 播放器：竖屏是常规音乐 App，横过来就是 QQ 音乐风格的横屏播放页。
 
-> 当前进度：**M0 工程骨架**。界面、皮肤和导航可以体验，播放的是假数据，还不能登录或出声。完整路线见 [docs/PLAN.md](docs/PLAN.md)。
+> 当前进度：**M0.5 设计重做**。界面、主题、动效和横屏播放页都可以体验，播放的是假数据，还不能登录或出声。完整路线见 [docs/PLAN.md](docs/PLAN.md)。
 
-| 横屏 · 旋转黑胶 · 澜 | 横屏 · 沉浸歌词 · 墨 |
-|---|---|
-| ![](docs/screenshots/landscape_vinyl_lan_dark.png) | ![](docs/screenshots/landscape_lyrics_mo_dark.png) |
-| **横屏 · 方形封面 · 樱** | **横屏 · 复古卡带 · 暮** |
-| ![](docs/screenshots/landscape_cover_ying_light.png) | ![](docs/screenshots/landscape_cassette_mu_light.png) |
+![五个主题的首页](docs/screenshots/themes-home.jpg)
 
-## 皮肤
+![横屏播放页](docs/screenshots/themes-landscape.jpg)
 
-- **主题皮肤**（整个 App 的配色）：澜（深海蓝，默认）、墨（黑白，深色模式下纯黑省电）、樱、竹、暮，以及 Android 12+ 的「随系统」壁纸取色。每套都有浅色和深色。
-- **播放页皮肤**：旋转黑胶（默认，播放时唱臂落下）、方形封面、沉浸歌词、复古卡带。
+![迷你播放条展开成播放页的过程，以及设置页](docs/screenshots/motion-and-more.jpg)
 
-在首页右上角的 ⚙ → 外观 里切换，设置会保存在本机。
+## 主题
+
+每个主题是一整套视觉语言，不只是换颜色：
+
+| 主题 | 风格 | 卡片 | 进度条 | 播放按钮 | 背景 |
+|---|---|---|---|---|---|
+| **澜**（默认） | 深海、毛玻璃 | 磨砂玻璃、大圆角 | 播放时会起伏的波浪线 | 带色彩光晕的圆 | 漂移的光斑和底部浪涌 |
+| **墨** | 黑白、留白、衬线字 | 零圆角、细线框 | 发丝线 | 线框圆 | 围着唱片的一笔圆相 |
+| **樱** | 粉紫、软糯 | 柔和投影、超大圆角 | 渐变胶囊 | 渐变软方块 | 飘落的花瓣 |
+| **霓** | 赛博霓虹，只有深色 | 切角、霓虹描边 | LED 灯段 | 发光圆环 | 透视网格和扫描线 |
+| **暮** | 七十年代暖色 | 粗描边、硬投影，按下会陷进阴影里 | 斜纹磁带条 | 复古方钮 | 条纹落日和胶片颗粒 |
+
+主题之外，还可以单独选**播放页样式**：旋转黑胶（默认）、方形封面、沉浸歌词、复古卡带。
+
+### 动效
+- 点迷你播放条，它会展开成播放页（容器变形），唱片从缩略图长成大唱片；下拉或系统返回手势会让播放页跟手缩小。
+- 唱片有惯性：播放时加速转起，暂停时慢慢停下；唱臂带回弹落下。
+- 歌词逐行像波浪一样跟上，当前行卡拉 OK 式扫色；可以拖动歌词浏览，松手后自动回到当前行，点某一行跳到那里。
+- 横屏时隐藏系统栏，5 秒不碰就收起控件，只留封面和歌词；右上角按钮可以直接旋转屏幕，也可以在设置里打开「进入播放页时自动横屏」。
 
 ## 编译
 
@@ -26,7 +39,7 @@
 ./gradlew assembleDebug             # → app/build/outputs/apk/debug/app-debug.apk（未压缩，约 60 MB）
 ./gradlew assemblePreview           # → app/build/outputs/apk/preview/app-preview.apk（R8 压缩，约 3 MB，debug 签名，可直接安装）
 ./gradlew testDebugUnitTest         # 单元测试
-./gradlew recordRoborazziDebug      # 在 JVM 上渲染界面截图 → app/build/outputs/roborazzi/
+./gradlew recordRoborazziDebug      # 在 JVM 上渲染五个主题的界面截图 → app/build/outputs/roborazzi/
 ```
 
 如果 Maven Central 限流（HTTP 429），可以改走 Google 的镜像：

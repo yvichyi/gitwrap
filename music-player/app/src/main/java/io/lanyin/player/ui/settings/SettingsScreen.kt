@@ -1,15 +1,14 @@
 package io.lanyin.player.ui.settings
 
-import android.os.Build
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,188 +22,208 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lyrics
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.lanyin.player.data.settings.SettingsRepository
 import io.lanyin.player.data.settings.UiSettings
+import io.lanyin.player.ui.components.pagePadding
+import io.lanyin.player.ui.design.Backdrop
+import io.lanyin.player.ui.design.CoverArt
+import io.lanyin.player.ui.design.IconAction
+import io.lanyin.player.ui.design.SectionTitle
+import io.lanyin.player.ui.design.SurfaceTone
+import io.lanyin.player.ui.design.ThemedChip
+import io.lanyin.player.ui.design.drawPlayPauseGlyph
+import io.lanyin.player.ui.design.pressable
+import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.player.PlayerArtwork
-import io.lanyin.player.ui.theme.AppSkin
+import io.lanyin.player.ui.player.rememberSpinState
+import io.lanyin.player.ui.theme.AppTheme
+import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.ui.theme.LanyinTheme
 import io.lanyin.player.ui.theme.PlayerSkin
 import io.lanyin.player.ui.theme.ThemeMode
-import io.lanyin.player.ui.theme.swatch
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(settings: UiSettings, repository: SettingsRepository, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("外观") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") }
-                },
-            )
-        },
-    ) { padding ->
+    val c = Lanyin.colors
+    CompositionLocalProvider(LocalContentColor provides c.content) {
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            Modifier.fillMaxSize(),
+            contentPadding = pagePadding(withBottomChrome = false, extraTop = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            item { SectionTitle("主题皮肤") }
             item {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(availableAppSkins()) { skin ->
-                        AppSkinSwatch(skin, selected = skin == settings.appSkin) {
-                            scope.launch { repository.setAppSkin(skin) }
+                Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconAction(Icons.AutoMirrored.Filled.ArrowBack, "返回", onBack)
+                    Text("外观与播放", style = MaterialTheme.typography.headlineSmall)
+                }
+            }
+
+            item { SectionTitle("主题", Modifier.padding(horizontal = 20.dp, vertical = 4.dp), trailing = settings.theme.tagline) }
+            item {
+                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    items(AppTheme.entries) { theme ->
+                        ThemeCard(theme, settings.themeMode, selected = theme == settings.theme) {
+                            scope.launch { repository.setTheme(theme) }
                         }
                     }
+                }
+            }
+
+            item { SectionTitle("深浅模式", Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) }
+            item {
+                Column(Modifier.padding(horizontal = 20.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ThemeMode.entries.forEach { mode ->
+                            ThemedChip(mode.label, selected = mode == settings.themeMode, onClick = { scope.launch { repository.setThemeMode(mode) } })
+                        }
+                    }
+                    if (settings.theme.darkOnly) {
+                        Text(
+                            "「${settings.theme.label}」只在夜里亮，始终使用深色。",
+                            style = MaterialTheme.typography.bodySmall, color = c.muted, modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                }
+            }
+
+            item { SectionTitle("播放页样式", Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) }
+            item {
+                val spin = rememberSpinState(running = true)
+                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(PlayerSkin.entries) { skin ->
+                        val selected = skin == settings.playerSkin
+                        Column(
+                            Modifier
+                                .width(132.dp)
+                                .themedSurface(onClick = { scope.launch { repository.setPlayerSkin(skin) } })
+                                .then(if (selected) Modifier.border(2.dp, c.accent, Lanyin.style.cardShape) else Modifier)
+                                .padding(10.dp),
+                        ) {
+                            Box(Modifier.fillMaxWidth().height(108.dp), contentAlignment = Alignment.Center) {
+                                if (skin == PlayerSkin.LYRICS) {
+                                    Icon(Icons.Filled.Lyrics, null, tint = c.accent, modifier = Modifier.size(48.dp))
+                                } else {
+                                    PlayerArtwork(skin, isPlaying = selected, spin = spin, coverSeed = 3, modifier = Modifier.height(104.dp))
+                                }
+                            }
+                            Text(skin.label, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.padding(top = 6.dp))
+                            Text(skin.description, style = MaterialTheme.typography.labelSmall, color = c.muted, minLines = 2, maxLines = 2)
+                        }
+                    }
+                }
+            }
+
+            item { SectionTitle("播放", Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) }
+            item {
+                ToggleRow("打开播放页时自动横屏", "也可以随时点播放页右上角的旋转按钮", settings.autoLandscape) {
+                    scope.launch { repository.setAutoLandscape(it) }
+                }
+            }
+            item {
+                ToggleRow("横屏时保持屏幕常亮", "把手机立在桌上当歌词屏用", settings.keepScreenOnInLandscape) {
+                    scope.launch { repository.setKeepScreenOnInLandscape(it) }
                 }
             }
             item {
                 Text(
-                    settings.appSkin.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    "澜音 0.1 · 界面预览版",
+                    style = MaterialTheme.typography.labelSmall, color = c.muted,
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
                 )
-            }
-
-            item { SectionTitle("深浅模式") }
-            item {
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                    ThemeMode.entries.forEachIndexed { i, mode ->
-                        SegmentedButton(
-                            selected = mode == settings.themeMode,
-                            onClick = { scope.launch { repository.setThemeMode(mode) } },
-                            shape = SegmentedButtonDefaults.itemShape(i, ThemeMode.entries.size),
-                        ) { Text(mode.label) }
-                    }
-                }
-            }
-
-            item { SectionTitle("播放页皮肤") }
-            item {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(PlayerSkin.entries) { skin ->
-                        PlayerSkinCard(skin, selected = skin == settings.playerSkin) {
-                            scope.launch { repository.setPlayerSkin(skin) }
-                        }
-                    }
-                }
             }
         }
     }
 }
 
-private fun availableAppSkins(): List<AppSkin> =
-    AppSkin.entries.filter { it != AppSkin.SYSTEM || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S }
-
+/** A miniature of the app rendered in [theme], so each theme shows its own shapes and backdrop. */
 @Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
-    )
-}
-
-@Composable
-private fun AppSkinSwatch(skin: AppSkin, selected: Boolean, onClick: () -> Unit) {
-    val dark = isSystemInDarkTheme()
-    val fill = if (skin == AppSkin.SYSTEM) {
-        Brush.sweepGradient(listOf(Color(0xFF6FA8FF), Color(0xFFFF8FB1), Color(0xFFFFC56F), Color(0xFF7BD88F), Color(0xFF6FA8FF)))
-    } else {
-        Brush.linearGradient(listOf(skin.swatch(dark), skin.swatch(!dark)))
-    }
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick).padding(4.dp),
-    ) {
+private fun ThemeCard(theme: AppTheme, mode: ThemeMode, selected: Boolean, onClick: () -> Unit) {
+    val outer = Lanyin.colors
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(fill)
-                .border(
-                    width = if (selected) 3.dp else 1.dp,
-                    color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant,
-                    shape = CircleShape,
-                ),
-            contentAlignment = Alignment.Center,
+                .size(128.dp, 196.dp)
+                .border(if (selected) 2.5.dp else 1.dp, if (selected) outer.accent else outer.outline, RoundedCornerShape(22.dp))
+                .padding(5.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .pressable(onClick = onClick),
         ) {
-            if (selected) Icon(Icons.Filled.Check, contentDescription = "已选择", tint = Color.White)
+            LanyinTheme(theme = theme, mode = mode, applySystemBars = false) { ThemeThumbnail() }
         }
-        Text(skin.label, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 6.dp))
+        Text(
+            theme.label,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal),
+            color = if (selected) outer.content else outer.muted,
+            modifier = Modifier.padding(top = 8.dp),
+        )
     }
 }
 
 @Composable
-private fun PlayerSkinCard(skin: PlayerSkin, selected: Boolean, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.width(150.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-        ),
-        border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+private fun ThemeThumbnail() {
+    val style = Lanyin.style
+    val c = style.colors
+    Box(Modifier.fillMaxSize()) {
+        Backdrop(Modifier.fillMaxSize())
+        Column(Modifier.fillMaxSize().padding(10.dp)) {
+            Text("晚上好", style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp), color = c.content)
+            Spacer(Modifier.height(10.dp))
+            CoverArt(3, Modifier.size(54.dp).clip(style.artShape))
+            Spacer(Modifier.height(10.dp))
+            Text("潮水退去以后", style = MaterialTheme.typography.labelMedium.copy(fontFamily = if (style.lyric.serif) style.display else null, fontWeight = FontWeight.Bold), color = c.accent)
+            Text("沙上留着谁的脚印", style = MaterialTheme.typography.labelSmall.copy(fontFamily = if (style.lyric.serif) style.display else null), color = c.content.copy(alpha = 0.5f))
+            Spacer(Modifier.weight(1f))
+            Row(
+                Modifier.fillMaxWidth().height(30.dp).themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome).padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(16.dp).clip(CircleShape).border(3.dp, c.vinyl, CircleShape))
+                Spacer(Modifier.width(6.dp))
+                Box(Modifier.weight(1f).height(3.dp).clip(CircleShape).background(c.content.copy(alpha = 0.2f)))
+                Spacer(Modifier.width(6.dp))
+                Canvas(Modifier.size(9.dp)) { drawPlayPauseGlyph(0f, c.content) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    val c = Lanyin.colors
+    Row(
+        Modifier
+            .padding(horizontal = 20.dp)
+            .fillMaxWidth()
+            .themedSurface(onClick = { onChange(!checked) })
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-            if (skin == PlayerSkin.LYRICS) {
-                Icon(
-                    Icons.Filled.Lyrics,
-                    contentDescription = null,
-                    modifier = Modifier.size(56.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            } else {
-                // The selected skin animates so its motion can be previewed.
-                PlayerArtwork(skin, isPlaying = selected, modifier = Modifier.height(116.dp))
-            }
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = c.muted)
         }
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(skin.label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                if (selected) Icon(Icons.Filled.Check, contentDescription = "已选择", modifier = Modifier.size(18.dp))
-            }
-            Text(
-                skin.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Start,
-                minLines = 2,
-            )
-        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(checkedTrackColor = c.accent, checkedThumbColor = c.onAccent),
+        )
     }
 }

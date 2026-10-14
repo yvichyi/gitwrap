@@ -1,0 +1,425 @@
+package io.lanyin.player.ui.design
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import io.lanyin.player.ui.theme.ButtonKind
+import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.ui.theme.SeekKind
+import kotlin.math.PI
+import kotlin.math.sin
+import kotlinx.coroutines.launch
+
+/** Play/pause whose glyph morphs between the triangle and the two bars. */
+@Composable
+fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val morph by animateFloatAsState(if (playing) 1f else 0f, style.bouncy.spec(), label = "playMorph")
+    val shape = when (style.button) {
+        ButtonKind.Blob -> RoundedCornerShape(38)
+        ButtonKind.Retro -> RoundedCornerShape(30)
+        else -> CircleShape
+    }
+    val glyphColor = when (style.button) {
+        ButtonKind.Outline -> c.content
+        ButtonKind.NeonRing -> c.accent
+        else -> c.onAccent
+    }
+    val container = when (style.button) {
+        ButtonKind.Glow -> Modifier
+            .shadow(size * 0.28f, shape, ambientColor = c.accent, spotColor = c.accent)
+            .clip(shape)
+            .background(c.accent)
+        ButtonKind.Outline -> Modifier.border(1.5.dp, c.content, shape)
+        ButtonKind.Blob -> Modifier
+            .shadow(size * 0.22f, shape, ambientColor = c.accent, spotColor = c.accent)
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(c.accent, c.accentAlt)))
+        ButtonKind.NeonRing -> Modifier
+            .neonGlow(shape, c.accent)
+            .border(2.dp, c.accent, shape)
+        ButtonKind.Retro -> Modifier
+            .retroShadow(shape, c.content, 3.dp)
+            .clip(shape)
+            .background(c.accent)
+            .border(2.dp, c.content, shape)
+    }
+    Box(
+        modifier
+            .size(size)
+            .pressable(onClick = onClick)
+            .then(container),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(size * 0.42f)) {
+            drawPlayPauseGlyph(morph, glyphColor)
+        }
+    }
+}
+
+/** 0 = play triangle, 1 = pause bars; two quads whose corners interpolate. */
+fun DrawScope.drawPlayPauseGlyph(morph: Float, color: Color) {
+    val a = size.minDimension
+    val cx = size.width / 2f
+    val cy = size.height / 2f
+    val top = cy - a / 2f
+    val bottom = cy + a / 2f
+    // Play triangle, nudged right so it looks optically centred.
+    val left = cx - a * 0.36f
+    val right = cx + a * 0.5f
+    val mid = cx + a * 0.07f
+    val midTop = top + (cy - top) * (mid - left) / (right - left)
+    val midBottom = bottom - (bottom - cy) * (mid - left) / (right - left)
+    val play = listOf(
+        listOf(Offset(left, top), Offset(mid, midTop), Offset(mid, midBottom), Offset(left, bottom)),
+        listOf(Offset(mid, midTop), Offset(right, cy), Offset(right, cy), Offset(mid, midBottom)),
+    )
+    val bar = a * 0.32f
+    val pause = listOf(
+        listOf(Offset(cx - a * 0.42f, top), Offset(cx - a * 0.42f + bar, top), Offset(cx - a * 0.42f + bar, bottom), Offset(cx - a * 0.42f, bottom)),
+        listOf(Offset(cx + a * 0.42f - bar, top), Offset(cx + a * 0.42f, top), Offset(cx + a * 0.42f, bottom), Offset(cx + a * 0.42f - bar, bottom)),
+    )
+    for (q in 0..1) {
+        val path = Path()
+        for (p in 0..3) {
+            val from = play[q][p]
+            val to = pause[q][p]
+            val x = from.x + (to.x - from.x) * morph
+            val y = from.y + (to.y - from.y) * morph
+            if (p == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        path.close()
+        drawPath(path, color)
+        // A same-colour stroke rounds the corners.
+        drawPath(path, color, style = Stroke(a * 0.09f, join = StrokeJoin.Round))
+    }
+}
+
+/** Icon with the theme's press feedback; 48dp touch target. */
+@Composable
+fun IconAction(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+    iconSize: Dp = 24.dp,
+) {
+    Box(modifier.size(48.dp).pressable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(icon, contentDescription, tint = tint, modifier = Modifier.size(iconSize))
+    }
+}
+
+/** Heart that pops and throws a ring when liked. */
+@Composable
+fun LikeButton(liked: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val scale = remember { Animatable(1f) }
+    val burst = remember { Animatable(1f) }
+    val scope = rememberCoroutineScope()
+    val color = if (liked) style.colors.like else LocalContentColor.current
+    Box(
+        modifier
+            .size(48.dp)
+            .pressable {
+                val nowLiked = !liked
+                onToggle()
+                scope.launch {
+                    scale.snapTo(0.55f)
+                    scale.animateTo(1f, spring(dampingRatio = 0.32f, stiffness = 520f))
+                }
+                if (nowLiked) scope.launch {
+                    burst.snapTo(0f)
+                    burst.animateTo(1f, tween(480))
+                }
+            }
+            .drawBehind {
+                val b = burst.value
+                if (b < 1f) {
+                    drawCircle(style.colors.like.copy(alpha = 1f - b), radius = size.minDimension * (0.2f + 0.45f * b), style = Stroke(3.dp.toPx() * (1f - b)))
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            if (liked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+            contentDescription = if (liked) "取消喜欢" else "喜欢",
+            tint = color,
+            modifier = Modifier.graphicsLayer { scaleX = scale.value; scaleY = scale.value },
+        )
+    }
+}
+
+fun formatTime(ms: Long): String {
+    val totalSeconds = (ms / 1000).coerceAtLeast(0)
+    return "%d:%02d".format(totalSeconds / 60, totalSeconds % 60)
+}
+
+/**
+ * Time · track · time. The track is drawn per theme and redraws every frame from [position]
+ * without recomposing; tap or drag to seek.
+ */
+@Composable
+fun SeekBar(
+    position: () -> Long,
+    durationMs: Long,
+    playing: Boolean,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val style = Lanyin.style
+    val c = style.colors
+    val clock = rememberFrameClock(playing && style.seek == SeekKind.Wave)
+    val waveAmp by animateFloatAsState(if (playing) 1f else 0f, tween(500), label = "waveAmp")
+    var dragFraction by remember { mutableStateOf<Float?>(null) }
+    val seconds by remember { derivedStateOf { position() / 1000 } }
+    val timeStyle = MaterialTheme.typography.labelMedium.copy(fontFamily = style.numeric, color = c.muted)
+
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        val shown = dragFraction?.let { (it * durationMs).toLong() / 1000 } ?: seconds
+        Text(formatTime(shown * 1000), style = timeStyle)
+        Canvas(
+            Modifier
+                .weight(1f)
+                .height(32.dp)
+                .padding(horizontal = 14.dp)
+                .pointerInput(durationMs) {
+                    detectTapGestures { o -> onSeek((o.x / size.width).coerceIn(0f, 1f).times(durationMs).toLong()) }
+                }
+                .pointerInput(durationMs) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { o -> dragFraction = (o.x / size.width).coerceIn(0f, 1f) },
+                        onDragEnd = {
+                            dragFraction?.let { onSeek((it * durationMs).toLong()) }
+                            dragFraction = null
+                        },
+                        onDragCancel = { dragFraction = null },
+                    ) { change, _ ->
+                        change.consume()
+                        dragFraction = (change.position.x / size.width).coerceIn(0f, 1f)
+                    }
+                },
+        ) {
+            val f = dragFraction ?: (position().toFloat() / durationMs).coerceIn(0f, 1f)
+            when (style.seek) {
+                SeekKind.Wave -> drawWaveTrack(f, c.accent, c.content.copy(alpha = 0.18f), clock.floatValue, waveAmp)
+                SeekKind.Hairline -> drawHairlineTrack(f, c.content)
+                SeekKind.Pill -> drawPillTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
+                SeekKind.Segments -> drawSegmentTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
+                SeekKind.Tape -> drawTapeTrack(f, c.accent, c.content, c.surface)
+            }
+        }
+        Text(formatTime(durationMs), style = timeStyle)
+    }
+}
+
+private fun DrawScope.drawWaveTrack(f: Float, played: Color, rest: Color, t: Float, amp: Float) {
+    val cy = size.height / 2f
+    val x = size.width * f
+    val stroke = 3.dp.toPx()
+    drawLine(rest, Offset(x, cy), Offset(size.width, cy), stroke, StrokeCap.Round)
+    val wavelength = 26.dp.toPx()
+    val a = 3.5.dp.toPx() * amp
+    val path = Path().apply {
+        moveTo(0f, cy)
+        var px = 0f
+        while (px < x) {
+            lineTo(px, cy + a * sin((px / wavelength) * 2f * PI.toFloat() - t * 7f))
+            px += 2f
+        }
+        lineTo(x, cy + a * sin((x / wavelength) * 2f * PI.toFloat() - t * 7f))
+    }
+    drawPath(path, played, style = Stroke(stroke, cap = StrokeCap.Round))
+    drawRoundRect(played, Offset(x - 2.dp.toPx(), cy - 9.dp.toPx()), Size(4.dp.toPx(), 18.dp.toPx()), CornerRadius(2.dp.toPx()))
+}
+
+private fun DrawScope.drawHairlineTrack(f: Float, ink: Color) {
+    val cy = size.height / 2f
+    val x = size.width * f
+    drawLine(ink.copy(alpha = 0.2f), Offset(0f, cy), Offset(size.width, cy), 1.dp.toPx())
+    drawLine(ink, Offset(0f, cy), Offset(x, cy), 1.5.dp.toPx())
+    drawCircle(ink, 3.5.dp.toPx(), Offset(x, cy))
+}
+
+private fun DrawScope.drawPillTrack(f: Float, a: Color, b: Color, rest: Color) {
+    val h = 6.dp.toPx()
+    val top = (size.height - h) / 2f
+    val x = size.width * f
+    drawRoundRect(rest, Offset(0f, top), Size(size.width, h), CornerRadius(h / 2))
+    drawRoundRect(Brush.horizontalGradient(listOf(a, b), 0f, size.width), Offset(0f, top), Size(x.coerceAtLeast(h), h), CornerRadius(h / 2))
+    drawCircle(Color.Black.copy(alpha = 0.12f), 10.dp.toPx(), Offset(x, size.height / 2f + 1.5.dp.toPx()))
+    drawCircle(Color.White, 9.dp.toPx(), Offset(x, size.height / 2f))
+    drawCircle(a, 9.dp.toPx(), Offset(x, size.height / 2f), style = Stroke(2.5.dp.toPx()))
+}
+
+private fun DrawScope.drawSegmentTrack(f: Float, lit: Color, head: Color, dim: Color) {
+    val segW = 3.dp.toPx()
+    val gap = 3.dp.toPx()
+    val h = 12.dp.toPx()
+    val top = (size.height - h) / 2f
+    val n = (size.width / (segW + gap)).toInt().coerceAtLeast(1)
+    val litCount = (f * n).toInt()
+    for (i in 0 until n) {
+        val x = i * (segW + gap)
+        when {
+            i < litCount -> {
+                drawRect(lit.copy(alpha = 0.22f), Offset(x - 1.5.dp.toPx(), top - 3.dp.toPx()), Size(segW + 3.dp.toPx(), h + 6.dp.toPx()))
+                drawRect(lit, Offset(x, top), Size(segW, h))
+            }
+            i == litCount -> {
+                drawRect(head.copy(alpha = 0.3f), Offset(x - 2.dp.toPx(), top - 5.dp.toPx()), Size(segW + 4.dp.toPx(), h + 10.dp.toPx()))
+                drawRect(head, Offset(x, top - 2.dp.toPx()), Size(segW, h + 4.dp.toPx()))
+            }
+            else -> drawRect(dim, Offset(x, top + h * 0.3f), Size(segW, h * 0.4f))
+        }
+    }
+}
+
+private fun DrawScope.drawTapeTrack(f: Float, fill: Color, ink: Color, paper: Color) {
+    val h = 12.dp.toPx()
+    val top = (size.height - h) / 2f
+    val r = CornerRadius(h / 2)
+    val x = size.width * f
+    drawRoundRect(paper, Offset(0f, top), Size(size.width, h), r)
+    clipRect(right = x) {
+        drawRoundRect(fill, Offset(0f, top), Size(size.width, h), r)
+        // Barber-pole stripes across the played part.
+        var sx = -h
+        while (sx < x + h) {
+            drawLine(ink.copy(alpha = 0.18f), Offset(sx, top + h), Offset(sx + h, top), 2.dp.toPx())
+            sx += 7.dp.toPx()
+        }
+    }
+    drawRoundRect(ink, Offset(0f, top), Size(size.width, h), r, style = Stroke(2.dp.toPx()))
+    val knob = 18.dp.toPx()
+    val kx = (x - knob / 2).coerceIn(0f, size.width - knob)
+    val ky = (size.height - knob) / 2f
+    drawRoundRect(ink, Offset(kx + 2.dp.toPx(), ky + 2.dp.toPx()), Size(knob, knob), CornerRadius(5.dp.toPx()))
+    drawRoundRect(paper, Offset(kx, ky), Size(knob, knob), CornerRadius(5.dp.toPx()))
+    drawRoundRect(ink, Offset(kx, ky), Size(knob, knob), CornerRadius(5.dp.toPx()), style = Stroke(2.dp.toPx()))
+}
+
+/** Selectable chip in the theme's chip shape. */
+@Composable
+fun ThemedChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val shape = style.chipShape
+    val fill by animateFloatAsState(if (selected) 1f else 0f, style.motion.spec(), label = "chip")
+    Box(
+        modifier
+            .pressable(onClick = onClick)
+            .then(if (style.button == ButtonKind.Retro && selected) Modifier.retroShadow(shape, c.content, 2.dp) else Modifier)
+            .clip(shape)
+            .background(c.accent.copy(alpha = fill * (if (style.button == ButtonKind.NeonRing) 0.16f else 1f)))
+            .border(if (selected || style.button != ButtonKind.Glow) 1.dp else 0.dp, if (selected) c.accent else c.outline, shape)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        val onFill = if (style.button == ButtonKind.NeonRing) c.accent else c.onAccent
+        Text(
+            text,
+            style = MaterialTheme.typography.labelLarge,
+            color = androidx.compose.ui.graphics.lerp(c.content, onFill, fill),
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+        )
+    }
+}
+
+/** Primary action in the theme's accent treatment. */
+@Composable
+fun ThemedButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    val style = Lanyin.style
+    val c = style.colors
+    Box(
+        modifier
+            .themedSurface(shape = style.chipShape, tone = SurfaceTone.Accent, onClick = if (enabled) onClick else null)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.45f }
+            .padding(horizontal = 22.dp, vertical = 11.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = if (style.button == ButtonKind.NeonRing) c.accent else c.onAccent,
+        )
+    }
+}
+
+@Composable
+fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String? = null) {
+    val style = Lanyin.style
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(title, style = MaterialTheme.typography.titleLarge, color = style.colors.content)
+        if (trailing != null) {
+            Text(trailing, style = MaterialTheme.typography.labelMedium, color = style.colors.muted)
+        }
+    }
+}
+
+/** Big page title in the theme's display face. */
+@Composable
+fun PageTitle(title: String, modifier: Modifier = Modifier, subtitle: String? = null) {
+    val style = Lanyin.style
+    androidx.compose.foundation.layout.Column(modifier) {
+        Text(
+            title,
+            style = MaterialTheme.typography.displaySmall.merge(TextStyle(color = style.colors.content)),
+        )
+        if (subtitle != null) {
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = style.colors.muted, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}

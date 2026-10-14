@@ -1,318 +1,406 @@
 package io.lanyin.player.ui.player
 
+import android.app.Activity
 import android.content.res.Configuration
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.ScreenRotation
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import io.lanyin.player.ui.design.Backdrop
+import io.lanyin.player.ui.design.IconAction
+import io.lanyin.player.ui.design.LikeButton
+import io.lanyin.player.ui.design.LocalOrientationController
+import io.lanyin.player.ui.design.PlayPauseButton
+import io.lanyin.player.ui.design.SeekBar
+import io.lanyin.player.ui.design.pressable
+import io.lanyin.player.ui.design.sharedPlayer
+import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.PlayerSkin
-import kotlin.math.abs
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun PlayerScreen(
     state: DemoPlayerState,
     skin: PlayerSkin,
+    spin: SpinState,
+    keepScreenOnInLandscape: Boolean,
     onCollapse: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val c = MaterialTheme.colorScheme
-    // No Surface here (the background is a gradient), so set the content colour explicitly.
-    CompositionLocalProvider(LocalContentColor provides c.onSurface) {
+    val style = Lanyin.style
+    val c = style.colors
+    val orientation = LocalOrientationController.current
+    val scope = rememberCoroutineScope()
+    val view = LocalView.current
+
+    // 0 = resting, 1 = fully pulled away; driven by drag-down and predictive back.
+    var dismiss by remember { mutableFloatStateOf(0f) }
+    PredictiveBackHandler { progress ->
+        try {
+            progress.collect { dismiss = it.progress * 0.5f }
+            onCollapse()
+        } catch (e: CancellationException) {
+            scope.launch { animate(dismiss, 0f, animationSpec = style.motion.spec()) { v, _ -> dismiss = v } }
+            throw e
+        }
+    }
+    val dismissDrag = Modifier.pointerInput(Unit) {
+        detectVerticalDragGestures(
+            onDragEnd = {
+                if (dismiss > 0.22f) onCollapse()
+                else scope.launch { animate(dismiss, 0f, animationSpec = style.motion.spec()) { v, _ -> dismiss = v } }
+            },
+        ) { change, dy ->
+            change.consume()
+            dismiss = (dismiss + dy / (size.height * 1.2f)).coerceIn(0f, 1f)
+        }
+    }
+
+    // Landscape is a stage: hide system bars, keep the screen on, fade the chrome when idle.
+    DisposableEffect(landscape) {
+        val window = (view.context as? Activity)?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        if (landscape && controller != null) {
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        }
+        onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
+    }
+    DisposableEffect(landscape, keepScreenOnInLandscape) {
+        view.keepScreenOn = landscape && keepScreenOnInLandscape
+        onDispose { view.keepScreenOn = false }
+    }
+    var touches by remember { mutableIntStateOf(0) }
+    var chromeVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(landscape, touches) {
+        chromeVisible = true
+        if (landscape) {
+            delay(5_000)
+            chromeVisible = false
+        }
+    }
+
+    val onRotate = { if (landscape) orientation.lockPortrait() else orientation.lockLandscape() }
+
+    CompositionLocalProvider(LocalContentColor provides c.content) {
         Box(
-            Modifier
+            modifier
                 .fillMaxSize()
-                // Stand-in for M4's cover-derived flowing background.
-                .background(Brush.verticalGradient(listOf(c.primaryContainer, c.surface, c.surface)))
-                .safeDrawingPadding(),
+                .sharedPlayer("player-container", container = true)
+                .graphicsLayer {
+                    val p = dismiss
+                    val s = 1f - 0.1f * p
+                    scaleX = s
+                    scaleY = s
+                    translationY = p * 96.dp.toPx()
+                    shape = RoundedCornerShape(36.dp * p)
+                    clip = p > 0f
+                }
+                .background(c.bg)
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            if (event.type == PointerEventType.Press) touches++
+                        }
+                    }
+                },
         ) {
-            if (landscape) LandscapePlayer(state, skin, onCollapse) else PortraitPlayer(state, skin, onCollapse)
+            Backdrop(Modifier.matchParentSize(), live = true, playing = state.isPlaying)
+            if (landscape) {
+                LandscapePlayer(state, skin, spin, chromeVisible, dismissDrag, onCollapse, onRotate)
+            } else {
+                PortraitPlayer(state, skin, spin, dismissDrag, onCollapse, onRotate)
+            }
         }
     }
 }
 
-/**
- * QQ 音乐-style landscape page: artwork, title and transport on the left, a full-height lyric
- * column on the right, one slim seek bar along the bottom. Height is the scarce dimension here.
- */
 @Composable
-private fun LandscapePlayer(state: DemoPlayerState, skin: PlayerSkin, onCollapse: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
-        PlayerTopBar(onCollapse)
+private fun PortraitPlayer(
+    state: DemoPlayerState,
+    skin: PlayerSkin,
+    spin: SpinState,
+    dismissDrag: Modifier,
+    onCollapse: () -> Unit,
+    onRotate: () -> Unit,
+) {
+    var showLyrics by rememberSaveable { mutableStateOf(false) }
+    val lyricsOnly = skin == PlayerSkin.LYRICS || showLyrics
+    Column(
+        Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 24.dp),
+    ) {
+        PlayerTopBar(
+            landscape = false, onCollapse = onCollapse, onRotate = onRotate,
+            onToggleLyrics = if (skin == PlayerSkin.LYRICS) null else ({ showLyrics = !showLyrics }),
+            lyricsShown = lyricsOnly, modifier = dismissDrag,
+        )
+        AnimatedContent(
+            targetState = lyricsOnly,
+            transitionSpec = { (fadeIn(tween(260)) + scaleIn(initialScale = 0.96f)) togetherWith (fadeOut(tween(160)) + scaleOut(targetScale = 1.02f)) },
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            label = "artOrLyrics",
+        ) { lyrics ->
+            if (lyrics) {
+                LyricsView(
+                    lines = state.lyrics, currentIndex = state.currentLyricIndex, progress = state::lineProgress,
+                    onSeek = state::seekTo, textStyle = MaterialTheme.typography.headlineSmall.copy(fontSize = 26.sp, lineHeight = 34.sp),
+                    modifier = Modifier.fillMaxSize(), anchorFraction = 0.4f,
+                )
+            } else {
+                Box(Modifier.fillMaxSize().then(dismissDrag), contentAlignment = Alignment.Center) {
+                    PlayerArtwork(
+                        skin, state.isPlaying, spin, state.coverSeed,
+                        Modifier
+                            .fillMaxWidth()
+                            .sharedPlayer("artwork", zIndex = 1f)
+                            .pressable { showLyrics = true },
+                    )
+                }
+            }
+        }
+        if (!lyricsOnly) CurrentLine(state, Modifier.fillMaxWidth().padding(vertical = 12.dp))
+        TrackTitle(state, Modifier.padding(top = 8.dp))
+        SeekBar(state::positionMs, state.durationMs, state.isPlaying, state::seekTo, Modifier.padding(top = 10.dp))
+        TransportControls(state, playSize = 72.dp, Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 18.dp))
+    }
+}
+
+@Composable
+private fun LandscapePlayer(
+    state: DemoPlayerState,
+    skin: PlayerSkin,
+    spin: SpinState,
+    chromeVisible: Boolean,
+    dismissDrag: Modifier,
+    onCollapse: () -> Unit,
+    onRotate: () -> Unit,
+) {
+    val lyricStyle = MaterialTheme.typography.headlineSmall.copy(fontSize = 28.sp, lineHeight = 36.sp)
+    Column(
+        Modifier
+            .fillMaxSize()
+            .displayCutoutPadding()
+            .padding(horizontal = 28.dp, vertical = 10.dp),
+    ) {
+        AnimatedVisibility(chromeVisible, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+            PlayerTopBar(landscape = true, onCollapse = onCollapse, onRotate = onRotate, onToggleLyrics = null, lyricsShown = true, modifier = dismissDrag)
+        }
         Row(Modifier.weight(1f).fillMaxWidth()) {
             if (skin == PlayerSkin.LYRICS) {
                 Column(Modifier.fillMaxSize()) {
-                    LyricsPanel(state, centered = true, modifier = Modifier.weight(1f).fillMaxWidth())
+                    LyricsView(
+                        state.lyrics, state.currentLyricIndex, state::lineProgress, state::seekTo,
+                        textStyle = lyricStyle.copy(fontSize = 32.sp, lineHeight = 42.sp),
+                        modifier = Modifier.weight(1f).fillMaxWidth(), centered = true, anchorFraction = 0.42f,
+                    )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TrackTitle(state, Modifier.weight(1f))
-                        TransportControls(state, playSize = 48.dp, Modifier.width(320.dp))
+                        AnimatedVisibility(chromeVisible) { TransportControls(state, playSize = 52.dp, Modifier.widthIn(max = 340.dp)) }
                     }
                 }
             } else {
-                Column(
-                    Modifier.weight(0.42f).fillMaxHeight(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        PlayerArtwork(skin, state.isPlaying, Modifier.fillMaxHeight())
+                Column(Modifier.weight(0.42f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.weight(1f).fillMaxWidth().then(dismissDrag), contentAlignment = Alignment.Center) {
+                        PlayerArtwork(skin, state.isPlaying, spin, state.coverSeed, Modifier.fillMaxHeight().sharedPlayer("artwork", zIndex = 1f))
                     }
-                    TrackTitle(state, Modifier.fillMaxWidth().padding(horizontal = 8.dp))
-                    TransportControls(state, playSize = 48.dp, Modifier.fillMaxWidth())
+                    TrackTitle(state, Modifier.fillMaxWidth())
+                    AnimatedVisibility(chromeVisible, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                        TransportControls(state, playSize = 52.dp, Modifier.fillMaxWidth())
+                    }
                 }
-                Spacer(Modifier.width(32.dp))
-                LyricsPanel(state, centered = false, modifier = Modifier.weight(0.58f).fillMaxHeight())
+                Spacer(Modifier.width(36.dp))
+                LyricsView(
+                    state.lyrics, state.currentLyricIndex, state::lineProgress, state::seekTo,
+                    textStyle = lyricStyle, modifier = Modifier.weight(0.58f).fillMaxHeight(),
+                )
             }
         }
-        SeekBar(state, Modifier.padding(bottom = 4.dp))
+        AnimatedVisibility(chromeVisible, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+            SeekBar(state::positionMs, state.durationMs, state.isPlaying, state::seekTo)
+        }
     }
 }
 
 @Composable
-private fun PortraitPlayer(state: DemoPlayerState, skin: PlayerSkin, onCollapse: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 8.dp)) {
-        PlayerTopBar(onCollapse)
-        if (skin == PlayerSkin.LYRICS) {
-            LyricsPanel(state, centered = true, modifier = Modifier.weight(1f).fillMaxWidth())
-        } else {
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                PlayerArtwork(skin, state.isPlaying, Modifier.fillMaxWidth())
-            }
-            CurrentLyricLine(state, Modifier.fillMaxWidth().padding(vertical = 16.dp))
-        }
-        TrackTitle(state)
-        Spacer(Modifier.height(8.dp))
-        SeekBar(state)
-        TransportControls(state, playSize = 64.dp, Modifier.fillMaxWidth().padding(vertical = 12.dp))
-    }
-}
-
-@Composable
-private fun PlayerTopBar(onCollapse: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onCollapse) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "收起") }
+private fun PlayerTopBar(
+    landscape: Boolean,
+    onCollapse: () -> Unit,
+    onRotate: () -> Unit,
+    onToggleLyrics: (() -> Unit)?,
+    lyricsShown: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val style = Lanyin.style
+    val c = style.colors
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        IconAction(Icons.Filled.KeyboardArrowDown, "收起", onCollapse, iconSize = 30.dp)
         Spacer(Modifier.weight(1f))
         Text(
-            "无损 · 演示",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            "无损",
+            style = MaterialTheme.typography.labelMedium.copy(fontFamily = style.numeric, fontWeight = FontWeight.SemiBold),
+            color = c.accent,
+            modifier = Modifier
+                .clip(style.chipShape)
+                .border(1.dp, c.accent.copy(alpha = 0.6f), style.chipShape)
+                .padding(horizontal = 10.dp, vertical = 3.dp),
         )
-        IconButton(onClick = {}) { Icon(Icons.Filled.MoreHoriz, contentDescription = "更多") }
+        Spacer(Modifier.width(4.dp))
+        if (onToggleLyrics != null) {
+            IconAction(Icons.Filled.Lyrics, if (lyricsShown) "显示封面" else "显示歌词", onToggleLyrics, tint = if (lyricsShown) c.accent else c.content)
+        }
+        IconAction(Icons.Filled.ScreenRotation, if (landscape) "切换到竖屏" else "切换到横屏", onRotate)
+        IconAction(Icons.Filled.MoreHoriz, "更多", {})
     }
 }
 
 @Composable
 private fun TrackTitle(state: DemoPlayerState, modifier: Modifier = Modifier) {
+    val c = Lanyin.colors
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(
                 state.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true),
             )
             Text(
                 "${state.artist} · ${state.album}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = c.muted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        IconButton(onClick = {}) { Icon(Icons.Filled.FavoriteBorder, contentDescription = "喜欢") }
+        LikeButton(state.liked, onToggle = { state.liked = !state.liked })
     }
 }
 
 @Composable
-private fun CurrentLyricLine(state: DemoPlayerState, modifier: Modifier = Modifier) {
-    val (line, translation) = state.lyrics[state.currentLyricIndex]
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(line, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-        Text(translation, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-/** Scrolling lyric list; the real word-by-word (YRC) renderer replaces this in M4. */
-@Composable
-private fun LyricsPanel(state: DemoPlayerState, centered: Boolean, modifier: Modifier = Modifier) {
-    val listState = rememberLazyListState()
-    val current = state.currentLyricIndex
-    BoxWithConstraints(modifier) {
-        val padding = maxHeight / 2
-        // The active line rests 40% of the way down, leaving room for what's coming next.
-        val anchorPx = with(LocalDensity.current) { (maxHeight * 0.4f).roundToPx() }
-        LaunchedEffect(current, anchorPx) {
-            listState.animateScrollToItem(index = current + 1, scrollOffset = -anchorPx)
-        }
-        LazyColumn(
-            Modifier
-                .fillMaxSize()
-                // Fade lines out at the top and bottom edges instead of clipping them.
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                .drawWithContent {
-                    drawContent()
-                    drawRect(
-                        Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            0.18f to Color.Black,
-                            0.82f to Color.Black,
-                            1f to Color.Transparent,
-                        ),
-                        blendMode = BlendMode.DstIn,
-                    )
-                },
-            state = listState,
-            horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            item { Spacer(Modifier.height(padding)) }
-            itemsIndexed(state.lyrics) { index, (line, translation) ->
-                LyricLine(
-                    line = line,
-                    translation = translation,
-                    distance = abs(index - current),
-                    centered = centered,
-                    onClick = { state.seekTo(index * DemoPlayerState.LYRIC_STEP_MS) },
-                )
-            }
-            item { Spacer(Modifier.height(padding)) }
-        }
-    }
-}
-
-@Composable
-private fun LyricLine(line: String, translation: String, distance: Int, centered: Boolean, onClick: () -> Unit) {
-    val active = distance == 0
-    val color by animateColorAsState(
-        if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-        label = "lyricColor",
-    )
-    val scale by animateFloatAsState(if (active) 1.08f else 1f, label = "lyricScale")
-    // Neighbouring lines stay sharp; only lines two or more away soften (no-op below Android 12).
-    val blur: Dp = ((distance - 1).coerceIn(0, 3) * 0.6f).dp
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                transformOrigin = TransformOrigin(if (centered) 0.5f else 0f, 0.5f)
-            }
-            .blur(blur),
-        horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
-    ) {
-        Text(
-            line,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-            color = color,
-            textAlign = if (centered) TextAlign.Center else TextAlign.Start,
-        )
-        Text(
-            translation,
-            style = MaterialTheme.typography.bodyMedium,
-            color = color.copy(alpha = color.alpha * 0.75f),
-        )
-    }
-}
-
-/** Time · slim track · time, on one row. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SeekBar(state: DemoPlayerState, modifier: Modifier = Modifier) {
-    val c = MaterialTheme.colorScheme
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(formatTime(state.positionMs), style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
-        Slider(
-            value = state.positionMs.toFloat(),
-            onValueChange = { state.seekTo(it.toLong()) },
-            valueRange = 0f..state.durationMs.toFloat(),
-            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-            thumb = { Box(Modifier.size(12.dp).background(c.primary, CircleShape)) },
-            track = { sliderState ->
-                SliderDefaults.Track(
-                    sliderState = sliderState,
-                    modifier = Modifier.height(4.dp),
-                    drawStopIndicator = null,
-                    thumbTrackGapSize = 0.dp,
-                )
-            },
-        )
-        Text(formatTime(state.durationMs), style = MaterialTheme.typography.labelSmall, color = c.onSurfaceVariant)
+private fun CurrentLine(state: DemoPlayerState, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val line = state.lyrics[state.currentLyricIndex]
+    AnimatedContent(
+        targetState = line,
+        transitionSpec = {
+            (fadeIn(tween(220)) + androidx.compose.animation.slideInVertically { it / 2 }) togetherWith
+                (fadeOut(tween(140)) + androidx.compose.animation.slideOutVertically { -it / 2 })
+        },
+        modifier = modifier.height(48.dp),
+        contentAlignment = Alignment.Center,
+        label = "currentLine",
+    ) { l ->
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { SweepText(
+            text = l.text,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontFamily = if (style.lyric.serif) style.display else MaterialTheme.typography.titleMedium.fontFamily,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            baseColor = c.content.copy(alpha = 0.45f),
+            sweepColor = c.accent,
+            progress = if (l == state.lyrics[state.currentLyricIndex]) state::lineProgress else null,
+            glow = if (style.lyric.glow) c.accent else null,
+        ) }
     }
 }
 
 @Composable
 private fun TransportControls(state: DemoPlayerState, playSize: Dp, modifier: Modifier = Modifier) {
-    Row(modifier, horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = {}) { Icon(Icons.Filled.Repeat, contentDescription = "播放模式") }
-        IconButton(onClick = { state.seekTo(0) }) { Icon(Icons.Filled.SkipPrevious, contentDescription = "上一首") }
-        FilledIconButton(onClick = state::togglePlay, modifier = Modifier.size(playSize)) {
-            Icon(
-                if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                contentDescription = if (state.isPlaying) "暂停" else "播放",
-                modifier = Modifier.size(playSize * 0.55f),
+    val c = Lanyin.colors
+    Row(modifier, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        AnimatedContent(state.playMode, label = "playMode", transitionSpec = { fadeIn() togetherWith fadeOut() }) { mode ->
+            IconAction(
+                when (mode) {
+                    PlayMode.REPEAT_ALL -> Icons.Filled.Repeat
+                    PlayMode.REPEAT_ONE -> Icons.Filled.RepeatOne
+                    PlayMode.SHUFFLE -> Icons.Filled.Shuffle
+                },
+                mode.label, state::cyclePlayMode, tint = c.muted,
             )
         }
-        IconButton(onClick = { state.seekTo(state.durationMs) }) { Icon(Icons.Filled.SkipNext, contentDescription = "下一首") }
-        IconButton(onClick = {}) { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "播放队列") }
+        IconAction(Icons.Filled.SkipPrevious, "上一首", { state.seekTo(0) }, iconSize = 34.dp)
+        PlayPauseButton(state.isPlaying, state::togglePlay, playSize)
+        IconAction(Icons.Filled.SkipNext, "下一首", { state.seekTo(state.durationMs) }, iconSize = 34.dp)
+        IconAction(Icons.AutoMirrored.Filled.QueueMusic, "播放队列", {}, tint = c.muted)
     }
 }
