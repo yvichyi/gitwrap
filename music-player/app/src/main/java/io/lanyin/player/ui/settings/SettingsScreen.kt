@@ -49,6 +49,7 @@ import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.player.PlayerArtwork
 import io.lanyin.player.ui.player.rememberSpinState
+import io.lanyin.player.ui.home.greeting
 import io.lanyin.player.ui.theme.AppTheme
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
@@ -184,7 +185,7 @@ private fun ThemeThumbnail() {
     Box(Modifier.fillMaxSize()) {
         Backdrop(Modifier.fillMaxSize())
         Column(Modifier.fillMaxSize().padding(10.dp)) {
-            Text("晚上好", style = style.type.display.copy(fontSize = 16.sp, lineHeight = 20.sp), color = c.content)
+            Text(greeting(java.time.LocalTime.now().hour), style = style.type.display.copy(fontSize = 16.sp, lineHeight = 20.sp), color = c.content)
             Spacer(Modifier.height(12.dp))
             CoverArt(3, Modifier.size(54.dp).clip(style.artShape))
             Spacer(Modifier.height(10.dp))

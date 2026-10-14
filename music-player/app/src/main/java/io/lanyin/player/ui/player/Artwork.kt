@@ -60,7 +60,7 @@ fun VinylRecord(isPlaying: Boolean, spin: SpinState, coverSeed: Int, modifier: M
                 EdgeKind.Glow -> for ((w, a) in listOf(18f to 0.06f, 10f to 0.12f, 4f to 0.3f)) {
                     drawCircle(style.colors.accent.copy(alpha = a), r + w.dp.toPx() / 2, style = Stroke(w.dp.toPx()))
                 }
-                EdgeKind.Retro -> drawCircle(style.colors.content, r, center + Offset(5.dp.toPx(), 5.dp.toPx()))
+                EdgeKind.Retro -> drawCircle(style.colors.outline, r, center + Offset(5.dp.toPx(), 5.dp.toPx()))
                 EdgeKind.Hairline -> Unit
                 else -> drawCircle(Brush.radialGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent), center, r * 1.12f), r * 1.12f)
             }
@@ -73,7 +73,7 @@ fun VinylRecord(isPlaying: Boolean, spin: SpinState, coverSeed: Int, modifier: M
 private fun DrawScope.drawRecord(style: LanyinStyle, r: Float, coverSeed: Int) {
     val c = style.colors
     drawCircle(c.vinyl, r)
-    if (style.edge == EdgeKind.Retro) drawCircle(c.content, r, style = Stroke(2.dp.toPx()))
+    if (style.edge == EdgeKind.Retro) drawCircle(c.outline, r, style = Stroke(2.dp.toPx()))
     if (style.edge == EdgeKind.Hairline && style.dark) drawCircle(c.content.copy(alpha = 0.28f), r - 0.5.dp.toPx(), style = Stroke(1.dp.toPx()))
     val groove = if (style.edge == EdgeKind.Glow) c.accent else Color.White
     for (i in 1..16) {
@@ -145,7 +145,7 @@ fun SquareCover(isPlaying: Boolean, coverSeed: Int, modifier: Modifier = Modifie
     val scale by animateFloatAsState(if (isPlaying) 1f else 0.86f, style.bouncy.spec(), label = "coverScale")
     val shape = style.artShape
     val frame = when (style.edge) {
-        EdgeKind.Retro -> Modifier.retroShadow(shape, c.content, 6.dp).clip(shape).border(2.dp, c.content, shape)
+        EdgeKind.Retro -> Modifier.retroShadow(shape, c.outline, 6.dp).clip(shape).border(2.dp, c.outline, shape)
         EdgeKind.Glow -> Modifier.neonGlow(shape, c.accent).clip(shape).border(1.dp, c.accent, shape)
         EdgeKind.Hairline -> Modifier.clip(shape).border(1.dp, c.outline, shape)
         else -> Modifier.shadow(28.dp, shape, ambientColor = c.accent, spotColor = Color.Black).clip(shape)
@@ -168,9 +168,9 @@ fun Cassette(spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier) {
         val w = size.width
         val h = size.height
         val corner = CornerRadius(h * 0.07f)
-        if (style.edge == EdgeKind.Retro) drawRoundRect(c.content, Offset(5.dp.toPx(), 5.dp.toPx()), size, corner)
+        if (style.edge == EdgeKind.Retro) drawRoundRect(c.outline, Offset(5.dp.toPx(), 5.dp.toPx()), size, corner)
         drawRoundRect(c.surfaceAlt, cornerRadius = corner)
-        drawRoundRect(c.content.copy(alpha = if (style.edge == EdgeKind.Retro) 1f else 0.3f), cornerRadius = corner, style = Stroke(2.dp.toPx()))
+        drawRoundRect(if (style.edge == EdgeKind.Retro) c.outline else c.content.copy(alpha = 0.3f), cornerRadius = corner, style = Stroke(2.dp.toPx()))
         // A real tape label: paper, two colour bands, a line to write the title on.
         val labelTopLeft = Offset(w * 0.07f, h * 0.08f)
         val labelSize = Size(w * 0.86f, h * 0.56f)

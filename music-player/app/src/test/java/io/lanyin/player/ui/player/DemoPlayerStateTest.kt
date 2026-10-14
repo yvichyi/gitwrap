@@ -30,15 +30,68 @@ class DemoPlayerStateTest {
     }
 
     @Test
-    fun `playback loops at the end and seeking clamps`() {
+    fun `the end of a track moves on, or repeats in single-track mode, and seeking clamps`() {
         val state = DemoPlayerState()
         state.seekTo(state.durationMs - 10)
         state.advance(50)
+        assertEquals(1, state.index)
         assertEquals(0L, state.positionMs)
+
+        while (state.playMode != PlayMode.REPEAT_ONE) state.cyclePlayMode()
+        state.seekTo(state.durationMs - 10)
+        state.advance(50)
+        assertEquals(1, state.index)
+        assertEquals(0L, state.positionMs)
+
         state.seekTo(-5)
         assertEquals(0L, state.positionMs)
         state.seekTo(Long.MAX_VALUE)
         assertEquals(state.durationMs, state.positionMs)
+    }
+
+    @Test
+    fun `skipping wraps round the queue and remembers the direction`() {
+        val state = DemoPlayerState()
+        state.skipPrevious()
+        assertEquals(state.queue.lastIndex, state.index)
+        assertEquals(-1, state.skipDirection)
+        state.skipNext()
+        assertEquals(0, state.index)
+        assertEquals(1, state.skipDirection)
+        assertEquals(state.queue[1], state.next)
+    }
+
+    @Test
+    fun `previous restarts a song under way, unless asked to always change track`() {
+        val state = DemoPlayerState()
+        state.skipNext()
+        state.seekTo(10_000)
+        state.skipPrevious()
+        assertEquals(1, state.index)
+        assertEquals(0L, state.positionMs)
+        state.seekTo(10_000)
+        state.skipPrevious(restartFirst = false)
+        assertEquals(0, state.index)
+    }
+
+    @Test
+    fun `an instrumental has no current line and no sweep`() {
+        val state = DemoPlayerState()
+        while (state.lyrics.isNotEmpty()) state.skipNext()
+        state.seekTo(5_000)
+        assertEquals(null, state.currentLine)
+        assertEquals(0f, state.lineProgress(), 0f)
+    }
+
+    @Test
+    fun `a swipe skips when it travels far enough or is flung the same way`() {
+        val width = 1000f
+        assertEquals(false, isSkip(0f, 5_000f, width))
+        assertEquals(false, isSkip(-200f, 0f, width))
+        assertEquals(true, isSkip(-300f, 0f, width))
+        assertEquals(true, isSkip(-80f, -2_000f, width))
+        // Flung back the other way: no skip.
+        assertEquals(false, isSkip(-80f, 2_000f, width))
     }
 
     @Test

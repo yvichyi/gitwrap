@@ -63,7 +63,8 @@ class ScreenshotTest {
         compose.onRoot().captureRoboImage("build/outputs/roborazzi/$name.png")
     }
 
-    private fun playingAt(ms: Long) = DemoPlayerState().apply {
+    private fun playingAt(ms: Long, track: Int = 0) = DemoPlayerState().apply {
+        repeat(track) { skipNext() }
         togglePlay()
         seekTo(ms)
     }
@@ -174,6 +175,17 @@ class ScreenshotTest {
     @Config(qualifiers = LANDSCAPE)
     @Test fun land_tide_light_paused() =
         capture("land_tide_light_paused", AppTheme.TIDE, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL, DemoPlayerState()) }
+
+    // Real-data edge cases: an instrumental and a track whose title, artist and lyrics are long.
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun land_ink_light_instrumental() = capture("land_ink_light_instrumental", AppTheme.INK, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL, playingAt(8_000, track = 1)) }
+
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun land_tide_dark_long() = capture("land_tide_dark_long", AppTheme.TIDE, ThemeMode.DARK) { Player(PlayerSkin.VINYL, playingAt(6_000, track = 3)) }
+
+    @Test fun port_dusk_dark_long() = capture("port_dusk_dark_long", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.VINYL, playingAt(6_000, track = 3)) }
+
+    @Test fun port_sakura_light_instrumental() = capture("port_sakura_light_instrumental", AppTheme.SAKURA, ThemeMode.LIGHT) { Player(PlayerSkin.COVER, playingAt(8_000, track = 1)) }
 
     // Portrait player.
     @Test fun port_tide_dark_vinyl() = capture("port_tide_dark_vinyl", AppTheme.TIDE, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }

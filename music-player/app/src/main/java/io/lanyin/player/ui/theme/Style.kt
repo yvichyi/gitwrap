@@ -245,6 +245,7 @@ private val duskLight = LanyinColors(
 )
 private val duskDark = LanyinColors(
     bg = Color(0xFF1A110C), bgDeep = Color(0xFF3A1D14), surface = Color(0xFF26180F), surfaceAlt = Color(0xFF302016),
-    content = Color(0xFFF7E4C6), muted = Color(0xFFB7957A), accent = Color(0xFFFF7A3D), accentAlt = Color(0xFFF2B84B),
-    onAccent = Color(0xFF1A110C), outline = Color(0xFFF7E4C6), like = Color(0xFFFF6A4D), vinyl = Color(0xFF0F0906),
+    content = Color(0xFFF2DFC2), muted = Color(0xFFB09279), accent = Color(0xFFE8703C), accentAlt = Color(0xFFD9A443),
+    // Outlines and hard shadows in a dimmed tan: cream lines on near-black were the glare.
+    onAccent = Color(0xFF1A110C), outline = Color(0xFF8C735E), like = Color(0xFFF0654A), vinyl = Color(0xFF0F0906),
 )

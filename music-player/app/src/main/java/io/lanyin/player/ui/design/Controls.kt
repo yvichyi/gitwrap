@@ -93,10 +93,10 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
             .neonGlow(shape, c.accent)
             .border(2.dp, c.accent, shape)
         ButtonKind.Retro -> Modifier
-            .retroShadow(shape, c.content, 3.dp)
+            .retroShadow(shape, c.outline, 3.dp)
             .clip(shape)
             .background(c.accent)
-            .border(2.dp, c.content, shape)
+            .border(2.dp, c.outline, shape)
     }
     Box(
         modifier
@@ -260,7 +260,7 @@ fun SeekBar(
                 SeekKind.Hairline -> drawHairlineTrack(f, c.content)
                 SeekKind.Pill -> drawPillTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
                 SeekKind.Segments -> drawSegmentTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
-                SeekKind.Tape -> drawTapeTrack(f, c.accent, c.content, c.surface)
+                SeekKind.Tape -> drawTapeTrack(f, c.accent, c.outline, c.surface)
             }
         }
         TimeLabel(durationMs, timeStyle)
@@ -279,7 +279,7 @@ private fun TimeLabel(ms: Long, style: TextStyle) {
             color = s.colors.surface,
             modifier = Modifier
                 .clip(RoundedCornerShape(4.dp))
-                .background(s.colors.content)
+                .background(s.colors.outline)
                 .padding(horizontal = 6.dp, vertical = 2.dp),
         )
     } else {
@@ -384,7 +384,7 @@ fun ThemedChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: M
     Box(
         modifier
             .pressable(onClick = onClick)
-            .then(if (style.button == ButtonKind.Retro && selected) Modifier.retroShadow(shape, c.content, 2.dp) else Modifier)
+            .then(if (style.button == ButtonKind.Retro && selected) Modifier.retroShadow(shape, c.outline, 2.dp) else Modifier)
             .clip(shape)
             .background(c.accent.copy(alpha = fill * (if (style.button == ButtonKind.NeonRing) 0.16f else 1f)))
             .border(1.dp, if (selected) c.accent else c.outline, shape)

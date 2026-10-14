@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
 import io.lanyin.player.ui.theme.AppTheme
@@ -36,7 +37,11 @@ fun DrawScope.drawCoverArt(style: LanyinStyle, seed: Int) {
         AppTheme.INK -> inkCover(style, seed)
         AppTheme.SAKURA -> sakuraCover(style, seed)
         AppTheme.NEON -> neonCover(style, seed)
-        AppTheme.DUSK -> duskCover(style, seed)
+        AppTheme.DUSK -> {
+            duskCover(style, seed)
+            // Sleeves printed in mustard and orange glare on a dark page; dim them at night.
+            if (style.dark) drawRect(Color.Black.copy(alpha = 0.18f))
+        }
     }
 }
 
@@ -46,23 +51,79 @@ private fun DrawScope.tideCover(style: LanyinStyle, seed: Int) {
     val h = size.height
     val deep = if (style.dark) lerp(c.bgDeep, c.accent, 0.35f) else lerp(c.accent, Color.Black, 0.25f)
     val (from, to) = if (seed % 2 == 0) deep to c.accentAlt else c.accentAlt to deep
-    drawRect(Brush.linearGradient(listOf(from, lerp(from, to, 0.5f), to), Offset.Zero, Offset(w, h)))
-    drawCircle(Color.White.copy(alpha = 0.85f), radius = w * 0.09f, center = Offset(w * (0.62f + 0.2f * hash01(seed, 1)), h * (0.22f + 0.12f * hash01(seed, 2))))
-    for (i in 0 until 4) {
-        val baseY = h * (0.52f + i * 0.1f)
-        val amp = h * 0.035f
-        val k = (2 * PI / (w * (0.7f + 0.15f * i))).toFloat()
-        val phase = hash01(seed, 3 + i) * 6f
-        val path = Path().apply {
-            moveTo(0f, baseY)
-            var x = 0f
-            while (x <= w) {
-                lineTo(x, baseY + amp * sin(k * x + phase))
-                x += w / 48f
+    // Four compositions so a row of covers doesn't read as one image repeated.
+    when (seed % 4) {
+        0 -> {
+            // Moon over swells.
+            drawRect(Brush.linearGradient(listOf(from, lerp(from, to, 0.5f), to), Offset.Zero, Offset(w, h)))
+            drawCircle(Color.White.copy(alpha = 0.85f), radius = w * 0.09f, center = Offset(w * (0.62f + 0.2f * hash01(seed, 1)), h * (0.22f + 0.12f * hash01(seed, 2))))
+            for (i in 0 until 4) drawSwell(h * (0.52f + i * 0.1f), h * 0.035f, w * (0.7f + 0.15f * i), hash01(seed, 3 + i) * 6f, Color.White.copy(alpha = 0.18f + 0.1f * i), w * 0.012f)
+        }
+        1 -> {
+            // Light falling into deep water, bubbles rising.
+            drawRect(Brush.verticalGradient(listOf(lerp(c.accentAlt, Color.White, 0.2f), deep, lerp(deep, Color.Black, 0.35f))))
+            for (i in 0 until 4) {
+                val x0 = w * (0.1f + 0.22f * i + 0.05f * hash01(seed, 10 + i))
+                val ray = Path().apply {
+                    moveTo(x0, 0f)
+                    lineTo(x0 + w * 0.08f, 0f)
+                    lineTo(x0 + w * 0.3f, h)
+                    lineTo(x0 + w * 0.12f, h)
+                    close()
+                }
+                drawPath(ray, Color.White.copy(alpha = 0.08f + 0.05f * hash01(seed, 20 + i)))
+            }
+            for (i in 0 until 9) {
+                val r = w * (0.012f + 0.022f * hash01(seed * 3 + i, 31))
+                drawCircle(Color.White.copy(alpha = 0.55f), r, Offset(w * (0.55f + 0.35f * hash01(seed * 3 + i, 32)), h * (0.3f + 0.65f * hash01(seed * 3 + i, 33))), style = Stroke(w * 0.006f))
             }
         }
-        drawPath(path, Color.White.copy(alpha = 0.18f + 0.1f * i), style = Stroke(w * 0.012f, cap = StrokeCap.Round))
+        2 -> {
+            // A moon and its broken reflection.
+            val horizon = h * 0.56f
+            drawRect(Brush.verticalGradient(listOf(lerp(deep, Color.Black, 0.2f), deep), endY = horizon))
+            drawRect(Brush.verticalGradient(listOf(deep, lerp(deep, Color.Black, 0.45f)), startY = horizon), topLeft = Offset(0f, horizon))
+            val mx = w * (0.38f + 0.24f * hash01(seed, 40))
+            drawCircle(lerp(c.accentAlt, Color.White, 0.55f), w * 0.15f, Offset(mx, horizon - h * 0.2f))
+            for (k in 0 until 8) {
+                val y = horizon + h * (0.04f + k * 0.052f)
+                val half = w * (0.16f - k * 0.012f) * (0.7f + 0.3f * hash01(seed * 5 + k, 41))
+                drawLine(Color.White.copy(alpha = 0.6f - k * 0.06f), Offset(mx - half, y), Offset(mx + half, y), h * 0.012f, StrokeCap.Round)
+            }
+        }
+        else -> {
+            // Ribbons of current crossing the frame.
+            drawRect(Brush.linearGradient(listOf(lerp(deep, Color.Black, 0.3f), deep), Offset.Zero, Offset(w, h)))
+            for (i in 0 until 3) {
+                val color = if (i == 1) c.accentAlt else lerp(c.accent, Color.White, 0.3f)
+                val base = h * (0.3f + 0.2f * i)
+                val k = (2 * PI / (w * (0.9f + 0.3f * i))).toFloat()
+                val phase = hash01(seed, 50 + i) * 6f
+                val ribbon = Path().apply {
+                    moveTo(0f, base)
+                    var x = 0f
+                    while (x <= w) { lineTo(x, base + h * 0.08f * sin(k * x + phase)); x += w / 48f }
+                    while (x >= 0f) { lineTo(x, base + h * 0.06f + h * 0.08f * sin(k * x + phase + 0.6f)); x -= w / 48f }
+                    close()
+                }
+                drawPath(ribbon, color.copy(alpha = 0.35f + 0.15f * i))
+            }
+        }
     }
+}
+
+/** One swell line across the cover. */
+private fun DrawScope.drawSwell(baseY: Float, amp: Float, wavelength: Float, phase: Float, color: Color, stroke: Float) {
+    val k = (2 * PI / wavelength).toFloat()
+    val path = Path().apply {
+        moveTo(0f, baseY)
+        var x = 0f
+        while (x <= size.width) {
+            lineTo(x, baseY + amp * sin(k * x + phase))
+            x += size.width / 48f
+        }
+    }
+    drawPath(path, color, style = Stroke(stroke, cap = StrokeCap.Round))
 }
 
 private fun DrawScope.inkCover(style: LanyinStyle, seed: Int) {
@@ -139,15 +200,59 @@ private fun DrawScope.sakuraCover(style: LanyinStyle, seed: Int) {
     val a = lerp(c.accent, Color.White, 0.45f)
     val b = lerp(c.accentAlt, Color.White, 0.4f)
     drawRect(Brush.linearGradient(if (seed % 2 == 0) listOf(a, b) else listOf(b, a), Offset.Zero, Offset(w, h)))
-    drawCircle(Color.White.copy(alpha = 0.35f), radius = w * 0.3f, center = Offset(w * 0.5f, h * 0.48f))
-    for (i in 0 until 6) {
-        drawPetal(
-            center = Offset(w * (0.15f + 0.7f * hash01(seed * 7 + i, 1)), h * (0.15f + 0.7f * hash01(seed * 7 + i, 2))),
-            sizePx = w * (0.05f + 0.05f * hash01(seed * 7 + i, 3)),
-            rotation = hash01(seed * 7 + i, 4) * 360f,
-            color = (if (i % 2 == 0) Color.White else c.accent).copy(alpha = 0.85f),
-        )
+    when (seed % 4) {
+        0 -> {
+            // A soft moon in a flurry of petals.
+            drawCircle(Color.White.copy(alpha = 0.35f), radius = w * 0.3f, center = Offset(w * 0.5f, h * 0.48f))
+            for (i in 0 until 6) {
+                drawPetal(
+                    center = Offset(w * (0.15f + 0.7f * hash01(seed * 7 + i, 1)), h * (0.15f + 0.7f * hash01(seed * 7 + i, 2))),
+                    sizePx = w * (0.05f + 0.05f * hash01(seed * 7 + i, 3)),
+                    rotation = hash01(seed * 7 + i, 4) * 360f,
+                    color = (if (i % 2 == 0) Color.White else c.accent).copy(alpha = 0.85f),
+                )
+            }
+        }
+        1 -> {
+            // One big blossom.
+            val center = Offset(w * (0.44f + 0.12f * hash01(seed, 5)), h * (0.46f + 0.1f * hash01(seed, 6)))
+            drawBlossom(center, w * 0.2f, hash01(seed, 7) * 72f, Color.White.copy(alpha = 0.92f), lerp(c.accent, Color.White, 0.1f))
+        }
+        2 -> {
+            // A branch in bloom.
+            val branch = Path().apply {
+                moveTo(-w * 0.05f, h * 0.82f)
+                cubicTo(w * 0.3f, h * 0.7f, w * 0.45f, h * 0.35f, w * 1.05f, h * 0.2f)
+            }
+            drawPath(branch, lerp(c.content, c.accentAlt, 0.3f).copy(alpha = 0.75f), style = Stroke(w * 0.03f, cap = StrokeCap.Round))
+            for (i in 0 until 5) {
+                val f = 0.18f + i * 0.17f
+                val p = Offset(w * (-0.05f + 1.1f * f), h * (0.82f - 0.62f * f.pow(0.8f)) + h * 0.05f * (hash01(seed + i, 8) - 0.5f))
+                drawBlossom(p, w * (0.06f + 0.03f * hash01(seed + i, 9)), hash01(seed + i, 10) * 72f, Color.White.copy(alpha = 0.95f), c.accent)
+            }
+        }
+        else -> {
+            // Bokeh: soft overlapping lights.
+            for (i in 0 until 8) {
+                val color = if (i % 2 == 0) Color.White else lerp(c.accentAlt, Color.White, 0.3f)
+                drawCircle(
+                    color.copy(alpha = 0.18f + 0.22f * hash01(seed * 11 + i, 12)),
+                    radius = w * (0.08f + 0.14f * hash01(seed * 11 + i, 13)),
+                    center = Offset(w * hash01(seed * 11 + i, 14), h * hash01(seed * 11 + i, 15)),
+                )
+            }
+        }
     }
+}
+
+/** Five petals round a centre. */
+private fun DrawScope.drawBlossom(center: Offset, radius: Float, rotation: Float, petal: Color, heart: Color) {
+    for (k in 0 until 5) {
+        val angle = Math.toRadians((rotation + k * 72f - 90f).toDouble())
+        val p = Offset(center.x + radius * 0.55f * kotlin.math.cos(angle).toFloat(), center.y + radius * 0.55f * kotlin.math.sin(angle).toFloat())
+        drawPetal(p, radius * 0.55f, rotation + k * 72f + 180f, petal)
+    }
+    drawCircle(heart, radius * 0.2f, center)
 }
 
 private fun DrawScope.neonCover(style: LanyinStyle, seed: Int) {
@@ -155,18 +260,84 @@ private fun DrawScope.neonCover(style: LanyinStyle, seed: Int) {
     val w = size.width
     val h = size.height
     drawRect(c.surface)
-    val center = Offset(w * (0.4f + 0.2f * hash01(seed, 1)), h * (0.4f + 0.2f * hash01(seed, 2)))
-    for (ring in 0 until 3) {
-        val color = if ((ring + seed) % 2 == 0) c.accent else c.accentAlt
-        val r = w * (0.14f + 0.1f * ring)
-        for ((width, alpha) in listOf(0.05f to 0.12f, 0.025f to 0.3f, 0.008f to 1f)) {
-            drawCircle(color.copy(alpha = alpha), radius = r, center = center, style = Stroke(w * width))
+    when (seed % 4) {
+        0 -> {
+            // Rings over a glowing floor.
+            val center = Offset(w * (0.4f + 0.2f * hash01(seed, 1)), h * (0.4f + 0.2f * hash01(seed, 2)))
+            for (ring in 0 until 3) {
+                val color = if ((ring + seed) % 2 == 0) c.accent else c.accentAlt
+                glowCircle(color, w * (0.14f + 0.1f * ring), center, w)
+            }
+            var y = h * 0.78f
+            while (y < h) {
+                drawLine(c.accentAlt.copy(alpha = 0.5f), Offset(0f, y), Offset(w, y), strokeWidth = h * 0.008f)
+                y += h * 0.045f
+            }
+        }
+        1 -> {
+            // Synthwave sun on a grid.
+            val horizon = h * 0.62f
+            drawRect(Brush.verticalGradient(listOf(c.surface, lerp(c.surface, c.accentAlt, 0.35f)), endY = horizon))
+            val sun = Offset(w * 0.5f, horizon)
+            val r = w * 0.27f
+            clipRect(bottom = horizon) {
+                drawCircle(Brush.verticalGradient(listOf(lerp(c.accentAlt, Color.Yellow, 0.45f), c.accentAlt), startY = sun.y - r, endY = sun.y), r, sun)
+                for (k in 0 until 4) drawRect(c.surface, Offset(0f, sun.y - r * (0.12f + k * 0.2f)), Size(w, r * (0.03f + k * 0.015f)))
+            }
+            for (i in -6..6) drawLine(c.accent.copy(alpha = 0.6f), Offset(w / 2 + i * w * 0.03f, horizon), Offset(w / 2 + i * w * 0.2f, h), w * 0.006f)
+            for (j in 1..4) {
+                val y = horizon + (h - horizon) * (j / 4f).pow(1.8f)
+                drawLine(c.accent.copy(alpha = 0.6f), Offset(0f, y), Offset(w, y), w * 0.006f)
+            }
+        }
+        2 -> {
+            // A neon prism.
+            val cx = w * (0.45f + 0.1f * hash01(seed, 3))
+            val tri = Path().apply {
+                moveTo(cx, h * 0.2f)
+                lineTo(cx + w * 0.3f, h * 0.72f)
+                lineTo(cx - w * 0.3f, h * 0.72f)
+                close()
+            }
+            glowPath(tri, c.accent, w)
+            val inner = Path().apply {
+                moveTo(cx, h * 0.62f)
+                lineTo(cx + w * 0.13f, h * 0.4f)
+                lineTo(cx - w * 0.13f, h * 0.4f)
+                close()
+            }
+            glowPath(inner, c.accentAlt, w)
+        }
+        else -> {
+            // Equaliser bars.
+            val bars = 7
+            val gap = w * 0.035f
+            val bw = (w * 0.8f - gap * (bars - 1)) / bars
+            for (i in 0 until bars) {
+                val level = 0.25f + 0.7f * hash01(seed * 13 + i, 16)
+                val x = w * 0.1f + i * (bw + gap)
+                var y = h * 0.82f
+                val top = h * 0.82f - h * 0.62f * level
+                while (y > top) {
+                    val f = ((h * 0.82f - y) / (h * 0.62f)).coerceIn(0f, 1f)
+                    drawRect(lerp(c.accent, c.accentAlt, f), Offset(x, y - h * 0.035f), Size(bw, h * 0.028f))
+                    y -= h * 0.045f
+                }
+            }
         }
     }
-    var y = h * 0.78f
-    while (y < h) {
-        drawLine(c.accentAlt.copy(alpha = 0.5f), Offset(0f, y), Offset(w, y), strokeWidth = h * 0.008f)
-        y += h * 0.045f
+}
+
+/** A neon tube circle: wide faint glow, then the bright core. */
+private fun DrawScope.glowCircle(color: Color, radius: Float, center: Offset, w: Float) {
+    for ((width, alpha) in listOf(0.05f to 0.12f, 0.025f to 0.3f, 0.008f to 1f)) {
+        drawCircle(color.copy(alpha = alpha), radius = radius, center = center, style = Stroke(w * width))
+    }
+}
+
+private fun DrawScope.glowPath(path: Path, color: Color, w: Float) {
+    for ((width, alpha) in listOf(0.05f to 0.12f, 0.025f to 0.3f, 0.008f to 1f)) {
+        drawPath(path, color.copy(alpha = alpha), style = Stroke(w * width, join = androidx.compose.ui.graphics.StrokeJoin.Round))
     }
 }
 

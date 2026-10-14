@@ -72,7 +72,7 @@ fun Modifier.themedSurface(
     val flat = tone == SurfaceTone.Flat
     var m = when {
         flat -> this
-        style.edge == EdgeKind.Retro -> retroShadow(shape, c.content, 4.dp)
+        style.edge == EdgeKind.Retro -> retroShadow(shape, c.outline, 4.dp)
         style.edge == EdgeKind.Glow -> neonGlow(shape, if (tone == SurfaceTone.Accent) c.accent else c.accent.copy(alpha = 0.55f))
         style.edge == EdgeKind.Soft -> shadow(
             elevation = if (tone == SurfaceTone.Card) 10.dp else 18.dp, shape = shape,
@@ -109,7 +109,7 @@ fun Modifier.themedSurface(
         EdgeKind.Glass -> m.border(1.dp, Color.White.copy(alpha = if (style.dark) 0.10f else 0.65f), shape)
         EdgeKind.Hairline -> m.border(1.dp, if (tone == SurfaceTone.Accent) c.content else c.outline, shape)
         EdgeKind.Glow -> m.border(1.dp, c.accent.copy(alpha = if (tone == SurfaceTone.Accent) 1f else if (flat) 0.35f else 0.6f), shape)
-        EdgeKind.Retro -> m.border(2.dp, c.content, shape)
+        EdgeKind.Retro -> m.border(2.dp, c.outline, shape)
         EdgeKind.Soft -> m
     }
     if (onClick != null) m = m.clickable(interactionSource = interaction, indication = null, onClick = onClick)

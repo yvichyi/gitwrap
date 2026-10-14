@@ -235,7 +235,7 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
             NavKind.Pill -> {
                 val shape = style.chipShape
                 val indicator = when (style.edge) {
-                    EdgeKind.Retro -> Modifier.retroShadow(shape, c.content, 2.dp).clip(shape).background(c.accent).border(2.dp, c.content, shape)
+                    EdgeKind.Retro -> Modifier.retroShadow(shape, c.outline, 2.dp).clip(shape).background(c.accent).border(2.dp, c.outline, shape)
                     EdgeKind.Glow -> Modifier.neonGlow(shape, c.accent, 0.7f).clip(shape).background(c.accent.copy(alpha = 0.12f)).border(1.dp, c.accent, shape)
                     else -> Modifier.clip(shape).background(c.accent.copy(alpha = if (style.dark) 0.22f else 0.14f))
                 }

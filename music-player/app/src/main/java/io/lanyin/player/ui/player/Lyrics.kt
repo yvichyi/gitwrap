@@ -88,6 +88,9 @@ fun LyricsView(
     modifier: Modifier = Modifier,
     centered: Boolean = Lanyin.style.lyric.centered,
     anchorFraction: Float = 0.36f,
+    /** False for a read-only preview: no dragging, no tap-to-seek. */
+    interactive: Boolean = true,
+    showTranslation: Boolean = true,
 ) {
     val style = Lanyin.style
     val geometry = remember(lines) { LyricGeometry(lines.size) }
@@ -126,6 +129,7 @@ fun LyricsView(
             .draggable(
                 draggableState,
                 Orientation.Vertical,
+                enabled = interactive,
                 onDragStarted = { settleJob?.cancel() },
                 onDragStopped = { velocity ->
                     settleJob = scope.launch {
@@ -151,21 +155,29 @@ fun LyricsView(
                         progress = progress,
                         centered = centered,
                         textStyle = textStyle,
+                        showTranslation = showTranslation,
                         modifier = Modifier
                             .graphicsLayer {
                                 geometry.version.intValue
                                 translationY = anchorPx - geometry.centerAt(focus[i].value) + drag
                             }
-                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                                settleJob?.cancel()
-                                drag = 0f
-                                onSeek(line.startMs)
-                            },
+                            .then(
+                                if (interactive) {
+                                    Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                                        settleJob?.cancel()
+                                        drag = 0f
+                                        onSeek(line.startMs)
+                                    }
+                                } else {
+                                    Modifier
+                                },
+                            ),
                     )
                 }
             },
         ) { measurables, cons ->
-            val childCons = Constraints(maxWidth = cons.maxWidth)
+            // Lines are laid out narrower by the active scale, so the enlarged line still fits.
+            val childCons = Constraints(maxWidth = (cons.maxWidth / style.lyric.activeScale).toInt())
             val placeables = measurables.map { it.measure(childCons) }
             var y = 0
             var changed = false
@@ -194,6 +206,7 @@ private fun LyricRow(
     progress: () -> Float,
     centered: Boolean,
     textStyle: TextStyle,
+    showTranslation: Boolean,
     modifier: Modifier,
 ) {
     val style = Lanyin.style
@@ -229,7 +242,7 @@ private fun LyricRow(
             progress = if (active) progress else null,
             glow = if (ls.glow) sweep else null,
         )
-        if (line.translation != null) {
+        if (showTranslation && line.translation != null) {
             Text(
                 line.translation,
                 style = textStyle.copy(fontSize = textStyle.fontSize * 0.58f, lineHeight = textStyle.fontSize * 0.8f, fontWeight = FontWeight.Normal, textAlign = align),

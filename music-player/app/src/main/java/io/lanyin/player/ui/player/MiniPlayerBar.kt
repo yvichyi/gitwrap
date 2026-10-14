@@ -83,7 +83,8 @@ fun MiniPlayer(
         ) {
             MiniArtwork(skin, spin, state.coverSeed, Modifier.size(if (docked) 40.dp else 44.dp).sharedPlayer("artwork", zIndex = 1f))
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
+            // Swipe the titles sideways to change track, as on the full player's artwork.
+            SwipeToSkip(state, Modifier.weight(1f)) { Column(Modifier.fillMaxWidth()) {
                 Text(
                     state.title,
                     style = style.type.body.copy(fontFamily = style.display, fontWeight = if (docked) FontWeight.Medium else FontWeight.SemiBold),
@@ -92,7 +93,7 @@ fun MiniPlayer(
                     modifier = Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true),
                 )
                 AnimatedContent(
-                    targetState = state.lyrics[state.currentLyricIndex].text,
+                    targetState = state.currentLine?.text ?: state.artist,
                     transitionSpec = {
                         (fadeIn(tween(200)) + slideInVertically { it }) togetherWith (fadeOut(tween(120)) + slideOutVertically { -it })
                     },
@@ -100,7 +101,7 @@ fun MiniPlayer(
                 ) { line ->
                     Text(line, style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-            }
+            } }
             MiniPlayButton(state)
             IconAction(LineIcon.Queue, "播放队列", {}, tint = c.muted)
         }

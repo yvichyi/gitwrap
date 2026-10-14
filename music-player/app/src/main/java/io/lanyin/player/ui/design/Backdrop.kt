@@ -176,7 +176,7 @@ private fun DrawScope.drawSakura(style: LanyinStyle, t: Float, e: Float, page: B
     val h = size.height
     drawRect(Brush.verticalGradient(listOf(c.bg, c.bg, c.bgDeep)))
     glowBlob(c.accent.copy(alpha = 0.12f), Offset(w * 0.9f, h * 0.05f), w * 0.7f)
-    val count = if (page) 9 else 24
+    val count = if (page) 6 else 16
     val margin = 24f * density
     for (i in 0 until count) {
         val speed = (28f + 34f * hash01(i, 2)) * density * (0.6f + 0.6f * e)
@@ -185,7 +185,8 @@ private fun DrawScope.drawSakura(style: LanyinStyle, t: Float, e: Float, page: B
         val x = hash01(i, 1) * w + sway * sin(t * (0.6f + hash01(i, 5)) + i)
         val sizePx = (6f + 8f * hash01(i, 6)) * density
         val tint = lerp(c.accent, Color.White, if (style.dark) 0.15f else 0.35f * hash01(i, 7))
-        drawPetal(Offset(x, y), sizePx, rotation = hash01(i, 8) * 360f + t * (40f + 60f * hash01(i, 9)), color = tint.copy(alpha = 0.28f + 0.35f * hash01(i, 10)))
+        val alpha = if (page) 0.16f + 0.2f * hash01(i, 10) else 0.14f + 0.22f * hash01(i, 10)
+        drawPetal(Offset(x, y), sizePx, rotation = hash01(i, 8) * 360f + t * (40f + 60f * hash01(i, 9)), color = tint.copy(alpha = alpha))
     }
 }
 
@@ -194,10 +195,14 @@ private fun DrawScope.drawNeon(style: LanyinStyle, t: Float, e: Float, page: Boo
     val w = size.width
     val h = size.height
     drawRect(c.bg)
-    val horizon = h * (if (page) 0.3f else 0.6f)
+    val horizon = h * when {
+        page -> 0.8f
+        w > h -> 0.82f
+        else -> 0.5f
+    }
     // Sky glow.
     drawRect(Brush.verticalGradient(0f to Color.Transparent, 0.75f to c.bgDeep, 1f to c.accentAlt.copy(alpha = 0.35f), startY = 0f, endY = horizon))
-    drawLine(c.accentAlt.copy(alpha = 0.9f), Offset(0f, horizon), Offset(w, horizon), strokeWidth = 1.5f * density)
+    drawLine(c.accentAlt.copy(alpha = if (page) 0.45f else 0.8f), Offset(0f, horizon), Offset(w, horizon), strokeWidth = 1.5f * density)
     // Perspective grid floor, scrolling toward the viewer.
     val vanishing = Offset(w / 2f, horizon)
     for (i in -14..14) {
@@ -235,18 +240,22 @@ private fun DrawScope.drawDusk(style: LanyinStyle, t: Float, e: Float, page: Boo
     val bob = sin(t * 0.8f) * 6f * density * e
     val landscape = w > h
     val radius = when {
-        page -> w * 0.17f
+        page -> w * 0.15f
         landscape -> h * 0.42f
         else -> w * 0.3f
     }
     val center = when {
-        page -> Offset(w * 0.9f, h * 0.035f)
+        page -> Offset(w * 0.95f, h * 0.02f)
         landscape -> Offset(w * 0.07f, h * 0.84f + bob)
         else -> Offset(w * 0.8f, h * 0.2f + bob)
     }
     val sun = Path().apply { addOval(androidx.compose.ui.geometry.Rect(center, radius)) }
+    // At night the sun is an ember: sunk into the sky so it glows without glaring.
+    val sink = if (style.dark) 0.5f else 0f
     clipPath(sun) {
-        drawRect(Brush.verticalGradient(listOf(c.accentAlt, c.accent), startY = center.y - radius, endY = center.y + radius))
+        drawRect(
+            Brush.verticalGradient(listOf(lerp(c.accentAlt, c.bgDeep, sink), lerp(c.accent, c.bgDeep, sink)), startY = center.y - radius, endY = center.y + radius),
+        )
         for (k in 0 until 6) {
             val bandY = center.y + radius * (0.12f + k * 0.15f)
             val thickness = radius * (0.025f + k * 0.022f)

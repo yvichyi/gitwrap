@@ -98,7 +98,7 @@ fun HomeScreen(
     }
 }
 
-private fun greeting(hour: Int) = when (hour) {
+internal fun greeting(hour: Int) = when (hour) {
     in 5..10 -> "早上好"
     in 11..12 -> "中午好"
     in 13..17 -> "下午好"
