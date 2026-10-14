@@ -98,6 +98,7 @@ private fun DrawScope.drawInk(style: LanyinStyle, t: Float, page: Boolean) {
     val h = size.height
     drawRect(c.bg)
     glowBlob(c.content.copy(alpha = if (style.dark) 0.05f else 0.045f), Offset(w * 0.85f, h * 0.12f), w * 0.8f * (1f + 0.03f * sin(t * 0.4f)))
+    if (page) return
 
     // An ensō around where the artwork sits (left half in landscape, upper middle in portrait).
     val landscape = w > h

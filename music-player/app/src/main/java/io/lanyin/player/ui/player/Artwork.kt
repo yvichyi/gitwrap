@@ -74,6 +74,7 @@ private fun DrawScope.drawRecord(style: LanyinStyle, r: Float, coverSeed: Int) {
     val c = style.colors
     drawCircle(c.vinyl, r)
     if (style.edge == EdgeKind.Retro) drawCircle(c.content, r, style = Stroke(2.dp.toPx()))
+    if (style.edge == EdgeKind.Hairline && style.dark) drawCircle(c.content.copy(alpha = 0.28f), r - 0.5.dp.toPx(), style = Stroke(1.dp.toPx()))
     val groove = if (style.edge == EdgeKind.Glow) c.accent else Color.White
     for (i in 1..16) {
         drawCircle(

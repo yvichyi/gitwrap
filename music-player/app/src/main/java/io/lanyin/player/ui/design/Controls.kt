@@ -18,10 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -55,6 +51,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.RectangleShape
+import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.ButtonKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.SeekKind
@@ -104,7 +104,7 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
             .then(container),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(size * 0.42f)) {
+        Canvas(Modifier.size(size * if (style.button == ButtonKind.Outline) 0.32f else 0.42f)) {
             drawPlayPauseGlyph(morph, glyphColor)
         }
     }
@@ -151,7 +151,7 @@ fun DrawScope.drawPlayPauseGlyph(morph: Float, color: Color) {
 /** Icon with the theme's press feedback; 48dp touch target. */
 @Composable
 fun IconAction(
-    icon: ImageVector,
+    icon: LineIcon,
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -159,7 +159,7 @@ fun IconAction(
     iconSize: Dp = 24.dp,
 ) {
     Box(modifier.size(48.dp).pressable(onClick = onClick), contentAlignment = Alignment.Center) {
-        Icon(icon, contentDescription, tint = tint, modifier = Modifier.size(iconSize))
+        ThemedIcon(icon, contentDescription, tint = tint, size = iconSize)
     }
 }
 
@@ -194,8 +194,8 @@ fun LikeButton(liked: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifi
             },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            if (liked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+        ThemedIcon(
+            if (liked) LineIcon.HeartFilled else LineIcon.Heart,
             contentDescription = if (liked) "取消喜欢" else "喜欢",
             tint = color,
             modifier = Modifier.graphicsLayer { scaleX = scale.value; scaleY = scale.value },
@@ -352,74 +352,160 @@ private fun DrawScope.drawTapeTrack(f: Float, fill: Color, ink: Color, paper: Co
     drawRoundRect(ink, Offset(kx, ky), Size(knob, knob), CornerRadius(5.dp.toPx()), style = Stroke(2.dp.toPx()))
 }
 
-/** Selectable chip in the theme's chip shape. */
+/** Selectable chip in the theme's chip shape. 墨 uses [TextTabs] instead (see [ChoiceRow]). */
 @Composable
 fun ThemedChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val shape = style.chipShape
     val fill by animateFloatAsState(if (selected) 1f else 0f, style.motion.spec(), label = "chip")
+    val onFill = if (style.button == ButtonKind.NeonRing) c.accent else c.onAccent
     Box(
         modifier
             .pressable(onClick = onClick)
             .then(if (style.button == ButtonKind.Retro && selected) Modifier.retroShadow(shape, c.content, 2.dp) else Modifier)
             .clip(shape)
             .background(c.accent.copy(alpha = fill * (if (style.button == ButtonKind.NeonRing) 0.16f else 1f)))
-            .border(if (selected || style.button != ButtonKind.Glow) 1.dp else 0.dp, if (selected) c.accent else c.outline, shape)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .border(1.dp, if (selected) c.accent else c.outline, shape)
+            .padding(horizontal = 16.dp, vertical = 7.dp),
     ) {
-        val onFill = if (style.button == ButtonKind.NeonRing) c.accent else c.onAccent
-        Text(
-            text,
-            style = MaterialTheme.typography.labelLarge,
-            color = androidx.compose.ui.graphics.lerp(c.content, onFill, fill),
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-        )
+        Text(text, style = style.type.body.copy(fontSize = 14.sp), color = lerp(c.content, onFill, fill))
     }
 }
 
-/** Primary action in the theme's accent treatment. */
+/** Text-only tabs with a sliding underline: the quiet alternative to chips. */
+@Composable
+fun TextTabs(options: List<String>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+        options.forEach { option ->
+            val active = option == selected
+            val underline by animateFloatAsState(if (active) 1f else 0f, style.motion.spec(), label = "tabLine")
+            Text(
+                option,
+                style = style.type.body,
+                color = lerp(c.muted, c.content, underline),
+                modifier = Modifier
+                    .pressable { onSelect(option) }
+                    .drawBehind {
+                        val w = size.width * underline
+                        val y = size.height + 4.dp.toPx()
+                        drawLine(c.content, Offset((size.width - w) / 2, y), Offset((size.width + w) / 2, y), 1.5.dp.toPx())
+                    }
+                    .padding(vertical = 4.dp),
+            )
+        }
+    }
+}
+
+/** [TextTabs] in hairline themes, chips elsewhere. */
+@Composable
+fun ChoiceRow(options: List<String>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    if (Lanyin.style.edge == EdgeKind.Hairline) {
+        TextTabs(options, selected, onSelect, modifier)
+    } else {
+        Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            options.forEach { ThemedChip(it, it == selected, { onSelect(it) }) }
+        }
+    }
+}
+
+/** Primary action in the theme's accent treatment; 墨 draws it as an outlined rectangle. */
 @Composable
 fun ThemedButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val style = Lanyin.style
     val c = style.colors
+    val hairline = style.edge == EdgeKind.Hairline
     Box(
         modifier
-            .themedSurface(shape = style.chipShape, tone = SurfaceTone.Accent, onClick = if (enabled) onClick else null)
-            .graphicsLayer { alpha = if (enabled) 1f else 0.45f }
+            .then(
+                if (hairline) {
+                    Modifier.pressable(enabled = enabled, onClick = onClick).border(1.dp, c.content, style.chipShape)
+                } else {
+                    Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Accent, onClick = if (enabled) onClick else null)
+                },
+            )
+            .graphicsLayer { alpha = if (enabled) 1f else 0.4f }
             .padding(horizontal = 22.dp, vertical = 11.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text,
-            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-            color = if (style.button == ButtonKind.NeonRing) c.accent else c.onAccent,
+            style = style.type.body.copy(fontWeight = FontWeight.Medium),
+            color = when {
+                hairline -> c.content
+                style.button == ButtonKind.NeonRing -> c.accent
+                else -> c.onAccent
+            },
         )
     }
 }
 
+/** An inline text action such as 「扫码登录 ›」. */
 @Composable
-fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String? = null) {
+fun TextLink(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color = Lanyin.colors.content) {
     val style = Lanyin.style
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(title, style = MaterialTheme.typography.titleLarge, color = style.colors.content)
-        if (trailing != null) {
-            Text(trailing, style = MaterialTheme.typography.labelMedium, color = style.colors.muted)
-        }
+    Row(modifier.pressable(onClick = onClick).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, style = style.type.body.copy(fontWeight = FontWeight.Medium), color = color)
+        ThemedIcon(LineIcon.Forward, null, tint = color, size = 16.dp, modifier = Modifier.padding(start = 2.dp))
     }
 }
 
-/** Big page title in the theme's display face. */
+/** A switch drawn in the theme's language: hairline track and square knob in 墨, accent fill elsewhere. */
+@Composable
+fun ThemedSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val on by animateFloatAsState(if (checked) 1f else 0f, style.bouncy.spec(), label = "switch")
+    val hairline = style.edge == EdgeKind.Hairline
+    val square = style.chipShape == RectangleShape
+    Canvas(modifier.size(44.dp, 26.dp).pressable { onChange(!checked) }) {
+        val h = size.height
+        val r = if (square) 0f else h / 2
+        if (hairline) {
+            drawRoundRect(c.content.copy(alpha = 0.3f + 0.7f * on), cornerRadius = CornerRadius(r), style = Stroke(1.dp.toPx()))
+        } else {
+            drawRoundRect(lerp(c.content.copy(alpha = 0.14f), c.accent, on), cornerRadius = CornerRadius(r))
+        }
+        val inset = 4.dp.toPx()
+        val knob = h - inset * 2
+        val x = inset + (size.width - knob - inset * 2) * on
+        val knobColor = if (hairline) lerp(c.content.copy(alpha = 0.3f), c.content, on) else lerp(c.surface, c.onAccent, on)
+        if (square) drawRect(knobColor, Offset(x, inset), Size(knob, knob)) else drawCircle(knobColor, knob / 2, Offset(x + knob / 2, h / 2))
+    }
+}
+
+/** Section heading: a small tracked label in quiet themes, a title elsewhere. */
+@Composable
+fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String? = null) {
+    val style = Lanyin.style
+    val c = style.colors
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
+        if (style.quietSections) {
+            Text(title, style = style.type.label, color = c.muted)
+        } else {
+            Text(title, style = style.type.title, color = c.content)
+        }
+        if (trailing != null) Text(trailing, style = style.type.caption, color = c.muted)
+    }
+}
+
+/** Page title in the theme's display face. */
 @Composable
 fun PageTitle(title: String, modifier: Modifier = Modifier, subtitle: String? = null) {
     val style = Lanyin.style
     androidx.compose.foundation.layout.Column(modifier) {
-        Text(
-            title,
-            style = MaterialTheme.typography.displaySmall.merge(TextStyle(color = style.colors.content)),
-        )
+        Text(title, style = style.type.display, color = style.colors.content)
         if (subtitle != null) {
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = style.colors.muted, modifier = Modifier.padding(top = 4.dp))
+            Text(subtitle, style = style.type.caption, color = style.colors.muted, modifier = Modifier.padding(top = 6.dp))
         }
     }
+}
+
+/** A 1dp rule in the theme's outline colour. */
+@Composable
+fun Hairline(modifier: Modifier = Modifier) {
+    val c = Lanyin.colors
+    Canvas(modifier.fillMaxWidth().height(1.dp)) { drawRect(c.outline) }
 }

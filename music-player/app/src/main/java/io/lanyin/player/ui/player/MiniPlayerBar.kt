@@ -9,6 +9,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,14 +21,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -37,14 +38,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.lanyin.player.ui.design.IconAction
+import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.SurfaceTone
 import io.lanyin.player.ui.design.drawPlayPauseGlyph
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.sharedPlayer
 import io.lanyin.player.ui.design.themedSurface
+import io.lanyin.player.ui.theme.DockKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.PlayerSkin
 
+/** Mini player: a floating pill, or a plain docked row in themes with a docked bottom bar. */
 @Composable
 fun MiniPlayer(
     state: DemoPlayerState,
@@ -55,23 +59,34 @@ fun MiniPlayer(
 ) {
     val style = Lanyin.style
     val c = style.colors
+    val docked = style.dock == DockKind.Docked
     CompositionLocalProvider(LocalContentColor provides c.content) {
         Row(
             modifier
                 .fillMaxWidth()
-                .height(64.dp)
+                .height(if (docked) 60.dp else 64.dp)
                 .testTag("miniPlayer")
                 .sharedPlayer("player-container", container = true)
-                .themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome, onClick = onExpand)
-                .padding(start = 10.dp, end = 4.dp),
+                .then(
+                    if (docked) {
+                        Modifier
+                            .background(c.bg)
+                            .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onExpand)
+                            .padding(start = style.margin, end = style.margin - 12.dp)
+                    } else {
+                        Modifier
+                            .themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome, onClick = onExpand)
+                            .padding(start = 10.dp, end = 4.dp)
+                    },
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MiniArtwork(skin, spin, state.coverSeed, Modifier.size(44.dp).sharedPlayer("artwork", zIndex = 1f))
+            MiniArtwork(skin, spin, state.coverSeed, Modifier.size(if (docked) 40.dp else 44.dp).sharedPlayer("artwork", zIndex = 1f))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     state.title,
-                    style = MaterialTheme.typography.titleSmall.copy(fontFamily = style.display, fontWeight = FontWeight.SemiBold),
+                    style = style.type.body.copy(fontFamily = style.display, fontWeight = if (docked) FontWeight.Medium else FontWeight.SemiBold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true),
@@ -83,11 +98,11 @@ fun MiniPlayer(
                     },
                     label = "miniLyric",
                 ) { line ->
-                    Text(line, style = MaterialTheme.typography.bodySmall, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(line, style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             MiniPlayButton(state)
-            IconAction(Icons.AutoMirrored.Filled.QueueMusic, "播放队列", {}, tint = c.muted)
+            IconAction(LineIcon.Queue, "播放队列", {}, tint = c.muted)
         }
     }
 }
@@ -95,18 +110,19 @@ fun MiniPlayer(
 /** Play/pause wrapped in a progress ring that fills as the song plays. */
 @Composable
 private fun MiniPlayButton(state: DemoPlayerState) {
-    val c = Lanyin.colors
-    val morph by animateFloatAsState(if (state.isPlaying) 1f else 0f, Lanyin.style.bouncy.spec(), label = "miniMorph")
+    val style = Lanyin.style
+    val c = style.colors
+    val morph by animateFloatAsState(if (state.isPlaying) 1f else 0f, style.bouncy.spec(), label = "miniMorph")
     Box(Modifier.size(48.dp).pressable(onClick = state::togglePlay), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(38.dp)) {
-            val stroke = 2.5.dp.toPx()
+        Canvas(Modifier.size(36.dp)) {
+            val stroke = (if (style.dock == DockKind.Docked) 1.5.dp else 2.5.dp).toPx()
             val inset = stroke / 2
-            drawCircle(c.content.copy(alpha = 0.12f), size.minDimension / 2 - inset, style = Stroke(stroke))
+            drawCircle(c.content.copy(alpha = 0.14f), size.minDimension / 2 - inset, style = Stroke(stroke))
             drawArc(
                 c.accent, -90f, 360f * state.positionMs / state.durationMs, false,
                 Offset(inset, inset), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke, cap = StrokeCap.Round),
             )
         }
-        Canvas(Modifier.size(14.dp)) { drawPlayPauseGlyph(morph, c.content) }
+        Canvas(Modifier.size(13.dp)) { drawPlayPauseGlyph(morph, c.content) }
     }
 }

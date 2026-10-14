@@ -80,7 +80,38 @@ class ScreenshotTest {
         }
     }
 
-    // Home, inside the real shell (floating mini player + tab bar), for every theme.
+    // 墨, the flagship, page by page in light and dark.
+    @Test fun ink_home_light() = app(AppTheme.INK, ThemeMode.LIGHT)
+    @Test fun ink_search_light() = capture("ink_search_light", AppTheme.INK, ThemeMode.LIGHT) { io.lanyin.player.ui.search.SearchScreen() }
+    @Test fun ink_library_light() = capture("ink_library_light", AppTheme.INK, ThemeMode.LIGHT) { io.lanyin.player.ui.library.LibraryScreen(onLogin = {}) }
+    @Test fun ink_library_dark() = capture("ink_library_dark", AppTheme.INK, ThemeMode.DARK) { io.lanyin.player.ui.library.LibraryScreen(onLogin = {}) }
+    @Test fun ink_login_light() = capture("ink_login_light", AppTheme.INK, ThemeMode.LIGHT) { LoginScreen(onBack = {}) }
+    @Test fun ink_settings_light() {
+        val repo = repo()
+        capture("ink_settings_light", AppTheme.INK, ThemeMode.LIGHT) {
+            io.lanyin.player.ui.settings.SettingsScreen(UiSettings(theme = AppTheme.INK, themeMode = ThemeMode.LIGHT), repo, onBack = {})
+        }
+    }
+    @Test fun ink_port_vinyl_light() = capture("ink_port_vinyl_light", AppTheme.INK, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL) }
+    @Test fun ink_port_cover_dark() = capture("ink_port_cover_dark", AppTheme.INK, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun ink_land_vinyl_dark() = capture("ink_land_vinyl_dark", AppTheme.INK, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
+
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun ink_land_lyrics_light() = capture("ink_land_lyrics_light", AppTheme.INK, ThemeMode.LIGHT) { Player(PlayerSkin.LYRICS) }
+
+    @Test fun ink_transition_light() {
+        val repo = repo()
+        capture("ink_transition_0", AppTheme.INK, ThemeMode.LIGHT) {
+            LanyinApp(UiSettings(theme = AppTheme.INK, themeMode = ThemeMode.LIGHT), repo, player = playingAt(14_000))
+        }
+        compose.onNodeWithTag("miniPlayer").performClick()
+        compose.mainClock.advanceTimeBy(140)
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/ink_transition_1.png")
+    }
+
+    // Home, inside the real shell, for every theme.
     @Test fun home_tide_light() = app(AppTheme.TIDE, ThemeMode.LIGHT)
     @Test fun home_tide_dark() = app(AppTheme.TIDE, ThemeMode.DARK)
     @Test fun home_ink_light() = app(AppTheme.INK, ThemeMode.LIGHT)

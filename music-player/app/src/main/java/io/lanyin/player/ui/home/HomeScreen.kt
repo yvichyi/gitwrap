@@ -1,7 +1,10 @@
 package io.lanyin.player.ui.home
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,16 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Leaderboard
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Radio
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -37,27 +31,34 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.lanyin.player.ui.components.QrGlyph
 import io.lanyin.player.ui.components.pagePadding
 import io.lanyin.player.ui.design.CoverArt
+import io.lanyin.player.ui.design.Hairline
 import io.lanyin.player.ui.design.IconAction
+import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.PlayPauseButton
 import io.lanyin.player.ui.design.SectionTitle
-import io.lanyin.player.ui.design.SurfaceTone
+import io.lanyin.player.ui.design.TextLink
+import io.lanyin.player.ui.design.ThemedIcon
 import io.lanyin.player.ui.design.formatTime
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.player.DemoPlayerState
-import io.lanyin.player.ui.theme.ButtonKind
+import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
 import java.time.LocalDateTime
 import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
 
+/**
+ * One focal point (what you were listening to), a quiet line asking you to connect, then
+ * shortcuts and recommendations. 墨 draws it with rules and whitespace instead of boxes.
+ */
 @Composable
 fun HomeScreen(
     player: DemoPlayerState,
@@ -65,32 +66,31 @@ fun HomeScreen(
     onLogin: () -> Unit,
     onOpenPlayer: () -> Unit,
 ) {
-    val c = Lanyin.colors
+    val style = Lanyin.style
+    val m = style.margin
     val now = remember { LocalDateTime.now() }
-    CompositionLocalProvider(LocalContentColor provides c.content) {
-        LazyColumn(
-            Modifier.fillMaxSize(),
-            contentPadding = pagePadding(),
-            verticalArrangement = Arrangement.spacedBy(26.dp),
-        ) {
-            item { Header(now, onOpenSettings, onLogin, Modifier.padding(horizontal = 20.dp)) }
-            item { LoginInvite(onLogin, Modifier.padding(horizontal = 20.dp)) }
+    CompositionLocalProvider(LocalContentColor provides style.colors.content) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+            item { Header(now, onOpenSettings, onLogin, Modifier.padding(horizontal = m)) }
+            item { ConnectLine(onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
             item {
-                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    SectionTitle("为你准备")
-                    QuickTiles(now.dayOfMonth, onLogin)
-                }
-            }
-            item {
-                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(Modifier.padding(start = m, end = m, top = 36.dp)) {
                     SectionTitle("继续播放")
-                    ContinueCard(player, onOpenPlayer)
+                    NowPlayingHero(player, onOpenPlayer, Modifier.padding(top = 14.dp))
                 }
             }
+            item { QuickEntries(now.dayOfMonth, onLogin, Modifier.padding(start = m, end = m, top = 36.dp)) }
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    SectionTitle("推荐歌单", Modifier.padding(horizontal = 20.dp), trailing = "登录后解锁")
-                    LockedPlaylists(onLogin)
+                Column(Modifier.padding(top = 36.dp)) {
+                    SectionTitle("推荐歌单", Modifier.padding(horizontal = m), trailing = "登录后可见")
+                    LazyRow(
+                        contentPadding = PaddingValues(start = m, end = m, top = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        items(6) { i ->
+                            CoverArt(10 + i, Modifier.size(132.dp).clip(style.artShape).pressable(onClick = onLogin))
+                        }
+                    }
                 }
             }
         }
@@ -105,148 +105,154 @@ private fun greeting(hour: Int) = when (hour) {
     else -> "夜深了"
 }
 
+private val chineseDigits = listOf("〇", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十")
+
+/** 14 → 十四, 20 → 二十, 31 → 三十一. */
+internal fun chineseNumber(n: Int): String = when {
+    n <= 10 -> chineseDigits[n]
+    n < 20 -> "十" + chineseDigits[n % 10]
+    n % 10 == 0 -> chineseDigits[n / 10] + "十"
+    else -> chineseDigits[n / 10] + "十" + chineseDigits[n % 10]
+}
+
 @Composable
 private fun Header(now: LocalDateTime, onOpenSettings: () -> Unit, onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
+    val weekday = now.dayOfWeek.getDisplayName(JavaTextStyle.FULL, Locale.CHINA)
+    // The literary theme writes the date out in characters.
+    val date = if (style.quietSections) {
+        "${chineseNumber(now.monthValue)}月${chineseNumber(now.dayOfMonth)}日 · $weekday"
+    } else {
+        "${now.monthValue}月${now.dayOfMonth}日 · $weekday"
+    }
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(greeting(now.hour), style = MaterialTheme.typography.displaySmall)
-            val weekday = now.dayOfWeek.getDisplayName(JavaTextStyle.FULL, Locale.CHINA)
-            Text(
-                "${now.monthValue}月${now.dayOfMonth}日 · $weekday · 今天想听点什么？",
-                style = MaterialTheme.typography.bodyMedium, color = c.muted,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+            Text(greeting(now.hour), style = style.type.display)
+            Text(date, style = style.type.caption, color = c.muted, modifier = Modifier.padding(top = 6.dp))
         }
-        IconAction(Icons.Filled.Settings, "设置", onOpenSettings, tint = c.muted)
+        IconAction(LineIcon.Sliders, "设置", onOpenSettings, tint = c.muted)
         Box(
             Modifier
-                .size(44.dp)
-                .themedSurface(shape = CircleShape, onClick = onLogin),
+                .size(40.dp)
+                .then(
+                    if (style.edge == EdgeKind.Hairline) {
+                        Modifier.clip(CircleShape).border(1.dp, c.outline, CircleShape).pressable(onClick = onLogin)
+                    } else {
+                        Modifier.themedSurface(shape = CircleShape, onClick = onLogin)
+                    },
+                ),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Filled.Person, contentDescription = "登录", tint = c.muted)
+            ThemedIcon(LineIcon.User, "登录", tint = c.muted, size = 20.dp)
         }
     }
 }
 
+/** Not logged in yet: one calm line, not a billboard. */
 @Composable
-private fun LoginInvite(onLogin: () -> Unit, modifier: Modifier) {
+private fun ConnectLine(onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    val onFill = if (style.button == ButtonKind.NeonRing) c.accent else c.onAccent
-    Row(
-        modifier
-            .fillMaxWidth()
-            .themedSurface(tone = SurfaceTone.Accent, onClick = onLogin)
-            .padding(20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text("连接网易云音乐", style = MaterialTheme.typography.titleLarge, color = onFill)
-            Text(
-                "扫码登录后，同步你的歌单、红心和每日推荐",
-                style = MaterialTheme.typography.bodyMedium, color = onFill.copy(alpha = 0.82f),
-                modifier = Modifier.padding(top = 6.dp),
-            )
-            Text(
-                "扫码登录  →",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = onFill,
-                modifier = Modifier
-                    .padding(top = 14.dp)
-                    .clip(style.chipShape)
-                    .border(1.5.dp, onFill.copy(alpha = 0.7f), style.chipShape)
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
-            )
+    val hairline = style.edge == EdgeKind.Hairline
+    Column(modifier) {
+        if (hairline) Hairline()
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .then(if (hairline) Modifier else Modifier.themedSurface())
+                .padding(horizontal = if (hairline) 0.dp else 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // A small seal, the one spot of colour on the page.
+            Box(Modifier.size(8.dp).background(c.accentAlt, if (hairline) androidx.compose.ui.graphics.RectangleShape else CircleShape))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("还没有连接网易云音乐", style = style.type.body)
+                Text("登录后同步歌单、红心与每日推荐", style = style.type.caption, color = c.muted)
+            }
+            TextLink("扫码登录", onLogin)
         }
-        Spacer(Modifier.width(16.dp))
-        QrGlyph(onFill.copy(alpha = 0.9f), Modifier.size(78.dp))
+        if (hairline) Hairline()
     }
 }
 
 @Composable
-private fun QuickTiles(day: Int, onLogin: () -> Unit) {
+private fun NowPlayingHero(player: DemoPlayerState, onOpenPlayer: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        QuickTile("每日推荐", onLogin, Modifier.weight(1f)) {
-            Text(
-                "$day",
-                style = MaterialTheme.typography.headlineMedium.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold),
-                color = c.accent,
-            )
-        }
-        QuickTile("私人 FM", onLogin, Modifier.weight(1f)) { Icon(Icons.Filled.Radio, null, tint = c.accent, modifier = Modifier.size(30.dp)) }
-        QuickTile("我喜欢", onLogin, Modifier.weight(1f)) { Icon(Icons.Filled.Favorite, null, tint = c.like, modifier = Modifier.size(30.dp)) }
-        QuickTile("排行榜", onLogin, Modifier.weight(1f)) { Icon(Icons.Filled.Leaderboard, null, tint = c.accentAlt, modifier = Modifier.size(30.dp)) }
-    }
-}
-
-@Composable
-private fun QuickTile(label: String, onClick: () -> Unit, modifier: Modifier, visual: @Composable () -> Unit) {
-    Column(
-        modifier
-            .aspectRatio(0.84f)
-            .themedSurface(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Box(Modifier.height(40.dp), contentAlignment = Alignment.CenterStart) { visual() }
-        Text(label, style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold), maxLines = 1, softWrap = false)
-    }
-}
-
-@Composable
-private fun ContinueCard(player: DemoPlayerState, onOpenPlayer: () -> Unit) {
-    val style = Lanyin.style
-    val c = style.colors
+    val hairline = style.edge == EdgeKind.Hairline
     val seconds by remember { derivedStateOf { player.positionMs / 1000 } }
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
-            .themedSurface(onClick = onOpenPlayer)
-            .padding(12.dp),
+            .then(
+                if (hairline) {
+                    Modifier.clickable(remember { MutableInteractionSource() }, indication = null, onClick = onOpenPlayer)
+                } else {
+                    Modifier.themedSurface(onClick = onOpenPlayer).padding(14.dp)
+                },
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CoverArt(player.coverSeed, Modifier.size(60.dp).clip(style.artShape))
-        Spacer(Modifier.width(14.dp))
+        CoverArt(player.coverSeed, Modifier.size(88.dp).clip(style.artShape))
+        Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(player.title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), maxLines = 1)
-            Text(
-                "${player.artist} · 听到 ${formatTime(seconds * 1000)}",
-                style = MaterialTheme.typography.bodySmall, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
+            Text(player.title, style = style.type.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(player.artist + " · " + player.album, style = style.type.caption, color = c.muted, maxLines = 1)
+            Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Canvas(Modifier.weight(1f).height(2.dp)) {
+                    val f = (player.positionMs.toFloat() / player.durationMs).coerceIn(0f, 1f)
+                    val y = size.height / 2
+                    drawLine(c.content.copy(alpha = 0.14f), Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
+                    drawLine(c.content, Offset(0f, y), Offset(size.width * f, y), 1.5.dp.toPx())
+                }
+                Text(
+                    formatTime(seconds * 1000),
+                    style = style.type.caption.copy(fontFamily = style.numeric),
+                    color = c.muted,
+                    modifier = Modifier.padding(start = 10.dp),
+                )
+            }
         }
-        PlayPauseButton(player.isPlaying, player::togglePlay, size = 46.dp)
+        Spacer(Modifier.width(16.dp))
+        PlayPauseButton(player.isPlaying, player::togglePlay, size = 48.dp)
     }
 }
 
+/** Four shortcuts. Only the date carries colour; icons stay in the ink colour. */
 @Composable
-private fun LockedPlaylists(onLogin: () -> Unit) {
+private fun QuickEntries(day: Int, onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        items(6) { i ->
-            Column(Modifier.width(132.dp).pressable(onClick = onLogin)) {
-                Box {
-                    CoverArt(10 + i, Modifier.size(132.dp).clip(style.artShape))
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(8.dp)
-                            .size(26.dp)
-                            .clip(CircleShape)
-                            .background(c.bg.copy(alpha = 0.75f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Filled.Lock, contentDescription = "需要登录", tint = c.content, modifier = Modifier.size(14.dp))
-                    }
-                }
-                // Skeleton title lines in place of real names.
-                Box(Modifier.padding(top = 10.dp).width(116.dp).height(10.dp).clip(style.chipShape).background(c.content.copy(alpha = 0.1f)))
-                Box(Modifier.padding(top = 7.dp).width(72.dp).height(10.dp).clip(style.chipShape).background(c.content.copy(alpha = 0.06f)))
+    val hairline = style.edge == EdgeKind.Hairline
+    val entries: List<Pair<String, @Composable () -> Unit>> = listOf(
+        "每日推荐" to {
+            Text(
+                if (hairline) chineseNumber(day) else "$day",
+                style = style.type.title.copy(fontFamily = style.display, fontSize = if (hairline) 20.sp else 22.sp, fontWeight = FontWeight.SemiBold),
+                color = c.accent,
+            )
+        },
+        "私人 FM" to { ThemedIcon(LineIcon.Radio, null, size = 26.dp) },
+        "我喜欢" to { ThemedIcon(LineIcon.Heart, null, size = 26.dp) },
+        "排行榜" to { ThemedIcon(LineIcon.Chart, null, size = 26.dp) },
+    )
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(if (hairline) 0.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        entries.forEachIndexed { i, (label, visual) ->
+            if (hairline && i > 0) {
+                Box(Modifier.width(1.dp).height(36.dp).background(c.outline))
+            }
+            Column(
+                Modifier
+                    .weight(1f)
+                    .then(if (hairline) Modifier.pressable(onClick = onLogin) else Modifier.aspectRatio(1f).themedSurface(onClick = onLogin))
+                    .padding(vertical = if (hairline) 4.dp else 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+            ) {
+                Box(Modifier.height(30.dp), contentAlignment = Alignment.Center) { visual() }
+                Text(label, style = style.type.caption, maxLines = 1, softWrap = false)
             }
         }
     }

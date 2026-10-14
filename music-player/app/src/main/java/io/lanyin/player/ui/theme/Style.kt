@@ -10,12 +10,14 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 
 @Immutable
 data class LanyinColors(
@@ -45,6 +47,23 @@ enum class SeekKind { Wave, Hairline, Pill, Segments, Tape }
 enum class ButtonKind { Glow, Outline, Blob, NeonRing, Retro }
 
 enum class NavKind { Pill, Text }
+
+/** Floating pills over the content, or a bar docked to the bottom edge. */
+enum class DockKind { Floating, Docked }
+
+/**
+ * The whole type scale: four sizes plus a tracked label. Pages use only these, so hierarchy
+ * comes from a consistent rhythm instead of ad-hoc sizes.
+ */
+@Immutable
+data class LanyinType(
+    val display: TextStyle,
+    val title: TextStyle,
+    val body: TextStyle,
+    val caption: TextStyle,
+    /** Small tracked label for section headings in quiet themes and for tags like 「无损」. */
+    val label: TextStyle,
+)
 
 @Immutable
 data class LyricStyle(
@@ -89,7 +108,32 @@ data class LanyinStyle(
     /** Playful elements: the tone arm, like button, active tab. */
     val bouncy: Motion,
     val pressScale: Float,
-)
+    /** Line weight of [io.lanyin.player.ui.design.LineIcon]s, in 24-unit grid units. */
+    val iconStroke: Float = 1.8f,
+    val dock: DockKind = DockKind.Floating,
+    /** Horizontal page margin. */
+    val margin: Dp = 20.dp,
+    /** Section headings as small tracked labels rather than titles. */
+    val quietSections: Boolean = false,
+) {
+    val type: LanyinType by lazy { typeScale() }
+
+    private fun typeScale(): LanyinType {
+        val serif = display == FontFamily.Serif
+        val titleWeight = when {
+            displayWeight >= FontWeight.Bold -> FontWeight.Bold
+            serif -> FontWeight.Medium
+            else -> FontWeight.SemiBold
+        }
+        return LanyinType(
+            display = TextStyle(fontFamily = display, fontWeight = displayWeight, fontSize = 30.sp, lineHeight = 38.sp, letterSpacing = displayTracking),
+            title = TextStyle(fontFamily = if (serif) display else body, fontWeight = titleWeight, fontSize = 18.sp, lineHeight = 24.sp, letterSpacing = if (serif) 0.02.em else 0.em),
+            body = TextStyle(fontFamily = body, fontSize = 15.sp, lineHeight = 22.sp),
+            caption = TextStyle(fontFamily = body, fontSize = 12.5.sp, lineHeight = 18.sp, letterSpacing = 0.02.em),
+            label = TextStyle(fontFamily = body, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.18.em),
+        )
+    }
+}
 
 val LocalLanyinStyle = staticCompositionLocalOf { lanyinStyle(AppTheme.Default, dark = false) }
 
@@ -106,6 +150,7 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             button = ButtonKind.Glow, nav = NavKind.Pill,
             lyric = LyricStyle(centered = false, activeScale = 1.04f, inactiveAlpha = 0.42f, blurStep = 0.7.dp, staggerMs = 38, glow = false, serif = false),
             motion = Motion(0.82f, 420f), bouncy = Motion(0.58f, 380f), pressScale = 0.94f,
+            iconStroke = 1.8f,
         )
         AppTheme.INK -> LanyinStyle(
             theme = theme, dark = isDark,
@@ -117,6 +162,7 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             button = ButtonKind.Outline, nav = NavKind.Text,
             lyric = LyricStyle(centered = true, activeScale = 1f, inactiveAlpha = 0.34f, blurStep = 0.dp, staggerMs = 0, glow = false, serif = true),
             motion = Motion(1f, 700f), bouncy = Motion(0.9f, 600f), pressScale = 0.98f,
+            iconStroke = 1.3f, dock = DockKind.Docked, margin = 24.dp, quietSections = true,
         )
         AppTheme.SAKURA -> LanyinStyle(
             theme = theme, dark = isDark,
@@ -128,6 +174,7 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             button = ButtonKind.Blob, nav = NavKind.Pill,
             lyric = LyricStyle(centered = true, activeScale = 1.08f, inactiveAlpha = 0.5f, blurStep = 0.5.dp, staggerMs = 55, glow = false, serif = false),
             motion = Motion(0.7f, 450f), bouncy = Motion(0.42f, 420f), pressScale = 0.9f,
+            iconStroke = 2f,
         )
         AppTheme.NEON -> LanyinStyle(
             theme = theme, dark = true,
@@ -139,6 +186,7 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             button = ButtonKind.NeonRing, nav = NavKind.Pill,
             lyric = LyricStyle(centered = false, activeScale = 1f, inactiveAlpha = 0.35f, blurStep = 0.6.dp, staggerMs = 18, glow = true, serif = false),
             motion = Motion(0.85f, 1100f), bouncy = Motion(0.55f, 900f), pressScale = 0.95f,
+            iconStroke = 1.6f,
         )
         AppTheme.DUSK -> LanyinStyle(
             theme = theme, dark = isDark,
@@ -150,6 +198,7 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             button = ButtonKind.Retro, nav = NavKind.Pill,
             lyric = LyricStyle(centered = false, activeScale = 1.03f, inactiveAlpha = 0.5f, blurStep = 0.dp, staggerMs = 45, glow = false, serif = true),
             motion = Motion(0.85f, 320f), bouncy = Motion(0.6f, 300f), pressScale = 1f,
+            iconStroke = 2.2f,
         )
     }
 }

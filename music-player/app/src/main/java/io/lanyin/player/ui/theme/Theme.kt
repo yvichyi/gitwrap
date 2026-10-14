@@ -14,7 +14,8 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 
 /** Shorthand for the active style tokens. */
@@ -23,6 +24,8 @@ object Lanyin {
         @Composable @ReadOnlyComposable get() = LocalLanyinStyle.current
     val colors: LanyinColors
         @Composable @ReadOnlyComposable get() = LocalLanyinStyle.current.colors
+    val type: LanyinType
+        @Composable @ReadOnlyComposable get() = LocalLanyinStyle.current.type
 }
 
 fun AppTheme.isDark(mode: ThemeMode, systemDark: Boolean): Boolean = darkOnly || when (mode) {
@@ -88,14 +91,15 @@ private fun LanyinStyle.materialScheme(): ColorScheme {
 }
 
 private fun LanyinStyle.typography(): Typography {
-    val t = Typography()
-    fun TextStyle.display() = copy(fontFamily = display, fontWeight = displayWeight, letterSpacing = displayTracking)
-    fun TextStyle.body() = copy(fontFamily = body)
-    return t.copy(
-        displayLarge = t.displayLarge.display(), displayMedium = t.displayMedium.display(), displaySmall = t.displaySmall.display(),
-        headlineLarge = t.headlineLarge.display(), headlineMedium = t.headlineMedium.display(), headlineSmall = t.headlineSmall.display(),
-        titleLarge = t.titleLarge.display(), titleMedium = t.titleMedium.body(), titleSmall = t.titleSmall.body(),
-        bodyLarge = t.bodyLarge.body(), bodyMedium = t.bodyMedium.body(), bodySmall = t.bodySmall.body(),
-        labelLarge = t.labelLarge.body(), labelMedium = t.labelMedium.body(), labelSmall = t.labelSmall.body(),
+    // Every Material slot maps onto the four-step scale so stock components can't drift from it.
+    val t = type
+    return Typography(
+        displayLarge = t.display, displayMedium = t.display, displaySmall = t.display,
+        headlineLarge = t.display, headlineMedium = t.display.copy(fontSize = 26.sp, lineHeight = 34.sp),
+        headlineSmall = t.display.copy(fontSize = 22.sp, lineHeight = 30.sp),
+        titleLarge = t.title, titleMedium = t.title.copy(fontSize = 16.sp, lineHeight = 22.sp),
+        titleSmall = t.body.copy(fontWeight = FontWeight.SemiBold),
+        bodyLarge = t.body, bodyMedium = t.body.copy(fontSize = 14.sp, lineHeight = 20.sp), bodySmall = t.caption,
+        labelLarge = t.body.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium), labelMedium = t.caption, labelSmall = t.caption.copy(fontSize = 11.sp),
     )
 }

@@ -70,12 +70,66 @@ private fun DrawScope.inkCover(style: LanyinStyle, seed: Int) {
     val w = size.width
     val h = size.height
     drawRect(c.surfaceAlt)
-    val center = Offset(w * (0.46f + 0.08f * hash01(seed, 1)), h * (0.46f + 0.06f * hash01(seed, 2)))
-    rotate(hash01(seed, 3) * 360f, center) {
-        drawPath(ensoPath(center, w * 0.3f, w * 0.085f, sweepDegrees = 300f), c.content.copy(alpha = 0.92f))
+    val ink = c.content
+    // Four compositions so a row of covers doesn't read as one image repeated.
+    when (seed % 4) {
+        0 -> {
+            val center = Offset(w * (0.46f + 0.08f * hash01(seed, 1)), h * (0.46f + 0.06f * hash01(seed, 2)))
+            rotate(hash01(seed, 3) * 360f, center) {
+                drawPath(ensoPath(center, w * 0.3f, w * 0.085f, sweepDegrees = 300f), ink.copy(alpha = 0.92f))
+            }
+        }
+        1 -> {
+            // Ink-wash mountains, darkest at the peaks.
+            fun mountain(peakX: Float, peakY: Float, spread: Float, alpha: Float) {
+                val path = Path().apply {
+                    moveTo(peakX - spread, h)
+                    quadraticTo(peakX - spread * 0.35f, peakY + h * 0.05f, peakX, peakY)
+                    quadraticTo(peakX + spread * 0.4f, peakY + h * 0.08f, peakX + spread, h)
+                    close()
+                }
+                drawPath(path, Brush.verticalGradient(listOf(ink.copy(alpha = alpha), ink.copy(alpha = alpha * 0.08f)), startY = peakY, endY = h))
+            }
+            mountain(w * 0.66f, h * (0.38f + 0.06f * hash01(seed, 4)), w * 0.55f, 0.45f)
+            mountain(w * 0.34f, h * (0.5f + 0.05f * hash01(seed, 5)), w * 0.5f, 0.9f)
+            drawCircle(c.accentAlt, w * 0.055f, Offset(w * 0.78f, h * 0.24f))
+            return
+        }
+        2 -> drawPath(brushStrokePath(Offset(w * 0.16f, h * (0.56f + 0.06f * hash01(seed, 6))), w * 0.68f, w * 0.11f), ink.copy(alpha = 0.92f))
+        else -> {
+            // Ripples round a dropped stone.
+            val center = Offset(w * (0.38f + 0.12f * hash01(seed, 7)), h * (0.42f + 0.1f * hash01(seed, 8)))
+            for (i in 1..3) drawCircle(ink.copy(alpha = 0.75f - i * 0.15f), w * 0.1f * i, center, style = Stroke(w * 0.012f))
+            drawCircle(ink, w * 0.035f, center)
+        }
     }
     // The red seal.
     drawRect(c.accentAlt, topLeft = Offset(w * 0.74f, h * 0.76f), size = Size(w * 0.1f, w * 0.1f))
+}
+
+/** One horizontal stroke of a loaded brush: pressed down at the start, lifting into a dry tail. */
+internal fun brushStrokePath(start: Offset, length: Float, thickness: Float): Path {
+    val steps = 48
+    val top = ArrayList<Offset>(steps + 1)
+    val bottom = ArrayList<Offset>(steps + 1)
+    for (i in 0..steps) {
+        val f = i / steps.toFloat()
+        val half = thickness / 2f * (0.8f + 0.2f * sin(PI.toFloat() * f)) * (1f - 0.88f * f.pow(4f))
+        val x = start.x + length * f
+        val y = start.y - length * 0.035f * sin(PI.toFloat() * f)
+        top += Offset(x, y - half)
+        bottom += Offset(x, y + half * 0.9f)
+    }
+    return Path().apply {
+        moveTo(top[0].x, top[0].y)
+        top.drop(1).forEach { lineTo(it.x, it.y) }
+        bottom.asReversed().forEach { lineTo(it.x, it.y) }
+        // Round heel where the brush first touched the paper, as part of the same outline.
+        val heelRadius = (bottom[0].y - top[0].y) / 2f
+        val heelCenter = Offset(start.x, (top[0].y + bottom[0].y) / 2f)
+        arcTo(androidx.compose.ui.geometry.Rect(heelCenter, heelRadius), 90f, 180f, false)
+        close()
+    }
 }
 
 private fun DrawScope.sakuraCover(style: LanyinStyle, seed: Int) {
@@ -134,4 +188,44 @@ private fun DrawScope.duskCover(style: LanyinStyle, seed: Int) {
         )
     }
     drawCircle(c.accent, radius = w * 0.07f, center = Offset(w * 0.78f, h * 0.2f))
+}
+
+/** The theme's signature shape as a one-colour line drawing, for empty states. */
+@Composable
+fun ThemeMotif(color: Color, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val center = Offset(w / 2, h / 2)
+        val r = minOf(w, h) * 0.38f
+        val line = Stroke(style.iconStroke * density * 1.2f, cap = StrokeCap.Round)
+        when (style.theme) {
+            AppTheme.INK -> {
+                // A single brush stroke and a seal: calligraphy, not a loading spinner.
+                drawPath(brushStrokePath(Offset(w * 0.12f, h * 0.55f), w * 0.7f, h * 0.13f), color)
+                drawRect(color, Offset(w * 0.78f, h * 0.24f), Size(w * 0.09f, w * 0.09f))
+            }
+            AppTheme.TIDE -> for (i in 0 until 3) {
+                val y = h * (0.38f + i * 0.14f)
+                val path = Path().apply {
+                    moveTo(w * 0.1f, y)
+                    var x = w * 0.1f
+                    while (x <= w * 0.9f) {
+                        lineTo(x, y + h * 0.05f * sin((x / w) * 4f * PI.toFloat() + i))
+                        x += 2f
+                    }
+                }
+                drawPath(path, color.copy(alpha = 1f - i * 0.25f), style = line)
+            }
+            AppTheme.SAKURA -> for (k in 0 until 5) {
+                rotate(k * 72f, center) { drawPetal(center + Offset(0f, -r * 0.55f), r * 0.42f, 0f, color.copy(alpha = 0.85f)) }
+            }
+            AppTheme.NEON -> for (i in 0 until 3) drawCircle(color.copy(alpha = 1f - i * 0.28f), r * (0.45f + i * 0.28f), center, style = line)
+            AppTheme.DUSK -> for (i in 0 until 4) {
+                val rr = r * (1f - i * 0.22f)
+                drawArc(color.copy(alpha = 1f - i * 0.2f), 180f, 180f, false, Offset(center.x - rr, h * 0.75f - rr), Size(rr * 2, rr * 2), style = Stroke(r * 0.12f))
+            }
+        }
+    }
 }

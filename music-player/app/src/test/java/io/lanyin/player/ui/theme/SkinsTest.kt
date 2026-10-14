@@ -15,10 +15,10 @@ class SkinsTest {
 
     @Test
     fun `unknown, missing or retired ids fall back to defaults`() {
-        assertEquals(AppTheme.TIDE, AppTheme.fromId(null))
+        assertEquals(AppTheme.INK, AppTheme.fromId(null))
         // M0 had 竹 ("zhu") and wallpaper colour ("system"); both are gone now.
-        assertEquals(AppTheme.TIDE, AppTheme.fromId("zhu"))
-        assertEquals(AppTheme.TIDE, AppTheme.fromId("system"))
+        assertEquals(AppTheme.INK, AppTheme.fromId("zhu"))
+        assertEquals(AppTheme.INK, AppTheme.fromId("system"))
         assertEquals(PlayerSkin.VINYL, PlayerSkin.fromId(null))
         assertEquals(ThemeMode.SYSTEM, ThemeMode.fromId(""))
     }
@@ -37,6 +37,15 @@ class SkinsTest {
         }
         assertEquals(false, AppTheme.TIDE.isDark(ThemeMode.LIGHT, systemDark = true))
         assertEquals(true, AppTheme.TIDE.isDark(ThemeMode.SYSTEM, systemDark = true))
+    }
+
+    @Test
+    fun `chinese numerals for the ink date`() {
+        assertEquals("一", io.lanyin.player.ui.home.chineseNumber(1))
+        assertEquals("十", io.lanyin.player.ui.home.chineseNumber(10))
+        assertEquals("十四", io.lanyin.player.ui.home.chineseNumber(14))
+        assertEquals("二十", io.lanyin.player.ui.home.chineseNumber(20))
+        assertEquals("三十一", io.lanyin.player.ui.home.chineseNumber(31))
     }
 
     @Test

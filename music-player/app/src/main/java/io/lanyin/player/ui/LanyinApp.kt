@@ -28,11 +28,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,10 +43,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -64,7 +60,10 @@ import dev.chrisbanes.haze.rememberHazeState
 import io.lanyin.player.data.settings.SettingsRepository
 import io.lanyin.player.data.settings.UiSettings
 import io.lanyin.player.ui.design.Backdrop
+import io.lanyin.player.ui.design.Hairline
+import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.LocalHazeState
+import io.lanyin.player.ui.design.ThemedIcon
 import io.lanyin.player.ui.design.LocalOrientationController
 import io.lanyin.player.ui.design.LocalSharedPlayerScope
 import io.lanyin.player.ui.design.SharedPlayerScope
@@ -83,6 +82,7 @@ import io.lanyin.player.ui.player.rememberDemoPlayerState
 import io.lanyin.player.ui.player.rememberSpinState
 import io.lanyin.player.ui.search.SearchScreen
 import io.lanyin.player.ui.settings.SettingsScreen
+import io.lanyin.player.ui.theme.DockKind
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.NavKind
@@ -94,18 +94,21 @@ import kotlinx.serialization.Serializable
 @Serializable data object SettingsRoute
 @Serializable data object LoginRoute
 
-private data class TopLevelTab(val route: Any, val label: String, val icon: ImageVector)
+private data class TopLevelTab(val route: Any, val label: String, val icon: LineIcon)
 
 private val tabs = listOf(
-    TopLevelTab(HomeRoute, "首页", Icons.Filled.Home),
-    TopLevelTab(SearchRoute, "搜索", Icons.Filled.Search),
-    TopLevelTab(LibraryRoute, "我的", Icons.Filled.LibraryMusic),
+    TopLevelTab(HomeRoute, "首页", LineIcon.Home),
+    TopLevelTab(SearchRoute, "搜索", LineIcon.Search),
+    TopLevelTab(LibraryRoute, "我的", LineIcon.Library),
 )
 
-/** Space pages leave at the bottom so their last item clears the floating mini player and tabs. */
+/** Space pages leave at the bottom so their last item clears the mini player and tabs. */
 val LocalBottomChromePadding = staticCompositionLocalOf { 0.dp }
 
-private val BottomChromeHeight = 64.dp + 8.dp + 60.dp + 16.dp
+private fun bottomChromeHeight(dock: DockKind): Dp = when (dock) {
+    DockKind.Floating -> 64.dp + 8.dp + 60.dp + 16.dp
+    DockKind.Docked -> 1.dp + 60.dp + 1.dp + 52.dp
+}
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -133,7 +136,7 @@ fun LanyinApp(
         Box(Modifier.fillMaxSize().background(Lanyin.colors.bg)) {
             Box(Modifier.fillMaxSize().hazeSource(haze)) {
                 Backdrop(Modifier.fillMaxSize())
-                CompositionLocalProvider(LocalBottomChromePadding provides BottomChromeHeight) {
+                CompositionLocalProvider(LocalBottomChromePadding provides bottomChromeHeight(Lanyin.style.dock)) {
                     NavHost(
                         navController = navController,
                         startDestination = HomeRoute,
@@ -177,21 +180,32 @@ fun LanyinApp(
                             onCollapse = { expanded = false },
                         )
                     } else if (onTopLevel) {
+                        val onSelectTab: (Int) -> Unit = { i ->
+                            navController.navigate(tabs[i].route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-                            CompositionLocalProvider(LocalHazeState provides haze) {
-                                Column(
-                                    Modifier
-                                        .navigationBarsPadding()
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
+                            if (Lanyin.style.dock == DockKind.Docked) {
+                                // A plain bar on the page colour, ruled off with hairlines.
+                                Column(Modifier.background(Lanyin.colors.bg).navigationBarsPadding()) {
+                                    Hairline()
                                     MiniPlayer(player, settings.playerSkin, spin, onExpand = { expanded = true })
-                                    TabBar(selectedTab.coerceAtLeast(0)) { i ->
-                                        navController.navigate(tabs[i].route) {
-                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
+                                    Hairline(Modifier.padding(horizontal = Lanyin.style.margin))
+                                    TabBar(selectedTab.coerceAtLeast(0), onSelectTab)
+                                }
+                            } else {
+                                CompositionLocalProvider(LocalHazeState provides haze) {
+                                    Column(
+                                        Modifier
+                                            .navigationBarsPadding()
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        MiniPlayer(player, settings.playerSkin, spin, onExpand = { expanded = true })
+                                        TabBar(selectedTab.coerceAtLeast(0), onSelectTab)
                                     }
                                 }
                             }
@@ -207,11 +221,12 @@ fun LanyinApp(
 private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
     val style = Lanyin.style
     val c = style.colors
+    val docked = style.dock == DockKind.Docked
     BoxWithConstraints(
         Modifier
             .fillMaxWidth()
-            .height(60.dp)
-            .themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome),
+            .height(if (docked) 52.dp else 60.dp)
+            .then(if (docked) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome)),
     ) {
         val itemWidth = maxWidth / tabs.size
         val x by animateDpAsState(itemWidth * selected, style.bouncy.spec(Dp.VisibilityThreshold), label = "tabIndicator")
@@ -235,9 +250,9 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
             NavKind.Text -> Box(
                 Modifier
                     .align(Alignment.BottomStart)
-                    .offset(x = x + itemWidth / 2 - 3.dp)
-                    .padding(bottom = 7.dp)
-                    .size(6.dp)
+                    .offset(x = x + itemWidth / 2 - 2.5.dp)
+                    .padding(bottom = 6.dp)
+                    .size(5.dp)
                     .background(c.accentAlt, CircleShape),
             )
         }
@@ -260,9 +275,9 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                     verticalArrangement = Arrangement.Center,
                 ) {
                     if (style.nav == NavKind.Pill) {
-                        Icon(
-                            tab.icon, contentDescription = null, tint = tint,
-                            modifier = Modifier.size(22.dp).graphicsLayer {
+                        ThemedIcon(
+                            tab.icon, contentDescription = null, tint = tint, size = 22.dp,
+                            modifier = Modifier.graphicsLayer {
                                 val s = 1f + 0.12f * bump
                                 scaleX = s
                                 scaleY = s
@@ -272,7 +287,7 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                     Text(
                         tab.label,
                         style = if (style.nav == NavKind.Text) {
-                            MaterialTheme.typography.titleMedium.copy(fontFamily = style.display, letterSpacing = style.displayTracking)
+                            style.type.body.copy(fontFamily = style.display, fontSize = 16.sp, letterSpacing = 0.12.em)
                         } else {
                             MaterialTheme.typography.labelSmall
                         },

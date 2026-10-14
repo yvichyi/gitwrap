@@ -33,17 +33,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Lyrics
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.ScreenRotation
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -78,6 +67,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import io.lanyin.player.ui.design.Backdrop
 import io.lanyin.player.ui.design.IconAction
+import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.LikeButton
 import io.lanyin.player.ui.design.LocalOrientationController
 import io.lanyin.player.ui.design.PlayPauseButton
@@ -311,23 +301,27 @@ private fun PlayerTopBar(
     val style = Lanyin.style
     val c = style.colors
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconAction(Icons.Filled.KeyboardArrowDown, "收起", onCollapse, iconSize = 30.dp)
+        IconAction(LineIcon.ChevronDown, "收起", onCollapse, iconSize = 30.dp)
         Spacer(Modifier.weight(1f))
-        Text(
-            "无损",
-            style = MaterialTheme.typography.labelMedium.copy(fontFamily = style.numeric, fontWeight = FontWeight.SemiBold),
-            color = c.accent,
-            modifier = Modifier
-                .clip(style.chipShape)
-                .border(1.dp, c.accent.copy(alpha = 0.6f), style.chipShape)
-                .padding(horizontal = 10.dp, vertical = 3.dp),
-        )
+        if (style.quietSections) {
+            Text("无损", style = style.type.label, color = c.muted)
+        } else {
+            Text(
+                "无损",
+                style = style.type.caption.copy(fontWeight = FontWeight.SemiBold),
+                color = c.accent,
+                modifier = Modifier
+                    .clip(style.chipShape)
+                    .border(1.dp, c.accent.copy(alpha = 0.6f), style.chipShape)
+                    .padding(horizontal = 10.dp, vertical = 3.dp),
+            )
+        }
         Spacer(Modifier.width(4.dp))
         if (onToggleLyrics != null) {
-            IconAction(Icons.Filled.Lyrics, if (lyricsShown) "显示封面" else "显示歌词", onToggleLyrics, tint = if (lyricsShown) c.accent else c.content)
+            IconAction(LineIcon.Lyrics, if (lyricsShown) "显示封面" else "显示歌词", onToggleLyrics, tint = if (lyricsShown) c.accent else c.content)
         }
-        IconAction(Icons.Filled.ScreenRotation, if (landscape) "切换到竖屏" else "切换到横屏", onRotate)
-        IconAction(Icons.Filled.MoreHoriz, "更多", {})
+        IconAction(LineIcon.Rotate, if (landscape) "切换到竖屏" else "切换到横屏", onRotate)
+        IconAction(LineIcon.More, "更多", {})
     }
 }
 
@@ -374,7 +368,7 @@ private fun CurrentLine(state: DemoPlayerState, modifier: Modifier = Modifier) {
             text = l.text,
             style = MaterialTheme.typography.titleMedium.copy(
                 fontFamily = if (style.lyric.serif) style.display else MaterialTheme.typography.titleMedium.fontFamily,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = if (style.lyric.serif) FontWeight.Medium else FontWeight.SemiBold,
             ),
             baseColor = c.content.copy(alpha = 0.45f),
             sweepColor = c.accent,
@@ -391,16 +385,16 @@ private fun TransportControls(state: DemoPlayerState, playSize: Dp, modifier: Mo
         AnimatedContent(state.playMode, label = "playMode", transitionSpec = { fadeIn() togetherWith fadeOut() }) { mode ->
             IconAction(
                 when (mode) {
-                    PlayMode.REPEAT_ALL -> Icons.Filled.Repeat
-                    PlayMode.REPEAT_ONE -> Icons.Filled.RepeatOne
-                    PlayMode.SHUFFLE -> Icons.Filled.Shuffle
+                    PlayMode.REPEAT_ALL -> LineIcon.Repeat
+                    PlayMode.REPEAT_ONE -> LineIcon.RepeatOne
+                    PlayMode.SHUFFLE -> LineIcon.Shuffle
                 },
                 mode.label, state::cyclePlayMode, tint = c.muted,
             )
         }
-        IconAction(Icons.Filled.SkipPrevious, "上一首", { state.seekTo(0) }, iconSize = 34.dp)
+        IconAction(LineIcon.Previous, "上一首", { state.seekTo(0) }, iconSize = 34.dp)
         PlayPauseButton(state.isPlaying, state::togglePlay, playSize)
-        IconAction(Icons.Filled.SkipNext, "下一首", { state.seekTo(state.durationMs) }, iconSize = 34.dp)
-        IconAction(Icons.AutoMirrored.Filled.QueueMusic, "播放队列", {}, tint = c.muted)
+        IconAction(LineIcon.Next, "下一首", { state.seekTo(state.durationMs) }, iconSize = 34.dp)
+        IconAction(LineIcon.Queue, "播放队列", {}, tint = c.muted)
     }
 }

@@ -10,14 +10,15 @@ enum class AppTheme(
     val tagline: String,
     val darkOnly: Boolean = false,
 ) {
-    TIDE("lan", "澜", "流动的深海与毛玻璃"),
     INK("mo", "墨", "黑白留白，只留文字"),
+    TIDE("lan", "澜", "流动的深海与毛玻璃"),
     SAKURA("ying", "樱", "花瓣飘落，软糯回弹"),
     NEON("ni", "霓", "赛博霓虹，夜色限定", darkOnly = true),
     DUSK("mu", "暮", "七十年代的暖色黄昏");
 
     companion object {
-        val Default = TIDE
+        /** 墨 is the flagship: the most restrained theme sets the bar for the rest. */
+        val Default = INK
         fun fromId(id: String?): AppTheme = entries.firstOrNull { it.id == id } ?: Default
     }
 }

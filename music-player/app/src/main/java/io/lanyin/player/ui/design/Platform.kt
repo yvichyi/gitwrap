@@ -20,8 +20,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import io.lanyin.player.ui.theme.DockKind
 import io.lanyin.player.ui.theme.Lanyin
 import kotlinx.coroutines.isActive
 
@@ -91,6 +93,7 @@ fun Modifier.sharedPlayer(
 ): Modifier {
     val scope = LocalSharedPlayerScope.current ?: return this
     val motion = Lanyin.style.motion
+    val docked = Lanyin.style.dock == DockKind.Docked
     return with(scope.transition) {
         if (container) {
             // Container transform: each side keeps its own layout, scaled into the growing bounds
@@ -102,7 +105,7 @@ fun Modifier.sharedPlayer(
                 exit = fadeOut(tween(90)),
                 boundsTransform = { _, _ -> motion.spec(Rect.VisibilityThreshold) },
                 resizeMode = SharedTransitionScope.ResizeMode.ScaleToBounds(ContentScale.FillWidth, Alignment.Center),
-                clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(28.dp)),
+                clipInOverlayDuringTransition = OverlayClip(if (docked) RectangleShape else RoundedCornerShape(28.dp)),
                 zIndexInOverlay = zIndex,
             )
         } else {
