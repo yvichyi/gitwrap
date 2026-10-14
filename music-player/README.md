@@ -23,7 +23,8 @@
 
 ```bash
 ./scripts/setup-android-sdk.sh      # 安装 Android SDK 到 ~/android-sdk，并写 local.properties
-./gradlew assembleDebug             # → app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleDebug             # → app/build/outputs/apk/debug/app-debug.apk（未压缩，约 60 MB）
+./gradlew assemblePreview           # → app/build/outputs/apk/preview/app-preview.apk（R8 压缩，约 3 MB，debug 签名，可直接安装）
 ./gradlew testDebugUnitTest         # 单元测试
 ./gradlew recordRoborazziDebug      # 在 JVM 上渲染界面截图 → app/build/outputs/roborazzi/
 ```

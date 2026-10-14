@@ -1,5 +1,3 @@
-# Navigation routes are @Serializable objects; keep their generated serializers.
--keepclassmembers @kotlinx.serialization.Serializable class io.lanyin.player.** {
-    *** Companion;
-    kotlinx.serialization.KSerializer serializer(...);
-}
+# Navigation routes (and later, API models) are @Serializable; navigation looks their
+# serializers up reflectively from the KClass, so keep these small classes whole.
+-keep @kotlinx.serialization.Serializable class io.lanyin.player.** { *; }
