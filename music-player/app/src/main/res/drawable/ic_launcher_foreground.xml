@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A vinyl record with a wave crest across it: 澜 (wave) + 音 (sound). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- record -->
+    <path
+        android:fillColor="#FF16263D"
+        android:pathData="M54,54m-26,0a26,26 0,1 1,52 0a26,26 0,1 1,-52 0" />
+    <path
+        android:strokeColor="#FF2E4A6E"
+        android:strokeWidth="1.2"
+        android:pathData="M54,54m-21,0a21,21 0,1 1,42 0a21,21 0,1 1,-42 0" />
+    <path
+        android:strokeColor="#FF2E4A6E"
+        android:strokeWidth="1.2"
+        android:pathData="M54,54m-16,0a16,16 0,1 1,32 0a16,16 0,1 1,-32 0" />
+    <!-- label -->
+    <path
+        android:fillColor="#FF5FB4FF"
+        android:pathData="M54,54m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
+    <path
+        android:fillColor="#FF0B1A2E"
+        android:pathData="M54,54m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
+    <!-- wave crest -->
+    <path
+        android:strokeColor="#FFBFE3FF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M30,66 C38,58 44,58 50,64 C56,70 62,70 68,62 C72,57 76,56 80,58" />
+</vector>
