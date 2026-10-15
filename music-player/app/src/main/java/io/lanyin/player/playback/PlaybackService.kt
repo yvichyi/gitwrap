@@ -16,6 +16,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import io.lanyin.player.LanyinApplication
 import io.lanyin.player.MainActivity
+import kotlinx.coroutines.cancel
 
 /**
  * Plays in the background: ExoPlayer behind a MediaSession, which brings the notification, the
@@ -25,6 +26,9 @@ import io.lanyin.player.MainActivity
 @OptIn(UnstableApi::class)
 class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
+    private val scope = kotlinx.coroutines.MainScope()
+    private var statusLyrics: StatusLyrics? = null
+    private var destroying = false
 
     override fun onCreate() {
         super.onCreate()
@@ -58,6 +62,23 @@ class PlaybackService : MediaSessionService() {
                 )
             })
             .build()
+
+        // 状态栏歌词: the line being sung, in the media notification's ticker (Flyme and the lyric
+        // modules) and, on Android 16, a Live Update capsule.
+        val ticker = TickerLyrics(androidx.media3.session.DefaultMediaNotificationProvider(this))
+        setMediaNotificationProvider(ticker)
+        ticker.repost = { if (!destroying) session?.let { onUpdateNotification(it, player.playWhenReady) } }
+        val capsule = LyricCapsule(this)
+        statusLyrics = StatusLyrics(
+            scope, container.nowLyrics.current,
+            position = { player.currentPosition },
+            playing = {
+                ticker.enabled = container.tickerLyrics
+                capsule.enabled = container.capsuleLyrics
+                player.isPlaying
+            },
+            sinks = listOf(ticker, capsule),
+        ).also { it.start() }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
@@ -71,6 +92,10 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        destroying = true
+        // Clear the capsule, but don't post the media notification again on the way out.
+        statusLyrics?.stop()
+        scope.cancel()
         session?.run {
             player.release()
             release()

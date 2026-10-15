@@ -53,6 +53,8 @@ class MediaPlayerState(
     private val feed: io.lanyin.player.core.audio.AudioFeed? = null,
     /** Makes [Quality] the one streams are asked for (and remembers it). */
     private val setPreferred: (Quality) -> Unit = {},
+    /** Where the lyrics of what plays are published for the status bar. */
+    private val nowLyrics: NowPlayingLyrics? = null,
 ) : PlayerState() {
 
     override val audioFeed: io.lanyin.player.core.audio.AudioFeed get() = feed ?: super.audioFeed
@@ -392,10 +394,12 @@ class MediaPlayerState(
         lyricsCache[t.id]?.let {
             lyrics = it
             lyricsLoading = false
+            nowLyrics?.publish(NowPlayingLyrics.Lyrics(t.id, t.title, t.artist, it))
             return
         }
         lyrics = emptyList()
         lyricsLoading = true
+        nowLyrics?.publish(NowPlayingLyrics.Lyrics(t.id, t.title, t.artist, emptyList()))
         lyricsJob = scope.launch {
             var source: LyricsSource? = null
             for (attempt in 0 until 3) {
@@ -408,6 +412,7 @@ class MediaPlayerState(
             if (lyricsFor == t.id) {
                 lyrics = parsed
                 lyricsLoading = false
+                nowLyrics?.publish(NowPlayingLyrics.Lyrics(t.id, t.title, t.artist, parsed))
             }
         }
     }

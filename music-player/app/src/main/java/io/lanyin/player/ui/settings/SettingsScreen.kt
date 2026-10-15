@@ -216,6 +216,14 @@ fun SettingsScreen(
                     ToggleRow("同步播放记录", "把在澜音听的歌记到网易云账号里，「最近播放」和「听歌排行」都会有", settings.syncPlays) {
                         scope.launch { repository.setSyncPlays(it) }
                     }
+                    Hairline()
+                    ToggleRow("状态栏歌词", "魅族 Flyme 直接显示；澎湃、ColorOS 等装了 Lyric Getter 或 SuperLyric 模块也能显示", settings.statusBarLyrics) {
+                        scope.launch { repository.setStatusBarLyrics(it) }
+                    }
+                    if (android.os.Build.VERSION.SDK_INT >= 36 && settings.statusBarLyrics) {
+                        Hairline()
+                        LyricCapsuleRow(settings.lyricCapsule) { scope.launch { repository.setLyricCapsule(it) } }
+                    }
                     if (style.edge == EdgeKind.Hairline) Hairline()
                 }
             }
@@ -366,6 +374,28 @@ private fun SkinCard(skin: PlayerSkin, selected: Boolean, spin: io.lanyin.player
         }
         Text(skin.label, style = style.type.body.copy(fontWeight = FontWeight.Medium), modifier = Modifier.padding(top = 6.dp))
         Text(skin.description, style = style.type.caption.copy(fontSize = 11.sp), color = c.muted, minLines = 2, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+    }
+}
+
+/**
+ * Android 16's Live Update capsule for the lyrics. The system can turn these off per app, so
+ * when it has, say so and offer the way to its setting.
+ */
+@Composable
+private fun LyricCapsuleRow(checked: Boolean, onChange: (Boolean) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val allowed = androidx.compose.runtime.remember { io.lanyin.player.playback.LyricCapsule(context).allowed() }
+    ToggleRow("状态栏胶囊", if (allowed) "Android 16 的实时活动：播放时状态栏里有一枚显示当前歌词的胶囊" else "系统关掉了澜音的实时活动，点这里打开后才能显示", checked) {
+        if (!allowed) {
+            runCatching {
+                context.startActivity(
+                    android.content.Intent("android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS")
+                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
+        }
+        onChange(it)
     }
 }
 

@@ -8,6 +8,8 @@
     <!-- Downloads run in a foreground service with a progress notification, and resume after a reboot. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Android 16 Live Updates: lets the lyric capsule sit in the status bar. Not a runtime permission. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- To open NetEase Cloud Music for its QR scanner (package visibility, API 30+). -->

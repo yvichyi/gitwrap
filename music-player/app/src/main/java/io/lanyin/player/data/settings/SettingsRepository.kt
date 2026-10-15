@@ -46,6 +46,10 @@ data class UiSettings(
     val followCover: Boolean = true,
     /** The most the listening cache may keep, in bytes. */
     val cacheLimit: Long = io.lanyin.player.playback.AudioPipeline.CACHE_BYTES,
+    /** The line being sung, in the status bar (Flyme, the lyric modules, Android 16's capsule). */
+    val statusBarLyrics: Boolean = true,
+    /** On Android 16 and later, as a Live Update capsule too. */
+    val lyricCapsule: Boolean = true,
 )
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -66,6 +70,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 syncPlays = prefs[SYNC_PLAYS] ?: true,
                 followCover = prefs[FOLLOW_COVER] ?: true,
                 cacheLimit = prefs[CACHE_LIMIT] ?: io.lanyin.player.playback.AudioPipeline.CACHE_BYTES,
+                statusBarLyrics = prefs[STATUS_LYRICS] ?: true,
+                lyricCapsule = prefs[LYRIC_CAPSULE] ?: true,
                 effects = EffectsSettings(
                     preset = EffectPreset.fromId(prefs[FX_PRESET]),
                     custom = prefs[FX_CUSTOM]?.split(',')?.mapNotNull { it.toFloatOrNull() }?.takeIf { it.size == EQ_FREQUENCIES.size }
@@ -108,6 +114,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setCacheLimit(bytes: Long) = dataStore.edit { it[CACHE_LIMIT] = bytes }
 
+    suspend fun setStatusBarLyrics(enabled: Boolean) = dataStore.edit { it[STATUS_LYRICS] = enabled }
+
+    suspend fun setLyricCapsule(enabled: Boolean) = dataStore.edit { it[LYRIC_CAPSULE] = enabled }
+
     suspend fun setEffects(fx: EffectsSettings) = dataStore.edit {
         it[FX_PRESET] = fx.preset.id
         it[FX_CUSTOM] = fx.custom.joinToString(",")
@@ -136,6 +146,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val SYNC_PLAYS = booleanPreferencesKey("sync_plays")
         val FOLLOW_COVER = booleanPreferencesKey("follow_cover")
         val CACHE_LIMIT = longPreferencesKey("cache_limit")
+        val STATUS_LYRICS = booleanPreferencesKey("status_lyrics")
+        val LYRIC_CAPSULE = booleanPreferencesKey("lyric_capsule")
         val FX_PRESET = stringPreferencesKey("fx_preset")
         val FX_CUSTOM = stringPreferencesKey("fx_custom")
         val FX_BASS = floatPreferencesKey("fx_bass")

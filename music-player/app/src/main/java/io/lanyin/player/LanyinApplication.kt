@@ -71,6 +71,16 @@ class AppContainer(context: Context) {
     val recent = RecentRepository(File(context.filesDir, "recent.json"), scope)
     val downloads = DownloadRepository(context, audio, scope)
     val notices = Notices()
+    val nowLyrics = io.lanyin.player.playback.NowPlayingLyrics()
+
+    /** The 状态栏歌词 settings, read by the playback service as it shows each line. */
+    @Volatile
+    var tickerLyrics = true
+        private set
+
+    @Volatile
+    var capsuleLyrics = true
+        private set
     val uploads = io.lanyin.player.data.library.CloudUploads(scope, netease::uploadToCloud, onUploaded = library::cloudChanged)
     val storage = io.lanyin.player.playback.StorageManager(
         audio, downloads,
@@ -94,6 +104,7 @@ class AppContainer(context: Context) {
             audio.preferred = q
             scope.launch { settings.setQuality(q) }
         },
+        nowLyrics = nowLyrics,
     )
     val services = AppServices(netease, account, library, player, recent, downloads, notices, engine, uploads, storage)
 
@@ -105,6 +116,8 @@ class AppContainer(context: Context) {
                 syncPlays = it.syncPlays
                 engine.effects.settings = it.effects
                 downloads.setWifiOnly(it.downloadOnWifiOnly)
+                tickerLyrics = it.statusBarLyrics
+                capsuleLyrics = it.statusBarLyrics && it.lyricCapsule
             }
         }
         scope.launch {
