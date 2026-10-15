@@ -202,7 +202,7 @@ private fun DrawScope.drawSpectrum(
                 )
             }
         }
-        // Glowing bars that warm from cyan to amber as they rise.
+        // Glowing bars that run from blue into violet as they rise.
         BackdropKind.Neon -> {
             val glow = 5.dp.toPx()
             val core = 1.5.dp.toPx()

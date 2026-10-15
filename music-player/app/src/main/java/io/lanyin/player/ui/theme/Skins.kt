@@ -12,7 +12,7 @@ enum class AppTheme(
     val lightOnly: Boolean = false,
 ) {
     INK("mo", "墨", "黑白留白，只留文字"),
-    NEON("ni", "霓", "青色霓虹，琥珀地平线", darkOnly = true),
+    NEON("ni", "霓", "电光蓝紫，夜色限定", darkOnly = true),
     DUSK("mu", "暮", "晚霞暖光，柔和圆角"),
     GRID("ge", "格", "瑞士网格，粗边硬影", lightOnly = true);
 

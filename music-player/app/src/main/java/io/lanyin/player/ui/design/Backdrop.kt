@@ -158,7 +158,8 @@ private fun DrawScope.drawNeon(style: LanyinStyle, t: Float, e: Float, page: Boo
         glowBlob(c.accentAlt.copy(alpha = 0.25f), sun, r * 1.8f)
         val disc = Path().apply { addOval(androidx.compose.ui.geometry.Rect(sun, r)) }
         val fill = Brush.verticalGradient(
-            listOf(lerp(c.accentAlt, Color(0xFFFFD36E), 0.5f).copy(alpha = 0.55f), c.accentAlt.copy(alpha = 0.4f)),
+            // Blue at the crown sinking into violet at the horizon: a cold sun, in the theme's own hues.
+            listOf(c.accent.copy(alpha = 0.55f), c.accentAlt.copy(alpha = 0.5f)),
             startY = sun.y - r, endY = sun.y,
         )
         clipPath(disc) {

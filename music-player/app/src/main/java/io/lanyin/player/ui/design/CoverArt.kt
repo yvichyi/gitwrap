@@ -133,7 +133,7 @@ private fun DrawScope.neonCover(style: LanyinStyle, seed: Int) {
             val sun = Offset(w * 0.5f, horizon)
             val r = w * 0.27f
             clipRect(bottom = horizon) {
-                drawCircle(Brush.verticalGradient(listOf(lerp(c.accentAlt, Color.Yellow, 0.45f), c.accentAlt), startY = sun.y - r, endY = sun.y), r, sun)
+                drawCircle(Brush.verticalGradient(listOf(lerp(c.accent, Color.White, 0.25f), c.accentAlt), startY = sun.y - r, endY = sun.y), r, sun)
                 for (k in 0 until 4) drawRect(c.surface, Offset(0f, sun.y - r * (0.12f + k * 0.2f)), Size(w, r * (0.03f + k * 0.015f)))
             }
             for (i in -6..6) drawLine(c.accent.copy(alpha = 0.6f), Offset(w / 2 + i * w * 0.03f, horizon), Offset(w / 2 + i * w * 0.2f, h), w * 0.006f)

@@ -217,12 +217,12 @@ private val inkDark = LanyinColors(
     content = Color(0xFFECEAE4), muted = Color(0xFF8E8B82), accent = Color(0xFFECEAE4), accentAlt = Color(0xFFD4493F),
     onAccent = Color(0xFF0B0B0B), outline = Color(0x3DECEAE4), like = Color(0xFFD4493F), vinyl = Color(0xFF1C1C1C),
 )
-// Light on near-black: electric cyan for what you touch, a warm amber for the sun and the horizon,
-// greys with a cold cast. No purple haze.
+// After dark neon UI palettes (a blue-tinted near-black, neon blue, a spectrum purple): blues
+// running into violet, all cool, so nothing fights; magenta only for the heart.
 private val neon = LanyinColors(
-    bg = Color(0xFF05070A), bgDeep = Color(0xFF0A1820), surface = Color(0xFF0A0F14), surfaceAlt = Color(0xFF101820),
-    content = Color(0xFFE4F4FA), muted = Color(0xFF7C909E), accent = Color(0xFF34E4FF), accentAlt = Color(0xFFFF8A2A),
-    onAccent = Color(0xFF02090C), outline = Color(0x5534E4FF), like = Color(0xFFFF6A3D), vinyl = Color(0xFF030405),
+    bg = Color(0xFF0A0F1C), bgDeep = Color(0xFF151B3D), surface = Color(0xFF0E1426), surfaceAlt = Color(0xFF141C34),
+    content = Color(0xFFE6EDFF), muted = Color(0xFF8391B3), accent = Color(0xFF22CCFF), accentAlt = Color(0xFF7C4DFF),
+    onAccent = Color(0xFF050814), outline = Color(0x5522CCFF), like = Color(0xFFFF4081), vinyl = Color(0xFF05070D),
 )
 // Paper is a warm off-white and the sky a dusty peach, so mustard stays an accent rather than
 // the colour of the whole page.
