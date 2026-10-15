@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -42,12 +43,13 @@ fun Backdrop(modifier: Modifier = Modifier, live: Boolean = false, playing: Bool
     val style = Lanyin.style
     val clock = rememberFrameClock(live)
     val energy by animateFloatAsState(if (playing) 1f else 0f, tween(1200), label = "energy")
+    val phase = remember { moonPhase(java.time.LocalDate.now()) }
     Canvas(modifier) {
         val t = clock.floatValue
         val e = energy
         val page = !live
         when (style.backdrop) {
-            BackdropKind.Tide -> drawTide(style, t, e, page)
+            BackdropKind.Tide -> drawTide(style, t, e, page, phase)
             BackdropKind.Ink -> drawInk(style, t, page)
             BackdropKind.Sakura -> drawSakura(style, t, e, page)
             BackdropKind.Neon -> drawNeon(style, t, e, page)
@@ -60,7 +62,7 @@ private fun DrawScope.glowBlob(color: Color, center: Offset, radius: Float) {
     drawCircle(Brush.radialGradient(listOf(color, color.copy(alpha = 0f)), center, radius), radius, center)
 }
 
-private fun DrawScope.drawTide(style: LanyinStyle, t: Float, e: Float, page: Boolean) {
+private fun DrawScope.drawTide(style: LanyinStyle, t: Float, e: Float, page: Boolean, moonPhase: Float) {
     val c = style.colors
     val w = size.width
     val h = size.height
@@ -75,17 +77,70 @@ private fun DrawScope.drawTide(style: LanyinStyle, t: Float, e: Float, page: Boo
         return
     }
 
-    // Landscape: a moon over the right of the stage, where left-aligned lyrics leave room.
+    // Under the surface: light falling in from above, bubbles rising.
+    drawLightRays(style, t)
+    // Landscape: the sky over the right of the stage, where left-aligned lyrics leave room. At
+    // night it is tonight's moon in its true phase; by day a hazy sun.
     if (w > h) {
-        val moon = Offset(w * 0.86f, h * 0.24f)
+        val center = Offset(w * 0.86f, h * 0.24f)
         val r = h * 0.075f
-        glowBlob(Color.White.copy(alpha = if (style.dark) 0.16f else 0.35f), moon, r * 4f)
-        // A lit orb rather than a flat disc: bright at the core, soft at the rim.
-        val core = if (style.dark) Color(0xFFEAF2FF) else Color.White
-        drawCircle(Brush.radialGradient(listOf(core.copy(alpha = 0.95f), core.copy(alpha = 0.55f)), moon, r), r, moon)
+        if (style.dark) {
+            val lit = moonIllumination(moonPhase)
+            glowBlob(Color.White.copy(alpha = 0.05f + 0.12f * lit), center, r * 4f)
+            drawMoon(
+                center, r, moonPhase,
+                Brush.radialGradient(listOf(Color(0xFFF1F7FA), Color(0xFFC9DDE6)), center, r),
+                dark = Color.White.copy(alpha = 0.06f),
+            )
+        } else {
+            glowBlob(Color.White.copy(alpha = 0.55f), center, r * 4.5f)
+            drawCircle(Brush.radialGradient(listOf(Color.White, Color.White.copy(alpha = 0.6f)), center, r), r, center)
+        }
     }
-
+    drawBubbles(style, t, e)
     drawSwells(style, t, e, top = 0.8f, strength = 1f)
+}
+
+/** Shafts of light from the surface, swaying slowly; moonbeams at night. */
+private fun DrawScope.drawLightRays(style: LanyinStyle, t: Float) {
+    val w = size.width
+    val h = size.height
+    val tint = if (style.dark) style.colors.accent else Color.White
+    val strength = if (style.dark) 0.06f else 0.14f
+    for (i in 0 until 5) {
+        val sway = w * 0.03f * sin(t * 0.17f + i * 1.3f)
+        val top = w * (0.08f + 0.2f * i + 0.05f * hash01(i, 40)) + sway
+        val topWidth = w * (0.04f + 0.04f * hash01(i, 41))
+        val slant = w * 0.22f
+        val ray = Path().apply {
+            moveTo(top, 0f)
+            lineTo(top + topWidth, 0f)
+            lineTo(top + topWidth * 3f + slant, h * 0.75f)
+            lineTo(top + slant, h * 0.75f)
+            close()
+        }
+        val a = strength * (0.6f + 0.4f * hash01(i, 42)) * (0.75f + 0.25f * sin(t * 0.3f + i))
+        drawPath(ray, Brush.verticalGradient(listOf(tint.copy(alpha = a), tint.copy(alpha = 0f)), startY = 0f, endY = h * 0.75f))
+    }
+}
+
+/** Bubbles drifting up from the deep, quicker while music plays. */
+private fun DrawScope.drawBubbles(style: LanyinStyle, t: Float, e: Float) {
+    val w = size.width
+    val h = size.height
+    val ring = if (style.dark) style.colors.accentAlt else Color.White
+    val margin = 20f * density
+    for (i in 0 until 16) {
+        val speed = (10f + 18f * hash01(i, 50)) * density * (0.7f + 0.8f * e)
+        val y = h + margin - ((hash01(i, 51) * (h + 2 * margin) + t * speed) % (h + 2 * margin))
+        val x = hash01(i, 52) * w + 6f * density * sin(t * (0.8f + hash01(i, 53)) + i * 2f)
+        val r = (1.5f + 3f * hash01(i, 54)) * density
+        // Fade in from the bottom and out near the surface.
+        val depth = (y / h).coerceIn(0f, 1f)
+        val alpha = (if (style.dark) 0.35f else 0.55f) * (0.4f + 0.6f * hash01(i, 55)) * minOf(1f, depth * 3f)
+        drawCircle(ring.copy(alpha = alpha), r, Offset(x, y), style = Stroke(1f * density))
+        drawCircle(ring.copy(alpha = alpha), r * 0.28f, Offset(x - r * 0.35f, y - r * 0.35f))
+    }
 }
 
 /** Three slow swells along the bottom, the "澜" itself. They rise while music plays. */

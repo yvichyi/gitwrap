@@ -100,6 +100,9 @@ fun LyricsView(
     val focus = remember(lines) { List(lines.size) { Animatable(currentIndex.toFloat()) } }
     // A new track's lyrics cascade up into place, the lines nearest the active one first.
     val appear = remember(lines) { Animatable(0f) }
+    // 澜's lyrics float: lines away from the active one rise and fall gently, out of step.
+    val afloat = style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Tide
+    val tide = io.lanyin.player.ui.design.rememberFrameClock(afloat)
     LaunchedEffect(lines) { appear.animateTo(1f, tween(900, easing = LinearEasing)) }
     val scope = rememberCoroutineScope()
     var drag by remember { mutableFloatStateOf(0f) }
@@ -168,7 +171,12 @@ fun LyricsView(
                                 geometry.version.intValue
                                 val shown = FastOutSlowInEasing.transform(((appear.value - delay) / 0.45f).coerceIn(0f, 1f))
                                 alpha = shown
-                                translationY = anchorPx - geometry.centerAt(focus[i].value) + drag + (1f - shown) * 32.dp.toPx()
+                                val bob = if (afloat && distance > 0) {
+                                    kotlin.math.sin(tide.floatValue * 0.9f + i * 0.8f) * 2.dp.toPx() * minOf(distance, 3) / 3f
+                                } else {
+                                    0f
+                                }
+                                translationY = anchorPx - geometry.centerAt(focus[i].value) + drag + (1f - shown) * 32.dp.toPx() + bob
                             }
                             .then(
                                 if (interactive) {

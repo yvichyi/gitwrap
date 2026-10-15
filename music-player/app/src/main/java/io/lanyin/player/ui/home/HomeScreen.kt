@@ -53,6 +53,11 @@ import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.player.DemoPlayerState
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.ui.theme.BackdropKind
+import io.lanyin.player.ui.design.tideName
+import io.lanyin.player.ui.design.moonPhase
+import io.lanyin.player.ui.design.moonName
+import io.lanyin.player.ui.design.MoonGlyph
 import java.time.LocalDateTime
 import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
@@ -131,7 +136,22 @@ private fun Header(now: LocalDateTime, onOpenSettings: () -> Unit, onLogin: () -
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(greeting(now.hour), style = style.type.display)
-            Text(date, style = style.type.caption, color = c.muted, modifier = Modifier.padding(top = 6.dp))
+            if (style.backdrop == BackdropKind.Tide) {
+                // 澜 keeps the sea's calendar: today's moon and the tide it brings.
+                val phase = remember(now.toLocalDate()) { moonPhase(now.toLocalDate()) }
+                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(date, style = style.type.caption, color = c.muted, maxLines = 1)
+                    Spacer(Modifier.width(10.dp))
+                    MoonGlyph(phase, c.accent, Modifier.size(11.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        "${moonName(phase)} · ${tideName(phase)}", style = style.type.caption, color = c.muted,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
+            } else {
+                Text(date, style = style.type.caption, color = c.muted, modifier = Modifier.padding(top = 6.dp))
+            }
         }
         if (style.edge == EdgeKind.Hairline) {
             IconAction(LineIcon.Sliders, "设置", onOpenSettings, tint = c.muted)
@@ -241,7 +261,16 @@ private fun QuickEntries(day: Int, onLogin: () -> Unit, modifier: Modifier) {
         "每日推荐" to {
             Text(
                 if (hairline) chineseNumber(day) else "$day",
-                style = style.type.title.copy(fontFamily = style.display, fontSize = if (hairline) 20.sp else 22.sp, fontWeight = FontWeight.SemiBold),
+                style = style.type.title.copy(
+                    fontFamily = style.display,
+                    // Thin numerals where the display face is light (澜).
+                    fontSize = when {
+                        hairline -> 20.sp
+                        style.displayWeight <= FontWeight.Light -> 26.sp
+                        else -> 22.sp
+                    },
+                    fontWeight = if (style.displayWeight <= FontWeight.Light) FontWeight.Light else FontWeight.SemiBold,
+                ),
                 color = c.accent,
             )
         },

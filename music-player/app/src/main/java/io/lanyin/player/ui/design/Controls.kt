@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
@@ -82,10 +83,19 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
         else -> c.onAccent
     }
     val container = when (style.button) {
+        // 澜: a bubble, lit from the upper left with a specular glint.
         ButtonKind.Glow -> Modifier
             .shadow(size * 0.28f, shape, ambientColor = c.accent, spotColor = c.accent)
             .clip(shape)
-            .background(c.accent)
+            .drawBehind {
+                drawRect(
+                    Brush.radialGradient(
+                        listOf(androidx.compose.ui.graphics.lerp(c.accent, Color.White, 0.28f), c.accent, androidx.compose.ui.graphics.lerp(c.accent, Color.Black, 0.18f)),
+                        center = Offset(this.size.width * 0.34f, this.size.height * 0.3f), radius = this.size.width * 0.9f,
+                    ),
+                )
+                drawOval(Color.White.copy(alpha = 0.3f), Offset(this.size.width * 0.2f, this.size.height * 0.11f), Size(this.size.width * 0.34f, this.size.height * 0.18f))
+            }
         ButtonKind.Outline -> Modifier.border(1.5.dp, c.content, shape)
         ButtonKind.Blob -> Modifier
             .shadow(size * 0.22f, shape, ambientColor = c.accent, spotColor = c.accent)
@@ -528,6 +538,23 @@ fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String?
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
         if (style.quietSections) {
             Text(title, style = style.type.label, color = c.muted)
+        } else if (style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Tide) {
+            // 澜 marks its sections with a small swell.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Canvas(Modifier.size(16.dp, 8.dp)) {
+                    val path = Path().apply {
+                        moveTo(0f, this@Canvas.size.height / 2f)
+                        var x = 0f
+                        while (x <= this@Canvas.size.width) {
+                            lineTo(x, this@Canvas.size.height / 2f + this@Canvas.size.height * 0.35f * kotlin.math.sin(x / this@Canvas.size.width * 2f * PI.toFloat()))
+                            x += 1f
+                        }
+                    }
+                    drawPath(path, c.accent, style = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round))
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(title, style = style.type.title, color = c.content)
+            }
         } else {
             Text(title, style = style.type.title, color = c.content)
         }

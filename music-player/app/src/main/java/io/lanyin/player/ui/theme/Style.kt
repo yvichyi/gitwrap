@@ -143,7 +143,8 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
         AppTheme.TIDE -> LanyinStyle(
             theme = theme, dark = isDark,
             colors = if (isDark) tideDark else tideLight,
-            display = FontFamily.SansSerif, displayWeight = FontWeight.Bold, displayTracking = (-0.02).em,
+            // Light, airy display type and thin numerals: water rather than ink or poster.
+            display = FontFamily.SansSerif, displayWeight = FontWeight.Light, displayTracking = (-0.01).em,
             body = FontFamily.SansSerif, numeric = FontFamily.SansSerif,
             cardShape = RoundedCornerShape(24.dp), chipShape = CircleShape, artShape = RoundedCornerShape(20.dp),
             edge = EdgeKind.Glass, backdrop = BackdropKind.Tide, seek = SeekKind.Wave,
@@ -203,15 +204,17 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
     }
 }
 
+// 晨海: pearl and sea mist, deep-water ink, a teal sea for the accent and sea glass beside it.
 private val tideLight = LanyinColors(
-    bg = Color(0xFFF2F6FB), bgDeep = Color(0xFFD5E5F7), surface = Color(0xFFFFFFFF), surfaceAlt = Color(0xFFE6EFFA),
-    content = Color(0xFF0D1B2A), muted = Color(0xFF56677D), accent = Color(0xFF1F6FD8), accentAlt = Color(0xFF10A8A3),
-    onAccent = Color(0xFFFFFFFF), outline = Color(0x1F0D1B2A), like = Color(0xFFF0466A), vinyl = Color(0xFF0E1116),
+    bg = Color(0xFFEEF4F6), bgDeep = Color(0xFFCDE2E8), surface = Color(0xFFFFFFFF), surfaceAlt = Color(0xFFE3EEF1),
+    content = Color(0xFF0B2430), muted = Color(0xFF4D6874), accent = Color(0xFF0E7896), accentAlt = Color(0xFF2FA899),
+    onAccent = Color(0xFFFFFFFF), outline = Color(0x1F0B2430), like = Color(0xFFE5486B), vinyl = Color(0xFF0D1418),
 )
+// 夜海: the abyss, moonlight on the water.
 private val tideDark = LanyinColors(
-    bg = Color(0xFF06101D), bgDeep = Color(0xFF0C2646), surface = Color(0xFF0F1E33), surfaceAlt = Color(0xFF15283F),
-    content = Color(0xFFEAF2FF), muted = Color(0xFF8FA3BD), accent = Color(0xFF6EB8FF), accentAlt = Color(0xFF3DDCCB),
-    onAccent = Color(0xFF03101F), outline = Color(0x24FFFFFF), like = Color(0xFFFF6B88), vinyl = Color(0xFF0A0D12),
+    bg = Color(0xFF040D16), bgDeep = Color(0xFF0A2235), surface = Color(0xFF0B1A28), surfaceAlt = Color(0xFF112638),
+    content = Color(0xFFE4F0F4), muted = Color(0xFF8AA3AF), accent = Color(0xFF5CC6DF), accentAlt = Color(0xFF8DE0CC),
+    onAccent = Color(0xFF02121B), outline = Color(0x24FFFFFF), like = Color(0xFFFF6B88), vinyl = Color(0xFF070B10),
 )
 private val inkLight = LanyinColors(
     bg = Color(0xFFF4F1EA), bgDeep = Color(0xFFE4DFD3), surface = Color(0xFFF4F1EA), surfaceAlt = Color(0xFFEBE7DE),

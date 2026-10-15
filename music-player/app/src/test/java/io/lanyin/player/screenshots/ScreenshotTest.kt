@@ -3,6 +3,7 @@ package io.lanyin.player.screenshots
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -200,6 +201,19 @@ class ScreenshotTest {
         compose.onRoot().captureRoboImage("build/outputs/roborazzi/motion_skip_2_ink_light.png")
         compose.mainClock.advanceTimeBy(1_200)
         compose.onRoot().captureRoboImage("build/outputs/roborazzi/motion_skip_3_ink_light.png")
+    }
+
+    // 澜's touch: rings spreading from the finger on a glass card, mid-press.
+    @Test fun motion_ripple() {
+        val repo = repo()
+        capture("motion_ripple_0_tide_light", AppTheme.TIDE, ThemeMode.LIGHT) {
+            LanyinApp(UiSettings(theme = AppTheme.TIDE, themeMode = ThemeMode.LIGHT), repo, player = playingAt(14_000))
+        }
+        // The 继续播放 card.
+        compose.onRoot().performTouchInput { down(androidx.compose.ui.geometry.Offset(width * 0.4f, height * 0.31f)) }
+        compose.mainClock.advanceTimeBy(260)
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/motion_ripple_1_tide_light.png")
+        compose.onRoot().performTouchInput { cancel() }
     }
 
     // Portrait player.

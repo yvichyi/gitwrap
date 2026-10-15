@@ -104,6 +104,12 @@ fun Modifier.themedSurface(
         style.edge == EdgeKind.Glow -> m.background(c.surface.copy(alpha = 0.9f))
         else -> m.background(c.surface)
     }
+    // Glass catches the light along its top edge, like the meniscus of water.
+    if (style.edge == EdgeKind.Glass) {
+        m = m.drawBehind {
+            drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (style.dark) 0.07f else 0.4f), Color.Transparent), endY = 36.dp.toPx()))
+        }
+    }
     // 4. Edge.
     m = when (style.edge) {
         EdgeKind.Glass -> m.border(1.dp, Color.White.copy(alpha = if (style.dark) 0.10f else 0.65f), shape)
@@ -112,7 +118,10 @@ fun Modifier.themedSurface(
         EdgeKind.Retro -> m.border(2.dp, c.outline, shape)
         EdgeKind.Soft -> m
     }
-    if (onClick != null) m = m.clickable(interactionSource = interaction, indication = null, onClick = onClick)
+    if (onClick != null) {
+        val indication = if (style.edge == EdgeKind.Glass) WaterRipple(c.accent, bounded = true) else null
+        m = m.clickable(interactionSource = interaction, indication = indication, onClick = onClick)
+    }
     return m
 }
 
@@ -139,7 +148,12 @@ fun Modifier.pressable(enabled: Boolean = true, onClick: () -> Unit): Modifier {
         val s = 1f - depth * press
         scaleX = s
         scaleY = s
-    }.clickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick)
+    }.clickable(
+        interactionSource = interaction,
+        indication = if (style.edge == EdgeKind.Glass) WaterRipple(style.colors.accent, bounded = false) else null,
+        enabled = enabled,
+        onClick = onClick,
+    )
 }
 
 /** Neo-retro hard shadow: the shape, filled solid, offset down and to the right. */
