@@ -11,7 +11,9 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -210,8 +212,10 @@ fun formatTime(ms: Long): String {
 }
 
 /**
- * Time · track · time. The track is drawn per theme and redraws every frame from [position]
- * without recomposing; tap or drag to seek.
+ * Time · track · time, or the track full width with the times beneath it ([timesBelow]). The track
+ * is drawn per theme and redraws every frame from [position] without recomposing; tap or drag to
+ * seek. While dragging, [onScrub] reports where the finger is (null on release) so the lyrics can
+ * follow along before the seek lands.
  */
 @Composable
 fun SeekBar(
@@ -220,6 +224,8 @@ fun SeekBar(
     playing: Boolean,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    timesBelow: Boolean = false,
+    onScrub: ((Long?) -> Unit)? = null,
 ) {
     val style = Lanyin.style
     val c = style.colors
@@ -227,30 +233,31 @@ fun SeekBar(
     val waveAmp by animateFloatAsState(if (playing) 1f else 0f, tween(500), label = "waveAmp")
     var dragFraction by remember { mutableStateOf<Float?>(null) }
     val seconds by remember { derivedStateOf { position() / 1000 } }
-    val timeStyle = MaterialTheme.typography.labelMedium.copy(fontFamily = style.numeric, color = c.muted)
-
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        val shown = dragFraction?.let { (it * durationMs).toLong() / 1000 } ?: seconds
-        TimeLabel(shown * 1000, timeStyle)
+    // Tabular figures so the time doesn't shuffle sideways as digits change.
+    val timeStyle = MaterialTheme.typography.labelMedium.copy(fontFamily = style.numeric, color = c.muted, fontFeatureSettings = "tnum")
+    val shown = dragFraction?.let { (it * durationMs).toLong() / 1000 } ?: seconds
+    fun scrubTo(f: Float?) {
+        dragFraction = f
+        onScrub?.invoke(f?.let { (it * durationMs).toLong() })
+    }
+    val track = @Composable { trackModifier: Modifier ->
         Canvas(
-            Modifier
-                .weight(1f)
+            trackModifier
                 .height(32.dp)
-                .padding(horizontal = 14.dp)
                 .pointerInput(durationMs) {
                     detectTapGestures { o -> onSeek((o.x / size.width).coerceIn(0f, 1f).times(durationMs).toLong()) }
                 }
                 .pointerInput(durationMs) {
                     detectHorizontalDragGestures(
-                        onDragStart = { o -> dragFraction = (o.x / size.width).coerceIn(0f, 1f) },
+                        onDragStart = { o -> scrubTo((o.x / size.width).coerceIn(0f, 1f)) },
                         onDragEnd = {
                             dragFraction?.let { onSeek((it * durationMs).toLong()) }
-                            dragFraction = null
+                            scrubTo(null)
                         },
-                        onDragCancel = { dragFraction = null },
+                        onDragCancel = { scrubTo(null) },
                     ) { change, _ ->
                         change.consume()
-                        dragFraction = (change.position.x / size.width).coerceIn(0f, 1f)
+                        scrubTo((change.position.x / size.width).coerceIn(0f, 1f))
                     }
                 },
         ) {
@@ -263,7 +270,23 @@ fun SeekBar(
                 SeekKind.Tape -> drawTapeTrack(f, c.accent, c.outline, c.surface)
             }
         }
-        TimeLabel(durationMs, timeStyle)
+    }
+
+    if (timesBelow) {
+        Column(modifier.fillMaxWidth()) {
+            track(Modifier.fillMaxWidth().padding(horizontal = 2.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                TimeLabel(shown * 1000, timeStyle)
+                Spacer(Modifier.weight(1f))
+                TimeLabel(durationMs, timeStyle)
+            }
+        }
+    } else {
+        Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            TimeLabel(shown * 1000, timeStyle)
+            track(Modifier.weight(1f).padding(horizontal = 14.dp))
+            TimeLabel(durationMs, timeStyle)
+        }
     }
 }
 

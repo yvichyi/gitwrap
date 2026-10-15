@@ -4,6 +4,12 @@ import android.app.Activity
 import android.content.res.Configuration
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
@@ -213,8 +219,12 @@ fun PlayerScreen(
 }
 
 /**
- * Artwork, a few lines of lyrics under it, then title and controls. Swipe the artwork to change
- * track; tap it (or the lyrics) for the full lyrics.
+ * Top to bottom: where the music is playing from, the artwork with a few lines of lyrics under it,
+ * title and artist, the progress line with its times beneath, transport, and a quiet row of
+ * secondary actions. Everything rises into place in turn when the player opens; the artwork
+ * settles back when paused and throws a ripple on every beat while playing. Swipe the artwork to
+ * change track; tap it (or the lyrics) for the full lyrics. Dragging the progress line scrubs the
+ * lyrics along with it.
  */
 @Composable
 private fun PortraitPlayer(
@@ -226,8 +236,11 @@ private fun PortraitPlayer(
     onRotate: () -> Unit,
     lyricScale: Float,
 ) {
+    val style = Lanyin.style
     var showLyrics by rememberSaveable { mutableStateOf(false) }
     val lyricsOnly = skin == PlayerSkin.LYRICS || showLyrics
+    val entrance = rememberEntrance(Unit)
+    var scrubMs by remember { mutableStateOf<Long?>(null) }
     Column(
         Modifier
             .fillMaxSize()
@@ -235,11 +248,7 @@ private fun PortraitPlayer(
             .navigationBarsPadding()
             .padding(horizontal = 24.dp),
     ) {
-        PlayerTopBar(
-            state, onCollapse = onCollapse, onRotate = onRotate,
-            onToggleLyrics = if (skin == PlayerSkin.LYRICS) null else ({ showLyrics = !showLyrics }),
-            lyricsShown = lyricsOnly, modifier = dismissDrag,
-        )
+        PlayerTopBar(state, onCollapse, modifier = dismissDrag.enter(entrance, 0))
         AnimatedContent(
             targetState = lyricsOnly,
             transitionSpec = { (fadeIn(tween(260)) + scaleIn(initialScale = 0.96f)) togetherWith (fadeOut(tween(160)) + scaleOut(targetScale = 1.02f)) },
@@ -248,7 +257,7 @@ private fun PortraitPlayer(
         ) { lyrics ->
             val textStyle = lyricTextStyle(LyricSize.BASE_SP, lyricScale)
             if (lyrics) {
-                StateLyrics(state, textStyle, centered = Lanyin.style.lyric.centered, anchorFraction = 0.4f, modifier = Modifier.fillMaxSize())
+                StateLyrics(state, textStyle, centered = style.lyric.centered, anchorFraction = 0.4f, scrubMs = scrubMs, modifier = Modifier.fillMaxSize())
             } else {
                 Column(Modifier.fillMaxSize()) {
                     BoxWithConstraints(
@@ -256,7 +265,21 @@ private fun PortraitPlayer(
                         // Sit a little low so artwork and lyrics read as one group.
                         contentAlignment = BiasAlignment(0f, 0.45f),
                     ) {
-                        Box(artSize(skin, maxWidth, maxHeight).artworkBackdrop(skin), contentAlignment = Alignment.Center) {
+                        // A record or tape settles back a little when paused; covers already do.
+                        val settle by animateFloatAsState(
+                            if (state.isPlaying || skin == PlayerSkin.COVER) 1f else 0.95f,
+                            style.bouncy.spec(), label = "artSettle",
+                        )
+                        Box(
+                            artSize(skin, maxWidth, maxHeight)
+                                .beatRipples(skin, state.isPlaying)
+                                .artworkBackdrop(skin)
+                                .graphicsLayer {
+                                    scaleX = settle
+                                    scaleY = settle
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
                             SwipeToSkip(state) {
                                 PlayerArtwork(
                                     skin, state.isPlaying, spin, state.coverSeed,
@@ -276,17 +299,30 @@ private fun PortraitPlayer(
                         anchorFraction = 0.5f,
                         interactive = false,
                         showTranslation = false,
+                        scrubMs = scrubMs,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(132.dp)
+                            .height(120.dp)
+                            .enter(entrance, 2)
                             .clickable(remember { MutableInteractionSource() }, indication = null) { showLyrics = true },
                     )
                 }
             }
         }
-        TrackTitle(state, Modifier.padding(top = 12.dp))
-        SeekBar(state::positionMs, state.durationMs, state.isPlaying, state::seekTo, Modifier.padding(top = 10.dp))
-        TransportControls(state, playSize = 72.dp, Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 18.dp))
+        TrackTitle(state, Modifier.padding(top = 14.dp).enter(entrance, 3))
+        SeekBar(
+            state::positionMs, state.durationMs, state.isPlaying, state::seekTo,
+            Modifier.padding(top = 10.dp).enter(entrance, 4),
+            timesBelow = true, onScrub = { scrubMs = it },
+        )
+        TransportControls(state, playSize = 72.dp, Modifier.fillMaxWidth().padding(top = 4.dp).enter(entrance, 5))
+        UtilityRow(
+            state,
+            onToggleLyrics = if (skin == PlayerSkin.LYRICS) null else ({ showLyrics = !showLyrics }),
+            lyricsShown = lyricsOnly,
+            onRotate = onRotate,
+            modifier = Modifier.padding(top = 6.dp, bottom = 8.dp).enter(entrance, 6),
+        )
     }
 }
 
@@ -319,6 +355,8 @@ private fun LandscapePlayer(
     onRotate: () -> Unit,
     lyricScale: Float,
 ) {
+    val entrance = rememberEntrance(Unit)
+    var scrubMs by remember { mutableStateOf<Long?>(null) }
     Column(
         Modifier
             .fillMaxSize()
@@ -326,7 +364,7 @@ private fun LandscapePlayer(
             .padding(horizontal = 28.dp, vertical = 8.dp),
     ) {
         AnimatedVisibility(chromeVisible, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-            LandscapeTopBar(state, onCollapse, onRotate, modifier = dismissDrag)
+            LandscapeTopBar(state, onCollapse, onRotate, modifier = dismissDrag.enter(entrance, 0))
         }
         Row(
             Modifier
@@ -339,7 +377,8 @@ private fun LandscapePlayer(
                     state, chromeVisible,
                     textStyle = lyricTextStyle(LyricSize.BASE_SP * 1.2f, lyricScale),
                     centered = true,
-                    modifier = Modifier.fillMaxSize(),
+                    scrubMs = scrubMs,
+                    modifier = Modifier.fillMaxSize().enter(entrance, 1),
                 )
             } else {
                 BoxWithConstraints(
@@ -367,14 +406,15 @@ private fun LandscapePlayer(
                         state, chromeVisible,
                         textStyle = lyricTextStyle(LyricSize.BASE_SP, lyricScale),
                         centered = false,
-                        modifier = Modifier.fillMaxSize().padding(end = inscriptionRoom),
+                        scrubMs = scrubMs,
+                        modifier = Modifier.fillMaxSize().padding(end = inscriptionRoom).enter(entrance, 1),
                     )
                     InscriptionOverlay(inscribed, state, Modifier.align(Alignment.TopEnd).padding(top = 12.dp))
                 }
             }
         }
         AnimatedVisibility(chromeVisible, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-            LandscapeControlBar(state, Modifier.padding(top = 8.dp))
+            LandscapeControlBar(state, onScrub = { scrubMs = it }, Modifier.padding(top = 8.dp).enter(entrance, 2))
         }
         AnimatedVisibility(!chromeVisible, enter = fadeIn(tween(600)), exit = fadeOut(tween(150))) {
             // 墨 writes the title in its inscription instead.
@@ -403,6 +443,7 @@ private fun StageLyrics(
     textStyle: TextStyle,
     centered: Boolean,
     modifier: Modifier = Modifier,
+    scrubMs: Long? = null,
 ) {
     var footerPx by remember { mutableIntStateOf(0) }
     BoxWithConstraints(modifier) {
@@ -410,7 +451,7 @@ private fun StageLyrics(
         val lyricsPx = (total - footerPx).coerceAtLeast(1)
         val anchor = (total / 2f / lyricsPx).coerceIn(0.25f, 0.75f)
         Column(Modifier.fillMaxSize()) {
-            StateLyrics(state, textStyle, centered, anchor, modifier = Modifier.weight(1f).fillMaxWidth())
+            StateLyrics(state, textStyle, centered, anchor, scrubMs = scrubMs, modifier = Modifier.weight(1f).fillMaxWidth())
             AnimatedVisibility(
                 chromeVisible,
                 enter = fadeIn() + expandVertically(),
@@ -433,12 +474,16 @@ private fun StateLyrics(
     modifier: Modifier = Modifier,
     interactive: Boolean = true,
     showTranslation: Boolean = true,
+    /** Where the progress line is being dragged: the lyrics follow it before the seek lands. */
+    scrubMs: Long? = null,
 ) {
     if (state.lyrics.isEmpty()) {
         Instrumental(textStyle, centered, modifier)
     } else {
+        val index = scrubMs?.let { lyricIndexAt(state.lyrics, it) } ?: state.currentLyricIndex
+        val scrubbing = scrubMs != null
         LyricsView(
-            state.lyrics, state.currentLyricIndex, state::lineProgress, state::seekTo,
+            state.lyrics, index, { if (scrubbing) 0f else state.lineProgress() }, state::seekTo,
             textStyle = textStyle, modifier = modifier, centered = centered, anchorFraction = anchorFraction,
             interactive = interactive, showTranslation = showTranslation,
         )
@@ -551,14 +596,12 @@ private fun LandscapeTopBar(state: DemoPlayerState, onCollapse: () -> Unit, onRo
         IconAction(LineIcon.ChevronDown, "收起", onCollapse, iconSize = 30.dp)
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
-            Text(
-                state.title, style = style.type.title, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true),
-            )
-            Text(
-                "${state.artist} · ${state.album}", style = style.type.caption, color = c.muted,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
+            TrackSwitch(state, Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true)) { track ->
+                Text(track.title, style = style.type.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            TrackSwitch(state) { track ->
+                Text("${track.artist} · ${track.album}", style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
         Spacer(Modifier.width(16.dp))
         QualityTags(state)
@@ -570,15 +613,21 @@ private fun LandscapeTopBar(state: DemoPlayerState, onCollapse: () -> Unit, onRo
 
 /** The quality tag plus the stream format: a chip in most themes, a quiet tracked label in 墨. */
 @Composable
-private fun QualityTags(state: DemoPlayerState) {
+private fun QualityTags(state: DemoPlayerState, chipFirst: Boolean = false) {
     val style = Lanyin.style
     if (style.quietSections) {
         Text("${state.quality} · ${state.format}", style = style.type.label, color = style.colors.muted, maxLines = 1)
     } else {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(state.format, style = style.type.caption, color = style.colors.muted, maxLines = 1)
-            Spacer(Modifier.width(8.dp))
-            QualityChip(state.quality)
+            if (chipFirst) {
+                QualityChip(state.quality)
+                Spacer(Modifier.width(8.dp))
+                Text(state.format, style = style.type.caption, color = style.colors.muted, maxLines = 1)
+            } else {
+                Text(state.format, style = style.type.caption, color = style.colors.muted, maxLines = 1)
+                Spacer(Modifier.width(8.dp))
+                QualityChip(state.quality)
+            }
         }
     }
 }
@@ -600,7 +649,7 @@ private fun QualityChip(text: String) {
 }
 
 @Composable
-private fun LandscapeControlBar(state: DemoPlayerState, modifier: Modifier = Modifier) {
+private fun LandscapeControlBar(state: DemoPlayerState, onScrub: (Long?) -> Unit, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val docked = style.dock == DockKind.Docked
     Column(modifier) {
@@ -613,7 +662,7 @@ private fun LandscapeControlBar(state: DemoPlayerState, modifier: Modifier = Mod
                 .padding(start = if (docked) 0.dp else 18.dp, end = if (docked) 0.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SeekBar(state::positionMs, state.durationMs, state.isPlaying, state::seekTo, Modifier.weight(1f).padding(end = 12.dp))
+            SeekBar(state::positionMs, state.durationMs, state.isPlaying, state::seekTo, Modifier.weight(1f).padding(end = 12.dp), onScrub = onScrub)
             TransportControls(state, playSize = 46.dp, Modifier.width(264.dp))
         }
     }
@@ -631,31 +680,24 @@ private fun lyricTextStyle(baseSp: Float, scale: Float): TextStyle {
     return MaterialTheme.typography.headlineSmall.copy(fontSize = size.sp, lineHeight = (size * 1.36f).sp)
 }
 
+/** Collapse, where the music is playing from (centred, like a page title), and more. */
 @Composable
-private fun PlayerTopBar(
-    state: DemoPlayerState,
-    onCollapse: () -> Unit,
-    onRotate: () -> Unit,
-    onToggleLyrics: (() -> Unit)?,
-    lyricsShown: Boolean,
-    modifier: Modifier = Modifier,
-) {
+private fun PlayerTopBar(state: DemoPlayerState, onCollapse: () -> Unit, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconAction(LineIcon.ChevronDown, "收起", onCollapse, iconSize = 30.dp)
-        Spacer(Modifier.weight(1f))
-        if (style.quietSections) {
-            Text(state.quality, style = style.type.label, color = c.muted)
-        } else {
-            QualityChip(state.quality)
+    Box(modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+        IconAction(LineIcon.ChevronDown, "收起", onCollapse, Modifier.align(Alignment.CenterStart), iconSize = 30.dp)
+        Column(
+            Modifier.align(Alignment.Center).padding(horizontal = 56.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("正在播放", style = style.type.label, color = c.muted, maxLines = 1)
+            Text(
+                state.playlistName, style = style.type.caption.copy(fontWeight = FontWeight.Medium),
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp),
+            )
         }
-        Spacer(Modifier.width(4.dp))
-        if (onToggleLyrics != null) {
-            IconAction(LineIcon.Lyrics, if (lyricsShown) "显示封面" else "显示歌词", onToggleLyrics, tint = if (lyricsShown) c.accent else c.content)
-        }
-        IconAction(LineIcon.Rotate, "切换到横屏", onRotate)
-        IconAction(LineIcon.More, "更多", {})
+        IconAction(LineIcon.More, "更多", {}, Modifier.align(Alignment.CenterEnd))
     }
 }
 
@@ -664,30 +706,77 @@ private fun TrackTitle(state: DemoPlayerState, modifier: Modifier = Modifier) {
     val c = Lanyin.colors
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(
-                state.title,
-                style = MaterialTheme.typography.headlineSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true),
-            )
-            Text(
-                "${state.artist} · ${state.album}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = c.muted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            TrackSwitch(state, Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true)) { track ->
+                Text(track.title, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            TrackSwitch(state, Modifier.padding(top = 2.dp)) { track ->
+                Text(
+                    "${track.artist} · ${track.album}", style = MaterialTheme.typography.bodyMedium, color = c.muted,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         LikeButton(state.liked, onToggle = { state.liked = !state.liked })
     }
 }
 
+/**
+ * Per-track text that slides out the way you skipped while the next slides in after it. The
+ * wrapper keeps its place (and any shared-element key), only the content changes.
+ */
+@Composable
+private fun TrackSwitch(state: DemoPlayerState, modifier: Modifier = Modifier, content: @Composable (DemoTrack) -> Unit) {
+    AnimatedContent(
+        targetState = state.track,
+        modifier = modifier,
+        transitionSpec = {
+            val dir = if (state.skipDirection < 0) -1 else 1
+            (slideInHorizontally(tween(340)) { it / 5 * dir } + fadeIn(tween(300, delayMillis = 60))) togetherWith
+                (slideOutHorizontally(tween(220)) { -it / 5 * dir } + fadeOut(tween(160))) using SizeTransform(clip = false)
+        },
+        contentAlignment = Alignment.CenterStart,
+        label = "trackText",
+    ) { track -> content(track) }
+}
+
+/** The quieter actions under the transport: quality on the left, lyrics and rotation on the right. */
+@Composable
+private fun UtilityRow(
+    state: DemoPlayerState,
+    onToggleLyrics: (() -> Unit)?,
+    lyricsShown: Boolean,
+    onRotate: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val c = Lanyin.colors
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        QualityTags(state, chipFirst = true)
+        Spacer(Modifier.weight(1f))
+        if (onToggleLyrics != null) {
+            IconAction(LineIcon.Lyrics, if (lyricsShown) "显示封面" else "显示歌词", onToggleLyrics, tint = if (lyricsShown) c.accent else c.muted)
+        }
+        IconAction(LineIcon.Rotate, "切换到横屏", onRotate, tint = c.muted)
+    }
+}
+
+/** Transport; skip buttons give a little push in their direction, the mode icon pops as it changes. */
 @Composable
 private fun TransportControls(state: DemoPlayerState, playSize: Dp, modifier: Modifier = Modifier) {
     val c = Lanyin.colors
+    val scope = rememberCoroutineScope()
+    val back = remember { Animatable(0f) }
+    val forward = remember { Animatable(0f) }
+    fun push(a: Animatable<Float, *>, dir: Float) {
+        scope.launch {
+            a.animateTo(dir, tween(80))
+            a.animateTo(0f, spring(dampingRatio = 0.35f, stiffness = 500f))
+        }
+    }
     Row(modifier, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        AnimatedContent(state.playMode, label = "playMode", transitionSpec = { fadeIn() togetherWith fadeOut() }) { mode ->
+        AnimatedContent(
+            state.playMode, label = "playMode",
+            transitionSpec = { (fadeIn(tween(200)) + scaleIn(initialScale = 0.5f)) togetherWith (fadeOut(tween(120)) + scaleOut(targetScale = 0.5f)) },
+        ) { mode ->
             IconAction(
                 when (mode) {
                     PlayMode.REPEAT_ALL -> LineIcon.Repeat
@@ -697,9 +786,15 @@ private fun TransportControls(state: DemoPlayerState, playSize: Dp, modifier: Mo
                 mode.label, state::cyclePlayMode, tint = c.muted,
             )
         }
-        IconAction(LineIcon.Previous, "上一首", { state.skipPrevious() }, iconSize = 34.dp)
+        IconAction(
+            LineIcon.Previous, "上一首", { state.skipPrevious(); push(back, -1f) },
+            Modifier.graphicsLayer { translationX = back.value * 7.dp.toPx() }, iconSize = 34.dp,
+        )
         PlayPauseButton(state.isPlaying, state::togglePlay, playSize)
-        IconAction(LineIcon.Next, "下一首", state::skipNext, iconSize = 34.dp)
+        IconAction(
+            LineIcon.Next, "下一首", { state.skipNext(); push(forward, 1f) },
+            Modifier.graphicsLayer { translationX = forward.value * 7.dp.toPx() }, iconSize = 34.dp,
+        )
         IconAction(LineIcon.Queue, "播放队列", {}, tint = c.muted)
     }
 }

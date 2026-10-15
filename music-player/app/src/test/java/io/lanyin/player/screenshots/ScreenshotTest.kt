@@ -187,6 +187,21 @@ class ScreenshotTest {
 
     @Test fun port_sakura_light_instrumental() = capture("port_sakura_light_instrumental", AppTheme.SAKURA, ThemeMode.LIGHT) { Player(PlayerSkin.COVER, playingAt(8_000, track = 1)) }
 
+    // Player motion, caught mid-flight: the entrance, a skip, and scrubbing.
+    @Test fun motion_entrance() = capture("motion_entrance_tide_dark", AppTheme.TIDE, ThemeMode.DARK, settle = 260) { Player(PlayerSkin.VINYL) }
+
+    @Test fun motion_skip() {
+        val state = playingAt(14_000)
+        capture("motion_skip_0_ink_light", AppTheme.INK, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL, state) }
+        compose.runOnUiThread { state.skipNext() }
+        compose.mainClock.advanceTimeBy(140)
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/motion_skip_1_ink_light.png")
+        compose.mainClock.advanceTimeBy(260)
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/motion_skip_2_ink_light.png")
+        compose.mainClock.advanceTimeBy(1_200)
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/motion_skip_3_ink_light.png")
+    }
+
     // Portrait player.
     @Test fun port_tide_dark_vinyl() = capture("port_tide_dark_vinyl", AppTheme.TIDE, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
     @Test fun port_neon_vinyl() = capture("port_neon_vinyl", AppTheme.NEON, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }

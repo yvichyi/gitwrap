@@ -1,10 +1,13 @@
 package io.lanyin.player.ui.player
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.FloatExponentialDecaySpec
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDecay
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -95,6 +98,9 @@ fun LyricsView(
     val style = Lanyin.style
     val geometry = remember(lines) { LyricGeometry(lines.size) }
     val focus = remember(lines) { List(lines.size) { Animatable(currentIndex.toFloat()) } }
+    // A new track's lyrics cascade up into place, the lines nearest the active one first.
+    val appear = remember(lines) { Animatable(0f) }
+    LaunchedEffect(lines) { appear.animateTo(1f, tween(900, easing = LinearEasing)) }
     val scope = rememberCoroutineScope()
     var drag by remember { mutableFloatStateOf(0f) }
     var settleJob by remember { mutableStateOf<Job?>(null) }
@@ -148,6 +154,7 @@ fun LyricsView(
             content = {
                 lines.forEachIndexed { i, line ->
                     val distance = abs(i - currentIndex)
+                    val delay = distance.coerceAtMost(8) * 0.06f
                     LyricRow(
                         line = line,
                         active = i == currentIndex,
@@ -159,7 +166,9 @@ fun LyricsView(
                         modifier = Modifier
                             .graphicsLayer {
                                 geometry.version.intValue
-                                translationY = anchorPx - geometry.centerAt(focus[i].value) + drag
+                                val shown = FastOutSlowInEasing.transform(((appear.value - delay) / 0.45f).coerceIn(0f, 1f))
+                                alpha = shown
+                                translationY = anchorPx - geometry.centerAt(focus[i].value) + drag + (1f - shown) * 32.dp.toPx()
                             }
                             .then(
                                 if (interactive) {
@@ -228,6 +237,7 @@ private fun LyricRow(
                 val s = 1f + (ls.activeScale - 1f) * activeAmount
                 scaleX = s
                 scaleY = s
+                translationY = -3.dp.toPx() * activeAmount
                 transformOrigin = TransformOrigin(if (centered) 0.5f else 0f, 0.5f)
             }
             .then(if (blur > 0.dp) Modifier.blur(blur) else Modifier)
