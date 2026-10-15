@@ -237,7 +237,7 @@ fun SettingsScreen(
             item { SectionTitle("账号", Modifier.padding(start = m, end = m, top = 36.dp), index = 6) }
             item { AccountRow(account, onLogin, onLogout, Modifier.padding(start = m, end = m, top = 14.dp)) }
             item {
-                Text("澜音 0.7 · 预览版", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))
+                Text("澜音 0.8 · 预览版", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))
             }
         }
     }

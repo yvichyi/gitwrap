@@ -630,6 +630,18 @@ class ScreenshotTest {
     @Test fun port_dusk_dark_vinyl() = capture("port_dusk_dark_vinyl", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
     @Test fun port_neon_vinyl() = capture("port_neon_vinyl", AppTheme.NEON, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
 
+    // M7: the three new themes' players.
+    @Test fun new_flow_cover() = capture("new_flow_cover", AppTheme.FLOW, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+    @Test fun new_flow_lyrics() = capture("new_flow_lyrics", AppTheme.FLOW, ThemeMode.DARK) { Player(PlayerSkin.LYRICS) }
+    @Test fun new_pulse_cover() = capture("new_pulse_cover", AppTheme.PULSE, ThemeMode.LIGHT) { Player(PlayerSkin.COVER) }
+    @Test fun new_pulse_paused() = capture("new_pulse_paused", AppTheme.PULSE, ThemeMode.DARK) { Player(PlayerSkin.COVER, DemoPlayerState()) }
+    @Test fun new_film_cover() = capture("new_film_cover", AppTheme.FILM, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+    @Test fun new_film_cassette() = capture("new_film_cassette", AppTheme.FILM, ThemeMode.DARK) { Player(PlayerSkin.CASSETTE) }
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun new_film_land() = capture("new_film_land", AppTheme.FILM, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun new_pulse_land() = capture("new_pulse_land", AppTheme.PULSE, ThemeMode.DARK) { Player(PlayerSkin.LYRICS) }
+
     // M6: the player's accents taken from the cover.
     private fun tinted(primary: Long, secondary: Long?, skin: PlayerSkin) = @Composable {
         io.lanyin.player.ui.theme.TintedBy(io.lanyin.player.ui.theme.CoverSeeds(primary.toInt(), secondary?.toInt())) { Player(skin) }
