@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2a2030" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="description" content="风车与疯狂：堂吉诃德式的横屏 3D 动作 RPG" />
+  <title>风车与疯狂</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23ffb347' d='M8 1l2 5h5l-4 3 2 5-5-3-5 3 2-5-4-3h5z'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <canvas id="gl" aria-label="游戏画面"></canvas>
+    <div id="fx" class="fx-layer" aria-hidden="true"></div>
+
+    <div id="hud" class="hud hidden">
+      <div class="hud-left">
+        <div class="hero">
+          <span class="lvl" id="hud-lvl">Lv 1</span>
+          <span class="hero-name">骑士 · 堂吉诃德</span>
+        </div>
+        <div class="bar hp"><div class="fill" id="hud-hp"></div><span class="bar-text" id="hud-hp-t"></span></div>
+        <div class="bar mad" id="hud-mad-bar" data-tier="sane"><div class="fill" id="hud-mad"></div><span class="bar-text" id="hud-mad-t">清醒</span></div>
+        <div class="bar guard" id="hud-guard-bar"><div class="fill" id="hud-guard"></div></div>
+        <div class="bar xp"><div class="fill" id="hud-xp"></div></div>
+        <div class="buffs" id="hud-buffs"></div>
+      </div>
+
+      <div class="hud-top">
+        <div class="stage-name" id="hud-stage">拉曼恰平原</div>
+        <div class="stage-sub" id="hud-wave">第 1 波</div>
+        <div class="boss-bar hidden" id="hud-boss">
+          <div class="boss-name" id="hud-boss-name">魔法师弗雷斯顿</div>
+          <div class="bar boss"><div class="fill" id="hud-boss-hp"></div></div>
+          <div class="boss-shield" id="hud-boss-shield">魔力护盾</div>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <button type="button" class="chip" id="btn-pause" aria-label="暂停">暂停</button>
+        <button type="button" class="chip" id="btn-hand" aria-label="切换左右手">左手</button>
+        <button type="button" class="chip" id="btn-panel" aria-label="切换小地图">地图</button>
+        <div class="panel" id="hud-panel">
+          <div class="panel-row objective" id="hud-objective">目标：清空当前波次</div>
+          <div class="panel-row"><span>击杀 <b id="hud-kills">0</b></span><span>闪避 <b id="hud-dodges">0</b></span></div>
+          <div class="panel-row"><span>精英 <b id="hud-elites">0</b></span><span>反击 <b id="hud-perfect">0</b></span></div>
+          <canvas id="minimap" width="200" height="200" aria-label="小地图"></canvas>
+        </div>
+      </div>
+
+      <div class="hud-banner" id="hud-banner"></div>
+      <div class="hud-toast" id="hud-toast"></div>
+    </div>
+
+    <div id="touch" class="touch hidden" data-hand="right"></div>
+
+    <div id="screen" class="screen hidden" role="dialog" aria-modal="true"></div>
+
+    <div id="rotate" class="rotate" aria-hidden="true">
+      <div class="rotate-card">
+        <div class="rotate-icon"></div>
+        <p>请将手机横过来游玩</p>
+        <small>风车在横屏里转得更好看</small>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
