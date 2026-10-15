@@ -460,6 +460,25 @@ class ScreenshotTest {
     @Test fun effects_ink_off() = capture("effects_ink_off", AppTheme.INK, ThemeMode.LIGHT) {
         WithSheet(io.lanyin.player.ui.music.Sheet.Effects) { io.lanyin.player.ui.effects.EffectsSheet(io.lanyin.player.core.audio.EffectsSettings(), {}) }
     }
+    // M6: the preset library and the extra effects, the sheet shown whole.
+    @Config(qualifiers = "w392dp-h1500dp-port-xhdpi")
+    @Test fun effects_scene_neon() = capture("effects_scene_neon", AppTheme.NEON, ThemeMode.DARK) {
+        WithSheet(io.lanyin.player.ui.music.Sheet.Effects) {
+            io.lanyin.player.ui.effects.EffectsSheet(io.lanyin.player.core.audio.EffectsSettings().choose(io.lanyin.player.core.audio.EffectPreset.ROTATE), {})
+        }
+    }
+    @Config(qualifiers = "w392dp-h1500dp-port-xhdpi")
+    @Test fun effects_retro_dusk() = capture("effects_retro_dusk", AppTheme.DUSK, ThemeMode.LIGHT) {
+        WithSheet(io.lanyin.player.ui.music.Sheet.Effects) {
+            io.lanyin.player.ui.effects.EffectsSheet(io.lanyin.player.core.audio.EffectsSettings().choose(io.lanyin.player.core.audio.EffectPreset.VINYL), {})
+        }
+    }
+    @Config(qualifiers = "w392dp-h1500dp-port-xhdpi")
+    @Test fun effects_style_ink() = capture("effects_style_ink", AppTheme.INK, ThemeMode.DARK) {
+        WithSheet(io.lanyin.player.ui.music.Sheet.Effects) {
+            io.lanyin.player.ui.effects.EffectsSheet(io.lanyin.player.core.audio.EffectsSettings().choose(io.lanyin.player.core.audio.EffectPreset.GUOFENG), {})
+        }
+    }
     @Test fun quality_dusk() = capture("quality_dusk", AppTheme.DUSK, ThemeMode.DARK) {
         WithSheet(io.lanyin.player.ui.music.Sheet.Quality) {
             io.lanyin.player.ui.effects.QualitySheet(io.lanyin.player.core.model.Quality.LOSSLESS, "无损 · FLAC · 44.1kHz") {}

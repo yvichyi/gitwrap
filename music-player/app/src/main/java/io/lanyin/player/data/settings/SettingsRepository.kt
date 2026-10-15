@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import io.lanyin.player.core.audio.EQ_FREQUENCIES
+import io.lanyin.player.core.audio.EffectAmounts
 import io.lanyin.player.core.audio.EffectPreset
 import io.lanyin.player.core.audio.EffectsSettings
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -69,9 +70,18 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                     preset = EffectPreset.fromId(prefs[FX_PRESET]),
                     custom = prefs[FX_CUSTOM]?.split(',')?.mapNotNull { it.toFloatOrNull() }?.takeIf { it.size == EQ_FREQUENCIES.size }
                         ?: List(EQ_FREQUENCIES.size) { 0f },
-                    bass = prefs[FX_BASS] ?: 0f,
-                    width = prefs[FX_WIDTH] ?: 0f,
-                    reverb = prefs[FX_REVERB] ?: 0f,
+                    amounts = EffectAmounts(
+                        bass = prefs[FX_BASS] ?: 0f,
+                        width = prefs[FX_WIDTH] ?: 0f,
+                        reverb = prefs[FX_REVERB] ?: 0f,
+                        room = prefs[FX_ROOM] ?: EffectAmounts().room,
+                        echo = prefs[FX_ECHO] ?: 0f,
+                        compress = prefs[FX_COMPRESS] ?: 0f,
+                        warmth = prefs[FX_WARMTH] ?: 0f,
+                        lofi = prefs[FX_LOFI] ?: 0f,
+                        crackle = prefs[FX_CRACKLE] ?: 0f,
+                        rotate = prefs[FX_ROTATE] ?: 0f,
+                    ),
                 ),
             )
         }
@@ -101,9 +111,17 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setEffects(fx: EffectsSettings) = dataStore.edit {
         it[FX_PRESET] = fx.preset.id
         it[FX_CUSTOM] = fx.custom.joinToString(",")
-        it[FX_BASS] = fx.bass
-        it[FX_WIDTH] = fx.width
-        it[FX_REVERB] = fx.reverb
+        val a = fx.amounts
+        it[FX_BASS] = a.bass
+        it[FX_WIDTH] = a.width
+        it[FX_REVERB] = a.reverb
+        it[FX_ROOM] = a.room
+        it[FX_ECHO] = a.echo
+        it[FX_COMPRESS] = a.compress
+        it[FX_WARMTH] = a.warmth
+        it[FX_LOFI] = a.lofi
+        it[FX_CRACKLE] = a.crackle
+        it[FX_ROTATE] = a.rotate
     }
 
     private companion object {
@@ -123,5 +141,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val FX_BASS = floatPreferencesKey("fx_bass")
         val FX_WIDTH = floatPreferencesKey("fx_width")
         val FX_REVERB = floatPreferencesKey("fx_reverb")
+        val FX_ROOM = floatPreferencesKey("fx_room")
+        val FX_ECHO = floatPreferencesKey("fx_echo")
+        val FX_COMPRESS = floatPreferencesKey("fx_compress")
+        val FX_WARMTH = floatPreferencesKey("fx_warmth")
+        val FX_LOFI = floatPreferencesKey("fx_lofi")
+        val FX_CRACKLE = floatPreferencesKey("fx_crackle")
+        val FX_ROTATE = floatPreferencesKey("fx_rotate")
     }
 }
