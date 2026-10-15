@@ -165,6 +165,9 @@ fun LanyinStyle.tintedBy(seeds: CoverSeeds): LanyinColors {
     val bg = c.bg.toArgb()
     val accent = CoverColors.fit(seeds.primary, bg, dark)
     val alt = CoverColors.fit(seeds.secondary ?: seeds.primary, bg, dark, minContrast = 3f)
+    // 点 stays black and white and 机 keeps its orange key: only their one spot of colour, the
+    // red dot or the blue, comes from the cover.
+    if (backdrop == BackdropKind.Dot || backdrop == BackdropKind.Device) return c.copy(accentAlt = Color(accent))
     return c.copy(
         accent = Color(accent),
         accentAlt = Color(alt),

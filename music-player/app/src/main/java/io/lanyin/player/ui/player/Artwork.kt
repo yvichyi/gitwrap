@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import io.lanyin.player.ui.design.drawCoverArt
+import io.lanyin.player.ui.design.ledScreen
 import io.lanyin.player.ui.design.neonGlow
 import io.lanyin.player.ui.design.retroShadow
 import io.lanyin.player.ui.theme.EdgeKind
@@ -127,7 +128,7 @@ private fun DrawScope.drawToneArm(style: LanyinStyle, angle: Float) {
     val c = style.colors
     val metal = when (style.edge) {
         EdgeKind.Glow -> c.accent
-        EdgeKind.Hairline, EdgeKind.Brutal, EdgeKind.Glass -> c.content
+        EdgeKind.Hairline, EdgeKind.Brutal, EdgeKind.Dot -> c.content
         else -> lerp(c.content, c.bg, 0.15f)
     }
     val pivot = Offset(size.width * 0.9f, size.height * 0.07f)
@@ -159,18 +160,15 @@ fun SquareCover(isPlaying: Boolean, coverSeed: Int, modifier: Modifier = Modifie
         FilmCover(isPlaying, coverSeed, scale, modifier, coverUrl)
         return
     }
-    // 律: the cover rounds into a squircle while playing and pinches into a cookie when paused.
-    val pinch by animateFloatAsState(if (isPlaying) 1f else 0f, style.bouncy.spec(), label = "coverShape")
-    val shape = if (style.edge == EdgeKind.Tonal) {
-        androidx.compose.runtime.remember(pinch) { io.lanyin.player.ui.design.morphShape(io.lanyin.player.ui.design.Cookie, io.lanyin.player.ui.design.Squircle, pinch) }
-    } else {
-        style.artShape
-    }
+    val shape = style.artShape
     val frame = when (style.edge) {
         EdgeKind.Brutal -> Modifier.retroShadow(shape, c.outline, 6.dp).clip(shape).border(style.strokeWidth, c.outline, shape)
         EdgeKind.Glow -> Modifier.neonGlow(shape, c.accent).clip(shape).border(1.dp, c.accent, shape)
         EdgeKind.Hairline -> Modifier.clip(shape).border(1.dp, c.outline, shape)
-        EdgeKind.Tonal -> Modifier.clip(shape)
+        // 点: the cover as the glyph matrix would light it.
+        EdgeKind.Dot -> Modifier.clip(shape).ledScreen()
+        // 机: on the screen, lit pixels need no shadow.
+        EdgeKind.Panel -> Modifier.clip(shape).border(1.dp, c.content.copy(alpha = 0.08f), shape)
         else -> Modifier.shadow(28.dp, shape, ambientColor = c.accent, spotColor = Color.Black).clip(shape)
     }
     CoverImage(

@@ -12,8 +12,8 @@ enum class AppTheme(
     val lightOnly: Boolean = false,
 ) {
     INK("mo", "墨", "黑白留白，只留文字"),
-    FLOW("liu", "流", "封面流光，歌词如潮", darkOnly = true),
-    PULSE("lv", "律", "形状灵动，弹性律动"),
+    DOT("dian", "点", "点阵字形，黑白一点红", darkOnly = true),
+    DEVICE("ji", "机", "暖灰机身，按键与指针"),
     FILM("ying", "影", "胶片颗粒，光影流转", darkOnly = true),
     GRID("ge", "格", "瑞士网格，粗边硬影", lightOnly = true),
     DUSK("mu", "暮", "晚霞暖光，柔和圆角"),

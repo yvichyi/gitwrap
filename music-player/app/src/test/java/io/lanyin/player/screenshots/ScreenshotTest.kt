@@ -630,17 +630,26 @@ class ScreenshotTest {
     @Test fun port_dusk_dark_vinyl() = capture("port_dusk_dark_vinyl", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
     @Test fun port_neon_vinyl() = capture("port_neon_vinyl", AppTheme.NEON, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
 
-    // M7: the three new themes' players.
-    @Test fun new_flow_cover() = capture("new_flow_cover", AppTheme.FLOW, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
-    @Test fun new_flow_lyrics() = capture("new_flow_lyrics", AppTheme.FLOW, ThemeMode.DARK) { Player(PlayerSkin.LYRICS) }
-    @Test fun new_pulse_cover() = capture("new_pulse_cover", AppTheme.PULSE, ThemeMode.LIGHT) { Player(PlayerSkin.COVER) }
-    @Test fun new_pulse_paused() = capture("new_pulse_paused", AppTheme.PULSE, ThemeMode.DARK) { Player(PlayerSkin.COVER, DemoPlayerState()) }
+    // M7: 影's player.
     @Test fun new_film_cover() = capture("new_film_cover", AppTheme.FILM, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
     @Test fun new_film_cassette() = capture("new_film_cassette", AppTheme.FILM, ThemeMode.DARK) { Player(PlayerSkin.CASSETTE) }
     @Config(qualifiers = LANDSCAPE)
     @Test fun new_film_land() = capture("new_film_land", AppTheme.FILM, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+
+    // M8: 点 and 机, the two themes that replaced 流 and 律.
+    @Test fun dot_cover() = capture("m8_dot_cover", AppTheme.DOT, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+    @Test fun dot_vinyl() = capture("m8_dot_vinyl", AppTheme.DOT, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
+    @Test fun dot_lyrics() = capture("m8_dot_lyrics", AppTheme.DOT, ThemeMode.DARK) { Player(PlayerSkin.LYRICS) }
+    @Test fun dot_paused() = capture("m8_dot_paused", AppTheme.DOT, ThemeMode.DARK) { Player(PlayerSkin.COVER, DemoPlayerState()) }
     @Config(qualifiers = LANDSCAPE)
-    @Test fun new_pulse_land() = capture("new_pulse_land", AppTheme.PULSE, ThemeMode.DARK) { Player(PlayerSkin.LYRICS) }
+    @Test fun dot_land() = capture("m8_dot_land", AppTheme.DOT, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+    @Test fun device_cover() = capture("m8_device_cover", AppTheme.DEVICE, ThemeMode.LIGHT) { Player(PlayerSkin.COVER) }
+    @Test fun device_vinyl() = capture("m8_device_vinyl", AppTheme.DEVICE, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL) }
+    @Test fun device_dark() = capture("m8_device_dark", AppTheme.DEVICE, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+    @Test fun device_lyrics() = capture("m8_device_lyrics", AppTheme.DEVICE, ThemeMode.LIGHT) { Player(PlayerSkin.LYRICS) }
+    @Test fun device_paused() = capture("m8_device_paused", AppTheme.DEVICE, ThemeMode.LIGHT) { Player(PlayerSkin.CASSETTE, DemoPlayerState()) }
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun device_land() = capture("m8_device_land", AppTheme.DEVICE, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL) }
 
     // M6: the player's accents taken from the cover.
     private fun tinted(primary: Long, secondary: Long?, skin: PlayerSkin) = @Composable {

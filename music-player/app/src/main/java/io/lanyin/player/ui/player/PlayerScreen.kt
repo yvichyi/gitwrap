@@ -105,6 +105,11 @@ import io.lanyin.player.ui.design.ThemedIcon
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.sharedPlayer
 import io.lanyin.player.ui.design.themedSurface
+import io.lanyin.player.ui.design.DeviceScreen
+import io.lanyin.player.ui.design.VuMeter
+import io.lanyin.player.ui.design.keycap
+import io.lanyin.player.ui.theme.BackdropKind
+import io.lanyin.player.ui.theme.ButtonKind
 import io.lanyin.player.ui.theme.DockKind
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.GridYellow
@@ -254,10 +259,11 @@ private fun PortraitPlayer(
             .padding(horizontal = 24.dp),
     ) {
         PlayerTopBar(state, onCollapse, modifier = dismissDrag.enter(entrance, 0))
+        val stage = @Composable { stageModifier: Modifier ->
         AnimatedContent(
             targetState = lyricsOnly,
             transitionSpec = { (fadeIn(tween(260)) + scaleIn(initialScale = 0.96f)) togetherWith (fadeOut(tween(160)) + scaleOut(targetScale = 1.02f)) },
-            modifier = Modifier.weight(1f).fillMaxWidth(),
+            modifier = stageModifier,
             label = "artOrLyrics",
         ) { lyrics ->
             val textStyle = lyricTextStyle(LyricSize.BASE_SP, lyricScale)
@@ -317,6 +323,16 @@ private fun PortraitPlayer(
                 }
             }
         }
+        }
+        if (style.backdrop == BackdropKind.Device) {
+            // 机 shows the artwork and the lyrics on the screen set into its case.
+            DeviceScreen(Modifier.weight(1f).fillMaxWidth().padding(top = 2.dp).enter(entrance, 1)) {
+                ScreenHeader(state)
+                stage(Modifier.weight(1f).fillMaxWidth())
+            }
+        } else {
+            stage(Modifier.weight(1f).fillMaxWidth())
+        }
         TrackTitle(state, Modifier.padding(top = 14.dp).enter(entrance, 3))
         SeekBar(
             state::positionMs, state.durationMs, state.isPlaying, state::seekTo,
@@ -343,6 +359,23 @@ private fun artSize(skin: PlayerSkin, maxWidth: Dp, maxHeight: Dp): Modifier =
     }
 
 private const val CASSETTE_RATIO = 1.58f
+
+/** The status line along the top of 机's screen: track counter, the VU meter, transport state. */
+@Composable
+private fun ScreenHeader(state: PlayerState) {
+    val style = Lanyin.style
+    val c = style.colors
+    val label = style.type.label.copy(fontFamily = style.numeric, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.1.sp)
+    Row(Modifier.fillMaxWidth().height(32.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("TRK %02d/%02d".format(state.trackNumber, state.trackCount), style = label, color = c.muted, maxLines = 1, modifier = Modifier.weight(1f))
+        VuMeter(state.audioFeed, state.isPlaying, Modifier.size(64.dp, 32.dp))
+        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(6.dp).background(if (state.isPlaying) c.accent else c.muted.copy(alpha = 0.5f), androidx.compose.foundation.shape.CircleShape))
+            Spacer(Modifier.width(6.dp))
+            Text(if (state.isPlaying) "PLAY" else "PAUSE", style = label, color = if (state.isPlaying) c.content else c.muted, maxLines = 1)
+        }
+    }
+}
 
 /**
  * Landscape is a stage between a top bar and a control bar. The top bar carries the collapse
@@ -718,7 +751,8 @@ private fun LandscapeControlBar(state: PlayerState, onScrub: (Long?) -> Unit, mo
             Modifier
                 .fillMaxWidth()
                 .height(60.dp)
-                .then(if (docked) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome))
+                // 机's keys sit in a panel set into the case rather than on a key of their own.
+                .then(if (docked) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = if (style.edge == EdgeKind.Panel) SurfaceTone.Card else SurfaceTone.Chrome))
                 .padding(start = if (docked) 0.dp else 18.dp, end = if (docked) 0.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -763,7 +797,17 @@ private fun PlayerTopBar(state: PlayerState, onCollapse: () -> Unit, modifier: M
                 Modifier.align(Alignment.Center).padding(horizontal = 56.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("正在播放", style = style.type.label, color = c.muted, maxLines = 1)
+                when (style.backdrop) {
+                    // 点: the red dot of a recording light beside the label.
+                    BackdropKind.Dot -> Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(6.dp).background(if (state.isPlaying) c.accentAlt else c.muted, androidx.compose.foundation.shape.CircleShape))
+                        Spacer(Modifier.width(6.dp))
+                        Text("NOW PLAYING", style = style.type.label.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold, fontSize = 13.sp), color = c.content, maxLines = 1)
+                    }
+                    // 机: the maker's name and model, as printed on the case.
+                    BackdropKind.Device -> Text("LANYIN · L-01", style = style.type.label.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold), color = c.content, maxLines = 1)
+                    else -> Text("正在播放", style = style.type.label, color = c.muted, maxLines = 1)
+                }
                 Text(
                     state.playlistName, style = style.type.caption.copy(fontWeight = FontWeight.Medium),
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp),
@@ -868,7 +912,12 @@ private fun UtilityRow(
 /** Transport; skip buttons give a little push in their direction, the mode icon pops as it changes. */
 @Composable
 private fun TransportControls(state: PlayerState, playSize: Dp, modifier: Modifier = Modifier) {
-    val c = Lanyin.colors
+    val style = Lanyin.style
+    val c = style.colors
+    // 机's transport is a row of keys.
+    val keys = style.button == ButtonKind.Key
+    val cap = if (keys) Modifier.padding(2.dp).keycap(RoundedCornerShape(14.dp), style) else Modifier
+    val skipIcon = if (keys) 26.dp else 34.dp
     val scope = rememberCoroutineScope()
     val back = remember { Animatable(0f) }
     val forward = remember { Animatable(0f) }
@@ -880,7 +929,7 @@ private fun TransportControls(state: PlayerState, playSize: Dp, modifier: Modifi
     }
     Row(modifier, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         AnimatedContent(
-            state.playMode, label = "playMode",
+            state.playMode, label = "playMode", modifier = cap,
             transitionSpec = { (fadeIn(tween(200)) + scaleIn(initialScale = 0.5f)) togetherWith (fadeOut(tween(120)) + scaleOut(targetScale = 0.5f)) },
         ) { mode ->
             IconAction(
@@ -894,14 +943,14 @@ private fun TransportControls(state: PlayerState, playSize: Dp, modifier: Modifi
         }
         IconAction(
             LineIcon.Previous, "上一首", { state.skipPrevious(); push(back, -1f) },
-            Modifier.graphicsLayer { translationX = back.value * 7.dp.toPx() }, iconSize = 34.dp,
+            Modifier.graphicsLayer { translationX = back.value * 7.dp.toPx() }.then(cap), iconSize = skipIcon,
         )
         PlayPauseButton(state.isPlaying, state::togglePlay, playSize, feed = state.audioFeed)
         IconAction(
             LineIcon.Next, "下一首", { state.skipNext(); push(forward, 1f) },
-            Modifier.graphicsLayer { translationX = forward.value * 7.dp.toPx() }, iconSize = 34.dp,
+            Modifier.graphicsLayer { translationX = forward.value * 7.dp.toPx() }.then(cap), iconSize = skipIcon,
         )
         val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
-        IconAction(LineIcon.Queue, "播放队列", { openSheet(io.lanyin.player.ui.music.Sheet.Queue) }, tint = c.muted)
+        IconAction(LineIcon.Queue, "播放队列", { openSheet(io.lanyin.player.ui.music.Sheet.Queue) }, cap, tint = c.muted)
     }
 }

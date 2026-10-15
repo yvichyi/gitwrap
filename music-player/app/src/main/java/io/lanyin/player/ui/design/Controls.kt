@@ -63,14 +63,13 @@ import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.ButtonKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.SeekKind
-import kotlin.math.PI
-import kotlin.math.sin
 import kotlinx.coroutines.launch
 
 /**
  * Play/pause whose glyph morphs between the triangle and the two bars. With a [feed] it also
  * answers the music while playing: an ink ring leaves 墨's button on each beat, 暮's glows with
- * the level, 霓's tube flares, 格's block kicks.
+ * the level, 霓's tube flares, 格's block kicks, 影's iris opens to the light, a ring of lights
+ * round 点's disc fills with the level and 机's key glows.
  */
 @Composable
 fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: Modifier = Modifier, feed: io.lanyin.player.core.audio.AudioFeed? = null) {
@@ -114,9 +113,11 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
                     drawCircle(c.accent.copy(alpha = a * (0.6f * l + 1.2f * b)), r, style = Stroke(w.toPx()))
                 }
             }
-            ButtonKind.Glass -> {
+            ButtonKind.Disc -> drawDiscLights(style, level(), beat())
+            ButtonKind.Key -> {
                 val l = level()
-                drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.16f * l + 0.1f * beat()), Color.Transparent), radius = r * (1.1f + 0.6f * l)), r * (1.1f + 0.6f * l))
+                val glow = r * (1.25f + 0.35f * l)
+                drawCircle(Brush.radialGradient(listOf(c.accent.copy(alpha = 0.3f * l + 0.18f * beat()), Color.Transparent), center + Offset(0f, 4.dp.toPx()), glow), glow, center + Offset(0f, 4.dp.toPx()))
             }
             else -> Unit
         }
@@ -127,13 +128,10 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
         else -> CircleShape
     }
     val glyphColor = when (style.button) {
-        ButtonKind.Outline, ButtonKind.Glass, ButtonKind.Aperture -> c.content
+        ButtonKind.Outline, ButtonKind.Aperture -> c.content
         ButtonKind.NeonRing -> c.accent
         else -> c.onAccent
     }
-    // 律: a scalloped cookie, turning, that rounds off into a squircle while playing.
-    val turn = rememberFrameClock(style.button == ButtonKind.Morph && !playing)
-    val turned = remember { floatArrayOf(0f, 0f) }
     val container = when (style.button) {
         ButtonKind.Outline -> Modifier.border(1.5.dp, c.content, shape)
         ButtonKind.Blob -> Modifier
@@ -148,19 +146,11 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
             .clip(shape)
             .background(c.accent)
             .border(style.strokeWidth, c.outline, shape)
-        // 流: just the glyph, large and white, as Apple Music has it.
-        ButtonKind.Glass -> Modifier
-        ButtonKind.Morph -> Modifier.drawBehind {
-            // Keep the angle where it was when play was pressed, and unwind it as the shape rounds off.
-            val now = turn.floatValue
-            turned[0] += (now - turned[1]).coerceIn(0f, 0.1f) * 24f
-            turned[1] = now
-            // Reading the clock redraws this every frame while the music plays.
-            clock.floatValue
-            val bounce = if (listening) beatBounce(feed!!.sinceBeat(), 0.06f) else 1f
-            drawPath(morphPath(this.size, Cookie, Squircle, morph, degrees = turned[0] * (1f - morph), scale = bounce), c.accent)
-        }
         ButtonKind.Aperture -> Modifier.drawBehind { drawAperture(morph, beat(), style) }
+        // 点: a plain white disc, the glyph cut out of it in black.
+        ButtonKind.Disc -> Modifier.clip(shape).background(c.content)
+        // 机: the orange key.
+        ButtonKind.Key -> Modifier.keycap(shape, style, accent = true)
     }
     Box(
         modifier
@@ -176,8 +166,8 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
     ) {
         val glyph = when (style.button) {
             ButtonKind.Outline -> 0.32f
-            ButtonKind.Glass -> 0.5f
             ButtonKind.Aperture -> 0.3f
+            ButtonKind.Disc, ButtonKind.Key -> 0.34f
             else -> 0.42f
         }
         Canvas(Modifier.size(size * glyph)) {
@@ -305,9 +295,11 @@ fun SeekBar(
     var dragFraction by remember { mutableStateOf<Float?>(null) }
     val seconds by remember { derivedStateOf { position() / 1000 } }
     val dragging by animateFloatAsState(if (dragFraction != null) 1f else 0f, style.motion.spec(), label = "seekDrag")
-    val wave by animateFloatAsState(if (playing) 1f else 0f, tween(500), label = "seekWave")
     // Tabular figures so the time doesn't shuffle sideways as digits change.
-    val timeStyle = MaterialTheme.typography.labelMedium.copy(fontFamily = style.numeric, color = c.muted, fontFeatureSettings = "tnum")
+    val timeStyle = MaterialTheme.typography.labelMedium.copy(fontFamily = style.numeric, color = c.muted, fontFeatureSettings = "tnum").let {
+        // 点's dot-matrix digits need some size to read.
+        if (style.seek == SeekKind.Dots) it.copy(fontSize = 15.sp, fontWeight = FontWeight.Black, color = c.content.copy(alpha = 0.78f), letterSpacing = 0.06.em) else it
+    }
     val shown = dragFraction?.let { (it * durationMs).toLong() / 1000 } ?: seconds
     fun scrubTo(f: Float?) {
         dragFraction = f
@@ -340,9 +332,9 @@ fun SeekBar(
                 SeekKind.Pill -> drawPillTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
                 SeekKind.Segments -> drawSegmentTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
                 SeekKind.Block -> drawBlockTrack(f, c.accent, c.outline, c.surface)
-                SeekKind.Bar -> drawBarTrack(f, dragging, c.content)
-                SeekKind.Wave -> drawWaveTrack(f, position() / 1000f * 2f * PI.toFloat() * 0.6f, wave * (1f - dragging), c.accent, c.accent.copy(alpha = 0.24f))
                 SeekKind.Film -> drawFilmTrack(f, style)
+                SeekKind.Dots -> drawDotsTrack(f, dragging, style)
+                SeekKind.Fader -> drawFaderTrack(f, dragging, style)
             }
         }
     }

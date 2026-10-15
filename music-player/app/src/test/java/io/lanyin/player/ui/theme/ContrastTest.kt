@@ -3,6 +3,7 @@ package io.lanyin.player.ui.theme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
+import io.lanyin.player.ui.design.screenStyle
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -20,6 +21,10 @@ class ContrastTest {
             listOf(false, true).forEach { dark ->
                 val style = lanyinStyle(theme, dark)
                 block("${theme.label}/${if (style.dark) "dark" else "light"}", style.colors)
+                // 机's screen is a palette of its own, inside the case.
+                if (style.backdrop == BackdropKind.Device) {
+                    block("${theme.label}/${if (style.dark) "dark" else "light"} screen", style.screenStyle().colors)
+                }
             }
         }
     }

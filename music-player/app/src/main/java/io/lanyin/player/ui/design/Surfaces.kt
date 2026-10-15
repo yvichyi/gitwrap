@@ -41,13 +41,14 @@ enum class SurfaceTone {
 
 /** The theme's "accent fill": a gradient where the theme likes gradients, flat elsewhere. */
 fun LanyinStyle.accentBrush(): Brush = when (edge) {
-    EdgeKind.Soft, EdgeKind.Glass -> Brush.linearGradient(listOf(colors.accent, colors.accentAlt))
+    EdgeKind.Soft -> Brush.linearGradient(listOf(colors.accent, colors.accentAlt))
     else -> Brush.linearGradient(listOf(colors.accent, colors.accent))
 }
 
 /**
- * Draws a surface the way the active theme draws surfaces (glass, hairline, soft shadow, neon glow,
- * or retro outline with a hard shadow) and, with [onClick], gives it the theme's press feedback.
+ * Draws a surface the way the active theme draws surfaces (hairline, soft shadow, neon glow, retro
+ * outline with a hard shadow, grey tile, a machine's panel or key) and, with [onClick], gives it
+ * the theme's press feedback.
  */
 @Composable
 fun Modifier.themedSurface(
@@ -71,8 +72,11 @@ fun Modifier.themedSurface(
         tone == SurfaceTone.Card -> style.shadowOffset
         else -> 4.dp
     }
+    // 机: bars, sheets and buttons are keys standing on the case; cards are panels set into it.
+    val key = style.edge == EdgeKind.Panel && (tone == SurfaceTone.Chrome || tone == SurfaceTone.Accent)
     var m = when {
         hardShadow > 0.dp -> retroShadow(shape, c.outline, hardShadow)
+        key -> keycap(shape, style, accent = tone == SurfaceTone.Accent) { press }
         flat -> this
         style.edge == EdgeKind.Glow -> neonGlow(shape, if (tone == SurfaceTone.Accent) c.accent else c.accent.copy(alpha = 0.55f))
         // 暮: lifted off the paper on a soft, warm shadow (a faint glow of the sun at night).
@@ -88,6 +92,9 @@ fun Modifier.themedSurface(
         if (hardShadow > 0.dp) {
             translationX = hardShadow.toPx() * press
             translationY = hardShadow.toPx() * press
+        } else if (key) {
+            // The cap is drawn behind; the content rides down with its face.
+            translationY = keyTravel.toPx() * press
         } else {
             val s = 1f - (1f - minOf(style.pressScale, 0.97f)) * press
             scaleX = s
@@ -102,9 +109,12 @@ fun Modifier.themedSurface(
         tone == SurfaceTone.Accent -> m.background(style.accentBrush())
         style.edge == EdgeKind.Hairline -> m.background(c.bg)
         style.edge == EdgeKind.Glow -> m.background(c.surface.copy(alpha = 0.9f))
-        style.edge == EdgeKind.Glass -> m.background(glassFill(tone, c.bg))
-        // 律: containers are the background leaning toward the accent (they follow the cover too).
-        style.edge == EdgeKind.Tonal -> m.background(style.tonal(if (style.dark) (if (flat) 0.1f else 0.15f) else (if (flat) 0.06f else 0.1f)))
+        // The cap was drawn behind, face and all.
+        key -> m
+        // A panel recessed into the case: a shadow along its top edge.
+        style.edge == EdgeKind.Panel -> m.background(if (flat) c.surfaceAlt else c.surface).drawBehind {
+            drawRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = if (style.dark) 0.22f else 0.07f), Color.Transparent), endY = 7.dp.toPx()))
+        }
         else -> m.background(c.surface)
     }
     // 4. Edge.
@@ -114,11 +124,11 @@ fun Modifier.themedSurface(
         EdgeKind.Brutal -> m.border(style.strokeWidth, c.outline, shape)
         // In the dark a shadow barely shows; a faint rim keeps the card's edge.
         EdgeKind.Soft -> if (style.dark) m.border(1.dp, c.content.copy(alpha = 0.07f), shape) else m
-        // A bright rim where light catches the glass.
-        EdgeKind.Glass -> m.border(1.dp, Color.White.copy(alpha = if (flat) 0.08f else 0.14f), shape)
-        EdgeKind.Tonal -> m
         // A print's thin rim.
         EdgeKind.Film -> m.border(1.dp, c.content.copy(alpha = if (flat) 0.08f else 0.14f), shape)
+        // Grey tiles on black need no edge; bars over the content get a faint one.
+        EdgeKind.Dot -> if (tone == SurfaceTone.Chrome) m.border(1.dp, c.content.copy(alpha = 0.1f), shape) else m
+        EdgeKind.Panel -> if (key) m else m.border(1.dp, c.outline, shape)
     }
     if (onClick != null) {
         m = m.clickable(interactionSource = interaction, indication = null, onClick = onClick)

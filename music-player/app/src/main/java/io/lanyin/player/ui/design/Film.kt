@@ -14,7 +14,16 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.lerp
 import io.lanyin.player.ui.theme.FilmStamp
 import io.lanyin.player.ui.theme.LanyinStyle
@@ -23,25 +32,38 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * 影: a darkroom. Warm black, light leaking in red and orange at two edges, a vignette, and
- * grain that is redrawn every frame on the player so it seethes like projected film; now and
- * then a speck of dust or a scratch crosses the frame. Light leaks flare on the beat.
+ * 影: a darkroom. Near-black, light leaking in red and orange at two edges and falling off fast,
+ * a vignette, and grain that is redrawn every frame on the player so it seethes like projected
+ * film; now and then a speck of dust or a scratch crosses the frame. Light leaks flare on the
+ * beat, and on the player the film's edge printing runs down the right-hand side.
  */
-internal fun DrawScope.drawFilm(style: LanyinStyle, t: Float, e: Float, page: Boolean, audio: BackdropAudio?) {
+internal fun DrawScope.drawFilm(
+    style: LanyinStyle,
+    t: Float,
+    e: Float,
+    page: Boolean,
+    audio: BackdropAudio?,
+    measurer: TextMeasurer? = null,
+    trackNumber: Int? = null,
+) {
     val c = style.colors
     val w = size.width
     val h = size.height
-    drawRect(Brush.verticalGradient(listOf(c.bgDeep, c.bg), endY = h * 0.6f))
+    drawRect(c.bg)
+    drawRect(Brush.verticalGradient(listOf(c.bgDeep, c.bg), endY = h * 0.45f))
     val flare = audio?.let { (1f - it.sinceBeat(t) / 0.6f).coerceIn(0f, 1f) } ?: 0f
     val breathe = 0.75f + 0.25f * sin(t * 0.45f) + 0.3f * flare + 0.25f * (audio?.bass ?: 0f)
-    val strength = if (page) 0.6f else 1f
-    // Light leaks: red from the left, orange from the top right, wandering slowly.
-    val red = Offset(-w * 0.12f, h * (0.32f + 0.12f * sin(t * 0.13f)))
-    val redR = maxOf(w, h) * 0.55f
-    drawCircle(Brush.radialGradient(listOf(c.accentAlt.copy(alpha = 0.34f * breathe * strength), Color.Transparent), red, redR), redR, red)
-    val orange = Offset(w * (1.04f + 0.04f * cos(t * 0.17f)), h * 0.06f)
-    val orangeR = maxOf(w, h) * 0.5f
-    drawCircle(Brush.radialGradient(listOf(c.accent.copy(alpha = 0.3f * breathe * strength), Color.Transparent), orange, orangeR), orangeR, orange)
+    val strength = if (page) 0.55f else 1f
+    // Light leaks: red from the left, orange from the top right, wandering slowly. Bright at the
+    // edge of the frame and gone within a hand's width, as light fogging film is.
+    fun leak(color: Color, at: Offset, radius: Float, alpha: Float) {
+        drawCircle(
+            Brush.radialGradient(0f to color.copy(alpha = alpha), 0.3f to color.copy(alpha = alpha * 0.45f), 0.65f to color.copy(alpha = alpha * 0.08f), 1f to Color.Transparent, center = at, radius = radius),
+            radius, at,
+        )
+    }
+    leak(c.accentAlt, Offset(-w * 0.2f, h * (0.32f + 0.12f * sin(t * 0.13f))), maxOf(w, h) * 0.5f, 0.42f * breathe * strength)
+    leak(c.accent, Offset(w * (1.12f + 0.04f * cos(t * 0.17f)), h * 0.04f), maxOf(w, h) * 0.46f, 0.4f * breathe * strength)
     // Vignette.
     drawRect(Brush.radialGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.55f), center = Offset(w / 2f, h * 0.45f), radius = maxOf(w, h) * 0.75f))
     // Grain: a new frame of it twelve times a second on the player.
@@ -63,6 +85,28 @@ internal fun DrawScope.drawFilm(style: LanyinStyle, t: Float, e: Float, page: Bo
     }
     // A projector's slight flicker.
     drawRect(Color.Black.copy(alpha = 0.035f * hash01(frame, 140)))
+    if (measurer != null) drawEdgePrint(measurer, trackNumber ?: 1)
+}
+
+/**
+ * The latent printing along a film's edge: the stock's name and frame numbers with their
+ * arrows, in the orange the base shows through, running down the right of the frame.
+ */
+private fun DrawScope.drawEdgePrint(measurer: TextMeasurer, trackNumber: Int) {
+    val frame = trackNumber * 2
+    val text = buildString {
+        append("LANYIN 400")
+        for (k in 0 until 8) append("     ▸ ").append(frame + k / 2).append(if (k % 2 == 1) "A" else "")
+    }
+    val layout = measurer.measure(
+        text,
+        TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = (8.5f / fontScale).sp, letterSpacing = 0.18.em),
+    )
+    // Turned a quarter clockwise its glyphs face outward, the line reading downwards.
+    val pivot = Offset(size.width - 3.dp.toPx(), size.height * 0.1f)
+    rotate(90f, pivot) {
+        drawText(layout, color = FilmStamp.copy(alpha = 0.3f), topLeft = pivot)
+    }
 }
 
 /** 影's generated sleeves: four snapshots in warm film colour, grained and vignetted. */

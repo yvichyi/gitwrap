@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -18,6 +19,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import io.lanyin.player.R
 
 @Immutable
 data class LanyinColors(
@@ -39,16 +41,16 @@ data class LanyinColors(
 
 /**
  * How cards, the mini player and the tab bar are drawn: hairlines (墨), soft shadows (暮), neon
- * (霓), hard shadows (格), frosted glass over the flowing colour (流), tonal fills (律) and a print's
- * thin rim (影).
+ * (霓), hard shadows (格), a print's thin rim (影), flat grey tiles on black (点) and the recessed
+ * panels of a machine's case (机).
  */
-enum class EdgeKind { Hairline, Soft, Glow, Brutal, Glass, Tonal, Film }
+enum class EdgeKind { Hairline, Soft, Glow, Brutal, Film, Dot, Panel }
 
-enum class BackdropKind { Ink, Neon, Dusk, Grid, Flow, Pulse, Film }
+enum class BackdropKind { Ink, Neon, Dusk, Grid, Film, Dot, Device }
 
-enum class SeekKind { Hairline, Pill, Segments, Block, Bar, Wave, Film }
+enum class SeekKind { Hairline, Pill, Segments, Block, Film, Dots, Fader }
 
-enum class ButtonKind { Outline, Blob, NeonRing, Brutal, Glass, Morph, Aperture }
+enum class ButtonKind { Outline, Blob, NeonRing, Brutal, Aperture, Disc, Key }
 
 enum class NavKind { Pill, Text }
 
@@ -80,9 +82,9 @@ data class LyricStyle(
     val staggerMs: Int,
     val glow: Boolean,
     val serif: Boolean,
-    /** Lyric size relative to the setting: 流 sets its lyrics large. */
+    /** Lyric size relative to the setting. */
     val sizeScale: Float = 1f,
-    /** The sung part in the text colour rather than the accent (流's white, 影's subtitles). */
+    /** The sung part in the text colour rather than the accent (影's subtitles, 点's white). */
     val inkSweep: Boolean = false,
     val weight: FontWeight = FontWeight.Bold,
 )
@@ -201,37 +203,39 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
         )
         // 格: Swiss grid meets brutalism. Paper, ink, three primaries; heavy grotesk headlines,
         // monospaced labels, square corners, thick rules and hard shadows that you press into.
-        // 流: after Apple Music's lyric page and the 流光 backgrounds Chinese players love: the
-        // cover's colours flowing slowly behind everything, frosted glass, big bold lyrics that
-        // ripple into place, the lines around them blurred.
-        AppTheme.FLOW -> LanyinStyle(
+        // 点: after Nothing's dot-matrix language. True black and white with one red dot; numbers
+        // and the odd Latin label in a dot-matrix face, flat grey tiles, the cover shown through
+        // an LED screen and a ring of glyph lights round it that answer the music.
+        AppTheme.DOT -> LanyinStyle(
             theme = theme, dark = true,
-            colors = flow,
-            display = FontFamily.SansSerif, displayWeight = FontWeight.Black, displayTracking = (-0.01).em,
-            body = FontFamily.SansSerif, numeric = FontFamily.SansSerif,
-            cardShape = RoundedCornerShape(24.dp), chipShape = CircleShape, artShape = RoundedCornerShape(14.dp),
-            edge = EdgeKind.Glass, backdrop = BackdropKind.Flow, seek = SeekKind.Bar,
-            button = ButtonKind.Glass, nav = NavKind.Pill,
+            colors = dot,
+            display = FontFamily.SansSerif, displayWeight = FontWeight.Bold, displayTracking = 0.01.em,
+            body = FontFamily.SansSerif, numeric = DotoFamily,
+            cardShape = RoundedCornerShape(20.dp), chipShape = CircleShape, artShape = RoundedCornerShape(14.dp),
+            edge = EdgeKind.Dot, backdrop = BackdropKind.Dot, seek = SeekKind.Dots,
+            button = ButtonKind.Disc, nav = NavKind.Text,
             lyric = LyricStyle(
-                centered = false, activeScale = 1.03f, inactiveAlpha = 0.3f, blurStep = 1.3.dp, staggerMs = 55, glow = true, serif = false,
-                sizeScale = 1.3f, inkSweep = true, weight = FontWeight.ExtraBold,
+                centered = false, activeScale = 1.04f, inactiveAlpha = 0.26f, blurStep = 0.dp, staggerMs = 24, glow = false, serif = false,
+                sizeScale = 1.08f, inkSweep = true, weight = FontWeight.Bold,
             ),
-            motion = Motion(0.86f, 320f), bouncy = Motion(0.7f, 360f), pressScale = 0.94f,
-            iconStroke = 1.9f,
+            motion = Motion(0.9f, 700f), bouncy = Motion(0.7f, 600f), pressScale = 0.95f,
+            iconStroke = 1.5f, dock = DockKind.Docked,
         )
-        // 律: Material 3 Expressive. Tonal containers, shapes that morph (a scalloped play button
-        // that rounds off as it plays), a wavy progress line, springs that overshoot.
-        AppTheme.PULSE -> LanyinStyle(
+        // 机: a piece of hardware, after Teenage Engineering and Braun. Warm grey plastic, a screen
+        // set into the case that holds the artwork and the lyrics, keys that sink when pressed, an
+        // orange play key, a fader for the progress and a VU needle that swings with the music;
+        // labels in a typewriter mono.
+        AppTheme.DEVICE -> LanyinStyle(
             theme = theme, dark = isDark,
-            colors = if (isDark) pulseDark else pulseLight,
-            display = FontFamily.SansSerif, displayWeight = FontWeight.ExtraBold, displayTracking = (-0.02).em,
-            body = FontFamily.SansSerif, numeric = FontFamily.SansSerif,
-            cardShape = RoundedCornerShape(28.dp), chipShape = RoundedCornerShape(12.dp), artShape = RoundedCornerShape(28.dp),
-            edge = EdgeKind.Tonal, backdrop = BackdropKind.Pulse, seek = SeekKind.Wave,
-            button = ButtonKind.Morph, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = false, activeScale = 1.12f, inactiveAlpha = 0.38f, blurStep = 0.dp, staggerMs = 35, glow = false, serif = false, sizeScale = 1.1f, weight = FontWeight.ExtraBold),
-            motion = Motion(0.75f, 600f), bouncy = Motion(0.48f, 520f), pressScale = 0.93f,
-            iconStroke = 2f,
+            colors = if (isDark) deviceDark else deviceLight,
+            display = FontFamily.SansSerif, displayWeight = FontWeight.Black, displayTracking = (-0.01).em,
+            body = FontFamily.SansSerif, numeric = SpaceMonoFamily,
+            cardShape = RoundedCornerShape(18.dp), chipShape = RoundedCornerShape(10.dp), artShape = RoundedCornerShape(8.dp),
+            edge = EdgeKind.Panel, backdrop = BackdropKind.Device, seek = SeekKind.Fader,
+            button = ButtonKind.Key, nav = NavKind.Pill,
+            lyric = LyricStyle(centered = false, activeScale = 1.04f, inactiveAlpha = 0.34f, blurStep = 0.dp, staggerMs = 20, glow = false, serif = false, weight = FontWeight.Bold),
+            motion = Motion(0.85f, 800f), bouncy = Motion(0.6f, 700f), pressScale = 0.97f,
+            iconStroke = 1.9f,
         )
         // 影: a roll of film in a dark room. Warm black, grain that never sits still, light
         // leaking in at the edges, sprocket holes, an aperture for a play button and the orange
@@ -288,32 +292,53 @@ private val grid = LanyinColors(
     onAccent = Color(0xFFFFFFFF), outline = Color(0xFF111111), like = Color(0xFFFF3B1D), vinyl = Color(0xFF111111),
 )
 
-// Night-sky dark with lavender and pink: what the backdrop flows with when no cover gives colours.
-private val flow = LanyinColors(
-    bg = Color(0xFF0C0B10), bgDeep = Color(0xFF1B1530), surface = Color(0xFF1A1822), surfaceAlt = Color(0xFF24212E),
-    content = Color(0xFFF6F4FA), muted = Color(0xFFA9A4B8), accent = Color(0xFFA594FF), accentAlt = Color(0xFFFF8FB1),
-    onAccent = Color(0xFF14101F), outline = Color(0x24FFFFFF), like = Color(0xFFFF375F), vinyl = Color(0xFF0B0A0E),
+// Nothing's palette: black, white, greys and the red of its recording dot.
+private val dot = LanyinColors(
+    bg = Color(0xFF000000), bgDeep = Color(0xFF0B0B0B), surface = Color(0xFF131313), surfaceAlt = Color(0xFF1C1C1C),
+    content = Color(0xFFF5F5F5), muted = Color(0xFF8C8C8C), accent = Color(0xFFF5F5F5), accentAlt = Color(0xFFD71921),
+    onAccent = Color(0xFF000000), outline = Color(0x29FFFFFF), like = Color(0xFFD71921), vinyl = Color(0xFF0A0A0A),
 )
-// Material 3's baseline tones (primary, tertiary, the surface containers).
-private val pulseLight = LanyinColors(
-    bg = Color(0xFFFDF7FF), bgDeep = Color(0xFFF1E6FD), surface = Color(0xFFF3EDF7), surfaceAlt = Color(0xFFECE6F0),
-    content = Color(0xFF1D1B20), muted = Color(0xFF49454F), accent = Color(0xFF6750A4), accentAlt = Color(0xFF7D5260),
-    onAccent = Color(0xFFFFFFFF), outline = Color(0x1F1D1B20), like = Color(0xFFB3261E), vinyl = Color(0xFF1D1B20),
+// Warm grey case, near-black print, the orange of a play key (deep enough to read as text on the
+// grey) and a blue for the second colour.
+private val deviceLight = LanyinColors(
+    bg = Color(0xFFE4E1D9), bgDeep = Color(0xFFD8D4CB), surface = Color(0xFFEFECE5), surfaceAlt = Color(0xFFE9E6DF),
+    content = Color(0xFF1A1A1A), muted = Color(0xFF5F5B53), accent = Color(0xFFE04A12), accentAlt = Color(0xFF2B6CB0),
+    onAccent = Color(0xFFFFFFFF), outline = Color(0x261A1A1A), like = Color(0xFFE04A12), vinyl = Color(0xFF1A1A1A),
 )
-private val pulseDark = LanyinColors(
-    bg = Color(0xFF141218), bgDeep = Color(0xFF1F1A28), surface = Color(0xFF211F26), surfaceAlt = Color(0xFF2B2930),
-    content = Color(0xFFE6E0E9), muted = Color(0xFFCAC4D0), accent = Color(0xFFD0BCFF), accentAlt = Color(0xFFEFB8C8),
-    onAccent = Color(0xFF381E72), outline = Color(0x1FE6E0E9), like = Color(0xFFF2B8B5), vinyl = Color(0xFF0F0D13),
+// …and the graphite edition.
+private val deviceDark = LanyinColors(
+    bg = Color(0xFF2A2B2E), bgDeep = Color(0xFF202124), surface = Color(0xFF34353A), surfaceAlt = Color(0xFF303135),
+    content = Color(0xFFECEAE4), muted = Color(0xFF9C9990), accent = Color(0xFFEA581C), accentAlt = Color(0xFF6A9BE8),
+    onAccent = Color(0xFFFFFFFF), outline = Color(0x2EECEAE4), like = Color(0xFFEA581C), vinyl = Color(0xFF121214),
 )
-// A darkroom: warm black, the paper white of a print, burnt orange and a red light leak.
+// A darkroom: near-black with only a breath of warmth (not brown), greys with a little
+// warmth in them, the paper white of a print, burnt orange and a red light leak.
 private val film = LanyinColors(
-    bg = Color(0xFF12100E), bgDeep = Color(0xFF221B15), surface = Color(0xFF1C1915), surfaceAlt = Color(0xFF27221C),
-    content = Color(0xFFF2E9DC), muted = Color(0xFFA69A88), accent = Color(0xFFE8743B), accentAlt = Color(0xFFD9484A),
-    onAccent = Color(0xFF1A0F08), outline = Color(0x26F2E9DC), like = Color(0xFFE5484D), vinyl = Color(0xFF0D0B09),
+    bg = Color(0xFF0E0D0C), bgDeep = Color(0xFF191512), surface = Color(0xFF1A1817), surfaceAlt = Color(0xFF24211F),
+    content = Color(0xFFF2EBDF), muted = Color(0xFFA0988C), accent = Color(0xFFE8743B), accentAlt = Color(0xFFD9484A),
+    onAccent = Color(0xFF1A0F08), outline = Color(0x24F2EBDF), like = Color(0xFFE5484D), vinyl = Color(0xFF0B0A09),
 )
 
 /** 影's date stamp: the orange of a point-and-shoot's printed date. */
 val FilmStamp = Color(0xFFFF8A1F)
+
+/** Doto with round dots (SIL OFL), for 点's numbers and Latin labels; Chinese falls back to the system sans. */
+val DotoFamily = FontFamily(
+    Font(R.font.doto_bold, FontWeight.Normal),
+    Font(R.font.doto_bold, FontWeight.Medium),
+    Font(R.font.doto_black, FontWeight.SemiBold),
+    Font(R.font.doto_black, FontWeight.Bold),
+    Font(R.font.doto_black, FontWeight.Black),
+)
+
+/** Space Mono (SIL OFL), 机's label and counter face. */
+val SpaceMonoFamily = FontFamily(
+    Font(R.font.space_mono_regular, FontWeight.Normal),
+    Font(R.font.space_mono_regular, FontWeight.Medium),
+    Font(R.font.space_mono_bold, FontWeight.SemiBold),
+    Font(R.font.space_mono_bold, FontWeight.Bold),
+    Font(R.font.space_mono_bold, FontWeight.Black),
+)
 
 /** 格's third primary, for stickers and highlights. */
 val GridYellow = Color(0xFFFACC15)

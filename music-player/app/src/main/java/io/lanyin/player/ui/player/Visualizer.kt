@@ -128,14 +128,16 @@ private fun LanyinStyle.markCount(): Int = when (backdrop) {
     BackdropKind.Neon -> 72
     BackdropKind.Dusk -> 44
     BackdropKind.Grid -> 56
-    BackdropKind.Flow -> 64
-    BackdropKind.Pulse -> 40
     BackdropKind.Film -> 90
+    BackdropKind.Dot -> 72
+    BackdropKind.Device -> 60
 }
 
 /**
  * A spectrum that grows out of the artwork's edge, drawn in the theme's own hand: hairline dial
- * ticks for 墨, glowing bars for 霓, soft rays for 暮 and square bars for 格. Mirrored left and right with the bass at the top. Redraws every frame without
+ * ticks for 墨, glowing bars for 霓, soft rays for 暮, square bars for 格, a light meter's scale
+ * for 影, a ring of LEDs for 点 and a level meter for 机. Mirrored left and right with the bass at
+ * the top. Redraws every frame without
  * recomposing, from [feed]: what is being heard; while paused it settles into a quiet resting ring.
  */
 @Composable
@@ -230,21 +232,26 @@ private fun DrawScope.drawSpectrum(
                 drawLine(color.copy(alpha = alpha), Offset(px(i, 0f), py(i, 0f)), Offset(px(i, len), py(i, len)), width)
             }
         }
-        // 流: beads of light lifted off the edge, brightening as they rise.
-        BackdropKind.Flow -> {
+        // 点: a ring of LEDs, each lit as far as its band reaches, the red one at the top.
+        BackdropKind.Dot -> {
             for (i in 0 until n) {
                 val v = level(i)
-                val out = 3.dp.toPx() + v * reach
-                val center = Offset(px(i, out), py(i, out))
-                drawCircle(Color.White.copy(alpha = alpha * (0.22f + 0.7f * v)), (1.2f + 1.8f * v).dp.toPx(), center)
+                val out = 4.dp.toPx() + v * reach * 0.55f
+                val top = i == 0
+                drawCircle(
+                    (if (top) c.accentAlt else c.content).copy(alpha = alpha * (if (top) 1f else 0.16f + 0.84f * v)),
+                    (1.5f + 1.2f * v).dp.toPx(), Offset(px(i, out), py(i, out)),
+                )
             }
         }
-        // 律: round dots that swell with their band, in the two accents.
-        BackdropKind.Pulse -> {
+        // 机: a level meter's bars, turning orange where they peak.
+        BackdropKind.Device -> {
+            val width = 2.5.dp.toPx()
             for (i in 0 until n) {
                 val v = level(i)
-                val r = (2.5f + 4.5f * v).dp.toPx()
-                drawCircle(lerp(c.accent, c.accentAlt, (i % 2) * 0.6f).copy(alpha = alpha * (0.45f + 0.55f * v)), r, Offset(px(i, r + 2.dp.toPx() + v * reach * 0.4f), py(i, r + 2.dp.toPx() + v * reach * 0.4f)))
+                val len = 2.dp.toPx() + v * reach
+                val color = if (v > 0.68f) c.accent else c.content.copy(alpha = 0.45f + 0.45f * v)
+                drawLine(color.copy(alpha = color.alpha * alpha), Offset(px(i, 0f), py(i, 0f)), Offset(px(i, len), py(i, len)), width)
             }
         }
         // 影: a light meter's scale, ticks in the film's orange, every fifth longer.

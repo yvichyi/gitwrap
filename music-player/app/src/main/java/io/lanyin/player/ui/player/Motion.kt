@@ -71,7 +71,7 @@ fun Modifier.beatRipples(skin: PlayerSkin, playing: Boolean, feed: io.lanyin.pla
     val clock = rememberFrameClock(playing)
     val energy = animateFloatAsState(if (playing) 1f else 0f, tween(700), label = "rippleEnergy")
     val brutal = style.edge == EdgeKind.Brutal
-    val color = if (style.edge == EdgeKind.Hairline || brutal || style.edge == EdgeKind.Glass) style.colors.content else style.colors.accent
+    val color = if (style.edge == EdgeKind.Hairline || brutal || style.edge == EdgeKind.Dot) style.colors.content else style.colors.accent
     val glow = style.edge == EdgeKind.Glow
     return drawBehind {
         val e = energy.value

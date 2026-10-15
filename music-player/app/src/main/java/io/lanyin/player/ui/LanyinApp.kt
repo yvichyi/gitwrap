@@ -42,6 +42,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -202,13 +203,6 @@ fun LanyinApp(
         if (!expanded) orientation.release() else if (settings.autoLandscape) orientation.lockLandscape()
     }
 
-    // 流 takes the cover's colours everywhere, not just on the player: the pages flow with it too.
-    val flowSeeds = if (Lanyin.style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Flow && settings.followCover) {
-        io.lanyin.player.ui.theme.rememberCoverSeeds(player.coverUrl)
-    } else {
-        null
-    }
-    io.lanyin.player.ui.theme.TintedBy(flowSeeds) {
     CompositionLocalProvider(LocalOpenSheet provides sheets::open, LocalNavigator provides navigator) {
     SharedTransitionLayout(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().background(Lanyin.colors.bg)) {
@@ -367,7 +361,6 @@ fun LanyinApp(
         }
     }
     }
-    }
 }
 
 /** A short message (a song skipped, a playlist made, a like that didn't stick), gone after a few seconds. */
@@ -413,7 +406,17 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
         Modifier
             .fillMaxWidth()
             .height(if (docked) 52.dp else 60.dp)
-            .then(if (docked) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome)),
+            .then(if (docked) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome))
+            // 影's bar is a strip of film: sprocket holes along its top edge.
+            .then(if (style.edge == EdgeKind.Film) Modifier.drawBehind {
+                val hole = androidx.compose.ui.geometry.Size(5.dp.toPx(), 3.dp.toPx())
+                val pitch = 11.dp.toPx()
+                var x = (size.width % pitch) / 2f
+                while (x + hole.width <= size.width) {
+                    drawRoundRect(c.content.copy(alpha = 0.09f), androidx.compose.ui.geometry.Offset(x, 3.dp.toPx()), hole, androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()))
+                    x += pitch
+                }
+            } else Modifier),
     ) {
         val itemWidth = maxWidth / tabs.size
         val x by animateDpAsState(itemWidth * selected, style.bouncy.spec(Dp.VisibilityThreshold), label = "tabIndicator")
@@ -424,6 +427,24 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                     // 格: the current tab is a yellow index card.
                     EdgeKind.Brutal -> Modifier.retroShadow(shape, c.outline, 3.dp).background(io.lanyin.player.ui.theme.GridYellow).border(2.dp, c.outline, shape)
                     EdgeKind.Glow -> Modifier.neonGlow(shape, c.accent, 0.7f).clip(shape).background(c.accent.copy(alpha = 0.12f)).border(1.dp, c.accent, shape)
+                    // 影: the current tab is an exposed frame between two frame lines, marked in the
+                    // orange of the date stamp.
+                    EdgeKind.Film -> Modifier.drawBehind {
+                        drawRect(c.accent.copy(alpha = 0.07f))
+                        val line = c.content.copy(alpha = 0.16f)
+                        drawLine(line, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(0f, size.height), 1.dp.toPx())
+                        drawLine(line, androidx.compose.ui.geometry.Offset(size.width, 0f), androidx.compose.ui.geometry.Offset(size.width, size.height), 1.dp.toPx())
+                        drawLine(
+                            io.lanyin.player.ui.theme.FilmStamp,
+                            androidx.compose.ui.geometry.Offset(size.width * 0.4f, size.height - 1.dp.toPx()),
+                            androidx.compose.ui.geometry.Offset(size.width * 0.6f, size.height - 1.dp.toPx()),
+                            2.dp.toPx(), androidx.compose.ui.graphics.StrokeCap.Round,
+                        )
+                    }
+                    // 机: the current tab is a key held down, sunk into the bar.
+                    EdgeKind.Panel -> Modifier.clip(shape).background(c.bgDeep).drawBehind {
+                        drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color.Black.copy(alpha = if (style.dark) 0.3f else 0.12f), androidx.compose.ui.graphics.Color.Transparent), endY = 6.dp.toPx()))
+                    }
                     else -> Modifier.clip(shape).background(c.accent.copy(alpha = if (style.dark) 0.22f else 0.14f))
                 }
                 Box(

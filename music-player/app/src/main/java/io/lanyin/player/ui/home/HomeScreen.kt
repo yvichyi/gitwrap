@@ -263,11 +263,13 @@ private fun FeatureTile(
             .clip(shape),
     ) {
         Box(Modifier.fillMaxSize()) { art() }
+        // 点's art is white on black at full contrast, so its foot needs nearly all of the dark.
+        val foot = if (style.edge == EdgeKind.Dot) 0.94f else 0.74f
         Box(
             Modifier
                 .fillMaxSize()
                 // Dark at the top for the mark and at the foot for the title, whatever the art.
-                .background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.42f), 0.38f to Color.Transparent, 0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.74f))),
+                .background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.42f), 0.38f to Color.Transparent, 0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = foot))),
         )
         Box(Modifier.align(Alignment.TopStart).padding(12.dp)) { mark() }
         Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Bottom) {
