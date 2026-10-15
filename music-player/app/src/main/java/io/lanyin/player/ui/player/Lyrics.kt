@@ -1,5 +1,6 @@
 package io.lanyin.player.ui.player
 
+import io.lanyin.player.core.model.LyricLine
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing

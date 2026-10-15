@@ -121,7 +121,7 @@ private const val CHROME_TIMEOUT_MS = 5_000L
 
 @Composable
 fun PlayerScreen(
-    state: DemoPlayerState,
+    state: PlayerState,
     skin: PlayerSkin,
     spin: SpinState,
     keepScreenOnInLandscape: Boolean,
@@ -233,7 +233,7 @@ fun PlayerScreen(
  */
 @Composable
 private fun PortraitPlayer(
-    state: DemoPlayerState,
+    state: PlayerState,
     skin: PlayerSkin,
     spin: SpinState,
     dismissDrag: Modifier,
@@ -288,7 +288,8 @@ private fun PortraitPlayer(
                             SwipeToSkip(state) {
                                 PlayerArtwork(
                                     skin, state.isPlaying, spin, state.coverSeed,
-                                    Modifier
+                                    coverUrl = state.coverUrl,
+                                    modifier = Modifier
                                         .fillMaxWidth()
                                         .sharedPlayer("artwork", zIndex = 1f)
                                         .pressable { showLyrics = true },
@@ -351,7 +352,7 @@ private const val CASSETTE_RATIO = 1.58f
  */
 @Composable
 private fun LandscapePlayer(
-    state: DemoPlayerState,
+    state: PlayerState,
     skin: PlayerSkin,
     spin: SpinState,
     chromeVisible: Boolean,
@@ -399,7 +400,7 @@ private fun LandscapePlayer(
                     ) {
                         // The halo stays put while the record is swiped away and the next slides in.
                         SwipeToSkip(state) {
-                            PlayerArtwork(skin, state.isPlaying, spin, state.coverSeed, Modifier.fillMaxWidth().sharedPlayer("artwork", zIndex = 1f))
+                            PlayerArtwork(skin, state.isPlaying, spin, state.coverSeed, Modifier.fillMaxWidth().sharedPlayer("artwork", zIndex = 1f), state.coverUrl)
                         }
                         QualitySticker(state, Modifier.align(Alignment.TopStart))
                     }
@@ -432,7 +433,7 @@ private fun LandscapePlayer(
 
 /** 墨's inscription, fading in a moment after the stage goes full screen. */
 @Composable
-private fun InscriptionOverlay(visible: Boolean, state: DemoPlayerState, modifier: Modifier = Modifier) {
+private fun InscriptionOverlay(visible: Boolean, state: PlayerState, modifier: Modifier = Modifier) {
     AnimatedVisibility(visible, modifier, enter = fadeIn(tween(900, delayMillis = 300)), exit = fadeOut(tween(200))) {
         Inscription(state)
     }
@@ -445,7 +446,7 @@ private fun InscriptionOverlay(visible: Boolean, state: DemoPlayerState, modifie
  */
 @Composable
 private fun StageLyrics(
-    state: DemoPlayerState,
+    state: PlayerState,
     chromeVisible: Boolean,
     textStyle: TextStyle,
     centered: Boolean,
@@ -474,7 +475,7 @@ private fun StageLyrics(
 /** The track's lyrics, or a quiet note for an instrumental. */
 @Composable
 private fun StateLyrics(
-    state: DemoPlayerState,
+    state: PlayerState,
     textStyle: TextStyle,
     centered: Boolean,
     anchorFraction: Float,
@@ -484,7 +485,12 @@ private fun StateLyrics(
     /** Where the progress line is being dragged: the lyrics follow it before the seek lands. */
     scrubMs: Long? = null,
 ) {
-    if (state.lyrics.isEmpty()) {
+    if (state.lyrics.isEmpty() && state.lyricsLoading) {
+        // Not an instrumental, just not here yet: hold the space quietly.
+        Box(modifier, contentAlignment = if (centered) Alignment.Center else Alignment.CenterStart) {
+            Text("歌词加载中…", style = Lanyin.style.type.caption, color = Lanyin.colors.muted)
+        }
+    } else if (state.lyrics.isEmpty()) {
         Instrumental(textStyle, centered, modifier)
     } else {
         val index = scrubMs?.let { lyricIndexAt(state.lyrics, it) } ?: state.currentLyricIndex
@@ -519,7 +525,7 @@ private fun Instrumental(textStyle: TextStyle, centered: Boolean, modifier: Modi
 
 /** Where the track is playing from, and what comes next. */
 @Composable
-private fun StageFooter(state: DemoPlayerState, centered: Boolean) {
+private fun StageFooter(state: PlayerState, centered: Boolean) {
     val style = Lanyin.style
     val c = style.colors
     Row(
@@ -548,7 +554,7 @@ private fun StageFooter(state: DemoPlayerState, centered: Boolean) {
 
 /** What is playing and the time, in place of the bars while the stage is full screen. */
 @Composable
-private fun ImmersiveStatus(state: DemoPlayerState, showTitle: Boolean = true) {
+private fun ImmersiveStatus(state: PlayerState, showTitle: Boolean = true) {
     val style = Lanyin.style
     val c = style.colors
     val now by rememberMinuteClock()
@@ -609,7 +615,7 @@ private fun rememberMinuteClock(): State<LocalTime> = produceState(LocalTime.now
 
 /** Collapse, the title beside it like a window title, and the track's tags and actions. */
 @Composable
-private fun LandscapeTopBar(state: DemoPlayerState, onCollapse: () -> Unit, onRotate: () -> Unit, modifier: Modifier = Modifier) {
+private fun LandscapeTopBar(state: PlayerState, onCollapse: () -> Unit, onRotate: () -> Unit, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
     Row(modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -625,7 +631,7 @@ private fun LandscapeTopBar(state: DemoPlayerState, onCollapse: () -> Unit, onRo
         }
         Spacer(Modifier.width(16.dp))
         QualityTags(state)
-        LikeButton(state.liked, onToggle = { state.liked = !state.liked })
+        LikeButton(state.liked, onToggle = state::toggleLike)
         IconAction(LineIcon.Rotate, "切换到竖屏", onRotate)
         IconAction(LineIcon.More, "更多", {})
     }
@@ -633,17 +639,19 @@ private fun LandscapeTopBar(state: DemoPlayerState, onCollapse: () -> Unit, onRo
 
 /** 格 slaps a turning sticker with the quality and format over the artwork's corner. */
 @Composable
-private fun QualitySticker(state: DemoPlayerState, modifier: Modifier = Modifier) {
+private fun QualitySticker(state: PlayerState, modifier: Modifier = Modifier) {
     if (Lanyin.style.edge != EdgeKind.Brutal) return
     TrackSwitch(state, modifier.offset((-6).dp, (-6).dp)) { track ->
-        Sticker(listOf(track.quality, track.format.substringBefore(" ·"), "★"))
+        Sticker(listOf(state.quality, state.format.substringBefore(" ·"), "★"))
     }
 }
 
 /** The quality tag plus the stream format: a chip in most themes, a quiet tracked label in 墨. */
 @Composable
-private fun QualityTags(state: DemoPlayerState, chipFirst: Boolean = false) {
+private fun QualityTags(state: PlayerState, chipFirst: Boolean = false) {
     val style = Lanyin.style
+    // Unknown until the stream has been resolved.
+    if (state.quality.isEmpty()) return
     if (style.quietSections) {
         Text("${state.quality} · ${state.format}", style = style.type.label, color = style.colors.muted, maxLines = 1)
     } else {
@@ -692,7 +700,7 @@ private fun QualityChip(text: String) {
 }
 
 @Composable
-private fun LandscapeControlBar(state: DemoPlayerState, onScrub: (Long?) -> Unit, modifier: Modifier = Modifier) {
+private fun LandscapeControlBar(state: PlayerState, onScrub: (Long?) -> Unit, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val docked = style.dock == DockKind.Docked
     Column(modifier) {
@@ -725,7 +733,7 @@ private fun lyricTextStyle(baseSp: Float, scale: Float): TextStyle {
 
 /** Collapse, where the music is playing from (centred, like a page title), and more. */
 @Composable
-private fun PlayerTopBar(state: DemoPlayerState, onCollapse: () -> Unit, modifier: Modifier = Modifier) {
+private fun PlayerTopBar(state: PlayerState, onCollapse: () -> Unit, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
     Box(modifier.fillMaxWidth().heightIn(min = 56.dp)) {
@@ -758,7 +766,7 @@ private fun PlayerTopBar(state: DemoPlayerState, onCollapse: () -> Unit, modifie
 }
 
 @Composable
-private fun TrackTitle(state: DemoPlayerState, modifier: Modifier = Modifier) {
+private fun TrackTitle(state: PlayerState, modifier: Modifier = Modifier) {
     val c = Lanyin.colors
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
@@ -772,7 +780,7 @@ private fun TrackTitle(state: DemoPlayerState, modifier: Modifier = Modifier) {
                 )
             }
         }
-        LikeButton(state.liked, onToggle = { state.liked = !state.liked })
+        LikeButton(state.liked, onToggle = state::toggleLike)
     }
 }
 
@@ -781,7 +789,7 @@ private fun TrackTitle(state: DemoPlayerState, modifier: Modifier = Modifier) {
  * wrapper keeps its place (and any shared-element key), only the content changes.
  */
 @Composable
-private fun TrackSwitch(state: DemoPlayerState, modifier: Modifier = Modifier, content: @Composable (DemoTrack) -> Unit) {
+private fun TrackSwitch(state: PlayerState, modifier: Modifier = Modifier, content: @Composable (Track) -> Unit) {
     AnimatedContent(
         targetState = state.track,
         modifier = modifier,
@@ -798,7 +806,7 @@ private fun TrackSwitch(state: DemoPlayerState, modifier: Modifier = Modifier, c
 /** The quieter actions under the transport: quality on the left, lyrics and rotation on the right. */
 @Composable
 private fun UtilityRow(
-    state: DemoPlayerState,
+    state: PlayerState,
     onToggleLyrics: (() -> Unit)?,
     lyricsShown: Boolean,
     onRotate: () -> Unit,
@@ -817,7 +825,7 @@ private fun UtilityRow(
 
 /** Transport; skip buttons give a little push in their direction, the mode icon pops as it changes. */
 @Composable
-private fun TransportControls(state: DemoPlayerState, playSize: Dp, modifier: Modifier = Modifier) {
+private fun TransportControls(state: PlayerState, playSize: Dp, modifier: Modifier = Modifier) {
     val c = Lanyin.colors
     val scope = rememberCoroutineScope()
     val back = remember { Animatable(0f) }

@@ -87,7 +87,7 @@ private fun VerticalText(text: String, style: TextStyle, color: Color, maxRuns: 
  * on a hanging scroll, the artist in a smaller hand beside it, closed with a red seal.
  */
 @Composable
-fun Inscription(state: DemoPlayerState, modifier: Modifier = Modifier) {
+fun Inscription(state: PlayerState, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val titleStyle = TextStyle(fontFamily = style.display, fontSize = 20.sp, lineHeight = 25.sp, fontWeight = FontWeight.Medium)

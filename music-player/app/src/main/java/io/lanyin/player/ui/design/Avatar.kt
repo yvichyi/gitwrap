@@ -18,7 +18,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.painter.Painter
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
+import coil3.compose.LocalPlatformContext
+import coil3.compose.rememberAsyncImagePainter
+import coil3.request.ImageRequest
 import io.lanyin.player.ui.theme.Lanyin
 
 /**
@@ -73,4 +81,27 @@ fun VipBadge(vipType: Int, modifier: Modifier = Modifier) {
             .border(1.dp, c.accent.copy(alpha = 0.6f), style.chipShape)
             .padding(horizontal = 8.dp, vertical = 2.dp),
     )
+}
+
+/** A cover: the theme's generated sleeve, with the real one on top once it loads. */
+@Composable
+fun CoverImage(url: String?, seed: Int, size: Dp, modifier: Modifier = Modifier) {
+    Box(modifier) {
+        CoverArt(seed, Modifier.matchParentSize())
+        RemoteImage(url, size, Modifier.matchParentSize())
+    }
+}
+
+/**
+ * The real cover as a painter for canvas drawing (the record label), or null until it has
+ * loaded, so callers can draw the generated sleeve meanwhile.
+ */
+@Composable
+fun rememberCoverPainter(url: String?, sizePx: Int): Painter? {
+    if (url.isNullOrEmpty()) return null
+    val context = LocalPlatformContext.current
+    val request = remember(url, sizePx) { ImageRequest.Builder(context).data(sized(url, sizePx)).size(sizePx).build() }
+    val painter = rememberAsyncImagePainter(request)
+    val state by painter.state.collectAsState()
+    return painter.takeIf { state is AsyncImagePainter.State.Success }
 }

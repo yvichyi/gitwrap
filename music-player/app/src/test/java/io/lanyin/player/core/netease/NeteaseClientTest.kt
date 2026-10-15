@@ -178,6 +178,21 @@ class NeteaseClientTest {
     }
 
     @Test
+    fun `a device id NetEase refuses is replaced until registration works`() = runBlocking {
+        reply("""{"code":400}""")
+        reply("""{"code":200,"userId":1}""", "MUSIC_A=anon-token; Path=/")
+        val first = api.currentSession().deviceId
+        api.ensureAnonymous()
+        val s = store.read()!!
+        assertEquals("anon-token", s.musicA)
+        assertTrue(s.deviceId != first)
+        assertEquals(2, server.requestCount)
+        // Registered: nothing more to do.
+        api.ensureAnonymous()
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
     fun `cookie values are encoded like encodeURIComponent`() {
         assertEquals("a%20b%3Bc%E6%BE%9C-_.!~*'()", NeteaseClient.encodeURIComponent("a b;c澜-_.!~*'()"))
         assertEquals(mapOf("MUSIC_U" to "v2"), NeteaseClient.parseSetCookies(listOf("MUSIC_U=; Max-Age=0", "MUSIC_U=v2; Path=/")))

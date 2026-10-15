@@ -1,6 +1,7 @@
 package io.lanyin.player.data.settings
 
 import android.content.Context
+import io.lanyin.player.core.model.Quality
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -27,6 +28,8 @@ data class UiSettings(
     val autoLandscape: Boolean = false,
     val keepScreenOnInLandscape: Boolean = true,
     val lyricSize: LyricSize = LyricSize.Default,
+    /** The stream quality to ask NetEase for; it steps down when a song isn't available at it. */
+    val quality: Quality = Quality.LOSSLESS,
 )
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -42,6 +45,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 autoLandscape = prefs[AUTO_LANDSCAPE] ?: false,
                 keepScreenOnInLandscape = prefs[KEEP_SCREEN_ON] ?: true,
                 lyricSize = LyricSize.fromId(prefs[LYRIC_SIZE]),
+                quality = Quality.fromLevel(prefs[QUALITY]) ?: Quality.LOSSLESS,
             )
         }
 
@@ -57,6 +61,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setLyricSize(size: LyricSize) = dataStore.edit { it[LYRIC_SIZE] = size.id }
 
+    suspend fun setQuality(quality: Quality) = dataStore.edit { it[QUALITY] = quality.level }
+
     private companion object {
         val THEME = stringPreferencesKey("app_skin")
         val PLAYER_SKIN = stringPreferencesKey("player_skin")
@@ -64,5 +70,6 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val AUTO_LANDSCAPE = booleanPreferencesKey("auto_landscape")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on_landscape")
         val LYRIC_SIZE = stringPreferencesKey("lyric_size")
+        val QUALITY = stringPreferencesKey("stream_quality")
     }
 }

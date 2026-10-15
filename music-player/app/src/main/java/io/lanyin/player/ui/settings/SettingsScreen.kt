@@ -58,6 +58,8 @@ import io.lanyin.player.ui.theme.LyricSize
 import io.lanyin.player.ui.theme.PlayerSkin
 import io.lanyin.player.ui.theme.ThemeMode
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import io.lanyin.player.data.account.AccountState
 import io.lanyin.player.ui.design.Avatar
 import io.lanyin.player.ui.design.VipBadge
@@ -159,6 +161,18 @@ fun SettingsScreen(
                         }
                         Text("唱片在掌心慢慢转动", style = preview, color = c.content.copy(alpha = style.lyric.inactiveAlpha))
                     }
+                    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("在线音质", style = style.type.body)
+                            Text("没有这个音质的歌会自动降一档；超清母带需要 SVIP", style = style.type.caption, color = c.muted)
+                        }
+                    }
+                    ChoiceRow(
+                        io.lanyin.player.core.model.Quality.entries.reversed().map { it.label },
+                        settings.quality.label,
+                        { label -> scope.launch { repository.setQuality(io.lanyin.player.core.model.Quality.entries.first { it.label == label }) } },
+                        Modifier.padding(top = 10.dp, bottom = 16.dp).horizontalScroll(rememberScrollState()),
+                    )
                 }
             }
             item {
@@ -177,7 +191,7 @@ fun SettingsScreen(
             item { SectionTitle("账号", Modifier.padding(start = m, end = m, top = 36.dp), index = 5) }
             item { AccountRow(account, onLogin, onLogout, Modifier.padding(start = m, end = m, top = 14.dp)) }
             item {
-                Text("澜音 0.2 · 预览版", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))
+                Text("澜音 0.3 · 预览版", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))
             }
         }
     }

@@ -45,6 +45,10 @@ data class UserProfile(
     val isVip: Boolean get() = vipType != 0
 }
 
+/** One timed lyric line, with its translation when there is one. */
+@androidx.compose.runtime.Immutable
+data class LyricLine(val text: String, val translation: String?, val startMs: Long, val endMs: Long)
+
 /** Raw lyric documents; parsed into timed lines by the lyrics package. */
 data class LyricsSource(
     val lrc: String?,

@@ -42,12 +42,24 @@ class NeteaseApi(private val client: NeteaseClient) {
 
     // —— Login ——
 
-    /** Registers the anonymous account used before login, once per install. Best effort. */
+    /**
+     * Registers the anonymous account used before login, once per install. NetEase turns some
+     * device ids away for good (about one in three random ones, the reference client too), so
+     * a refused id is replaced and the registration tried again.
+     */
     suspend fun ensureAnonymous() {
-        val s = client.currentSession()
-        if (s.loggedIn || s.musicA != null) return
-        val r = client.weapi("/api/register/anonimous", buildJsonObject { put("username", NeteaseCrypto.anonymousUsername(s.deviceId)) })
-        if (r.code == 200) client.updateSession { it.withCookies(r.setCookies) } else throw NeteaseException(r.code, r.message ?: "匿名账号注册失败")
+        repeat(5) {
+            val s = client.currentSession()
+            if (s.loggedIn || s.musicA != null) return
+            val r = client.weapi("/api/register/anonimous", buildJsonObject { put("username", NeteaseCrypto.anonymousUsername(s.deviceId)) })
+            if (r.code == 200) {
+                client.updateSession { it.withCookies(r.setCookies) }
+                return
+            }
+            if (r.code != 400) throw NeteaseException(r.code, r.message ?: "匿名账号注册失败")
+            client.updateSession { it.copy(deviceId = NeteaseCrypto.newDeviceId()) }
+        }
+        throw NeteaseException(400, "匿名账号注册失败")
     }
 
     suspend fun qrKey(): String {
@@ -138,6 +150,20 @@ class NeteaseApi(private val client: NeteaseClient) {
     suspend fun personalFm(): List<Song> =
         client.weapi("/api/v1/radio/get").requireOk().decode<FmDto>().data.map { it.toSong() }
 
+    /** The official charts; public, no login needed. */
+    suspend fun charts(): List<Playlist> =
+        client.eapi("/api/toplist").requireOk().decode<ToplistDto>().list.map { it.toPlaylist() }
+
+    /** Popular playlists picked by NetEase; works before login too. */
+    suspend fun personalizedPlaylists(limit: Int = 12): List<Playlist> =
+        client.weapi("/api/personalized/playlist", buildJsonObject { put("limit", limit); put("total", true); put("n", 1000) })
+            .requireOk().decode<PersonalizedDto>().result.map { it.toPlaylist() }
+
+    /** Tells FM not to play this song again. */
+    suspend fun fmTrash(songId: Long) {
+        client.weapi("/api/radio/trash/add", buildJsonObject { put("songId", songId); put("alg", "RT"); put("time", 25) }).requireOk()
+    }
+
     suspend fun search(keywords: String, limit: Int = 30, offset: Int = 0): List<Song> {
         val r = client.eapi(
             "/api/cloudsearch/pc",
@@ -192,7 +218,12 @@ class NeteaseApi(private val client: NeteaseClient) {
 
 // —— Wire formats ——
 
-internal fun String.https(): String = if (startsWith("http://")) "https://" + removePrefix("http://") else this
+/** NetEase hands out plain-http image and audio links; its CDNs serve the same over https. */
+internal fun String.https(): String {
+    if (!startsWith("http://")) return this
+    val host = removePrefix("http://").substringBefore('/').substringBefore(':')
+    return if (host.endsWith(".126.net") || host.endsWith(".163.com") || host.endsWith(".127.net")) "https://" + removePrefix("http://") else this
+}
 
 @Serializable internal class QrKeyDto(val unikey: String? = null)
 @Serializable internal class QrScanDto(val nickname: String? = null, val avatarUrl: String? = null)
@@ -266,6 +297,8 @@ internal class PlaylistDto(
     )
 }
 
+@Serializable internal class ToplistDto(val list: List<PlaylistDto> = emptyList())
+@Serializable internal class PersonalizedDto(val result: List<PlaylistDto> = emptyList())
 @Serializable internal class UserPlaylistsDto(val playlist: List<PlaylistDto> = emptyList())
 @Serializable internal class PlaylistDetailDto(val playlist: PlaylistDto? = null)
 @Serializable internal class LikeListDto(val ids: List<Long> = emptyList())

@@ -36,70 +36,100 @@ import io.lanyin.player.ui.design.ThemedIcon
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.core.model.Song
+import io.lanyin.player.ui.LocalAppServices
+import io.lanyin.player.ui.design.ThemedTextField
+import io.lanyin.player.ui.music.Load
+import io.lanyin.player.ui.music.Placeholder
+import io.lanyin.player.ui.music.SongRow
+import io.lanyin.player.ui.music.describe
+import io.lanyin.player.ui.player.PlayerState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 
-private val categories = listOf("单曲", "歌手", "专辑", "歌单", "歌词")
-
+/**
+ * Search songs as you type (after a short pause). Tap a result to play the results from there.
+ * [initialResults] stands in for the network in previews.
+ */
 @Composable
-fun SearchScreen() {
+fun SearchScreen(player: PlayerState? = null, initialQuery: String = "", initialResults: List<Song>? = null) {
     val style = Lanyin.style
     val c = style.colors
     val m = style.margin
-    var query by rememberSaveable { mutableStateOf("") }
-    var category by rememberSaveable { mutableStateOf(categories.first()) }
+    val library = LocalAppServices.current?.library
+    var query by rememberSaveable { mutableStateOf(initialQuery) }
+    var results by remember { mutableStateOf<Load<List<Song>>?>(initialResults?.let { Load.Ready(it) }) }
+    var attempt by remember { mutableIntStateOf(0) }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(query, attempt) {
+        val q = query.trim()
+        if (q.isEmpty() || library == null) {
+            if (library != null) results = null
+            return@LaunchedEffect
+        }
+        delay(400)
+        results = Load.Loading
+        results = try {
+            Load.Ready(library.search(q))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Load.Failed(describe(e))
+        }
+    }
     CompositionLocalProvider(LocalContentColor provides c.content) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
-            item { PageTitle("搜索", Modifier.padding(horizontal = m), subtitle = "歌曲、歌手、专辑、歌单，或一句记得的歌词") }
-            item { SearchField(query, { query = it }, Modifier.padding(start = m, end = m, top = 24.dp)) }
-            item { ChoiceRow(categories, category, { category = it }, Modifier.padding(start = m, end = m, top = 20.dp)) }
+            item { PageTitle("搜索", Modifier.padding(horizontal = m), subtitle = "歌名、歌手或专辑") }
             item {
-                Column(
-                    Modifier.fillMaxWidth().padding(horizontal = m * 2, vertical = 56.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    ThemeMotif(c.content.copy(alpha = 0.22f), Modifier.size(120.dp))
-                    Text("想听点什么？", style = style.type.title, modifier = Modifier.padding(top = 20.dp))
-                    Text(
-                        "登录后，这里会出现热门搜索和你的搜索记录。",
-                        style = style.type.caption, color = c.muted, textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
+                ThemedTextField(
+                    query, { query = it }, "想听什么？",
+                    Modifier.padding(start = m, end = m, top = 24.dp, bottom = 8.dp),
+                    leading = LineIcon.Search,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
+                )
+            }
+            when (val r = results) {
+                null -> item {
+                    Column(
+                        Modifier.fillMaxWidth().padding(horizontal = m * 2, vertical = 56.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        ThemeMotif(c.content.copy(alpha = 0.22f), Modifier.size(120.dp))
+                        Text("想听点什么？", style = style.type.title, modifier = Modifier.padding(top = 20.dp))
+                        Text(
+                            "输入歌名、歌手或专辑，边打字边找。",
+                            style = style.type.caption, color = c.muted, textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                }
+                Load.Loading -> item { Placeholder("正在找…") }
+                is Load.Failed -> item { Placeholder(r.message, "重试") { attempt++ } }
+                is Load.Ready -> {
+                    if (r.value.isEmpty()) item { Placeholder("没有找到「${query.trim()}」") }
+                    itemsIndexed(r.value, key = { i, s -> "${s.id}-$i" }) { i, song ->
+                        SongRow(
+                            song, i + 1,
+                            playing = song.id == player?.playingSongId,
+                            isPlaying = player?.isPlaying == true,
+                            onClick = {
+                                keyboard?.hide()
+                                player?.play(r.value, i, "搜索「${query.trim()}」")
+                            },
+                            modifier = Modifier.padding(horizontal = m),
+                        )
+                    }
                 }
             }
         }
-    }
-}
-
-/** An underlined line in hairline themes, a field in the theme's chip shape elsewhere. */
-@Composable
-private fun SearchField(query: String, onQuery: (String) -> Unit, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val hairline = style.edge == EdgeKind.Hairline
-    Column(modifier) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(52.dp)
-                .then(if (hairline) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Flat).padding(horizontal = 18.dp)),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ThemedIcon(LineIcon.Search, null, tint = c.muted, size = 22.dp)
-            Spacer(Modifier.width(12.dp))
-            BasicTextField(
-                value = query,
-                onValueChange = onQuery,
-                singleLine = true,
-                textStyle = style.type.body.copy(color = c.content),
-                cursorBrush = SolidColor(c.content),
-                modifier = Modifier.weight(1f),
-                decorationBox = { field ->
-                    Box(contentAlignment = Alignment.CenterStart) {
-                        if (query.isEmpty()) Text("想听什么？", style = style.type.body, color = c.muted)
-                        field()
-                    }
-                },
-            )
-        }
-        if (hairline) Hairline()
     }
 }

@@ -60,6 +60,8 @@ class QrLoginController(private val api: NeteaseApi, private val onConfirmed: su
         while (true) {
             phase = QrPhase.Loading
             val key = try {
+                // A device NetEase knows (with its anonymous account) before asking for a code.
+                runCatching { api.ensureAnonymous() }
                 api.qrKey()
             } catch (e: CancellationException) {
                 throw e

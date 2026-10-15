@@ -40,25 +40,54 @@ import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.core.model.Playlist
+import io.lanyin.player.ui.LocalAppServices
+import io.lanyin.player.ui.music.Placeholder
+import io.lanyin.player.ui.music.PlaylistRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.flow.MutableStateFlow
 import io.lanyin.player.data.account.AccountState
 import io.lanyin.player.ui.design.Avatar
 import io.lanyin.player.ui.design.VipBadge
 
-private data class Entry(val icon: LineIcon, val title: String, val detail: String)
-
-private val entries = listOf(
-    Entry(LineIcon.Heart, "我喜欢的音乐", "登录后同步"),
-    Entry(LineIcon.History, "最近播放", "1 首 · 本机"),
-    Entry(LineIcon.Download, "本地缓存", "边听边存"),
-    Entry(LineIcon.Cloud, "音乐云盘", "登录后可用"),
-)
+private data class Entry(val icon: LineIcon, val title: String, val detail: String, val onClick: (() -> Unit)? = null)
 
 @Composable
-fun LibraryScreen(onLogin: () -> Unit, account: AccountState = AccountState.LoggedOut) {
+fun LibraryScreen(
+    onLogin: () -> Unit,
+    account: AccountState = AccountState.LoggedOut,
+    onOpenPlaylist: (Long, String) -> Unit = { _, _ -> },
+    /** Stands in for the network in previews. */
+    previewPlaylists: List<Playlist>? = null,
+) {
     val style = Lanyin.style
     val c = style.colors
     val m = style.margin
     var shelf by rememberSaveable { mutableStateOf("创建的歌单") }
+    val library = LocalAppServices.current?.library
+    val loaded by (library?.playlists ?: remember { MutableStateFlow(previewPlaylists) }).collectAsState()
+    val signedIn = account is AccountState.LoggedIn
+    val uid = (account as? AccountState.LoggedIn)?.profile?.userId
+    val liked = loaded?.firstOrNull { it.specialType == 5 }
+    val entries = listOf(
+        Entry(
+            LineIcon.Heart, "我喜欢的音乐",
+            when {
+                liked != null -> "${liked.trackCount} 首"
+                signedIn -> "正在同步"
+                else -> "登录后同步"
+            },
+            onClick = if (liked != null) ({ onOpenPlaylist(liked.id, "我喜欢的音乐") }) else if (signedIn) null else onLogin,
+        ),
+        Entry(LineIcon.History, "最近播放", "下一版"),
+        Entry(LineIcon.Download, "本地缓存", "边听边存，最多 1 GB"),
+        Entry(LineIcon.Cloud, "音乐云盘", if (signedIn) "下一版" else "登录后可用", onClick = if (signedIn) null else onLogin),
+    )
+    val shelfItems = loaded?.let { all ->
+        if (shelf == "创建的歌单") all.filter { it.creatorId == uid && it.specialType != 5 } else all.filter { it.creatorId != uid }
+    }
     CompositionLocalProvider(LocalContentColor provides c.content) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
             item { PageTitle("我的", Modifier.padding(horizontal = m)) }
@@ -66,18 +95,22 @@ fun LibraryScreen(onLogin: () -> Unit, account: AccountState = AccountState.Logg
             item {
                 Column(Modifier.padding(start = m, end = m, top = 36.dp)) {
                     SectionTitle("音乐库", index = 1)
-                    EntryList(onLogin, Modifier.padding(top = 10.dp))
+                    EntryList(entries, Modifier.padding(top = 10.dp))
                 }
             }
             item {
                 Column(Modifier.padding(start = m, end = m, top = 36.dp)) {
                     SectionTitle("歌单", index = 2)
                     ChoiceRow(listOf("创建的歌单", "收藏的歌单"), shelf, { shelf = it }, Modifier.padding(top = 14.dp))
-                    Column(Modifier.fillMaxWidth().padding(vertical = 36.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        ThemeMotif(c.content.copy(alpha = 0.18f), Modifier.size(64.dp))
-                        Text("登录后，这里会列出你$shelf", style = style.type.caption, color = c.muted, modifier = Modifier.padding(top = 12.dp))
+                    when {
+                        !signedIn && previewPlaylists == null -> Placeholder("登录后，这里会列出你$shelf")
+                        shelfItems == null -> Placeholder("正在同步…")
+                        shelfItems.isEmpty() -> Placeholder(if (shelf == "创建的歌单") "还没有自己建的歌单" else "还没有收藏歌单")
                     }
                 }
+            }
+            items(shelfItems.orEmpty(), key = { it.id }) { p ->
+                PlaylistRow(p, { onOpenPlaylist(p.id, p.name) }, Modifier.padding(horizontal = m))
             }
         }
     }
@@ -139,7 +172,7 @@ private fun Profile(account: AccountState, onLogin: () -> Unit, modifier: Modifi
 
 /** Rows ruled with hairlines; grouped on one card in themes that use cards. */
 @Composable
-private fun EntryList(onClick: () -> Unit, modifier: Modifier) {
+private fun EntryList(entries: List<Entry>, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val hairline = style.edge == EdgeKind.Hairline
@@ -147,14 +180,14 @@ private fun EntryList(onClick: () -> Unit, modifier: Modifier) {
         entries.forEachIndexed { i, e ->
             if (i > 0 || hairline) Hairline()
             Row(
-                Modifier.fillMaxWidth().pressable(onClick = onClick).padding(vertical = 14.dp),
+                Modifier.fillMaxWidth().then(e.onClick?.let { Modifier.pressable(onClick = it) } ?: Modifier).padding(vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ThemedIcon(e.icon, null, size = 22.dp)
                 Spacer(Modifier.width(14.dp))
                 Text(e.title, style = style.type.body, modifier = Modifier.weight(1f))
                 Text(e.detail, style = style.type.caption, color = c.muted)
-                ThemedIcon(LineIcon.Forward, null, tint = c.muted, size = 16.dp, modifier = Modifier.padding(start = 6.dp))
+                if (e.onClick != null) ThemedIcon(LineIcon.Forward, null, tint = c.muted, size = 16.dp, modifier = Modifier.padding(start = 6.dp))
             }
         }
         if (hairline) Hairline()

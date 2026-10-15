@@ -53,7 +53,7 @@ import io.lanyin.player.ui.theme.PlayerSkin
 /** Mini player: a floating pill, or a plain docked row in themes with a docked bottom bar. */
 @Composable
 fun MiniPlayer(
-    state: DemoPlayerState,
+    state: PlayerState,
     skin: PlayerSkin,
     spin: SpinState,
     onExpand: () -> Unit,
@@ -83,7 +83,7 @@ fun MiniPlayer(
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MiniArtwork(skin, spin, state.coverSeed, Modifier.size(if (docked) 40.dp else 44.dp).sharedPlayer("artwork", zIndex = 1f))
+            MiniArtwork(skin, spin, state.coverSeed, Modifier.size(if (docked) 40.dp else 44.dp).sharedPlayer("artwork", zIndex = 1f), state.coverUrl)
             Spacer(Modifier.width(12.dp))
             // Swipe the titles sideways to change track, as on the full player's artwork.
             SwipeToSkip(state, Modifier.weight(1f)) { Column(Modifier.fillMaxWidth()) {
@@ -114,7 +114,7 @@ fun MiniPlayer(
 
 /** Play/pause wrapped in a progress ring that fills as the song plays. */
 @Composable
-private fun MiniPlayButton(state: DemoPlayerState) {
+private fun MiniPlayButton(state: PlayerState) {
     val style = Lanyin.style
     val c = style.colors
     val morph by animateFloatAsState(if (state.isPlaying) 1f else 0f, style.bouncy.spec(), label = "miniMorph")

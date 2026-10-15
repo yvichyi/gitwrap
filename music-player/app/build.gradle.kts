@@ -14,8 +14,8 @@ android {
         applicationId = "io.lanyin.player"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0-m1"
+        versionCode = 3
+        versionName = "0.3.0-m2"
     }
 
     buildTypes {
@@ -84,6 +84,9 @@ dependencies {
     implementation(libs.zxing.core)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.session)
+    implementation(libs.media3.datasource.okhttp)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

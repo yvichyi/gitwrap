@@ -1,5 +1,6 @@
 package io.lanyin.player.ui.player
 
+import io.lanyin.player.core.model.LyricLine
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

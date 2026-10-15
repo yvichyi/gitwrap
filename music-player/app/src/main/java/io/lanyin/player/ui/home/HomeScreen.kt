@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
@@ -52,9 +53,14 @@ import io.lanyin.player.ui.design.ThemedIcon
 import io.lanyin.player.ui.design.formatTime
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.themedSurface
-import io.lanyin.player.ui.player.DemoPlayerState
+import io.lanyin.player.ui.player.PlayerState
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.ui.LocalAppServices
+import io.lanyin.player.ui.music.Load
+import io.lanyin.player.ui.music.PlaylistTile
+import io.lanyin.player.ui.music.rememberLoad
+import io.lanyin.player.ui.design.CoverImage
 import io.lanyin.player.data.account.AccountState
 import io.lanyin.player.ui.design.Avatar
 import io.lanyin.player.ui.theme.BackdropKind
@@ -72,16 +78,34 @@ import java.util.Locale
  */
 @Composable
 fun HomeScreen(
-    player: DemoPlayerState,
+    player: PlayerState,
     onOpenSettings: () -> Unit,
     onLogin: () -> Unit,
     onOpenPlayer: () -> Unit,
     account: AccountState = AccountState.LoggedOut,
     onOpenAccount: () -> Unit = onLogin,
+    onOpenDaily: () -> Unit = onLogin,
+    onOpenCharts: () -> Unit = {},
+    onOpenPlaylist: (Long, String) -> Unit = { _, _ -> },
 ) {
     val style = Lanyin.style
     val m = style.margin
     val now = remember { LocalDateTime.now() }
+    val signedIn = account is AccountState.LoggedIn
+    val library = LocalAppServices.current?.library
+    val recommended = rememberLoad(signedIn) { library?.recommendedPlaylists().orEmpty() }
+    // Each entry runs its own errand; most need a login first.
+    val needsLogin: (() -> Unit) -> () -> Unit = { action -> if (signedIn) action else onLogin }
+    val entryActions = listOf(
+        needsLogin(onOpenDaily),
+        needsLogin {
+            player.playFm()
+            onOpenPlayer()
+        },
+        needsLogin { library?.likedPlaylist()?.let { onOpenPlaylist(it.id, "我喜欢的音乐") } ?: library?.refresh() },
+        onOpenCharts,
+    )
+    val showHero = !player.isEmpty || signedIn
     CompositionLocalProvider(LocalContentColor provides style.colors.content) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
             item { Header(now, account, onOpenSettings, if (account is AccountState.LoggedIn) onOpenAccount else onLogin, Modifier.padding(horizontal = m)) }
@@ -89,7 +113,12 @@ fun HomeScreen(
                 // 格 tapes a ribbon across the page, a little askew.
                 item {
                     Marquee(
-                        listOf("澜音 LANYIN", "正在播放 ${player.title} — ${player.artist}", "每日推荐 №%02d".format(now.dayOfMonth), "扫码登录网易云"),
+                        listOfNotNull(
+                            "澜音 LANYIN",
+                            "正在播放 ${player.title} — ${player.artist}".takeIf { !player.isEmpty },
+                            "每日推荐 №%02d".format(now.dayOfMonth),
+                            (account as? AccountState.LoggedIn)?.let { "欢迎回来 ${it.profile.nickname}" } ?: "扫码登录网易云",
+                        ),
                         Modifier
                             .padding(top = 22.dp, bottom = 4.dp)
                             .graphicsLayer {
@@ -103,22 +132,39 @@ fun HomeScreen(
             if (account == AccountState.LoggedOut) {
                 item { ConnectLine(onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
             }
-            item {
-                Column(Modifier.padding(start = m, end = m, top = 36.dp)) {
-                    SectionTitle("继续播放", index = 1)
-                    NowPlayingHero(player, onOpenPlayer, Modifier.padding(top = 14.dp))
+            if (showHero) {
+                item {
+                    Column(Modifier.padding(start = m, end = m, top = 36.dp)) {
+                        if (player.isEmpty) {
+                            SectionTitle("今天听什么", index = 1)
+                            DailyHero(now, onOpenDaily, Modifier.padding(top = 14.dp))
+                        } else {
+                            SectionTitle("继续播放", index = 1)
+                            NowPlayingHero(player, onOpenPlayer, Modifier.padding(top = 14.dp))
+                        }
+                    }
                 }
             }
-            item { QuickEntries(now.dayOfMonth, onLogin, Modifier.padding(start = m, end = m, top = 36.dp)) }
+            item { QuickEntries(now.dayOfMonth, entryActions, Modifier.padding(start = m, end = m, top = 36.dp)) }
             item {
                 Column(Modifier.padding(top = 36.dp)) {
-                    SectionTitle("推荐歌单", Modifier.padding(horizontal = m), trailing = "登录后可见", index = 2)
+                    SectionTitle(
+                        "推荐歌单", Modifier.padding(horizontal = m),
+                        trailing = if (signedIn) "为你挑的" else "大家在听",
+                        index = if (showHero) 2 else 1,
+                    )
+                    val lists = (recommended.state as? Load.Ready)?.value.orEmpty()
                     LazyRow(
                         contentPadding = PaddingValues(start = m, end = m, top = 14.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        items(6) { i ->
-                            CoverArt(10 + i, Modifier.size(132.dp).clip(style.artShape).pressable(onClick = onLogin))
+                        if (lists.isNotEmpty()) {
+                            items(lists, key = { it.id }) { p -> PlaylistTile(p, { onOpenPlaylist(p.id, p.name) }, Modifier.width(132.dp)) }
+                        } else {
+                            // Until they arrive (or offline), the theme's own sleeves hold the space.
+                            items(6) { i ->
+                                CoverArt(10 + i, Modifier.size(132.dp).clip(style.artShape).pressable(onClick = recommended.retry))
+                            }
                         }
                     }
                 }
@@ -247,7 +293,7 @@ private fun ConnectLine(onLogin: () -> Unit, modifier: Modifier) {
 }
 
 @Composable
-private fun NowPlayingHero(player: DemoPlayerState, onOpenPlayer: () -> Unit, modifier: Modifier) {
+private fun NowPlayingHero(player: PlayerState, onOpenPlayer: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val hairline = style.edge == EdgeKind.Hairline
@@ -264,7 +310,7 @@ private fun NowPlayingHero(player: DemoPlayerState, onOpenPlayer: () -> Unit, mo
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CoverArt(player.coverSeed, Modifier.size(88.dp).clip(style.artShape))
+        CoverImage(player.coverUrl, player.coverSeed, 88.dp, Modifier.size(88.dp).clip(style.artShape))
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             Text(player.title, style = style.type.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -289,9 +335,49 @@ private fun NowPlayingHero(player: DemoPlayerState, onOpenPlayer: () -> Unit, mo
     }
 }
 
+/** Nothing playing yet: today's picks, one tap away. */
+@Composable
+private fun DailyHero(now: LocalDateTime, onOpen: () -> Unit, modifier: Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val hairline = style.edge == EdgeKind.Hairline
+    Row(
+        modifier
+            .fillMaxWidth()
+            .then(
+                if (hairline) {
+                    Modifier.clickable(remember { MutableInteractionSource() }, indication = null, onClick = onOpen)
+                } else {
+                    Modifier.themedSurface(onClick = onOpen).padding(14.dp)
+                },
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            Modifier.size(88.dp).then(if (hairline) Modifier.border(1.dp, c.outline) else Modifier.themedSurface(shape = style.artShape, tone = SurfaceTone.Flat)),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                if (hairline) chineseNumber(now.dayOfMonth) else "${now.dayOfMonth}",
+                style = style.type.display.copy(fontFamily = style.display, fontSize = if (hairline) 26.sp else 36.sp, lineHeight = 40.sp),
+                color = c.accent,
+            )
+            Text("${now.monthValue}月", style = style.type.caption, color = c.muted)
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text("每日推荐", style = style.type.title, maxLines = 1)
+            Text("照你的口味挑的三十首，每天 6:00 换新", style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        Spacer(Modifier.width(12.dp))
+        ThemedIcon(LineIcon.Forward, null, tint = c.muted, size = 18.dp)
+    }
+}
+
 /** Four shortcuts. Only the date carries colour; icons stay in the ink colour. */
 @Composable
-private fun QuickEntries(day: Int, onLogin: () -> Unit, modifier: Modifier) {
+private fun QuickEntries(day: Int, actions: List<() -> Unit>, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val hairline = style.edge == EdgeKind.Hairline
@@ -324,7 +410,7 @@ private fun QuickEntries(day: Int, onLogin: () -> Unit, modifier: Modifier) {
             Column(
                 Modifier
                     .weight(1f)
-                    .then(if (hairline) Modifier.pressable(onClick = onLogin) else Modifier.heightIn(min = 76.dp).themedSurface(tone = SurfaceTone.Flat, onClick = onLogin))
+                    .then(if (hairline) Modifier.pressable(onClick = actions[i]) else Modifier.heightIn(min = 76.dp).themedSurface(tone = SurfaceTone.Flat, onClick = actions[i]))
                     .padding(vertical = if (hairline) 4.dp else 12.dp, horizontal = 2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),

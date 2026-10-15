@@ -1,5 +1,6 @@
 package io.lanyin.player.ui.player
 
+import io.lanyin.player.core.model.LyricLine
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -20,12 +21,7 @@ import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-@Immutable
-data class LyricLine(val text: String, val translation: String?, val startMs: Long, val endMs: Long)
-
-enum class PlayMode(val label: String) { REPEAT_ALL("列表循环"), REPEAT_ONE("单曲循环"), SHUFFLE("随机播放") }
-
-/** One track of the demo queue; replaced by real songs from the play queue in M2. */
+/** One track of the demo queue, with the lyrics and stream it pretends to have. */
 @Immutable
 data class DemoTrack(
     val title: String,
@@ -37,83 +33,77 @@ data class DemoTrack(
     val lyrics: List<LyricLine>,
     val quality: String = "无损",
     val format: String = "FLAC · 44.1kHz",
-)
+) {
+    fun toTrack(id: Long) = Track(id, title, artist, album, coverSeed, durationMs)
+}
 
 /**
- * Stand-in for the Media3 controller until M2: a small queue whose clock advances every frame
- * while playing. Readers that only need seconds or the lyric index use derived state, so the
- * per-frame position only drives draw-phase work (seek bar, lyric sweep).
+ * The player for previews and screenshots: a small queue whose clock advances every frame while
+ * playing. Readers that only need seconds or the lyric index use derived state, so the per-frame
+ * position only drives draw-phase work (seek bar, lyric sweep).
  */
 @Stable
-class DemoPlayerState(val queue: List<DemoTrack> = demoQueue) {
-    val playlistName = "演示歌单"
+class DemoPlayerState(private val demo: List<DemoTrack> = demoQueue) : PlayerState() {
+    override val playlistName = "演示歌单"
+    override val queue: List<Track> = demo.mapIndexed { i, t -> t.toTrack(i + 1L) }
 
-    var index by mutableIntStateOf(0)
+    override var index by mutableIntStateOf(0)
+        private set
+    override var skipDirection by mutableIntStateOf(0)
+        private set
+    override var isPlaying by mutableStateOf(false)
+        private set
+    override var positionMs by mutableLongStateOf(0L)
+        private set
+    override var liked by mutableStateOf(false)
+        private set
+    override var playMode by mutableStateOf(PlayMode.REPEAT_ALL)
         private set
 
-    /** +1 after skipping forward, -1 after skipping back, so artwork can slide the right way. */
-    var skipDirection by mutableIntStateOf(0)
-        private set
+    override val lyrics: List<LyricLine> get() = demo.getOrNull(index)?.lyrics.orEmpty()
+    override val quality: String get() = demo.getOrNull(index)?.quality.orEmpty()
+    override val format: String get() = demo.getOrNull(index)?.format.orEmpty()
 
-    val track: DemoTrack get() = queue[index]
-    val next: DemoTrack get() = queue[(index + 1) % queue.size]
-    val title: String get() = track.title
-    val artist: String get() = track.artist
-    val album: String get() = track.album
-    val coverSeed: Int get() = track.coverSeed
-    val durationMs: Long get() = track.durationMs
-    val lyrics: List<LyricLine> get() = track.lyrics
-    val quality: String get() = track.quality
-    val format: String get() = track.format
-    val trackNumber: Int get() = index + 1
-    val trackCount: Int get() = queue.size
+    private var lastFrame = -1L
 
-    var isPlaying by mutableStateOf(false)
-        private set
-    var positionMs by mutableLongStateOf(0L)
-        private set
-    var liked by mutableStateOf(false)
-    var playMode by mutableStateOf(PlayMode.REPEAT_ALL)
-        private set
-
-    val currentLyricIndex: Int by derivedStateOf { lyricIndexAt(lyrics, positionMs) }
-
-    /** The line being sung, or null for an instrumental. */
-    val currentLine: LyricLine? get() = lyrics.getOrNull(currentLyricIndex)
-
-    /** 0..1 through the current line; call from draw code. */
-    fun lineProgress(): Float {
-        val line = currentLine ?: return 0f
-        return ((positionMs - line.startMs).toFloat() / (line.endMs - line.startMs)).coerceIn(0f, 1f)
-    }
-
-    fun togglePlay() {
+    override fun togglePlay() {
         isPlaying = !isPlaying
+        lastFrame = -1L
     }
 
-    fun seekTo(ms: Long) {
+    override fun seekTo(ms: Long) {
         positionMs = ms.coerceIn(0L, durationMs)
     }
 
-    fun cyclePlayMode() {
+    override fun cyclePlayMode() {
         playMode = PlayMode.entries[(playMode.ordinal + 1) % PlayMode.entries.size]
     }
 
-    /** Next track, wrapping round the queue. */
-    fun skipNext() = skipTo((index + 1) % queue.size, forward = true)
+    override fun toggleLike() {
+        liked = !liked
+    }
 
-    /**
-     * Like most players, the previous button first restarts a song that is under way
-     * ([restartFirst]); a swipe always goes to the previous track.
-     */
-    fun skipPrevious(restartFirst: Boolean = true) {
+    /** Next track, wrapping round the queue. */
+    override fun skipNext() {
+        if (queue.isNotEmpty()) skipTo((index + 1) % queue.size, forward = true)
+    }
+
+    override fun skipPrevious(restartFirst: Boolean) {
+        if (queue.isEmpty()) return
         if (restartFirst && positionMs > 3_000) seekTo(0) else skipTo((index - 1 + queue.size) % queue.size, forward = false)
     }
+
+    override fun playAt(index: Int) = skipTo(index, forward = index >= this.index)
 
     private fun skipTo(i: Int, forward: Boolean) {
         skipDirection = if (forward) 1 else -1
         index = i
         positionMs = 0L
+    }
+
+    override fun onFrame(frameTimeMs: Long) {
+        if (lastFrame >= 0) advance(frameTimeMs - lastFrame)
+        lastFrame = frameTimeMs
     }
 
     internal fun advance(deltaMs: Long) {
@@ -126,21 +116,10 @@ class DemoPlayerState(val queue: List<DemoTrack> = demoQueue) {
     }
 }
 
-internal fun lyricIndexAt(lines: List<LyricLine>, positionMs: Long): Int =
-    lines.indexOfLast { it.startMs <= positionMs }.coerceAtLeast(0)
-
 @Composable
 fun rememberDemoPlayerState(): DemoPlayerState {
     val state = remember { DemoPlayerState() }
-    LaunchedEffect(state.isPlaying) {
-        var last = -1L
-        while (state.isPlaying && isActive) {
-            withFrameMillis { now ->
-                if (last >= 0) state.advance(now - last)
-                last = now
-            }
-        }
-    }
+    PlayerFrameDriver(state)
     return state
 }
 

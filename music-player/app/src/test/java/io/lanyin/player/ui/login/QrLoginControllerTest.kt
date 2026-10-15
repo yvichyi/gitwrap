@@ -3,6 +3,7 @@ package io.lanyin.player.ui.login
 import io.lanyin.player.core.netease.MemorySessionStore
 import io.lanyin.player.core.netease.NeteaseApi
 import io.lanyin.player.core.netease.NeteaseClient
+import io.lanyin.player.core.netease.NeteaseSession
 import io.lanyin.player.core.netease.QrStatus
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
@@ -22,7 +23,8 @@ class QrLoginControllerTest {
     @Before
     fun setUp() {
         server = MockWebServer().apply { start() }
-        store = MemorySessionStore()
+        // Already registered anonymously, so the controller goes straight to the code.
+        store = MemorySessionStore(NeteaseSession.fresh().withCookies(mapOf("MUSIC_A" to "anon")))
         api = NeteaseApi(NeteaseClient(OkHttpClient(), store, apiBase = server.url("/"), webBase = server.url("/")))
     }
 

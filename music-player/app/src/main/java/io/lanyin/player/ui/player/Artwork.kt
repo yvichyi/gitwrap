@@ -34,23 +34,27 @@ import io.lanyin.player.ui.design.neonGlow
 import io.lanyin.player.ui.design.retroShadow
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.ui.design.CoverImage
+import io.lanyin.player.ui.design.rememberCoverPainter
+import androidx.compose.ui.graphics.painter.Painter
 import io.lanyin.player.ui.theme.LanyinStyle
 import io.lanyin.player.ui.theme.PlayerSkin
 
 /** Artwork for the given player skin; [PlayerSkin.LYRICS] has none. */
 @Composable
-fun PlayerArtwork(skin: PlayerSkin, isPlaying: Boolean, spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier) {
+fun PlayerArtwork(skin: PlayerSkin, isPlaying: Boolean, spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier, coverUrl: String? = null) {
     when (skin) {
-        PlayerSkin.VINYL -> VinylRecord(isPlaying, spin, coverSeed, modifier)
-        PlayerSkin.COVER -> SquareCover(isPlaying, coverSeed, modifier)
+        PlayerSkin.VINYL -> VinylRecord(isPlaying, spin, coverSeed, modifier, coverUrl)
+        PlayerSkin.COVER -> SquareCover(isPlaying, coverSeed, modifier, coverUrl)
         PlayerSkin.CASSETTE -> Cassette(spin, coverSeed, modifier)
         PlayerSkin.LYRICS -> Unit
     }
 }
 
 @Composable
-fun VinylRecord(isPlaying: Boolean, spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier) {
+fun VinylRecord(isPlaying: Boolean, spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier, coverUrl: String? = null) {
     val style = Lanyin.style
+    val cover = rememberCoverPainter(coverUrl, 480)
     val armAngle by animateFloatAsState(if (isPlaying) 0f else -26f, style.bouncy.spec(), label = "toneArm")
     Box(modifier.aspectRatio(1f), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize().padding(14.dp)) {
@@ -64,13 +68,13 @@ fun VinylRecord(isPlaying: Boolean, spin: SpinState, coverSeed: Int, modifier: M
                 EdgeKind.Hairline -> Unit
                 else -> drawCircle(Brush.radialGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent), center, r * 1.12f), r * 1.12f)
             }
-            rotate(spin.angle) { drawRecord(style, r, coverSeed) }
+            rotate(spin.angle) { drawRecord(style, r, coverSeed, cover) }
         }
         Canvas(Modifier.fillMaxSize()) { drawToneArm(style, armAngle) }
     }
 }
 
-private fun DrawScope.drawRecord(style: LanyinStyle, r: Float, coverSeed: Int) {
+private fun DrawScope.drawRecord(style: LanyinStyle, r: Float, coverSeed: Int, cover: Painter? = null) {
     val c = style.colors
     drawCircle(c.vinyl, r)
     if (style.hardEdge) drawCircle(c.outline, r, style = Stroke(style.strokeWidth.toPx()))
@@ -96,7 +100,7 @@ private fun DrawScope.drawRecord(style: LanyinStyle, r: Float, coverSeed: Int) {
     val label = Path().apply { addOval(androidx.compose.ui.geometry.Rect(center, labelR)) }
     clipPath(label) {
         translate(center.x - labelR, center.y - labelR) {
-            withLabelSize(labelR * 2) { drawCoverArt(style, coverSeed) }
+            if (cover != null) with(cover) { draw(Size(labelR * 2, labelR * 2)) } else withLabelSize(labelR * 2) { drawCoverArt(style, coverSeed) }
         }
     }
     drawCircle(Color.Black.copy(alpha = 0.2f), labelR, style = Stroke(2.dp.toPx()))
@@ -138,7 +142,7 @@ private fun DrawScope.drawToneArm(style: LanyinStyle, angle: Float) {
 }
 
 @Composable
-fun SquareCover(isPlaying: Boolean, coverSeed: Int, modifier: Modifier = Modifier) {
+fun SquareCover(isPlaying: Boolean, coverSeed: Int, modifier: Modifier = Modifier, coverUrl: String? = null) {
     val style = Lanyin.style
     val c = style.colors
     // Settles back when paused, springs forward on play.
@@ -150,8 +154,10 @@ fun SquareCover(isPlaying: Boolean, coverSeed: Int, modifier: Modifier = Modifie
         EdgeKind.Hairline -> Modifier.clip(shape).border(1.dp, c.outline, shape)
         else -> Modifier.shadow(28.dp, shape, ambientColor = c.accent, spotColor = Color.Black).clip(shape)
     }
-    CoverArt(
+    CoverImage(
+        coverUrl,
         coverSeed,
+        360.dp,
         modifier
             .aspectRatio(1f)
             .padding(18.dp)
@@ -220,21 +226,24 @@ fun Cassette(spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier) {
 
 /** Mini player thumbnail: a turning record for the vinyl skin, a small cover otherwise. */
 @Composable
-fun MiniArtwork(skin: PlayerSkin, spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier) {
+fun MiniArtwork(skin: PlayerSkin, spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier, coverUrl: String? = null) {
     val style = Lanyin.style
     if (skin == PlayerSkin.VINYL) {
+        val cover = rememberCoverPainter(coverUrl, 160)
         Canvas(modifier) {
             rotate(spin.angle) {
                 val r = size.minDimension / 2f
                 drawCircle(style.colors.vinyl, r)
                 val labelR = r * 0.62f
                 clipPath(Path().apply { addOval(androidx.compose.ui.geometry.Rect(center, labelR)) }) {
-                    translate(center.x - labelR, center.y - labelR) { withLabelSize(labelR * 2) { drawCoverArt(style, coverSeed) } }
+                    translate(center.x - labelR, center.y - labelR) {
+                        if (cover != null) with(cover) { draw(Size(labelR * 2, labelR * 2)) } else withLabelSize(labelR * 2) { drawCoverArt(style, coverSeed) }
+                    }
                 }
                 drawCircle(style.colors.vinyl, r * 0.08f)
             }
         }
     } else {
-        CoverArt(coverSeed, modifier.clip(style.artShape))
+        CoverImage(coverUrl, coverSeed, 48.dp, modifier.clip(style.artShape))
     }
 }

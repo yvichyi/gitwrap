@@ -22,6 +22,9 @@ import androidx.compose.ui.platform.testTag
 import kotlin.math.abs
 import kotlin.math.sign
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.first
+import androidx.compose.runtime.snapshotFlow
 
 /** How far, as a fraction of the width, a drag must travel to count as a skip without a fling. */
 internal const val SKIP_DISTANCE = 0.28f
@@ -44,7 +47,7 @@ internal fun isSkip(offset: Float, velocity: Float, width: Float): Boolean {
  * you which direction you went.
  */
 @Composable
-fun SwipeToSkip(state: DemoPlayerState, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+fun SwipeToSkip(state: PlayerState, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val offset = remember { Animatable(0f) }
     var width by remember { mutableIntStateOf(1) }
     val scope = rememberCoroutineScope()
@@ -71,8 +74,10 @@ fun SwipeToSkip(state: DemoPlayerState, modifier: Modifier = Modifier, content: 
                             val before = state.index
                             // A swipe always changes track, even part-way through a song.
                             if (x < 0) state.skipNext() else state.skipPrevious(restartFirst = false)
-                            // A one-track queue has nowhere to go: bring the artwork back.
-                            if (state.index == before) offset.animateTo(0f, spring(dampingRatio = 0.8f, stiffness = 320f))
+                            // The real player answers a moment later; a one-track queue never does,
+                            // so bring the artwork back if nothing changed.
+                            val moved = withTimeoutOrNull(500) { snapshotFlow { state.index }.first { it != before } } != null
+                            if (!moved) offset.animateTo(0f, spring(dampingRatio = 0.8f, stiffness = 320f))
                         } else {
                             offset.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = 500f))
                         }

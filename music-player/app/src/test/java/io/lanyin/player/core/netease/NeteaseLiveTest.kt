@@ -45,6 +45,17 @@ class NeteaseLiveTest {
         val stream = api.stream(song.id, Quality.STANDARD)
         println("stream: code=${stream.code} quality=${stream.quality} trial=${stream.trialOnly} url=${stream.url != null}")
 
+        // A free song resolves to a real audio file, even before login.
+        val free = api.playlist(3778678).songs.filter { it.fee == 0 || it.fee == 8 }.take(5)
+        val resolver = io.lanyin.player.playback.StreamResolver(api)
+        val playable = free.firstNotNullOfOrNull { s -> runCatching { resolver.resolve(s.id, Quality.STANDARD) }.getOrNull()?.let { s to it } }
+        assertNotNull("no free song resolved", playable)
+        val (freeSong, freeStream) = playable!!
+        val head = OkHttpClient().newCall(okhttp3.Request.Builder().url(freeStream.url!!).header("Range", "bytes=0-15").build()).execute().use { it.body!!.bytes() }
+        val magic = String(head.copyOfRange(0, 4), Charsets.ISO_8859_1)
+        println("audio: ${freeSong.name} → ${freeStream.format} ${freeStream.bitrate} starts with ${magic.take(3)}")
+        assertTrue("not audio: $magic", magic.startsWith("ID3") || magic.startsWith("fLaC") || (head[0].toInt() and 0xff) == 0xff)
+
         val chart = api.playlist(3778678) // 热歌榜
         println("chart: ${chart.playlist.name}, ${chart.songs.size} songs")
         assertTrue(chart.songs.isNotEmpty())

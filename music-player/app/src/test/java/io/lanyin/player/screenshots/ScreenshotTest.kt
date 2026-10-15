@@ -202,6 +202,69 @@ class ScreenshotTest {
         }
     }
 
+    // Real content pages, fed with sample data.
+    private val sampleSongs = listOf(
+        Triple("潮水退去以后", "澜音", "潮汐"), Triple("夜航船", "北岸乐队", "夜航"), Triple("海边的风", "林间 / 小舟", "夏至"),
+        Triple("落日磁带", "澜音乐队", "黄昏"), Triple("Midnight Ferry", "Harbor Lights", "Night Lines"), Triple("月光下的鲸", "潮汐里的鲸", "深海"),
+        Triple("雨停以后", "北岸乐队", "夜航"), Triple("慢慢来", "林间", "夏至"), Triple("一首名字特别长、用来看看排版会不会被挤坏的歌", "很多很多位合作歌手", "排版测试"),
+    ).mapIndexed { i, (name, artist, album) ->
+        io.lanyin.player.core.model.Song(
+            id = 100L + i, name = name,
+            artists = artist.split(" / ").mapIndexed { j, a -> io.lanyin.player.core.model.Artist(j.toLong(), a) },
+            album = io.lanyin.player.core.model.Album(i.toLong(), album, null), durationMs = 200_000L + i * 7_000,
+            fee = if (i % 4 == 1) 1 else 8, alias = if (i == 4) "午夜渡轮" else null,
+        )
+    }
+    private val samplePlaylists = listOf(
+        "我喜欢的音乐" to 5, "深夜写代码", "雨天的歌", "通勤路上", "周末慢慢听", "收藏：城市民谣精选",
+    ).mapIndexed { i, entry ->
+        val (name, special) = if (entry is Pair<*, *>) entry.first as String to entry.second as Int else entry as String to 0
+        io.lanyin.player.core.model.Playlist(
+            id = 900L + i, name = name, coverUrl = null, trackCount = 12 + i * 37,
+            creatorId = if (i == 5) 2 else 1, creatorName = if (i == 5) "城南" else "潮汐里的鲸", specialType = special, subscribed = i == 5,
+        )
+    }
+    private fun playingSample() = playingAt(14_000)
+
+    @Test fun playlist_tide_dark() = capture("playlist_tide_dark", AppTheme.TIDE, ThemeMode.DARK) {
+        io.lanyin.player.ui.music.SongListScreen(
+            "深夜写代码", "潮汐里的鲸 · 写给夜里还亮着的屏幕",
+            io.lanyin.player.ui.music.ListHeader.Cover(null, 7),
+            io.lanyin.player.ui.music.Load.Ready(sampleSongs), playingId = 102, isPlaying = true,
+            onBack = {}, onPlay = { _, _ -> }, onRetry = {}, likedIds = setOf(100, 105),
+        )
+    }
+    @Test fun daily_grid() = capture("daily_grid", AppTheme.GRID, ThemeMode.LIGHT) {
+        io.lanyin.player.ui.music.SongListScreen(
+            "每日推荐", "根据你的口味生成，每天 6:00 更新",
+            io.lanyin.player.ui.music.ListHeader.Day(15, "10月 · 周四"),
+            io.lanyin.player.ui.music.Load.Ready(sampleSongs), playingId = null, isPlaying = false,
+            onBack = {}, onPlay = { _, _ -> }, onRetry = {},
+        )
+    }
+    @Test fun playlist_ink_loading() = capture("playlist_ink_failed", AppTheme.INK, ThemeMode.LIGHT) {
+        io.lanyin.player.ui.music.SongListScreen(
+            "我喜欢的音乐", null, io.lanyin.player.ui.music.ListHeader.Cover(null, 3),
+            io.lanyin.player.ui.music.Load.Failed("连不上网易云，检查一下网络"), playingId = null, isPlaying = false,
+            onBack = {}, onPlay = { _, _ -> }, onRetry = {},
+        )
+    }
+    @Test fun search_sakura_results() = capture("search_sakura_results", AppTheme.SAKURA, ThemeMode.LIGHT) {
+        io.lanyin.player.ui.search.SearchScreen(playingSample(), initialQuery = "夜", initialResults = sampleSongs.take(6))
+    }
+    @Test fun library_dusk_playlists() = capture("library_dusk_playlists", AppTheme.DUSK, ThemeMode.LIGHT) {
+        io.lanyin.player.ui.library.LibraryScreen(onLogin = {}, account = AccountState.LoggedIn(demoProfile), previewPlaylists = samplePlaylists)
+    }
+    @Test fun home_neon_nothing_playing() {
+        val repo = repo()
+        capture("home_neon_nothing_playing", AppTheme.NEON, ThemeMode.DARK) {
+            LanyinApp(
+                UiSettings(theme = AppTheme.NEON, themeMode = ThemeMode.DARK), repo,
+                player = DemoPlayerState(emptyList()), accountOverride = AccountState.LoggedIn(demoProfile),
+            )
+        }
+    }
+
     // 格, the neo-brutalist Swiss theme: light only.
     @Test fun home_grid_light() = app(AppTheme.GRID, ThemeMode.LIGHT, PlayerSkin.COVER)
     @Config(qualifiers = "w392dp-h1500dp-port-xhdpi")
