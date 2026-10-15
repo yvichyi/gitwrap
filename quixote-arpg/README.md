@@ -20,7 +20,7 @@ npm start            # 启动 http://localhost:8080（ES Modules 需要 http，�
 ```bash
 npm install                 # 仅 e2e 需要 playwright（开发依赖）
 npm test                    # 单元测试：战斗规则、边界情况、存档、剧本式通关
-npm run test:e2e            # 浏览器端：5 种横屏比例 + 竖屏提示 + 触控/键盘/后台暂停/存档续玩
+npm run test:e2e            # 浏览器端：4 种横屏比例 + 竖屏提示 + 触控/键盘/后台暂停/存档续玩
 ```
 
 e2e 默认访问 `http://localhost:8080/index.html`，可用 `GAME_URL` 指定地址、`CHROME_PATH` 指定 Chromium。截图写入 `tests/e2e/out/`（已忽略）。
