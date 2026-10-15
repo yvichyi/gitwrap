@@ -91,7 +91,7 @@ fun SongListScreen(
     topActions: @Composable RowScope.() -> Unit = {},
     /** After 播放全部: 收藏, 下载. */
     actions: @Composable RowScope.() -> Unit = {},
-    /** Between the header and the list: a choice of what to list. */
+    /** Between the header and the list: a choice of what to list, or what is under way. */
     tabs: (@Composable () -> Unit)? = null,
     /** Extra detail at a row's end: play counts, download progress. */
     trailing: (@Composable (Song) -> Unit)? = null,

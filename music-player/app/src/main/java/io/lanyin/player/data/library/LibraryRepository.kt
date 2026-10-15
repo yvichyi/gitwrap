@@ -162,6 +162,9 @@ class LibraryRepository(private val api: NeteaseApi, account: AccountRepository,
 
     suspend fun cloud(offset: Int): CloudPage = api.cloud(offset)
 
+    /** A song landed in the cloud drive from elsewhere (an upload). */
+    fun cloudChanged() = changed(reload = false)
+
     suspend fun deleteFromCloud(songId: Long): String? = attempt("从云盘删除") {
         api.deleteFromCloud(songId)
         changed(reload = false)

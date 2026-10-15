@@ -328,6 +328,27 @@ class ScreenshotTest {
         )
     }
 
+    @Test fun cloud_upload_ink_light() = capture("cloud_upload_ink_light", AppTheme.INK, ThemeMode.LIGHT) { CloudWithUploads() }
+    @Test fun cloud_upload_neon_dark() = capture("cloud_upload_neon_dark", AppTheme.NEON, ThemeMode.DARK) { CloudWithUploads() }
+
+    @Composable
+    private fun CloudWithUploads() {
+        val mb = 1L shl 20
+        io.lanyin.player.ui.music.CloudPage(
+            playingSample(), onBack = {},
+            preview = io.lanyin.player.core.model.CloudPage(
+                sampleSongs.take(5).map { io.lanyin.player.core.model.CloudSong(it.copy(fee = 0), "${it.name}.flac", 31_000_000, 999, 0) },
+                count = 129, usedBytes = 23L * (1L shl 30) / 2, maxBytes = 60L shl 30, hasMore = false,
+            ),
+            previewUploads = listOf(
+                io.lanyin.player.data.library.UploadJob(1, "Live at Wembley - 03 Bohemian Rhapsody.flac", 41 * mb, io.lanyin.player.data.library.UploadStage.Done),
+                io.lanyin.player.data.library.UploadJob(2, "晴天 (Demo).mp3", 9 * mb, io.lanyin.player.data.library.UploadStage.Done, sent = 9 * mb, instant = true),
+                io.lanyin.player.data.library.UploadJob(3, "海边的录音 2024-08.m4a", 27 * mb, io.lanyin.player.data.library.UploadStage.Sending, sent = 12 * mb),
+                io.lanyin.player.data.library.UploadJob(4, "untitled.wav", 88 * mb),
+            ),
+        )
+    }
+
     private fun sampleComments(): io.lanyin.player.core.model.CommentPage {
         fun user(id: Long, name: String) = io.lanyin.player.core.model.CommentUser(id, name, null)
         val c = listOf(

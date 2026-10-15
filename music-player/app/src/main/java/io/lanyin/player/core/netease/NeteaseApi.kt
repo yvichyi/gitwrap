@@ -47,7 +47,7 @@ class PlaylistDetail(val playlist: Playlist, val songs: List<Song>)
  * The NetEase calls the app uses, typed. Endpoints and the protocol each one goes over follow
  * NeteaseCloudMusicApi's modules (one file per endpoint under `module/`).
  */
-class NeteaseApi(private val client: NeteaseClient) {
+class NeteaseApi(private val client: NeteaseClient, private val nos: NosUploader = NosUploader(okhttp3.OkHttpClient())) {
 
     val session get() = client.session
 
@@ -247,6 +247,52 @@ class NeteaseApi(private val client: NeteaseClient) {
         client.weapi("/api/cloud/del", buildJsonObject { put("songIds", JsonArray(listOf(JsonPrimitive(songId)))) }).requireOk()
     }
 
+    /**
+     * Puts [file] in the cloud drive, the way the reference's `cloud.js` does: ask whether NetEase
+     * already holds these bytes, send them to its object store (NOS) if not, then register the
+     * song and publish it to the drive. [onSent] hears how many bytes have gone. Returns the
+     * song's id in the drive and whether the bytes had to be sent at all.
+     */
+    suspend fun uploadToCloud(file: UploadFile, onSent: (Long) -> Unit = {}): CloudUpload {
+        val ext = file.name.substringAfterLast('.', "mp3")
+        val stem = file.name.removeSuffix(".$ext").replace(Regex("\\s"), "").replace('.', '_')
+        val check = client.eapi(
+            "/api/cloud/upload/check",
+            buildJsonObject {
+                put("bitrate", UPLOAD_BITRATE); put("ext", ""); put("length", file.size); put("md5", file.md5)
+                put("songId", "0"); put("version", 1)
+            },
+        ).requireOk().decode<UploadCheckDto>()
+        fun alloc(bucket: String) = buildJsonObject {
+            put("bucket", bucket); put("ext", ext); put("filename", stem); put("local", false)
+            put("nos_product", 3); put("type", "audio"); put("md5", file.md5)
+        }
+        val token = client.eapi("/api/nos/token/alloc", alloc("")).requireOk().decode<NosTokenDto>().result
+            ?: throw NeteaseException(0, "没有拿到上传凭证")
+        if (check.needUpload) {
+            val target = client.weapi("/api/nos/token/alloc", alloc(NOS_BUCKET)).requireOk().decode<NosTokenDto>().result
+                ?: throw NeteaseException(0, "没有拿到上传凭证")
+            nos.put(NOS_BUCKET, target.objectKey, target.token, file, onSent)
+        } else {
+            onSent(file.size)
+        }
+        val info = client.eapi(
+            "/api/upload/cloud/info/v2",
+            buildJsonObject {
+                put("md5", file.md5); put("songid", check.songId); put("filename", file.name)
+                put("song", file.title?.ifBlank { null } ?: stem)
+                put("album", file.album?.ifBlank { null } ?: "未知专辑")
+                put("artist", file.artist?.ifBlank { null } ?: "未知艺术家")
+                put("bitrate", UPLOAD_BITRATE); put("resourceId", token.resourceId)
+            },
+        ).requireOk().decode<UploadInfoDto>()
+        val songId = info.songId.ifEmpty { check.songId }
+        val pub = client.eapi("/api/cloud/pub/v2", buildJsonObject { put("songid", songId) })
+        // 201: already in the drive.
+        if (pub.code != 200 && pub.code != 201) throw NeteaseException(pub.code, pub.message)
+        return CloudUpload(songId.toLongOrNull() ?: 0, sent = check.needUpload)
+    }
+
     // —— Comments ——
 
     /** One page of a song's comments; [cursor] comes from the previous page (null for the first). */
@@ -435,6 +481,10 @@ class NeteaseApi(private val client: NeteaseClient) {
     private companion object {
         /** Comment threads on songs are named `R_SO_4_{id}`. */
         const val SONG_THREAD = "R_SO_4_"
+
+        /** What the reference declares for every upload; NetEase reads the real rate from the file. */
+        const val UPLOAD_BITRATE = "999000"
+        const val NOS_BUCKET = "jd-musicrep-privatecloud-audio-public"
     }
 }
 
@@ -615,6 +665,15 @@ internal class CloudItemDto(
         return CloudSong(song, fileName.orEmpty(), fileSize, bitrate, addTime)
     }
 }
+
+// NetEase sends these ids as strings; coerced either way.
+@Serializable internal class UploadCheckDto(val songId: String = "0", val needUpload: Boolean = true)
+
+@Serializable internal class NosTokenDto(val result: NosTokenResultDto? = null)
+
+@Serializable internal class NosTokenResultDto(val objectKey: String = "", val token: String = "", val resourceId: String = "")
+
+@Serializable internal class UploadInfoDto(val songId: String = "")
 
 @Serializable internal class CommentsDto(val data: CommentsDataDto? = null)
 

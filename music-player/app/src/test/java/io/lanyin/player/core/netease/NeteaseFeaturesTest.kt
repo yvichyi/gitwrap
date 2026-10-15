@@ -12,6 +12,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -289,6 +290,114 @@ class NeteaseFeaturesTest {
         } catch (e: NeteaseException) {
             assertEquals(-2, e.code)
         }
+    }
+
+    // —— Cloud upload ——
+
+    private fun uploadApi() = NeteaseApi(
+        NeteaseClient(OkHttpClient(), MemorySessionStore(), apiBase = server.url("/"), webBase = server.url("/"), now = { 1_700_000_000_123L }, weapiSecret = { SECRET }),
+        NosUploader(OkHttpClient(), lbs = server.url("/lbs"), fallback = server.url("/"), reach = { it.toHttpUrlOrNull() }),
+    )
+
+    private val bytes = ByteArray(700_000) { (it % 251).toByte() }
+
+    private fun file(name: String = "My Song.v2.flac") = UploadFile(
+        name = name, size = bytes.size.toLong(), md5 = "0123456789abcdef0123456789abcdef",
+        title = "夜曲", artist = "周杰伦", album = null, open = { bytes.inputStream() },
+    )
+
+    @Test
+    fun `an upload checks, sends the bytes to the node the balancer names, then registers and publishes`() = runBlocking {
+        reply("""{"code":200,"songId":"0","needUpload":true}""")
+        reply("""{"code":200,"result":{"objectKey":"ignored","token":"t0","resourceId":"98765"}}""")
+        reply("""{"code":200,"result":{"objectKey":"obj/key.flac","token":"nos-token","resourceId":"111"}}""")
+        reply("""{"lbs":"x","upload":["${server.url("/").toString().trimEnd('/')}"]}""")
+        reply("""{"requestID":"r","offset":700000}""")
+        reply("""{"code":200,"songId":4242}""")
+        reply("""{"code":200}""")
+        val progress = mutableListOf<Long>()
+        val result = uploadApi().uploadToCloud(file()) { progress += it }
+        assertEquals(CloudUpload(4242, sent = true), result)
+        assertEquals(bytes.size.toLong(), progress.last())
+        assertTrue("progress is reported along the way", progress.size > 1)
+
+        val check = server.takeRequest()
+        assertEquals("/eapi/cloud/upload/check", check.path)
+        sent(check).let {
+            assertEquals("0123456789abcdef0123456789abcdef", it.str("md5"))
+            assertEquals("700000", it.str("length"))
+            assertEquals("999000", it.str("bitrate"))
+        }
+        val first = server.takeRequest()
+        assertEquals("/eapi/nos/token/alloc", first.path)
+        sent(first).let {
+            assertEquals("", it.str("bucket"))
+            assertEquals("flac", it.str("ext"))
+            // Spaces dropped and dots made underscores, as the reference does.
+            assertEquals("MySong_v2", it.str("filename"))
+        }
+        val second = server.takeRequest()
+        assertEquals("/weapi/nos/token/alloc", second.path)
+        assertEquals("jd-musicrep-privatecloud-audio-public", sent(second).str("bucket"))
+        assertTrue(server.takeRequest().path!!.startsWith("/lbs?version=1.0&bucketname=jd-musicrep-privatecloud-audio-public"))
+        val put = server.takeRequest()
+        assertEquals("POST", put.method)
+        assertEquals("/jd-musicrep-privatecloud-audio-public/obj%2Fkey.flac?offset=0&complete=true&version=1.0", put.path)
+        assertEquals("nos-token", put.getHeader("x-nos-token"))
+        assertEquals("0123456789abcdef0123456789abcdef", put.getHeader("Content-MD5"))
+        assertEquals(bytes.size.toLong(), put.bodySize)
+        val info = server.takeRequest()
+        assertEquals("/eapi/upload/cloud/info/v2", info.path)
+        sent(info).let {
+            assertEquals("98765", it.str("resourceId"))
+            assertEquals("夜曲", it.str("song"))
+            assertEquals("周杰伦", it.str("artist"))
+            assertEquals("未知专辑", it.str("album"))
+            assertEquals("My Song.v2.flac", it.str("filename"))
+        }
+        val pub = server.takeRequest()
+        assertEquals("/eapi/cloud/pub/v2", pub.path)
+        assertEquals("4242", sent(pub).str("songid"))
+    }
+
+    @Test
+    fun `bytes NetEase already holds are not sent again`() = runBlocking {
+        reply("""{"code":200,"songId":"5150","needUpload":false}""")
+        reply("""{"code":200,"result":{"resourceId":"7"}}""")
+        reply("""{"code":200,"songId":"5150"}""")
+        reply("""{"code":201,"message":"已存在"}""")
+        val result = uploadApi().uploadToCloud(file("a.mp3"))
+        assertEquals(CloudUpload(5150, sent = false), result)
+        assertEquals(4, server.requestCount)
+        assertEquals("/eapi/cloud/upload/check", server.takeRequest().path)
+        assertEquals("/eapi/nos/token/alloc", server.takeRequest().path)
+        assertEquals("5150", sent(server.takeRequest()).str("songid"))
+    }
+
+    @Test
+    fun `a refused upload says why`() = runBlocking {
+        reply("""{"code":200,"songId":"0","needUpload":true}""")
+        reply("""{"code":200,"result":{"resourceId":"7"}}""")
+        reply("""{"code":200,"result":{"objectKey":"k","token":"t","resourceId":"7"}}""")
+        // The balancer is down: the fixed node is used instead.
+        server.enqueue(MockResponse().setResponseCode(502))
+        server.enqueue(MockResponse().setResponseCode(403).setBody("denied"))
+        try {
+            uploadApi().uploadToCloud(file())
+            fail()
+        } catch (e: java.io.IOException) {
+            assertTrue(e.message!!, e.message!!.contains("403"))
+        }
+        repeat(4) { server.takeRequest() }
+        assertEquals("/jd-musicrep-privatecloud-audio-public/k?offset=0&complete=true&version=1.0", server.takeRequest().path)
+    }
+
+    @Test
+    fun `upload nodes named over http are reached over https, bare addresses not at all`() {
+        assertEquals("https://nosup-hz1.127.net/", NosUploader.secure("http://nosup-hz1.127.net").toString())
+        assertNull(NosUploader.secure("http://103.129.255.21"))
+        assertEquals("https://up.example/", NosUploader.secure("https://up.example").toString())
+        assertNull(NosUploader.secure("not a url"))
     }
 
     private companion object {

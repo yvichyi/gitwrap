@@ -56,7 +56,10 @@ class AppContainer(context: Context) {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
-    val netease = NeteaseApi(NeteaseClient(http, KeystoreSessionStore(File(context.noBackupFilesDir, "netease-session.bin"))))
+    val netease = NeteaseApi(
+        NeteaseClient(http, KeystoreSessionStore(File(context.noBackupFilesDir, "netease-session.bin"))),
+        io.lanyin.player.core.netease.NosUploader(http),
+    )
     val account = AccountRepository(netease, scope)
     val library = LibraryRepository(netease, account, scope)
     val streams = StreamResolver(netease)
@@ -65,6 +68,7 @@ class AppContainer(context: Context) {
     val recent = RecentRepository(File(context.filesDir, "recent.json"), scope)
     val downloads = DownloadRepository(context, audio, scope)
     val notices = Notices()
+    val uploads = io.lanyin.player.data.library.CloudUploads(scope, netease::uploadToCloud, onUploaded = library::cloudChanged)
 
     @Volatile
     private var syncPlays = true
@@ -77,7 +81,7 @@ class AppContainer(context: Context) {
             scope.launch { settings.setQuality(q) }
         },
     )
-    val services = AppServices(netease, account, library, player, recent, downloads, notices, engine)
+    val services = AppServices(netease, account, library, player, recent, downloads, notices, engine, uploads)
 
     init {
         // Stream quality, downloads over Wi-Fi only and play records follow the settings.

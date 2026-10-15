@@ -33,6 +33,8 @@ import io.lanyin.player.core.model.Playlist
 import io.lanyin.player.core.model.RankedSong
 import io.lanyin.player.core.model.RecentPlay
 import io.lanyin.player.core.model.Song
+import io.lanyin.player.data.library.describeDocument
+import io.lanyin.player.data.library.uploadFile
 import io.lanyin.player.playback.DownloadItem
 import io.lanyin.player.playback.DownloadState
 import io.lanyin.player.playback.label
@@ -291,8 +293,30 @@ fun RankingPage(player: PlayerState, onBack: () -> Unit, preview: List<RankedSon
 
 /** The listener's cloud drive, a page at a time; how full it is up top. */
 @Composable
-fun CloudPage(player: PlayerState, onBack: () -> Unit, preview: CloudPageData? = null) {
-    val library = LocalAppServices.current?.library
+fun CloudPage(
+    player: PlayerState,
+    onBack: () -> Unit,
+    preview: CloudPageData? = null,
+    previewUploads: List<io.lanyin.player.data.library.UploadJob> = emptyList(),
+) {
+    val services = LocalAppServices.current
+    val library = services?.library
+    val uploads = services?.uploads
+    val jobs by (uploads?.jobs ?: remember { MutableStateFlow(previewUploads) }).collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val pick = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris ->
+        if (uploads == null) return@rememberLauncherForActivityResult
+        if (library?.signedIn != true) {
+            services.notices.show("登录后才能上传到云盘")
+            return@rememberLauncherForActivityResult
+        }
+        uris.forEach { uri ->
+            val (name, size) = context.describeDocument(uri)
+            uploads.add(name, size) { context.uploadFile(uri, name) }
+        }
+    }
     val liked by (library?.likedIds ?: noLikes).collectAsState()
     val revision by (library?.revision ?: noRevision).collectAsState()
     var songs by remember { mutableStateOf(preview?.songs.orEmpty()) }
@@ -332,7 +356,13 @@ fun CloudPage(player: PlayerState, onBack: () -> Unit, preview: CloudPageData? =
         onRetry = { attempt++ },
         likedIds = liked,
         songContext = SongContext.Cloud,
-        emptyText = "云盘里还没有歌。可以在网易云音乐电脑版上传",
+        actions = {
+            ThemedChip("上传", false, { pick.launch(arrayOf("audio/*")) })
+        },
+        tabs = if (jobs.isEmpty()) null else ({
+            UploadPanel(jobs, onCancel = { uploads?.cancel(it) }, onClearFinished = { uploads?.clearFinished() })
+        }),
+        emptyText = "云盘里还没有歌。点「上传」把手机里的歌放上来",
         countText = { list -> if (info?.hasMore == true) "已加载 ${list.size} 首" else "${list.size} 首" },
         loadingMore = loadingMore,
         onEndReached = if (info?.hasMore == true && !loadingMore) ({
