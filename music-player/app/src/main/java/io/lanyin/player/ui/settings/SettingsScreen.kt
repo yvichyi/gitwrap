@@ -191,7 +191,7 @@ fun SettingsScreen(
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text("音效", style = style.type.body)
-                            Text("均衡器、低音、环绕和混响，听的时候也能在播放页调", style = style.type.caption, color = c.muted)
+                            Text("45 个预设和十段均衡器，播放页上也能调", style = style.type.caption, color = c.muted)
                         }
                         Text(settings.effects.preset.label, style = style.type.caption, color = if (settings.effects.enabled) c.accent else c.muted)
                         ThemedIcon(LineIcon.Forward, null, tint = c.muted, size = 16.dp, modifier = Modifier.padding(start = 6.dp))
@@ -229,7 +229,7 @@ fun SettingsScreen(
             item { SectionTitle("账号", Modifier.padding(start = m, end = m, top = 36.dp), index = 6) }
             item { AccountRow(account, onLogin, onLogout, Modifier.padding(start = m, end = m, top = 14.dp)) }
             item {
-                Text("澜音 0.6 · 预览版", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))
+                Text("澜音 0.7 · 预览版", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))
             }
         }
     }

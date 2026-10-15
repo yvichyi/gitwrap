@@ -138,7 +138,7 @@ private fun StorageRow(
     val c = style.colors
     Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = style.type.body)
+            Text(title, style = style.type.body, color = c.content)
             Text(detail, style = style.type.caption, color = c.muted)
         }
         Spacer(Modifier.width(12.dp))
