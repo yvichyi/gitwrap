@@ -1,6 +1,14 @@
 package io.lanyin.player.ui.music
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import io.lanyin.player.ui.LocalAppServices
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,10 +59,12 @@ import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
 import kotlin.math.sin
 
-/** What heads a song list: a cover, or for 每日推荐 the day itself. */
+/** What heads a song list: a cover, for 每日推荐 the day itself, or an icon for the listener's own collections. */
 sealed interface ListHeader {
     data class Cover(val url: String?, val seed: Int, val round: Boolean = false) : ListHeader
     data class Day(val day: Int, val caption: String) : ListHeader
+    /** [fill], 0..1, draws a gauge under the icon (how full the cloud drive is). */
+    data class Glyph(val icon: LineIcon, val fill: Float? = null) : ListHeader
 }
 
 /**
@@ -73,15 +83,38 @@ fun SongListScreen(
     onPlay: (List<Song>, Int) -> Unit,
     onRetry: () -> Unit,
     likedIds: Set<Long> = emptySet(),
+    /** Where the rows' ⋯ menus are opened from. */
+    songContext: SongContext = SongContext.None,
+    /** Marks songs kept on the phone; read from the app when null. */
+    downloadedIds: Set<Long>? = null,
+    /** Beside the back button, at the far end: a playlist's ⋯. */
+    topActions: @Composable RowScope.() -> Unit = {},
+    /** After 播放全部: 收藏, 下载. */
+    actions: @Composable RowScope.() -> Unit = {},
+    /** Between the header and the list: a choice of what to list. */
+    tabs: (@Composable () -> Unit)? = null,
+    /** Extra detail at a row's end: play counts, download progress. */
+    trailing: (@Composable (Song) -> Unit)? = null,
+    emptyText: String = "这里还没有歌",
+    /** Called when the last row comes into view, to fetch the next page. */
+    onEndReached: (() -> Unit)? = null,
+    loadingMore: Boolean = false,
+    countText: (List<Song>) -> String = { "${it.size} 首" },
 ) {
     val style = Lanyin.style
     val c = style.colors
     val m = style.margin
+    val openSheet = LocalOpenSheet.current
+    val services = LocalAppServices.current
+    val liveDownloaded = services?.downloads?.done?.collectAsState()?.value
+    val downloaded = downloadedIds ?: liveDownloaded ?: emptySet()
     CompositionLocalProvider(LocalContentColor provides c.content) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding(extraTop = 4.dp)) {
             item {
-                Row(Modifier.padding(horizontal = m - 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = m - 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconAction(LineIcon.Back, "返回", onBack)
+                    Spacer(Modifier.weight(1f))
+                    topActions()
                 }
             }
             item {
@@ -96,6 +129,7 @@ fun SongListScreen(
                     }
                 }
             }
+            if (tabs != null) item { Box(Modifier.padding(start = m, end = m, top = 20.dp)) { tabs() } }
             when (songs) {
                 Load.Loading -> item { Placeholder("正在加载…") }
                 is Load.Failed -> item { Placeholder(songs.message, actionLabel = "重试", onAction = onRetry) }
@@ -108,11 +142,12 @@ fun SongListScreen(
                         ) {
                             ThemedButton("播放全部", { onPlay(list, 0) }, enabled = list.isNotEmpty())
                             Spacer(Modifier.width(14.dp))
-                            Text("${list.size} 首", style = style.type.caption, color = c.muted)
+                            Text(countText(list), style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                            actions()
                         }
                         if (style.edge == EdgeKind.Hairline) Hairline(Modifier.padding(horizontal = m))
                     }
-                    if (list.isEmpty()) item { Placeholder("这里还没有歌") }
+                    if (list.isEmpty()) item { Placeholder(emptyText) }
                     itemsIndexed(list, key = { i, s -> "${s.id}-$i" }) { i, song ->
                         SongRow(
                             song = song,
@@ -120,9 +155,22 @@ fun SongListScreen(
                             playing = song.id == playingId,
                             isPlaying = isPlaying,
                             liked = song.id in likedIds,
+                            downloaded = song.id in downloaded,
                             onClick = { onPlay(list, i) },
-                            modifier = Modifier.padding(horizontal = m),
+                            onMore = { openSheet(Sheet.TrackActions(song, songContext)) },
+                            trailing = trailing?.let { t -> { t(song) } },
+                            modifier = Modifier.padding(start = m, end = m - 10.dp),
                         )
+                    }
+                    if (onEndReached != null || loadingMore) {
+                        item(key = "more-${list.size}") {
+                            if (onEndReached != null) LaunchedEffect(list.size) { onEndReached() }
+                            Text(
+                                if (loadingMore) "正在加载更多…" else "",
+                                style = style.type.caption, color = c.muted, textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -136,6 +184,20 @@ private fun HeaderArt(header: ListHeader) {
     val c = style.colors
     when (header) {
         is ListHeader.Cover -> CoverImage(header.url, header.seed, 112.dp, Modifier.size(112.dp).clip(if (header.round) style.roundShape else style.artShape))
+        is ListHeader.Glyph -> Box(
+            Modifier
+                .size(112.dp)
+                .then(if (style.edge == EdgeKind.Hairline) Modifier.border(1.dp, c.outline) else Modifier.themedSurface(shape = style.artShape, tone = SurfaceTone.Card)),
+            contentAlignment = Alignment.Center,
+        ) {
+            ThemedIcon(header.icon, null, tint = c.accent, size = 44.dp)
+            header.fill?.let { f ->
+                // How full: a short gauge under the icon.
+                Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp).size(64.dp, 4.dp).clip(RoundedCornerShape(2.dp)).background(c.content.copy(alpha = 0.12f))) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(f.coerceIn(0.02f, 1f)).background(c.accent))
+                }
+            }
+        }
         is ListHeader.Day -> Column(
             Modifier
                 .size(112.dp)
@@ -153,7 +215,7 @@ private fun HeaderArt(header: ListHeader) {
     }
 }
 
-/** One song: its number (or bars while it plays), title and alias, artists and album. */
+/** One song: its number (or bars while it plays), title and alias, artists and album, and its ⋯. */
 @Composable
 fun SongRow(
     song: Song,
@@ -163,6 +225,9 @@ fun SongRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     liked: Boolean = false,
+    downloaded: Boolean = false,
+    onMore: (() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val style = Lanyin.style
     val c = style.colors
@@ -188,6 +253,7 @@ fun SongRow(
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (downloaded) ThemedIcon(LineIcon.Download, "已下载", tint = c.accent, size = 13.dp, modifier = Modifier.padding(end = 4.dp))
                 if (song.fee == 1) {
                     Text(
                         "VIP",
@@ -202,7 +268,13 @@ fun SongRow(
                 )
             }
         }
+        if (trailing != null) Box(Modifier.padding(start = 10.dp)) { trailing() }
         if (liked) ThemedIcon(LineIcon.HeartFilled, "已收藏", tint = c.like, size = 16.dp, modifier = Modifier.padding(start = 10.dp))
+        if (onMore != null) {
+            Box(Modifier.size(width = 36.dp, height = 44.dp).pressable(onClick = onMore), contentAlignment = Alignment.Center) {
+                ThemedIcon(LineIcon.More, "更多", tint = c.muted, size = 20.dp)
+            }
+        }
     }
 }
 

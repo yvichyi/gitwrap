@@ -298,6 +298,122 @@ class ScreenshotTest {
         io.lanyin.player.ui.music.RecentPage(playingSample(), onBack = {}, preview = sampleSongs.take(5))
     }
 
+    // M4: cloud drive, comments, playlists of one's own, downloads, play records.
+    private val now = java.time.LocalDateTime.of(2026, 10, 15, 14, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+    @Test fun cloud_tide_light() = capture("cloud_tide_light", AppTheme.TIDE, ThemeMode.LIGHT) {
+        io.lanyin.player.ui.music.CloudPage(
+            playingSample(), onBack = {},
+            preview = io.lanyin.player.core.model.CloudPage(
+                sampleSongs.take(7).map { io.lanyin.player.core.model.CloudSong(it.copy(fee = 0), "${it.name}.flac", 31_000_000, 999, 0) },
+                count = 128, usedBytes = 23L * (1L shl 30) / 2, maxBytes = 60L shl 30, hasMore = false,
+            ),
+        )
+    }
+
+    private fun sampleComments(): io.lanyin.player.core.model.CommentPage {
+        fun user(id: Long, name: String) = io.lanyin.player.core.model.CommentUser(id, name, null)
+        val c = listOf(
+            io.lanyin.player.core.model.Comment(1, user(1, "潮汐里的鲸"), "副歌一出来，整个人就安静下来了。像是有人把海风装进了耳机里。", now - 3 * 60_000, 32_145, true, location = "浙江"),
+            io.lanyin.player.core.model.Comment(2, user(2, "北岸"), "高三晚自习偷偷听的歌，现在下班路上还在听。", now - 5 * 3_600_000, 2_870, false, location = "广东"),
+            io.lanyin.player.core.model.Comment(
+                3, user(3, "城南旧事"), "同，每次听都想起那年夏天。", now - 26 * 3_600_000, 96, false,
+                replyTo = io.lanyin.player.core.model.QuotedComment("北岸", "高三晚自习偷偷听的歌，现在下班路上还在听。"), location = "上海",
+            ),
+            io.lanyin.player.core.model.Comment(4, user(4, "Harbor Lights"), "Found this through a friend, the bridge at 2:40 is unreal.", now - 40L * 86_400_000, 12, false),
+        )
+        return io.lanyin.player.core.model.CommentPage(c, total = 12_480, hasMore = true, cursor = null)
+    }
+
+    @Composable
+    private fun Comments() {
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        val controller = androidx.compose.runtime.remember {
+            io.lanyin.player.ui.comments.CommentsController(100, null, scope, me = null).apply { preview(sampleComments()) }
+        }
+        io.lanyin.player.ui.comments.CommentsPage(sampleSongs[0], onBack = {}, controller = controller, now = now)
+    }
+
+    @Test fun comments_ink_light() = capture("comments_ink_light", AppTheme.INK, ThemeMode.LIGHT) { Comments() }
+    @Test fun comments_tide_dark() = capture("comments_tide_dark", AppTheme.TIDE, ThemeMode.DARK) { Comments() }
+    @Test fun comments_grid() = capture("comments_grid", AppTheme.GRID, ThemeMode.LIGHT) { Comments() }
+
+    @Test fun downloads_dusk_light() = capture("downloads_dusk_light", AppTheme.DUSK, ThemeMode.LIGHT) {
+        val states = listOf(
+            io.lanyin.player.playback.DownloadState.Downloading to 0.42f, io.lanyin.player.playback.DownloadState.Queued to 0f,
+            io.lanyin.player.playback.DownloadState.Failed to 0.1f,
+        ) + List(5) { io.lanyin.player.playback.DownloadState.Done to 1f }
+        io.lanyin.player.ui.music.DownloadsPage(
+            playingSample(), onBack = {},
+            preview = sampleSongs.take(states.size).mapIndexed { i, song ->
+                io.lanyin.player.playback.DownloadItem(song, states[i].first, states[i].second, 31_400_000L + i * 1_000_000, 100L - i)
+            },
+        )
+    }
+
+    @Test fun ranking_sakura_dark() = capture("ranking_sakura_dark", AppTheme.SAKURA, ThemeMode.DARK) {
+        io.lanyin.player.ui.music.RankingPage(
+            playingSample(), onBack = {},
+            preview = sampleSongs.mapIndexed { i, song -> io.lanyin.player.core.model.RankedSong(song, 48 - i * 5, 100 - i * 9) },
+        )
+    }
+
+    @Test fun recent_account_grid() = capture("recent_account_grid", AppTheme.GRID, ThemeMode.LIGHT) {
+        io.lanyin.player.ui.music.RecentPage(
+            playingSample(), onBack = {}, now = now,
+            previewAccount = sampleSongs.take(6).mapIndexed { i, song -> io.lanyin.player.core.model.RecentPlay(song, now - i * 7_000_000L) },
+        )
+    }
+
+    /** A song list with a sheet up over it. */
+    @Composable
+    private fun WithSheet(sheet: io.lanyin.player.ui.music.Sheet, content: @Composable (io.lanyin.player.ui.music.Sheet) -> Unit) {
+        val state = androidx.compose.runtime.remember { io.lanyin.player.ui.music.SheetState().apply { open(sheet) } }
+        androidx.compose.foundation.layout.Box {
+            io.lanyin.player.ui.music.SongListScreen(
+                "夜里听", "潮汐里的鲸", io.lanyin.player.ui.music.ListHeader.Cover(null, 7),
+                io.lanyin.player.ui.music.Load.Ready(sampleSongs), playingId = 102, isPlaying = true,
+                onBack = {}, onPlay = { _, _ -> }, onRetry = {}, likedIds = setOf(100),
+            )
+            io.lanyin.player.ui.music.SheetLayer(state, content)
+        }
+    }
+
+    @Test fun actions_tide_dark() = capture("actions_tide_dark", AppTheme.TIDE, ThemeMode.DARK) {
+        val song = sampleSongs[0].copy(album = io.lanyin.player.core.model.Album(9, "潮汐", null))
+        WithSheet(io.lanyin.player.ui.music.Sheet.TrackActions(song)) {
+            io.lanyin.player.ui.music.TrackActionsSheet(
+                song, liked = true, onToggleLike = {}, onOpenArtist = {}, onOpenAlbum = { _, _ -> },
+                context = io.lanyin.player.ui.music.SongContext.OwnPlaylist(10, "夜里听"),
+                download = io.lanyin.player.playback.DownloadItem(song, io.lanyin.player.playback.DownloadState.Done, 1f, 31_000_000, 0),
+            )
+        }
+    }
+
+    @Test fun add_to_playlist_ink_light() = capture("add_to_playlist_ink_light", AppTheme.INK, ThemeMode.LIGHT) {
+        WithSheet(io.lanyin.player.ui.music.Sheet.AddToPlaylist(sampleSongs.take(1))) {
+            io.lanyin.player.ui.music.AddToPlaylistSheet(1, samplePlaylists.filter { it.creatorId == 1L && it.specialType != 5 }, onPick = {}, onNew = {})
+        }
+    }
+
+    @Test fun new_playlist_sakura_light() = capture("new_playlist_sakura_light", AppTheme.SAKURA, ThemeMode.LIGHT) {
+        WithSheet(io.lanyin.player.ui.music.Sheet.NewPlaylist()) {
+            io.lanyin.player.ui.music.NameSheet("新建歌单", "周末慢慢听", "创建", onConfirm = { _, _ -> }, askPrivate = true)
+        }
+    }
+
+    @Test fun playlist_collect_neon() = capture("playlist_collect_neon", AppTheme.NEON, ThemeMode.DARK) {
+        io.lanyin.player.ui.music.SongListScreen(
+            "城市民谣精选", "城南 · 下班路上的歌", io.lanyin.player.ui.music.ListHeader.Cover(null, 12),
+            io.lanyin.player.ui.music.Load.Ready(sampleSongs), playingId = null, isPlaying = false,
+            onBack = {}, onPlay = { _, _ -> }, onRetry = {}, downloadedIds = setOf(101, 103),
+            actions = {
+                io.lanyin.player.ui.design.ThemedChip("收藏", false, {})
+                io.lanyin.player.ui.design.IconAction(io.lanyin.player.ui.design.LineIcon.Download, "下载全部", {})
+            },
+        )
+    }
+
     // 格, the neo-brutalist Swiss theme: light only.
     @Test fun home_grid_light() = app(AppTheme.GRID, ThemeMode.LIGHT, PlayerSkin.COVER)
     @Config(qualifiers = "w392dp-h1500dp-port-xhdpi")

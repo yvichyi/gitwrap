@@ -61,7 +61,7 @@ object NeteaseCrypto {
 
     fun randomHex(bytes: Int): String = ByteArray(bytes).also(random::nextBytes).toHex()
 
-    private fun randomSecret(): String = buildString { repeat(16) { append(BASE62[random.nextInt(BASE62.length)]) } }
+    internal fun randomSecret(): String = buildString { repeat(16) { append(BASE62[random.nextInt(BASE62.length)]) } }
 
     private fun aes(data: ByteArray, key: String, iv: String?): ByteArray {
         val cipher = Cipher.getInstance(if (iv == null) "AES/ECB/PKCS5Padding" else "AES/CBC/PKCS5Padding")

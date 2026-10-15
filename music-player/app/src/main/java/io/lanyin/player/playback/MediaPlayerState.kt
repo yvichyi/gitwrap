@@ -18,6 +18,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import io.lanyin.player.core.lyrics.LrcParser
+import io.lanyin.player.core.model.CommentSort
 import io.lanyin.player.core.model.LyricLine
 import io.lanyin.player.core.model.LyricsSource
 import io.lanyin.player.core.model.Quality
@@ -46,6 +47,8 @@ class MediaPlayerState(
     private val library: LibraryRepository,
     private val scope: CoroutineScope,
     private val recent: io.lanyin.player.data.library.RecentRepository? = null,
+    /** Whether to report plays to NetEase (the 同步播放记录 setting). */
+    private val syncPlays: () -> Boolean = { false },
 ) : PlayerState() {
 
     private val appContext = context.applicationContext
@@ -95,6 +98,16 @@ class MediaPlayerState(
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, List<LyricLine>>) = size > 40
     }
 
+    // Play records: what is being listened to, for how long, and from which list.
+    private var sourceId = 0L
+    private var listeningTo: Track? = null
+    private var listenedMs = 0L
+    private var playingSince = 0L
+    private var commentCounts by mutableStateOf<Map<Long, Int>>(emptyMap())
+    private val countsAsked = HashSet<Long>()
+
+    override val commentCount: Int? get() = commentCounts[track.id]
+
     init {
         scope.launch { resolver.resolved.collect { streams = it } }
         scope.launch { library.likedIds.collect { likedIds = it } }
@@ -123,8 +136,18 @@ class MediaPlayerState(
             positionMs = player.currentPosition
         }
 
+        override fun onIsPlayingChanged(playing: Boolean) {
+            if (playing) {
+                if (playingSince == 0L) playingSince = clock()
+            } else if (playingSince != 0L) {
+                listenedMs += clock() - playingSince
+                playingSince = 0L
+            }
+        }
+
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val c = controller ?: return
+            finishListening(if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) "playend" else "ui")
             val newIndex = c.currentMediaItemIndex
             skipDirection = when {
                 pendingDirection != 0 -> pendingDirection
@@ -136,6 +159,8 @@ class MediaPlayerState(
             playerDuration = 0
             positionMs = 0
             loadLyrics(track)
+            listeningTo = track.takeIf { !isEmpty }
+            playingSince = if (c.isPlaying) clock() else 0L
             if (!isEmpty) recent?.record(track.toSong())
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) errorsInARow = 0
             if (fm && index >= queue.size - 2) topUpFm()
@@ -166,6 +191,8 @@ class MediaPlayerState(
         if (c.duration > 0) playerDuration = c.duration
         if (!isEmpty) loadLyrics(track)
         playlistName = c.playlistMetadata.station?.toString().orEmpty().ifEmpty { playlistName }
+        listeningTo = track.takeIf { !isEmpty }
+        playingSince = if (c.isPlaying) clock() else 0L
     }
 
     private fun syncQueue(p: Player) {
@@ -186,10 +213,11 @@ class MediaPlayerState(
 
     // —— Controls ——
 
-    override fun play(songs: List<Song>, startIndex: Int, source: String) {
+    override fun play(songs: List<Song>, startIndex: Int, source: String, sourceId: Long) {
         val c = controller ?: return
         if (songs.isEmpty()) return
         fm = false
+        this.sourceId = sourceId
         start(c, songs, startIndex, source)
     }
 
@@ -202,6 +230,7 @@ class MediaPlayerState(
             }
             if (songs.isEmpty()) return@launch
             fm = true
+            sourceId = 0
             c.shuffleModeEnabled = false
             c.repeatMode = Player.REPEAT_MODE_OFF
             start(c, songs, 0, "私人 FM")
@@ -295,6 +324,36 @@ class MediaPlayerState(
         notice = null
     }
 
+    override fun loadCommentCount() {
+        val id = track.id.takeIf { !isEmpty && it != 0L } ?: return
+        if (!countsAsked.add(id)) return
+        scope.launch {
+            runCatching { api.comments(id, CommentSort.RECOMMENDED, pageSize = 1).total }
+                .onSuccess { commentCounts = commentCounts + (id to it) }
+                .onFailure { countsAsked.remove(id) }
+        }
+    }
+
+    // —— Play records ——
+
+    /**
+     * Reports the song that just stopped being the current one, if it was really listened to (half
+     * a minute, or half of a short song) and the listener lets 澜音 sync plays.
+     */
+    private fun finishListening(end: String) {
+        val t = listeningTo ?: return
+        val heard = listenedMs + if (playingSince != 0L) clock() - playingSince else 0L
+        listeningTo = null
+        listenedMs = 0L
+        playingSince = 0L
+        if (!worthReporting(heard, t.durationMs)) return
+        if (!syncPlays() || api.session.value?.loggedIn != true) return
+        val source = sourceId
+        scope.launch { runCatching { api.scrobble(t.id, heard / 1000, source, end) } }
+    }
+
+    private fun clock() = android.os.SystemClock.elapsedRealtime()
+
     // —— Lyrics ——
 
     private fun loadLyrics(t: Track) {
@@ -329,6 +388,10 @@ class MediaPlayerState(
         private const val EXTRA_ALBUM = "lanyin.album"
         private const val EXTRA_ARTIST_IDS = "lanyin.artistIds"
         private const val EXTRA_ARTIST_NAMES = "lanyin.artistNames"
+
+        /** Half a minute, or half of a song shorter than a minute. */
+        fun worthReporting(heardMs: Long, durationMs: Long): Boolean =
+            heardMs >= 30_000 || (durationMs in 1 until 60_000 && heardMs >= durationMs / 2)
 
         fun qualityLabel(s: Stream): String = when {
             s.trialOnly -> "试听"

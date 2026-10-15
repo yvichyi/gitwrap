@@ -115,8 +115,17 @@ abstract class PlayerState {
     /** Jumps to a song already in the queue. */
     open fun playAt(index: Int) = Unit
 
-    /** Replaces the queue with [songs] and plays from [startIndex]; [source] names where they came from. */
-    open fun play(songs: List<io.lanyin.player.core.model.Song>, startIndex: Int, source: String) = Unit
+    /**
+     * Replaces the queue with [songs] and plays from [startIndex]; [source] names where they came
+     * from and [sourceId] is that playlist's or album's id, for the play records sent to NetEase.
+     */
+    open fun play(songs: List<io.lanyin.player.core.model.Song>, startIndex: Int, source: String, sourceId: Long = 0) = Unit
+
+    /** How many comments the current song has, once known. */
+    open val commentCount: Int? get() = null
+
+    /** Asks for [commentCount] if it isn't known yet; the player calls this while it shows. */
+    open fun loadCommentCount() = Unit
 
     /** Starts 私人 FM, which keeps topping itself up. */
     open fun playFm() = Unit

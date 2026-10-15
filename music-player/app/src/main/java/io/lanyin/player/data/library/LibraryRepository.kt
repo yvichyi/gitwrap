@@ -1,12 +1,17 @@
 package io.lanyin.player.data.library
 
+import io.lanyin.player.core.model.CloudPage
 import io.lanyin.player.core.model.Playlist
+import io.lanyin.player.core.model.RankedSong
+import io.lanyin.player.core.model.RecentPlay
 import io.lanyin.player.core.model.Song
 import io.lanyin.player.core.netease.NeteaseApi
+import io.lanyin.player.core.netease.NeteaseException
 import io.lanyin.player.core.netease.PlaylistDetail
 import io.lanyin.player.data.account.AccountRepository
 import io.lanyin.player.data.account.AccountState
 import java.time.LocalDate
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +23,8 @@ import kotlinx.coroutines.launch
 
 /**
  * The listener's music: liked songs, their playlists, today's picks. Follows the account, so a
- * login fills it in and a logout clears it. Lists are fetched when first asked for and kept.
+ * login fills it in and a logout clears it. Lists are fetched when first asked for and kept;
+ * changes made here (a song added, a playlist renamed) update what is kept and bump [revision].
  */
 class LibraryRepository(private val api: NeteaseApi, account: AccountRepository, private val scope: CoroutineScope) {
 
@@ -28,6 +34,10 @@ class LibraryRepository(private val api: NeteaseApi, account: AccountRepository,
     /** Null until loaded (or when signed out). */
     private val _playlists = MutableStateFlow<List<Playlist>?>(null)
     val playlists: StateFlow<List<Playlist>?> = _playlists.asStateFlow()
+
+    /** Goes up whenever a playlist changes here, so open pages read it again. */
+    private val _revision = MutableStateFlow(0)
+    val revision: StateFlow<Int> = _revision.asStateFlow()
 
     private var userId: Long? = null
     private var daily: Pair<LocalDate, List<Song>>? = null
@@ -55,12 +65,20 @@ class LibraryRepository(private val api: NeteaseApi, account: AccountRepository,
         scope.launch { runCatching { _playlists.value = api.userPlaylists(uid) } }
     }
 
+    val signedIn: Boolean get() = userId != null
+
     /** The user's own 「我喜欢的音乐」 playlist. */
     fun likedPlaylist(): Playlist? = _playlists.value?.firstOrNull { it.specialType == 5 }
 
     fun created(): List<Playlist> = _playlists.value.orEmpty().filter { it.creatorId == userId && it.specialType != 5 }
 
     fun collected(): List<Playlist> = _playlists.value.orEmpty().filter { it.creatorId != userId }
+
+    /** One the listener made (and can rename, delete, add songs to); 「我喜欢的音乐」 aside. */
+    fun isOwn(p: Playlist): Boolean = userId != null && p.creatorId == userId && p.specialType != 5
+
+    /** Someone else's playlist, which a signed-in listener can collect. */
+    fun canCollect(p: Playlist): Boolean = userId != null && p.creatorId != userId && p.specialType != 5
 
     /** Likes or unlikes at once, and puts it back if NetEase says no. Returns an error to show, or null. */
     suspend fun toggleLike(songId: Long): String? {
@@ -114,5 +132,97 @@ class LibraryRepository(private val api: NeteaseApi, account: AccountRepository,
 
     suspend fun searchPlaylists(keywords: String) = api.searchPlaylists(keywords)
 
-    val signedIn: Boolean get() = userId != null
+    // —— Cloud drive ——
+
+    suspend fun cloud(offset: Int): CloudPage = api.cloud(offset)
+
+    suspend fun deleteFromCloud(songId: Long): String? = attempt("从云盘删除") {
+        api.deleteFromCloud(songId)
+        changed(reload = false)
+    }
+
+    // —— Playlists of one's own ——
+
+    /** Makes a playlist and, if given, puts [songs] in it. Returns it, or the error to show. */
+    suspend fun createPlaylist(name: String, private: Boolean, songs: List<Song> = emptyList()): Result<Playlist> {
+        if (userId == null) return Result.failure(IllegalStateException("登录后才能新建歌单"))
+        return try {
+            val p = api.createPlaylist(name.trim(), private)
+            if (songs.isNotEmpty()) api.addToPlaylist(p.id, songs.map { it.id })
+            changed()
+            Result.success(p.copy(trackCount = songs.size))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException(failure("新建歌单", e)))
+        }
+    }
+
+    suspend fun renamePlaylist(id: Long, name: String): String? = attempt("改名") {
+        api.renamePlaylist(id, name.trim())
+        details[id]?.let { details[id] = PlaylistDetail(it.playlist.copy(name = name.trim()), it.songs) }
+        _playlists.update { all -> all?.map { if (it.id == id) it.copy(name = name.trim()) else it } }
+        changed(reload = false)
+    }
+
+    suspend fun deletePlaylist(id: Long): String? = attempt("删除歌单") {
+        api.deletePlaylist(id)
+        details.remove(id)
+        _playlists.update { all -> all?.filter { it.id != id } }
+        changed(reload = false)
+    }
+
+    suspend fun addToPlaylist(playlist: Playlist, songs: List<Song>): String? = attempt("添加到「${playlist.name}」") {
+        api.addToPlaylist(playlist.id, songs.map { it.id })
+        details.remove(playlist.id)
+        changed()
+    }
+
+    suspend fun removeFromPlaylist(playlistId: Long, songId: Long): String? = attempt("从歌单删除") {
+        api.removeFromPlaylist(playlistId, listOf(songId))
+        details[playlistId]?.let { d ->
+            details[playlistId] = PlaylistDetail(d.playlist.copy(trackCount = (d.playlist.trackCount - 1).coerceAtLeast(0)), d.songs.filter { it.id != songId })
+        }
+        changed()
+    }
+
+    /** Collects someone else's playlist, or lets it go. */
+    suspend fun setSubscribed(playlist: Playlist, subscribe: Boolean): String? = attempt(if (subscribe) "收藏歌单" else "取消收藏") {
+        api.subscribePlaylist(playlist.id, subscribe)
+        details[playlist.id]?.let { details[playlist.id] = PlaylistDetail(it.playlist.copy(subscribed = subscribe), it.songs) }
+        changed()
+    }
+
+    // —— Play records ——
+
+    suspend fun recentPlays(): List<RecentPlay> = api.recentPlays()
+
+    suspend fun ranking(week: Boolean): List<RankedSong> {
+        val uid = userId ?: throw NeteaseException(301, "登录后才能看听歌排行")
+        return api.listeningRanking(uid, week)
+    }
+
+    private fun changed(reload: Boolean = true) {
+        _revision.update { it + 1 }
+        if (reload) refresh()
+    }
+
+    /** Runs [block]; null when it worked, else what to tell the listener. */
+    private suspend fun attempt(what: String, block: suspend () -> Unit): String? {
+        if (userId == null) return "登录后才能$what"
+        return try {
+            block()
+            null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            failure(what, e)
+        }
+    }
+
+    private fun failure(what: String, e: Exception): String = when {
+        e is NeteaseException && e.code == 301 -> "登录已过期，重新登录后才能$what"
+        e is NeteaseException -> "没能$what：${e.message ?: "网易云返回 ${e.code}"}"
+        else -> "没能$what：网络不好"
+    }
 }

@@ -16,6 +16,7 @@ import okio.Buffer
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -87,5 +88,29 @@ class AudioPipelineTest {
         assertArrayEquals(audio, readAll(pipeline, 1))
         assertEquals(1, urlCalls)
         assertEquals(1, audioCalls)
+    }
+    @Test
+    fun `a downloaded song plays from the download store, with no network at all`() {
+        val http = OkHttpClient()
+        val api = NeteaseApi(NeteaseClient(http, MemorySessionStore(), apiBase = server.url("/"), webBase = server.url("/")))
+        val pipeline = AudioPipeline(ApplicationProvider.getApplicationContext(), http, StreamResolver(api))
+        assertFalse(pipeline.isDownloaded(2))
+
+        // What the download manager does: the song's audio, written under its download key.
+        val writer = androidx.media3.datasource.cache.CacheDataSource.Factory()
+            .setCache(pipeline.downloadCache)
+            .setUpstreamDataSourceFactory(pipeline.networkFactory)
+            .createDataSource()
+        androidx.media3.datasource.cache.CacheWriter(
+            writer,
+            DataSpec.Builder().setUri(AudioPipeline.uriFor("2")).setKey(AudioPipeline.downloadKey(2)).build(),
+            null, null,
+        ).cache()
+        assertTrue(pipeline.isDownloaded(2))
+        val calls = urlCalls to audioCalls
+
+        server.shutdown()
+        assertArrayEquals(audio, readAll(pipeline, 2))
+        assertEquals(calls, urlCalls to audioCalls)
     }
 }

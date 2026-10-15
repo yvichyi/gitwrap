@@ -63,6 +63,7 @@ class DemoPlayerState(private val demo: List<DemoTrack> = demoQueue) : PlayerSta
     override val lyrics: List<LyricLine> get() = demo.getOrNull(index)?.lyrics.orEmpty()
     override val quality: String get() = demo.getOrNull(index)?.quality.orEmpty()
     override val format: String get() = demo.getOrNull(index)?.format.orEmpty()
+    override val commentCount: Int? get() = if (isEmpty) null else 12_480 + index * 3_517
 
     private var lastFrame = -1L
 

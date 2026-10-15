@@ -631,10 +631,11 @@ private fun LandscapeTopBar(state: PlayerState, onCollapse: () -> Unit, onRotate
         }
         Spacer(Modifier.width(16.dp))
         QualityTags(state)
+        CommentButton(state, c.content)
         LikeButton(state.liked, onToggle = state::toggleLike)
         IconAction(LineIcon.Rotate, "切换到竖屏", onRotate)
         val openMore = io.lanyin.player.ui.music.LocalOpenSheet.current
-        IconAction(LineIcon.More, "更多", { openMore(io.lanyin.player.ui.music.Sheet.TrackActions(state.track)) })
+        IconAction(LineIcon.More, "更多", { openMore(io.lanyin.player.ui.music.Sheet.TrackActions(state.track.toSong())) })
     }
 }
 
@@ -763,7 +764,7 @@ private fun PlayerTopBar(state: PlayerState, onCollapse: () -> Unit, modifier: M
             }
         }
         val openMore = io.lanyin.player.ui.music.LocalOpenSheet.current
-        IconAction(LineIcon.More, "更多", { openMore(io.lanyin.player.ui.music.Sheet.TrackActions(state.track)) }, Modifier.align(Alignment.CenterEnd))
+        IconAction(LineIcon.More, "更多", { openMore(io.lanyin.player.ui.music.Sheet.TrackActions(state.track.toSong())) }, Modifier.align(Alignment.CenterEnd))
     }
 }
 
@@ -805,7 +806,36 @@ private fun TrackSwitch(state: PlayerState, modifier: Modifier = Modifier, conte
     ) { track -> content(track) }
 }
 
-/** The quieter actions under the transport: quality on the left, lyrics and rotation on the right. */
+/** The comment bubble, with NetEase's way of counting over its shoulder: 「999+」「1w+」「10w+」. */
+@Composable
+private fun CommentButton(state: PlayerState, tint: androidx.compose.ui.graphics.Color) {
+    val style = Lanyin.style
+    val nav = io.lanyin.player.ui.LocalNavigator.current
+    LaunchedEffect(state.track.id) { state.loadCommentCount() }
+    Box(Modifier.size(48.dp).pressable { nav?.openComments?.invoke(state.track.toSong()) }, contentAlignment = Alignment.Center) {
+        ThemedIcon(LineIcon.Comment, "评论", tint = tint, size = 24.dp)
+        state.commentCount?.takeIf { it > 0 }?.let { n ->
+            Text(
+                commentBadge(n),
+                style = style.type.label.copy(fontSize = 9.sp, fontFamily = style.numeric, fontWeight = FontWeight.Medium),
+                color = tint,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.align(Alignment.TopStart).offset(x = 31.dp, y = 7.dp),
+            )
+        }
+    }
+}
+
+internal fun commentBadge(n: Int): String = when {
+    n >= 1_000_000 -> "100w+"
+    n >= 100_000 -> "10w+"
+    n >= 10_000 -> "1w+"
+    n >= 1_000 -> "999+"
+    else -> n.toString()
+}
+
+/** The quieter actions under the transport: quality on the left, comments, lyrics and rotation on the right. */
 @Composable
 private fun UtilityRow(
     state: PlayerState,
@@ -818,6 +848,7 @@ private fun UtilityRow(
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         QualityTags(state, chipFirst = true)
         Spacer(Modifier.weight(1f))
+        CommentButton(state, c.muted)
         if (onToggleLyrics != null) {
             IconAction(LineIcon.Lyrics, if (lyricsShown) "显示封面" else "显示歌词", onToggleLyrics, tint = if (lyricsShown) c.accent else c.muted)
         }

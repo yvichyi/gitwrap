@@ -185,13 +185,21 @@ fun SettingsScreen(
                     ToggleRow("横屏时保持屏幕常亮", "把手机立在桌上，当歌词屏用", settings.keepScreenOnInLandscape) {
                         scope.launch { repository.setKeepScreenOnInLandscape(it) }
                     }
+                    Hairline()
+                    ToggleRow("只在 Wi-Fi 下下载", "用流量时，下载会等连上 Wi-Fi 再开始", settings.downloadOnWifiOnly) {
+                        scope.launch { repository.setDownloadOnWifiOnly(it) }
+                    }
+                    Hairline()
+                    ToggleRow("同步播放记录", "把在澜音听的歌记到网易云账号里，「最近播放」和「听歌排行」都会有", settings.syncPlays) {
+                        scope.launch { repository.setSyncPlays(it) }
+                    }
                     if (style.edge == EdgeKind.Hairline) Hairline()
                 }
             }
             item { SectionTitle("账号", Modifier.padding(start = m, end = m, top = 36.dp), index = 5) }
             item { AccountRow(account, onLogin, onLogout, Modifier.padding(start = m, end = m, top = 14.dp)) }
             item {
-                Text("澜音 0.4 · 预览版", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))
+                Text("澜音 0.5 · 预览版", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))
             }
         }
     }

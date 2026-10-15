@@ -47,6 +47,8 @@ class NeteaseClient(
     private val apiBase: HttpUrl = "https://interface.music.163.com".toHttpUrl(),
     private val webBase: HttpUrl = "https://music.163.com".toHttpUrl(),
     private val now: () -> Long = System::currentTimeMillis,
+    /** The per-request weapi key; fixed in tests so bodies can be read back. */
+    private val weapiSecret: () -> String = NeteaseCrypto::randomSecret,
 ) {
     private val mutex = Mutex()
     private val _session = MutableStateFlow<NeteaseSession?>(null)
@@ -68,8 +70,11 @@ class NeteaseClient(
         }
     }
 
-    /** POST an app-protocol call. [path] starts with `/api/`. */
-    suspend fun eapi(path: String, data: JsonObject = JsonObject(emptyMap())): NeteaseResponse {
+    /**
+     * POST an app-protocol call. [path] starts with `/api/`. [checkToken] adds the anti-cheat
+     * token a few write calls (collecting a playlist) insist on.
+     */
+    suspend fun eapi(path: String, data: JsonObject = JsonObject(emptyMap()), checkToken: Boolean = false): NeteaseResponse {
         val s = currentSession()
         val time = now()
         val header = linkedMapOf(
@@ -85,6 +90,7 @@ class NeteaseClient(
             "channel" to CHANNEL,
             "requestId" to "${time}_${Random.nextInt(1000).toString().padStart(4, '0')}",
         )
+        if (checkToken) header["X-antiCheatToken"] = CHECK_TOKEN
         s.musicU?.let { header["MUSIC_U"] = it } ?: s.musicA?.let { header["MUSIC_A"] = it }
         val json = buildJsonObject {
             data.forEach { (k, v) -> put(k, v) }
@@ -124,7 +130,7 @@ class NeteaseClient(
             put("e_r", false)
             put("csrf_token", s.csrf)
         }.toString()
-        val encrypted = NeteaseCrypto.weapi(json)
+        val encrypted = NeteaseCrypto.weapi(json, weapiSecret())
         val request = Request.Builder()
             .url(webBase.newBuilder().addPathSegment("weapi").addPathSegments(path.removePrefix("/api/")).build())
             .header("Cookie", cookieHeader(cookie))
@@ -158,6 +164,10 @@ class NeteaseClient(
         private const val UA_APP = "NeteaseMusic 9.0.90/5038 (iPhone; iOS 16.2; zh_CN)"
         private const val UA_WEB =
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0"
+
+        /** The desktop client's anti-cheat token, as the reference ships it (`APP_CONF.checkToken`). */
+        internal const val CHECK_TOKEN =
+            "9ca17ae2e6ffcda170e2e6ee8af14fbabdb988f225b3868eb2c15a879b9a83d274a790ac8ff54a97b889d5d42af0feaec3b92af58cff99c470a7eafd88f75e839a9ea7c14e909da883e83fb692a3abdb6b92adee9e"
 
         val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; explicitNulls = false; isLenient = true }
 

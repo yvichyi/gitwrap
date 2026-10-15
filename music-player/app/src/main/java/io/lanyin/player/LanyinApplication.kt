@@ -13,6 +13,8 @@ import io.lanyin.player.data.account.AccountRepository
 import io.lanyin.player.data.library.LibraryRepository
 import io.lanyin.player.data.library.RecentRepository
 import io.lanyin.player.playback.AudioPipeline
+import io.lanyin.player.playback.DownloadRepository
+import io.lanyin.player.ui.Notices
 import io.lanyin.player.playback.MediaPlayerState
 import io.lanyin.player.playback.StreamResolver
 import kotlinx.coroutines.launch
@@ -36,6 +38,7 @@ class LanyinApplication : Application(), SingletonImageLoader.Factory {
         container = AppContainer(this)
         container.account.start()
         container.player.connect()
+        container.downloads.start()
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
@@ -58,11 +61,22 @@ class AppContainer(context: Context) {
     val streams = StreamResolver(netease)
     val audio = AudioPipeline(context, http, streams)
     val recent = RecentRepository(File(context.filesDir, "recent.json"), scope)
-    val player = MediaPlayerState(context, netease, streams, library, scope, recent)
-    val services = AppServices(netease, account, library, player, recent)
+    val downloads = DownloadRepository(context, audio, scope)
+    val notices = Notices()
+
+    @Volatile
+    private var syncPlays = true
+    val player = MediaPlayerState(context, netease, streams, library, scope, recent, syncPlays = { syncPlays })
+    val services = AppServices(netease, account, library, player, recent, downloads, notices)
 
     init {
-        // The stream quality follows the setting.
-        scope.launch { settings.settings.collect { audio.preferred = it.quality } }
+        // Stream quality, downloads over Wi-Fi only and play records follow the settings.
+        scope.launch {
+            settings.settings.collect {
+                audio.preferred = it.quality
+                syncPlays = it.syncPlays
+                downloads.setWifiOnly(it.downloadOnWifiOnly)
+            }
+        }
     }
 }

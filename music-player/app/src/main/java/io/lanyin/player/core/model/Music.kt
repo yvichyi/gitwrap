@@ -118,6 +118,42 @@ data class LyricsSource(
     val instrumental: Boolean,
 )
 
+/** A song in the listener's cloud drive, with the file they uploaded. */
+data class CloudSong(val song: Song, val fileName: String, val sizeBytes: Long, val bitrate: Int, val addedAt: Long)
+
+/** A page of the cloud drive, and how full it is. */
+data class CloudPage(val songs: List<CloudSong>, val count: Int, val usedBytes: Long, val maxBytes: Long, val hasMore: Boolean)
+
+/** How comments are ordered, with NetEase's code for each. */
+enum class CommentSort(val code: Int, val label: String) { RECOMMENDED(99, "推荐"), HOT(2, "最热"), NEWEST(3, "最新") }
+
+data class CommentUser(val id: Long, val nickname: String, val avatarUrl: String?)
+
+/** One comment on a song. [replyTo] is the comment it answers, quoted. */
+@androidx.compose.runtime.Immutable
+data class Comment(
+    val id: Long,
+    val user: CommentUser,
+    val content: String,
+    val timeMs: Long,
+    val likedCount: Int,
+    val liked: Boolean,
+    val replyTo: QuotedComment? = null,
+    /** 「IP属地」, when NetEase gives it. */
+    val location: String? = null,
+)
+
+data class QuotedComment(val nickname: String, val content: String)
+
+/** A page of comments; [cursor] asks for the next one. */
+data class CommentPage(val comments: List<Comment>, val total: Int, val hasMore: Boolean, val cursor: String?)
+
+/** A song from the account's play history, across all its devices. */
+data class RecentPlay(val song: Song, val playedAt: Long)
+
+/** A row of 听歌排行: a song, how often it was played, and its score (100 for the top one). */
+data class RankedSong(val song: Song, val playCount: Int, val score: Int)
+
 /** Audio quality levels, best first, as NetEase names them. */
 enum class Quality(val level: String, val label: String) {
     MASTER("jymaster", "超清母带"),

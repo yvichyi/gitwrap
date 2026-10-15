@@ -21,18 +21,23 @@ sealed interface Load<out T> {
 /** A fetch tied to [key], with a way to try again. */
 class Loader<T>(val state: Load<T>, val retry: () -> Unit)
 
+/**
+ * A fetch tied to [key], with a way to try again. A change of [refresh] fetches again too, but
+ * keeps showing what was there meanwhile (and if the new fetch fails).
+ */
 @Composable
-fun <T> rememberLoad(key: Any?, fetch: suspend () -> T): Loader<T> {
+fun <T> rememberLoad(key: Any?, refresh: Any? = null, fetch: suspend () -> T): Loader<T> {
     var attempt by remember(key) { mutableIntStateOf(0) }
     var state by remember(key) { mutableStateOf<Load<T>>(Load.Loading) }
-    LaunchedEffect(key, attempt) {
-        state = Load.Loading
+    LaunchedEffect(key, attempt, refresh) {
+        val shown = state
+        if (shown !is Load.Ready) state = Load.Loading
         state = try {
             Load.Ready(fetch())
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Load.Failed(describe(e))
+            if (shown is Load.Ready) shown else Load.Failed(describe(e))
         }
     }
     return Loader(state) { attempt++ }

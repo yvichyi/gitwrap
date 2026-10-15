@@ -87,4 +87,23 @@ class NeteaseLiveTest {
         println("chart: ${chart.playlist.name}, ${chart.songs.size} songs")
         assertTrue(chart.songs.isNotEmpty())
     }
+    @Test
+    fun `comments read before login, in every order`() = runBlocking {
+        assumeTrue("set NETEASE_LIVE=1 to run", System.getenv("NETEASE_LIVE") == "1")
+        val api = NeteaseApi(NeteaseClient(OkHttpClient(), MemorySessionStore()))
+        api.ensureAnonymous()
+        for (sort in io.lanyin.player.core.model.CommentSort.entries) {
+            val page = api.comments(186016, sort)
+            println("comments $sort: total=${page.total} more=${page.hasMore} cursor=${page.cursor} first=${page.comments.firstOrNull()?.let { "${it.user.nickname}: ${it.content.take(20)} ♥${it.likedCount} ${it.location}" }}")
+            assertTrue(page.comments.isNotEmpty())
+            if (sort == io.lanyin.player.core.model.CommentSort.NEWEST) {
+                println("newest times: " + page.comments.take(5).map { java.time.Instant.ofEpochMilli(it.timeMs) })
+                val now = api.comments(186016, sort, cursor = System.currentTimeMillis().toString())
+                println("newest from now: " + now.comments.take(5).map { java.time.Instant.ofEpochMilli(it.timeMs).toString() + " " + it.content.take(10) } + " cursor=" + now.cursor)
+                val next = api.comments(186016, sort, pageNo = 2, cursor = page.cursor)
+                assertTrue(next.comments.isNotEmpty())
+                assertTrue(next.comments.first().timeMs <= page.comments.last().timeMs)
+            }
+        }
+    }
 }

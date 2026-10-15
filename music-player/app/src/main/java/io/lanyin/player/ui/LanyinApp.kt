@@ -90,11 +90,13 @@ import io.lanyin.player.ui.music.AlbumPage
 import io.lanyin.player.ui.music.ArtistPage
 import io.lanyin.player.ui.music.RecentPage
 import io.lanyin.player.ui.music.LocalOpenSheet
-import io.lanyin.player.ui.music.QueueSheet
-import io.lanyin.player.ui.music.Sheet
-import io.lanyin.player.ui.music.SheetLayer
-import io.lanyin.player.ui.music.TrackActionsSheet
+import io.lanyin.player.ui.music.AppSheets
+import io.lanyin.player.ui.music.CloudPage
+import io.lanyin.player.ui.music.DownloadsPage
+import io.lanyin.player.ui.music.RankingPage
 import io.lanyin.player.ui.music.rememberSheetState
+import io.lanyin.player.ui.comments.CommentsPage
+import androidx.compose.foundation.layout.statusBarsPadding
 import io.lanyin.player.ui.music.DailyPage
 import io.lanyin.player.ui.music.PlaylistPage
 import androidx.navigation.toRoute
@@ -117,6 +119,10 @@ import kotlinx.serialization.Serializable
 @Serializable data class ArtistRoute(val id: Long, val name: String)
 @Serializable data class AlbumRoute(val id: Long, val name: String)
 @Serializable data object RecentRoute
+@Serializable data object CloudRoute
+@Serializable data object DownloadsRoute
+@Serializable data object RankingRoute
+@Serializable data class CommentsRoute(val songId: Long, val name: String, val artist: String, val coverUrl: String?)
 
 private data class TopLevelTab(val route: Any, val label: String, val icon: LineIcon)
 
@@ -160,8 +166,14 @@ fun LanyinApp(
     val destination = backStackEntry?.destination
     val selectedTab = tabs.indexOfFirst { tab -> destination?.hierarchy?.any { it.hasRoute(tab.route::class) } == true }
     val onTopLevel = destination == null || selectedTab >= 0
-    // The mini player follows you into lists, but not into settings or login.
-    val showMini = !player.isEmpty && destination?.hierarchy?.any { it.hasRoute(SettingsRoute::class) || it.hasRoute(LoginRoute::class) } != true
+    // The mini player follows you into lists, but not into settings, login or comments (which has its own bar).
+    val showMini = !player.isEmpty && destination?.hierarchy?.any {
+        it.hasRoute(SettingsRoute::class) || it.hasRoute(LoginRoute::class) || it.hasRoute(CommentsRoute::class)
+    } != true
+    val notice = player.notice ?: services?.notices?.current?.collectAsState()?.value
+    val onDismiss: () -> Unit = {
+        if (player.notice != null) player.dismissNotice() else services?.notices?.dismiss()
+    }
     PlayerFrameDriver(player)
     // Nothing to show: an empty queue closes the player.
     LaunchedEffect(player.isEmpty) { if (player.isEmpty) expanded = false }
@@ -175,13 +187,24 @@ fun LanyinApp(
         expanded = false
         navController.navigate(AlbumRoute(id, name))
     }
+    val navigator = remember(navController) {
+        AppNavigator(
+            back = { navController.popBackStack() },
+            openArtist = openArtist,
+            openAlbum = openAlbum,
+            openComments = { song ->
+                expanded = false
+                navController.navigate(CommentsRoute(song.id, song.name, song.artistLine, song.album.coverUrl))
+            },
+        )
+    }
     val sheets = rememberSheetState()
 
     LaunchedEffect(expanded, settings.autoLandscape) {
         if (!expanded) orientation.release() else if (settings.autoLandscape) orientation.lockLandscape()
     }
 
-    CompositionLocalProvider(LocalOpenSheet provides sheets::open) {
+    CompositionLocalProvider(LocalOpenSheet provides sheets::open, LocalNavigator provides navigator) {
     SharedTransitionLayout(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().background(Lanyin.colors.bg)) {
             Box(Modifier.fillMaxSize().hazeSource(haze)) {
@@ -219,6 +242,9 @@ fun LanyinApp(
                             LibraryScreen(
                                 onLogin = { navController.navigate(LoginRoute) }, account = account, onOpenPlaylist = openPlaylist,
                                 onOpenRecent = { navController.navigate(RecentRoute) },
+                                onOpenCloud = { navController.navigate(CloudRoute) },
+                                onOpenDownloads = { navController.navigate(DownloadsRoute) },
+                                onOpenRanking = { navController.navigate(RankingRoute) },
                             )
                         }
                         composable<PlaylistRoute> { entry ->
@@ -235,6 +261,19 @@ fun LanyinApp(
                             AlbumPage(route.id, route.name, player, onBack = { navController.popBackStack() })
                         }
                         composable<RecentRoute> { RecentPage(player, onBack = { navController.popBackStack() }) }
+                        composable<CloudRoute> { CloudPage(player, onBack = { navController.popBackStack() }) }
+                        composable<DownloadsRoute> { DownloadsPage(player, onBack = { navController.popBackStack() }) }
+                        composable<RankingRoute> { RankingPage(player, onBack = { navController.popBackStack() }) }
+                        composable<CommentsRoute> { entry ->
+                            val route = entry.toRoute<CommentsRoute>()
+                            val song = remember(route) {
+                                io.lanyin.player.core.model.Song(
+                                    route.songId, route.name, listOf(io.lanyin.player.core.model.Artist(0, route.artist)),
+                                    io.lanyin.player.core.model.Album(0, "", route.coverUrl), 0,
+                                )
+                            }
+                            CommentsPage(song, onBack = { navController.popBackStack() })
+                        }
                         composable<ChartsRoute> { ChartsPage(onBack = { navController.popBackStack() }, onOpen = { openPlaylist(it.id, it.name) }) }
                         composable<SettingsRoute> {
                             SettingsScreen(
@@ -260,6 +299,7 @@ fun LanyinApp(
                 val sharedScope = remember(this) { SharedPlayerScope(this@SharedTransitionLayout, this) }
                 CompositionLocalProvider(LocalSharedPlayerScope provides sharedScope) {
                     if (isExpanded && !player.isEmpty) {
+                        Box(Modifier.fillMaxSize()) {
                         PlayerScreen(
                             state = player,
                             skin = settings.playerSkin,
@@ -268,7 +308,12 @@ fun LanyinApp(
                             onCollapse = { expanded = false },
                             lyricScale = settings.lyricSize.scale,
                         )
-                    } else if (onTopLevel || showMini) {
+                            // Over the player, notices drop in from the top instead.
+                            Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 12.dp, vertical = 56.dp)) {
+                                NoticeBanner(notice, onDismiss, floating = true)
+                            }
+                        }
+                    } else if (onTopLevel || showMini || notice != null) {
                         val onSelectTab: (Int) -> Unit = { i ->
                             navController.navigate(tabs[i].route) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -280,7 +325,7 @@ fun LanyinApp(
                             if (Lanyin.style.dock == DockKind.Docked) {
                                 // A plain bar on the page colour, ruled off with hairlines.
                                 Column(Modifier.background(Lanyin.colors.bg).navigationBarsPadding()) {
-                                    NoticeBanner(player)
+                                    NoticeBanner(notice, onDismiss)
                                     Hairline()
                                     if (showMini) MiniPlayer(player, settings.playerSkin, spin, onExpand = { expanded = true })
                                     if (showMini && onTopLevel) Hairline(Modifier.padding(horizontal = Lanyin.style.margin))
@@ -294,7 +339,7 @@ fun LanyinApp(
                                             .padding(horizontal = 12.dp, vertical = 8.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp),
                                     ) {
-                                        NoticeBanner(player)
+                                        NoticeBanner(notice, onDismiss)
                                         if (showMini) MiniPlayer(player, settings.playerSkin, spin, onExpand = { expanded = true })
                                         if (onTopLevel) TabBar(selectedTab.coerceAtLeast(0), onSelectTab)
                                     }
@@ -304,40 +349,19 @@ fun LanyinApp(
                     }
                 }
             }
-            SheetLayer(sheets) { sheet ->
-                when (sheet) {
-                    Sheet.Queue -> QueueSheet(player)
-                    is Sheet.TrackActions -> TrackActionsSheet(
-                        sheet.track,
-                        liked = player.liked && player.track.id == sheet.track.id,
-                        onToggleLike = {
-                            player.toggleLike()
-                            sheets.dismiss()
-                        },
-                        onOpenArtist = {
-                            sheets.dismiss()
-                            openArtist(it.id, it.name)
-                        },
-                        onOpenAlbum = { id, name ->
-                            sheets.dismiss()
-                            openAlbum(id, name)
-                        },
-                    )
-                }
-            }
+            AppSheets(sheets, player, quality = settings.quality.label, wifiOnly = settings.downloadOnWifiOnly)
         }
     }
     }
 }
 
-/** A short message from the player (a song skipped, a like that didn't stick), gone after a few seconds. */
+/** A short message (a song skipped, a playlist made, a like that didn't stick), gone after a few seconds. */
 @Composable
-private fun NoticeBanner(player: PlayerState) {
-    val notice = player.notice
+private fun NoticeBanner(notice: String?, onDismiss: () -> Unit, floating: Boolean = false) {
     LaunchedEffect(notice) {
         if (notice != null) {
             kotlinx.coroutines.delay(4_000)
-            player.dismissNotice()
+            onDismiss()
         }
     }
     androidx.compose.animation.AnimatedVisibility(
@@ -348,6 +372,7 @@ private fun NoticeBanner(player: PlayerState) {
         val style = Lanyin.style
         var shown by remember { mutableStateOf("") }
         if (notice != null) shown = notice
+        val plain = style.dock == DockKind.Docked && !floating
         Text(
             shown,
             style = style.type.caption,
@@ -355,9 +380,10 @@ private fun NoticeBanner(player: PlayerState) {
             maxLines = 2,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = if (style.dock == DockKind.Docked) style.margin else 0.dp, vertical = 6.dp)
-                .then(if (style.dock == DockKind.Docked) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome))
-                .pressable { player.dismissNotice() }
+                .padding(horizontal = if (plain) style.margin else 0.dp, vertical = 6.dp)
+                // Over the player even docked themes give it a surface, to read over the lyrics.
+                .then(if (plain) Modifier else Modifier.background(style.colors.bg, style.chipShape).themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome))
+                .pressable(onClick = onDismiss)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         )
     }

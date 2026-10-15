@@ -5,12 +5,18 @@ import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.PlaceholderDataSource
 import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.datasource.TransferListener
+import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.ContentMetadata
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
+import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
@@ -23,7 +29,8 @@ import okhttp3.OkHttpClient
 /**
  * How audio reaches the player. Queue items carry `lanyin://song/{id}`; the address is resolved
  * only when the song is opened (NetEase's expire), and what has been heard is kept in a 1 GB
- * cache keyed by song and quality, so a replay needs no network at all.
+ * cache keyed by song and quality, so a replay needs no network at all. Downloaded songs live in
+ * a store of their own that is never evicted, and are played from there whenever complete.
  */
 @OptIn(UnstableApi::class)
 class AudioPipeline(context: Context, private val http: OkHttpClient, private val resolver: StreamResolver) {
@@ -34,19 +41,41 @@ class AudioPipeline(context: Context, private val http: OkHttpClient, private va
 
     private val appContext = context.applicationContext
 
+    val database: DatabaseProvider by lazy { StandaloneDatabaseProvider(appContext) }
+
     private val cache: SimpleCache by lazy {
-        SimpleCache(File(appContext.cacheDir, "audio"), LeastRecentlyUsedCacheEvictor(CACHE_BYTES), StandaloneDatabaseProvider(appContext))
+        SimpleCache(File(appContext.cacheDir, "audio"), LeastRecentlyUsedCacheEvictor(CACHE_BYTES), database)
     }
 
-    val dataSourceFactory: DataSource.Factory by lazy {
+    /** Downloads: kept until removed, in app storage. */
+    val downloadCache: SimpleCache by lazy { SimpleCache(File(appContext.filesDir, "downloads"), NoOpCacheEvictor(), database) }
+
+    private val network: DataSource.Factory by lazy {
         val okhttp = OkHttpDataSource.Factory(http)
-        val network = DataSource.Factory { SchemeFallbackDataSource(okhttp.createDataSource()) }
-        val resolving = ResolvingDataSource.Factory(network) { spec -> resolve(spec) }
-        CacheDataSource.Factory()
+        DataSource.Factory { SchemeFallbackDataSource(okhttp.createDataSource()) }
+    }
+
+    /** Resolves a song's address and fetches it, for listening (a VIP song's preview clip included). */
+    val networkFactory: DataSource.Factory by lazy { ResolvingDataSource.Factory(network) { spec -> resolve(spec, allowTrial = true) } }
+
+    /** The same for downloads, which refuse a preview clip: it would be kept as if it were the song. */
+    val downloadFactory: DataSource.Factory by lazy { ResolvingDataSource.Factory(network) { spec -> resolve(spec, allowTrial = false) } }
+
+    val dataSourceFactory: DataSource.Factory by lazy {
+        val streaming = CacheDataSource.Factory()
             .setCache(cache)
-            .setUpstreamDataSourceFactory(resolving)
+            .setUpstreamDataSourceFactory(networkFactory)
             .setCacheKeyFactory { spec -> songId(spec.uri)?.let { "song:$it:${preferred.level}" } ?: spec.uri.toString() }
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+        // Read-only, and only ever opened for a download that is complete.
+        val offline = CacheDataSource.Factory()
+            .setCache(downloadCache)
+            .setCacheWriteDataSinkFactory(null)
+            .setCacheKeyFactory { spec -> songId(spec.uri)?.let(::downloadKey) ?: spec.uri.toString() }
+            .setUpstreamDataSourceFactory(PlaceholderDataSource.FACTORY)
+        DataSource.Factory {
+            RoutingDataSource(offline.createDataSource(), streaming.createDataSource()) { spec -> songId(spec.uri)?.let(::isDownloaded) == true }
+        }
     }
 
     /** Don't retry a song NetEase has refused; retry network trouble as usual. */
@@ -55,10 +84,14 @@ class AudioPipeline(context: Context, private val http: OkHttpClient, private va
             if (generateSequence(info.exception as Throwable?) { it.cause }.any { it is UnplayableException }) C.TIME_UNSET else super.getRetryDelayMsFor(info)
     }
 
-    private fun resolve(spec: DataSpec): DataSpec {
+    /** Whether all of [songId]'s audio is in the download store. */
+    fun isDownloaded(songId: Long): Boolean = isComplete(downloadCache, downloadKey(songId))
+
+    private fun resolve(spec: DataSpec, allowTrial: Boolean): DataSpec {
         val id = songId(spec.uri) ?: return spec
-        // Called on the player's loading thread, which may block.
+        // Called on the player's (or downloader's) loading thread, which may block.
         val stream = runBlocking { resolver.resolve(id, preferred) }
+        if (stream.trialOnly && !allowTrial) throw UnplayableException("只能试听，下载不了完整的歌")
         return spec.buildUpon().setUri(Uri.parse(stream.url)).build()
     }
 
@@ -79,6 +112,49 @@ class AudioPipeline(context: Context, private val http: OkHttpClient, private va
         fun uriFor(songId: String): Uri = Uri.parse("lanyin://song/$songId")
 
         fun songId(uri: Uri): Long? = if (uri.scheme == "lanyin" && uri.host == "song") uri.lastPathSegment?.toLongOrNull() else null
+
+        /** A download's key in its store; any quality, so changing the setting keeps it. */
+        fun downloadKey(songId: Long) = "download:$songId"
+
+        fun isComplete(cache: Cache, key: String): Boolean {
+            val length = ContentMetadata.getContentLength(cache.getContentMetadata(key))
+            return length > 0 && cache.isCached(key, 0, length)
+        }
+    }
+}
+
+/** Opens [offline] when [useOffline] says so for the request, [online] otherwise. */
+@OptIn(UnstableApi::class)
+internal class RoutingDataSource(
+    private val offline: DataSource,
+    private val online: DataSource,
+    private val useOffline: (DataSpec) -> Boolean,
+) : DataSource {
+    private var current: DataSource? = null
+
+    override fun addTransferListener(transferListener: TransferListener) {
+        offline.addTransferListener(transferListener)
+        online.addTransferListener(transferListener)
+    }
+
+    override fun open(dataSpec: DataSpec): Long {
+        val source = if (useOffline(dataSpec)) offline else online
+        current = source
+        return source.open(dataSpec)
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int = checkNotNull(current).read(buffer, offset, length)
+
+    override fun getUri(): Uri? = current?.uri
+
+    override fun getResponseHeaders(): Map<String, List<String>> = current?.responseHeaders ?: emptyMap()
+
+    override fun close() {
+        try {
+            current?.close()
+        } finally {
+            current = null
+        }
     }
 }
 

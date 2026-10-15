@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -31,6 +33,8 @@ fun ThemedTextField(
     singleLine: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    /** On a sheet or card rather than the page: a tinted well, since a surface wouldn't show. */
+    onSurface: Boolean = false,
 ) {
     val style = Lanyin.style
     val c = style.colors
@@ -40,7 +44,14 @@ fun ThemedTextField(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 52.dp)
-                .then(if (hairline) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Flat).padding(horizontal = 18.dp)),
+                .then(
+                    when {
+                        hairline -> Modifier
+                        onSurface && style.edge != EdgeKind.Brutal ->
+                            Modifier.clip(style.chipShape).background(c.content.copy(alpha = if (style.dark) 0.1f else 0.06f)).padding(horizontal = 18.dp)
+                        else -> Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Flat).padding(horizontal = 18.dp)
+                    },
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (leading != null) {

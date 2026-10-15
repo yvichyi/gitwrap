@@ -18,20 +18,27 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,28 +47,54 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.lanyin.player.core.model.Artist
+import io.lanyin.player.core.model.Playlist
+import io.lanyin.player.core.model.Song
+import io.lanyin.player.playback.DownloadItem
+import io.lanyin.player.playback.DownloadState
 import io.lanyin.player.ui.design.CoverImage
 import io.lanyin.player.ui.design.Hairline
 import io.lanyin.player.ui.design.LineIcon
+import io.lanyin.player.ui.design.SurfaceTone
+import io.lanyin.player.ui.design.ThemedButton
 import io.lanyin.player.ui.design.ThemedIcon
+import io.lanyin.player.ui.design.ThemedSwitch
+import io.lanyin.player.ui.design.ThemedTextField
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.player.PlayerState
-import io.lanyin.player.ui.player.Track
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
+
+/** Where a song's ⋯ was opened from, for the actions that only make sense there. */
+@Immutable
+sealed interface SongContext {
+    data object None : SongContext
+    /** A playlist of the listener's own: the song can be taken out of it. */
+    data class OwnPlaylist(val id: Long, val name: String) : SongContext
+    /** The cloud drive: the upload can be deleted. */
+    data object Cloud : SongContext
+}
 
 /** A panel that slides up over everything. */
 @Immutable
 sealed interface Sheet {
     data object Queue : Sheet
-    data class TrackActions(val track: Track) : Sheet
+    data class TrackActions(val song: Song, val context: SongContext = SongContext.None) : Sheet
+    data class AddToPlaylist(val songs: List<Song>) : Sheet
+    /** Name a new playlist; [songs] go into it once made. */
+    data class NewPlaylist(val songs: List<Song> = emptyList()) : Sheet
+    data class RenamePlaylist(val playlist: Playlist) : Sheet
+    data class PlaylistActions(val playlist: Playlist) : Sheet
+    data class ConfirmDownload(val songs: List<Song>, val title: String) : Sheet
 }
 
 /** Opens a sheet from anywhere below the app shell. */
@@ -113,7 +146,7 @@ fun SheetLayer(state: SheetState, content: @Composable (Sheet) -> Unit) {
                 style.hardEdge || style.edge == EdgeKind.Hairline -> RectangleShape
                 else -> RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
             }
-            BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+            BoxWithConstraints(Modifier.fillMaxWidth().imePadding(), contentAlignment = Alignment.BottomCenter) {
                 Column(
                     Modifier
                         .widthIn(max = 600.dp)
@@ -121,7 +154,7 @@ fun SheetLayer(state: SheetState, content: @Composable (Sheet) -> Unit) {
                         .heightIn(max = maxHeight * 0.72f)
                         // An opaque base under the theme's surface: the player must not show through a list.
                         .background(c.bg, shape)
-                        .then(if (style.edge == EdgeKind.Hairline) Modifier else Modifier.themedSurface(shape = shape, tone = io.lanyin.player.ui.design.SurfaceTone.Chrome))
+                        .then(if (style.edge == EdgeKind.Hairline) Modifier else Modifier.themedSurface(shape = shape, tone = SurfaceTone.Chrome))
                         .clickable(remember { MutableInteractionSource() }, indication = null) {}
                         .navigationBarsPadding()
                         .padding(top = 10.dp, bottom = 8.dp),
@@ -145,16 +178,29 @@ fun SheetLayer(state: SheetState, content: @Composable (Sheet) -> Unit) {
     }
 }
 
+/** A sheet's heading, with an optional note after it. */
+@Composable
+private fun SheetTitle(title: String, note: String? = null, trailing: @Composable () -> Unit = {}) {
+    val style = Lanyin.style
+    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = style.type.title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        if (note != null) {
+            Spacer(Modifier.width(10.dp))
+            Text(note, style = style.type.caption, color = style.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        } else {
+            Spacer(Modifier.weight(1f))
+        }
+        trailing()
+    }
+}
+
 /** What plays next; tap one to jump to it. */
 @Composable
 fun QueueSheet(player: PlayerState) {
     val style = Lanyin.style
     val c = style.colors
     val list = rememberLazyListState(initialFirstVisibleItemIndex = (player.index - 2).coerceAtLeast(0))
-    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("播放队列", style = style.type.title)
-        Spacer(Modifier.width(10.dp))
-        Text("${player.trackCount} 首 · ${player.playlistName}", style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+    SheetTitle("播放队列", "${player.trackCount} 首 · ${player.playlistName}") {
         Text(
             player.playMode.label,
             style = style.type.caption.copy(fontWeight = FontWeight.Medium),
@@ -188,31 +234,61 @@ fun QueueSheet(player: PlayerState) {
     }
 }
 
-/** The song's ⋯ menu: like it, go to its artists or album. */
+/**
+ * A song's ⋯ menu: like it, put it in a playlist, download it, read its comments, go to its
+ * artists or album; and, depending on where it was opened, take it out of a playlist or the cloud.
+ */
 @Composable
 fun TrackActionsSheet(
-    track: Track,
+    song: Song,
     liked: Boolean,
     onToggleLike: () -> Unit,
     onOpenArtist: (Artist) -> Unit,
     onOpenAlbum: (Long, String) -> Unit,
+    context: SongContext = SongContext.None,
+    download: DownloadItem? = null,
+    onAddToPlaylist: () -> Unit = {},
+    onDownload: () -> Unit = {},
+    onRemoveDownload: () -> Unit = {},
+    onComments: () -> Unit = {},
+    onRemoveFromPlaylist: () -> Unit = {},
+    onDeleteFromCloud: () -> Unit = {},
 ) {
     val style = Lanyin.style
     val c = style.colors
     Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        CoverImage(track.coverUrl, track.coverSeed, 48.dp, Modifier.size(48.dp).clip(style.artShape))
+        CoverImage(song.album.coverUrl, (song.id % 97).toInt(), 48.dp, Modifier.size(48.dp).clip(style.artShape))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(track.title, style = style.type.body.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(track.artist, style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(song.name, style = style.type.body.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(song.artistLine, style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
     Hairline(Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
-    ActionRow(if (liked) LineIcon.HeartFilled else LineIcon.Heart, if (liked) "从「我喜欢的音乐」移除" else "收藏到「我喜欢的音乐」", onToggleLike, tint = if (liked) c.like else c.content)
-    track.artists.filter { it.id != 0L }.take(4).forEach { a ->
-        ActionRow(LineIcon.User, "歌手：${a.name}", { onOpenArtist(a) })
+    Column(Modifier.verticalScroll(rememberScrollState())) {
+        ActionRow(if (liked) LineIcon.HeartFilled else LineIcon.Heart, if (liked) "从「我喜欢的音乐」移除" else "收藏到「我喜欢的音乐」", onToggleLike, tint = if (liked) c.like else c.content)
+        ActionRow(LineIcon.Plus, "添加到歌单", onAddToPlaylist)
+        when (download?.state) {
+            null -> ActionRow(LineIcon.Download, "下载", onDownload)
+            DownloadState.Failed -> ActionRow(LineIcon.Download, "下载失败，再试一次", onDownload)
+            DownloadState.Queued, DownloadState.Downloading -> ConfirmRow(
+                LineIcon.Close,
+                if (download.state == DownloadState.Queued) "等待下载 · 取消" else "下载中 ${(download.progress * 100).toInt()}% · 取消",
+                "再点一次，取消下载", onRemoveDownload,
+            )
+            DownloadState.Done -> ConfirmRow(LineIcon.Check, "已下载 · 删除下载", "再点一次，删除下载的文件", onRemoveDownload, tint = c.accent)
+        }
+        ActionRow(LineIcon.Comment, "评论", onComments)
+        song.artists.filter { it.id != 0L }.take(4).forEach { a ->
+            ActionRow(LineIcon.User, "歌手：${a.name}", { onOpenArtist(a) })
+        }
+        if (song.album.id != 0L) ActionRow(LineIcon.Library, "专辑：${song.album.name}", { onOpenAlbum(song.album.id, song.album.name) })
+        when (context) {
+            is SongContext.OwnPlaylist -> ConfirmRow(LineIcon.Trash, "从「${context.name}」中删除", "再点一次，从歌单删除", onRemoveFromPlaylist)
+            SongContext.Cloud -> ConfirmRow(LineIcon.Trash, "从云盘删除", "再点一次，从云盘删除这个文件", onDeleteFromCloud)
+            SongContext.None -> Unit
+        }
     }
-    if (track.albumId != 0L) ActionRow(LineIcon.Library, "专辑：${track.album}", { onOpenAlbum(track.albumId, track.album) })
 }
 
 @Composable
@@ -225,5 +301,131 @@ private fun ActionRow(icon: LineIcon, label: String, onClick: () -> Unit, tint: 
         ThemedIcon(icon, null, tint = tint, size = 22.dp)
         Spacer(Modifier.width(16.dp))
         Text(label, style = style.type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** An action that can't be undone: the first tap asks, the second does it. */
+@Composable
+private fun ConfirmRow(icon: LineIcon, label: String, confirmLabel: String, onConfirm: () -> Unit, tint: Color = Lanyin.colors.content) {
+    var armed by remember { mutableStateOf(false) }
+    val c = Lanyin.colors
+    ActionRow(
+        icon, if (armed) confirmLabel else label,
+        onClick = { if (armed) onConfirm() else armed = true },
+        tint = if (armed) c.like else tint,
+    )
+}
+
+/** Pick one of the listener's playlists to put [count] songs in, or make a new one. */
+@Composable
+fun AddToPlaylistSheet(count: Int, playlists: List<Playlist>?, onPick: (Playlist) -> Unit, onNew: () -> Unit) {
+    val style = Lanyin.style
+    val c = style.colors
+    SheetTitle("添加到歌单", if (count > 1) "$count 首" else null)
+    LazyColumn(Modifier.fillMaxWidth()) {
+        item {
+            Row(
+                Modifier.fillMaxWidth().pressable(onClick = onNew).padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier.size(48.dp).then(if (style.edge == EdgeKind.Hairline) Modifier.background(c.content.copy(alpha = 0.06f)) else Modifier.themedSurface(shape = style.artShape, tone = SurfaceTone.Flat)),
+                    contentAlignment = Alignment.Center,
+                ) { ThemedIcon(LineIcon.Plus, null, tint = c.accent, size = 22.dp) }
+                Spacer(Modifier.width(14.dp))
+                Text("新建歌单", style = style.type.body)
+            }
+        }
+        when {
+            playlists == null -> item { Text("正在同步你的歌单…", style = style.type.caption, color = c.muted, modifier = Modifier.padding(20.dp)) }
+            playlists.isEmpty() -> item { Text("还没有自己建的歌单", style = style.type.caption, color = c.muted, modifier = Modifier.padding(20.dp)) }
+            else -> items(playlists, key = { it.id }) { p ->
+                Row(
+                    Modifier.fillMaxWidth().pressable { onPick(p) }.padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CoverImage(p.coverUrl, (p.id % 97).toInt(), 48.dp, Modifier.size(48.dp).clip(style.artShape))
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(p.name, style = style.type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("${p.trackCount} 首", style = style.type.caption, color = c.muted)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A name to type: a new playlist (with the choice to keep it private) or a new name for one.
+ * [onConfirm] gets the name and whether it's private.
+ */
+@Composable
+fun NameSheet(
+    title: String,
+    initial: String,
+    confirmLabel: String,
+    onConfirm: (String, Boolean) -> Unit,
+    askPrivate: Boolean = false,
+    busy: Boolean = false,
+) {
+    val style = Lanyin.style
+    val c = style.colors
+    var name by remember { mutableStateOf(initial) }
+    var private by remember { mutableStateOf(false) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    val valid = name.isNotBlank() && name.length <= 40 && !busy
+    SheetTitle(title)
+    Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+        ThemedTextField(
+            name, { name = it.take(40) }, "歌单名字",
+            Modifier.focusRequester(focus),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (valid) onConfirm(name.trim(), private) }),
+            onSurface = true,
+        )
+        if (askPrivate) {
+            Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("隐私歌单", style = style.type.body)
+                    Text("只有你自己看得到", style = style.type.caption, color = c.muted)
+                }
+                ThemedSwitch(private, { private = it })
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("${name.length} / 40", style = style.type.caption, color = c.muted, modifier = Modifier.weight(1f))
+            ThemedButton(if (busy) "请稍候…" else confirmLabel, { onConfirm(name.trim(), private) }, enabled = valid)
+        }
+    }
+}
+
+/** The ⋯ of a playlist of one's own. */
+@Composable
+fun PlaylistActionsSheet(playlist: Playlist, onRename: () -> Unit, onDelete: () -> Unit) {
+    SheetTitle(playlist.name, "${playlist.trackCount} 首")
+    ActionRow(LineIcon.Edit, "改名", onRename)
+    ConfirmRow(LineIcon.Trash, "删除歌单", "再点一次，删除「${playlist.name}」", onDelete)
+}
+
+/** Asks before downloading a whole list. */
+@Composable
+fun ConfirmDownloadSheet(title: String, count: Int, quality: String, wifiOnly: Boolean, onConfirm: () -> Unit) {
+    val style = Lanyin.style
+    val c = style.colors
+    SheetTitle("下载「$title」")
+    Text(
+        buildString {
+            append("$count 首，按「$quality」音质下载，无损的歌每首约 30 MB。")
+            if (wifiOnly) append("只在连着 Wi-Fi 时下载。")
+            append("下载的歌只能在澜音里播放。")
+        },
+        style = style.type.body, color = c.muted,
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+    )
+    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+        Spacer(Modifier.weight(1f))
+        ThemedButton("下载 $count 首", onConfirm, enabled = count > 0)
     }
 }

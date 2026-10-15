@@ -6,14 +6,27 @@ import io.lanyin.player.core.model.AlbumHit
 import io.lanyin.player.core.model.ArtistDetail
 import io.lanyin.player.core.model.ArtistHit
 import io.lanyin.player.core.model.Artist
+import io.lanyin.player.core.model.CloudPage
+import io.lanyin.player.core.model.CloudSong
+import io.lanyin.player.core.model.Comment
+import io.lanyin.player.core.model.CommentPage
+import io.lanyin.player.core.model.CommentSort
+import io.lanyin.player.core.model.CommentUser
 import io.lanyin.player.core.model.LyricsSource
 import io.lanyin.player.core.model.Playlist
 import io.lanyin.player.core.model.Quality
+import io.lanyin.player.core.model.QuotedComment
+import io.lanyin.player.core.model.RankedSong
+import io.lanyin.player.core.model.RecentPlay
 import io.lanyin.player.core.model.Song
 import io.lanyin.player.core.model.Stream
 import io.lanyin.player.core.model.UserProfile
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.put
@@ -216,6 +229,158 @@ class NeteaseApi(private val client: NeteaseClient) {
             buildJsonObject { put("s", keywords); put("type", type); put("limit", limit); put("offset", 0); put("total", true) },
         ).requireOk()
 
+    // —— Cloud drive ——
+
+    suspend fun cloud(offset: Int = 0, limit: Int = 200): CloudPage {
+        val dto = client.weapi("/api/v1/cloud/get", buildJsonObject { put("limit", limit); put("offset", offset) }).requireOk().decode<CloudDto>()
+        return CloudPage(dto.data.map { it.toCloudSong() }, dto.count, dto.size, dto.maxSize, dto.hasMore)
+    }
+
+    suspend fun deleteFromCloud(songId: Long) {
+        client.weapi("/api/cloud/del", buildJsonObject { put("songIds", JsonArray(listOf(JsonPrimitive(songId)))) }).requireOk()
+    }
+
+    // —— Comments ——
+
+    /** One page of a song's comments; [cursor] comes from the previous page (null for the first). */
+    suspend fun comments(songId: Long, sort: CommentSort, pageNo: Int = 1, cursor: String? = null, pageSize: Int = 20): CommentPage {
+        val r = client.eapi(
+            "/api/v2/resource/comments",
+            buildJsonObject {
+                put("threadId", "$SONG_THREAD$songId")
+                put("pageNo", pageNo)
+                put("showInner", true)
+                put("pageSize", pageSize)
+                put(
+                    "cursor",
+                    when (sort) {
+                        CommentSort.RECOMMENDED -> ((pageNo - 1) * pageSize).toString()
+                        CommentSort.HOT -> "normalHot#${(pageNo - 1) * pageSize}"
+                        CommentSort.NEWEST -> cursor ?: "0"
+                    },
+                )
+                put("sortType", sort.code)
+            },
+        ).requireOk()
+        val data = r.decode<CommentsDto>().data ?: return CommentPage(emptyList(), 0, false, null)
+        return CommentPage(data.comments.map { it.toComment() }, data.totalCount, data.hasMore, data.cursor)
+    }
+
+    suspend fun likeComment(songId: Long, commentId: Long, like: Boolean) {
+        client.weapi(
+            "/api/v1/comment/${if (like) "like" else "unlike"}",
+            buildJsonObject { put("threadId", "$SONG_THREAD$songId"); put("commentId", commentId) },
+        ).requireOk()
+    }
+
+    /** Posts a comment, or a reply to [replyTo]. Returns it as NetEase stored it, when it says. */
+    suspend fun postComment(songId: Long, content: String, replyTo: Long? = null): Comment? {
+        val r = client.weapi(
+            "/api/resource/comments/${if (replyTo == null) "add" else "reply"}",
+            buildJsonObject {
+                put("threadId", "$SONG_THREAD$songId")
+                put("content", content)
+                replyTo?.let { put("commentId", it) }
+            },
+        ).requireOk()
+        return r.decode<PostedCommentDto>().comment?.takeIf { it.commentId != 0L }?.toComment()
+    }
+
+    // —— Playlists of one's own ——
+
+    /** Creates a playlist; [private] ones only the owner sees. Returns the new playlist. */
+    suspend fun createPlaylist(name: String, private: Boolean = false): Playlist {
+        val r = client.weapi(
+            "/api/playlist/create",
+            buildJsonObject { put("name", name); put("privacy", if (private) "10" else "0"); put("type", "NORMAL") },
+        ).requireOk()
+        val dto = r.decode<CreatedPlaylistDto>()
+        return dto.playlist?.toPlaylist()?.takeIf { it.id != 0L } ?: Playlist(dto.id, name, null, 0)
+    }
+
+    suspend fun deletePlaylist(id: Long) {
+        client.weapi("/api/playlist/remove", buildJsonObject { put("ids", "[$id]") }).requireOk()
+    }
+
+    suspend fun renamePlaylist(id: Long, name: String) {
+        client.eapi("/api/playlist/update/name", buildJsonObject { put("id", id); put("name", name) }).requireOk()
+    }
+
+    suspend fun addToPlaylist(playlistId: Long, songIds: List<Long>) = manipulateTracks("add", playlistId, songIds)
+
+    suspend fun removeFromPlaylist(playlistId: Long, songIds: List<Long>) = manipulateTracks("del", playlistId, songIds)
+
+    private suspend fun manipulateTracks(op: String, playlistId: Long, songIds: List<Long>) {
+        fun body(ids: List<Long>) = buildJsonObject {
+            put("op", op)
+            put("pid", playlistId)
+            put("trackIds", ids.joinToString(",", "[", "]") { "\"$it\"" })
+            put("imme", "true")
+        }
+        val r = client.eapi("/api/playlist/manipulate/tracks", body(songIds))
+        // NetEase sometimes answers 512 to this; the reference client sends the ids twice then.
+        val final = if (r.code == 512) client.eapi("/api/playlist/manipulate/tracks", body(songIds + songIds)) else r
+        if (final.code == 502) throw NeteaseException(502, final.message ?: "歌单里已经有这首歌了")
+        final.requireOk()
+    }
+
+    /** Collects someone else's playlist into one's library, or lets it go. */
+    suspend fun subscribePlaylist(id: Long, subscribe: Boolean) {
+        val data = buildJsonObject {
+            put("id", id)
+            if (subscribe) put("checkToken", NeteaseClient.CHECK_TOKEN)
+        }
+        client.eapi("/api/playlist/${if (subscribe) "subscribe" else "unsubscribe"}", data, checkToken = true).requireOk()
+    }
+
+    // —— Play records ——
+
+    /**
+     * Tells NetEase a song was listened to for [seconds], so it shows in the account's history and
+     * 听歌排行. [end] is `playend` when it played through, `ui` when skipped.
+     */
+    suspend fun scrobble(songId: Long, seconds: Long, sourceId: Long = 0, end: String = "playend") {
+        val log = buildJsonArray {
+            add(
+                buildJsonObject {
+                    put("action", "play")
+                    put(
+                        "json",
+                        buildJsonObject {
+                            put("download", 0)
+                            put("end", end)
+                            put("id", songId)
+                            put("sourceId", if (sourceId != 0L) sourceId.toString() else "")
+                            put("time", seconds)
+                            put("type", "song")
+                            put("wifi", 0)
+                            put("source", "list")
+                            put("mainsite", 1)
+                            put("content", "")
+                        },
+                    )
+                },
+            )
+        }
+        client.weapi("/api/feedback/weblog", buildJsonObject { put("logs", log.toString()) }).requireOk()
+    }
+
+    /** What the account played lately, on any device, newest first. */
+    suspend fun recentPlays(limit: Int = 100): List<RecentPlay> =
+        client.weapi("/api/play-record/song/list", buildJsonObject { put("limit", limit) }).requireOk()
+            .decode<RecentPlaysDto>().data?.list.orEmpty()
+            .mapNotNull { item -> item.data?.toSong()?.takeIf { it.id != 0L }?.let { RecentPlay(it, item.playTime) } }
+
+    /** 听歌排行: the last week's or all-time most played. Fails with -2 when the account hides it. */
+    suspend fun listeningRanking(uid: Long, week: Boolean): List<RankedSong> {
+        val r = client.weapi("/api/v1/play/record", buildJsonObject { put("uid", uid); put("type", if (week) 1 else 0) })
+        if (r.code == -2) throw NeteaseException(-2, "这个账号没有公开听歌排行")
+        val dto = r.requireOk().decode<RankingDto>()
+        return (if (week) dto.weekData else dto.allData).orEmpty().mapNotNull { row ->
+            row.song?.toSong()?.let { RankedSong(it, row.playCount, row.score) }
+        }
+    }
+
     // —— Playback ——
 
     suspend fun lyrics(songId: Long): LyricsSource {
@@ -259,6 +424,11 @@ class NeteaseApi(private val client: NeteaseClient) {
     private fun NeteaseResponse.requireOk(): NeteaseResponse = if (code == 200) this else throw NeteaseException(code, message)
 
     private inline fun <reified T> NeteaseResponse.decode(): T = NeteaseClient.json.decodeFromJsonElement(body)
+
+    private companion object {
+        /** Comment threads on songs are named `R_SO_4_{id}`. */
+        const val SONG_THREAD = "R_SO_4_"
+    }
 }
 
 // —— Wire formats ——
@@ -396,6 +566,93 @@ internal class LyricDto(
     val pureMusic: Boolean? = null,
     val nolyric: Boolean? = null,
 )
+
+@Serializable
+internal class CloudDto(
+    val data: List<CloudItemDto> = emptyList(),
+    val count: Int = 0,
+    // Byte counts; NetEase sends these as strings.
+    val size: Long = 0,
+    val maxSize: Long = 0,
+    val hasMore: Boolean = false,
+)
+
+@Serializable
+internal class CloudItemDto(
+    val simpleSong: SongDto? = null,
+    val songId: Long = 0,
+    val songName: String? = null,
+    val artist: String? = null,
+    val album: String? = null,
+    val fileName: String? = null,
+    val fileSize: Long = 0,
+    val bitrate: Int = 0,
+    val addTime: Long = 0,
+) {
+    /** Uploads NetEase couldn't match keep their own names; fall back to them where the song record is blank. */
+    fun toCloudSong(): CloudSong {
+        val base = simpleSong?.toSong()
+        val song = Song(
+            id = base?.id?.takeIf { it != 0L } ?: songId,
+            name = base?.name?.ifEmpty { null } ?: songName?.ifEmpty { null } ?: fileName?.substringBeforeLast('.').orEmpty(),
+            artists = base?.artists?.filter { it.name.isNotBlank() }?.ifEmpty { null }
+                ?: listOfNotNull(artist?.takeIf { it.isNotBlank() }?.let { Artist(0, it) }),
+            album = base?.album?.takeIf { it.name.isNotEmpty() } ?: Album(0, album.orEmpty(), base?.album?.coverUrl),
+            durationMs = base?.durationMs ?: 0,
+            // The listener's own upload: no VIP mark, whatever the catalogue says.
+            fee = 0,
+            alias = base?.alias,
+        )
+        return CloudSong(song, fileName.orEmpty(), fileSize, bitrate, addTime)
+    }
+}
+
+@Serializable internal class CommentsDto(val data: CommentsDataDto? = null)
+
+@Serializable
+internal class CommentsDataDto(
+    val comments: List<CommentDto> = emptyList(),
+    val totalCount: Int = 0,
+    val hasMore: Boolean = false,
+    val cursor: String? = null,
+)
+
+@Serializable internal class CommentUserDto(val userId: Long = 0, val nickname: String? = null, val avatarUrl: String? = null)
+@Serializable internal class BeRepliedDto(val user: CommentUserDto? = null, val content: String? = null)
+@Serializable internal class IpLocationDto(val location: String? = null)
+
+@Serializable
+internal class CommentDto(
+    val commentId: Long = 0,
+    val user: CommentUserDto? = null,
+    val content: String? = null,
+    val time: Long = 0,
+    val likedCount: Int = 0,
+    val liked: Boolean = false,
+    val beReplied: List<BeRepliedDto>? = null,
+    val ipLocation: IpLocationDto? = null,
+) {
+    fun toComment() = Comment(
+        id = commentId,
+        user = CommentUser(user?.userId ?: 0, user?.nickname.orEmpty(), user?.avatarUrl?.https()),
+        content = content.orEmpty(),
+        timeMs = time,
+        likedCount = likedCount,
+        liked = liked,
+        replyTo = beReplied?.firstOrNull()?.let { QuotedComment(it.user?.nickname.orEmpty(), it.content.orEmpty()) },
+        location = ipLocation?.location?.takeIf { it.isNotBlank() },
+    )
+}
+
+@Serializable internal class PostedCommentDto(val comment: CommentDto? = null)
+@Serializable internal class CreatedPlaylistDto(val id: Long = 0, val playlist: PlaylistDto? = null)
+
+@Serializable internal class RecentPlaysDto(val data: RecentPlaysDataDto? = null)
+@Serializable internal class RecentPlaysDataDto(val list: List<RecentPlayDto> = emptyList())
+@Serializable internal class RecentPlayDto(val playTime: Long = 0, val data: SongDto? = null)
+
+@Serializable internal class RankingDto(val weekData: List<RankedSongDto>? = null, val allData: List<RankedSongDto>? = null)
+@Serializable internal class RankedSongDto(val playCount: Int = 0, val score: Int = 0, val song: SongDto? = null)
 
 @Serializable internal class UrlDto(val data: List<UrlItemDto> = emptyList())
 

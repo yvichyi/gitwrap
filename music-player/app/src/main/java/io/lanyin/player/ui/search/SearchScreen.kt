@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +71,8 @@ fun SearchScreen(
     onOpenAlbum: (Long, String) -> Unit = { _, _ -> },
     onOpenPlaylist: (Long, String) -> Unit = { _, _ -> },
 ) {
+    val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
+    val downloaded = io.lanyin.player.ui.LocalAppServices.current?.downloads?.done?.collectAsState()?.value.orEmpty()
     val style = Lanyin.style
     val c = style.colors
     val m = style.margin
@@ -150,7 +153,9 @@ fun SearchScreen(
                                     keyboard?.hide()
                                     player?.play(value.items, i, "搜索「${query.trim()}」")
                                 },
-                                modifier = Modifier.padding(horizontal = m),
+                                onMore = { openSheet(io.lanyin.player.ui.music.Sheet.TrackActions(song)) },
+                                downloaded = song.id in downloaded,
+                                modifier = Modifier.padding(start = m, end = m - 10.dp),
                             )
                         }
                         is SearchResults.Artists -> itemsIndexed(value.items, key = { _, a -> a.id }) { _, a ->

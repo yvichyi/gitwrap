@@ -60,8 +60,12 @@ fun LibraryScreen(
     account: AccountState = AccountState.LoggedOut,
     onOpenPlaylist: (Long, String) -> Unit = { _, _ -> },
     onOpenRecent: () -> Unit = {},
+    onOpenCloud: () -> Unit = {},
+    onOpenDownloads: () -> Unit = {},
+    onOpenRanking: () -> Unit = {},
     /** Stands in for the network in previews. */
     previewPlaylists: List<Playlist>? = null,
+    previewDownloads: Int? = null,
 ) {
     val style = Lanyin.style
     val c = style.colors
@@ -73,6 +77,12 @@ fun LibraryScreen(
     val uid = (account as? AccountState.LoggedIn)?.profile?.userId
     val liked = loaded?.firstOrNull { it.specialType == 5 }
     val recentCount = LocalAppServices.current?.recent?.songs?.collectAsState()?.value?.size
+    val downloadItems = LocalAppServices.current?.downloads?.items?.collectAsState()?.value
+    val downloaded = previewDownloads ?: downloadItems?.count { it.state == io.lanyin.player.playback.DownloadState.Done }
+    val downloading = downloadItems?.count {
+        it.state == io.lanyin.player.playback.DownloadState.Queued || it.state == io.lanyin.player.playback.DownloadState.Downloading
+    } ?: 0
+    val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
     val entries = listOf(
         Entry(
             LineIcon.Heart, "我喜欢的音乐",
@@ -84,8 +94,17 @@ fun LibraryScreen(
             onClick = if (liked != null) ({ onOpenPlaylist(liked.id, "我喜欢的音乐") }) else if (signedIn) null else onLogin,
         ),
         Entry(LineIcon.History, "最近播放", recentCount?.let { if (it == 0) "还没有" else "$it 首 · 本机" } ?: "本机", onClick = onOpenRecent),
-        Entry(LineIcon.Download, "本地缓存", "边听边存，最多 1 GB"),
-        Entry(LineIcon.Cloud, "音乐云盘", if (signedIn) "下一版" else "登录后可用", onClick = if (signedIn) null else onLogin),
+        Entry(LineIcon.Chart, "听歌排行", if (signedIn) "最近一周" else "登录后可用", onClick = if (signedIn) onOpenRanking else onLogin),
+        Entry(
+            LineIcon.Download, "下载",
+            when {
+                downloading > 0 -> "正在下载 $downloading 首"
+                downloaded != null && downloaded > 0 -> "$downloaded 首"
+                else -> "还没有"
+            },
+            onClick = onOpenDownloads,
+        ),
+        Entry(LineIcon.Cloud, "音乐云盘", if (signedIn) "上传的歌" else "登录后可用", onClick = if (signedIn) onOpenCloud else onLogin),
     )
     val shelfItems = loaded?.let { all ->
         if (shelf == "创建的歌单") all.filter { it.creatorId == uid && it.specialType != 5 } else all.filter { it.creatorId != uid }
@@ -107,14 +126,34 @@ fun LibraryScreen(
                     when {
                         !signedIn && previewPlaylists == null -> Placeholder("登录后，这里会列出你$shelf")
                         shelfItems == null -> Placeholder("正在同步…")
-                        shelfItems.isEmpty() -> Placeholder(if (shelf == "创建的歌单") "还没有自己建的歌单" else "还没有收藏歌单")
+                        shelfItems.isEmpty() && shelf != "创建的歌单" -> Placeholder("还没有收藏歌单。在别人的歌单里点「收藏」")
                     }
                 }
+            }
+            if (signedIn && shelf == "创建的歌单" && shelfItems != null) {
+                item(key = "new") { NewPlaylistRow({ openSheet(io.lanyin.player.ui.music.Sheet.NewPlaylist()) }, Modifier.padding(horizontal = m)) }
             }
             items(shelfItems.orEmpty(), key = { it.id }) { p ->
                 PlaylistRow(p, { onOpenPlaylist(p.id, p.name) }, Modifier.padding(horizontal = m))
             }
         }
+    }
+}
+
+/** 「新建歌单」 at the top of the listener's own playlists. */
+@Composable
+private fun NewPlaylistRow(onClick: () -> Unit, modifier: Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    Row(modifier.fillMaxWidth().pressable(onClick = onClick).padding(top = 14.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(56.dp)
+                .then(if (style.edge == EdgeKind.Hairline) Modifier.border(1.dp, c.outline) else Modifier.themedSurface(shape = style.artShape, tone = SurfaceTone.Flat)),
+            contentAlignment = Alignment.Center,
+        ) { ThemedIcon(LineIcon.Plus, null, tint = c.accent, size = 24.dp) }
+        Spacer(Modifier.width(14.dp))
+        Text("新建歌单", style = style.type.body)
     }
 }
 

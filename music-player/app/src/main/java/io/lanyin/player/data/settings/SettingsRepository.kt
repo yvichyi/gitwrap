@@ -30,6 +30,10 @@ data class UiSettings(
     val lyricSize: LyricSize = LyricSize.Default,
     /** The stream quality to ask NetEase for; it steps down when a song isn't available at it. */
     val quality: Quality = Quality.LOSSLESS,
+    /** Downloads wait for Wi-Fi rather than use mobile data. */
+    val downloadOnWifiOnly: Boolean = true,
+    /** Tell NetEase what was listened to here, so the account's history and 听歌排行 include it. */
+    val syncPlays: Boolean = true,
 )
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -46,6 +50,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 keepScreenOnInLandscape = prefs[KEEP_SCREEN_ON] ?: true,
                 lyricSize = LyricSize.fromId(prefs[LYRIC_SIZE]),
                 quality = Quality.fromLevel(prefs[QUALITY]) ?: Quality.LOSSLESS,
+                downloadOnWifiOnly = prefs[DOWNLOAD_WIFI_ONLY] ?: true,
+                syncPlays = prefs[SYNC_PLAYS] ?: true,
             )
         }
 
@@ -63,6 +69,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setQuality(quality: Quality) = dataStore.edit { it[QUALITY] = quality.level }
 
+    suspend fun setDownloadOnWifiOnly(enabled: Boolean) = dataStore.edit { it[DOWNLOAD_WIFI_ONLY] = enabled }
+
+    suspend fun setSyncPlays(enabled: Boolean) = dataStore.edit { it[SYNC_PLAYS] = enabled }
+
     private companion object {
         val THEME = stringPreferencesKey("app_skin")
         val PLAYER_SKIN = stringPreferencesKey("player_skin")
@@ -71,5 +81,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on_landscape")
         val LYRIC_SIZE = stringPreferencesKey("lyric_size")
         val QUALITY = stringPreferencesKey("stream_quality")
+        val DOWNLOAD_WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
+        val SYNC_PLAYS = booleanPreferencesKey("sync_plays")
     }
 }
