@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.lanyin.player.ui.LanyinApp
+import io.lanyin.player.ui.LocalAppServices
 import io.lanyin.player.ui.design.ActivityOrientationController
 import io.lanyin.player.ui.design.LocalOrientationController
 import io.lanyin.player.ui.theme.LanyinTheme
@@ -23,7 +24,7 @@ class MainActivity : ComponentActivity() {
             val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
             val orientation = remember { ActivityOrientationController(this) }
             settings?.let { s ->
-                CompositionLocalProvider(LocalOrientationController provides orientation) {
+                CompositionLocalProvider(LocalOrientationController provides orientation, LocalAppServices provides container.services) {
                     LanyinTheme(theme = s.theme, mode = s.themeMode) {
                         LanyinApp(settings = s, settingsRepository = container.settings)
                     }

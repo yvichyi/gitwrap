@@ -12,6 +12,16 @@ import io.lanyin.player.data.settings.SettingsRepository
 import io.lanyin.player.data.settings.UiSettings
 import io.lanyin.player.ui.LanyinApp
 import io.lanyin.player.ui.login.LoginScreen
+import io.lanyin.player.ui.login.QrMatrix
+import io.lanyin.player.ui.login.QrPhase
+import io.lanyin.player.core.netease.QrStatus
+import io.lanyin.player.core.model.UserProfile
+import io.lanyin.player.data.account.AccountState
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.RGBLuminanceSource
+import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.qrcode.QRCodeReader
+import org.junit.Assert.assertEquals
 import io.lanyin.player.ui.player.DemoPlayerState
 import io.lanyin.player.ui.player.PlayerScreen
 import io.lanyin.player.ui.player.rememberSpinState
@@ -87,7 +97,7 @@ class ScreenshotTest {
     @Test fun ink_search_light() = capture("ink_search_light", AppTheme.INK, ThemeMode.LIGHT) { io.lanyin.player.ui.search.SearchScreen() }
     @Test fun ink_library_light() = capture("ink_library_light", AppTheme.INK, ThemeMode.LIGHT) { io.lanyin.player.ui.library.LibraryScreen(onLogin = {}) }
     @Test fun ink_library_dark() = capture("ink_library_dark", AppTheme.INK, ThemeMode.DARK) { io.lanyin.player.ui.library.LibraryScreen(onLogin = {}) }
-    @Test fun ink_login_light() = capture("ink_login_light", AppTheme.INK, ThemeMode.LIGHT) { LoginScreen(onBack = {}) }
+    @Test fun ink_login_light() = capture("ink_login_light", AppTheme.INK, ThemeMode.LIGHT) { LoginScreen(showingQr(), onBack = {}) }
     @Test fun ink_settings_light() {
         val repo = repo()
         capture("ink_settings_light", AppTheme.INK, ThemeMode.LIGHT) {
@@ -124,7 +134,7 @@ class ScreenshotTest {
     @Test fun dusk_home_dark() = app(AppTheme.DUSK, ThemeMode.DARK)
     @Test fun dusk_search_light() = capture("dusk_search_light", AppTheme.DUSK, ThemeMode.LIGHT) { io.lanyin.player.ui.search.SearchScreen() }
     @Test fun dusk_library_light() = capture("dusk_library_light", AppTheme.DUSK, ThemeMode.LIGHT) { io.lanyin.player.ui.library.LibraryScreen(onLogin = {}) }
-    @Test fun dusk_login_dark() = capture("dusk_login_dark", AppTheme.DUSK, ThemeMode.DARK) { LoginScreen(onBack = {}) }
+    @Test fun dusk_login_dark() = capture("dusk_login_dark", AppTheme.DUSK, ThemeMode.DARK) { LoginScreen(showingQr(), onBack = {}) }
     @Test fun dusk_settings_light() {
         val repo = repo()
         capture("dusk_settings_light", AppTheme.DUSK, ThemeMode.LIGHT) {
@@ -136,6 +146,61 @@ class ScreenshotTest {
 
     @Config(qualifiers = LANDSCAPE)
     @Test fun dusk_land_cover_dark() = capture("dusk_land_cover_dark", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+
+    // Login: the real code in each state, and the signed-in pages.
+    private val demoQrUrl = "https://music.163.com/login?codekey=7f2c1d9e-3b4a-4c5d-9e8f-0a1b2c3d4e5f"
+    private fun showingQr(scanned: QrStatus.Scanned? = null) = QrPhase.Showing(demoQrUrl, QrMatrix.encode(demoQrUrl), scanned)
+    private val demoProfile = UserProfile(1, "潮汐里的鲸", null, 11)
+
+    /** What a phone camera would read off the screenshot. */
+    private fun decodeQr(name: String): String {
+        val image = android.graphics.BitmapFactory.decodeFile(File("build/outputs/roborazzi/$name.png").absolutePath)
+        val pixels = IntArray(image.width * image.height)
+        image.getPixels(pixels, 0, image.width, 0, 0, image.width, image.height)
+        val bitmap = BinaryBitmap(HybridBinarizer(RGBLuminanceSource(image.width, image.height, pixels)))
+        return QRCodeReader().decode(bitmap, mapOf(com.google.zxing.DecodeHintType.TRY_HARDER to true)).text
+    }
+
+    // The on-screen code must scan whatever the theme does around it.
+    @Test fun login_qr_scans_ink() {
+        capture("login_qr_ink", AppTheme.INK, ThemeMode.LIGHT) { LoginScreen(showingQr(), onBack = {}) }
+        assertEquals(demoQrUrl, decodeQr("login_qr_ink"))
+    }
+    @Test fun login_qr_scans_neon() {
+        capture("login_qr_neon", AppTheme.NEON, ThemeMode.DARK) { LoginScreen(showingQr(), onBack = {}) }
+        assertEquals(demoQrUrl, decodeQr("login_qr_neon"))
+    }
+    @Test fun login_tide_dark_scanned() = capture("login_tide_dark_scanned", AppTheme.TIDE, ThemeMode.DARK) {
+        LoginScreen(showingQr(QrStatus.Scanned("潮汐里的鲸", null)), onBack = {})
+    }
+    @Test fun login_grid_expired() = capture("login_grid_expired", AppTheme.GRID, ThemeMode.LIGHT) {
+        LoginScreen(QrPhase.Error("二维码过期了", expired = true), onBack = {})
+    }
+    @Test fun login_dusk_saved() = capture("login_dusk_saved", AppTheme.DUSK, ThemeMode.LIGHT) {
+        LoginScreen(showingQr(), onBack = {}, saved = true, notice = "已存到相册「澜音」。打开网易云 → 扫一扫 → 右上角「相册」选它")
+    }
+    @Test fun login_sakura_success() = capture("login_sakura_success", AppTheme.SAKURA, ThemeMode.LIGHT) {
+        LoginScreen(QrPhase.Success, onBack = {})
+    }
+    @Test fun library_ink_logged_in() = capture("library_ink_logged_in", AppTheme.INK, ThemeMode.LIGHT) {
+        io.lanyin.player.ui.library.LibraryScreen(onLogin = {}, account = AccountState.LoggedIn(demoProfile))
+    }
+    @Test fun library_tide_logged_in() = capture("library_tide_logged_in", AppTheme.TIDE, ThemeMode.DARK) {
+        io.lanyin.player.ui.library.LibraryScreen(onLogin = {}, account = AccountState.LoggedIn(demoProfile))
+    }
+    @Test fun home_grid_logged_in() {
+        val repo = repo()
+        capture("home_grid_logged_in", AppTheme.GRID, ThemeMode.LIGHT) {
+            LanyinApp(UiSettings(theme = AppTheme.GRID, themeMode = ThemeMode.LIGHT), repo, player = playingAt(14_000), accountOverride = AccountState.LoggedIn(demoProfile))
+        }
+    }
+    @Config(qualifiers = "w392dp-h1700dp-port-xhdpi")
+    @Test fun settings_dusk_logged_in() {
+        val repo = repo()
+        capture("settings_dusk_logged_in", AppTheme.DUSK, ThemeMode.DARK) {
+            io.lanyin.player.ui.settings.SettingsScreen(UiSettings(theme = AppTheme.DUSK, themeMode = ThemeMode.DARK), repo, onBack = {}, account = AccountState.LoggedIn(demoProfile))
+        }
+    }
 
     // 格, the neo-brutalist Swiss theme: light only.
     @Test fun home_grid_light() = app(AppTheme.GRID, ThemeMode.LIGHT, PlayerSkin.COVER)
@@ -245,7 +310,7 @@ class ScreenshotTest {
     @Test fun port_ink_dark_lyrics() = capture("port_ink_dark_lyrics", AppTheme.INK, ThemeMode.DARK) { Player(PlayerSkin.LYRICS) }
 
     // Other pages.
-    @Test fun login_sakura_dark() = capture("login_sakura_dark", AppTheme.SAKURA, ThemeMode.DARK) { LoginScreen(onBack = {}) }
+    @Test fun login_sakura_dark() = capture("login_sakura_dark", AppTheme.SAKURA, ThemeMode.DARK) { LoginScreen(showingQr(), onBack = {}) }
 
     @Test fun settings_tide_light() {
         val repo = repo()

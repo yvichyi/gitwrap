@@ -40,6 +40,9 @@ import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.data.account.AccountState
+import io.lanyin.player.ui.design.Avatar
+import io.lanyin.player.ui.design.VipBadge
 
 private data class Entry(val icon: LineIcon, val title: String, val detail: String)
 
@@ -51,7 +54,7 @@ private val entries = listOf(
 )
 
 @Composable
-fun LibraryScreen(onLogin: () -> Unit) {
+fun LibraryScreen(onLogin: () -> Unit, account: AccountState = AccountState.LoggedOut) {
     val style = Lanyin.style
     val c = style.colors
     val m = style.margin
@@ -59,7 +62,7 @@ fun LibraryScreen(onLogin: () -> Unit) {
     CompositionLocalProvider(LocalContentColor provides c.content) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
             item { PageTitle("我的", Modifier.padding(horizontal = m)) }
-            item { Profile(onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
+            item { Profile(account, onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
             item {
                 Column(Modifier.padding(start = m, end = m, top = 36.dp)) {
                     SectionTitle("音乐库", index = 1)
@@ -81,7 +84,7 @@ fun LibraryScreen(onLogin: () -> Unit) {
 }
 
 @Composable
-private fun Profile(onLogin: () -> Unit, modifier: Modifier) {
+private fun Profile(account: AccountState, onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val hairline = style.edge == EdgeKind.Hairline
@@ -91,21 +94,46 @@ private fun Profile(onLogin: () -> Unit, modifier: Modifier) {
             .then(if (hairline) Modifier else Modifier.themedSurface(tone = SurfaceTone.Flat).padding(16.dp)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier
-                .size(56.dp)
-                .then(if (hairline) Modifier.clip(CircleShape).border(1.dp, c.outline, CircleShape) else Modifier.themedSurface(shape = style.roundShape, tone = SurfaceTone.Flat)),
-            contentAlignment = Alignment.Center,
-        ) {
-            ThemedIcon(LineIcon.User, null, tint = c.muted, size = 26.dp)
+        val profile = (account as? AccountState.LoggedIn)?.profile
+        if (profile != null) {
+            Avatar(profile.avatarUrl, profile.nickname, 56.dp)
+        } else {
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .then(if (hairline) Modifier.clip(CircleShape).border(1.dp, c.outline, CircleShape) else Modifier.themedSurface(shape = style.roundShape, tone = SurfaceTone.Flat)),
+                contentAlignment = Alignment.Center,
+            ) {
+                ThemedIcon(LineIcon.User, null, tint = c.muted, size = 26.dp)
+            }
         }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text("未登录", style = style.type.title, maxLines = 1)
-            Text("同步你的歌单与红心", style = style.type.caption, color = c.muted, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            when {
+                profile != null -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            profile.nickname, style = style.type.title, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        VipBadge(profile.vipType, Modifier.padding(start = 8.dp))
+                    }
+                    Text("已连接网易云音乐", style = style.type.caption, color = c.muted, maxLines = 1)
+                }
+                account == AccountState.Loading -> {
+                    Text("正在连接…", style = style.type.title, maxLines = 1)
+                    Text("网易云音乐", style = style.type.caption, color = c.muted, maxLines = 1)
+                }
+                else -> {
+                    Text("未登录", style = style.type.title, maxLines = 1)
+                    Text("同步你的歌单与红心", style = style.type.caption, color = c.muted, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                }
+            }
         }
-        Spacer(Modifier.width(12.dp))
-        ThemedButton("登录", onLogin)
+        if (account == AccountState.LoggedOut) {
+            Spacer(Modifier.width(12.dp))
+            ThemedButton("登录", onLogin)
+        }
     }
 }
 

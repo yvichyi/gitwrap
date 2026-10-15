@@ -58,9 +58,24 @@ import io.lanyin.player.ui.theme.LyricSize
 import io.lanyin.player.ui.theme.PlayerSkin
 import io.lanyin.player.ui.theme.ThemeMode
 import kotlinx.coroutines.launch
+import io.lanyin.player.data.account.AccountState
+import io.lanyin.player.ui.design.Avatar
+import io.lanyin.player.ui.design.VipBadge
+import io.lanyin.player.ui.design.TextLink
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @Composable
-fun SettingsScreen(settings: UiSettings, repository: SettingsRepository, onBack: () -> Unit) {
+fun SettingsScreen(
+    settings: UiSettings,
+    repository: SettingsRepository,
+    onBack: () -> Unit,
+    account: AccountState = AccountState.LoggedOut,
+    onLogin: () -> Unit = {},
+    onLogout: () -> Unit = {},
+) {
     val scope = rememberCoroutineScope()
     val style = Lanyin.style
     val c = style.colors
@@ -159,10 +174,44 @@ fun SettingsScreen(settings: UiSettings, repository: SettingsRepository, onBack:
                     if (style.edge == EdgeKind.Hairline) Hairline()
                 }
             }
+            item { SectionTitle("账号", Modifier.padding(start = m, end = m, top = 36.dp), index = 5) }
+            item { AccountRow(account, onLogin, onLogout, Modifier.padding(start = m, end = m, top = 14.dp)) }
             item {
-                Text("澜音 0.1 · 界面预览版", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))
+                Text("澜音 0.2 · 预览版", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))
             }
         }
+    }
+}
+
+/** Who is signed in, and the way out; signing out asks twice. */
+@Composable
+private fun AccountRow(account: AccountState, onLogin: () -> Unit, onLogout: () -> Unit, modifier: Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val hairline = style.edge == EdgeKind.Hairline
+    var confirming by remember(account) { mutableStateOf(false) }
+    Column(modifier.then(if (hairline) Modifier else Modifier.themedSurface(tone = SurfaceTone.Flat).padding(horizontal = 16.dp))) {
+        if (hairline) Hairline()
+        Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            val profile = (account as? AccountState.LoggedIn)?.profile
+            if (profile != null) {
+                Avatar(profile.avatarUrl, profile.nickname, 40.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(profile.nickname, style = style.type.body, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Text("网易云音乐", style = style.type.caption, color = c.muted, maxLines = 1)
+                }
+                VipBadge(profile.vipType, Modifier.padding(horizontal = 10.dp))
+                TextLink(if (confirming) "再点一次退出" else "退出登录", { if (confirming) onLogout() else confirming = true }, color = if (confirming) c.accent else c.muted)
+            } else {
+                Column(Modifier.weight(1f)) {
+                    Text(if (account == AccountState.Loading) "正在连接…" else "未登录", style = style.type.body, maxLines = 1)
+                    Text("登录网易云音乐后同步歌单和红心", style = style.type.caption, color = c.muted, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                }
+                if (account == AccountState.LoggedOut) TextLink("扫码登录", onLogin)
+            }
+        }
+        if (hairline) Hairline()
     }
 }
 

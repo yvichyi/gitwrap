@@ -55,6 +55,8 @@ import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.player.DemoPlayerState
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.data.account.AccountState
+import io.lanyin.player.ui.design.Avatar
 import io.lanyin.player.ui.theme.BackdropKind
 import io.lanyin.player.ui.design.tideName
 import io.lanyin.player.ui.design.moonPhase
@@ -74,13 +76,15 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onLogin: () -> Unit,
     onOpenPlayer: () -> Unit,
+    account: AccountState = AccountState.LoggedOut,
+    onOpenAccount: () -> Unit = onLogin,
 ) {
     val style = Lanyin.style
     val m = style.margin
     val now = remember { LocalDateTime.now() }
     CompositionLocalProvider(LocalContentColor provides style.colors.content) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
-            item { Header(now, onOpenSettings, onLogin, Modifier.padding(horizontal = m)) }
+            item { Header(now, account, onOpenSettings, if (account is AccountState.LoggedIn) onOpenAccount else onLogin, Modifier.padding(horizontal = m)) }
             if (style.edge == EdgeKind.Brutal) {
                 // 格 tapes a ribbon across the page, a little askew.
                 item {
@@ -96,7 +100,9 @@ fun HomeScreen(
                     )
                 }
             }
-            item { ConnectLine(onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
+            if (account == AccountState.LoggedOut) {
+                item { ConnectLine(onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
+            }
             item {
                 Column(Modifier.padding(start = m, end = m, top = 36.dp)) {
                     SectionTitle("继续播放", index = 1)
@@ -140,7 +146,7 @@ internal fun chineseNumber(n: Int): String = when {
 }
 
 @Composable
-private fun Header(now: LocalDateTime, onOpenSettings: () -> Unit, onLogin: () -> Unit, modifier: Modifier) {
+private fun Header(now: LocalDateTime, account: AccountState, onOpenSettings: () -> Unit, onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val weekday = now.dayOfWeek.getDisplayName(JavaTextStyle.FULL, Locale.CHINA)
@@ -189,6 +195,7 @@ private fun Header(now: LocalDateTime, onOpenSettings: () -> Unit, onLogin: () -
             ) { ThemedIcon(LineIcon.Sliders, "设置", tint = c.muted, size = 20.dp) }
             Spacer(Modifier.width(10.dp))
         }
+        val profile = (account as? AccountState.LoggedIn)?.profile
         Box(
             Modifier
                 .size(40.dp)
@@ -201,7 +208,11 @@ private fun Header(now: LocalDateTime, onOpenSettings: () -> Unit, onLogin: () -
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            ThemedIcon(LineIcon.User, "登录", tint = c.muted, size = 20.dp)
+            if (profile != null) {
+                Avatar(profile.avatarUrl, profile.nickname, 40.dp, shape = if (style.edge == EdgeKind.Hairline) CircleShape else style.roundShape)
+            } else {
+                ThemedIcon(LineIcon.User, "登录", tint = c.muted, size = 20.dp)
+            }
         }
     }
 }

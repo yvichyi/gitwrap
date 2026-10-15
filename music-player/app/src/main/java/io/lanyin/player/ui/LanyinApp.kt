@@ -74,7 +74,11 @@ import io.lanyin.player.ui.design.retroShadow
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.home.HomeScreen
 import io.lanyin.player.ui.library.LibraryScreen
-import io.lanyin.player.ui.login.LoginScreen
+import io.lanyin.player.ui.login.LoginRoute as LoginRouteScreen
+import io.lanyin.player.data.account.AccountState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import io.lanyin.player.ui.player.DemoPlayerState
 import io.lanyin.player.ui.player.MiniPlayer
 import io.lanyin.player.ui.player.PlayerScreen
@@ -117,7 +121,13 @@ fun LanyinApp(
     settingsRepository: SettingsRepository,
     player: DemoPlayerState = rememberDemoPlayerState(),
     startExpanded: Boolean = false,
+    /** Overrides the live account, for previews and screenshots. */
+    accountOverride: AccountState? = null,
 ) {
+    val services = LocalAppServices.current
+    val liveAccount = services?.account?.state?.collectAsState()?.value
+    val account = accountOverride ?: liveAccount ?: AccountState.LoggedOut
+    val appScope = rememberCoroutineScope()
     val navController = rememberNavController()
     var expanded by rememberSaveable { mutableStateOf(startExpanded) }
     val spin = rememberSpinState(player.isPlaying)
@@ -151,14 +161,29 @@ fun LanyinApp(
                                 onOpenSettings = { navController.navigate(SettingsRoute) },
                                 onLogin = { navController.navigate(LoginRoute) },
                                 onOpenPlayer = { expanded = true },
+                                account = account,
+                                onOpenAccount = {
+                                    navController.navigate(LibraryRoute) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
                             )
                         }
                         composable<SearchRoute> { SearchScreen() }
-                        composable<LibraryRoute> { LibraryScreen(onLogin = { navController.navigate(LoginRoute) }) }
+                        composable<LibraryRoute> { LibraryScreen(onLogin = { navController.navigate(LoginRoute) }, account = account) }
                         composable<SettingsRoute> {
-                            SettingsScreen(settings, settingsRepository, onBack = { navController.popBackStack() })
+                            SettingsScreen(
+                                settings, settingsRepository, onBack = { navController.popBackStack() },
+                                account = account,
+                                onLogin = { navController.navigate(LoginRoute) },
+                                onLogout = { appScope.launch { services?.account?.logout() } },
+                            )
                         }
-                        composable<LoginRoute> { LoginScreen(onBack = { navController.popBackStack() }) }
+                        composable<LoginRoute> {
+                            LoginRouteScreen(onBack = { navController.popBackStack() }, onLoggedIn = { navController.popBackStack() })
+                        }
                     }
                 }
             }
