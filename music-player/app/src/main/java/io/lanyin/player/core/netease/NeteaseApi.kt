@@ -150,6 +150,13 @@ class NeteaseApi(private val client: NeteaseClient) {
         return PlaylistDetail(dto.toPlaylist(), ordered)
     }
 
+    /** A playlist and only its first [count] songs: enough for a preview. */
+    suspend fun playlistHead(id: Long, count: Int): PlaylistDetail {
+        val r = client.eapi("/api/v6/playlist/detail", buildJsonObject { put("id", id); put("n", count); put("s", 0) }).requireOk()
+        val dto = r.decode<PlaylistDetailDto>().playlist ?: throw NeteaseException(404, "歌单不存在")
+        return PlaylistDetail(dto.toPlaylist(), dto.tracks.take(count).map { it.toSong() })
+    }
+
     suspend fun songs(ids: List<Long>): List<Song> {
         if (ids.isEmpty()) return emptyList()
         val c = ids.joinToString(",", "[", "]") { "{\"id\":$it}" }
@@ -498,6 +505,7 @@ internal class PlaylistDto(
     val copywriter: String? = null,
     val tracks: List<SongDto> = emptyList(),
     val trackIds: List<TrackIdDto> = emptyList(),
+    val updateFrequency: String? = null,
 ) {
     fun toPlaylist() = Playlist(
         id = id,
@@ -509,6 +517,7 @@ internal class PlaylistDto(
         specialType = specialType,
         subscribed = subscribed,
         description = (description ?: copywriter)?.takeIf { it.isNotBlank() },
+        updateNote = updateFrequency?.takeIf { it.isNotBlank() },
     )
 }
 

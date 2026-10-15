@@ -89,9 +89,22 @@ class ScreenshotTest {
     private fun app(theme: AppTheme, mode: ThemeMode, skin: PlayerSkin = PlayerSkin.VINYL) {
         val repo = repo()
         capture("home_${theme.name.lowercase()}_${mode.id}", theme, mode) {
-            LanyinApp(UiSettings(theme = theme, themeMode = mode, playerSkin = skin), repo, player = playingAt(14_000))
+            LanyinApp(UiSettings(theme = theme, themeMode = mode, playerSkin = skin), repo, player = playingAt(14_000), homePreview = homePreview(signedIn = false))
         }
     }
+
+    /** What the home page shows once its shelves have loaded. */
+    private fun homePreview(signedIn: Boolean) = io.lanyin.player.ui.home.HomePreview(
+        recommended = samplePlaylists.drop(1),
+        charts = listOf("飙升榜" to "刚刚更新", "新歌榜" to "刚刚更新", "原创榜" to "每周四更新", "热歌榜" to "每周四更新").mapIndexed { i, (name, note) ->
+            io.lanyin.player.data.library.ChartPreview(
+                io.lanyin.player.core.model.Playlist(800L + i, name, null, 100, updateNote = note),
+                sampleSongs.drop(i).take(3),
+            )
+        },
+        picks = if (signedIn) io.lanyin.player.data.library.Picks("今日推荐", "按你的口味挑的", sampleSongs.take(6))
+        else io.lanyin.player.data.library.Picks("热歌榜", "大家都在听", sampleSongs.take(6)),
+    )
 
     // 墨, the flagship, page by page in light and dark.
     @Test fun ink_home_light() = app(AppTheme.INK, ThemeMode.LIGHT)
@@ -192,7 +205,10 @@ class ScreenshotTest {
     @Test fun home_grid_logged_in() {
         val repo = repo()
         capture("home_grid_logged_in", AppTheme.GRID, ThemeMode.LIGHT) {
-            LanyinApp(UiSettings(theme = AppTheme.GRID, themeMode = ThemeMode.LIGHT), repo, player = playingAt(14_000), accountOverride = AccountState.LoggedIn(demoProfile))
+            LanyinApp(
+                UiSettings(theme = AppTheme.GRID, themeMode = ThemeMode.LIGHT), repo, player = playingAt(14_000),
+                accountOverride = AccountState.LoggedIn(demoProfile), homePreview = homePreview(signedIn = true),
+            )
         }
     }
     @Config(qualifiers = "w392dp-h1700dp-port-xhdpi")
@@ -262,6 +278,7 @@ class ScreenshotTest {
             LanyinApp(
                 UiSettings(theme = AppTheme.NEON, themeMode = ThemeMode.DARK), repo,
                 player = DemoPlayerState(emptyList()), accountOverride = AccountState.LoggedIn(demoProfile),
+                homePreview = homePreview(signedIn = true),
             )
         }
     }
@@ -274,7 +291,7 @@ class ScreenshotTest {
         }
         compose.onAllNodes(androidx.compose.ui.test.hasContentDescription("播放队列")).onFirst().performClick()
         compose.mainClock.advanceTimeBy(800)
-        compose.onRoot().captureRoboImage("build/outputs/roborazzi/queue_tide_light.png")
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/queue_dusk_light.png")
     }
     @Test fun more_grid() {
         val repo = repo()
@@ -468,6 +485,25 @@ class ScreenshotTest {
 
     // Home, inside the real shell, for every theme.
     @Test fun home_ink_light() = app(AppTheme.INK, ThemeMode.LIGHT)
+
+    /** The whole home page, top to bottom, signed in. */
+    private fun homeFull(theme: AppTheme, mode: ThemeMode) {
+        val repo = repo()
+        capture("home_full_${theme.name.lowercase()}_${mode.id}", theme, mode) {
+            LanyinApp(
+                UiSettings(theme = theme, themeMode = mode), repo, player = playingAt(14_000),
+                accountOverride = AccountState.LoggedIn(demoProfile), homePreview = homePreview(signedIn = true),
+            )
+        }
+    }
+    @Config(qualifiers = "w392dp-h1560dp-port-xhdpi")
+    @Test fun home_full_ink() = homeFull(AppTheme.INK, ThemeMode.LIGHT)
+    @Config(qualifiers = "w392dp-h1560dp-port-xhdpi")
+    @Test fun home_full_dusk() = homeFull(AppTheme.DUSK, ThemeMode.LIGHT)
+    @Config(qualifiers = "w392dp-h1560dp-port-xhdpi")
+    @Test fun home_full_neon() = homeFull(AppTheme.NEON, ThemeMode.DARK)
+    @Config(qualifiers = "w392dp-h1560dp-port-xhdpi")
+    @Test fun home_full_grid() = homeFull(AppTheme.GRID, ThemeMode.LIGHT)
     @Test fun home_ink_dark() = app(AppTheme.INK, ThemeMode.DARK)
     @Test fun home_neon() = app(AppTheme.NEON, ThemeMode.DARK)
     @Test fun home_dusk_light() = app(AppTheme.DUSK, ThemeMode.LIGHT, PlayerSkin.CASSETTE)
@@ -527,7 +563,7 @@ class ScreenshotTest {
         // The 继续播放 card.
         compose.onRoot().performTouchInput { down(androidx.compose.ui.geometry.Offset(width * 0.4f, height * 0.31f)) }
         compose.mainClock.advanceTimeBy(260)
-        compose.onRoot().captureRoboImage("build/outputs/roborazzi/motion_ripple_1_tide_light.png")
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/motion_ripple_1_dusk_light.png")
         compose.onRoot().performTouchInput { cancel() }
     }
 
@@ -563,11 +599,11 @@ class ScreenshotTest {
         }
         compose.onNodeWithTag("miniPlayer").performClick()
         compose.mainClock.advanceTimeBy(110)
-        compose.onRoot().captureRoboImage("build/outputs/roborazzi/transition_1_tide_dark.png")
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/transition_1_dusk_dark.png")
         compose.mainClock.advanceTimeBy(110)
-        compose.onRoot().captureRoboImage("build/outputs/roborazzi/transition_2_tide_dark.png")
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/transition_2_dusk_dark.png")
         compose.mainClock.advanceTimeBy(1_000)
-        compose.onRoot().captureRoboImage("build/outputs/roborazzi/transition_3_tide_dark.png")
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/transition_3_dusk_dark.png")
     }
 }
 

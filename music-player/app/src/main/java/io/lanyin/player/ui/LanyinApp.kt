@@ -149,6 +149,8 @@ fun LanyinApp(
     startExpanded: Boolean = false,
     /** Overrides the live account, for previews and screenshots. */
     accountOverride: AccountState? = null,
+    /** Stands in for the network on the home page, for previews and screenshots. */
+    homePreview: io.lanyin.player.ui.home.HomePreview? = null,
 ) {
     val services = LocalAppServices.current
     val liveAccount = services?.account?.state?.collectAsState()?.value
@@ -224,6 +226,9 @@ fun LanyinApp(
                                 onOpenDaily = { navController.navigate(DailyRoute) },
                                 onOpenCharts = { navController.navigate(ChartsRoute) },
                                 onOpenPlaylist = openPlaylist,
+                                onOpenRecent = { navController.navigate(RecentRoute) },
+                                onOpenDownloads = { navController.navigate(DownloadsRoute) },
+                                preview = homePreview,
                                 onOpenAccount = {
                                     navController.navigate(LibraryRoute) {
                                         popUpTo(navController.graph.findStartDestination().id) { saveState = true }

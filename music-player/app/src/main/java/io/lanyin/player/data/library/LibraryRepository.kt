@@ -19,7 +19,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+
+/** A chart and its top songs. */
+data class ChartPreview(val playlist: Playlist, val top: List<Song>)
+
+/** Songs offered on the home page, with a heading saying where they come from. */
+data class Picks(val title: String, val note: String, val songs: List<Song>)
 
 /**
  * The listener's music: liked songs, their playlists, today's picks. Follows the account, so a
@@ -109,6 +118,23 @@ class LibraryRepository(private val api: NeteaseApi, account: AccountRepository,
         else api.personalizedPlaylists()
 
     suspend fun charts(): List<Playlist> = api.charts()
+
+    private var chartPreviews: Pair<Long, List<ChartPreview>>? = null
+
+    /** The first few charts with their top three songs, for the home page; kept ten minutes. */
+    suspend fun chartPreviews(count: Int = 4): List<ChartPreview> {
+        chartPreviews?.takeIf { System.currentTimeMillis() - it.first < 10 * 60_000 }?.let { return it.second }
+        val previews = coroutineScope {
+            api.charts().take(count).map { chart -> async { ChartPreview(chart, runCatching { api.playlistHead(chart.id, 3).songs }.getOrDefault(emptyList())) } }.awaitAll()
+        }
+        chartPreviews = System.currentTimeMillis() to previews
+        return previews
+    }
+
+    /** A handful of songs for the home page: today's picks when signed in, otherwise what is hot. */
+    suspend fun picks(count: Int = 6): Picks =
+        if (userId != null) Picks("今日推荐", "按你的口味挑的", dailySongs().take(count))
+        else Picks("热歌榜", "大家都在听", api.playlistHead(HOT_CHART_ID, count).songs)
 
     suspend fun playlist(id: Long, fresh: Boolean = false): PlaylistDetail {
         if (!fresh) details[id]?.let { return it }
@@ -200,6 +226,11 @@ class LibraryRepository(private val api: NeteaseApi, account: AccountRepository,
     suspend fun ranking(week: Boolean): List<RankedSong> {
         val uid = userId ?: throw NeteaseException(301, "登录后才能看听歌排行")
         return api.listeningRanking(uid, week)
+    }
+
+    companion object {
+        /** NetEase's 热歌榜. */
+        const val HOT_CHART_ID = 3778678L
     }
 
     private fun changed(reload: Boolean = true) {

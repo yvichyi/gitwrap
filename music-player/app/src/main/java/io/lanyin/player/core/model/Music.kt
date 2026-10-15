@@ -35,6 +35,8 @@ data class Playlist(
     val specialType: Int = 0,
     val subscribed: Boolean = false,
     val description: String? = null,
+    /** How often a chart is renewed, as NetEase puts it (「刚刚更新」「每周五更新」). */
+    val updateNote: String? = null,
 )
 
 @Serializable

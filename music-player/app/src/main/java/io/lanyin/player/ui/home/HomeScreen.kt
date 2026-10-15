@@ -63,14 +63,30 @@ import io.lanyin.player.ui.music.rememberLoad
 import io.lanyin.player.ui.design.CoverImage
 import io.lanyin.player.data.account.AccountState
 import io.lanyin.player.ui.design.Avatar
-import io.lanyin.player.ui.theme.BackdropKind
+import io.lanyin.player.core.model.Playlist
+import io.lanyin.player.data.library.ChartPreview
+import io.lanyin.player.data.library.Picks
+import io.lanyin.player.ui.design.drawPlayPauseGlyph
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import java.time.LocalDateTime
 import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
 
+/** Stand-ins for the network in previews and screenshots. */
+data class HomePreview(
+    val recommended: List<Playlist>,
+    val charts: List<ChartPreview>,
+    val picks: Picks,
+)
+
 /**
- * One focal point (what you were listening to), a quiet line asking you to connect, then
- * shortcuts and recommendations. 墨 draws it with rules and whitespace instead of boxes.
+ * Two doors in (today's picks and personal FM) drawn over their artwork, shortcuts to your own
+ * music, then shelves to browse: playlists picked for you, the charts with their top three, and a
+ * handful of songs to start from. 墨 draws it with rules and whitespace instead of boxes.
  */
 @Composable
 fun HomeScreen(
@@ -83,28 +99,29 @@ fun HomeScreen(
     onOpenDaily: () -> Unit = onLogin,
     onOpenCharts: () -> Unit = {},
     onOpenPlaylist: (Long, String) -> Unit = { _, _ -> },
+    onOpenRecent: () -> Unit = {},
+    onOpenDownloads: () -> Unit = {},
+    preview: HomePreview? = null,
 ) {
     val style = Lanyin.style
     val m = style.margin
     val now = remember { LocalDateTime.now() }
     val signedIn = account is AccountState.LoggedIn
     val library = LocalAppServices.current?.library
-    val recommended = rememberLoad(signedIn) { library?.recommendedPlaylists().orEmpty() }
-    // Each entry runs its own errand; most need a login first.
+    val recommended = preview?.let { Load.Ready(it.recommended) } ?: rememberLoad(signedIn) { library?.recommendedPlaylists().orEmpty() }.state
+    val charts = preview?.let { Load.Ready(it.charts) } ?: rememberLoad("home-charts") { library?.chartPreviews() ?: error("offline") }.state
+    val picks = preview?.let { Load.Ready(it.picks) } ?: rememberLoad(signedIn) { library?.picks() ?: error("offline") }.state
+    val pickSongs = (picks as? Load.Ready)?.value?.songs.orEmpty()
+    // Most doors need a login first.
     val needsLogin: (() -> Unit) -> () -> Unit = { action -> if (signedIn) action else onLogin }
-    val entryActions = listOf(
-        needsLogin(onOpenDaily),
-        needsLogin {
-            player.playFm()
-            onOpenPlayer()
-        },
-        needsLogin { library?.likedPlaylist()?.let { onOpenPlaylist(it.id, "我喜欢的音乐") } ?: library?.refresh() },
-        onOpenCharts,
-    )
-    val showHero = !player.isEmpty || signedIn
+    val openLiked = needsLogin { library?.likedPlaylist()?.let { onOpenPlaylist(it.id, "我喜欢的音乐") } ?: library?.refresh() }
+    val playFm = needsLogin {
+        player.playFm()
+        onOpenPlayer()
+    }
     CompositionLocalProvider(LocalContentColor provides style.colors.content) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
-            item { Header(now, account, onOpenSettings, if (account is AccountState.LoggedIn) onOpenAccount else onLogin, Modifier.padding(horizontal = m)) }
+            item { Header(now, account, onOpenSettings, if (signedIn) onOpenAccount else onLogin, Modifier.padding(horizontal = m)) }
             if (style.edge == EdgeKind.Brutal) {
                 // 格 tapes a ribbon across the page, a little askew.
                 item {
@@ -128,28 +145,45 @@ fun HomeScreen(
             if (account == AccountState.LoggedOut) {
                 item { ConnectLine(onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
             }
-            if (showHero) {
-                item {
-                    Column(Modifier.padding(start = m, end = m, top = 36.dp)) {
-                        if (player.isEmpty) {
-                            SectionTitle("今天听什么", index = 1)
-                            DailyHero(now, onOpenDaily, Modifier.padding(top = 14.dp))
-                        } else {
-                            SectionTitle("继续播放", index = 1)
-                            NowPlayingHero(player, onOpenPlayer, Modifier.padding(top = 14.dp))
-                        }
-                    }
+            item {
+                Row(Modifier.padding(start = m, end = m, top = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FeatureTile(
+                        title = "每日推荐",
+                        note = if (signedIn) "每天 6:00 更新" else "登录后生成",
+                        onClick = needsLogin(onOpenDaily),
+                        onPlay = needsLogin {
+                            if (signedIn && pickSongs.isNotEmpty()) player.play(pickSongs, 0, "每日推荐") else onOpenDaily()
+                        },
+                        modifier = Modifier.weight(1f),
+                        art = { DailyArt(if (signedIn) pickSongs else emptyList()) },
+                        mark = { DayMark(now) },
+                    )
+                    FeatureTile(
+                        title = "私人 FM",
+                        note = if (signedIn) "越听越懂你" else "登录后开启",
+                        onClick = playFm,
+                        onPlay = playFm,
+                        modifier = Modifier.weight(1f),
+                        art = { CoverArt(77, Modifier.fillMaxSize()) },
+                        mark = { ThemedIcon(LineIcon.Radio, null, tint = Color.White, size = 26.dp) },
+                    )
                 }
             }
-            item { QuickEntries(now.dayOfMonth, entryActions, Modifier.padding(start = m, end = m, top = 36.dp)) }
             item {
-                Column(Modifier.padding(top = 36.dp)) {
-                    SectionTitle(
-                        "推荐歌单", Modifier.padding(horizontal = m),
-                        trailing = if (signedIn) "为你挑的" else "大家在听",
-                        index = if (showHero) 2 else 1,
-                    )
-                    val lists = (recommended.state as? Load.Ready)?.value.orEmpty()
+                Shortcuts(
+                    listOf(
+                        Shortcut(LineIcon.Heart, "我喜欢", openLiked),
+                        Shortcut(LineIcon.Chart, "排行榜", onOpenCharts),
+                        Shortcut(LineIcon.History, "最近播放", onOpenRecent),
+                        Shortcut(LineIcon.Download, "下载", onOpenDownloads),
+                    ),
+                    Modifier.padding(start = m, end = m, top = 18.dp),
+                )
+            }
+            item {
+                Column(Modifier.padding(top = 34.dp)) {
+                    SectionTitle("推荐歌单", Modifier.padding(horizontal = m), trailing = if (signedIn) "为你挑的" else "大家在听", index = 1)
+                    val lists = (recommended as? Load.Ready)?.value.orEmpty()
                     LazyRow(
                         contentPadding = PaddingValues(start = m, end = m, top = 14.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -158,13 +192,238 @@ fun HomeScreen(
                             items(lists, key = { it.id }) { p -> PlaylistTile(p, { onOpenPlaylist(p.id, p.name) }, Modifier.width(132.dp)) }
                         } else {
                             // Until they arrive (or offline), the theme's own sleeves hold the space.
-                            items(6) { i ->
-                                CoverArt(10 + i, Modifier.size(132.dp).clip(style.artShape).pressable(onClick = recommended.retry))
-                            }
+                            items(6) { i -> CoverArt(10 + i, Modifier.size(132.dp).clip(style.artShape)) }
                         }
                     }
                 }
             }
+            item {
+                Column(Modifier.padding(top = 34.dp)) {
+                    SectionHeader("排行榜", 2, "全部", onOpenCharts, Modifier.padding(horizontal = m))
+                    LazyRow(
+                        contentPadding = PaddingValues(start = m, end = m, top = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        when (charts) {
+                            is Load.Ready -> items(charts.value, key = { it.playlist.id }) { chart ->
+                                ChartCard(chart, { onOpenPlaylist(chart.playlist.id, chart.playlist.name) }, Modifier.width(264.dp))
+                            }
+                            else -> items(3) { i -> ChartCard(null, onOpenCharts, Modifier.width(264.dp), seed = 30 + i) }
+                        }
+                    }
+                }
+            }
+            val shown = picks as? Load.Ready
+            if (shown != null && shown.value.songs.isNotEmpty()) {
+                item {
+                    SectionTitle(shown.value.title, Modifier.padding(start = m, end = m, top = 34.dp), trailing = shown.value.note, index = 3)
+                }
+                items(shown.value.songs.size) { i ->
+                    val song = shown.value.songs[i]
+                    PickRow(
+                        song, playing = song.id == player.playingSongId,
+                        onClick = { player.play(shown.value.songs, i, shown.value.title) },
+                        modifier = Modifier.padding(start = m, end = m - 10.dp, top = if (i == 0) 10.dp else 0.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A section heading with a way to see everything. */
+@Composable
+private fun SectionHeader(title: String, index: Int, action: String, onAction: () -> Unit, modifier: Modifier) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        SectionTitle(title, Modifier.weight(1f), index = index)
+        TextLink(action, onAction, color = Lanyin.colors.muted)
+    }
+}
+
+/**
+ * A door drawn over its artwork: the art fills the tile, a scrim darkens its foot, and the title
+ * sits there in white with a play button beside it. [mark] goes in the top corner.
+ */
+@Composable
+private fun FeatureTile(
+    title: String,
+    note: String,
+    onClick: () -> Unit,
+    onPlay: () -> Unit,
+    modifier: Modifier,
+    art: @Composable () -> Unit,
+    mark: @Composable () -> Unit,
+) {
+    val style = Lanyin.style
+    val shape = style.cardShape
+    Box(
+        modifier
+            .aspectRatio(0.84f)
+            .then(if (style.edge == EdgeKind.Hairline) Modifier.border(1.dp, style.colors.outline, shape).pressable(onClick = onClick) else Modifier.themedSurface(shape = shape, onClick = onClick))
+            .clip(shape),
+    ) {
+        Box(Modifier.fillMaxSize()) { art() }
+        Box(
+            Modifier
+                .fillMaxSize()
+                // Dark at the top for the mark and at the foot for the title, whatever the art.
+                .background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.42f), 0.38f to Color.Transparent, 0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.74f))),
+        )
+        Box(Modifier.align(Alignment.TopStart).padding(12.dp)) { mark() }
+        Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = style.type.title.copy(fontFamily = style.display, fontWeight = FontWeight.SemiBold, shadow = TextShade), color = Color.White, maxLines = 1)
+                Text(note, style = style.type.caption.copy(shadow = TextShade), color = Color.White.copy(alpha = 0.82f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.width(8.dp))
+            TilePlay(onPlay)
+        }
+    }
+}
+
+/** Keeps white type legible on light artwork. */
+private val TextShade = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.45f), androidx.compose.ui.geometry.Offset(0f, 1f), 8f)
+
+/** A small play button that reads on any artwork. */
+@Composable
+private fun TilePlay(onClick: () -> Unit) {
+    val style = Lanyin.style
+    val brutal = style.edge == EdgeKind.Brutal
+    Box(
+        Modifier
+            .size(34.dp)
+            .pressable(onClick = onClick)
+            .then(
+                if (brutal) {
+                    Modifier.background(io.lanyin.player.ui.theme.GridYellow).border(2.dp, style.colors.outline)
+                } else {
+                    Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.92f))
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(12.dp)) { drawPlayPauseGlyph(0f, if (brutal) style.colors.content else Color(0xFF111111)) }
+    }
+}
+
+/** Today's picks as a mosaic of their covers; the theme's own art until they're known. */
+@Composable
+private fun DailyArt(songs: List<io.lanyin.player.core.model.Song>) {
+    val covers = songs.mapNotNull { s -> s.album.coverUrl?.let { it to (s.id % 97).toInt() } }.take(4)
+    if (covers.size < 4) {
+        CoverArt(3, Modifier.fillMaxSize())
+        return
+    }
+    Column(Modifier.fillMaxSize()) {
+        for (r in 0..1) {
+            Row(Modifier.weight(1f)) {
+                for (k in 0..1) {
+                    val (url, seed) = covers[r * 2 + k]
+                    CoverImage(url, seed, 90.dp, Modifier.weight(1f).fillMaxSize())
+                }
+            }
+        }
+    }
+}
+
+/** The day of the month, large, on the 每日推荐 tile. */
+@Composable
+private fun DayMark(now: LocalDateTime) {
+    val style = Lanyin.style
+    Column {
+        Text(
+            if (style.quietSections) chineseNumber(now.dayOfMonth) else "${now.dayOfMonth}",
+            style = style.type.display.copy(fontFamily = style.display, fontSize = 34.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold, shadow = TextShade),
+            color = Color.White,
+        )
+        Text("${now.monthValue}月", style = style.type.caption.copy(shadow = TextShade), color = Color.White.copy(alpha = 0.85f))
+    }
+}
+
+private class Shortcut(val icon: LineIcon, val label: String, val onClick: () -> Unit)
+
+/** Your own music, one tap each. */
+@Composable
+private fun Shortcuts(items: List<Shortcut>, modifier: Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val hairline = style.edge == EdgeKind.Hairline
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(if (hairline) 0.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        items.forEachIndexed { i, item ->
+            if (hairline && i > 0) Box(Modifier.width(1.dp).height(20.dp).background(c.outline))
+            Column(
+                Modifier
+                    .weight(1f)
+                    .then(if (hairline) Modifier.pressable(onClick = item.onClick) else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Flat, onClick = item.onClick))
+                    .padding(vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                ThemedIcon(item.icon, null, size = 20.dp)
+                Text(item.label, style = style.type.caption, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+            }
+        }
+    }
+}
+
+/** A chart and its top three; a placeholder sleeve while it loads. */
+@Composable
+private fun ChartCard(chart: ChartPreview?, onClick: () -> Unit, modifier: Modifier, seed: Int = 0) {
+    val style = Lanyin.style
+    val c = style.colors
+    val hairline = style.edge == EdgeKind.Hairline
+    Column(
+        modifier
+            .then(if (hairline) Modifier.border(1.dp, c.outline).pressable(onClick = onClick) else Modifier.themedSurface(onClick = onClick))
+            .padding(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CoverImage(chart?.playlist?.coverUrl, if (chart != null) (chart.playlist.id % 97).toInt() else seed, 52.dp, Modifier.size(52.dp).clip(style.artShape))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(chart?.playlist?.name ?: "排行榜", style = style.type.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(chart?.playlist?.updateNote ?: if (chart == null) "正在加载…" else "", style = style.type.caption, color = c.muted, maxLines = 1)
+            }
+        }
+        Column(Modifier.padding(top = 10.dp).heightIn(min = 66.dp)) {
+            chart?.top.orEmpty().take(3).forEachIndexed { i, song ->
+                Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "${i + 1}",
+                        style = style.type.caption.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold),
+                        color = if (i == 0) c.accent else c.content,
+                        modifier = Modifier.width(18.dp),
+                    )
+                    Text(
+                        buildAnnotatedString {
+                            append(song.name)
+                            withStyle(SpanStyle(color = c.muted)) { append(" - ${song.artistLine}") }
+                        },
+                        style = style.type.caption, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A song to start from: cover, title, artist, and its ⋯. */
+@Composable
+private fun PickRow(song: io.lanyin.player.core.model.Song, playing: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
+    Row(modifier.fillMaxWidth().pressable(onClick = onClick).padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+        CoverImage(song.album.coverUrl, (song.id % 97).toInt(), 48.dp, Modifier.size(48.dp).clip(style.artShape))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(song.name, style = style.type.body.copy(fontWeight = if (playing) FontWeight.SemiBold else FontWeight.Normal), color = if (playing) c.accent else c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                listOf(song.artistLine, song.album.name).filter { it.isNotEmpty() }.joinToString(" · "),
+                style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Box(Modifier.size(width = 36.dp, height = 44.dp).pressable { openSheet(io.lanyin.player.ui.music.Sheet.TrackActions(song)) }, contentAlignment = Alignment.Center) {
+            ThemedIcon(LineIcon.More, "更多", tint = c.muted, size = 20.dp)
         }
     }
 }
@@ -272,134 +531,5 @@ private fun ConnectLine(onLogin: () -> Unit, modifier: Modifier) {
             TextLink("扫码登录", onLogin)
         }
         if (hairline) Hairline()
-    }
-}
-
-@Composable
-private fun NowPlayingHero(player: PlayerState, onOpenPlayer: () -> Unit, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val hairline = style.edge == EdgeKind.Hairline
-    val seconds by remember { derivedStateOf { player.positionMs / 1000 } }
-    Row(
-        modifier
-            .fillMaxWidth()
-            .then(
-                if (hairline) {
-                    Modifier.clickable(remember { MutableInteractionSource() }, indication = null, onClick = onOpenPlayer)
-                } else {
-                    Modifier.themedSurface(onClick = onOpenPlayer).padding(14.dp)
-                },
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CoverImage(player.coverUrl, player.coverSeed, 88.dp, Modifier.size(88.dp).clip(style.artShape))
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(player.title, style = style.type.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(player.artist + " · " + player.album, style = style.type.caption, color = c.muted, maxLines = 1)
-            Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Canvas(Modifier.weight(1f).height(2.dp)) {
-                    val f = (player.positionMs.toFloat() / player.durationMs).coerceIn(0f, 1f)
-                    val y = size.height / 2
-                    drawLine(c.content.copy(alpha = 0.14f), Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
-                    drawLine(c.content, Offset(0f, y), Offset(size.width * f, y), 1.5.dp.toPx())
-                }
-                Text(
-                    formatTime(seconds * 1000),
-                    style = style.type.caption.copy(fontFamily = style.numeric),
-                    color = c.muted,
-                    modifier = Modifier.padding(start = 10.dp),
-                )
-            }
-        }
-        Spacer(Modifier.width(16.dp))
-        PlayPauseButton(player.isPlaying, player::togglePlay, size = 48.dp)
-    }
-}
-
-/** Nothing playing yet: today's picks, one tap away. */
-@Composable
-private fun DailyHero(now: LocalDateTime, onOpen: () -> Unit, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val hairline = style.edge == EdgeKind.Hairline
-    Row(
-        modifier
-            .fillMaxWidth()
-            .then(
-                if (hairline) {
-                    Modifier.clickable(remember { MutableInteractionSource() }, indication = null, onClick = onOpen)
-                } else {
-                    Modifier.themedSurface(onClick = onOpen).padding(14.dp)
-                },
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            Modifier.size(88.dp).then(if (hairline) Modifier.border(1.dp, c.outline) else Modifier.themedSurface(shape = style.artShape, tone = SurfaceTone.Flat)),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                if (hairline) chineseNumber(now.dayOfMonth) else "${now.dayOfMonth}",
-                style = style.type.display.copy(fontFamily = style.display, fontSize = if (hairline) 26.sp else 36.sp, lineHeight = 40.sp),
-                color = c.accent,
-            )
-            Text("${now.monthValue}月", style = style.type.caption, color = c.muted)
-        }
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text("每日推荐", style = style.type.title, maxLines = 1)
-            Text("照你的口味挑的三十首，每天 6:00 换新", style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-        Spacer(Modifier.width(12.dp))
-        ThemedIcon(LineIcon.Forward, null, tint = c.muted, size = 18.dp)
-    }
-}
-
-/** Four shortcuts. Only the date carries colour; icons stay in the ink colour. */
-@Composable
-private fun QuickEntries(day: Int, actions: List<() -> Unit>, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val hairline = style.edge == EdgeKind.Hairline
-    val entries: List<Pair<String, @Composable () -> Unit>> = listOf(
-        "每日推荐" to {
-            Text(
-                if (hairline) chineseNumber(day) else "$day",
-                style = style.type.title.copy(
-                    fontFamily = style.display,
-                    fontSize = when {
-                        hairline -> 20.sp
-                        style.displayWeight <= FontWeight.Light -> 26.sp
-                        else -> 22.sp
-                    },
-                    fontWeight = if (style.displayWeight <= FontWeight.Light) FontWeight.Light else FontWeight.SemiBold,
-                ),
-                color = c.accent,
-            )
-        },
-        "私人 FM" to { ThemedIcon(LineIcon.Radio, null, size = 26.dp) },
-        "我喜欢" to { ThemedIcon(LineIcon.Heart, null, size = 26.dp) },
-        "排行榜" to { ThemedIcon(LineIcon.Chart, null, size = 26.dp) },
-    )
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(if (hairline) 0.dp else 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        entries.forEachIndexed { i, (label, visual) ->
-            if (hairline && i > 0) {
-                Box(Modifier.width(1.dp).height(36.dp).background(c.outline))
-            }
-            Column(
-                Modifier
-                    .weight(1f)
-                    .then(if (hairline) Modifier.pressable(onClick = actions[i]) else Modifier.heightIn(min = 76.dp).themedSurface(tone = SurfaceTone.Flat, onClick = actions[i]))
-                    .padding(vertical = if (hairline) 4.dp else 12.dp, horizontal = 2.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-            ) {
-                Box(Modifier.height(30.dp), contentAlignment = Alignment.Center) { visual() }
-                Text(label, style = style.type.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
     }
 }
