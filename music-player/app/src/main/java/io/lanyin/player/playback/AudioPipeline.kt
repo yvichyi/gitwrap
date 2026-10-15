@@ -39,7 +39,8 @@ class AudioPipeline(context: Context, private val http: OkHttpClient, private va
     }
 
     val dataSourceFactory: DataSource.Factory by lazy {
-        val network = OkHttpDataSource.Factory(http)
+        val okhttp = OkHttpDataSource.Factory(http)
+        val network = DataSource.Factory { SchemeFallbackDataSource(okhttp.createDataSource()) }
         val resolving = ResolvingDataSource.Factory(network) { spec -> resolve(spec) }
         CacheDataSource.Factory()
             .setCache(cache)
@@ -64,8 +65,39 @@ class AudioPipeline(context: Context, private val http: OkHttpClient, private va
     companion object {
         const val CACHE_BYTES = 1L shl 30
 
+        /** The same address over the other scheme, for NetEase's CDN; null for anything else. */
+        fun alternate(uri: Uri): Uri? {
+            val host = uri.host ?: return null
+            if (!host.endsWith(".126.net") && !host.endsWith(".163.com")) return null
+            return when (uri.scheme) {
+                "http" -> uri.buildUpon().scheme("https").build()
+                "https" -> uri.buildUpon().scheme("http").build()
+                else -> null
+            }
+        }
+
         fun uriFor(songId: String): Uri = Uri.parse("lanyin://song/$songId")
 
         fun songId(uri: Uri): Long? = if (uri.scheme == "lanyin" && uri.host == "song") uri.lastPathSegment?.toLongOrNull() else null
+    }
+}
+
+/**
+ * NetEase's audio CDN nodes differ: some only answer plain http, some only https (and networks
+ * differ too). Opens the address as given and, if that fails before any audio arrives, the same
+ * address over the other scheme.
+ */
+@OptIn(UnstableApi::class)
+private class SchemeFallbackDataSource(private val inner: DataSource) : DataSource by inner {
+    override fun open(dataSpec: DataSpec): Long = try {
+        inner.open(dataSpec)
+    } catch (e: java.io.IOException) {
+        val other = AudioPipeline.alternate(dataSpec.uri) ?: throw e
+        runCatching { inner.close() }
+        try {
+            inner.open(dataSpec.withUri(other))
+        } catch (second: java.io.IOException) {
+            throw e
+        }
     }
 }

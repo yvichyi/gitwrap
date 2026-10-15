@@ -86,6 +86,15 @@ import io.lanyin.player.ui.player.rememberDemoPlayerState
 import io.lanyin.player.ui.player.rememberSpinState
 import io.lanyin.player.ui.player.PlayerFrameDriver
 import io.lanyin.player.ui.music.ChartsPage
+import io.lanyin.player.ui.music.AlbumPage
+import io.lanyin.player.ui.music.ArtistPage
+import io.lanyin.player.ui.music.RecentPage
+import io.lanyin.player.ui.music.LocalOpenSheet
+import io.lanyin.player.ui.music.QueueSheet
+import io.lanyin.player.ui.music.Sheet
+import io.lanyin.player.ui.music.SheetLayer
+import io.lanyin.player.ui.music.TrackActionsSheet
+import io.lanyin.player.ui.music.rememberSheetState
 import io.lanyin.player.ui.music.DailyPage
 import io.lanyin.player.ui.music.PlaylistPage
 import androidx.navigation.toRoute
@@ -105,6 +114,9 @@ import kotlinx.serialization.Serializable
 @Serializable data class PlaylistRoute(val id: Long, val name: String)
 @Serializable data object DailyRoute
 @Serializable data object ChartsRoute
+@Serializable data class ArtistRoute(val id: Long, val name: String)
+@Serializable data class AlbumRoute(val id: Long, val name: String)
+@Serializable data object RecentRoute
 
 private data class TopLevelTab(val route: Any, val label: String, val icon: LineIcon)
 
@@ -154,11 +166,22 @@ fun LanyinApp(
     // Nothing to show: an empty queue closes the player.
     LaunchedEffect(player.isEmpty) { if (player.isEmpty) expanded = false }
     val openPlaylist: (Long, String) -> Unit = { id, name -> navController.navigate(PlaylistRoute(id, name)) }
+    // From the player's sheets: fold the player away, then go.
+    val openArtist: (Long, String) -> Unit = { id, name ->
+        expanded = false
+        navController.navigate(ArtistRoute(id, name))
+    }
+    val openAlbum: (Long, String) -> Unit = { id, name ->
+        expanded = false
+        navController.navigate(AlbumRoute(id, name))
+    }
+    val sheets = rememberSheetState()
 
     LaunchedEffect(expanded, settings.autoLandscape) {
         if (!expanded) orientation.release() else if (settings.autoLandscape) orientation.lockLandscape()
     }
 
+    CompositionLocalProvider(LocalOpenSheet provides sheets::open) {
     SharedTransitionLayout(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().background(Lanyin.colors.bg)) {
             Box(Modifier.fillMaxSize().hazeSource(haze)) {
@@ -191,15 +214,27 @@ fun LanyinApp(
                                 },
                             )
                         }
-                        composable<SearchRoute> { SearchScreen(player) }
+                        composable<SearchRoute> { SearchScreen(player, onOpenArtist = openArtist, onOpenAlbum = openAlbum, onOpenPlaylist = openPlaylist) }
                         composable<LibraryRoute> {
-                            LibraryScreen(onLogin = { navController.navigate(LoginRoute) }, account = account, onOpenPlaylist = openPlaylist)
+                            LibraryScreen(
+                                onLogin = { navController.navigate(LoginRoute) }, account = account, onOpenPlaylist = openPlaylist,
+                                onOpenRecent = { navController.navigate(RecentRoute) },
+                            )
                         }
                         composable<PlaylistRoute> { entry ->
                             val route = entry.toRoute<PlaylistRoute>()
                             PlaylistPage(route.id, route.name, player, onBack = { navController.popBackStack() })
                         }
                         composable<DailyRoute> { DailyPage(player, onBack = { navController.popBackStack() }) }
+                        composable<ArtistRoute> { entry ->
+                            val route = entry.toRoute<ArtistRoute>()
+                            ArtistPage(route.id, route.name, player, onBack = { navController.popBackStack() })
+                        }
+                        composable<AlbumRoute> { entry ->
+                            val route = entry.toRoute<AlbumRoute>()
+                            AlbumPage(route.id, route.name, player, onBack = { navController.popBackStack() })
+                        }
+                        composable<RecentRoute> { RecentPage(player, onBack = { navController.popBackStack() }) }
                         composable<ChartsRoute> { ChartsPage(onBack = { navController.popBackStack() }, onOpen = { openPlaylist(it.id, it.name) }) }
                         composable<SettingsRoute> {
                             SettingsScreen(
@@ -269,7 +304,29 @@ fun LanyinApp(
                     }
                 }
             }
+            SheetLayer(sheets) { sheet ->
+                when (sheet) {
+                    Sheet.Queue -> QueueSheet(player)
+                    is Sheet.TrackActions -> TrackActionsSheet(
+                        sheet.track,
+                        liked = player.liked && player.track.id == sheet.track.id,
+                        onToggleLike = {
+                            player.toggleLike()
+                            sheets.dismiss()
+                        },
+                        onOpenArtist = {
+                            sheets.dismiss()
+                            openArtist(it.id, it.name)
+                        },
+                        onOpenAlbum = { id, name ->
+                            sheets.dismiss()
+                            openAlbum(id, name)
+                        },
+                    )
+                }
+            }
         }
+    }
     }
 }
 

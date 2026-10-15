@@ -3,10 +3,13 @@ package io.lanyin.player.core.model
 import kotlinx.serialization.Serializable
 
 /** What the app knows about music, independent of where it came from. */
+@Serializable
 data class Artist(val id: Long, val name: String)
 
+@Serializable
 data class Album(val id: Long, val name: String, val coverUrl: String?)
 
+@Serializable
 data class Song(
     val id: Long,
     val name: String,
@@ -47,7 +50,64 @@ data class UserProfile(
 
 /** One timed lyric line, with its translation when there is one. */
 @androidx.compose.runtime.Immutable
-data class LyricLine(val text: String, val translation: String?, val startMs: Long, val endMs: Long)
+data class LyricLine(
+    val text: String,
+    val translation: String?,
+    val startMs: Long,
+    val endMs: Long,
+    /** Word timings (from YRC) when NetEase has them; [text] is the words joined. */
+    val words: List<LyricWord>? = null,
+) {
+    /** How far through the line's characters [positionMs] is, 0..1, following the words. */
+    fun charProgress(positionMs: Long): Float {
+        val ws = words ?: return ((positionMs - startMs).toFloat() / (endMs - startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+        val total = text.length.coerceAtLeast(1)
+        var sung = 0f
+        for (w in ws) {
+            when {
+                positionMs >= w.startMs + w.durationMs -> sung += w.text.length
+                positionMs > w.startMs -> {
+                    sung += w.text.length * (positionMs - w.startMs).toFloat() / w.durationMs.coerceAtLeast(1)
+                    break
+                }
+                else -> break
+            }
+        }
+        return (sung / total).coerceIn(0f, 1f)
+    }
+}
+
+@androidx.compose.runtime.Immutable
+data class LyricWord(val text: String, val startMs: Long, val durationMs: Long)
+
+/** An artist's page: who they are and their best-known songs. */
+data class ArtistDetail(
+    val id: Long,
+    val name: String,
+    val pictureUrl: String?,
+    val brief: String?,
+    val songCount: Int,
+    val albumCount: Int,
+    val hotSongs: List<Song>,
+)
+
+/** An album and its tracks. */
+data class AlbumDetail(
+    val id: Long,
+    val name: String,
+    val coverUrl: String?,
+    val artistName: String,
+    /** Epoch millis; 0 when unknown. */
+    val publishTime: Long,
+    val description: String?,
+    val songs: List<Song>,
+)
+
+/** A row in artist search results. */
+data class ArtistHit(val id: Long, val name: String, val pictureUrl: String?, val albumCount: Int)
+
+/** A row in album search results. */
+data class AlbumHit(val id: Long, val name: String, val coverUrl: String?, val artistName: String, val size: Int)
 
 /** Raw lyric documents; parsed into timed lines by the lyrics package. */
 data class LyricsSource(

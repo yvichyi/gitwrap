@@ -164,7 +164,8 @@ class NeteaseClientTest {
         reply("""{"code":200,"data":[{"id":2,"url":"http://m701.music.126.net/y.mp3","br":128000,"size":1,"code":200,"type":"mp3","level":"standard","fee":1,"freeTrialInfo":{"start":0,"end":30}}]}""")
         val full = api.stream(1, Quality.LOSSLESS)
         assertEquals(Quality.LOSSLESS, full.quality)
-        assertEquals("https://m701.music.126.net/x.flac", full.url)
+        // Audio addresses stay as given: some CDN nodes only speak plain http.
+        assertEquals("http://m701.music.126.net/x.flac", full.url)
         assertFalse(full.trialOnly)
         assertTrue(api.stream(2, Quality.LOSSLESS).trialOnly)
     }

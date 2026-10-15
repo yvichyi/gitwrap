@@ -107,7 +107,8 @@ fun MiniPlayer(
                 }
             } }
             MiniPlayButton(state)
-            IconAction(LineIcon.Queue, "播放队列", {}, tint = c.muted)
+            val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
+            IconAction(LineIcon.Queue, "播放队列", { openSheet(io.lanyin.player.ui.music.Sheet.Queue) }, tint = c.muted)
         }
     }
 }

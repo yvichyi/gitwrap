@@ -23,7 +23,18 @@ data class Track(
     val coverSeed: Int,
     val durationMs: Long,
     val coverUrl: String? = null,
+    /** For going to an artist's or the album's page; empty in the demo. */
+    val artists: List<io.lanyin.player.core.model.Artist> = emptyList(),
+    val albumId: Long = 0,
 ) {
+    /** Back to a song, to play or keep. */
+    fun toSong() = io.lanyin.player.core.model.Song(
+        id = id, name = title,
+        artists = artists.ifEmpty { listOf(io.lanyin.player.core.model.Artist(0, artist)) },
+        album = io.lanyin.player.core.model.Album(albumId, album, coverUrl),
+        durationMs = durationMs,
+    )
+
     companion object {
         val Empty = Track(0, "", "", "", coverSeed = 0, durationMs = 1)
     }
@@ -85,7 +96,8 @@ abstract class PlayerState {
     /** 0..1 through the current line; call from draw code. */
     fun lineProgress(): Float {
         val line = currentLine ?: return 0f
-        return ((positionMs - line.startMs).toFloat() / (line.endMs - line.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+        // Word-timed lines follow the singing, by characters; others sweep evenly through the line.
+        return line.charProgress(positionMs)
     }
 
     abstract fun togglePlay()

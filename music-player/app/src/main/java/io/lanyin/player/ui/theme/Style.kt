@@ -231,16 +231,17 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
 }
 
 // 晨海: pearl and sea mist, deep-water ink, a teal sea for the accent and sea glass beside it.
+// 澜 after a Fontaine-era watercolour illustration: white paper, cobalt splashes, water bubbles.
 private val tideLight = LanyinColors(
-    bg = Color(0xFFEEF4F6), bgDeep = Color(0xFFCDE2E8), surface = Color(0xFFFFFFFF), surfaceAlt = Color(0xFFE3EEF1),
-    content = Color(0xFF0B2430), muted = Color(0xFF4D6874), accent = Color(0xFF0E7896), accentAlt = Color(0xFF2FA899),
-    onAccent = Color(0xFFFFFFFF), outline = Color(0x1F0B2430), like = Color(0xFFE5486B), vinyl = Color(0xFF0D1418),
+    bg = Color(0xFFF4F8FC), bgDeep = Color(0xFFDCE8F6), surface = Color(0xFFFFFFFF), surfaceAlt = Color(0xFFEAF2FB),
+    content = Color(0xFF131A2C), muted = Color(0xFF56688A), accent = Color(0xFF3F68B8), accentAlt = Color(0xFF71A9D8),
+    onAccent = Color(0xFFFFFFFF), outline = Color(0x22131A2C), like = Color(0xFFD9607C), vinyl = Color(0xFF131A2C),
 )
-// 夜海: the abyss, moonlight on the water.
+// …and its navy frame by night, the bubbles lit from within.
 private val tideDark = LanyinColors(
-    bg = Color(0xFF040D16), bgDeep = Color(0xFF0A2235), surface = Color(0xFF0B1A28), surfaceAlt = Color(0xFF112638),
-    content = Color(0xFFE4F0F4), muted = Color(0xFF8AA3AF), accent = Color(0xFF5CC6DF), accentAlt = Color(0xFF8DE0CC),
-    onAccent = Color(0xFF02121B), outline = Color(0x24FFFFFF), like = Color(0xFFFF6B88), vinyl = Color(0xFF070B10),
+    bg = Color(0xFF131A2C), bgDeep = Color(0xFF1B2742), surface = Color(0xFF1A2540), surfaceAlt = Color(0xFF222F4F),
+    content = Color(0xFFE7EAF3), muted = Color(0xFF93A3C2), accent = Color(0xFF8FC3EE), accentAlt = Color(0xFFBFD9FA),
+    onAccent = Color(0xFF131A2C), outline = Color(0x26E7EAF3), like = Color(0xFFF08AA2), vinyl = Color(0xFF0C1120),
 )
 private val inkLight = LanyinColors(
     bg = Color(0xFFF4F1EA), bgDeep = Color(0xFFE4DFD3), surface = Color(0xFFF4F1EA), surfaceAlt = Color(0xFFEBE7DE),

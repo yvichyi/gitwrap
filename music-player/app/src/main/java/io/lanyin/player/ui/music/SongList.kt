@@ -53,7 +53,7 @@ import kotlin.math.sin
 
 /** What heads a song list: a cover, or for 每日推荐 the day itself. */
 sealed interface ListHeader {
-    data class Cover(val url: String?, val seed: Int) : ListHeader
+    data class Cover(val url: String?, val seed: Int, val round: Boolean = false) : ListHeader
     data class Day(val day: Int, val caption: String) : ListHeader
 }
 
@@ -135,7 +135,7 @@ private fun HeaderArt(header: ListHeader) {
     val style = Lanyin.style
     val c = style.colors
     when (header) {
-        is ListHeader.Cover -> CoverImage(header.url, header.seed, 112.dp, Modifier.size(112.dp).clip(style.artShape))
+        is ListHeader.Cover -> CoverImage(header.url, header.seed, 112.dp, Modifier.size(112.dp).clip(if (header.round) style.roundShape else style.artShape))
         is ListHeader.Day -> Column(
             Modifier
                 .size(112.dp)

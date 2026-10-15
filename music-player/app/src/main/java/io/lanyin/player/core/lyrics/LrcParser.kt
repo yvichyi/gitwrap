@@ -23,6 +23,14 @@ object LrcParser {
 
     fun parse(source: LyricsSource, durationMs: Long): List<LyricLine> {
         if (source.instrumental) return emptyList()
+        // Word timings when NetEase has them, with the translation matched by time.
+        source.wordTimed?.let { yrc ->
+            val lines = runCatching { YrcParser.parse(yrc, durationMs) }.getOrNull()
+            if (lines != null && lines.count { it.words != null } >= 3) {
+                val translations = source.translation?.let(::timed).orEmpty().filter { it.second.isNotBlank() }
+                return lines.map { it.copy(translation = translationAt(translations, it.startMs, tolerance = 1_000)) }
+            }
+        }
         val main = timed(source.lrc ?: return emptyList())
         if (main.none { it.second.isNotBlank() }) return emptyList()
         val translations = source.translation?.let(::timed).orEmpty().filter { it.second.isNotBlank() }
@@ -78,7 +86,7 @@ object LrcParser {
     }.getOrNull()
 
     /** The translation stamped at (or within a beat of) [start]. */
-    private fun translationAt(translations: List<Pair<Long, String>>, start: Long): String? {
+    private fun translationAt(translations: List<Pair<Long, String>>, start: Long, tolerance: Long = 400): String? {
         if (translations.isEmpty()) return null
         var lo = 0
         var hi = translations.size - 1
@@ -88,6 +96,6 @@ object LrcParser {
         }
         val candidates = listOfNotNull(translations.getOrNull(lo), translations.getOrNull(lo - 1))
         val best = candidates.minByOrNull { kotlin.math.abs(it.first - start) } ?: return null
-        return best.second.takeIf { kotlin.math.abs(best.first - start) <= 400 && it.isNotBlank() && it != "//" }
+        return best.second.takeIf { kotlin.math.abs(best.first - start) <= tolerance && it.isNotBlank() && it != "//" }
     }
 }

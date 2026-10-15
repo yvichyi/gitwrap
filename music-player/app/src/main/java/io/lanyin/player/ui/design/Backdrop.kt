@@ -64,110 +64,76 @@ private fun DrawScope.glowBlob(color: Color, center: Offset, radius: Float) {
     drawCircle(Brush.radialGradient(listOf(color, color.copy(alpha = 0f)), center, radius), radius, center)
 }
 
-private fun DrawScope.drawTide(style: LanyinStyle, t: Float, e: Float, page: Boolean, moonPhase: Float) {
+/**
+ * 澜: watercolour on paper (navy by night) after a Fontaine-era illustration. A cobalt splash
+ * thrown into a corner, fine streamlines sweeping across, soft water bubbles rising and wobbling,
+ * long sparkles twinkling. Pages keep it to a corner and a couple of bubbles.
+ */
+private fun DrawScope.drawTide(style: LanyinStyle, t: Float, e: Float, page: Boolean, @Suppress("UNUSED_PARAMETER") moonPhase: Float) {
     val c = style.colors
     val w = size.width
     val h = size.height
+    val dark = style.dark
+    val unit = minOf(w, h)
     drawRect(c.bg)
-    val a = if (page) 0.6f else 1f
-    val spread = if (page) 0.45f else 1f
-    glowBlob(c.bgDeep.copy(alpha = 0.95f * a), Offset(w * (0.15f + 0.08f * sin(t * 0.23f)), h * spread * (0.12f + 0.05f * cos(t * 0.19f))), w * 0.95f)
-    glowBlob(c.accent.copy(alpha = (if (style.dark) 0.24f else 0.20f) * a), Offset(w * (0.88f + 0.06f * cos(t * 0.17f)), h * spread * (0.26f + 0.07f * sin(t * 0.21f))), w * 0.8f)
-    glowBlob(c.accentAlt.copy(alpha = (if (style.dark) 0.18f else 0.14f) * a), Offset(w * (0.3f + 0.12f * sin(t * 0.13f + 1f)), h * spread * (0.6f + 0.06f * cos(t * 0.11f))), w * 0.85f)
+    // Washes pooled on the paper.
+    glowBlob(c.bgDeep.copy(alpha = if (dark) 0.9f else 0.85f), Offset(w * 0.15f, h * 0.1f), maxOf(w, h) * 0.7f)
+    glowBlob(c.accentAlt.copy(alpha = if (dark) 0.08f else 0.12f), Offset(w * 0.9f, h * 0.6f), maxOf(w, h) * 0.55f)
+
+    val splash = if (dark) Hydro.CobaltDeep else Hydro.Cobalt
+    val splashEdge = if (dark) Hydro.Sparkle else Hydro.CobaltDeep
+    val stream = if (dark) Hydro.Sparkle else Hydro.BubbleRim
+    val sparkle = if (dark) Hydro.Sparkle else Color(0xFF9DBEF0)
+    fun bubble(center: Offset, r: Float, wobble: Float, alpha: Float = 1f) = if (dark) {
+        drawHydroBubble(center, r, wobble, body = Color(0xFF5E9BD6), rim = Hydro.Bubble, light = Color(0xFF8FC3EE), alpha = alpha * 0.85f)
+    } else {
+        drawHydroBubble(center, r, wobble, alpha = alpha)
+    }
+    fun twinkle(i: Int) = (0.35f + 0.65f * sin(t * (0.9f + 0.3f * i) + i * 2.1f).let { it * it })
+
     if (page) {
-        drawSwells(style, t, e, top = 0.84f, strength = 0.7f)
+        // Tucked into the corner, behind the header's buttons rather than its text.
+        drawSplash(Offset(w * 1.03f, -unit * 0.04f), unit * 0.165f, seed = 3, splash, splashEdge, direction = 2.5f, alpha = if (dark) 0.7f else 0.78f)
+        drawStreamlines(Offset(-w * 0.05f, h * 0.66f), Offset(w * 1.05f, h * 0.44f), 3, unit * 0.14f, stream, t, alpha = 0.55f)
+        // Half off the edges, where lists keep their hearts and row numbers clear of them.
+        bubble(Offset(w + unit * 0.006f, h * 0.31f), unit * 0.04f, 0.7f)
+        bubble(Offset(-unit * 0.004f, h * 0.86f), unit * 0.03f, 2.3f, alpha = 0.8f)
+        drawSparkle(Offset(w * 0.7f, h * 0.12f), unit * 0.075f, sparkle, 0.85f)
         return
     }
 
-    // Under the surface: light falling in from above, bubbles rising.
-    drawLightRays(style, t)
-    // Landscape: the sky over the right of the stage, where left-aligned lyrics leave room. At
-    // night it is tonight's moon in its true phase; by day a hazy sun.
-    if (w > h) {
-        val center = Offset(w * 0.86f, h * 0.24f)
-        val r = h * 0.075f
-        if (style.dark) {
-            val lit = moonIllumination(moonPhase)
-            glowBlob(Color.White.copy(alpha = 0.05f + 0.12f * lit), center, r * 4f)
-            drawMoon(
-                center, r, moonPhase,
-                Brush.radialGradient(listOf(Color(0xFFF1F7FA), Color(0xFFC9DDE6)), center, r),
-                dark = Color.White.copy(alpha = 0.06f),
-            )
-        } else {
-            glowBlob(Color.White.copy(alpha = 0.55f), center, r * 4.5f)
-            drawCircle(Brush.radialGradient(listOf(Color.White, Color.White.copy(alpha = 0.6f)), center, r), r, center)
-        }
+    val landscape = w > h
+    // The splash thrown in from the edge, kept clear of the bars and their buttons; a smaller one
+    // answering from the other side.
+    if (landscape) {
+        // Long lyric lines can reach this far: keep it lighter so they still read over it.
+        drawSplash(Offset(w * 1.04f, h * 0.4f), unit * 0.24f, seed = 3, splash, splashEdge, direction = 2.75f, alpha = if (dark) 0.55f else 0.7f)
+        drawSplash(Offset(-unit * 0.04f, h * 1.02f), unit * 0.15f, seed = 7, splash, splashEdge, direction = -0.7f, alpha = if (dark) 0.55f else 0.65f)
+    } else {
+        drawSplash(Offset(w * 1.0f, -unit * 0.02f), unit * 0.26f, seed = 3, splash, splashEdge, direction = 2.5f, alpha = if (dark) 0.8f else 0.9f)
+        drawSplash(Offset(-unit * 0.06f, h * 0.44f), unit * 0.13f, seed = 7, splash, splashEdge, direction = 0.3f, alpha = if (dark) 0.55f else 0.65f)
     }
-    drawBubbles(style, t, e)
-    drawSwells(style, t, e, top = 0.8f, strength = 1f)
-}
+    drawStreamlines(Offset(-w * 0.05f, h * 0.92f), Offset(w * 1.05f, h * 0.3f), 4, unit * 0.22f, stream, t, alpha = 0.6f + 0.3f * e)
 
-/** Shafts of light from the surface, swaying slowly; moonbeams at night. */
-private fun DrawScope.drawLightRays(style: LanyinStyle, t: Float) {
-    val w = size.width
-    val h = size.height
-    val tint = if (style.dark) style.colors.accent else Color.White
-    val strength = if (style.dark) 0.06f else 0.14f
-    for (i in 0 until 5) {
-        val sway = w * 0.03f * sin(t * 0.17f + i * 1.3f)
-        val top = w * (0.08f + 0.2f * i + 0.05f * hash01(i, 40)) + sway
-        val topWidth = w * (0.04f + 0.04f * hash01(i, 41))
-        val slant = w * 0.22f
-        val ray = Path().apply {
-            moveTo(top, 0f)
-            lineTo(top + topWidth, 0f)
-            lineTo(top + topWidth * 3f + slant, h * 0.75f)
-            lineTo(top + slant, h * 0.75f)
-            close()
-        }
-        val a = strength * (0.6f + 0.4f * hash01(i, 42)) * (0.75f + 0.25f * sin(t * 0.3f + i))
-        drawPath(ray, Brush.verticalGradient(listOf(tint.copy(alpha = a), tint.copy(alpha = 0f)), startY = 0f, endY = h * 0.75f))
+    // Bubbles rising and wobbling, quicker while the music plays.
+    val margin = unit * 0.1f
+    for (i in 0 until 9) {
+        val r = unit * (0.014f + 0.05f * hash01(i, 70).let { it * it })
+        val speed = (10f + 18f * hash01(i, 71)) * density * (0.5f + 0.9f * e)
+        val span = h + margin * 2
+        val y = h + margin - ((hash01(i, 72) * span + t * speed) % span)
+        val x = w * hash01(i, 73) + 10f * density * sin(t * (0.5f + 0.4f * hash01(i, 74)) + i * 1.7f)
+        val fade = minOf(1f, (y / h).coerceIn(0f, 1f) * 4f) * minOf(1f, ((h - y) / h + 0.15f) * 3f).coerceIn(0f, 1f)
+        bubble(Offset(x, y), r, t * (0.9f + 0.5f * hash01(i, 75)) + i, alpha = 0.85f * fade)
     }
-}
-
-/** Bubbles drifting up from the deep, quicker while music plays. */
-private fun DrawScope.drawBubbles(style: LanyinStyle, t: Float, e: Float) {
-    val w = size.width
-    val h = size.height
-    val ring = if (style.dark) style.colors.accentAlt else Color.White
-    val margin = 20f * density
-    for (i in 0 until 16) {
-        val speed = (10f + 18f * hash01(i, 50)) * density * (0.7f + 0.8f * e)
-        val y = h + margin - ((hash01(i, 51) * (h + 2 * margin) + t * speed) % (h + 2 * margin))
-        val x = hash01(i, 52) * w + 6f * density * sin(t * (0.8f + hash01(i, 53)) + i * 2f)
-        val r = (1.5f + 3f * hash01(i, 54)) * density
-        // Fade in from the bottom and out near the surface.
-        val depth = (y / h).coerceIn(0f, 1f)
-        val alpha = (if (style.dark) 0.35f else 0.55f) * (0.4f + 0.6f * hash01(i, 55)) * minOf(1f, depth * 3f)
-        drawCircle(ring.copy(alpha = alpha), r, Offset(x, y), style = Stroke(1f * density))
-        drawCircle(ring.copy(alpha = alpha), r * 0.28f, Offset(x - r * 0.35f, y - r * 0.35f))
+    // Long sparkles, twinkling out of step.
+    // Placed in the gaps the layout leaves: never on the lyrics.
+    val spots = if (landscape) {
+        listOf(Offset(w * 0.04f, h * 0.3f), Offset(w * 0.95f, h * 0.74f), Offset(w * 0.05f, h * 0.66f))
+    } else {
+        listOf(Offset(w * 0.18f, h * 0.2f), Offset(w * 0.86f, h * 0.5f), Offset(w * 0.1f, h * 0.62f))
     }
-}
-
-/** Three slow swells along the bottom, the "澜" itself. They rise while music plays. */
-private fun DrawScope.drawSwells(style: LanyinStyle, t: Float, e: Float, top: Float, strength: Float) {
-    val c = style.colors
-    val w = size.width
-    val h = size.height
-    val step = 6f
-    for (layer in 0..2) {
-        val baseY = h * (top + 0.05f * layer)
-        val amp = (8f + 18f * e) * density * (1f - 0.22f * layer)
-        val k = (2 * PI / (w * (1.1f + 0.35f * layer))).toFloat()
-        val phase = t * (0.45f + 0.2f * layer) + layer * 1.7f
-        val path = Path().apply {
-            moveTo(0f, h)
-            var x = 0f
-            while (x <= w + step) {
-                lineTo(x, baseY + amp * sin(k * x + phase))
-                x += step
-            }
-            lineTo(w, h)
-            close()
-        }
-        drawPath(path, (if (layer == 1) c.accentAlt else c.accent).copy(alpha = (if (style.dark) 0.09f else 0.08f) * strength))
-    }
+    spots.forEachIndexed { i, p -> drawSparkle(p, unit * (0.09f - 0.02f * i), sparkle, twinkle(i)) }
 }
 
 private fun DrawScope.drawInk(style: LanyinStyle, t: Float, page: Boolean) {

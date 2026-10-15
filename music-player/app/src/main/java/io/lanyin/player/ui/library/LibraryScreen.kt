@@ -59,6 +59,7 @@ fun LibraryScreen(
     onLogin: () -> Unit,
     account: AccountState = AccountState.LoggedOut,
     onOpenPlaylist: (Long, String) -> Unit = { _, _ -> },
+    onOpenRecent: () -> Unit = {},
     /** Stands in for the network in previews. */
     previewPlaylists: List<Playlist>? = null,
 ) {
@@ -71,6 +72,7 @@ fun LibraryScreen(
     val signedIn = account is AccountState.LoggedIn
     val uid = (account as? AccountState.LoggedIn)?.profile?.userId
     val liked = loaded?.firstOrNull { it.specialType == 5 }
+    val recentCount = LocalAppServices.current?.recent?.songs?.collectAsState()?.value?.size
     val entries = listOf(
         Entry(
             LineIcon.Heart, "我喜欢的音乐",
@@ -81,7 +83,7 @@ fun LibraryScreen(
             },
             onClick = if (liked != null) ({ onOpenPlaylist(liked.id, "我喜欢的音乐") }) else if (signedIn) null else onLogin,
         ),
-        Entry(LineIcon.History, "最近播放", "下一版"),
+        Entry(LineIcon.History, "最近播放", recentCount?.let { if (it == 0) "还没有" else "$it 首 · 本机" } ?: "本机", onClick = onOpenRecent),
         Entry(LineIcon.Download, "本地缓存", "边听边存，最多 1 GB"),
         Entry(LineIcon.Cloud, "音乐云盘", if (signedIn) "下一版" else "登录后可用", onClick = if (signedIn) null else onLogin),
     )

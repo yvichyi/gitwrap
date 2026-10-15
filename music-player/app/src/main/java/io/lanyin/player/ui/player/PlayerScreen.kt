@@ -633,7 +633,8 @@ private fun LandscapeTopBar(state: PlayerState, onCollapse: () -> Unit, onRotate
         QualityTags(state)
         LikeButton(state.liked, onToggle = state::toggleLike)
         IconAction(LineIcon.Rotate, "切换到竖屏", onRotate)
-        IconAction(LineIcon.More, "更多", {})
+        val openMore = io.lanyin.player.ui.music.LocalOpenSheet.current
+        IconAction(LineIcon.More, "更多", { openMore(io.lanyin.player.ui.music.Sheet.TrackActions(state.track)) })
     }
 }
 
@@ -761,7 +762,8 @@ private fun PlayerTopBar(state: PlayerState, onCollapse: () -> Unit, modifier: M
                 )
             }
         }
-        IconAction(LineIcon.More, "更多", {}, Modifier.align(Alignment.CenterEnd))
+        val openMore = io.lanyin.player.ui.music.LocalOpenSheet.current
+        IconAction(LineIcon.More, "更多", { openMore(io.lanyin.player.ui.music.Sheet.TrackActions(state.track)) }, Modifier.align(Alignment.CenterEnd))
     }
 }
 
@@ -859,6 +861,7 @@ private fun TransportControls(state: PlayerState, playSize: Dp, modifier: Modifi
             LineIcon.Next, "下一首", { state.skipNext(); push(forward, 1f) },
             Modifier.graphicsLayer { translationX = forward.value * 7.dp.toPx() }, iconSize = 34.dp,
         )
-        IconAction(LineIcon.Queue, "播放队列", {}, tint = c.muted)
+        val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
+        IconAction(LineIcon.Queue, "播放队列", { openSheet(io.lanyin.player.ui.music.Sheet.Queue) }, tint = c.muted)
     }
 }

@@ -51,10 +51,37 @@ class NeteaseLiveTest {
         val playable = free.firstNotNullOfOrNull { s -> runCatching { resolver.resolve(s.id, Quality.STANDARD) }.getOrNull()?.let { s to it } }
         assertNotNull("no free song resolved", playable)
         val (freeSong, freeStream) = playable!!
-        val head = OkHttpClient().newCall(okhttp3.Request.Builder().url(freeStream.url!!).header("Range", "bytes=0-15").build()).execute().use { it.body!!.bytes() }
+        // As the app does: the address as given, then over the other scheme.
+        val first = freeStream.url!!
+        val second = if (first.startsWith("https://")) "http://" + first.removePrefix("https://") else "https://" + first.removePrefix("http://")
+        fun fetchHead(url: String): ByteArray? = runCatching {
+            OkHttpClient().newCall(okhttp3.Request.Builder().url(url).header("Range", "bytes=0-15").build()).execute().use { r -> r.body!!.bytes().takeIf { r.isSuccessful } }
+        }.getOrNull()
+        val head = fetchHead(first) ?: fetchHead(second) ?: error("audio unreachable over both schemes")
+        println("fetched ${first.substringBefore("?").take(48)}")
         val magic = String(head.copyOfRange(0, 4), Charsets.ISO_8859_1)
         println("audio: ${freeSong.name} → ${freeStream.format} ${freeStream.bitrate} starts with ${magic.take(3)}")
         assertTrue("not audio: $magic", magic.startsWith("ID3") || magic.startsWith("fLaC") || (head[0].toInt() and 0xff) == 0xff)
+
+        // Artists, albums and playlists by name, and their pages.
+        val artistHit = api.searchArtists("周杰伦", limit = 3).first()
+        val artist = api.artist(artistHit.id)
+        println("artist: ${artist.name} ${artist.songCount} songs, ${artist.albumCount} albums, top: ${artist.hotSongs.take(3).map { it.name }}")
+        assertTrue(artist.hotSongs.isNotEmpty())
+        val albumHit = api.searchAlbums("叶惠美", limit = 3).first()
+        val album = api.album(albumHit.id)
+        println("album: ${album.name} — ${album.artistName}, ${album.songs.size} songs, cover=${album.songs.first().album.coverUrl != null}")
+        assertTrue(album.songs.isNotEmpty())
+        val lists = api.searchPlaylists("学习", limit = 3)
+        println("playlists: ${lists.map { "${it.name} (${it.trackCount})" }}")
+        assertTrue(lists.isNotEmpty())
+
+        // Word timings (only some songs have them; the free chart song above does), through the parser.
+        val sunny = api.lyrics(freeSong.id)
+        val timed = io.lanyin.player.core.lyrics.LrcParser.parse(sunny, freeSong.durationMs)
+        val worded = timed.count { it.words != null }
+        println("yrc: ${sunny.wordTimed != null}, ${timed.size} lines, $worded word-timed, sample=${timed.firstOrNull { it.words != null }?.words?.take(4)}")
+        if (sunny.wordTimed != null) assertTrue(worded > 10)
 
         val chart = api.playlist(3778678) // 热歌榜
         println("chart: ${chart.playlist.name}, ${chart.songs.size} songs")

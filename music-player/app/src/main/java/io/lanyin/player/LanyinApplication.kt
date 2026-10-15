@@ -11,6 +11,7 @@ import io.lanyin.player.core.netease.NeteaseApi
 import io.lanyin.player.core.netease.NeteaseClient
 import io.lanyin.player.data.account.AccountRepository
 import io.lanyin.player.data.library.LibraryRepository
+import io.lanyin.player.data.library.RecentRepository
 import io.lanyin.player.playback.AudioPipeline
 import io.lanyin.player.playback.MediaPlayerState
 import io.lanyin.player.playback.StreamResolver
@@ -56,8 +57,9 @@ class AppContainer(context: Context) {
     val library = LibraryRepository(netease, account, scope)
     val streams = StreamResolver(netease)
     val audio = AudioPipeline(context, http, streams)
-    val player = MediaPlayerState(context, netease, streams, library, scope)
-    val services = AppServices(netease, account, library, player)
+    val recent = RecentRepository(File(context.filesDir, "recent.json"), scope)
+    val player = MediaPlayerState(context, netease, streams, library, scope, recent)
+    val services = AppServices(netease, account, library, player, recent)
 
     init {
         // The stream quality follows the setting.

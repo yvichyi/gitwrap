@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -112,4 +113,69 @@ fun ChartsPage(onBack: () -> Unit, onOpen: (Playlist) -> Unit) {
             }
         }
     }
+}
+
+/** An artist's best-known songs. */
+@Composable
+fun ArtistPage(id: Long, name: String, player: PlayerState, onBack: () -> Unit) {
+    val library = LocalAppServices.current?.library
+    val liked by (library?.likedIds ?: noLikes).collectAsState()
+    val load = rememberLoad("artist-$id") { library?.artist(id) ?: error("offline") }
+    val artist = (load.state as? Load.Ready)?.value
+    SongListScreen(
+        title = artist?.name ?: name,
+        subtitle = artist?.let { a -> listOfNotNull("${a.songCount} 首歌 · ${a.albumCount} 张专辑", a.brief?.lineSequence()?.firstOrNull()).joinToString("\n") },
+        header = ListHeader.Cover(artist?.pictureUrl, (id % 97).toInt(), round = true),
+        songs = load.state.map { it.hotSongs },
+        playingId = player.playingSongId,
+        isPlaying = player.isPlaying,
+        onBack = onBack,
+        onPlay = { songs, i -> player.play(songs, i, "${artist?.name ?: name} · 热门") },
+        onRetry = load.retry,
+        likedIds = liked,
+    )
+}
+
+/** An album, track by track. */
+@Composable
+fun AlbumPage(id: Long, name: String, player: PlayerState, onBack: () -> Unit) {
+    val library = LocalAppServices.current?.library
+    val liked by (library?.likedIds ?: noLikes).collectAsState()
+    val load = rememberLoad("album-$id") { library?.album(id) ?: error("offline") }
+    val album = (load.state as? Load.Ready)?.value
+    SongListScreen(
+        title = album?.name ?: name,
+        subtitle = album?.let { a ->
+            val year = a.publishTime.takeIf { it > 0 }?.let { java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).year }
+            listOfNotNull(a.artistName.ifEmpty { null }, year?.let { "$it 年" }).joinToString(" · ")
+        },
+        header = ListHeader.Cover(album?.coverUrl, (id % 97).toInt()),
+        songs = load.state.map { it.songs },
+        playingId = player.playingSongId,
+        isPlaying = player.isPlaying,
+        onBack = onBack,
+        onPlay = { songs, i -> player.play(songs, i, album?.name ?: name) },
+        onRetry = load.retry,
+        likedIds = liked,
+    )
+}
+
+/** What this phone played lately. */
+@Composable
+fun RecentPage(player: PlayerState, onBack: () -> Unit, preview: List<io.lanyin.player.core.model.Song>? = null) {
+    val services = LocalAppServices.current
+    val songs by (services?.recent?.songs ?: remember { MutableStateFlow(preview.orEmpty()) }).collectAsState()
+    val liked by (services?.library?.likedIds ?: noLikes).collectAsState()
+    SongListScreen(
+        title = "最近播放",
+        subtitle = "这台手机上最近听过的 ${songs.size} 首",
+        header = ListHeader.Cover(songs.firstOrNull()?.album?.coverUrl, 11),
+        songs = Load.Ready(songs),
+        playingId = player.playingSongId,
+        isPlaying = player.isPlaying,
+        onBack = onBack,
+        onPlay = { list, i -> player.play(list, i, "最近播放") },
+        onRetry = {},
+        likedIds = liked,
+    )
 }

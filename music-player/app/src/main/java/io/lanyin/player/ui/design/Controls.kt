@@ -73,6 +73,8 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
     val style = Lanyin.style
     val c = style.colors
     val morph by animateFloatAsState(if (playing) 1f else 0f, style.bouncy.spec(), label = "playMorph")
+    // 澜's bubble wobbles softly while the music plays.
+    val wobble = rememberFrameClock(playing && style.button == ButtonKind.Glow)
     val shape = when (style.button) {
         ButtonKind.Blob -> RoundedCornerShape(38)
         ButtonKind.Retro -> RoundedCornerShape(30)
@@ -85,19 +87,10 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
         else -> c.onAccent
     }
     val container = when (style.button) {
-        // 澜: a bubble, lit from the upper left with a specular glint.
+        // 澜: a water bubble, its rim heavier underneath, a crescent of light at the top.
         ButtonKind.Glow -> Modifier
-            .shadow(size * 0.28f, shape, ambientColor = c.accent, spotColor = c.accent)
-            .clip(shape)
-            .drawBehind {
-                drawRect(
-                    Brush.radialGradient(
-                        listOf(androidx.compose.ui.graphics.lerp(c.accent, Color.White, 0.28f), c.accent, androidx.compose.ui.graphics.lerp(c.accent, Color.Black, 0.18f)),
-                        center = Offset(this.size.width * 0.34f, this.size.height * 0.3f), radius = this.size.width * 0.9f,
-                    ),
-                )
-                drawOval(Color.White.copy(alpha = 0.3f), Offset(this.size.width * 0.2f, this.size.height * 0.11f), Size(this.size.width * 0.34f, this.size.height * 0.18f))
-            }
+            .shadow(size * 0.22f, shape, ambientColor = c.accent, spotColor = c.accent)
+            .drawBehind { drawBubbleButton(this.size.minDimension / 2f * 0.97f, wobble.floatValue * 1.4f, c.accent) }
         ButtonKind.Outline -> Modifier.border(1.5.dp, c.content, shape)
         ButtonKind.Blob -> Modifier
             .shadow(size * 0.22f, shape, ambientColor = c.accent, spotColor = c.accent)
@@ -616,19 +609,9 @@ fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String?
         } else if (style.quietSections) {
             Text(title, style = style.type.label, color = c.muted)
         } else if (style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Tide) {
-            // 澜 marks its sections with a small swell.
+            // 澜 marks its sections with a long sparkle.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Canvas(Modifier.size(16.dp, 8.dp)) {
-                    val path = Path().apply {
-                        moveTo(0f, this@Canvas.size.height / 2f)
-                        var x = 0f
-                        while (x <= this@Canvas.size.width) {
-                            lineTo(x, this@Canvas.size.height / 2f + this@Canvas.size.height * 0.35f * kotlin.math.sin(x / this@Canvas.size.width * 2f * PI.toFloat()))
-                            x += 1f
-                        }
-                    }
-                    drawPath(path, c.accent, style = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round))
-                }
+                Canvas(Modifier.size(12.dp, 20.dp)) { drawSparkle(center, this.size.height, c.accent) }
                 Spacer(Modifier.width(8.dp))
                 Text(title, style = style.type.title, color = c.content)
             }

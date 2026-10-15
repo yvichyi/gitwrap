@@ -52,7 +52,7 @@ class StreamResolverTest {
         url("lossless", null, fee = 1)
         url("exhigh", "http://m.music.126.net/a.mp3")
         val s = resolver.resolve(1, Quality.LOSSLESS)
-        assertEquals("https://m.music.126.net/a.mp3", s.url)
+        assertEquals("http://m.music.126.net/a.mp3", s.url)
         assertEquals(Quality.EXHIGH, s.quality)
         assertEquals(listOf("lossless", "exhigh"), requestedLevels())
         assertEquals(s, resolver.resolved.value[1L])
@@ -64,9 +64,9 @@ class StreamResolverTest {
         url("lossless", "http://m.music.126.net/b.flac")
         resolver.resolve(1, Quality.LOSSLESS)
         clock += 60_000
-        assertEquals("https://m.music.126.net/a.flac", resolver.resolve(1, Quality.LOSSLESS).url)
+        assertEquals("http://m.music.126.net/a.flac", resolver.resolve(1, Quality.LOSSLESS).url)
         clock += StreamResolver.TTL_MS
-        assertEquals("https://m.music.126.net/b.flac", resolver.resolve(1, Quality.LOSSLESS).url)
+        assertEquals("http://m.music.126.net/b.flac", resolver.resolve(1, Quality.LOSSLESS).url)
         assertEquals(2, server.requestCount)
     }
 

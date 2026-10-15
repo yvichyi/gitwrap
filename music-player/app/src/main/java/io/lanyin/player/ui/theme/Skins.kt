@@ -12,7 +12,7 @@ enum class AppTheme(
     val lightOnly: Boolean = false,
 ) {
     INK("mo", "墨", "黑白留白，只留文字"),
-    TIDE("lan", "澜", "流动的深海与毛玻璃"),
+    TIDE("lan", "澜", "水彩浪花，泡泡闪光"),
     SAKURA("ying", "樱", "花瓣飘落，软糯回弹"),
     NEON("ni", "霓", "赛博霓虹，夜色限定", darkOnly = true),
     DUSK("mu", "暮", "七十年代的暖色黄昏"),

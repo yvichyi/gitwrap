@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NetEase serves audio from CDN nodes (m701.music.126.net and others) that answer plain http
+     only; everything else stays https-only. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">music.126.net</domain>
+        <domain includeSubdomains="true">126.net</domain>
+    </domain-config>
+</network-security-config>

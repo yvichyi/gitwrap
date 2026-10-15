@@ -7,6 +7,12 @@ import io.lanyin.player.data.library.LibraryRepository
 import io.lanyin.player.ui.player.PlayerState
 
 /** What screens reach for beyond their own state. Absent in previews and screenshot tests. */
-class AppServices(val api: NeteaseApi, val account: AccountRepository, val library: LibraryRepository, val player: PlayerState)
+class AppServices(
+    val api: NeteaseApi,
+    val account: AccountRepository,
+    val library: LibraryRepository,
+    val player: PlayerState,
+    val recent: io.lanyin.player.data.library.RecentRepository,
+)
 
 val LocalAppServices = staticCompositionLocalOf<AppServices?> { null }

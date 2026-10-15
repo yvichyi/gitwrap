@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -263,6 +264,38 @@ class ScreenshotTest {
                 player = DemoPlayerState(emptyList()), accountOverride = AccountState.LoggedIn(demoProfile),
             )
         }
+    }
+
+    // Sheets over the player, and the pages they lead to.
+    @Test fun queue_tide_light() {
+        val repo = repo()
+        capture("queue_tide_light", AppTheme.TIDE, ThemeMode.LIGHT) {
+            LanyinApp(UiSettings(theme = AppTheme.TIDE, themeMode = ThemeMode.LIGHT), repo, player = playingAt(14_000), startExpanded = true)
+        }
+        compose.onAllNodes(androidx.compose.ui.test.hasContentDescription("播放队列")).onFirst().performClick()
+        compose.mainClock.advanceTimeBy(800)
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/queue_tide_light.png")
+    }
+    @Test fun more_grid() {
+        val repo = repo()
+        val player = DemoPlayerState(io.lanyin.player.ui.player.demoQueue.map { it.copy() }).apply { togglePlay() }
+        capture("more_grid_0", AppTheme.GRID, ThemeMode.LIGHT) {
+            LanyinApp(UiSettings(theme = AppTheme.GRID, themeMode = ThemeMode.LIGHT), repo, player = player, startExpanded = true)
+        }
+        compose.onAllNodes(androidx.compose.ui.test.hasContentDescription("更多")).onFirst().performClick()
+        compose.mainClock.advanceTimeBy(800)
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/more_grid.png")
+    }
+    @Test fun artist_sakura_dark() = capture("artist_sakura_dark", AppTheme.SAKURA, ThemeMode.DARK) {
+        io.lanyin.player.ui.music.SongListScreen(
+            "潮汐里的鲸", "128 首歌 · 9 张专辑\n写海、写夜、写慢慢来的事。",
+            io.lanyin.player.ui.music.ListHeader.Cover(null, 21, round = true),
+            io.lanyin.player.ui.music.Load.Ready(sampleSongs), playingId = null, isPlaying = false,
+            onBack = {}, onPlay = { _, _ -> }, onRetry = {},
+        )
+    }
+    @Test fun recent_dusk_dark() = capture("recent_dusk_dark", AppTheme.DUSK, ThemeMode.DARK) {
+        io.lanyin.player.ui.music.RecentPage(playingSample(), onBack = {}, preview = sampleSongs.take(5))
     }
 
     // 格, the neo-brutalist Swiss theme: light only.

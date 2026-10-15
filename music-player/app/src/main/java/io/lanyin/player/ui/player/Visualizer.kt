@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.lanyin.player.ui.design.rememberFrameClock
 import io.lanyin.player.ui.theme.BackdropKind
+import io.lanyin.player.ui.design.drawHydroBubble
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.LanyinStyle
 import io.lanyin.player.ui.theme.PlayerSkin
@@ -229,6 +230,18 @@ private fun DrawScope.drawSpectrum(
             drawPath(band, c.accent.copy(alpha = alpha * 0.14f))
             drawPath(trail, c.accentAlt.copy(alpha = alpha * 0.45f), style = Stroke(1.dp.toPx()))
             drawPath(outer, c.accent.copy(alpha = alpha * 0.7f), style = Stroke(1.5.dp.toPx()))
+            // Bubbles thrown off the crests.
+            for (i in 0 until n step 8) {
+                val v = level(i)
+                if (v < 0.3f) continue
+                val o = rest + v * reach + 6.dp.toPx()
+                val r = (2.dp + 4.dp * v).toPx()
+                if (style.dark) {
+                    drawHydroBubble(Offset(px(i, o), py(i, o)), r, i * 0.7f, body = androidx.compose.ui.graphics.Color(0xFF5E9BD6), rim = c.accent, light = c.accentAlt, alpha = alpha * v)
+                } else {
+                    drawHydroBubble(Offset(px(i, o), py(i, o)), r, i * 0.7f, alpha = alpha * v)
+                }
+            }
         }
         // Dots that float outward, alternating the two accents.
         BackdropKind.Sakura -> {

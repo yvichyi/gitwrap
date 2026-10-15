@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.ui.design.drawLyricSparkle
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -267,9 +268,11 @@ private fun LyricRow(
             baseColor = base,
             sweepColor = sweep,
             progress = if (active) progress else null,
+            byChars = line.words != null,
             glow = if (ls.glow) sweep else null,
             block = if (brutal) io.lanyin.player.ui.theme.GridYellow else null,
             blockEdge = c.outline,
+            sparkle = if (style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Tide) (if (style.dark) c.accentAlt else c.accent) else null,
         )
         if (showTranslation && line.translation != null) {
             Text(
@@ -299,8 +302,36 @@ fun SweepText(
     modifier: Modifier = Modifier,
     block: Color? = null,
     blockEdge: Color = Color.Black,
+    /** 澜: a little sparkle riding the leading edge of the sweep. */
+    sparkle: Color? = null,
+    /** [progress] counts characters (word-timed lyrics) rather than width. */
+    byChars: Boolean = false,
 ) {
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val glint = if (sparkle != null && progress != null) {
+        Modifier.drawWithContent {
+            drawContent()
+            val l = layout ?: return@drawWithContent
+            val p = progress()
+            if (p <= 0.01f || p >= 0.99f) return@drawWithContent
+            var remaining = l.sweepWidth(p, byChars)
+            for (li in 0 until l.lineCount) {
+                val width = l.getLineRight(li) - l.getLineLeft(li)
+                if (remaining <= width) {
+                    val x = l.getLineLeft(li) + remaining
+                    val y = (l.getLineTop(li) + l.getLineBottom(li)) / 2f
+                    val h = (l.getLineBottom(li) - l.getLineTop(li)) * 0.95f
+                    // A slow twinkle as it travels.
+                    val a = 0.65f + 0.35f * kotlin.math.sin(p * 40f)
+                    drawLyricSparkle(Offset(x, y - h * 0.18f), h, sparkle, a)
+                    break
+                }
+                remaining -= width
+            }
+        }
+    } else {
+        Modifier
+    }
     val highlight = if (block != null && progress != null) {
         Modifier.drawBehind {
             val l = layout ?: return@drawBehind
@@ -326,7 +357,7 @@ fun SweepText(
     } else {
         Modifier
     }
-    Box(modifier.then(highlight)) {
+    Box(modifier.then(highlight).then(glint)) {
         Text(text, style = style.copy(color = baseColor), onTextLayout = { layout = it })
         if (progress != null) {
             Text(
@@ -342,7 +373,7 @@ fun SweepText(
                             // Whole characters at a time, so the block never slices a glyph.
                             l.sungWidth(progress(), wholeChars = true).let { if (it > 0f) it + feather else 0f }
                         } else {
-                            progress() * (l.sungWidth(1f, wholeChars = false) + feather)
+                            progress().let { p -> l.sweepWidth(p, byChars) + p * feather }
                         }
                         for (li in 0 until l.lineCount) {
                             val left = l.getLineLeft(li)
@@ -368,6 +399,31 @@ fun SweepText(
  * How far along the text, summed over its lines, [progress] has sung. With [wholeChars] it snaps
  * forward to the end of the character being sung.
  */
+/** Width swept at [progress]: a share of the width, or of the characters for word-timed lines. */
+internal fun TextLayoutResult.sweepWidth(progress: Float, byChars: Boolean): Float =
+    if (byChars) widthThroughChars(progress * layoutInput.text.length) else sungWidth(progress, wholeChars = false)
+
+/** Width, summed over lines, up to a fractional character position. */
+internal fun TextLayoutResult.widthThroughChars(chars: Float): Float {
+    val n = layoutInput.text.length
+    val c = chars.coerceIn(0f, n.toFloat())
+    val i = c.toInt()
+    var acc = 0f
+    for (li in 0 until lineCount) {
+        val end = getLineEnd(li)
+        val left = getLineLeft(li)
+        val right = getLineRight(li)
+        if (i >= end && li < lineCount - 1) {
+            acc += right - left
+            continue
+        }
+        val x0 = if (i >= end) right else getHorizontalPosition(i, usePrimaryDirection = true)
+        val x1 = if (i + 1 >= end) right else getHorizontalPosition(i + 1, usePrimaryDirection = true)
+        return acc + (x0 - left) + (x1 - x0) * (c - i)
+    }
+    return acc
+}
+
 internal fun TextLayoutResult.sungWidth(progress: Float, wholeChars: Boolean): Float {
     var total = 0f
     for (li in 0 until lineCount) total += getLineRight(li) - getLineLeft(li)

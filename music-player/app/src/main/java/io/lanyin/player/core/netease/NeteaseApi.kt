@@ -1,6 +1,10 @@
 package io.lanyin.player.core.netease
 
 import io.lanyin.player.core.model.Album
+import io.lanyin.player.core.model.AlbumDetail
+import io.lanyin.player.core.model.AlbumHit
+import io.lanyin.player.core.model.ArtistDetail
+import io.lanyin.player.core.model.ArtistHit
 import io.lanyin.player.core.model.Artist
 import io.lanyin.player.core.model.LyricsSource
 import io.lanyin.player.core.model.Playlist
@@ -172,6 +176,46 @@ class NeteaseApi(private val client: NeteaseClient) {
         return r.decode<SearchDto>().result?.songs.orEmpty().map { it.toSong() }
     }
 
+    suspend fun artist(id: Long): ArtistDetail {
+        val dto = client.weapi("/api/v1/artist/$id").requireOk().decode<ArtistPageDto>()
+        val a = dto.artist ?: throw NeteaseException(404, "找不到这位歌手")
+        return ArtistDetail(
+            id = a.id, name = a.name.orEmpty(), pictureUrl = (a.picUrl ?: a.img1v1Url)?.https(),
+            brief = a.briefDesc?.takeIf { it.isNotBlank() }, songCount = a.musicSize, albumCount = a.albumSize,
+            hotSongs = dto.hotSongs.map { it.toSong() },
+        )
+    }
+
+    suspend fun album(id: Long): AlbumDetail {
+        val dto = client.weapi("/api/v1/album/$id").requireOk().decode<AlbumDetailDto>()
+        val a = dto.album ?: throw NeteaseException(404, "找不到这张专辑")
+        val cover = a.picUrl?.https()
+        return AlbumDetail(
+            id = a.id, name = a.name.orEmpty(), coverUrl = cover,
+            artistName = (a.artists?.joinToString(" / ") { it.name.orEmpty() } ?: a.artist?.name).orEmpty(),
+            publishTime = a.publishTime, description = a.description?.takeIf { it.isNotBlank() },
+            // Album tracks often leave the cover out; they all share the album's.
+            songs = dto.songs.map { it.toSong().let { s -> if (s.album.coverUrl == null) s.copy(album = s.album.copy(coverUrl = cover)) else s } },
+        )
+    }
+
+    suspend fun searchArtists(keywords: String, limit: Int = 30): List<ArtistHit> =
+        cloudsearch(keywords, 100, limit).decode<SearchDto>().result?.artists.orEmpty()
+            .map { ArtistHit(it.id, it.name.orEmpty(), (it.picUrl ?: it.img1v1Url)?.https(), it.albumSize) }
+
+    suspend fun searchAlbums(keywords: String, limit: Int = 30): List<AlbumHit> =
+        cloudsearch(keywords, 10, limit).decode<SearchDto>().result?.albums.orEmpty()
+            .map { AlbumHit(it.id, it.name.orEmpty(), it.picUrl?.https(), it.artist?.name.orEmpty(), it.size) }
+
+    suspend fun searchPlaylists(keywords: String, limit: Int = 30): List<Playlist> =
+        cloudsearch(keywords, 1000, limit).decode<SearchDto>().result?.playlists.orEmpty().map { it.toPlaylist() }
+
+    private suspend fun cloudsearch(keywords: String, type: Int, limit: Int): NeteaseResponse =
+        client.eapi(
+            "/api/cloudsearch/pc",
+            buildJsonObject { put("s", keywords); put("type", type); put("limit", limit); put("offset", 0); put("total", true) },
+        ).requireOk()
+
     // —— Playback ——
 
     suspend fun lyrics(songId: Long): LyricsSource {
@@ -200,7 +244,8 @@ class NeteaseApi(private val client: NeteaseClient) {
         val d = r.decode<UrlDto>().data.firstOrNull() ?: return Stream(songId, null, null, 0, null, 0, 0, false, 404)
         return Stream(
             songId = songId,
-            url = d.url?.https(),
+            // As given: some audio CDN nodes only answer plain http (cleartext is allowed for them).
+            url = d.url,
             quality = Quality.fromLevel(d.level),
             bitrate = d.br,
             format = d.type?.lowercase(),
@@ -307,7 +352,40 @@ internal class PlaylistDto(
 @Serializable internal class RecommendResourceDto(val recommend: List<PlaylistDto> = emptyList())
 @Serializable internal class FmDto(val data: List<SongDto> = emptyList())
 @Serializable internal class SearchDto(val result: SearchResultDto? = null)
-@Serializable internal class SearchResultDto(val songs: List<SongDto> = emptyList())
+@Serializable
+internal class SearchResultDto(
+    val songs: List<SongDto> = emptyList(),
+    val artists: List<ArtistInfoDto> = emptyList(),
+    val albums: List<AlbumInfoDto> = emptyList(),
+    val playlists: List<PlaylistDto> = emptyList(),
+)
+
+@Serializable
+internal class ArtistInfoDto(
+    val id: Long = 0,
+    val name: String? = null,
+    val picUrl: String? = null,
+    val img1v1Url: String? = null,
+    val briefDesc: String? = null,
+    val musicSize: Int = 0,
+    val albumSize: Int = 0,
+)
+
+@Serializable internal class ArtistPageDto(val artist: ArtistInfoDto? = null, val hotSongs: List<SongDto> = emptyList())
+
+@Serializable
+internal class AlbumInfoDto(
+    val id: Long = 0,
+    val name: String? = null,
+    val picUrl: String? = null,
+    val artist: ArtistDto? = null,
+    val artists: List<ArtistDto>? = null,
+    val publishTime: Long = 0,
+    val description: String? = null,
+    val size: Int = 0,
+)
+
+@Serializable internal class AlbumDetailDto(val album: AlbumInfoDto? = null, val songs: List<SongDto> = emptyList())
 @Serializable internal class LyricTextDto(val lyric: String? = null)
 
 @Serializable

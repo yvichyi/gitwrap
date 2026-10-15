@@ -47,68 +47,48 @@ fun DrawScope.drawCoverArt(style: LanyinStyle, seed: Int) {
 }
 
 private fun DrawScope.tideCover(style: LanyinStyle, seed: Int) {
-    val c = style.colors
     val w = size.width
     val h = size.height
-    val deep = if (style.dark) lerp(c.bgDeep, c.accent, 0.35f) else lerp(c.accent, Color.Black, 0.25f)
-    val (from, to) = if (seed % 2 == 0) deep to c.accentAlt else c.accentAlt to deep
-    // Four compositions so a row of covers doesn't read as one image repeated.
+    val u = minOf(w, h)
+    // Four watercolour sleeves so a row of covers doesn't read as one image repeated.
     when (seed % 4) {
         0 -> {
-            // Moon over swells.
-            drawRect(Brush.linearGradient(listOf(from, lerp(from, to, 0.5f), to), Offset.Zero, Offset(w, h)))
-            drawCircle(Color.White.copy(alpha = 0.85f), radius = w * 0.09f, center = Offset(w * (0.62f + 0.2f * hash01(seed, 1)), h * (0.22f + 0.12f * hash01(seed, 2))))
-            for (i in 0 until 4) drawSwell(h * (0.52f + i * 0.1f), h * 0.035f, w * (0.7f + 0.15f * i), hash01(seed, 3 + i) * 6f, Color.White.copy(alpha = 0.18f + 0.1f * i), w * 0.012f)
+            // A cobalt splash thrown across white paper, a bubble caught in its spray.
+            drawRect(Hydro.Paper)
+            drawSplash(Offset(w * 0.78f, h * 0.24f), u * 0.3f, seed = seed * 7 + 1, Hydro.Cobalt, Hydro.CobaltDeep, direction = 2.4f)
+            drawHydroBubble(Offset(w * 0.3f, h * 0.66f), u * 0.17f, hash01(seed, 1) * 6f)
+            drawSparkle(Offset(w * 0.56f, h * 0.58f), u * 0.18f, Color(0xFF9DBEF0))
         }
         1 -> {
-            // Light falling into deep water, bubbles rising.
-            drawRect(Brush.verticalGradient(listOf(lerp(c.accentAlt, Color.White, 0.2f), deep, lerp(deep, Color.Black, 0.35f))))
+            // Bubbles rising through the navy night, a sparkle among them.
+            drawRect(Brush.verticalGradient(listOf(Color(0xFF1B2742), Hydro.Navy)))
+            drawStreamlines(Offset(0f, h * 0.95f), Offset(w, h * 0.3f), 3, u * 0.2f, Hydro.Sparkle, hash01(seed, 2) * 4f, alpha = 0.7f)
             for (i in 0 until 4) {
-                val x0 = w * (0.1f + 0.22f * i + 0.05f * hash01(seed, 10 + i))
-                val ray = Path().apply {
-                    moveTo(x0, 0f)
-                    lineTo(x0 + w * 0.08f, 0f)
-                    lineTo(x0 + w * 0.3f, h)
-                    lineTo(x0 + w * 0.12f, h)
-                    close()
-                }
-                drawPath(ray, Color.White.copy(alpha = 0.08f + 0.05f * hash01(seed, 20 + i)))
+                val r = u * (0.07f + 0.1f * hash01(seed * 3 + i, 31))
+                drawHydroBubble(
+                    Offset(w * (0.2f + 0.6f * hash01(seed * 3 + i, 32)), h * (0.2f + 0.65f * hash01(seed * 3 + i, 33))), r, i * 1.7f,
+                    body = Color(0xFF5E9BD6), rim = Hydro.Bubble, light = Color(0xFF8FC3EE), alpha = 0.9f,
+                )
             }
-            for (i in 0 until 9) {
-                val r = w * (0.012f + 0.022f * hash01(seed * 3 + i, 31))
-                drawCircle(Color.White.copy(alpha = 0.55f), r, Offset(w * (0.55f + 0.35f * hash01(seed * 3 + i, 32)), h * (0.3f + 0.65f * hash01(seed * 3 + i, 33))), style = Stroke(w * 0.006f))
-            }
+            drawSparkle(Offset(w * 0.74f, h * 0.24f), u * 0.22f, Hydro.Sparkle)
         }
         2 -> {
-            // A moon and its broken reflection.
-            val horizon = h * 0.56f
-            drawRect(Brush.verticalGradient(listOf(lerp(deep, Color.Black, 0.2f), deep), endY = horizon))
-            drawRect(Brush.verticalGradient(listOf(deep, lerp(deep, Color.Black, 0.45f)), startY = horizon), topLeft = Offset(0f, horizon))
-            val mx = w * (0.38f + 0.24f * hash01(seed, 40))
-            drawCircle(lerp(c.accentAlt, Color.White, 0.55f), w * 0.15f, Offset(mx, horizon - h * 0.2f))
-            for (k in 0 until 8) {
-                val y = horizon + h * (0.04f + k * 0.052f)
-                val half = w * (0.16f - k * 0.012f) * (0.7f + 0.3f * hash01(seed * 5 + k, 41))
-                drawLine(Color.White.copy(alpha = 0.6f - k * 0.06f), Offset(mx - half, y), Offset(mx + half, y), h * 0.012f, StrokeCap.Round)
+            // Streamlines sweeping over a pale wash, ink droplets thrown along them.
+            drawRect(Brush.linearGradient(listOf(Color(0xFFEAF5FB), Color(0xFFC9DFF3)), Offset.Zero, Offset(w, h)))
+            drawStreamlines(Offset(-w * 0.1f, h * 0.9f), Offset(w * 1.1f, h * 0.15f), 5, u * 0.45f, Hydro.BubbleRim, hash01(seed, 3) * 5f)
+            for (i in 0 until 10) {
+                val p = hash01(seed * 5 + i, 41)
+                drawCircle(Hydro.CobaltDeep.copy(alpha = 0.8f), u * (0.008f + 0.02f * hash01(seed * 5 + i, 42)), Offset(w * (0.1f + 0.8f * p), h * (0.85f - 0.7f * p + 0.12f * (hash01(seed * 5 + i, 43) - 0.5f))))
             }
+            drawHydroBubble(Offset(w * 0.68f, h * 0.62f), u * 0.21f, hash01(seed, 4) * 6f)
         }
         else -> {
-            // Ribbons of current crossing the frame.
-            drawRect(Brush.linearGradient(listOf(lerp(deep, Color.Black, 0.3f), deep), Offset.Zero, Offset(w, h)))
-            for (i in 0 until 3) {
-                val color = if (i == 1) c.accentAlt else lerp(c.accent, Color.White, 0.3f)
-                val base = h * (0.3f + 0.2f * i)
-                val k = (2 * PI / (w * (0.9f + 0.3f * i))).toFloat()
-                val phase = hash01(seed, 50 + i) * 6f
-                val ribbon = Path().apply {
-                    moveTo(0f, base)
-                    var x = 0f
-                    while (x <= w) { lineTo(x, base + h * 0.08f * sin(k * x + phase)); x += w / 48f }
-                    while (x >= 0f) { lineTo(x, base + h * 0.06f + h * 0.08f * sin(k * x + phase + 0.6f)); x -= w / 48f }
-                    close()
-                }
-                drawPath(ribbon, color.copy(alpha = 0.35f + 0.15f * i))
-            }
+            // A wash of cobalt along the bottom, its spray climbing into white, two sparkles.
+            drawRect(Hydro.Paper)
+            drawSplash(Offset(w * 0.2f, h * 1.02f), u * 0.42f, seed = seed * 11 + 5, Hydro.Cobalt, Hydro.CobaltDeep, direction = -0.9f)
+            drawHydroBubble(Offset(w * 0.72f, h * 0.36f), u * 0.13f, hash01(seed, 5) * 6f)
+            drawSparkle(Offset(w * 0.32f, h * 0.28f), u * 0.2f, Color(0xFF9DBEF0))
+            drawSparkle(Offset(w * 0.86f, h * 0.7f), u * 0.1f, Color(0xFF9DBEF0), 0.8f)
         }
     }
 }
@@ -438,17 +418,11 @@ fun ThemeMotif(color: Color, modifier: Modifier = Modifier) {
                 drawPath(brushStrokePath(Offset(w * 0.12f, h * 0.55f), w * 0.7f, h * 0.13f), color)
                 drawRect(color, Offset(w * 0.78f, h * 0.24f), Size(w * 0.09f, w * 0.09f))
             }
-            AppTheme.TIDE -> for (i in 0 until 3) {
-                val y = h * (0.38f + i * 0.14f)
-                val path = Path().apply {
-                    moveTo(w * 0.1f, y)
-                    var x = w * 0.1f
-                    while (x <= w * 0.9f) {
-                        lineTo(x, y + h * 0.05f * sin((x / w) * 4f * PI.toFloat() + i))
-                        x += 2f
-                    }
-                }
-                drawPath(path, color.copy(alpha = 1f - i * 0.25f), style = line)
+            AppTheme.TIDE -> {
+                // A water bubble with a sparkle beside it.
+                // In the theme's own blues, whatever tint the caller asked for.
+                drawHydroBubble(Offset(w * 0.42f, h * 0.56f), r * 0.78f, 0.6f, body = style.colors.accentAlt, rim = style.colors.accent, light = Color.White, alpha = 0.75f)
+                drawSparkle(Offset(w * 0.78f, h * 0.26f), r * 0.9f, style.colors.accent, 0.8f)
             }
             AppTheme.SAKURA -> for (k in 0 until 5) {
                 rotate(k * 72f, center) { drawPetal(center + Offset(0f, -r * 0.55f), r * 0.42f, 0f, color.copy(alpha = 0.85f)) }

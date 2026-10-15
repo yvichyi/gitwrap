@@ -104,5 +104,15 @@ class LibraryRepository(private val api: NeteaseApi, account: AccountRepository,
 
     suspend fun personalFm(): List<Song> = api.personalFm()
 
+    suspend fun artist(id: Long) = api.artist(id)
+
+    suspend fun album(id: Long) = api.album(id)
+
+    suspend fun searchArtists(keywords: String) = api.searchArtists(keywords)
+
+    suspend fun searchAlbums(keywords: String) = api.searchAlbums(keywords)
+
+    suspend fun searchPlaylists(keywords: String) = api.searchPlaylists(keywords)
+
     val signedIn: Boolean get() = userId != null
 }

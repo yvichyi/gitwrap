@@ -45,6 +45,7 @@ class MediaPlayerState(
     private val resolver: StreamResolver,
     private val library: LibraryRepository,
     private val scope: CoroutineScope,
+    private val recent: io.lanyin.player.data.library.RecentRepository? = null,
 ) : PlayerState() {
 
     private val appContext = context.applicationContext
@@ -135,6 +136,7 @@ class MediaPlayerState(
             playerDuration = 0
             positionMs = 0
             loadLyrics(track)
+            if (!isEmpty) recent?.record(track.toSong())
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) errorsInARow = 0
             if (fm && index >= queue.size - 2) topUpFm()
         }
@@ -324,6 +326,9 @@ class MediaPlayerState(
 
     companion object {
         private const val EXTRA_DURATION = "lanyin.duration"
+        private const val EXTRA_ALBUM = "lanyin.album"
+        private const val EXTRA_ARTIST_IDS = "lanyin.artistIds"
+        private const val EXTRA_ARTIST_NAMES = "lanyin.artistNames"
 
         fun qualityLabel(s: Stream): String = when {
             s.trialOnly -> "试听"
@@ -345,7 +350,14 @@ class MediaPlayerState(
                     .setAlbumTitle(album.name)
                     .setArtworkUri(album.coverUrl?.let { Uri.parse(io.lanyin.player.ui.design.sized(it, 600)) })
                     .setDurationMs(durationMs.takeIf { it > 0 })
-                    .setExtras(Bundle().apply { putLong(EXTRA_DURATION, durationMs) })
+                    .setExtras(
+                        Bundle().apply {
+                            putLong(EXTRA_DURATION, durationMs)
+                            putLong(EXTRA_ALBUM, album.id)
+                            putLongArray(EXTRA_ARTIST_IDS, artists.map { it.id }.toLongArray())
+                            putStringArray(EXTRA_ARTIST_NAMES, artists.map { it.name }.toTypedArray())
+                        },
+                    )
                     .build(),
             )
             .build()
@@ -361,6 +373,12 @@ class MediaPlayerState(
                 coverSeed = (id % 97).toInt(),
                 durationMs = m.durationMs ?: m.extras?.getLong(EXTRA_DURATION) ?: 0L,
                 coverUrl = m.artworkUri?.toString(),
+                artists = m.extras?.let { x ->
+                    val ids = x.getLongArray(EXTRA_ARTIST_IDS) ?: LongArray(0)
+                    val names = x.getStringArray(EXTRA_ARTIST_NAMES) ?: emptyArray()
+                    ids.indices.mapNotNull { i -> names.getOrNull(i)?.let { io.lanyin.player.core.model.Artist(ids[i], it) } }
+                }.orEmpty(),
+                albumId = m.extras?.getLong(EXTRA_ALBUM) ?: 0L,
             )
         }
     }
