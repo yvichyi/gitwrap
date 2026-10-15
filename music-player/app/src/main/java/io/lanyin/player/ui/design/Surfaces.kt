@@ -41,7 +41,7 @@ enum class SurfaceTone {
 
 /** The theme's "accent fill": a gradient where the theme likes gradients, flat elsewhere. */
 fun LanyinStyle.accentBrush(): Brush = when (edge) {
-    EdgeKind.Soft -> Brush.linearGradient(listOf(colors.accent, colors.accentAlt))
+    EdgeKind.Soft, EdgeKind.Glass -> Brush.linearGradient(listOf(colors.accent, colors.accentAlt))
     else -> Brush.linearGradient(listOf(colors.accent, colors.accent))
 }
 
@@ -102,6 +102,9 @@ fun Modifier.themedSurface(
         tone == SurfaceTone.Accent -> m.background(style.accentBrush())
         style.edge == EdgeKind.Hairline -> m.background(c.bg)
         style.edge == EdgeKind.Glow -> m.background(c.surface.copy(alpha = 0.9f))
+        style.edge == EdgeKind.Glass -> m.background(glassFill(tone, c.bg))
+        // 律: containers are the background leaning toward the accent (they follow the cover too).
+        style.edge == EdgeKind.Tonal -> m.background(style.tonal(if (style.dark) (if (flat) 0.1f else 0.15f) else (if (flat) 0.06f else 0.1f)))
         else -> m.background(c.surface)
     }
     // 4. Edge.
@@ -111,6 +114,11 @@ fun Modifier.themedSurface(
         EdgeKind.Brutal -> m.border(style.strokeWidth, c.outline, shape)
         // In the dark a shadow barely shows; a faint rim keeps the card's edge.
         EdgeKind.Soft -> if (style.dark) m.border(1.dp, c.content.copy(alpha = 0.07f), shape) else m
+        // A bright rim where light catches the glass.
+        EdgeKind.Glass -> m.border(1.dp, Color.White.copy(alpha = if (flat) 0.08f else 0.14f), shape)
+        EdgeKind.Tonal -> m
+        // A print's thin rim.
+        EdgeKind.Film -> m.border(1.dp, c.content.copy(alpha = if (flat) 0.08f else 0.14f), shape)
     }
     if (onClick != null) {
         m = m.clickable(interactionSource = interaction, indication = null, onClick = onClick)

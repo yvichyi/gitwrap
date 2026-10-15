@@ -12,9 +12,12 @@ enum class AppTheme(
     val lightOnly: Boolean = false,
 ) {
     INK("mo", "墨", "黑白留白，只留文字"),
-    NEON("ni", "霓", "电光蓝紫，夜色限定", darkOnly = true),
+    FLOW("liu", "流", "封面流光，歌词如潮", darkOnly = true),
+    PULSE("lv", "律", "形状灵动，弹性律动"),
+    FILM("ying", "影", "胶片颗粒，光影流转", darkOnly = true),
+    GRID("ge", "格", "瑞士网格，粗边硬影", lightOnly = true),
     DUSK("mu", "暮", "晚霞暖光，柔和圆角"),
-    GRID("ge", "格", "瑞士网格，粗边硬影", lightOnly = true);
+    NEON("ni", "霓", "电光蓝紫，夜色限定", darkOnly = true);
 
     companion object {
         /** 墨 is the flagship: the most restrained theme sets the bar for the rest. */

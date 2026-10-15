@@ -202,6 +202,13 @@ fun LanyinApp(
         if (!expanded) orientation.release() else if (settings.autoLandscape) orientation.lockLandscape()
     }
 
+    // 流 takes the cover's colours everywhere, not just on the player: the pages flow with it too.
+    val flowSeeds = if (Lanyin.style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Flow && settings.followCover) {
+        io.lanyin.player.ui.theme.rememberCoverSeeds(player.coverUrl)
+    } else {
+        null
+    }
+    io.lanyin.player.ui.theme.TintedBy(flowSeeds) {
     CompositionLocalProvider(LocalOpenSheet provides sheets::open, LocalNavigator provides navigator) {
     SharedTransitionLayout(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().background(Lanyin.colors.bg)) {
@@ -358,6 +365,7 @@ fun LanyinApp(
                 onEffects = { fx -> appScope.launch { settingsRepository.setEffects(fx) } },
             )
         }
+    }
     }
     }
 }

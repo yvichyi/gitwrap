@@ -29,6 +29,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import io.lanyin.player.ui.design.CoverArt
+import io.lanyin.player.ui.design.dateStampWidth
+import io.lanyin.player.ui.design.drawDateStamp
+import io.lanyin.player.ui.design.drawFilmFrame
+import io.lanyin.player.ui.design.hash01
+import io.lanyin.player.ui.design.rememberFrameClock
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import io.lanyin.player.ui.design.drawCoverArt
 import io.lanyin.player.ui.design.neonGlow
 import io.lanyin.player.ui.design.retroShadow
@@ -119,7 +127,7 @@ private fun DrawScope.drawToneArm(style: LanyinStyle, angle: Float) {
     val c = style.colors
     val metal = when (style.edge) {
         EdgeKind.Glow -> c.accent
-        EdgeKind.Hairline, EdgeKind.Brutal -> c.content
+        EdgeKind.Hairline, EdgeKind.Brutal, EdgeKind.Glass -> c.content
         else -> lerp(c.content, c.bg, 0.15f)
     }
     val pivot = Offset(size.width * 0.9f, size.height * 0.07f)
@@ -147,11 +155,22 @@ fun SquareCover(isPlaying: Boolean, coverSeed: Int, modifier: Modifier = Modifie
     val c = style.colors
     // Settles back when paused, springs forward on play.
     val scale by animateFloatAsState(if (isPlaying) 1f else 0.86f, style.bouncy.spec(), label = "coverScale")
-    val shape = style.artShape
+    if (style.edge == EdgeKind.Film) {
+        FilmCover(isPlaying, coverSeed, scale, modifier, coverUrl)
+        return
+    }
+    // 律: the cover rounds into a squircle while playing and pinches into a cookie when paused.
+    val pinch by animateFloatAsState(if (isPlaying) 1f else 0f, style.bouncy.spec(), label = "coverShape")
+    val shape = if (style.edge == EdgeKind.Tonal) {
+        androidx.compose.runtime.remember(pinch) { io.lanyin.player.ui.design.morphShape(io.lanyin.player.ui.design.Cookie, io.lanyin.player.ui.design.Squircle, pinch) }
+    } else {
+        style.artShape
+    }
     val frame = when (style.edge) {
         EdgeKind.Brutal -> Modifier.retroShadow(shape, c.outline, 6.dp).clip(shape).border(style.strokeWidth, c.outline, shape)
         EdgeKind.Glow -> Modifier.neonGlow(shape, c.accent).clip(shape).border(1.dp, c.accent, shape)
         EdgeKind.Hairline -> Modifier.clip(shape).border(1.dp, c.outline, shape)
+        EdgeKind.Tonal -> Modifier.clip(shape)
         else -> Modifier.shadow(28.dp, shape, ambientColor = c.accent, spotColor = Color.Black).clip(shape)
     }
     CoverImage(
@@ -165,6 +184,51 @@ fun SquareCover(isPlaying: Boolean, coverSeed: Int, modifier: Modifier = Modifie
             .then(frame),
     )
 }
+
+/**
+ * 影's cover: a frame of 35mm film with sprocket holes and an edge marking, the orange date
+ * stamp of a point-and-shoot in the picture's corner. While playing the frame weaves a hair in
+ * the gate, as projected film does.
+ */
+@Composable
+private fun FilmCover(isPlaying: Boolean, coverSeed: Int, scale: Float, modifier: Modifier, coverUrl: String?) {
+    val clock = rememberFrameClock(isPlaying)
+    val stamp = androidx.compose.runtime.remember {
+        val today = java.time.LocalDate.now()
+        "'%02d %d %02d".format(today.year % 100, today.monthValue, today.dayOfMonth)
+    }
+    BoxWithConstraints(
+        modifier
+            .aspectRatio(1f)
+            .padding(10.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                if (isPlaying) {
+                    val frame = (clock.floatValue * 24f).toInt()
+                    translationX = (hash01(frame, 7) - 0.5f) * 1.2.dp.toPx()
+                    translationY = (hash01(frame, 8) - 0.5f) * 1.6.dp.toPx()
+                }
+            }
+            .drawBehind { drawFilmFrame(size.height * FILM_MARGIN, 12 + coverSeed % 24) },
+    ) {
+        CoverImage(
+            coverUrl, coverSeed, 360.dp,
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = maxWidth * 0.03f, vertical = maxHeight * FILM_MARGIN)
+                .drawWithContent {
+                    drawContent()
+                    val h = size.height * 0.06f
+                    val w = dateStampWidth(stamp, h)
+                    drawDateStamp(stamp, Offset(size.width - w - size.width * 0.05f, size.height - h * 2.2f), h)
+                },
+        )
+    }
+}
+
+/** How much of 影's film frame, above and below the picture, is sprocket margin. */
+private const val FILM_MARGIN = 0.12f
 
 @Composable
 fun Cassette(spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier) {

@@ -230,13 +230,13 @@ private fun LyricRow(
     val activeAmount by animateFloatAsState(if (active) 1f else 0f, spring(dampingRatio = 1f, stiffness = style.motion.stiffness), label = "lyricActive")
     // 格 marks the sung part like a highlighter: ink on a yellow block with a hard edge.
     val brutal = style.edge == io.lanyin.player.ui.theme.EdgeKind.Brutal
-    val sweep = if (brutal || style.lyric.serif && style.edge == io.lanyin.player.ui.theme.EdgeKind.Hairline) c.content else c.accent
+    val sweep = if (brutal || ls.inkSweep || style.lyric.serif && style.edge == io.lanyin.player.ui.theme.EdgeKind.Hairline) c.content else c.accent
     val base = c.content.copy(alpha = ls.inactiveAlpha + (0.42f - ls.inactiveAlpha).coerceAtLeast(0f) * activeAmount)
     val blur = ls.blurStep * (distance - 1).coerceIn(0, 3)
     val align = if (centered) TextAlign.Center else TextAlign.Start
     val face = textStyle.copy(
         fontFamily = if (ls.serif) style.display else textStyle.fontFamily,
-        fontWeight = if (ls.serif) FontWeight.Medium else FontWeight.Bold,
+        fontWeight = if (ls.serif) FontWeight.Medium else ls.weight,
         textAlign = align,
     )
     Column(

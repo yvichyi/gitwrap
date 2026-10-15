@@ -10,6 +10,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -127,6 +128,9 @@ private fun LanyinStyle.markCount(): Int = when (backdrop) {
     BackdropKind.Neon -> 72
     BackdropKind.Dusk -> 44
     BackdropKind.Grid -> 56
+    BackdropKind.Flow -> 64
+    BackdropKind.Pulse -> 40
+    BackdropKind.Film -> 90
 }
 
 /**
@@ -224,6 +228,33 @@ private fun DrawScope.drawSpectrum(
                 val len = 3.dp.toPx() + v * reach
                 val color = if (i % 6 == 0) c.accent else c.content
                 drawLine(color.copy(alpha = alpha), Offset(px(i, 0f), py(i, 0f)), Offset(px(i, len), py(i, len)), width)
+            }
+        }
+        // 流: beads of light lifted off the edge, brightening as they rise.
+        BackdropKind.Flow -> {
+            for (i in 0 until n) {
+                val v = level(i)
+                val out = 3.dp.toPx() + v * reach
+                val center = Offset(px(i, out), py(i, out))
+                drawCircle(Color.White.copy(alpha = alpha * (0.22f + 0.7f * v)), (1.2f + 1.8f * v).dp.toPx(), center)
+            }
+        }
+        // 律: round dots that swell with their band, in the two accents.
+        BackdropKind.Pulse -> {
+            for (i in 0 until n) {
+                val v = level(i)
+                val r = (2.5f + 4.5f * v).dp.toPx()
+                drawCircle(lerp(c.accent, c.accentAlt, (i % 2) * 0.6f).copy(alpha = alpha * (0.45f + 0.55f * v)), r, Offset(px(i, r + 2.dp.toPx() + v * reach * 0.4f), py(i, r + 2.dp.toPx() + v * reach * 0.4f)))
+            }
+        }
+        // 影: a light meter's scale, ticks in the film's orange, every fifth longer.
+        BackdropKind.Film -> {
+            val stroke = 1.2.dp.toPx()
+            for (i in 0 until n) {
+                val v = level(i)
+                val major = i % 5 == 0
+                val len = (if (major) 5.dp.toPx() else 2.5.dp.toPx()) + v * reach
+                drawLine(lerp(c.content, c.accent, 0.4f + 0.6f * v).copy(alpha = alpha * ((if (major) 0.5f else 0.28f) + 0.5f * v)), Offset(px(i, 0f), py(i, 0f)), Offset(px(i, len), py(i, len)), stroke)
             }
         }
         // Soft rounded rays, rose at the root warming to terracotta as they reach.

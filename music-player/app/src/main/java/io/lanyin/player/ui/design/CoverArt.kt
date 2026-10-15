@@ -37,6 +37,9 @@ fun DrawScope.drawCoverArt(style: LanyinStyle, seed: Int) {
         AppTheme.NEON -> neonCover(style, seed)
         AppTheme.GRID -> gridCover(style, seed)
         AppTheme.DUSK -> duskCover(style, seed)
+        AppTheme.FLOW -> flowCover(style, seed)
+        AppTheme.PULSE -> pulseCover(style, seed)
+        AppTheme.FILM -> filmCover(style, seed)
     }
 }
 
@@ -285,6 +288,25 @@ fun ThemeMotif(color: Color, modifier: Modifier = Modifier) {
             AppTheme.DUSK -> for (i in 0 until 4) {
                 val rr = r * (1f - i * 0.22f)
                 drawArc(color.copy(alpha = 1f - i * 0.2f), 180f, 180f, false, Offset(center.x - rr, h * 0.75f - rr), Size(rr * 2, rr * 2), style = Stroke(r * 0.12f))
+            }
+            // Three overlapping lights.
+            AppTheme.FLOW -> for (i in 0 until 3) {
+                val a = i * 2.1f
+                drawCircle(color.copy(alpha = 0.55f), r * 0.55f, Offset(center.x + kotlin.math.cos(a) * r * 0.32f, center.y + sin(a) * r * 0.32f), style = line)
+            }
+            AppTheme.PULSE -> {
+                val path = morphPath(Size(r * 2, r * 2), Cookie, Cookie, 0f)
+                path.translate(Offset(center.x - r, center.y - r))
+                drawPath(path, color, style = line)
+            }
+            // A frame of film with its sprocket holes.
+            AppTheme.FILM -> {
+                drawRect(color, Offset(center.x - r, center.y - r * 0.75f), Size(r * 2, r * 1.5f), style = line)
+                for (k in 0 until 5) {
+                    val x = center.x - r + r * 0.2f + k * r * 0.4f
+                    drawRect(color, Offset(x - r * 0.06f, center.y - r * 0.62f), Size(r * 0.12f, r * 0.12f))
+                    drawRect(color, Offset(x - r * 0.06f, center.y + r * 0.5f), Size(r * 0.12f, r * 0.12f))
+                }
             }
         }
     }

@@ -210,7 +210,7 @@ fun PlayerScreen(
                     }
                 },
         ) {
-            Backdrop(Modifier.matchParentSize(), live = true, playing = state.isPlaying, trackNumber = state.trackNumber)
+            Backdrop(Modifier.matchParentSize(), live = true, playing = state.isPlaying, trackNumber = state.trackNumber, feed = state.audioFeed)
             if (landscape) {
                 LandscapePlayer(
                     state, skin, spin, chromeVisible, onToggleChrome = { chromeVisible = !chromeVisible },
@@ -277,6 +277,7 @@ private fun PortraitPlayer(
                         )
                         Box(
                             artSize(skin, maxWidth, maxHeight)
+                                .spectrumHalo(skin, state.isPlaying, state.audioFeed)
                                 .beatRipples(skin, state.isPlaying, state.audioFeed)
                                 .artworkBackdrop(skin)
                                 .graphicsLayer {
@@ -735,7 +736,7 @@ private fun LandscapeControlBar(state: PlayerState, onScrub: (Long?) -> Unit, mo
 @Composable
 private fun lyricTextStyle(baseSp: Float, scale: Float): TextStyle {
     val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
-    val size = baseSp * scale / fontScale
+    val size = baseSp * scale * Lanyin.style.lyric.sizeScale / fontScale
     return MaterialTheme.typography.headlineSmall.copy(fontSize = size.sp, lineHeight = (size * 1.36f).sp)
 }
 
@@ -895,7 +896,7 @@ private fun TransportControls(state: PlayerState, playSize: Dp, modifier: Modifi
             LineIcon.Previous, "上一首", { state.skipPrevious(); push(back, -1f) },
             Modifier.graphicsLayer { translationX = back.value * 7.dp.toPx() }, iconSize = 34.dp,
         )
-        PlayPauseButton(state.isPlaying, state::togglePlay, playSize)
+        PlayPauseButton(state.isPlaying, state::togglePlay, playSize, feed = state.audioFeed)
         IconAction(
             LineIcon.Next, "下一首", { state.skipNext(); push(forward, 1f) },
             Modifier.graphicsLayer { translationX = forward.value * 7.dp.toPx() }, iconSize = 34.dp,
