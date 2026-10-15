@@ -53,6 +53,8 @@ enum class LineIcon(internal val strokes: String, internal val fills: String = "
     Edit("M14.5 5.5l4 4L9 19H5v-4zM12.5 7.5l4 4"),
     Close("M6.5 6.5l11 11M17.5 6.5l-11 11"),
     Send("M20 4L3.5 10.5l7 3l3 7zM10.5 13.5L20 4"),
+    Equalizer("M6 4v16M12 4v16M18 4v16M3.5 14h5M9.5 8h5M15.5 16h5"),
+    CaretDown("M8 10l4 4l4-4"),
 }
 
 private val cache = HashMap<Pair<LineIcon, Float>, ImageVector>()

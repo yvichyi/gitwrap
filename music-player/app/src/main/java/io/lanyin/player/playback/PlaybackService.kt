@@ -28,8 +28,9 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        val audio = (application as LanyinApplication).container.audio
-        val player = ExoPlayer.Builder(this)
+        val container = (application as LanyinApplication).container
+        val audio = container.audio
+        val player = ExoPlayer.Builder(this, container.engine.renderersFactory(this))
             .setMediaSourceFactory(DefaultMediaSourceFactory(audio.dataSourceFactory).setLoadErrorHandlingPolicy(audio.loadErrorPolicy))
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
@@ -46,13 +47,14 @@ class PlaybackService : MediaSessionService() {
         session = MediaSession.Builder(this, player)
             .setSessionActivity(openApp)
             .setCallback(object : MediaSession.Callback {
-                // Items from a controller arrive without their address; give them ours.
+                // Items from a controller arrive without their address; give them ours (or the one
+                // they asked for, when reloading at another quality).
                 override fun onAddMediaItems(
                     mediaSession: MediaSession,
                     controller: MediaSession.ControllerInfo,
                     mediaItems: MutableList<MediaItem>,
                 ): ListenableFuture<MutableList<MediaItem>> = Futures.immediateFuture(
-                    mediaItems.map { it.buildUpon().setUri(AudioPipeline.uriFor(it.mediaId)).build() }.toMutableList(),
+                    mediaItems.map { it.buildUpon().setUri(it.requestMetadata.mediaUri ?: AudioPipeline.uriFor(it.mediaId)).build() }.toMutableList(),
                 )
             })
             .build()

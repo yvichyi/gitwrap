@@ -153,9 +153,16 @@ fun rememberSpinState(running: Boolean, secondsPerTurn: Float = 14f): SpinState 
     return spin
 }
 
+/**
+ * The demo sings each line a character at a time over the first four fifths of its time, so
+ * previews fill the way real word-timed lyrics do.
+ */
 private fun timed(starts: LongArray, endMs: Long, lines: List<Pair<String, String?>>): List<LyricLine> =
     lines.mapIndexed { i, (text, translation) ->
-        LyricLine(text, translation, starts[i], if (i + 1 < starts.size) starts[i + 1] else endMs)
+        val start = starts[i]
+        val end = if (i + 1 < starts.size) starts[i + 1] else endMs
+        val per = (end - start) * 4 / 5 / text.length.coerceAtLeast(1)
+        LyricLine(text, translation, start, end, words = text.mapIndexed { k, ch -> io.lanyin.player.core.model.LyricWord(ch.toString(), start + k * per, per) })
     }
 
 private val demoLyrics = timed(

@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.lanyin.player.ui.design.rememberFrameClock
 import io.lanyin.player.ui.theme.BackdropKind
-import io.lanyin.player.ui.design.drawHydroBubble
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.LanyinStyle
 import io.lanyin.player.ui.theme.PlayerSkin
@@ -35,8 +34,8 @@ import kotlin.math.sin
 internal const val SPECTRUM_BANDS = 32
 
 /**
- * A believable stand-in for an FFT until playback lands in M2: smooth levels in 0..1, louder in
- * the bass, with a kick on every beat. Band 0 is the lowest.
+ * A believable stand-in for the analyzer, for previews and the demo player: smooth levels in
+ * 0..1, louder in the bass, with a kick on every beat (96 bpm). Band 0 is the lowest.
  */
 internal fun demoSpectrum(t: Float, out: FloatArray) {
     val n = out.size
@@ -125,8 +124,6 @@ private fun haloShape(skin: PlayerSkin, style: LanyinStyle): HaloShape? = when (
 /** How many marks each theme draws around a full outline. */
 private fun LanyinStyle.markCount(): Int = when (backdrop) {
     BackdropKind.Ink -> 120
-    BackdropKind.Tide -> 96
-    BackdropKind.Sakura -> 56
     BackdropKind.Neon -> 72
     BackdropKind.Dusk -> 44
     BackdropKind.Grid -> 56
@@ -134,14 +131,14 @@ private fun LanyinStyle.markCount(): Int = when (backdrop) {
 
 /**
  * A spectrum that grows out of the artwork's edge, drawn in the theme's own hand: hairline dial
- * ticks for 墨, a double wave for 澜, floating dots for 樱, glowing bars for 霓 and stacked VU
- * blocks for 暮. Mirrored left and right with the bass at the top. Redraws every frame without
- * recomposing; while paused it settles into a quiet resting ring.
+ * ticks for 墨, glowing bars for 霓, soft rays for 暮 and square bars for 格. Mirrored left and right with the bass at the top. Redraws every frame without
+ * recomposing, from [feed]: what is being heard; while paused it settles into a quiet resting ring.
  */
 @Composable
-fun Modifier.spectrumHalo(skin: PlayerSkin, playing: Boolean): Modifier {
+fun Modifier.spectrumHalo(skin: PlayerSkin, playing: Boolean, feed: io.lanyin.player.core.audio.AudioFeed): Modifier {
     val style = Lanyin.style
     val shape = haloShape(skin, style) ?: return this
+    // Ticks every frame so the draw reads the feed again.
     val clock = rememberFrameClock(playing)
     val energy = animateFloatAsState(if (playing) 1f else 0f, tween(900), label = "spectrumEnergy")
     return drawWithCache {
@@ -159,8 +156,9 @@ fun Modifier.spectrumHalo(skin: PlayerSkin, playing: Boolean): Modifier {
         val levels = FloatArray(SPECTRUM_BANDS)
         val echo = FloatArray(SPECTRUM_BANDS)
         onDrawBehind {
-            demoSpectrum(clock.floatValue, levels)
-            demoSpectrum(clock.floatValue - 0.35f, echo)
+            clock.floatValue
+            feed.levels(levels)
+            feed.levels(echo, lagMs = 350)
             drawSpectrum(style, samples, levels, echo, energy.value, reach, alpha = 1f)
         }
     }
@@ -204,56 +202,7 @@ private fun DrawScope.drawSpectrum(
                 )
             }
         }
-        // Two waves, the second one a beat behind, with a soft band filled between edge and wave.
-        BackdropKind.Tide -> {
-            val rest = 2.dp.toPx()
-            val outer = Path()
-            val inner = Path()
-            val trail = Path()
-            for (i in 0 until n) {
-                val v = level(i)
-                val e = echo.levelAt(samples.bandAt(i)) * energy
-                val o = rest + v * reach
-                val t = rest + 1.dp.toPx() + e * reach * 0.8f
-                if (i == 0) {
-                    outer.moveTo(px(i, o), py(i, o)); inner.moveTo(px(i, 0f), py(i, 0f)); trail.moveTo(px(i, t), py(i, t))
-                } else {
-                    outer.lineTo(px(i, o), py(i, o)); inner.lineTo(px(i, 0f), py(i, 0f)); trail.lineTo(px(i, t), py(i, t))
-                }
-            }
-            outer.close(); inner.close(); trail.close()
-            val band = Path().apply {
-                addPath(outer)
-                addPath(inner)
-                fillType = PathFillType.EvenOdd
-            }
-            drawPath(band, c.accent.copy(alpha = alpha * 0.14f))
-            drawPath(trail, c.accentAlt.copy(alpha = alpha * 0.45f), style = Stroke(1.dp.toPx()))
-            drawPath(outer, c.accent.copy(alpha = alpha * 0.7f), style = Stroke(1.5.dp.toPx()))
-            // Bubbles thrown off the crests.
-            for (i in 0 until n step 8) {
-                val v = level(i)
-                if (v < 0.3f) continue
-                val o = rest + v * reach + 6.dp.toPx()
-                val r = (2.dp + 4.dp * v).toPx()
-                if (style.dark) {
-                    drawHydroBubble(Offset(px(i, o), py(i, o)), r, i * 0.7f, body = androidx.compose.ui.graphics.Color(0xFF5E9BD6), rim = c.accent, light = c.accentAlt, alpha = alpha * v)
-                } else {
-                    drawHydroBubble(Offset(px(i, o), py(i, o)), r, i * 0.7f, alpha = alpha * v)
-                }
-            }
-        }
-        // Dots that float outward, alternating the two accents.
-        BackdropKind.Sakura -> {
-            for (i in 0 until n) {
-                val v = level(i)
-                val color = if (i % 2 == 0) c.accent else c.accentAlt
-                drawCircle(color.copy(alpha = alpha * 0.22f), 1.2.dp.toPx(), Offset(px(i, 0f), py(i, 0f)))
-                val out = 3.dp.toPx() + v * reach
-                drawCircle(color.copy(alpha = alpha * (0.4f + 0.55f * v)), (2.dp + 1.5.dp * v).toPx(), Offset(px(i, out), py(i, out)))
-            }
-        }
-        // Glowing bars that shift from cyan to magenta as they rise.
+        // Glowing bars that warm from cyan to amber as they rise.
         BackdropKind.Neon -> {
             val glow = 5.dp.toPx()
             val core = 1.5.dp.toPx()
@@ -277,25 +226,16 @@ private fun DrawScope.drawSpectrum(
                 drawLine(color.copy(alpha = alpha), Offset(px(i, 0f), py(i, 0f)), Offset(px(i, len), py(i, len)), width)
             }
         }
-        // A seventies VU meter: stacked blocks, unlit ones faint, mustard low and orange high.
+        // Soft rounded rays, rose at the root warming to terracotta as they reach.
         BackdropKind.Dusk -> {
-            // Near-square blocks of a fixed size so they read as lamps, not dashes.
-            val blocks = 4
-            val step = (reach / blocks).coerceAtLeast(4.5.dp.toPx())
-            val blockLen = step - 1.5.dp.toPx()
-            val width = 5.dp.toPx()
+            val width = 3.dp.toPx()
             for (i in 0 until n) {
-                val lit = ceil(level(i) * blocks).toInt().coerceIn(1, blocks)
-                for (k in 0 until blocks) {
-                    val color = when {
-                        k >= lit -> c.content.copy(alpha = alpha * 0.1f)
-                        k < 2 -> c.accentAlt.copy(alpha = alpha)
-                        else -> c.accent.copy(alpha = alpha)
-                    }
-                    val a = k * step
-                    val b = a + blockLen
-                    drawLine(color, Offset(px(i, a), py(i, a)), Offset(px(i, b), py(i, b)), width)
-                }
+                val v = level(i)
+                val len = 2.dp.toPx() + v * reach
+                drawLine(
+                    lerp(c.accentAlt, c.accent, v).copy(alpha = alpha * (0.35f + 0.6f * v)),
+                    Offset(px(i, 0f), py(i, 0f)), Offset(px(i, len), py(i, len)), width, StrokeCap.Round,
+                )
             }
         }
     }

@@ -73,11 +73,8 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
     val style = Lanyin.style
     val c = style.colors
     val morph by animateFloatAsState(if (playing) 1f else 0f, style.bouncy.spec(), label = "playMorph")
-    // 澜's bubble wobbles softly while the music plays.
-    val wobble = rememberFrameClock(playing && style.button == ButtonKind.Glow)
     val shape = when (style.button) {
-        ButtonKind.Blob -> RoundedCornerShape(38)
-        ButtonKind.Retro -> RoundedCornerShape(30)
+        ButtonKind.Blob -> CircleShape
         ButtonKind.Brutal -> RectangleShape
         else -> CircleShape
     }
@@ -87,10 +84,6 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
         else -> c.onAccent
     }
     val container = when (style.button) {
-        // 澜: a water bubble, its rim heavier underneath, a crescent of light at the top.
-        ButtonKind.Glow -> Modifier
-            .shadow(size * 0.22f, shape, ambientColor = c.accent, spotColor = c.accent)
-            .drawBehind { drawBubbleButton(this.size.minDimension / 2f * 0.97f, wobble.floatValue * 1.4f, c.accent) }
         ButtonKind.Outline -> Modifier.border(1.5.dp, c.content, shape)
         ButtonKind.Blob -> Modifier
             .shadow(size * 0.22f, shape, ambientColor = c.accent, spotColor = c.accent)
@@ -99,11 +92,6 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
         ButtonKind.NeonRing -> Modifier
             .neonGlow(shape, c.accent)
             .border(2.dp, c.accent, shape)
-        ButtonKind.Retro -> Modifier
-            .retroShadow(shape, c.outline, 3.dp)
-            .clip(shape)
-            .background(c.accent)
-            .border(2.dp, c.outline, shape)
         ButtonKind.Brutal -> Modifier
             .retroShadow(shape, c.outline, 5.dp)
             .clip(shape)
@@ -239,8 +227,6 @@ fun SeekBar(
 ) {
     val style = Lanyin.style
     val c = style.colors
-    val clock = rememberFrameClock(playing && style.seek == SeekKind.Wave)
-    val waveAmp by animateFloatAsState(if (playing) 1f else 0f, tween(500), label = "waveAmp")
     var dragFraction by remember { mutableStateOf<Float?>(null) }
     val seconds by remember { derivedStateOf { position() / 1000 } }
     // Tabular figures so the time doesn't shuffle sideways as digits change.
@@ -273,11 +259,9 @@ fun SeekBar(
         ) {
             val f = dragFraction ?: (position().toFloat() / durationMs).coerceIn(0f, 1f)
             when (style.seek) {
-                SeekKind.Wave -> drawWaveTrack(f, c.accent, c.content.copy(alpha = 0.18f), clock.floatValue, waveAmp)
                 SeekKind.Hairline -> drawHairlineTrack(f, c.content)
                 SeekKind.Pill -> drawPillTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
                 SeekKind.Segments -> drawSegmentTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
-                SeekKind.Tape -> drawTapeTrack(f, c.accent, c.outline, c.surface)
                 SeekKind.Block -> drawBlockTrack(f, c.accent, c.outline, c.surface)
             }
         }
@@ -305,7 +289,7 @@ fun SeekBar(
 @Composable
 private fun TimeLabel(ms: Long, style: TextStyle) {
     val s = Lanyin.style
-    if (s.seek == SeekKind.Tape || s.seek == SeekKind.Block) {
+    if (s.seek == SeekKind.Block) {
         val total = (ms / 1000).coerceAtLeast(0)
         Text(
             "%02d:%02d".format(total / 60, total % 60),
@@ -319,26 +303,6 @@ private fun TimeLabel(ms: Long, style: TextStyle) {
     } else {
         Text(formatTime(ms), style = style)
     }
-}
-
-private fun DrawScope.drawWaveTrack(f: Float, played: Color, rest: Color, t: Float, amp: Float) {
-    val cy = size.height / 2f
-    val x = size.width * f
-    val stroke = 3.dp.toPx()
-    drawLine(rest, Offset(x, cy), Offset(size.width, cy), stroke, StrokeCap.Round)
-    val wavelength = 26.dp.toPx()
-    val a = 3.5.dp.toPx() * amp
-    val path = Path().apply {
-        moveTo(0f, cy)
-        var px = 0f
-        while (px < x) {
-            lineTo(px, cy + a * sin((px / wavelength) * 2f * PI.toFloat() - t * 7f))
-            px += 2f
-        }
-        lineTo(x, cy + a * sin((x / wavelength) * 2f * PI.toFloat() - t * 7f))
-    }
-    drawPath(path, played, style = Stroke(stroke, cap = StrokeCap.Round))
-    drawRoundRect(played, Offset(x - 2.dp.toPx(), cy - 9.dp.toPx()), Size(4.dp.toPx(), 18.dp.toPx()), CornerRadius(2.dp.toPx()))
 }
 
 private fun DrawScope.drawHairlineTrack(f: Float, ink: Color) {
@@ -406,30 +370,6 @@ private fun DrawScope.drawBlockTrack(f: Float, fill: Color, ink: Color, paper: C
     drawRect(ink, Offset(kx, ky), Size(knob, knob), style = Stroke(stroke))
 }
 
-private fun DrawScope.drawTapeTrack(f: Float, fill: Color, ink: Color, paper: Color) {
-    val h = 12.dp.toPx()
-    val top = (size.height - h) / 2f
-    val r = CornerRadius(h / 2)
-    val x = size.width * f
-    drawRoundRect(paper, Offset(0f, top), Size(size.width, h), r)
-    clipRect(right = x) {
-        drawRoundRect(fill, Offset(0f, top), Size(size.width, h), r)
-        // Barber-pole stripes across the played part.
-        var sx = -h
-        while (sx < x + h) {
-            drawLine(ink.copy(alpha = 0.18f), Offset(sx, top + h), Offset(sx + h, top), 2.dp.toPx())
-            sx += 7.dp.toPx()
-        }
-    }
-    drawRoundRect(ink, Offset(0f, top), Size(size.width, h), r, style = Stroke(2.dp.toPx()))
-    val knob = 18.dp.toPx()
-    val kx = (x - knob / 2).coerceIn(0f, size.width - knob)
-    val ky = (size.height - knob) / 2f
-    drawRoundRect(ink, Offset(kx + 2.dp.toPx(), ky + 2.dp.toPx()), Size(knob, knob), CornerRadius(5.dp.toPx()))
-    drawRoundRect(paper, Offset(kx, ky), Size(knob, knob), CornerRadius(5.dp.toPx()))
-    drawRoundRect(ink, Offset(kx, ky), Size(knob, knob), CornerRadius(5.dp.toPx()), style = Stroke(2.dp.toPx()))
-}
-
 /** Selectable chip in the theme's chip shape. 墨 uses [TextTabs] instead (see [ChoiceRow]). */
 @Composable
 fun ThemedChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -446,6 +386,7 @@ fun ThemedChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: M
                 .background(lerp(c.surface, c.content, fill))
                 .border(2.dp, c.outline, shape)
                 .padding(horizontal = 14.dp, vertical = 7.dp),
+            contentAlignment = Alignment.Center,
         ) {
             Text(text, style = style.type.body.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold), color = lerp(c.content, c.surface, fill))
         }
@@ -454,11 +395,11 @@ fun ThemedChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: M
     Box(
         modifier
             .pressable(onClick = onClick)
-            .then(if (style.button == ButtonKind.Retro && selected) Modifier.retroShadow(shape, c.outline, 2.dp) else Modifier)
             .clip(shape)
             .background(c.accent.copy(alpha = fill * (if (style.button == ButtonKind.NeonRing) 0.16f else 1f)))
             .border(1.dp, if (selected) c.accent else c.outline, shape)
             .padding(horizontal = 16.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(text, style = style.type.body.copy(fontSize = 14.sp), color = lerp(c.content, onFill, fill))
     }
@@ -608,13 +549,6 @@ fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String?
             }
         } else if (style.quietSections) {
             Text(title, style = style.type.label, color = c.muted)
-        } else if (style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Tide) {
-            // 澜 marks its sections with a long sparkle.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Canvas(Modifier.size(12.dp, 20.dp)) { drawSparkle(center, this.size.height, c.accent) }
-                Spacer(Modifier.width(8.dp))
-                Text(title, style = style.type.title, color = c.content)
-            }
         } else {
             Text(title, style = style.type.title, color = c.content)
         }

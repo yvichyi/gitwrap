@@ -23,23 +23,17 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.LanyinStyle
 
-/** Set only around floating chrome (mini player, tab bar) that sits over a `hazeSource`. */
-val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
 
 enum class SurfaceTone {
     /** The one card a screen is about: gets the theme's full shadow or glow. */
     Card,
     /** Secondary cards and fields: same fill and edge, no shadow or glow, so they don't compete. */
     Flat,
-    /** Floating bars over content: glass in 澜. */
+    /** Floating bars over content: the mini player, the tab bar, sheets. */
     Chrome,
     /** Call-to-action fill. */
     Accent,
@@ -47,7 +41,7 @@ enum class SurfaceTone {
 
 /** The theme's "accent fill": a gradient where the theme likes gradients, flat elsewhere. */
 fun LanyinStyle.accentBrush(): Brush = when (edge) {
-    EdgeKind.Glass, EdgeKind.Soft -> Brush.linearGradient(listOf(colors.accent, colors.accentAlt))
+    EdgeKind.Soft -> Brush.linearGradient(listOf(colors.accent, colors.accentAlt))
     else -> Brush.linearGradient(listOf(colors.accent, colors.accent))
 }
 
@@ -67,14 +61,12 @@ fun Modifier.themedSurface(
     val pressed by interaction.collectIsPressedAsState()
     // 格's surfaces spring back past their rest position when released.
     val press by animateFloatAsState(if (pressed) 1f else 0f, if (style.edge == EdgeKind.Brutal) style.bouncy.spec() else style.motion.spec(), label = "press")
-    val haze = LocalHazeState.current
 
     // 1. Decoration that stays put while the surface itself moves on press.
     val flat = tone == SurfaceTone.Flat
-    // Hard shadows: 暮 keeps them for the hero; 格 gives every surface one, deepest on cards.
+    // Hard shadows: 格 gives every surface one, deepest on cards.
     val hardShadow = when {
         !style.hardEdge -> 0.dp
-        style.edge == EdgeKind.Retro -> if (flat) 0.dp else 4.dp
         flat -> 3.dp
         tone == SurfaceTone.Card -> style.shadowOffset
         else -> 4.dp
@@ -83,9 +75,11 @@ fun Modifier.themedSurface(
         hardShadow > 0.dp -> retroShadow(shape, c.outline, hardShadow)
         flat -> this
         style.edge == EdgeKind.Glow -> neonGlow(shape, if (tone == SurfaceTone.Accent) c.accent else c.accent.copy(alpha = 0.55f))
+        // 暮: lifted off the paper on a soft, warm shadow (a faint glow of the sun at night).
         style.edge == EdgeKind.Soft -> shadow(
-            elevation = if (tone == SurfaceTone.Card) 10.dp else 18.dp, shape = shape,
-            ambientColor = c.accent.copy(alpha = 0.25f), spotColor = c.accent.copy(alpha = 0.35f),
+            elevation = if (tone == SurfaceTone.Card) 8.dp else 14.dp, shape = shape,
+            ambientColor = (if (style.dark) c.accent else c.content).copy(alpha = if (style.dark) 0.18f else 0.10f),
+            spotColor = (if (style.dark) c.accent else c.content).copy(alpha = if (style.dark) 0.22f else 0.16f),
         )
         else -> this
     }
@@ -106,43 +100,22 @@ fun Modifier.themedSurface(
     m = when {
         tone == SurfaceTone.Accent && style.edge == EdgeKind.Glow -> m.background(c.surface)
         tone == SurfaceTone.Accent -> m.background(style.accentBrush())
-        style.edge == EdgeKind.Glass && tone == SurfaceTone.Chrome && haze != null ->
-            m.hazeEffect(state = haze, style = glassStyle(style))
-        style.edge == EdgeKind.Glass -> m.background(c.surface.copy(alpha = if (style.dark) 0.5f else 0.7f))
         style.edge == EdgeKind.Hairline -> m.background(c.bg)
         style.edge == EdgeKind.Glow -> m.background(c.surface.copy(alpha = 0.9f))
         else -> m.background(c.surface)
     }
-    // Glass catches the light along its top edge, like the meniscus of water.
-    if (style.edge == EdgeKind.Glass) {
-        m = m.drawBehind {
-            drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (style.dark) 0.07f else 0.4f), Color.Transparent), endY = 36.dp.toPx()))
-        }
-    }
     // 4. Edge.
     m = when (style.edge) {
-        EdgeKind.Glass -> m.border(1.dp, Color.White.copy(alpha = if (style.dark) 0.10f else 0.65f), shape)
         EdgeKind.Hairline -> m.border(1.dp, if (tone == SurfaceTone.Accent) c.content else c.outline, shape)
         EdgeKind.Glow -> m.border(1.dp, c.accent.copy(alpha = if (tone == SurfaceTone.Accent) 1f else if (flat) 0.35f else 0.6f), shape)
-        EdgeKind.Retro, EdgeKind.Brutal -> m.border(style.strokeWidth, c.outline, shape)
-        EdgeKind.Soft -> m
+        EdgeKind.Brutal -> m.border(style.strokeWidth, c.outline, shape)
+        // In the dark a shadow barely shows; a faint rim keeps the card's edge.
+        EdgeKind.Soft -> if (style.dark) m.border(1.dp, c.content.copy(alpha = 0.07f), shape) else m
     }
     if (onClick != null) {
-        val indication = if (style.edge == EdgeKind.Glass) WaterRipple(c.accent, bounded = true) else null
-        m = m.clickable(interactionSource = interaction, indication = indication, onClick = onClick)
+        m = m.clickable(interactionSource = interaction, indication = null, onClick = onClick)
     }
     return m
-}
-
-private fun glassStyle(style: LanyinStyle): HazeStyle {
-    val c = style.colors
-    return HazeStyle(
-        backgroundColor = c.bg,
-        tint = HazeTint(c.surface.copy(alpha = if (style.dark) 0.55f else 0.62f)),
-        blurRadius = 28.dp,
-        noiseFactor = 0.06f,
-        fallbackTint = HazeTint(c.surface.copy(alpha = 0.94f)),
-    )
 }
 
 /** Plain press feedback for icons and other non-surface elements. */
@@ -159,7 +132,7 @@ fun Modifier.pressable(enabled: Boolean = true, onClick: () -> Unit): Modifier {
         scaleY = s
     }.clickable(
         interactionSource = interaction,
-        indication = if (style.edge == EdgeKind.Glass) WaterRipple(style.colors.accent, bounded = false) else null,
+        indication = null,
         enabled = enabled,
         onClick = onClick,
     )

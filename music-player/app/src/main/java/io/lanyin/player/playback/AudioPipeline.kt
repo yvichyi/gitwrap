@@ -109,7 +109,9 @@ class AudioPipeline(context: Context, private val http: OkHttpClient, private va
             }
         }
 
-        fun uriFor(songId: String): Uri = Uri.parse("lanyin://song/$songId")
+        /** A queue item's address; [quality] marks a reload at another quality, so the player sees it as new. */
+        fun uriFor(songId: String, quality: String? = null): Uri =
+            Uri.parse("lanyin://song/$songId" + (quality?.let { "?q=$it" } ?: ""))
 
         fun songId(uri: Uri): Long? = if (uri.scheme == "lanyin" && uri.host == "song") uri.lastPathSegment?.toLongOrNull() else null
 

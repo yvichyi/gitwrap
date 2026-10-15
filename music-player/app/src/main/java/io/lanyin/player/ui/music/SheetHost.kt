@@ -29,7 +29,14 @@ private val noLikes = MutableStateFlow<Set<Long>>(emptySet())
  * Results come back as a notice over the bottom bar.
  */
 @Composable
-fun AppSheets(sheets: SheetState, player: PlayerState, quality: String, wifiOnly: Boolean) {
+fun AppSheets(
+    sheets: SheetState,
+    player: PlayerState,
+    quality: io.lanyin.player.core.model.Quality,
+    wifiOnly: Boolean,
+    effects: io.lanyin.player.core.audio.EffectsSettings = io.lanyin.player.core.audio.EffectsSettings(),
+    onEffects: (io.lanyin.player.core.audio.EffectsSettings) -> Unit = {},
+) {
     val services = LocalAppServices.current
     val library = services?.library
     val downloads = services?.downloads
@@ -157,7 +164,26 @@ fun AppSheets(sheets: SheetState, player: PlayerState, quality: String, wifiOnly
                     }
                 },
             )
-            is Sheet.ConfirmDownload -> ConfirmDownloadSheet(sheet.title, sheet.songs.size, quality, wifiOnly) {
+            Sheet.Effects -> {
+                // Heard at once; written to settings when a gesture ends.
+                var live by remember(effects) { mutableStateOf(effects) }
+                io.lanyin.player.ui.effects.EffectsSheet(
+                    live,
+                    onChange = {
+                        live = it
+                        services?.engine?.effects?.settings = it
+                    },
+                    onDone = { onEffects(live) },
+                )
+            }
+            Sheet.Quality -> io.lanyin.player.ui.effects.QualitySheet(
+                quality, listOf(player.quality, player.format).filter { it.isNotEmpty() }.joinToString(" · "),
+            ) { q ->
+                sheets.dismiss()
+                player.switchQuality(q)
+                notify("换成「${q.label}」，从这里接着放")
+            }
+            is Sheet.ConfirmDownload -> ConfirmDownloadSheet(sheet.title, sheet.songs.size, quality.label, wifiOnly) {
                 sheets.dismiss()
                 download(sheet.songs)
             }

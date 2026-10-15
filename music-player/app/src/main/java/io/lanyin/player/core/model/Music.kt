@@ -58,9 +58,14 @@ data class LyricLine(
     /** Word timings (from YRC) when NetEase has them; [text] is the words joined. */
     val words: List<LyricWord>? = null,
 ) {
-    /** How far through the line's characters [positionMs] is, 0..1, following the words. */
+    /**
+     * How far through the line's characters [positionMs] is, 0..1, following the words. A line
+     * without word timings lights up in one quick stroke as it starts: when each word is sung is
+     * unknown, and an even sweep to the next line's start runs behind the voice (the gap holds
+     * breaths and instrumental bars too).
+     */
     fun charProgress(positionMs: Long): Float {
-        val ws = words ?: return ((positionMs - startMs).toFloat() / (endMs - startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+        val ws = words ?: return ((positionMs - startMs).toFloat() / STROKE_MS.coerceAtMost(endMs - startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
         val total = text.length.coerceAtLeast(1)
         var sung = 0f
         for (w in ws) {
@@ -74,6 +79,11 @@ data class LyricLine(
             }
         }
         return (sung / total).coerceIn(0f, 1f)
+    }
+
+    companion object {
+        /** How long a line without word timings takes to light up. */
+        const val STROKE_MS = 420L
     }
 }
 

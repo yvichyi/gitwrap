@@ -38,13 +38,13 @@ data class LanyinColors(
 )
 
 /** How cards, the mini player and the tab bar are drawn. */
-enum class EdgeKind { Glass, Hairline, Soft, Glow, Retro, Brutal }
+enum class EdgeKind { Hairline, Soft, Glow, Brutal }
 
-enum class BackdropKind { Tide, Ink, Sakura, Neon, Dusk, Grid }
+enum class BackdropKind { Ink, Neon, Dusk, Grid }
 
-enum class SeekKind { Wave, Hairline, Pill, Segments, Tape, Block }
+enum class SeekKind { Hairline, Pill, Segments, Block }
 
-enum class ButtonKind { Glow, Outline, Blob, NeonRing, Retro, Brutal }
+enum class ButtonKind { Outline, Blob, NeonRing, Brutal }
 
 enum class NavKind { Pill, Text }
 
@@ -118,8 +118,8 @@ data class LanyinStyle(
 ) {
     val type: LanyinType by lazy { typeScale() }
 
-    /** Thick outline plus a hard, offset shadow: 暮's retro cards and 格's brutalist ones. */
-    val hardEdge: Boolean get() = edge == EdgeKind.Retro || edge == EdgeKind.Brutal
+    /** Thick outline plus a hard, offset shadow: 格's brutalist cards. */
+    val hardEdge: Boolean get() = edge == EdgeKind.Brutal
 
     /** Small round things (icon buttons, avatars, dots); 格 squares them off. */
     val roundShape: Shape get() = if (edge == EdgeKind.Brutal) RectangleShape else CircleShape
@@ -152,19 +152,6 @@ val LocalLanyinStyle = staticCompositionLocalOf { lanyinStyle(AppTheme.Default, 
 fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
     val isDark = (dark || theme.darkOnly) && !theme.lightOnly
     return when (theme) {
-        AppTheme.TIDE -> LanyinStyle(
-            theme = theme, dark = isDark,
-            colors = if (isDark) tideDark else tideLight,
-            // Light, airy display type and thin numerals: water rather than ink or poster.
-            display = FontFamily.SansSerif, displayWeight = FontWeight.Light, displayTracking = (-0.01).em,
-            body = FontFamily.SansSerif, numeric = FontFamily.SansSerif,
-            cardShape = RoundedCornerShape(24.dp), chipShape = CircleShape, artShape = RoundedCornerShape(20.dp),
-            edge = EdgeKind.Glass, backdrop = BackdropKind.Tide, seek = SeekKind.Wave,
-            button = ButtonKind.Glow, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = false, activeScale = 1.12f, inactiveAlpha = 0.42f, blurStep = 0.7.dp, staggerMs = 38, glow = false, serif = false),
-            motion = Motion(0.82f, 420f), bouncy = Motion(0.58f, 380f), pressScale = 0.94f,
-            iconStroke = 1.8f,
-        )
         AppTheme.INK -> LanyinStyle(
             theme = theme, dark = isDark,
             colors = if (isDark) inkDark else inkLight,
@@ -176,18 +163,6 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             lyric = LyricStyle(centered = true, activeScale = 1.08f, inactiveAlpha = 0.34f, blurStep = 0.dp, staggerMs = 0, glow = false, serif = true),
             motion = Motion(1f, 700f), bouncy = Motion(0.9f, 600f), pressScale = 0.98f,
             iconStroke = 1.3f, dock = DockKind.Docked, margin = 24.dp, quietSections = true,
-        )
-        AppTheme.SAKURA -> LanyinStyle(
-            theme = theme, dark = isDark,
-            colors = if (isDark) sakuraDark else sakuraLight,
-            display = FontFamily.SansSerif, displayWeight = FontWeight.SemiBold, displayTracking = 0.em,
-            body = FontFamily.SansSerif, numeric = FontFamily.SansSerif,
-            cardShape = RoundedCornerShape(28.dp), chipShape = CircleShape, artShape = RoundedCornerShape(32.dp),
-            edge = EdgeKind.Soft, backdrop = BackdropKind.Sakura, seek = SeekKind.Pill,
-            button = ButtonKind.Blob, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = true, activeScale = 1.14f, inactiveAlpha = 0.5f, blurStep = 0.5.dp, staggerMs = 55, glow = false, serif = false),
-            motion = Motion(0.7f, 450f), bouncy = Motion(0.42f, 420f), pressScale = 0.9f,
-            iconStroke = 2f,
         )
         AppTheme.NEON -> LanyinStyle(
             theme = theme, dark = true,
@@ -201,17 +176,19 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             motion = Motion(0.85f, 1100f), bouncy = Motion(0.55f, 900f), pressScale = 0.95f,
             iconStroke = 1.6f,
         )
+        // 暮: an evening sky. Warm paper (plum by night), terracotta fading to rose, soft rounded
+        // cards that float on a gentle shadow, a low sun; nothing outlined.
         AppTheme.DUSK -> LanyinStyle(
             theme = theme, dark = isDark,
             colors = if (isDark) duskDark else duskLight,
-            display = FontFamily.Serif, displayWeight = FontWeight.Bold, displayTracking = (-0.01).em,
-            body = FontFamily.SansSerif, numeric = FontFamily.Serif,
-            cardShape = RoundedCornerShape(18.dp), chipShape = CircleShape, artShape = RoundedCornerShape(14.dp),
-            edge = EdgeKind.Retro, backdrop = BackdropKind.Dusk, seek = SeekKind.Tape,
-            button = ButtonKind.Retro, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = false, activeScale = 1.1f, inactiveAlpha = 0.5f, blurStep = 0.dp, staggerMs = 45, glow = false, serif = true),
-            motion = Motion(0.85f, 320f), bouncy = Motion(0.6f, 300f), pressScale = 1f,
-            iconStroke = 2.2f,
+            display = FontFamily.SansSerif, displayWeight = FontWeight.SemiBold, displayTracking = 0.em,
+            body = FontFamily.SansSerif, numeric = FontFamily.SansSerif,
+            cardShape = RoundedCornerShape(22.dp), chipShape = CircleShape, artShape = RoundedCornerShape(16.dp),
+            edge = EdgeKind.Soft, backdrop = BackdropKind.Dusk, seek = SeekKind.Pill,
+            button = ButtonKind.Blob, nav = NavKind.Pill,
+            lyric = LyricStyle(centered = true, activeScale = 1.1f, inactiveAlpha = 0.42f, blurStep = 0.5.dp, staggerMs = 40, glow = false, serif = false),
+            motion = Motion(0.85f, 380f), bouncy = Motion(0.6f, 340f), pressScale = 0.96f,
+            iconStroke = 1.9f,
         )
         // 格: Swiss grid meets brutalism. Paper, ink, three primaries; heavy grotesk headlines,
         // monospaced labels, square corners, thick rules and hard shadows that you press into.
@@ -230,19 +207,6 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
     }
 }
 
-// 晨海: pearl and sea mist, deep-water ink, a teal sea for the accent and sea glass beside it.
-// 澜 after a Fontaine-era watercolour illustration: white paper, cobalt splashes, water bubbles.
-private val tideLight = LanyinColors(
-    bg = Color(0xFFF4F8FC), bgDeep = Color(0xFFDCE8F6), surface = Color(0xFFFFFFFF), surfaceAlt = Color(0xFFEAF2FB),
-    content = Color(0xFF131A2C), muted = Color(0xFF56688A), accent = Color(0xFF3F68B8), accentAlt = Color(0xFF71A9D8),
-    onAccent = Color(0xFFFFFFFF), outline = Color(0x22131A2C), like = Color(0xFFD9607C), vinyl = Color(0xFF131A2C),
-)
-// …and its navy frame by night, the bubbles lit from within.
-private val tideDark = LanyinColors(
-    bg = Color(0xFF131A2C), bgDeep = Color(0xFF1B2742), surface = Color(0xFF1A2540), surfaceAlt = Color(0xFF222F4F),
-    content = Color(0xFFE7EAF3), muted = Color(0xFF93A3C2), accent = Color(0xFF8FC3EE), accentAlt = Color(0xFFBFD9FA),
-    onAccent = Color(0xFF131A2C), outline = Color(0x26E7EAF3), like = Color(0xFFF08AA2), vinyl = Color(0xFF0C1120),
-)
 private val inkLight = LanyinColors(
     bg = Color(0xFFF4F1EA), bgDeep = Color(0xFFE4DFD3), surface = Color(0xFFF4F1EA), surfaceAlt = Color(0xFFEBE7DE),
     content = Color(0xFF151515), muted = Color(0xFF66625A), accent = Color(0xFF151515), accentAlt = Color(0xFFA8322A),
@@ -253,20 +217,12 @@ private val inkDark = LanyinColors(
     content = Color(0xFFECEAE4), muted = Color(0xFF8E8B82), accent = Color(0xFFECEAE4), accentAlt = Color(0xFFD4493F),
     onAccent = Color(0xFF0B0B0B), outline = Color(0x3DECEAE4), like = Color(0xFFD4493F), vinyl = Color(0xFF1C1C1C),
 )
-private val sakuraLight = LanyinColors(
-    bg = Color(0xFFFFF4F7), bgDeep = Color(0xFFF3E4FF), surface = Color(0xFFFFFFFF), surfaceAlt = Color(0xFFFFE6EF),
-    content = Color(0xFF3B2330), muted = Color(0xFF85616F), accent = Color(0xFFE5578A), accentAlt = Color(0xFF9B7BF0),
-    onAccent = Color(0xFFFFFFFF), outline = Color(0x1A3B2330), like = Color(0xFFE5578A), vinyl = Color(0xFF2A1D25),
-)
-private val sakuraDark = LanyinColors(
-    bg = Color(0xFF1D1118), bgDeep = Color(0xFF2B1835), surface = Color(0xFF2A1922), surfaceAlt = Color(0xFF35202C),
-    content = Color(0xFFFDEAF2), muted = Color(0xFFC49AAE), accent = Color(0xFFFF8DB6), accentAlt = Color(0xFFC1A6FF),
-    onAccent = Color(0xFF2A0E1A), outline = Color(0x1FFFFFFF), like = Color(0xFFFF8DB6), vinyl = Color(0xFF120A0F),
-)
+// Light on near-black: electric cyan for what you touch, a warm amber for the sun and the horizon,
+// greys with a cold cast. No purple haze.
 private val neon = LanyinColors(
-    bg = Color(0xFF07060E), bgDeep = Color(0xFF1C0B33), surface = Color(0xFF110F1F), surfaceAlt = Color(0xFF1A1730),
-    content = Color(0xFFECEAFF), muted = Color(0xFF8E8AB5), accent = Color(0xFF00EAFF), accentAlt = Color(0xFFFF2E97),
-    onAccent = Color(0xFF03030A), outline = Color(0x5500EAFF), like = Color(0xFFFF2E97), vinyl = Color(0xFF050508),
+    bg = Color(0xFF05070A), bgDeep = Color(0xFF0A1820), surface = Color(0xFF0A0F14), surfaceAlt = Color(0xFF101820),
+    content = Color(0xFFE4F4FA), muted = Color(0xFF7C909E), accent = Color(0xFF34E4FF), accentAlt = Color(0xFFFF8A2A),
+    onAccent = Color(0xFF02090C), outline = Color(0x5534E4FF), like = Color(0xFFFF6A3D), vinyl = Color(0xFF030405),
 )
 // Paper is a warm off-white and the sky a dusty peach, so mustard stays an accent rather than
 // the colour of the whole page.
@@ -279,14 +235,15 @@ private val grid = LanyinColors(
 /** 格's third primary, for stickers and highlights. */
 val GridYellow = Color(0xFFFACC15)
 
+// Evening light on warm paper: terracotta into rose, a brown that is almost black.
 private val duskLight = LanyinColors(
-    bg = Color(0xFFF6EEE4), bgDeep = Color(0xFFEFC9B0), surface = Color(0xFFFFF9F1), surfaceAlt = Color(0xFFEFE3D3),
-    content = Color(0xFF2B1A10), muted = Color(0xFF725546), accent = Color(0xFFD8561F), accentAlt = Color(0xFFE5A532),
-    onAccent = Color(0xFFFFF4E2), outline = Color(0xFF2B1A10), like = Color(0xFFCC3F25), vinyl = Color(0xFF2A1A12),
+    bg = Color(0xFFF7F1EA), bgDeep = Color(0xFFF0D3C3), surface = Color(0xFFFFFBF7), surfaceAlt = Color(0xFFF2E7DD),
+    content = Color(0xFF2A1D1A), muted = Color(0xFF7D6A62), accent = Color(0xFFD2603A), accentAlt = Color(0xFFC24E63),
+    onAccent = Color(0xFFFFF7F2), outline = Color(0x1F2A1D1A), like = Color(0xFFC9403A), vinyl = Color(0xFF241A17),
 )
+// …and once the sun is down: plum and ember.
 private val duskDark = LanyinColors(
-    bg = Color(0xFF1A110C), bgDeep = Color(0xFF3A1D14), surface = Color(0xFF26180F), surfaceAlt = Color(0xFF302016),
-    content = Color(0xFFF2DFC2), muted = Color(0xFFB09279), accent = Color(0xFFE8703C), accentAlt = Color(0xFFD9A443),
-    // Outlines and hard shadows in a dimmed tan: cream lines on near-black were the glare.
-    onAccent = Color(0xFF1A110C), outline = Color(0xFF8C735E), like = Color(0xFFF0654A), vinyl = Color(0xFF0F0906),
+    bg = Color(0xFF17110F), bgDeep = Color(0xFF2E1B26), surface = Color(0xFF231917), surfaceAlt = Color(0xFF2D211E),
+    content = Color(0xFFF3E6DA), muted = Color(0xFFB09A8E), accent = Color(0xFFEE7A4F), accentAlt = Color(0xFFDB6280),
+    onAccent = Color(0xFF1A0F0C), outline = Color(0x24F3E6DA), like = Color(0xFFF06A5A), vinyl = Color(0xFF0E0A09),
 )

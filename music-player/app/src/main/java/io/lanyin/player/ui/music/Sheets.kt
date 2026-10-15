@@ -95,6 +95,8 @@ sealed interface Sheet {
     data class RenamePlaylist(val playlist: Playlist) : Sheet
     data class PlaylistActions(val playlist: Playlist) : Sheet
     data class ConfirmDownload(val songs: List<Song>, val title: String) : Sheet
+    data object Effects : Sheet
+    data object Quality : Sheet
 }
 
 /** Opens a sheet from anywhere below the app shell. */

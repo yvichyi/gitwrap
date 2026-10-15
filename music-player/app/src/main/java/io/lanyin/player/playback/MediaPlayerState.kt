@@ -49,7 +49,13 @@ class MediaPlayerState(
     private val recent: io.lanyin.player.data.library.RecentRepository? = null,
     /** Whether to report plays to NetEase (the 同步播放记录 setting). */
     private val syncPlays: () -> Boolean = { false },
+    /** Listens to what plays, for the visuals. */
+    private val feed: io.lanyin.player.core.audio.AudioFeed? = null,
+    /** Makes [Quality] the one streams are asked for (and remembers it). */
+    private val setPreferred: (Quality) -> Unit = {},
 ) : PlayerState() {
+
+    override val audioFeed: io.lanyin.player.core.audio.AudioFeed get() = feed ?: super.audioFeed
 
     private val appContext = context.applicationContext
     private var controller: MediaController? = null
@@ -89,6 +95,7 @@ class MediaPlayerState(
     override val format: String get() = streams[track.id]?.let(::formatLabel) ?: ""
 
     private var fm = false
+    private var reloading = false
     /** Direction of a skip we asked for, applied when the player reports the change. */
     private var pendingDirection = 0
     private var errorsInARow = 0
@@ -147,6 +154,13 @@ class MediaPlayerState(
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val c = controller ?: return
+            // The same song, reloaded at another quality: not a new play.
+            if (reloading) {
+                reloading = false
+                index = c.currentMediaItemIndex
+                playerDuration = 0
+                return
+            }
             finishListening(if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) "playend" else "ui")
             val newIndex = c.currentMediaItemIndex
             skipDirection = when {
@@ -252,6 +266,21 @@ class MediaPlayerState(
         c.setMediaItems(songs.map { it.toMediaItem() }, startIndex.coerceIn(0, songs.size - 1), 0)
         c.prepare()
         c.play()
+    }
+
+    override fun switchQuality(quality: Quality) {
+        setPreferred(quality)
+        val c = controller ?: return
+        val item = c.currentMediaItem ?: return
+        val i = c.currentMediaItemIndex
+        val position = c.currentPosition
+        // A different address makes the player load the song afresh, at the new quality.
+        val uri = AudioPipeline.uriFor(item.mediaId, quality.level)
+        reloading = true
+        resolver.invalidate(item.mediaId.toLongOrNull() ?: 0L)
+        c.replaceMediaItem(i, item.buildUpon().setUri(uri).setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(uri).build()).build())
+        c.seekTo(i, position)
+        c.prepare()
     }
 
     override fun togglePlay() {

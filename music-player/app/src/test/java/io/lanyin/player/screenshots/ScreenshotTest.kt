@@ -171,7 +171,7 @@ class ScreenshotTest {
         capture("login_qr_neon", AppTheme.NEON, ThemeMode.DARK) { LoginScreen(showingQr(), onBack = {}) }
         assertEquals(demoQrUrl, decodeQr("login_qr_neon"))
     }
-    @Test fun login_tide_dark_scanned() = capture("login_tide_dark_scanned", AppTheme.TIDE, ThemeMode.DARK) {
+    @Test fun login_dusk_dark_scanned() = capture("login_dusk_dark_scanned", AppTheme.DUSK, ThemeMode.DARK) {
         LoginScreen(showingQr(QrStatus.Scanned("潮汐里的鲸", null)), onBack = {})
     }
     @Test fun login_grid_expired() = capture("login_grid_expired", AppTheme.GRID, ThemeMode.LIGHT) {
@@ -180,13 +180,13 @@ class ScreenshotTest {
     @Test fun login_dusk_saved() = capture("login_dusk_saved", AppTheme.DUSK, ThemeMode.LIGHT) {
         LoginScreen(showingQr(), onBack = {}, saved = true, notice = "已存到相册「澜音」。打开网易云 → 扫一扫 → 右上角「相册」选它")
     }
-    @Test fun login_sakura_success() = capture("login_sakura_success", AppTheme.SAKURA, ThemeMode.LIGHT) {
+    @Test fun login_ink_success() = capture("login_ink_success", AppTheme.INK, ThemeMode.LIGHT) {
         LoginScreen(QrPhase.Success, onBack = {})
     }
     @Test fun library_ink_logged_in() = capture("library_ink_logged_in", AppTheme.INK, ThemeMode.LIGHT) {
         io.lanyin.player.ui.library.LibraryScreen(onLogin = {}, account = AccountState.LoggedIn(demoProfile))
     }
-    @Test fun library_tide_logged_in() = capture("library_tide_logged_in", AppTheme.TIDE, ThemeMode.DARK) {
+    @Test fun library_dusk_logged_in() = capture("library_dusk_logged_in", AppTheme.DUSK, ThemeMode.DARK) {
         io.lanyin.player.ui.library.LibraryScreen(onLogin = {}, account = AccountState.LoggedIn(demoProfile))
     }
     @Test fun home_grid_logged_in() {
@@ -227,7 +227,7 @@ class ScreenshotTest {
     }
     private fun playingSample() = playingAt(14_000)
 
-    @Test fun playlist_tide_dark() = capture("playlist_tide_dark", AppTheme.TIDE, ThemeMode.DARK) {
+    @Test fun playlist_dusk_dark() = capture("playlist_dusk_dark", AppTheme.DUSK, ThemeMode.DARK) {
         io.lanyin.player.ui.music.SongListScreen(
             "深夜写代码", "潮汐里的鲸 · 写给夜里还亮着的屏幕",
             io.lanyin.player.ui.music.ListHeader.Cover(null, 7),
@@ -250,7 +250,7 @@ class ScreenshotTest {
             onBack = {}, onPlay = { _, _ -> }, onRetry = {},
         )
     }
-    @Test fun search_sakura_results() = capture("search_sakura_results", AppTheme.SAKURA, ThemeMode.LIGHT) {
+    @Test fun search_ink_results() = capture("search_ink_results", AppTheme.INK, ThemeMode.LIGHT) {
         io.lanyin.player.ui.search.SearchScreen(playingSample(), initialQuery = "夜", initialResults = sampleSongs.take(6))
     }
     @Test fun library_dusk_playlists() = capture("library_dusk_playlists", AppTheme.DUSK, ThemeMode.LIGHT) {
@@ -267,10 +267,10 @@ class ScreenshotTest {
     }
 
     // Sheets over the player, and the pages they lead to.
-    @Test fun queue_tide_light() {
+    @Test fun queue_dusk_light() {
         val repo = repo()
-        capture("queue_tide_light", AppTheme.TIDE, ThemeMode.LIGHT) {
-            LanyinApp(UiSettings(theme = AppTheme.TIDE, themeMode = ThemeMode.LIGHT), repo, player = playingAt(14_000), startExpanded = true)
+        capture("queue_dusk_light", AppTheme.DUSK, ThemeMode.LIGHT) {
+            LanyinApp(UiSettings(theme = AppTheme.DUSK, themeMode = ThemeMode.LIGHT), repo, player = playingAt(14_000), startExpanded = true)
         }
         compose.onAllNodes(androidx.compose.ui.test.hasContentDescription("播放队列")).onFirst().performClick()
         compose.mainClock.advanceTimeBy(800)
@@ -286,7 +286,7 @@ class ScreenshotTest {
         compose.mainClock.advanceTimeBy(800)
         compose.onRoot().captureRoboImage("build/outputs/roborazzi/more_grid.png")
     }
-    @Test fun artist_sakura_dark() = capture("artist_sakura_dark", AppTheme.SAKURA, ThemeMode.DARK) {
+    @Test fun artist_ink_dark() = capture("artist_ink_dark", AppTheme.INK, ThemeMode.DARK) {
         io.lanyin.player.ui.music.SongListScreen(
             "潮汐里的鲸", "128 首歌 · 9 张专辑\n写海、写夜、写慢慢来的事。",
             io.lanyin.player.ui.music.ListHeader.Cover(null, 21, round = true),
@@ -301,7 +301,7 @@ class ScreenshotTest {
     // M4: cloud drive, comments, playlists of one's own, downloads, play records.
     private val now = java.time.LocalDateTime.of(2026, 10, 15, 14, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
 
-    @Test fun cloud_tide_light() = capture("cloud_tide_light", AppTheme.TIDE, ThemeMode.LIGHT) {
+    @Test fun cloud_dusk_light() = capture("cloud_dusk_light", AppTheme.DUSK, ThemeMode.LIGHT) {
         io.lanyin.player.ui.music.CloudPage(
             playingSample(), onBack = {},
             preview = io.lanyin.player.core.model.CloudPage(
@@ -335,7 +335,7 @@ class ScreenshotTest {
     }
 
     @Test fun comments_ink_light() = capture("comments_ink_light", AppTheme.INK, ThemeMode.LIGHT) { Comments() }
-    @Test fun comments_tide_dark() = capture("comments_tide_dark", AppTheme.TIDE, ThemeMode.DARK) { Comments() }
+    @Test fun comments_dusk_dark() = capture("comments_dusk_dark", AppTheme.DUSK, ThemeMode.DARK) { Comments() }
     @Test fun comments_grid() = capture("comments_grid", AppTheme.GRID, ThemeMode.LIGHT) { Comments() }
 
     @Test fun downloads_dusk_light() = capture("downloads_dusk_light", AppTheme.DUSK, ThemeMode.LIGHT) {
@@ -351,7 +351,7 @@ class ScreenshotTest {
         )
     }
 
-    @Test fun ranking_sakura_dark() = capture("ranking_sakura_dark", AppTheme.SAKURA, ThemeMode.DARK) {
+    @Test fun ranking_ink_dark() = capture("ranking_ink_dark", AppTheme.INK, ThemeMode.DARK) {
         io.lanyin.player.ui.music.RankingPage(
             playingSample(), onBack = {},
             preview = sampleSongs.mapIndexed { i, song -> io.lanyin.player.core.model.RankedSong(song, 48 - i * 5, 100 - i * 9) },
@@ -379,7 +379,7 @@ class ScreenshotTest {
         }
     }
 
-    @Test fun actions_tide_dark() = capture("actions_tide_dark", AppTheme.TIDE, ThemeMode.DARK) {
+    @Test fun actions_dusk_dark() = capture("actions_dusk_dark", AppTheme.DUSK, ThemeMode.DARK) {
         val song = sampleSongs[0].copy(album = io.lanyin.player.core.model.Album(9, "潮汐", null))
         WithSheet(io.lanyin.player.ui.music.Sheet.TrackActions(song)) {
             io.lanyin.player.ui.music.TrackActionsSheet(
@@ -390,13 +390,32 @@ class ScreenshotTest {
         }
     }
 
+    @Test fun effects_neon() = capture("effects_neon", AppTheme.NEON, ThemeMode.DARK) {
+        WithSheet(io.lanyin.player.ui.music.Sheet.Effects) {
+            io.lanyin.player.ui.effects.EffectsSheet(io.lanyin.player.core.audio.EffectsSettings().choose(io.lanyin.player.core.audio.EffectPreset.LIVE), {})
+        }
+    }
+    @Test fun effects_grid() = capture("effects_grid", AppTheme.GRID, ThemeMode.LIGHT) {
+        WithSheet(io.lanyin.player.ui.music.Sheet.Effects) {
+            io.lanyin.player.ui.effects.EffectsSheet(io.lanyin.player.core.audio.EffectsSettings().choose(io.lanyin.player.core.audio.EffectPreset.ROCK).withBand(5, 6f), {})
+        }
+    }
+    @Test fun effects_ink_off() = capture("effects_ink_off", AppTheme.INK, ThemeMode.LIGHT) {
+        WithSheet(io.lanyin.player.ui.music.Sheet.Effects) { io.lanyin.player.ui.effects.EffectsSheet(io.lanyin.player.core.audio.EffectsSettings(), {}) }
+    }
+    @Test fun quality_dusk() = capture("quality_dusk", AppTheme.DUSK, ThemeMode.DARK) {
+        WithSheet(io.lanyin.player.ui.music.Sheet.Quality) {
+            io.lanyin.player.ui.effects.QualitySheet(io.lanyin.player.core.model.Quality.LOSSLESS, "无损 · FLAC · 44.1kHz") {}
+        }
+    }
+
     @Test fun add_to_playlist_ink_light() = capture("add_to_playlist_ink_light", AppTheme.INK, ThemeMode.LIGHT) {
         WithSheet(io.lanyin.player.ui.music.Sheet.AddToPlaylist(sampleSongs.take(1))) {
             io.lanyin.player.ui.music.AddToPlaylistSheet(1, samplePlaylists.filter { it.creatorId == 1L && it.specialType != 5 }, onPick = {}, onNew = {})
         }
     }
 
-    @Test fun new_playlist_sakura_light() = capture("new_playlist_sakura_light", AppTheme.SAKURA, ThemeMode.LIGHT) {
+    @Test fun new_playlist_ink_light() = capture("new_playlist_ink_light", AppTheme.INK, ThemeMode.LIGHT) {
         WithSheet(io.lanyin.player.ui.music.Sheet.NewPlaylist()) {
             io.lanyin.player.ui.music.NameSheet("新建歌单", "周末慢慢听", "创建", onConfirm = { _, _ -> }, askPrivate = true)
         }
@@ -448,23 +467,20 @@ class ScreenshotTest {
     }
 
     // Home, inside the real shell, for every theme.
-    @Test fun home_tide_light() = app(AppTheme.TIDE, ThemeMode.LIGHT)
-    @Test fun home_tide_dark() = app(AppTheme.TIDE, ThemeMode.DARK)
     @Test fun home_ink_light() = app(AppTheme.INK, ThemeMode.LIGHT)
     @Test fun home_ink_dark() = app(AppTheme.INK, ThemeMode.DARK)
-    @Test fun home_sakura_light() = app(AppTheme.SAKURA, ThemeMode.LIGHT, PlayerSkin.COVER)
     @Test fun home_neon() = app(AppTheme.NEON, ThemeMode.DARK)
     @Test fun home_dusk_light() = app(AppTheme.DUSK, ThemeMode.LIGHT, PlayerSkin.CASSETTE)
 
     // The landscape stage for every theme.
     @Config(qualifiers = LANDSCAPE)
-    @Test fun land_tide_dark_vinyl() = capture("land_tide_dark_vinyl", AppTheme.TIDE, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
+    @Test fun land_dusk_dark_vinyl() = capture("land_dusk_dark_vinyl", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
 
     @Config(qualifiers = LANDSCAPE)
     @Test fun land_ink_light_vinyl() = capture("land_ink_light_vinyl", AppTheme.INK, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL) }
 
     @Config(qualifiers = LANDSCAPE)
-    @Test fun land_sakura_light_cover() = capture("land_sakura_light_cover", AppTheme.SAKURA, ThemeMode.LIGHT) { Player(PlayerSkin.COVER) }
+    @Test fun land_ink_light_cover() = capture("land_ink_light_cover", AppTheme.INK, ThemeMode.LIGHT) { Player(PlayerSkin.COVER) }
 
     @Config(qualifiers = LANDSCAPE)
     @Test fun land_neon_lyrics() = capture("land_neon_lyrics", AppTheme.NEON, ThemeMode.DARK) { Player(PlayerSkin.LYRICS) }
@@ -473,22 +489,22 @@ class ScreenshotTest {
     @Test fun land_dusk_light_cassette() = capture("land_dusk_light_cassette", AppTheme.DUSK, ThemeMode.LIGHT) { Player(PlayerSkin.CASSETTE) }
 
     @Config(qualifiers = LANDSCAPE)
-    @Test fun land_tide_light_paused() =
-        capture("land_tide_light_paused", AppTheme.TIDE, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL, DemoPlayerState()) }
+    @Test fun land_dusk_light_paused() =
+        capture("land_dusk_light_paused", AppTheme.DUSK, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL, DemoPlayerState()) }
 
     // Real-data edge cases: an instrumental and a track whose title, artist and lyrics are long.
     @Config(qualifiers = LANDSCAPE)
     @Test fun land_ink_light_instrumental() = capture("land_ink_light_instrumental", AppTheme.INK, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL, playingAt(8_000, track = 1)) }
 
     @Config(qualifiers = LANDSCAPE)
-    @Test fun land_tide_dark_long() = capture("land_tide_dark_long", AppTheme.TIDE, ThemeMode.DARK) { Player(PlayerSkin.VINYL, playingAt(6_000, track = 3)) }
+    @Test fun land_dusk_dark_long() = capture("land_dusk_dark_long", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.VINYL, playingAt(6_000, track = 3)) }
 
     @Test fun port_dusk_dark_long() = capture("port_dusk_dark_long", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.VINYL, playingAt(6_000, track = 3)) }
 
-    @Test fun port_sakura_light_instrumental() = capture("port_sakura_light_instrumental", AppTheme.SAKURA, ThemeMode.LIGHT) { Player(PlayerSkin.COVER, playingAt(8_000, track = 1)) }
+    @Test fun port_ink_light_instrumental() = capture("port_ink_light_instrumental", AppTheme.INK, ThemeMode.LIGHT) { Player(PlayerSkin.COVER, playingAt(8_000, track = 1)) }
 
     // Player motion, caught mid-flight: the entrance, a skip, and scrubbing.
-    @Test fun motion_entrance() = capture("motion_entrance_tide_dark", AppTheme.TIDE, ThemeMode.DARK, settle = 260) { Player(PlayerSkin.VINYL) }
+    @Test fun motion_entrance() = capture("motion_entrance_dusk_dark", AppTheme.DUSK, ThemeMode.DARK, settle = 260) { Player(PlayerSkin.VINYL) }
 
     @Test fun motion_skip() {
         val state = playingAt(14_000)
@@ -505,8 +521,8 @@ class ScreenshotTest {
     // 澜's touch: rings spreading from the finger on a glass card, mid-press.
     @Test fun motion_ripple() {
         val repo = repo()
-        capture("motion_ripple_0_tide_light", AppTheme.TIDE, ThemeMode.LIGHT) {
-            LanyinApp(UiSettings(theme = AppTheme.TIDE, themeMode = ThemeMode.LIGHT), repo, player = playingAt(14_000))
+        capture("motion_ripple_0_dusk_light", AppTheme.DUSK, ThemeMode.LIGHT) {
+            LanyinApp(UiSettings(theme = AppTheme.DUSK, themeMode = ThemeMode.LIGHT), repo, player = playingAt(14_000))
         }
         // The 继续播放 card.
         compose.onRoot().performTouchInput { down(androidx.compose.ui.geometry.Offset(width * 0.4f, height * 0.31f)) }
@@ -516,17 +532,17 @@ class ScreenshotTest {
     }
 
     // Portrait player.
-    @Test fun port_tide_dark_vinyl() = capture("port_tide_dark_vinyl", AppTheme.TIDE, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
+    @Test fun port_dusk_dark_vinyl() = capture("port_dusk_dark_vinyl", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
     @Test fun port_neon_vinyl() = capture("port_neon_vinyl", AppTheme.NEON, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
     @Test fun port_dusk_dark_cover() = capture("port_dusk_dark_cover", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
     @Test fun port_ink_dark_lyrics() = capture("port_ink_dark_lyrics", AppTheme.INK, ThemeMode.DARK) { Player(PlayerSkin.LYRICS) }
 
     // Other pages.
-    @Test fun login_sakura_dark() = capture("login_sakura_dark", AppTheme.SAKURA, ThemeMode.DARK) { LoginScreen(showingQr(), onBack = {}) }
+    @Test fun login_ink_dark() = capture("login_ink_dark", AppTheme.INK, ThemeMode.DARK) { LoginScreen(showingQr(), onBack = {}) }
 
-    @Test fun settings_tide_light() {
+    @Test fun settings_dusk_light() {
         val repo = repo()
-        capture("settings_tide_light", AppTheme.TIDE, ThemeMode.LIGHT) {
+        capture("settings_dusk_light", AppTheme.DUSK, ThemeMode.LIGHT) {
             io.lanyin.player.ui.settings.SettingsScreen(UiSettings(), repo, onBack = {})
         }
     }
@@ -540,10 +556,10 @@ class ScreenshotTest {
     }
 
     // The mini player morphing into the full player, caught mid-flight.
-    @Test fun transition_tide_dark() {
+    @Test fun transition_dusk_dark() {
         val repo = repo()
-        capture("transition_0_tide_dark", AppTheme.TIDE, ThemeMode.DARK) {
-            LanyinApp(UiSettings(theme = AppTheme.TIDE, themeMode = ThemeMode.DARK), repo, player = playingAt(14_000))
+        capture("transition_0_dusk_dark", AppTheme.DUSK, ThemeMode.DARK) {
+            LanyinApp(UiSettings(theme = AppTheme.DUSK, themeMode = ThemeMode.DARK), repo, player = playingAt(14_000))
         }
         compose.onNodeWithTag("miniPlayer").performClick()
         compose.mainClock.advanceTimeBy(110)

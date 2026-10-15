@@ -41,8 +41,8 @@ class SkinsTest {
             assertEquals(false, AppTheme.GRID.isDark(mode, systemDark = true))
             assertEquals(false, lanyinStyle(AppTheme.GRID, dark = true).dark)
         }
-        assertEquals(false, AppTheme.TIDE.isDark(ThemeMode.LIGHT, systemDark = true))
-        assertEquals(true, AppTheme.TIDE.isDark(ThemeMode.SYSTEM, systemDark = true))
+        assertEquals(false, AppTheme.DUSK.isDark(ThemeMode.LIGHT, systemDark = true))
+        assertEquals(true, AppTheme.DUSK.isDark(ThemeMode.SYSTEM, systemDark = true))
     }
 
     @Test

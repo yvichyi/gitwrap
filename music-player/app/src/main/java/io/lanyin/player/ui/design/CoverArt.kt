@@ -33,78 +33,11 @@ fun CoverArt(seed: Int, modifier: Modifier = Modifier) {
 
 fun DrawScope.drawCoverArt(style: LanyinStyle, seed: Int) {
     when (style.theme) {
-        AppTheme.TIDE -> tideCover(style, seed)
         AppTheme.INK -> inkCover(style, seed)
-        AppTheme.SAKURA -> sakuraCover(style, seed)
         AppTheme.NEON -> neonCover(style, seed)
         AppTheme.GRID -> gridCover(style, seed)
-        AppTheme.DUSK -> {
-            duskCover(style, seed)
-            // Sleeves printed in mustard and orange glare on a dark page; dim them at night.
-            if (style.dark) drawRect(Color.Black.copy(alpha = 0.18f))
-        }
+        AppTheme.DUSK -> duskCover(style, seed)
     }
-}
-
-private fun DrawScope.tideCover(style: LanyinStyle, seed: Int) {
-    val w = size.width
-    val h = size.height
-    val u = minOf(w, h)
-    // Four watercolour sleeves so a row of covers doesn't read as one image repeated.
-    when (seed % 4) {
-        0 -> {
-            // A cobalt splash thrown across white paper, a bubble caught in its spray.
-            drawRect(Hydro.Paper)
-            drawSplash(Offset(w * 0.78f, h * 0.24f), u * 0.3f, seed = seed * 7 + 1, Hydro.Cobalt, Hydro.CobaltDeep, direction = 2.4f)
-            drawHydroBubble(Offset(w * 0.3f, h * 0.66f), u * 0.17f, hash01(seed, 1) * 6f)
-            drawSparkle(Offset(w * 0.56f, h * 0.58f), u * 0.18f, Color(0xFF9DBEF0))
-        }
-        1 -> {
-            // Bubbles rising through the navy night, a sparkle among them.
-            drawRect(Brush.verticalGradient(listOf(Color(0xFF1B2742), Hydro.Navy)))
-            drawStreamlines(Offset(0f, h * 0.95f), Offset(w, h * 0.3f), 3, u * 0.2f, Hydro.Sparkle, hash01(seed, 2) * 4f, alpha = 0.7f)
-            for (i in 0 until 4) {
-                val r = u * (0.07f + 0.1f * hash01(seed * 3 + i, 31))
-                drawHydroBubble(
-                    Offset(w * (0.2f + 0.6f * hash01(seed * 3 + i, 32)), h * (0.2f + 0.65f * hash01(seed * 3 + i, 33))), r, i * 1.7f,
-                    body = Color(0xFF5E9BD6), rim = Hydro.Bubble, light = Color(0xFF8FC3EE), alpha = 0.9f,
-                )
-            }
-            drawSparkle(Offset(w * 0.74f, h * 0.24f), u * 0.22f, Hydro.Sparkle)
-        }
-        2 -> {
-            // Streamlines sweeping over a pale wash, ink droplets thrown along them.
-            drawRect(Brush.linearGradient(listOf(Color(0xFFEAF5FB), Color(0xFFC9DFF3)), Offset.Zero, Offset(w, h)))
-            drawStreamlines(Offset(-w * 0.1f, h * 0.9f), Offset(w * 1.1f, h * 0.15f), 5, u * 0.45f, Hydro.BubbleRim, hash01(seed, 3) * 5f)
-            for (i in 0 until 10) {
-                val p = hash01(seed * 5 + i, 41)
-                drawCircle(Hydro.CobaltDeep.copy(alpha = 0.8f), u * (0.008f + 0.02f * hash01(seed * 5 + i, 42)), Offset(w * (0.1f + 0.8f * p), h * (0.85f - 0.7f * p + 0.12f * (hash01(seed * 5 + i, 43) - 0.5f))))
-            }
-            drawHydroBubble(Offset(w * 0.68f, h * 0.62f), u * 0.21f, hash01(seed, 4) * 6f)
-        }
-        else -> {
-            // A wash of cobalt along the bottom, its spray climbing into white, two sparkles.
-            drawRect(Hydro.Paper)
-            drawSplash(Offset(w * 0.2f, h * 1.02f), u * 0.42f, seed = seed * 11 + 5, Hydro.Cobalt, Hydro.CobaltDeep, direction = -0.9f)
-            drawHydroBubble(Offset(w * 0.72f, h * 0.36f), u * 0.13f, hash01(seed, 5) * 6f)
-            drawSparkle(Offset(w * 0.32f, h * 0.28f), u * 0.2f, Color(0xFF9DBEF0))
-            drawSparkle(Offset(w * 0.86f, h * 0.7f), u * 0.1f, Color(0xFF9DBEF0), 0.8f)
-        }
-    }
-}
-
-/** One swell line across the cover. */
-private fun DrawScope.drawSwell(baseY: Float, amp: Float, wavelength: Float, phase: Float, color: Color, stroke: Float) {
-    val k = (2 * PI / wavelength).toFloat()
-    val path = Path().apply {
-        moveTo(0f, baseY)
-        var x = 0f
-        while (x <= size.width) {
-            lineTo(x, baseY + amp * sin(k * x + phase))
-            x += size.width / 48f
-        }
-    }
-    drawPath(path, color, style = Stroke(stroke, cap = StrokeCap.Round))
 }
 
 private fun DrawScope.inkCover(style: LanyinStyle, seed: Int) {
@@ -172,68 +105,6 @@ internal fun brushStrokePath(start: Offset, length: Float, thickness: Float): Pa
         arcTo(androidx.compose.ui.geometry.Rect(heelCenter, heelRadius), 90f, 180f, false)
         close()
     }
-}
-
-private fun DrawScope.sakuraCover(style: LanyinStyle, seed: Int) {
-    val c = style.colors
-    val w = size.width
-    val h = size.height
-    val a = lerp(c.accent, Color.White, 0.45f)
-    val b = lerp(c.accentAlt, Color.White, 0.4f)
-    drawRect(Brush.linearGradient(if (seed % 2 == 0) listOf(a, b) else listOf(b, a), Offset.Zero, Offset(w, h)))
-    when (seed % 4) {
-        0 -> {
-            // A soft moon in a flurry of petals.
-            drawCircle(Color.White.copy(alpha = 0.35f), radius = w * 0.3f, center = Offset(w * 0.5f, h * 0.48f))
-            for (i in 0 until 6) {
-                drawPetal(
-                    center = Offset(w * (0.15f + 0.7f * hash01(seed * 7 + i, 1)), h * (0.15f + 0.7f * hash01(seed * 7 + i, 2))),
-                    sizePx = w * (0.05f + 0.05f * hash01(seed * 7 + i, 3)),
-                    rotation = hash01(seed * 7 + i, 4) * 360f,
-                    color = (if (i % 2 == 0) Color.White else c.accent).copy(alpha = 0.85f),
-                )
-            }
-        }
-        1 -> {
-            // One big blossom.
-            val center = Offset(w * (0.44f + 0.12f * hash01(seed, 5)), h * (0.46f + 0.1f * hash01(seed, 6)))
-            drawBlossom(center, w * 0.2f, hash01(seed, 7) * 72f, Color.White.copy(alpha = 0.92f), lerp(c.accent, Color.White, 0.1f))
-        }
-        2 -> {
-            // A branch in bloom.
-            val branch = Path().apply {
-                moveTo(-w * 0.05f, h * 0.82f)
-                cubicTo(w * 0.3f, h * 0.7f, w * 0.45f, h * 0.35f, w * 1.05f, h * 0.2f)
-            }
-            drawPath(branch, lerp(c.content, c.accentAlt, 0.3f).copy(alpha = 0.75f), style = Stroke(w * 0.03f, cap = StrokeCap.Round))
-            for (i in 0 until 5) {
-                val f = 0.18f + i * 0.17f
-                val p = Offset(w * (-0.05f + 1.1f * f), h * (0.82f - 0.62f * f.pow(0.8f)) + h * 0.05f * (hash01(seed + i, 8) - 0.5f))
-                drawBlossom(p, w * (0.06f + 0.03f * hash01(seed + i, 9)), hash01(seed + i, 10) * 72f, Color.White.copy(alpha = 0.95f), c.accent)
-            }
-        }
-        else -> {
-            // Bokeh: soft overlapping lights.
-            for (i in 0 until 8) {
-                val color = if (i % 2 == 0) Color.White else lerp(c.accentAlt, Color.White, 0.3f)
-                drawCircle(
-                    color.copy(alpha = 0.18f + 0.22f * hash01(seed * 11 + i, 12)),
-                    radius = w * (0.08f + 0.14f * hash01(seed * 11 + i, 13)),
-                    center = Offset(w * hash01(seed * 11 + i, 14), h * hash01(seed * 11 + i, 15)),
-                )
-            }
-        }
-    }
-}
-
-/** Five petals round a centre. */
-internal fun DrawScope.drawBlossom(center: Offset, radius: Float, rotation: Float, petal: Color, heart: Color) {
-    for (k in 0 until 5) {
-        val angle = Math.toRadians((rotation + k * 72f - 90f).toDouble())
-        val p = Offset(center.x + radius * 0.55f * kotlin.math.cos(angle).toFloat(), center.y + radius * 0.55f * kotlin.math.sin(angle).toFloat())
-        drawPetal(p, radius * 0.55f, rotation + k * 72f + 180f, petal)
-    }
-    drawCircle(heart, radius * 0.2f, center)
 }
 
 private fun DrawScope.neonCover(style: LanyinStyle, seed: Int) {
@@ -322,84 +193,75 @@ private fun DrawScope.glowPath(path: Path, color: Color, w: Float) {
     }
 }
 
+/**
+ * 暮's sleeves: evening skies in terracotta, rose, gold and plum. A sun over still water, hills
+ * stepping back into the haze, rings of light, and light through blinds.
+ */
 private fun DrawScope.duskCover(style: LanyinStyle, seed: Int) {
     val c = style.colors
     val w = size.width
     val h = size.height
-    // Seventies sleeves in chocolate, burnt orange, dusty rose and teal, with mustard only as a
-    // highlight, so a shelf of them reads warm without turning yellow.
-    val teal = if (style.dark) Color(0xFF3D7773) else Color(0xFF2F6B67)
-    val rose = if (style.dark) Color(0xFFC77D6C) else Color(0xFFC9775F)
-    val brown = if (style.dark) Color(0xFF3A2416) else c.content
-    val cream = if (style.dark) Color(0xFFF2E3CC) else c.surface
+    val gold = Color(0xFFF2B35B)
+    val plum = Color(0xFF5A3550)
+    val cream = Color(0xFFFFF4EA)
+    val sky = Brush.verticalGradient(listOf(c.accentAlt, c.accent, gold))
     when (seed % 4) {
         0 -> {
-            // Rainbow arcs rising from the bottom edge.
-            drawRect(cream)
-            val bands = listOf(brown, c.accent, rose, teal)
-            val thickness = w * 0.085f
-            val center = Offset(w * (0.5f + 0.18f * (hash01(seed, 1) - 0.5f)), h * 1.02f)
-            bands.forEachIndexed { i, color ->
-                val r = w * 0.62f - i * thickness
-                drawArc(color, 180f, 180f, false, Offset(center.x - r, center.y - r), Size(r * 2, r * 2), style = Stroke(thickness))
+            // A sun on the horizon over still water.
+            drawRect(sky, size = Size(w, h * 0.62f))
+            val sun = Offset(w * (0.5f + 0.16f * (hash01(seed, 1) - 0.5f)), h * 0.62f)
+            drawCircle(cream.copy(alpha = 0.92f), w * 0.22f, sun)
+            drawRect(Brush.verticalGradient(listOf(lerp(c.accentAlt, plum, 0.55f), plum), startY = h * 0.62f, endY = h), Offset(0f, h * 0.62f), Size(w, h * 0.38f))
+            for (k in 0 until 4) {
+                val y = h * (0.67f + k * 0.075f)
+                val half = w * (0.2f - k * 0.04f)
+                drawLine(cream.copy(alpha = 0.55f - k * 0.1f), Offset(sun.x - half, y), Offset(sun.x + half, y), h * 0.016f, StrokeCap.Round)
             }
-            drawCircle(c.accentAlt, radius = w * 0.06f, center = Offset(w * 0.78f, h * 0.2f))
         }
         1 -> {
-            // Striped sun setting over teal water.
-            drawRect(Brush.verticalGradient(listOf(rose, c.accent), endY = h * 0.68f))
-            val sun = Offset(w * 0.5f, h * 0.6f)
-            val r = w * 0.28f
-            drawCircle(cream, r, sun)
-            for (k in 0 until 4) {
-                val y = sun.y - r * 0.05f + k * r * 0.2f
-                drawRect(lerp(rose, c.accent, (y / (h * 0.68f)).coerceIn(0f, 1f)), Offset(sun.x - r, y), Size(r * 2, r * (0.04f + k * 0.03f)))
-            }
-            drawRect(teal, Offset(0f, h * 0.68f), Size(w, h * 0.32f))
-            for (k in 0 until 3) {
-                val y = h * (0.74f + k * 0.07f)
-                val half = w * (0.18f - k * 0.04f)
-                drawLine(cream.copy(alpha = 0.7f), Offset(sun.x - half, y), Offset(sun.x + half, y), h * 0.014f, StrokeCap.Round)
-            }
-        }
-        2 -> {
-            // Groovy waves.
-            drawRect(cream)
-            val colors = listOf(brown, c.accent, rose, teal)
-            val band = h * 0.1f
-            colors.forEachIndexed { i, color ->
-                val baseY = h * (0.3f + i * 0.12f)
+            // Hills stepping back into the evening haze.
+            drawRect(Brush.verticalGradient(listOf(lerp(gold, cream, 0.3f), lerp(c.accent, gold, 0.4f))))
+            drawCircle(cream.copy(alpha = 0.9f), w * 0.13f, Offset(w * (0.3f + 0.4f * hash01(seed, 2)), h * 0.34f))
+            val layers = listOf(lerp(c.accent, cream, 0.35f), c.accentAlt, lerp(c.accentAlt, plum, 0.5f), plum)
+            layers.forEachIndexed { i, color ->
+                val base = h * (0.5f + i * 0.13f)
                 val path = Path().apply {
-                    moveTo(0f, baseY)
+                    moveTo(0f, h)
+                    lineTo(0f, base)
                     var x = 0f
                     while (x <= w) {
-                        lineTo(x, baseY + h * 0.06f * sin((x / w) * 2f * PI.toFloat() + hash01(seed, 2) * 3f))
-                        x += w / 40f
+                        lineTo(x, base - h * 0.07f * sin((x / w) * PI.toFloat() * (1.2f + i * 0.4f) + hash01(seed + i, 3) * 6f))
+                        x += w / 32f
                     }
-                    var back = w
-                    while (back >= 0f) {
-                        lineTo(back, baseY + band + h * 0.06f * sin((back / w) * 2f * PI.toFloat() + hash01(seed, 2) * 3f))
-                        back -= w / 40f
-                    }
+                    lineTo(w, h)
                     close()
                 }
                 drawPath(path, color)
             }
         }
-        else -> {
-            // A daisy on deep teal.
-            drawRect(teal)
-            val center = Offset(w * (0.42f + 0.16f * hash01(seed, 3)), h * (0.44f + 0.12f * hash01(seed, 4)))
-            val petalLength = w * 0.2f
-            for (k in 0 until 12) {
-                rotate(k * 30f, center) {
-                    drawOval(cream, Offset(center.x - w * 0.045f, center.y - petalLength - w * 0.04f), Size(w * 0.09f, petalLength))
-                }
+        2 -> {
+            // Rings of light around a low sun.
+            drawRect(plum)
+            val center = Offset(w * 0.5f, h * (0.78f + 0.1f * hash01(seed, 4)))
+            val colors = listOf(c.accentAlt, c.accent, gold, cream)
+            for (i in colors.indices) {
+                val r = w * (0.82f - i * 0.17f)
+                drawCircle(colors[i].copy(alpha = 0.55f + i * 0.15f), r, center)
             }
-            drawCircle(c.accent, w * 0.075f, center)
-            drawCircle(brown, w * 0.075f, center, style = Stroke(w * 0.012f))
+        }
+        else -> {
+            // Evening light through blinds.
+            drawRect(sky)
+            val slat = h / 9f
+            for (k in 0 until 9) {
+                val y = k * slat + slat * 0.62f
+                drawRect(plum.copy(alpha = 0.18f + 0.05f * k), Offset(0f, y), Size(w, slat * 0.38f))
+            }
+            drawCircle(cream.copy(alpha = 0.85f), w * 0.17f, Offset(w * (0.62f + 0.2f * (hash01(seed, 5) - 0.5f)), h * 0.42f))
         }
     }
+    // Dimmed a little at night, so the sleeves don't glare on the dark page.
+    if (style.dark) drawRect(Color.Black.copy(alpha = 0.12f))
 }
 
 /** The theme's signature shape as a one-colour line drawing, for empty states. */
@@ -417,15 +279,6 @@ fun ThemeMotif(color: Color, modifier: Modifier = Modifier) {
                 // A single brush stroke and a seal: calligraphy, not a loading spinner.
                 drawPath(brushStrokePath(Offset(w * 0.12f, h * 0.55f), w * 0.7f, h * 0.13f), color)
                 drawRect(color, Offset(w * 0.78f, h * 0.24f), Size(w * 0.09f, w * 0.09f))
-            }
-            AppTheme.TIDE -> {
-                // A water bubble with a sparkle beside it.
-                // In the theme's own blues, whatever tint the caller asked for.
-                drawHydroBubble(Offset(w * 0.42f, h * 0.56f), r * 0.78f, 0.6f, body = style.colors.accentAlt, rim = style.colors.accent, light = Color.White, alpha = 0.75f)
-                drawSparkle(Offset(w * 0.78f, h * 0.26f), r * 0.9f, style.colors.accent, 0.8f)
-            }
-            AppTheme.SAKURA -> for (k in 0 until 5) {
-                rotate(k * 72f, center) { drawPetal(center + Offset(0f, -r * 0.55f), r * 0.42f, 0f, color.copy(alpha = 0.85f)) }
             }
             AppTheme.NEON -> for (i in 0 until 3) drawCircle(color.copy(alpha = 1f - i * 0.28f), r * (0.45f + i * 0.28f), center, style = line)
             AppTheme.GRID -> gridMotif(style)

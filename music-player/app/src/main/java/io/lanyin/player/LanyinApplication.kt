@@ -12,6 +12,7 @@ import io.lanyin.player.core.netease.NeteaseClient
 import io.lanyin.player.data.account.AccountRepository
 import io.lanyin.player.data.library.LibraryRepository
 import io.lanyin.player.data.library.RecentRepository
+import io.lanyin.player.playback.AudioEngine
 import io.lanyin.player.playback.AudioPipeline
 import io.lanyin.player.playback.DownloadRepository
 import io.lanyin.player.ui.Notices
@@ -60,14 +61,23 @@ class AppContainer(context: Context) {
     val library = LibraryRepository(netease, account, scope)
     val streams = StreamResolver(netease)
     val audio = AudioPipeline(context, http, streams)
+    val engine = AudioEngine()
     val recent = RecentRepository(File(context.filesDir, "recent.json"), scope)
     val downloads = DownloadRepository(context, audio, scope)
     val notices = Notices()
 
     @Volatile
     private var syncPlays = true
-    val player = MediaPlayerState(context, netease, streams, library, scope, recent, syncPlays = { syncPlays })
-    val services = AppServices(netease, account, library, player, recent, downloads, notices)
+    val player = MediaPlayerState(
+        context, netease, streams, library, scope, recent,
+        syncPlays = { syncPlays },
+        feed = engine.analyzer,
+        setPreferred = { q ->
+            audio.preferred = q
+            scope.launch { settings.setQuality(q) }
+        },
+    )
+    val services = AppServices(netease, account, library, player, recent, downloads, notices, engine)
 
     init {
         // Stream quality, downloads over Wi-Fi only and play records follow the settings.
@@ -75,6 +85,7 @@ class AppContainer(context: Context) {
             settings.settings.collect {
                 audio.preferred = it.quality
                 syncPlays = it.syncPlays
+                engine.effects.settings = it.effects
                 downloads.setWifiOnly(it.downloadOnWifiOnly)
             }
         }

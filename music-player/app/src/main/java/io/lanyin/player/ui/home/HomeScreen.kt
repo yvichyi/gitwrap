@@ -64,10 +64,6 @@ import io.lanyin.player.ui.design.CoverImage
 import io.lanyin.player.data.account.AccountState
 import io.lanyin.player.ui.design.Avatar
 import io.lanyin.player.ui.theme.BackdropKind
-import io.lanyin.player.ui.design.tideName
-import io.lanyin.player.ui.design.moonPhase
-import io.lanyin.player.ui.design.moonName
-import io.lanyin.player.ui.design.MoonGlyph
 import java.time.LocalDateTime
 import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
@@ -208,20 +204,7 @@ private fun Header(now: LocalDateTime, account: AccountState, onOpenSettings: ()
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(greeting(now.hour), style = style.type.display)
-            if (style.backdrop == BackdropKind.Tide) {
-                // 澜 keeps the sea's calendar: today's moon and the tide it brings.
-                val phase = remember(now.toLocalDate()) { moonPhase(now.toLocalDate()) }
-                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(date, style = style.type.caption, color = c.muted, maxLines = 1)
-                    Spacer(Modifier.width(10.dp))
-                    MoonGlyph(phase, c.accent, Modifier.size(11.dp))
-                    Spacer(Modifier.width(5.dp))
-                    Text(
-                        "${moonName(phase)} · ${tideName(phase)}", style = style.type.caption, color = c.muted,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
-                    )
-                }
-            } else {
+            run {
                 val brutal = style.edge == EdgeKind.Brutal
                 Text(
                     date,
@@ -387,7 +370,6 @@ private fun QuickEntries(day: Int, actions: List<() -> Unit>, modifier: Modifier
                 if (hairline) chineseNumber(day) else "$day",
                 style = style.type.title.copy(
                     fontFamily = style.display,
-                    // Thin numerals where the display face is light (澜).
                     fontSize = when {
                         hairline -> 20.sp
                         style.displayWeight <= FontWeight.Light -> 26.sp

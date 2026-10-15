@@ -64,7 +64,7 @@ fun VinylRecord(isPlaying: Boolean, spin: SpinState, coverSeed: Int, modifier: M
                 EdgeKind.Glow -> for ((w, a) in listOf(18f to 0.06f, 10f to 0.12f, 4f to 0.3f)) {
                     drawCircle(style.colors.accent.copy(alpha = a), r + w.dp.toPx() / 2, style = Stroke(w.dp.toPx()))
                 }
-                EdgeKind.Retro, EdgeKind.Brutal -> drawCircle(style.colors.outline, r, center + Offset(5.dp.toPx(), 5.dp.toPx()))
+                EdgeKind.Brutal -> drawCircle(style.colors.outline, r, center + Offset(5.dp.toPx(), 5.dp.toPx()))
                 EdgeKind.Hairline -> Unit
                 else -> drawCircle(Brush.radialGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent), center, r * 1.12f), r * 1.12f)
             }
@@ -119,7 +119,7 @@ private fun DrawScope.drawToneArm(style: LanyinStyle, angle: Float) {
     val c = style.colors
     val metal = when (style.edge) {
         EdgeKind.Glow -> c.accent
-        EdgeKind.Retro, EdgeKind.Hairline, EdgeKind.Brutal -> c.content
+        EdgeKind.Hairline, EdgeKind.Brutal -> c.content
         else -> lerp(c.content, c.bg, 0.15f)
     }
     val pivot = Offset(size.width * 0.9f, size.height * 0.07f)
@@ -149,7 +149,7 @@ fun SquareCover(isPlaying: Boolean, coverSeed: Int, modifier: Modifier = Modifie
     val scale by animateFloatAsState(if (isPlaying) 1f else 0.86f, style.bouncy.spec(), label = "coverScale")
     val shape = style.artShape
     val frame = when (style.edge) {
-        EdgeKind.Retro, EdgeKind.Brutal -> Modifier.retroShadow(shape, c.outline, 6.dp).clip(shape).border(style.strokeWidth, c.outline, shape)
+        EdgeKind.Brutal -> Modifier.retroShadow(shape, c.outline, 6.dp).clip(shape).border(style.strokeWidth, c.outline, shape)
         EdgeKind.Glow -> Modifier.neonGlow(shape, c.accent).clip(shape).border(1.dp, c.accent, shape)
         EdgeKind.Hairline -> Modifier.clip(shape).border(1.dp, c.outline, shape)
         else -> Modifier.shadow(28.dp, shape, ambientColor = c.accent, spotColor = Color.Black).clip(shape)

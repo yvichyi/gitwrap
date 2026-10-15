@@ -121,11 +121,27 @@ abstract class PlayerState {
      */
     open fun play(songs: List<io.lanyin.player.core.model.Song>, startIndex: Int, source: String, sourceId: Long = 0) = Unit
 
+    /**
+     * What is being heard, for the spectrum and beat ripples. By default a stand-in that follows
+     * [positionMs] with a steady beat, so previews move; the real player listens to the audio.
+     */
+    open val audioFeed: io.lanyin.player.core.audio.AudioFeed = object : io.lanyin.player.core.audio.AudioFeed {
+        override fun levels(out: FloatArray, lagMs: Long): Boolean {
+            demoSpectrum((positionMs - lagMs) / 1000f, out)
+            return isPlaying
+        }
+
+        override fun sinceBeat(): Float = (positionMs / 1000f) % (1f / DEMO_BEATS_PER_SECOND)
+    }
+
     /** How many comments the current song has, once known. */
     open val commentCount: Int? get() = null
 
     /** Asks for [commentCount] if it isn't known yet; the player calls this while it shows. */
     open fun loadCommentCount() = Unit
+
+    /** Plays on at [quality]: the current song reloads from where it is. */
+    open fun switchQuality(quality: io.lanyin.player.core.model.Quality) = Unit
 
     /** Starts 私人 FM, which keeps topping itself up. */
     open fun playFm() = Unit

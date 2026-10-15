@@ -53,16 +53,19 @@ fun Modifier.enter(entrance: State<Float>, index: Int, distance: Dp = 20.dp): Mo
     translationY = (1f - p) * distance.toPx()
 }
 
-/** Beats per second of the demo track; real tracks will report their own tempo in M2. */
+/** Beats per second of the demo track (96 bpm). */
 internal const val DEMO_BEATS_PER_SECOND = 1.6f
 
+/** How long a beat's ripple takes to spread and fade. */
+private const val RIPPLE_SECONDS = 0.62f
+
 /**
- * A ring that leaves the artwork's edge on every beat and fades as it spreads, in the theme's
- * own hand: an ink hairline for 墨, square ink frames for 格, the accent elsewhere, a glowing tube for 霓. Only while
- * playing; draw-phase only.
+ * A ring that leaves the artwork's edge on each beat [feed] hears and fades as it spreads, in the
+ * theme's own hand: an ink hairline for 墨, square ink frames for 格, the accent elsewhere, a
+ * glowing tube for 霓. Music without a clear beat makes few. Only while playing; draw-phase only.
  */
 @Composable
-fun Modifier.beatRipples(skin: PlayerSkin, playing: Boolean): Modifier {
+fun Modifier.beatRipples(skin: PlayerSkin, playing: Boolean, feed: io.lanyin.player.core.audio.AudioFeed): Modifier {
     if (skin == PlayerSkin.LYRICS) return this
     val style = Lanyin.style
     val clock = rememberFrameClock(playing)
@@ -73,7 +76,9 @@ fun Modifier.beatRipples(skin: PlayerSkin, playing: Boolean): Modifier {
     return drawBehind {
         val e = energy.value
         if (e <= 0f) return@drawBehind
-        val p = (clock.floatValue * DEMO_BEATS_PER_SECOND) % 1f
+        clock.floatValue
+        val p = feed.sinceBeat() / RIPPLE_SECONDS
+        if (p >= 1f) return@drawBehind
         val spread = 26.dp.toPx() * FastOutSlowInEasing.transform(p)
         val alpha = (1f - p).pow(1.6f) * 0.32f * e
         val stroke = (if (style.edge == EdgeKind.Hairline) 1.dp else if (brutal) 2.dp else 1.5.dp).toPx()

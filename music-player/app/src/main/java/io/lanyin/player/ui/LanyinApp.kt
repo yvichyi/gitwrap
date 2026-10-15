@@ -55,14 +55,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import io.lanyin.player.data.settings.SettingsRepository
 import io.lanyin.player.data.settings.UiSettings
 import io.lanyin.player.ui.design.Backdrop
 import io.lanyin.player.ui.design.Hairline
 import io.lanyin.player.ui.design.LineIcon
-import io.lanyin.player.ui.design.LocalHazeState
 import io.lanyin.player.ui.design.ThemedIcon
 import io.lanyin.player.ui.design.LocalOrientationController
 import io.lanyin.player.ui.design.LocalSharedPlayerScope
@@ -160,7 +157,6 @@ fun LanyinApp(
     val navController = rememberNavController()
     var expanded by rememberSaveable { mutableStateOf(startExpanded) }
     val spin = rememberSpinState(player.isPlaying)
-    val haze = rememberHazeState()
     val orientation = LocalOrientationController.current
     val backStackEntry by navController.currentBackStackEntryAsState()
     val destination = backStackEntry?.destination
@@ -207,7 +203,7 @@ fun LanyinApp(
     CompositionLocalProvider(LocalOpenSheet provides sheets::open, LocalNavigator provides navigator) {
     SharedTransitionLayout(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().background(Lanyin.colors.bg)) {
-            Box(Modifier.fillMaxSize().hazeSource(haze)) {
+            Box(Modifier.fillMaxSize()) {
                 Backdrop(Modifier.fillMaxSize())
                 CompositionLocalProvider(LocalBottomChromePadding provides bottomChromeHeight(Lanyin.style.dock, showMini, onTopLevel)) {
                     NavHost(
@@ -332,7 +328,7 @@ fun LanyinApp(
                                     if (onTopLevel) TabBar(selectedTab.coerceAtLeast(0), onSelectTab)
                                 }
                             } else {
-                                CompositionLocalProvider(LocalHazeState provides haze) {
+                                run {
                                     Column(
                                         Modifier
                                             .navigationBarsPadding()
@@ -349,7 +345,11 @@ fun LanyinApp(
                     }
                 }
             }
-            AppSheets(sheets, player, quality = settings.quality.label, wifiOnly = settings.downloadOnWifiOnly)
+            AppSheets(
+                sheets, player, quality = settings.quality, wifiOnly = settings.downloadOnWifiOnly,
+                effects = settings.effects,
+                onEffects = { fx -> appScope.launch { settingsRepository.setEffects(fx) } },
+            )
         }
     }
     }
@@ -406,7 +406,6 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
             NavKind.Pill -> {
                 val shape = style.chipShape
                 val indicator = when (style.edge) {
-                    EdgeKind.Retro -> Modifier.retroShadow(shape, c.outline, 2.dp).clip(shape).background(c.accent).border(2.dp, c.outline, shape)
                     // 格: the current tab is a yellow index card.
                     EdgeKind.Brutal -> Modifier.retroShadow(shape, c.outline, 3.dp).background(io.lanyin.player.ui.theme.GridYellow).border(2.dp, c.outline, shape)
                     EdgeKind.Glow -> Modifier.neonGlow(shape, c.accent, 0.7f).clip(shape).background(c.accent.copy(alpha = 0.12f)).border(1.dp, c.accent, shape)
@@ -436,7 +435,6 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                 val bump by animateFloatAsState(if (active) 1f else 0f, style.bouncy.spec(), label = "tabBump")
                 val tint = when {
                     !active -> c.muted
-                    style.edge == EdgeKind.Retro -> c.onAccent
                     style.edge == EdgeKind.Brutal -> c.content
                     style.nav == NavKind.Text -> c.content
                     else -> c.accent

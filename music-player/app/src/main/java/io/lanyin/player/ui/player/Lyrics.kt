@@ -8,6 +8,7 @@ import androidx.compose.animation.core.FloatExponentialDecaySpec
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDecay
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -52,7 +53,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import io.lanyin.player.ui.theme.Lanyin
-import io.lanyin.player.ui.design.drawLyricSparkle
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -105,9 +105,6 @@ fun LyricsView(
     val focus = remember(lines) { List(lines.size) { Animatable(currentIndex.toFloat()) } }
     // A new track's lyrics cascade up into place, the lines nearest the active one first.
     val appear = remember(lines) { Animatable(0f) }
-    // 澜's lyrics float: lines away from the active one rise and fall gently, out of step.
-    val afloat = style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Tide
-    val tide = io.lanyin.player.ui.design.rememberFrameClock(afloat)
     LaunchedEffect(lines) { appear.animateTo(1f, tween(900, easing = LinearEasing)) }
     val scope = rememberCoroutineScope()
     var drag by remember { mutableFloatStateOf(0f) }
@@ -176,12 +173,7 @@ fun LyricsView(
                                 geometry.version.intValue
                                 val shown = FastOutSlowInEasing.transform(((appear.value - delay) / 0.45f).coerceIn(0f, 1f))
                                 alpha = shown
-                                val bob = if (afloat && distance > 0) {
-                                    kotlin.math.sin(tide.floatValue * 0.9f + i * 0.8f) * 2.dp.toPx() * minOf(distance, 3) / 3f
-                                } else {
-                                    0f
-                                }
-                                translationY = anchorPx - geometry.centerAt(focus[i].value) + drag + (1f - shown) * 32.dp.toPx() + bob
+                                translationY = anchorPx - geometry.centerAt(focus[i].value) + drag + (1f - shown) * 32.dp.toPx()
                             }
                             .then(
                                 if (interactive) {
@@ -234,7 +226,8 @@ private fun LyricRow(
     val style = Lanyin.style
     val c = style.colors
     val ls = style.lyric
-    val activeAmount by animateFloatAsState(if (active) 1f else 0f, style.bouncy.spec(), label = "lyricActive")
+    // Settles without overshoot: a line that bounces as it lights looks like it's keeping a beat it isn't.
+    val activeAmount by animateFloatAsState(if (active) 1f else 0f, spring(dampingRatio = 1f, stiffness = style.motion.stiffness), label = "lyricActive")
     // 格 marks the sung part like a highlighter: ink on a yellow block with a hard edge.
     val brutal = style.edge == io.lanyin.player.ui.theme.EdgeKind.Brutal
     val sweep = if (brutal || style.lyric.serif && style.edge == io.lanyin.player.ui.theme.EdgeKind.Hairline) c.content else c.accent
@@ -272,7 +265,6 @@ private fun LyricRow(
             glow = if (ls.glow) sweep else null,
             block = if (brutal) io.lanyin.player.ui.theme.GridYellow else null,
             blockEdge = c.outline,
-            sparkle = if (style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Tide) (if (style.dark) c.accentAlt else c.accent) else null,
         )
         if (showTranslation && line.translation != null) {
             Text(
@@ -302,36 +294,10 @@ fun SweepText(
     modifier: Modifier = Modifier,
     block: Color? = null,
     blockEdge: Color = Color.Black,
-    /** 澜: a little sparkle riding the leading edge of the sweep. */
-    sparkle: Color? = null,
     /** [progress] counts characters (word-timed lyrics) rather than width. */
     byChars: Boolean = false,
 ) {
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val glint = if (sparkle != null && progress != null) {
-        Modifier.drawWithContent {
-            drawContent()
-            val l = layout ?: return@drawWithContent
-            val p = progress()
-            if (p <= 0.01f || p >= 0.99f) return@drawWithContent
-            var remaining = l.sweepWidth(p, byChars)
-            for (li in 0 until l.lineCount) {
-                val width = l.getLineRight(li) - l.getLineLeft(li)
-                if (remaining <= width) {
-                    val x = l.getLineLeft(li) + remaining
-                    val y = (l.getLineTop(li) + l.getLineBottom(li)) / 2f
-                    val h = (l.getLineBottom(li) - l.getLineTop(li)) * 0.95f
-                    // A slow twinkle as it travels.
-                    val a = 0.65f + 0.35f * kotlin.math.sin(p * 40f)
-                    drawLyricSparkle(Offset(x, y - h * 0.18f), h, sparkle, a)
-                    break
-                }
-                remaining -= width
-            }
-        }
-    } else {
-        Modifier
-    }
     val highlight = if (block != null && progress != null) {
         Modifier.drawBehind {
             val l = layout ?: return@drawBehind
@@ -357,7 +323,7 @@ fun SweepText(
     } else {
         Modifier
     }
-    Box(modifier.then(highlight).then(glint)) {
+    Box(modifier.then(highlight)) {
         Text(text, style = style.copy(color = baseColor), onTextLayout = { layout = it })
         if (progress != null) {
             Text(

@@ -12,10 +12,8 @@ enum class AppTheme(
     val lightOnly: Boolean = false,
 ) {
     INK("mo", "墨", "黑白留白，只留文字"),
-    TIDE("lan", "澜", "水彩浪花，泡泡闪光"),
-    SAKURA("ying", "樱", "花瓣飘落，软糯回弹"),
-    NEON("ni", "霓", "赛博霓虹，夜色限定", darkOnly = true),
-    DUSK("mu", "暮", "七十年代的暖色黄昏"),
+    NEON("ni", "霓", "青色霓虹，琥珀地平线", darkOnly = true),
+    DUSK("mu", "暮", "晚霞暖光，柔和圆角"),
     GRID("ge", "格", "瑞士网格，粗边硬影", lightOnly = true);
 
     companion object {

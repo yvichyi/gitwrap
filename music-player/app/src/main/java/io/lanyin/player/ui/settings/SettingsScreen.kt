@@ -173,6 +173,18 @@ fun SettingsScreen(
                         { label -> scope.launch { repository.setQuality(io.lanyin.player.core.model.Quality.entries.first { it.label == label }) } },
                         Modifier.padding(top = 10.dp, bottom = 16.dp).horizontalScroll(rememberScrollState()),
                     )
+                    val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
+                    Row(
+                        Modifier.fillMaxWidth().pressable { openSheet(io.lanyin.player.ui.music.Sheet.Effects) }.padding(bottom = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("音效", style = style.type.body)
+                            Text("均衡器、低音、环绕和混响，听的时候也能在播放页调", style = style.type.caption, color = c.muted)
+                        }
+                        Text(settings.effects.preset.label, style = style.type.caption, color = if (settings.effects.enabled) c.accent else c.muted)
+                        ThemedIcon(LineIcon.Forward, null, tint = c.muted, size = 16.dp, modifier = Modifier.padding(start = 6.dp))
+                    }
                 }
             }
             item {

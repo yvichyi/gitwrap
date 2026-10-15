@@ -21,13 +21,25 @@ class DemoPlayerStateTest {
     }
 
     @Test
-    fun `line progress runs from 0 to 1 within the active line`() {
+    fun `line progress follows the demo's sung characters within the active line`() {
         val state = DemoPlayerState()
         val second = state.lyrics[1]
         state.seekTo(second.startMs)
         assertEquals(0f, state.lineProgress(), 0.001f)
+        // Sung over four fifths of the line: halfway through the time is five eighths through the text.
         state.seekTo((second.startMs + second.endMs) / 2)
-        assertEquals(0.5f, state.lineProgress(), 0.01f)
+        assertEquals(0.625f, state.lineProgress(), 0.05f)
+        state.seekTo(second.endMs - 1)
+        assertEquals(1f, state.lineProgress(), 0.001f)
+    }
+
+    @Test
+    fun `a line without word timings lights up in a quick stroke, not a crawl to the next line`() {
+        val line = io.lanyin.player.core.model.LyricLine("没有逐字时间的一行", null, 10_000, 16_000)
+        assertEquals(0f, line.charProgress(10_000), 0.001f)
+        assertEquals(0.5f, line.charProgress(10_210), 0.01f)
+        assertEquals(1f, line.charProgress(10_420), 0.001f)
+        assertEquals(1f, line.charProgress(12_000), 0.001f)
     }
 
     @Test

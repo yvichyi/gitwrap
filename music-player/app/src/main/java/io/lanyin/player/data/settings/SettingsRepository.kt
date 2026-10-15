@@ -7,6 +7,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.floatPreferencesKey
+import io.lanyin.player.core.audio.EQ_FREQUENCIES
+import io.lanyin.player.core.audio.EffectPreset
+import io.lanyin.player.core.audio.EffectsSettings
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.lanyin.player.ui.theme.AppTheme
@@ -34,6 +38,8 @@ data class UiSettings(
     val downloadOnWifiOnly: Boolean = true,
     /** Tell NetEase what was listened to here, so the account's history and 听歌排行 include it. */
     val syncPlays: Boolean = true,
+    /** 音效: off (原声) unless chosen. */
+    val effects: EffectsSettings = EffectsSettings(),
 )
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -52,6 +58,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 quality = Quality.fromLevel(prefs[QUALITY]) ?: Quality.LOSSLESS,
                 downloadOnWifiOnly = prefs[DOWNLOAD_WIFI_ONLY] ?: true,
                 syncPlays = prefs[SYNC_PLAYS] ?: true,
+                effects = EffectsSettings(
+                    preset = EffectPreset.fromId(prefs[FX_PRESET]),
+                    custom = prefs[FX_CUSTOM]?.split(',')?.mapNotNull { it.toFloatOrNull() }?.takeIf { it.size == EQ_FREQUENCIES.size }
+                        ?: List(EQ_FREQUENCIES.size) { 0f },
+                    bass = prefs[FX_BASS] ?: 0f,
+                    width = prefs[FX_WIDTH] ?: 0f,
+                    reverb = prefs[FX_REVERB] ?: 0f,
+                ),
             )
         }
 
@@ -73,6 +87,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setSyncPlays(enabled: Boolean) = dataStore.edit { it[SYNC_PLAYS] = enabled }
 
+    suspend fun setEffects(fx: EffectsSettings) = dataStore.edit {
+        it[FX_PRESET] = fx.preset.id
+        it[FX_CUSTOM] = fx.custom.joinToString(",")
+        it[FX_BASS] = fx.bass
+        it[FX_WIDTH] = fx.width
+        it[FX_REVERB] = fx.reverb
+    }
+
     private companion object {
         val THEME = stringPreferencesKey("app_skin")
         val PLAYER_SKIN = stringPreferencesKey("player_skin")
@@ -83,5 +105,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val QUALITY = stringPreferencesKey("stream_quality")
         val DOWNLOAD_WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
         val SYNC_PLAYS = booleanPreferencesKey("sync_plays")
+        val FX_PRESET = stringPreferencesKey("fx_preset")
+        val FX_CUSTOM = stringPreferencesKey("fx_custom")
+        val FX_BASS = floatPreferencesKey("fx_bass")
+        val FX_WIDTH = floatPreferencesKey("fx_width")
+        val FX_REVERB = floatPreferencesKey("fx_reverb")
     }
 }

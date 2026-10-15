@@ -277,7 +277,7 @@ private fun PortraitPlayer(
                         )
                         Box(
                             artSize(skin, maxWidth, maxHeight)
-                                .beatRipples(skin, state.isPlaying)
+                                .beatRipples(skin, state.isPlaying, state.audioFeed)
                                 .artworkBackdrop(skin)
                                 .graphicsLayer {
                                     scaleX = settle
@@ -395,7 +395,7 @@ private fun LandscapePlayer(
                     // Leave room around the artwork for the spectrum halo, whichever side is short.
                     val halo = 20.dp
                     Box(
-                        artSize(skin, maxWidth - halo * 2, maxHeight * 0.82f).spectrumHalo(skin, state.isPlaying),
+                        artSize(skin, maxWidth - halo * 2, maxHeight * 0.82f).spectrumHalo(skin, state.isPlaying, state.audioFeed),
                         contentAlignment = Alignment.Center,
                     ) {
                         // The halo stays put while the record is swiped away and the next slides in.
@@ -618,6 +618,7 @@ private fun rememberMinuteClock(): State<LocalTime> = produceState(LocalTime.now
 private fun LandscapeTopBar(state: PlayerState, onCollapse: () -> Unit, onRotate: () -> Unit, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
+    val openMore = io.lanyin.player.ui.music.LocalOpenSheet.current
     Row(modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
         IconAction(LineIcon.ChevronDown, "收起", onCollapse, iconSize = 30.dp)
         Spacer(Modifier.width(8.dp))
@@ -632,9 +633,9 @@ private fun LandscapeTopBar(state: PlayerState, onCollapse: () -> Unit, onRotate
         Spacer(Modifier.width(16.dp))
         QualityTags(state)
         CommentButton(state, c.content)
+        IconAction(LineIcon.Equalizer, "音效", { openMore(io.lanyin.player.ui.music.Sheet.Effects) })
         LikeButton(state.liked, onToggle = state::toggleLike)
         IconAction(LineIcon.Rotate, "切换到竖屏", onRotate)
-        val openMore = io.lanyin.player.ui.music.LocalOpenSheet.current
         IconAction(LineIcon.More, "更多", { openMore(io.lanyin.player.ui.music.Sheet.TrackActions(state.track.toSong())) })
     }
 }
@@ -648,57 +649,62 @@ private fun QualitySticker(state: PlayerState, modifier: Modifier = Modifier) {
     }
 }
 
-/** The quality tag plus the stream format: a chip in most themes, a quiet tracked label in 墨. */
+/**
+ * The quality tag, with the stream format when there's room: a chip in most themes, a quiet
+ * tracked label in 墨. Tapping it opens the quality picker.
+ */
 @Composable
-private fun QualityTags(state: PlayerState, chipFirst: Boolean = false) {
+private fun QualityTags(state: PlayerState, chipFirst: Boolean = false, showFormat: Boolean = true) {
     val style = Lanyin.style
-    // Unknown until the stream has been resolved.
-    if (state.quality.isEmpty()) return
-    if (style.quietSections) {
-        Text("${state.quality} · ${state.format}", style = style.type.label, color = style.colors.muted, maxLines = 1)
-    } else {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (chipFirst) {
-                QualityChip(state.quality)
+    val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
+    // Unknown until the stream has been resolved; still a way in to choosing one.
+    val quality = state.quality.ifEmpty { "音质" }
+    val format = state.format.takeIf { showFormat && it.isNotEmpty() }
+    Row(
+        Modifier.pressable { openSheet(io.lanyin.player.ui.music.Sheet.Quality) }.padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (style.quietSections) {
+            Text(listOfNotNull(quality, format).joinToString(" · "), style = style.type.label, color = style.colors.muted, maxLines = 1)
+            ThemedIcon(LineIcon.CaretDown, "选择音质", tint = style.colors.muted, size = 14.dp)
+        } else if (chipFirst) {
+            QualityChip(quality, caret = true)
+            if (format != null) {
                 Spacer(Modifier.width(8.dp))
-                Text(state.format, style = style.type.caption, color = style.colors.muted, maxLines = 1)
-            } else {
-                Text(state.format, style = style.type.caption, color = style.colors.muted, maxLines = 1)
-                Spacer(Modifier.width(8.dp))
-                QualityChip(state.quality)
+                Text(format, style = style.type.caption, color = style.colors.muted, maxLines = 1)
             }
+        } else {
+            if (format != null) {
+                Text(format, style = style.type.caption, color = style.colors.muted, maxLines = 1)
+                Spacer(Modifier.width(8.dp))
+            }
+            QualityChip(quality, caret = true)
         }
     }
 }
 
 @Composable
-private fun QualityChip(text: String) {
+private fun QualityChip(text: String, caret: Boolean = false) {
     val style = Lanyin.style
     val c = style.colors
-    if (style.edge == EdgeKind.Brutal) {
-        // 格: a yellow label boxed in ink.
-        Text(
-            text,
-            style = style.type.caption.copy(fontWeight = FontWeight.Black),
-            color = c.content,
-            maxLines = 1,
-            modifier = Modifier
-                .background(GridYellow)
-                .border(2.dp, c.outline)
-                .padding(horizontal = 8.dp, vertical = 2.dp),
-        )
-        return
+    val brutal = style.edge == EdgeKind.Brutal
+    val ink = if (brutal) c.content else c.accent
+    Row(
+        Modifier
+            .then(
+                if (brutal) {
+                    // 格: a yellow label boxed in ink.
+                    Modifier.background(GridYellow).border(2.dp, c.outline)
+                } else {
+                    Modifier.clip(style.chipShape).border(1.dp, c.accent.copy(alpha = 0.6f), style.chipShape)
+                },
+            )
+            .padding(start = if (brutal) 8.dp else 10.dp, end = if (caret) 5.dp else if (brutal) 8.dp else 10.dp, top = if (brutal) 2.dp else 3.dp, bottom = if (brutal) 2.dp else 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text, style = style.type.caption.copy(fontWeight = if (brutal) FontWeight.Black else FontWeight.SemiBold), color = ink, maxLines = 1)
+        if (caret) ThemedIcon(LineIcon.CaretDown, "选择音质", tint = ink, size = 14.dp, modifier = Modifier.padding(start = 1.dp))
     }
-    Text(
-        text,
-        style = style.type.caption.copy(fontWeight = FontWeight.SemiBold),
-        color = c.accent,
-        maxLines = 1,
-        modifier = Modifier
-            .clip(style.chipShape)
-            .border(1.dp, c.accent.copy(alpha = 0.6f), style.chipShape)
-            .padding(horizontal = 10.dp, vertical = 3.dp),
-    )
 }
 
 @Composable
@@ -845,10 +851,12 @@ private fun UtilityRow(
     modifier: Modifier = Modifier,
 ) {
     val c = Lanyin.colors
+    val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        QualityTags(state, chipFirst = true)
+        QualityTags(state, chipFirst = true, showFormat = false)
         Spacer(Modifier.weight(1f))
         CommentButton(state, c.muted)
+        IconAction(LineIcon.Equalizer, "音效", { openSheet(io.lanyin.player.ui.music.Sheet.Effects) }, tint = c.muted)
         if (onToggleLyrics != null) {
             IconAction(LineIcon.Lyrics, if (lyricsShown) "显示封面" else "显示歌词", onToggleLyrics, tint = if (lyricsShown) c.accent else c.muted)
         }
