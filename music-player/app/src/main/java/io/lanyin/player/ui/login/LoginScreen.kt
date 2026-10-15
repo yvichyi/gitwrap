@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.lanyin.player.ui.components.QrGlyph
 import io.lanyin.player.ui.design.IconAction
+import io.lanyin.player.ui.design.IndexTag
 import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.ThemedButton
 import io.lanyin.player.ui.design.themedSurface
@@ -131,13 +132,17 @@ private fun Step(n: Int, text: String) {
     val style = Lanyin.style
     val c = style.colors
     Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            "$n",
-            style = style.type.title.copy(fontFamily = style.display),
-            color = c.muted,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(28.dp),
-        )
+        if (style.edge == EdgeKind.Brutal) {
+            IndexTag(n)
+        } else {
+            Text(
+                "$n",
+                style = style.type.title.copy(fontFamily = style.display),
+                color = c.muted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(28.dp),
+            )
+        }
         Spacer(Modifier.width(10.dp))
         Text(text, style = style.type.body)
     }

@@ -62,13 +62,13 @@ fun LibraryScreen(onLogin: () -> Unit) {
             item { Profile(onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
             item {
                 Column(Modifier.padding(start = m, end = m, top = 36.dp)) {
-                    SectionTitle("音乐库")
+                    SectionTitle("音乐库", index = 1)
                     EntryList(onLogin, Modifier.padding(top = 10.dp))
                 }
             }
             item {
                 Column(Modifier.padding(start = m, end = m, top = 36.dp)) {
-                    SectionTitle("歌单")
+                    SectionTitle("歌单", index = 2)
                     ChoiceRow(listOf("创建的歌单", "收藏的歌单"), shelf, { shelf = it }, Modifier.padding(top = 14.dp))
                     Column(Modifier.fillMaxWidth().padding(vertical = 36.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         ThemeMotif(c.content.copy(alpha = 0.18f), Modifier.size(64.dp))
@@ -94,8 +94,7 @@ private fun Profile(onLogin: () -> Unit, modifier: Modifier) {
         Box(
             Modifier
                 .size(56.dp)
-                .clip(CircleShape)
-                .then(if (hairline) Modifier.border(1.dp, c.outline, CircleShape) else Modifier.themedSurface(shape = CircleShape, tone = SurfaceTone.Flat)),
+                .then(if (hairline) Modifier.clip(CircleShape).border(1.dp, c.outline, CircleShape) else Modifier.themedSurface(shape = style.roundShape, tone = SurfaceTone.Flat)),
             contentAlignment = Alignment.Center,
         ) {
             ThemedIcon(LineIcon.User, null, tint = c.muted, size = 26.dp)

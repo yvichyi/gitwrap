@@ -74,9 +74,13 @@ fun SettingsScreen(settings: UiSettings, repository: SettingsRepository, onBack:
                 }
             }
 
-            item { SectionTitle("主题", Modifier.padding(start = m, end = m, top = 24.dp), trailing = settings.theme.tagline) }
+            item { SectionTitle("主题", Modifier.padding(start = m, end = m, top = 24.dp), trailing = settings.theme.tagline, index = 1) }
             item {
-                LazyRow(contentPadding = PaddingValues(start = m, end = m, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                // Open on the theme in use, with its neighbour peeking in before it.
+                val themes = androidx.compose.foundation.lazy.rememberLazyListState(
+                    initialFirstVisibleItemIndex = (settings.theme.ordinal - 1).coerceAtLeast(0),
+                )
+                LazyRow(state = themes, contentPadding = PaddingValues(start = m, end = m, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(AppTheme.entries) { theme ->
                         ThemeCard(theme, settings.themeMode, selected = theme == settings.theme) {
                             scope.launch { repository.setTheme(theme) }
@@ -85,23 +89,23 @@ fun SettingsScreen(settings: UiSettings, repository: SettingsRepository, onBack:
                 }
             }
 
-            item { SectionTitle("深浅模式", Modifier.padding(start = m, end = m, top = 36.dp)) }
+            item { SectionTitle("深浅模式", Modifier.padding(start = m, end = m, top = 36.dp), index = 2) }
             item {
                 Column(Modifier.padding(start = m, end = m, top = 14.dp)) {
                     ChoiceRow(ThemeMode.entries.map { it.label }, settings.themeMode.label, { label ->
                         val mode = ThemeMode.entries.first { it.label == label }
                         scope.launch { repository.setThemeMode(mode) }
                     })
-                    if (settings.theme.darkOnly) {
+                    if (settings.theme.darkOnly || settings.theme.lightOnly) {
                         Text(
-                            "「${settings.theme.label}」只在夜里亮，始终使用深色。",
+                            if (settings.theme.darkOnly) "「${settings.theme.label}」只在夜里亮，始终使用深色。" else "「${settings.theme.label}」是印在纸上的，始终使用浅色。",
                             style = style.type.caption, color = c.muted, modifier = Modifier.padding(top = 10.dp),
                         )
                     }
                 }
             }
 
-            item { SectionTitle("播放页样式", Modifier.padding(start = m, end = m, top = 36.dp)) }
+            item { SectionTitle("播放页样式", Modifier.padding(start = m, end = m, top = 36.dp), index = 3) }
             item {
                 val spin = rememberSpinState(running = true)
                 LazyRow(contentPadding = PaddingValues(start = m, end = m, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -109,7 +113,7 @@ fun SettingsScreen(settings: UiSettings, repository: SettingsRepository, onBack:
                 }
             }
 
-            item { SectionTitle("播放", Modifier.padding(start = m, end = m, top = 36.dp)) }
+            item { SectionTitle("播放", Modifier.padding(start = m, end = m, top = 36.dp), index = 4) }
             item {
                 Column(Modifier.padding(start = m, end = m, top = 14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -128,7 +132,16 @@ fun SettingsScreen(settings: UiSettings, repository: SettingsRepository, onBack:
                         fontWeight = if (style.lyric.serif) FontWeight.Medium else FontWeight.Bold,
                     )
                     Column(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
-                        Text("让歌词一行一行亮起", style = preview, color = if (style.edge == EdgeKind.Hairline) c.content else c.accent)
+                        if (style.edge == EdgeKind.Brutal) {
+                            // 格's highlighter block, as on the player.
+                            io.lanyin.player.ui.player.SweepText(
+                                "让歌词一行一行亮起", preview, baseColor = c.content, sweepColor = c.content, progress = { 1f }, glow = null,
+                                modifier = Modifier.padding(start = 6.dp, bottom = 6.dp),
+                                block = io.lanyin.player.ui.theme.GridYellow, blockEdge = c.outline,
+                            )
+                        } else {
+                            Text("让歌词一行一行亮起", style = preview, color = if (style.edge == EdgeKind.Hairline) c.content else c.accent)
+                        }
                         Text("唱片在掌心慢慢转动", style = preview, color = c.content.copy(alpha = style.lyric.inactiveAlpha))
                     }
                 }
@@ -238,7 +251,7 @@ private fun SkinCard(skin: PlayerSkin, selected: Boolean, spin: io.lanyin.player
                     Modifier.border(if (selected) 1.5.dp else 1.dp, if (selected) c.content else c.outline).pressable(onClick = onClick)
                 } else {
                     Modifier.themedSurface(tone = if (selected) SurfaceTone.Card else SurfaceTone.Flat, onClick = onClick)
-                        .then(if (selected && style.edge != EdgeKind.Retro) Modifier.border(2.dp, c.accent, style.cardShape) else Modifier)
+                        .then(if (selected && !style.hardEdge) Modifier.border(2.dp, c.accent, style.cardShape) else Modifier)
                 },
             )
             .padding(10.dp),

@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.TextLayoutResult
@@ -50,6 +52,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import io.lanyin.player.ui.theme.Lanyin
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -230,7 +233,9 @@ private fun LyricRow(
     val c = style.colors
     val ls = style.lyric
     val activeAmount by animateFloatAsState(if (active) 1f else 0f, style.bouncy.spec(), label = "lyricActive")
-    val sweep = if (style.lyric.serif && style.edge == io.lanyin.player.ui.theme.EdgeKind.Hairline) c.content else c.accent
+    // 格 marks the sung part like a highlighter: ink on a yellow block with a hard edge.
+    val brutal = style.edge == io.lanyin.player.ui.theme.EdgeKind.Brutal
+    val sweep = if (brutal || style.lyric.serif && style.edge == io.lanyin.player.ui.theme.EdgeKind.Hairline) c.content else c.accent
     val base = c.content.copy(alpha = ls.inactiveAlpha + (0.42f - ls.inactiveAlpha).coerceAtLeast(0f) * activeAmount)
     val blur = ls.blurStep * (distance - 1).coerceIn(0, 3)
     val align = if (centered) TextAlign.Center else TextAlign.Start
@@ -246,10 +251,13 @@ private fun LyricRow(
                 scaleX = s
                 scaleY = s
                 translationY = -3.dp.toPx() * activeAmount
+                // 格's active line is knocked slightly askew, like a pasted-up strip.
+                if (brutal) rotationZ = -1.2f * activeAmount
                 transformOrigin = TransformOrigin(if (centered) 0.5f else 0f, 0.5f)
             }
             .then(if (blur > 0.dp) Modifier.blur(blur) else Modifier)
-            .padding(vertical = 2.dp),
+            // Room for the highlight block to stand proud of the text.
+            .padding(horizontal = if (brutal) 6.dp else 0.dp, vertical = 2.dp),
         horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
     ) {
         SweepText(
@@ -259,6 +267,8 @@ private fun LyricRow(
             sweepColor = sweep,
             progress = if (active) progress else null,
             glow = if (ls.glow) sweep else null,
+            block = if (brutal) io.lanyin.player.ui.theme.GridYellow else null,
+            blockEdge = c.outline,
         )
         if (showTranslation && line.translation != null) {
             Text(
@@ -273,7 +283,9 @@ private fun LyricRow(
 
 /**
  * Text whose active part is painted in [sweepColor] up to [progress], across wrapped lines, with
- * a feathered leading edge. The overlay is masked in the draw phase only.
+ * a feathered leading edge. The overlay is masked in the draw phase only. With a [block] colour
+ * the sung part also gets a highlighter block behind it, edged and hard-shadowed in [blockEdge],
+ * and the leading edge is sharp.
  */
 @Composable
 fun SweepText(
@@ -284,9 +296,36 @@ fun SweepText(
     progress: (() -> Float)?,
     glow: Color?,
     modifier: Modifier = Modifier,
+    block: Color? = null,
+    blockEdge: Color = Color.Black,
 ) {
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-    Box(modifier) {
+    val highlight = if (block != null && progress != null) {
+        Modifier.drawBehind {
+            val l = layout ?: return@drawBehind
+            val pad = 5.dp.toPx()
+            val shadow = 3.dp.toPx()
+            val stroke = 2.dp.toPx()
+            var remaining = l.sungWidth(progress(), wholeChars = true)
+            for (li in 0 until l.lineCount) {
+                val left = l.getLineLeft(li)
+                val width = l.getLineRight(li) - left
+                if (remaining > 0f) {
+                    val inset = (l.getLineBottom(li) - l.getLineTop(li)) * 0.08f
+                    val topLeft = Offset(left - pad, l.getLineTop(li) + inset)
+                    // Snug on the leading side so the edge doesn't cut into the next glyph.
+                    val box = Size(minOf(remaining, width) + pad + 1.dp.toPx(), l.getLineBottom(li) - l.getLineTop(li) - inset * 2)
+                    drawRect(blockEdge, topLeft + Offset(shadow, shadow), box)
+                    drawRect(block, topLeft, box)
+                    drawRect(blockEdge, topLeft, box, style = Stroke(stroke))
+                }
+                remaining -= width
+            }
+        }
+    } else {
+        Modifier
+    }
+    Box(modifier.then(highlight)) {
         Text(text, style = style.copy(color = baseColor), onTextLayout = { layout = it })
         if (progress != null) {
             Text(
@@ -297,10 +336,13 @@ fun SweepText(
                     .drawWithContent {
                         drawContent()
                         val l = layout ?: return@drawWithContent
-                        val feather = 22.dp.toPx()
-                        var total = 0f
-                        for (li in 0 until l.lineCount) total += l.getLineRight(li) - l.getLineLeft(li)
-                        var remaining = progress() * (total + feather)
+                        val feather = if (block != null) 1.dp.toPx() else 22.dp.toPx()
+                        var remaining = if (block != null) {
+                            // Whole characters at a time, so the block never slices a glyph.
+                            l.sungWidth(progress(), wholeChars = true).let { if (it > 0f) it + feather else 0f }
+                        } else {
+                            progress() * (l.sungWidth(1f, wholeChars = false) + feather)
+                        }
                         for (li in 0 until l.lineCount) {
                             val left = l.getLineLeft(li)
                             val right = l.getLineRight(li)
@@ -319,6 +361,27 @@ fun SweepText(
             )
         }
     }
+}
+
+/**
+ * How far along the text, summed over its lines, [progress] has sung. With [wholeChars] it snaps
+ * forward to the end of the character being sung.
+ */
+internal fun TextLayoutResult.sungWidth(progress: Float, wholeChars: Boolean): Float {
+    var total = 0f
+    for (li in 0 until lineCount) total += getLineRight(li) - getLineLeft(li)
+    if (!wholeChars) return progress * total
+    val lit = ceil(progress.coerceIn(0f, 1f) * layoutInput.text.length).toInt()
+    var width = 0f
+    for (li in 0 until lineCount) {
+        val left = getLineLeft(li)
+        when {
+            lit >= getLineEnd(li, visibleEnd = true) -> width += getLineRight(li) - left
+            lit > getLineStart(li) -> return width + getHorizontalPosition(lit, usePrimaryDirection = true) - left
+            else -> return width
+        }
+    }
+    return width
 }
 
 /** Fades content out at the top and bottom edges instead of clipping it. */

@@ -65,14 +65,23 @@ fun Modifier.themedSurface(
     val c = style.colors
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val press by animateFloatAsState(if (pressed) 1f else 0f, style.motion.spec(), label = "press")
+    // 格's surfaces spring back past their rest position when released.
+    val press by animateFloatAsState(if (pressed) 1f else 0f, if (style.edge == EdgeKind.Brutal) style.bouncy.spec() else style.motion.spec(), label = "press")
     val haze = LocalHazeState.current
 
     // 1. Decoration that stays put while the surface itself moves on press.
     val flat = tone == SurfaceTone.Flat
+    // Hard shadows: 暮 keeps them for the hero; 格 gives every surface one, deepest on cards.
+    val hardShadow = when {
+        !style.hardEdge -> 0.dp
+        style.edge == EdgeKind.Retro -> if (flat) 0.dp else 4.dp
+        flat -> 3.dp
+        tone == SurfaceTone.Card -> style.shadowOffset
+        else -> 4.dp
+    }
     var m = when {
+        hardShadow > 0.dp -> retroShadow(shape, c.outline, hardShadow)
         flat -> this
-        style.edge == EdgeKind.Retro -> retroShadow(shape, c.outline, 4.dp)
         style.edge == EdgeKind.Glow -> neonGlow(shape, if (tone == SurfaceTone.Accent) c.accent else c.accent.copy(alpha = 0.55f))
         style.edge == EdgeKind.Soft -> shadow(
             elevation = if (tone == SurfaceTone.Card) 10.dp else 18.dp, shape = shape,
@@ -82,9 +91,9 @@ fun Modifier.themedSurface(
     }
     // 2. Press feedback: retro surfaces sink into their shadow, others shrink (墨 also fades).
     m = m.graphicsLayer {
-        if (style.edge == EdgeKind.Retro && !flat) {
-            translationX = 4.dp.toPx() * press
-            translationY = 4.dp.toPx() * press
+        if (hardShadow > 0.dp) {
+            translationX = hardShadow.toPx() * press
+            translationY = hardShadow.toPx() * press
         } else {
             val s = 1f - (1f - minOf(style.pressScale, 0.97f)) * press
             scaleX = s
@@ -115,7 +124,7 @@ fun Modifier.themedSurface(
         EdgeKind.Glass -> m.border(1.dp, Color.White.copy(alpha = if (style.dark) 0.10f else 0.65f), shape)
         EdgeKind.Hairline -> m.border(1.dp, if (tone == SurfaceTone.Accent) c.content else c.outline, shape)
         EdgeKind.Glow -> m.border(1.dp, c.accent.copy(alpha = if (tone == SurfaceTone.Accent) 1f else if (flat) 0.35f else 0.6f), shape)
-        EdgeKind.Retro -> m.border(2.dp, c.outline, shape)
+        EdgeKind.Retro, EdgeKind.Brutal -> m.border(style.strokeWidth, c.outline, shape)
         EdgeKind.Soft -> m
     }
     if (onClick != null) {

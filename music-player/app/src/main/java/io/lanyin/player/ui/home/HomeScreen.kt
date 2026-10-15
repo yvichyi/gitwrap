@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +43,7 @@ import io.lanyin.player.ui.design.CoverArt
 import io.lanyin.player.ui.design.Hairline
 import io.lanyin.player.ui.design.IconAction
 import io.lanyin.player.ui.design.LineIcon
+import io.lanyin.player.ui.design.Marquee
 import io.lanyin.player.ui.design.PlayPauseButton
 import io.lanyin.player.ui.design.SectionTitle
 import io.lanyin.player.ui.design.SurfaceTone
@@ -79,17 +81,32 @@ fun HomeScreen(
     CompositionLocalProvider(LocalContentColor provides style.colors.content) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
             item { Header(now, onOpenSettings, onLogin, Modifier.padding(horizontal = m)) }
+            if (style.edge == EdgeKind.Brutal) {
+                // 格 tapes a ribbon across the page, a little askew.
+                item {
+                    Marquee(
+                        listOf("澜音 LANYIN", "正在播放 ${player.title} — ${player.artist}", "每日推荐 №%02d".format(now.dayOfMonth), "扫码登录网易云"),
+                        Modifier
+                            .padding(top = 22.dp, bottom = 4.dp)
+                            .graphicsLayer {
+                                rotationZ = -1.6f
+                                scaleX = 1.06f
+                            },
+                        height = 32.dp,
+                    )
+                }
+            }
             item { ConnectLine(onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
             item {
                 Column(Modifier.padding(start = m, end = m, top = 36.dp)) {
-                    SectionTitle("继续播放")
+                    SectionTitle("继续播放", index = 1)
                     NowPlayingHero(player, onOpenPlayer, Modifier.padding(top = 14.dp))
                 }
             }
             item { QuickEntries(now.dayOfMonth, onLogin, Modifier.padding(start = m, end = m, top = 36.dp)) }
             item {
                 Column(Modifier.padding(top = 36.dp)) {
-                    SectionTitle("推荐歌单", Modifier.padding(horizontal = m), trailing = "登录后可见")
+                    SectionTitle("推荐歌单", Modifier.padding(horizontal = m), trailing = "登录后可见", index = 2)
                     LazyRow(
                         contentPadding = PaddingValues(start = m, end = m, top = 14.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -130,6 +147,9 @@ private fun Header(now: LocalDateTime, onOpenSettings: () -> Unit, onLogin: () -
     // The literary theme writes the date out in characters.
     val date = if (style.quietSections) {
         "${chineseNumber(now.monthValue)}月${chineseNumber(now.dayOfMonth)}日 · $weekday"
+    } else if (style.edge == EdgeKind.Brutal) {
+        // 格 dates the page like a print run.
+        "№ %d.%02d.%02d · %s".format(now.year, now.monthValue, now.dayOfMonth, now.dayOfWeek.getDisplayName(JavaTextStyle.SHORT, Locale.CHINA))
     } else {
         "${now.monthValue}月${now.dayOfMonth}日 · $weekday"
     }
@@ -150,14 +170,21 @@ private fun Header(now: LocalDateTime, onOpenSettings: () -> Unit, onLogin: () -
                     )
                 }
             } else {
-                Text(date, style = style.type.caption, color = c.muted, modifier = Modifier.padding(top = 6.dp))
+                val brutal = style.edge == EdgeKind.Brutal
+                Text(
+                    date,
+                    style = if (brutal) style.type.caption.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold) else style.type.caption,
+                    color = if (brutal) c.content else c.muted,
+                    maxLines = 1,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
             }
         }
         if (style.edge == EdgeKind.Hairline) {
             IconAction(LineIcon.Sliders, "设置", onOpenSettings, tint = c.muted)
         } else {
             Box(
-                Modifier.size(40.dp).themedSurface(shape = CircleShape, tone = SurfaceTone.Flat, onClick = onOpenSettings),
+                Modifier.size(40.dp).themedSurface(shape = style.roundShape, tone = SurfaceTone.Flat, onClick = onOpenSettings),
                 contentAlignment = Alignment.Center,
             ) { ThemedIcon(LineIcon.Sliders, "设置", tint = c.muted, size = 20.dp) }
             Spacer(Modifier.width(10.dp))
@@ -169,7 +196,7 @@ private fun Header(now: LocalDateTime, onOpenSettings: () -> Unit, onLogin: () -
                     if (style.edge == EdgeKind.Hairline) {
                         Modifier.clip(CircleShape).border(1.dp, c.outline, CircleShape).pressable(onClick = onLogin)
                     } else {
-                        Modifier.themedSurface(shape = CircleShape, onClick = onLogin)
+                        Modifier.themedSurface(shape = style.roundShape, onClick = onLogin)
                     },
                 ),
             contentAlignment = Alignment.Center,
@@ -195,7 +222,7 @@ private fun ConnectLine(onLogin: () -> Unit, modifier: Modifier) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // A small seal, the one spot of colour on the page.
-            Box(Modifier.size(8.dp).background(c.accentAlt, if (hairline) androidx.compose.ui.graphics.RectangleShape else CircleShape))
+            Box(Modifier.size(8.dp).background(c.accentAlt, if (hairline) androidx.compose.ui.graphics.RectangleShape else style.roundShape))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("未连接网易云音乐", style = style.type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)

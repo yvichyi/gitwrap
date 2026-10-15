@@ -41,7 +41,11 @@ open class ThemeSweepTest(private val theme: AppTheme, private val mode: ThemeMo
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}_{1}")
         fun params(): List<Array<Any>> = AppTheme.entries.flatMap { theme ->
-            val modes = if (theme.darkOnly) listOf(ThemeMode.DARK) else listOf(ThemeMode.LIGHT, ThemeMode.DARK)
+            val modes = when {
+                theme.darkOnly -> listOf(ThemeMode.DARK)
+                theme.lightOnly -> listOf(ThemeMode.LIGHT)
+                else -> listOf(ThemeMode.LIGHT, ThemeMode.DARK)
+            }
             modes.map { arrayOf<Any>(theme, it) }
         }
     }

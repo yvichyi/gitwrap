@@ -58,7 +58,7 @@ internal const val DEMO_BEATS_PER_SECOND = 1.6f
 
 /**
  * A ring that leaves the artwork's edge on every beat and fades as it spreads, in the theme's
- * own hand: an ink hairline for 墨, the accent elsewhere, a glowing tube for 霓. Only while
+ * own hand: an ink hairline for 墨, square ink frames for 格, the accent elsewhere, a glowing tube for 霓. Only while
  * playing; draw-phase only.
  */
 @Composable
@@ -67,7 +67,8 @@ fun Modifier.beatRipples(skin: PlayerSkin, playing: Boolean): Modifier {
     val style = Lanyin.style
     val clock = rememberFrameClock(playing)
     val energy = animateFloatAsState(if (playing) 1f else 0f, tween(700), label = "rippleEnergy")
-    val color = if (style.edge == EdgeKind.Hairline) style.colors.content else style.colors.accent
+    val brutal = style.edge == EdgeKind.Brutal
+    val color = if (style.edge == EdgeKind.Hairline || brutal) style.colors.content else style.colors.accent
     val glow = style.edge == EdgeKind.Glow
     return drawBehind {
         val e = energy.value
@@ -75,7 +76,7 @@ fun Modifier.beatRipples(skin: PlayerSkin, playing: Boolean): Modifier {
         val p = (clock.floatValue * DEMO_BEATS_PER_SECOND) % 1f
         val spread = 26.dp.toPx() * FastOutSlowInEasing.transform(p)
         val alpha = (1f - p).pow(1.6f) * 0.32f * e
-        val stroke = (if (style.edge == EdgeKind.Hairline) 1.dp else 1.5.dp).toPx()
+        val stroke = (if (style.edge == EdgeKind.Hairline) 1.dp else if (brutal) 2.dp else 1.5.dp).toPx()
         when (skin) {
             PlayerSkin.VINYL -> {
                 // The record sits 14dp inside these bounds.
@@ -87,7 +88,8 @@ fun Modifier.beatRipples(skin: PlayerSkin, playing: Boolean): Modifier {
                 val inset = (if (skin == PlayerSkin.COVER) 18.dp else 16.dp).toPx() - 4.dp.toPx() - spread
                 val topLeft = Offset(inset, inset)
                 val rect = Size(size.width - inset * 2, size.height - inset * 2)
-                val corner = CornerRadius(14.dp.toPx() + spread * 0.5f)
+                // 格's frames stay square.
+                val corner = if (brutal) CornerRadius.Zero else CornerRadius(14.dp.toPx() + spread * 0.5f)
                 if (glow) drawRoundRect(color.copy(alpha = alpha * 0.35f), topLeft, rect, corner, style = Stroke(stroke * 4))
                 drawRoundRect(color.copy(alpha = alpha), topLeft, rect, corner, style = Stroke(stroke))
             }

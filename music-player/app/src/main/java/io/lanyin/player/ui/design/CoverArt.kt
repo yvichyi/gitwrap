@@ -37,6 +37,7 @@ fun DrawScope.drawCoverArt(style: LanyinStyle, seed: Int) {
         AppTheme.INK -> inkCover(style, seed)
         AppTheme.SAKURA -> sakuraCover(style, seed)
         AppTheme.NEON -> neonCover(style, seed)
+        AppTheme.GRID -> gridCover(style, seed)
         AppTheme.DUSK -> {
             duskCover(style, seed)
             // Sleeves printed in mustard and orange glare on a dark page; dim them at night.
@@ -453,6 +454,7 @@ fun ThemeMotif(color: Color, modifier: Modifier = Modifier) {
                 rotate(k * 72f, center) { drawPetal(center + Offset(0f, -r * 0.55f), r * 0.42f, 0f, color.copy(alpha = 0.85f)) }
             }
             AppTheme.NEON -> for (i in 0 until 3) drawCircle(color.copy(alpha = 1f - i * 0.28f), r * (0.45f + i * 0.28f), center, style = line)
+            AppTheme.GRID -> gridMotif(style)
             AppTheme.DUSK -> for (i in 0 until 4) {
                 val rr = r * (1f - i * 0.22f)
                 drawArc(color.copy(alpha = 1f - i * 0.2f), 180f, 180f, false, Offset(center.x - rr, h * 0.75f - rr), Size(rr * 2, rr * 2), style = Stroke(r * 0.12f))

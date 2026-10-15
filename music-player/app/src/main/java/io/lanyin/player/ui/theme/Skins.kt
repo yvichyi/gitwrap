@@ -9,12 +9,14 @@ enum class AppTheme(
     val label: String,
     val tagline: String,
     val darkOnly: Boolean = false,
+    val lightOnly: Boolean = false,
 ) {
     INK("mo", "墨", "黑白留白，只留文字"),
     TIDE("lan", "澜", "流动的深海与毛玻璃"),
     SAKURA("ying", "樱", "花瓣飘落，软糯回弹"),
     NEON("ni", "霓", "赛博霓虹，夜色限定", darkOnly = true),
-    DUSK("mu", "暮", "七十年代的暖色黄昏");
+    DUSK("mu", "暮", "七十年代的暖色黄昏"),
+    GRID("ge", "格", "瑞士网格，粗边硬影", lightOnly = true);
 
     companion object {
         /** 墨 is the flagship: the most restrained theme sets the bar for the rest. */

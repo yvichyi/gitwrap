@@ -32,10 +32,14 @@ class SkinsTest {
     }
 
     @Test
-    fun `dark-only themes are dark whatever the mode`() {
+    fun `dark-only and light-only themes ignore the mode`() {
         ThemeMode.entries.forEach { mode ->
             assertTrue(AppTheme.NEON.isDark(mode, systemDark = false))
             assertTrue(lanyinStyle(AppTheme.NEON, dark = false).dark)
+        }
+        ThemeMode.entries.forEach { mode ->
+            assertEquals(false, AppTheme.GRID.isDark(mode, systemDark = true))
+            assertEquals(false, lanyinStyle(AppTheme.GRID, dark = true).dark)
         }
         assertEquals(false, AppTheme.TIDE.isDark(ThemeMode.LIGHT, systemDark = true))
         assertEquals(true, AppTheme.TIDE.isDark(ThemeMode.SYSTEM, systemDark = true))

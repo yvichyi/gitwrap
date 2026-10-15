@@ -39,9 +39,10 @@ import kotlin.math.sin
  * [playing] raises its energy: bigger waves, faster grid, livelier petals.
  */
 @Composable
-fun Backdrop(modifier: Modifier = Modifier, live: Boolean = false, playing: Boolean = false) {
+fun Backdrop(modifier: Modifier = Modifier, live: Boolean = false, playing: Boolean = false, trackNumber: Int? = null) {
     val style = Lanyin.style
     val clock = rememberFrameClock(live)
+    val measurer = if (style.backdrop == BackdropKind.Grid) androidx.compose.ui.text.rememberTextMeasurer() else null
     val energy by animateFloatAsState(if (playing) 1f else 0f, tween(1200), label = "energy")
     val phase = remember { moonPhase(java.time.LocalDate.now()) }
     Canvas(modifier) {
@@ -54,6 +55,7 @@ fun Backdrop(modifier: Modifier = Modifier, live: Boolean = false, playing: Bool
             BackdropKind.Sakura -> drawSakura(style, t, e, page)
             BackdropKind.Neon -> drawNeon(style, t, e, page)
             BackdropKind.Dusk -> drawDusk(style, t, e, page)
+            BackdropKind.Grid -> drawGridPaper(style, page, measurer, trackNumber)
         }
     }
 }

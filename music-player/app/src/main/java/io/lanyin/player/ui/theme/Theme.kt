@@ -28,7 +28,7 @@ object Lanyin {
         @Composable @ReadOnlyComposable get() = LocalLanyinStyle.current.type
 }
 
-fun AppTheme.isDark(mode: ThemeMode, systemDark: Boolean): Boolean = darkOnly || when (mode) {
+fun AppTheme.isDark(mode: ThemeMode, systemDark: Boolean): Boolean = darkOnly || !lightOnly && when (mode) {
     ThemeMode.SYSTEM -> systemDark
     ThemeMode.LIGHT -> false
     ThemeMode.DARK -> true

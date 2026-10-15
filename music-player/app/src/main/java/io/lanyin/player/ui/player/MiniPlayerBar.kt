@@ -46,6 +46,7 @@ import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.sharedPlayer
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.theme.DockKind
+import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.PlayerSkin
 
@@ -119,6 +120,17 @@ private fun MiniPlayButton(state: DemoPlayerState) {
     val morph by animateFloatAsState(if (state.isPlaying) 1f else 0f, style.bouncy.spec(), label = "miniMorph")
     Box(Modifier.size(48.dp).pressable(onClick = state::togglePlay), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(36.dp)) {
+            if (style.edge == EdgeKind.Brutal) {
+                // 格: a square key with the progress as a bar filling along its foot.
+                val stroke = style.strokeWidth.toPx()
+                val bar = 5.dp.toPx()
+                val f = (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
+                drawRect(c.outline, Offset(3.dp.toPx(), 3.dp.toPx()), size)
+                drawRect(c.surface)
+                drawRect(c.accent, Offset(0f, size.height - bar), Size(size.width * f, bar))
+                drawRect(c.outline, Offset(stroke / 2, stroke / 2), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke))
+                return@Canvas
+            }
             val stroke = (if (style.dock == DockKind.Docked) 1.5.dp else 2.5.dp).toPx()
             val inset = stroke / 2
             drawCircle(c.content.copy(alpha = 0.14f), size.minDimension / 2 - inset, style = Stroke(stroke))

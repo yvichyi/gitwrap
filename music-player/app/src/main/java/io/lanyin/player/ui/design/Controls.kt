@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,6 +76,7 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
     val shape = when (style.button) {
         ButtonKind.Blob -> RoundedCornerShape(38)
         ButtonKind.Retro -> RoundedCornerShape(30)
+        ButtonKind.Brutal -> RectangleShape
         else -> CircleShape
     }
     val glyphColor = when (style.button) {
@@ -109,6 +111,11 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
             .clip(shape)
             .background(c.accent)
             .border(2.dp, c.outline, shape)
+        ButtonKind.Brutal -> Modifier
+            .retroShadow(shape, c.outline, 5.dp)
+            .clip(shape)
+            .background(c.accent)
+            .border(style.strokeWidth, c.outline, shape)
     }
     Box(
         modifier
@@ -278,6 +285,7 @@ fun SeekBar(
                 SeekKind.Pill -> drawPillTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
                 SeekKind.Segments -> drawSegmentTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
                 SeekKind.Tape -> drawTapeTrack(f, c.accent, c.outline, c.surface)
+                SeekKind.Block -> drawBlockTrack(f, c.accent, c.outline, c.surface)
             }
         }
     }
@@ -304,14 +312,14 @@ fun SeekBar(
 @Composable
 private fun TimeLabel(ms: Long, style: TextStyle) {
     val s = Lanyin.style
-    if (s.seek == SeekKind.Tape) {
+    if (s.seek == SeekKind.Tape || s.seek == SeekKind.Block) {
         val total = (ms / 1000).coerceAtLeast(0)
         Text(
             "%02d:%02d".format(total / 60, total % 60),
             style = style.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, letterSpacing = 0.08.em, fontWeight = FontWeight.Bold),
             color = s.colors.surface,
             modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
+                .clip(if (s.seek == SeekKind.Block) RectangleShape else RoundedCornerShape(4.dp))
                 .background(s.colors.outline)
                 .padding(horizontal = 6.dp, vertical = 2.dp),
         )
@@ -382,6 +390,29 @@ private fun DrawScope.drawSegmentTrack(f: Float, lit: Color, head: Color, dim: C
     }
 }
 
+/** 格: a thick ruled bar with a hard shadow, ruler ticks and a square yellow handle. */
+private fun DrawScope.drawBlockTrack(f: Float, fill: Color, ink: Color, paper: Color) {
+    val h = 14.dp.toPx()
+    val top = (size.height - h) / 2f
+    val x = size.width * f
+    val stroke = 2.5.dp.toPx()
+    val shadow = 3.dp.toPx()
+    drawRect(ink, Offset(shadow, top + shadow), Size(size.width, h))
+    drawRect(paper, Offset(0f, top), Size(size.width, h))
+    drawRect(fill, Offset(0f, top), Size(x, h))
+    for (i in 1..9) {
+        val tx = size.width * i / 10f
+        drawLine(ink.copy(alpha = 0.55f), Offset(tx, top + h * 0.5f), Offset(tx, top + h), 1.dp.toPx())
+    }
+    drawRect(ink, Offset(0f, top), Size(size.width, h), style = Stroke(stroke))
+    val knob = 20.dp.toPx()
+    val kx = (x - knob / 2).coerceIn(0f, size.width - knob)
+    val ky = (size.height - knob) / 2f
+    drawRect(ink, Offset(kx + shadow, ky + shadow), Size(knob, knob))
+    drawRect(io.lanyin.player.ui.theme.GridYellow, Offset(kx, ky), Size(knob, knob))
+    drawRect(ink, Offset(kx, ky), Size(knob, knob), style = Stroke(stroke))
+}
+
 private fun DrawScope.drawTapeTrack(f: Float, fill: Color, ink: Color, paper: Color) {
     val h = 12.dp.toPx()
     val top = (size.height - h) / 2f
@@ -414,6 +445,19 @@ fun ThemedChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: M
     val shape = style.chipShape
     val fill by animateFloatAsState(if (selected) 1f else 0f, style.motion.spec(), label = "chip")
     val onFill = if (style.button == ButtonKind.NeonRing) c.accent else c.onAccent
+    if (style.button == ButtonKind.Brutal) {
+        Box(
+            modifier
+                .pressable(onClick = onClick)
+                .retroShadow(shape, c.outline, 3.dp)
+                .background(lerp(c.surface, c.content, fill))
+                .border(2.dp, c.outline, shape)
+                .padding(horizontal = 14.dp, vertical = 7.dp),
+        ) {
+            Text(text, style = style.type.body.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold), color = lerp(c.content, c.surface, fill))
+        }
+        return
+    }
     Box(
         modifier
             .pressable(onClick = onClick)
@@ -471,6 +515,30 @@ fun ThemedButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
     val style = Lanyin.style
     val c = style.colors
     val hairline = style.edge == EdgeKind.Hairline
+    if (style.edge == EdgeKind.Brutal && !enabled) {
+        // 格 prints a button that isn't ready yet as a hatched box, not a faded one.
+        Box(
+            modifier
+                .drawBehind {
+                    drawRect(c.bgDeep)
+                    val gap = 9.dp.toPx()
+                    val ink = c.content.copy(alpha = 0.16f)
+                    clipRect {
+                        var x = -size.height
+                        while (x < size.width) {
+                            drawLine(ink, Offset(x, size.height), Offset(x + size.height, 0f), 1.5.dp.toPx())
+                            x += gap
+                        }
+                    }
+                }
+                .border(style.strokeWidth, c.outline)
+                .padding(horizontal = 22.dp, vertical = 11.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text, style = style.type.body.copy(fontWeight = FontWeight.Bold), color = c.muted)
+        }
+        return
+    }
     Box(
         modifier
             .then(
@@ -532,11 +600,20 @@ fun ThemedSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifi
 
 /** Section heading: a small tracked label in quiet themes, a title elsewhere. */
 @Composable
-fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String? = null) {
+fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String? = null, index: Int? = null) {
     val style = Lanyin.style
     val c = style.colors
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
-        if (style.quietSections) {
+        if (style.edge == EdgeKind.Brutal) {
+            // 格 numbers its sections like an editorial index: 「01」 then a heavy headline.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (index != null) {
+                    IndexTag(index)
+                    Spacer(Modifier.width(10.dp))
+                }
+                Text(title, style = style.type.title.copy(fontWeight = FontWeight.Black, fontSize = 20.sp), color = c.content)
+            }
+        } else if (style.quietSections) {
             Text(title, style = style.type.label, color = c.muted)
         } else if (style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Tide) {
             // 澜 marks its sections with a small swell.
@@ -558,7 +635,18 @@ fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String?
         } else {
             Text(title, style = style.type.title, color = c.content)
         }
-        if (trailing != null) Text(trailing, style = style.type.caption, color = c.muted)
+        if (trailing != null) {
+            // The title keeps its room; a long trailing note gives way on one line.
+            Spacer(Modifier.width(16.dp))
+            Text(
+                trailing,
+                style = if (style.edge == EdgeKind.Brutal) style.type.caption.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold) else style.type.caption,
+                color = c.muted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
     }
 }
 

@@ -38,13 +38,13 @@ data class LanyinColors(
 )
 
 /** How cards, the mini player and the tab bar are drawn. */
-enum class EdgeKind { Glass, Hairline, Soft, Glow, Retro }
+enum class EdgeKind { Glass, Hairline, Soft, Glow, Retro, Brutal }
 
-enum class BackdropKind { Tide, Ink, Sakura, Neon, Dusk }
+enum class BackdropKind { Tide, Ink, Sakura, Neon, Dusk, Grid }
 
-enum class SeekKind { Wave, Hairline, Pill, Segments, Tape }
+enum class SeekKind { Wave, Hairline, Pill, Segments, Tape, Block }
 
-enum class ButtonKind { Glow, Outline, Blob, NeonRing, Retro }
+enum class ButtonKind { Glow, Outline, Blob, NeonRing, Retro, Brutal }
 
 enum class NavKind { Pill, Text }
 
@@ -118,6 +118,18 @@ data class LanyinStyle(
 ) {
     val type: LanyinType by lazy { typeScale() }
 
+    /** Thick outline plus a hard, offset shadow: 暮's retro cards and 格's brutalist ones. */
+    val hardEdge: Boolean get() = edge == EdgeKind.Retro || edge == EdgeKind.Brutal
+
+    /** Small round things (icon buttons, avatars, dots); 格 squares them off. */
+    val roundShape: Shape get() = if (edge == EdgeKind.Brutal) RectangleShape else CircleShape
+
+    /** Outline width of hard-edged surfaces. */
+    val strokeWidth: Dp get() = if (edge == EdgeKind.Brutal) 2.5.dp else 2.dp
+
+    /** Offset of a hard-edged card's shadow. */
+    val shadowOffset: Dp get() = if (edge == EdgeKind.Brutal) 6.dp else 4.dp
+
     private fun typeScale(): LanyinType {
         val serif = display == FontFamily.Serif
         val titleWeight = when {
@@ -138,7 +150,7 @@ data class LanyinStyle(
 val LocalLanyinStyle = staticCompositionLocalOf { lanyinStyle(AppTheme.Default, dark = false) }
 
 fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
-    val isDark = dark || theme.darkOnly
+    val isDark = (dark || theme.darkOnly) && !theme.lightOnly
     return when (theme) {
         AppTheme.TIDE -> LanyinStyle(
             theme = theme, dark = isDark,
@@ -201,6 +213,20 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             motion = Motion(0.85f, 320f), bouncy = Motion(0.6f, 300f), pressScale = 1f,
             iconStroke = 2.2f,
         )
+        // 格: Swiss grid meets brutalism. Paper, ink, three primaries; heavy grotesk headlines,
+        // monospaced labels, square corners, thick rules and hard shadows that you press into.
+        AppTheme.GRID -> LanyinStyle(
+            theme = theme, dark = false,
+            colors = grid,
+            display = FontFamily.SansSerif, displayWeight = FontWeight.Black, displayTracking = (-0.02).em,
+            body = FontFamily.SansSerif, numeric = FontFamily.Monospace,
+            cardShape = RectangleShape, chipShape = RectangleShape, artShape = RectangleShape,
+            edge = EdgeKind.Brutal, backdrop = BackdropKind.Grid, seek = SeekKind.Block,
+            button = ButtonKind.Brutal, nav = NavKind.Pill,
+            lyric = LyricStyle(centered = false, activeScale = 1.06f, inactiveAlpha = 0.42f, blurStep = 0.dp, staggerMs = 22, glow = false, serif = false),
+            motion = Motion(0.72f, 900f), bouncy = Motion(0.42f, 700f), pressScale = 1f,
+            iconStroke = 2.2f,
+        )
     }
 }
 
@@ -243,6 +269,15 @@ private val neon = LanyinColors(
 )
 // Paper is a warm off-white and the sky a dusty peach, so mustard stays an accent rather than
 // the colour of the whole page.
+private val grid = LanyinColors(
+    bg = Color(0xFFF5F2EB), bgDeep = Color(0xFFE9E4D8), surface = Color(0xFFFFFFFF), surfaceAlt = Color(0xFFF5F2EB),
+    content = Color(0xFF111111), muted = Color(0xFF4F4C47), accent = Color(0xFFFF3B1D), accentAlt = Color(0xFF1D4ED8),
+    onAccent = Color(0xFFFFFFFF), outline = Color(0xFF111111), like = Color(0xFFFF3B1D), vinyl = Color(0xFF111111),
+)
+
+/** 格's third primary, for stickers and highlights. */
+val GridYellow = Color(0xFFFACC15)
+
 private val duskLight = LanyinColors(
     bg = Color(0xFFF6EEE4), bgDeep = Color(0xFFEFC9B0), surface = Color(0xFFFFF9F1), surfaceAlt = Color(0xFFEFE3D3),
     content = Color(0xFF2B1A10), muted = Color(0xFF725546), accent = Color(0xFFD8561F), accentAlt = Color(0xFFE5A532),

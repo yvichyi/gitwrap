@@ -128,6 +128,7 @@ private fun LanyinStyle.markCount(): Int = when (backdrop) {
     BackdropKind.Sakura -> 56
     BackdropKind.Neon -> 72
     BackdropKind.Dusk -> 44
+    BackdropKind.Grid -> 56
 }
 
 /**
@@ -251,6 +252,16 @@ private fun DrawScope.drawSpectrum(
                 val to = Offset(px(i, len), py(i, len))
                 drawLine(color.copy(alpha = alpha * 0.18f), from, to, glow, StrokeCap.Round)
                 drawLine(color.copy(alpha = alpha * 0.95f), from, to, core, StrokeCap.Round)
+            }
+        }
+        // 格: heavy black bars, every sixth in red, like a bar chart set in a grid.
+        BackdropKind.Grid -> {
+            val width = 3.5.dp.toPx()
+            for (i in 0 until n) {
+                val v = level(i)
+                val len = 3.dp.toPx() + v * reach
+                val color = if (i % 6 == 0) c.accent else c.content
+                drawLine(color.copy(alpha = alpha), Offset(px(i, 0f), py(i, 0f)), Offset(px(i, len), py(i, len)), width)
             }
         }
         // A seventies VU meter: stacked blocks, unlit ones faint, mustard low and orange high.

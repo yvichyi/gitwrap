@@ -24,6 +24,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.offset
+import io.lanyin.player.ui.design.Marquee
+import io.lanyin.player.ui.design.Sticker
+import io.lanyin.player.ui.design.retroShadow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -103,6 +107,7 @@ import io.lanyin.player.ui.design.sharedPlayer
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.theme.DockKind
 import io.lanyin.player.ui.theme.EdgeKind
+import io.lanyin.player.ui.theme.GridYellow
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.LyricSize
 import io.lanyin.player.ui.theme.PlayerSkin
@@ -205,7 +210,7 @@ fun PlayerScreen(
                     }
                 },
         ) {
-            Backdrop(Modifier.matchParentSize(), live = true, playing = state.isPlaying)
+            Backdrop(Modifier.matchParentSize(), live = true, playing = state.isPlaying, trackNumber = state.trackNumber)
             if (landscape) {
                 LandscapePlayer(
                     state, skin, spin, chromeVisible, onToggleChrome = { chromeVisible = !chromeVisible },
@@ -289,6 +294,7 @@ private fun PortraitPlayer(
                                         .pressable { showLyrics = true },
                                 )
                             }
+                            QualitySticker(state, Modifier.align(Alignment.TopStart))
                         }
                     }
                     // A short window onto the lyrics: the line being sung with its neighbours.
@@ -395,6 +401,7 @@ private fun LandscapePlayer(
                         SwipeToSkip(state) {
                             PlayerArtwork(skin, state.isPlaying, spin, state.coverSeed, Modifier.fillMaxWidth().sharedPlayer("artwork", zIndex = 1f))
                         }
+                        QualitySticker(state, Modifier.align(Alignment.TopStart))
                     }
                 }
                 Spacer(Modifier.width(36.dp))
@@ -545,6 +552,19 @@ private fun ImmersiveStatus(state: DemoPlayerState, showTitle: Boolean = true) {
     val style = Lanyin.style
     val c = style.colors
     val now by rememberMinuteClock()
+    if (style.edge == EdgeKind.Brutal) {
+        // 格 runs the news along a ribbon, the progress as a solid bar beneath it.
+        val clock = "%02d:%02d".format(now.hour, now.minute)
+        Column(Modifier.border(style.strokeWidth, c.outline)) {
+            Marquee(listOf("${state.title} — ${state.artist}", "${state.playlistName} ${state.trackNumber}/${state.trackCount}", clock, "下一首 ${state.next.title}"))
+            Canvas(Modifier.fillMaxWidth().height(6.dp)) {
+                val f = (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
+                drawRect(c.surface)
+                drawRect(c.accent, size = androidx.compose.ui.geometry.Size(size.width * f, size.height))
+            }
+        }
+        return
+    }
     Column {
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -611,6 +631,15 @@ private fun LandscapeTopBar(state: DemoPlayerState, onCollapse: () -> Unit, onRo
     }
 }
 
+/** 格 slaps a turning sticker with the quality and format over the artwork's corner. */
+@Composable
+private fun QualitySticker(state: DemoPlayerState, modifier: Modifier = Modifier) {
+    if (Lanyin.style.edge != EdgeKind.Brutal) return
+    TrackSwitch(state, modifier.offset((-6).dp, (-6).dp)) { track ->
+        Sticker(listOf(track.quality, track.format.substringBefore(" ·"), "★"))
+    }
+}
+
 /** The quality tag plus the stream format: a chip in most themes, a quiet tracked label in 墨. */
 @Composable
 private fun QualityTags(state: DemoPlayerState, chipFirst: Boolean = false) {
@@ -636,6 +665,20 @@ private fun QualityTags(state: DemoPlayerState, chipFirst: Boolean = false) {
 private fun QualityChip(text: String) {
     val style = Lanyin.style
     val c = style.colors
+    if (style.edge == EdgeKind.Brutal) {
+        // 格: a yellow label boxed in ink.
+        Text(
+            text,
+            style = style.type.caption.copy(fontWeight = FontWeight.Black),
+            color = c.content,
+            maxLines = 1,
+            modifier = Modifier
+                .background(GridYellow)
+                .border(2.dp, c.outline)
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+        )
+        return
+    }
     Text(
         text,
         style = style.type.caption.copy(fontWeight = FontWeight.SemiBold),
@@ -687,15 +730,28 @@ private fun PlayerTopBar(state: DemoPlayerState, onCollapse: () -> Unit, modifie
     val c = style.colors
     Box(modifier.fillMaxWidth().heightIn(min = 56.dp)) {
         IconAction(LineIcon.ChevronDown, "收起", onCollapse, Modifier.align(Alignment.CenterStart), iconSize = 30.dp)
-        Column(
-            Modifier.align(Alignment.Center).padding(horizontal = 56.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text("正在播放", style = style.type.label, color = c.muted, maxLines = 1)
-            Text(
-                state.playlistName, style = style.type.caption.copy(fontWeight = FontWeight.Medium),
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp),
+        if (style.edge == EdgeKind.Brutal) {
+            // 格 runs a ticker where the others put a page title.
+            Marquee(
+                listOf("正在播放", state.playlistName, "%02d / %02d".format(state.trackNumber, state.trackCount)),
+                Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 52.dp)
+                    .retroShadow(androidx.compose.ui.graphics.RectangleShape, c.outline, 3.dp)
+                    .border(style.strokeWidth, c.outline),
+                height = 30.dp,
             )
+        } else {
+            Column(
+                Modifier.align(Alignment.Center).padding(horizontal = 56.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("正在播放", style = style.type.label, color = c.muted, maxLines = 1)
+                Text(
+                    state.playlistName, style = style.type.caption.copy(fontWeight = FontWeight.Medium),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp),
+                )
+            }
         }
         IconAction(LineIcon.More, "更多", {}, Modifier.align(Alignment.CenterEnd))
     }

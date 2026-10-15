@@ -137,6 +137,28 @@ class ScreenshotTest {
     @Config(qualifiers = LANDSCAPE)
     @Test fun dusk_land_cover_dark() = capture("dusk_land_cover_dark", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
 
+    // 格, the neo-brutalist Swiss theme: light only.
+    @Test fun home_grid_light() = app(AppTheme.GRID, ThemeMode.LIGHT, PlayerSkin.COVER)
+    @Config(qualifiers = "w392dp-h1500dp-port-xhdpi")
+    @Test fun grid_settings_full() {
+        val repo = repo()
+        capture("grid_settings_full", AppTheme.GRID, ThemeMode.LIGHT) {
+            io.lanyin.player.ui.settings.SettingsScreen(UiSettings(theme = AppTheme.GRID, themeMode = ThemeMode.LIGHT), repo, onBack = {})
+        }
+    }
+    @Test fun grid_port_cover() = capture("grid_port_cover", AppTheme.GRID, ThemeMode.LIGHT) { Player(PlayerSkin.COVER, playingAt(9_000, track = 2)) }
+    @Test fun grid_port_cassette() = capture("grid_port_cassette", AppTheme.GRID, ThemeMode.LIGHT) { Player(PlayerSkin.CASSETTE) }
+    @Test fun grid_port_lyrics() = capture("grid_port_lyrics", AppTheme.GRID, ThemeMode.LIGHT) { Player(PlayerSkin.LYRICS, playingAt(6_000, track = 3)) }
+
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun grid_land_cover() = capture("grid_land_cover", AppTheme.GRID, ThemeMode.LIGHT) { Player(PlayerSkin.COVER, playingAt(9_000, track = 2)) }
+
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun grid_land_idle() = capture("grid_land_idle", AppTheme.GRID, ThemeMode.LIGHT, settle = 6_500) { Player(PlayerSkin.VINYL) }
+
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun grid_land_lyrics() = capture("grid_land_lyrics", AppTheme.GRID, ThemeMode.LIGHT) { Player(PlayerSkin.LYRICS, playingAt(6_000, track = 3)) }
+
     @Config(qualifiers = LANDSCAPE)
     @Test fun ink_land_vinyl_idle() {
         // After five idle seconds the chrome folds away and the stage takes the room.

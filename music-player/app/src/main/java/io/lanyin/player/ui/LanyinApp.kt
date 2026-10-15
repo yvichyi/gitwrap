@@ -236,6 +236,8 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                 val shape = style.chipShape
                 val indicator = when (style.edge) {
                     EdgeKind.Retro -> Modifier.retroShadow(shape, c.outline, 2.dp).clip(shape).background(c.accent).border(2.dp, c.outline, shape)
+                    // 格: the current tab is a yellow index card.
+                    EdgeKind.Brutal -> Modifier.retroShadow(shape, c.outline, 3.dp).background(io.lanyin.player.ui.theme.GridYellow).border(2.dp, c.outline, shape)
                     EdgeKind.Glow -> Modifier.neonGlow(shape, c.accent, 0.7f).clip(shape).background(c.accent.copy(alpha = 0.12f)).border(1.dp, c.accent, shape)
                     else -> Modifier.clip(shape).background(c.accent.copy(alpha = if (style.dark) 0.22f else 0.14f))
                 }
@@ -264,6 +266,7 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                 val tint = when {
                     !active -> c.muted
                     style.edge == EdgeKind.Retro -> c.onAccent
+                    style.edge == EdgeKind.Brutal -> c.content
                     style.nav == NavKind.Text -> c.content
                     else -> c.accent
                 }
