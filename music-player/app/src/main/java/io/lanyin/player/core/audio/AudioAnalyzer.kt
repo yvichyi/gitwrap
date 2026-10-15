@@ -43,7 +43,8 @@ class AudioAnalyzer(
     // Per-band level shaping: a slowly falling peak per band (so quiet bands still move), and smoothing.
     private val peakDb = FloatArray(bands) { -30f }
     private val smooth = FloatArray(bands)
-    private val prevDb = FloatArray(bands) { -90f }
+    // Each band's last compressed magnitude, for the rises that mark an onset.
+    private val prevDb = FloatArray(bands)
     private val fluxHistory = FloatArray(24)
     private var fluxCount = 0
     private var lastBeatUs = Long.MIN_VALUE
@@ -57,6 +58,19 @@ class AudioAnalyzer(
     private val beats = LongArray(64)
     private var beatHead = 0
     private var beatCount = 0
+
+    // The tempo: onset strength over the last six seconds or so, and the beat period found in it
+    // (0 while the music has no clear pulse).
+    private val envelope = FloatArray(ENVELOPE)
+    private var envelopeCount = 0
+    private var sinceTempo = 0
+
+    /** How strong recent beats have been, in onset units. */
+    private var beatStrength = 0f
+
+    /** The beat period the music has settled on, in µs; 0 while there is no clear pulse. */
+    var beatPeriodUs = 0L
+        private set
 
     // Where playback is: a position from the sink and when it was true.
     private var anchorUs = Long.MIN_VALUE
@@ -129,10 +143,20 @@ class AudioAnalyzer(
             val level = 0.6f * relative + 0.4f * absolute
             smooth[band] = if (level > smooth[band]) smooth[band] + (level - smooth[band]) * 0.7f else smooth[band] + (level - smooth[band]) * 0.22f
             frame[band] = smooth[band]
-            // Rises only, weighted to the bass, where the beat lives.
-            val rise = (db - prevDb[band]).coerceAtLeast(0f)
-            flux += rise * if (band < bands / 4) 1f else 0.35f
-            prevDb[band] = max(db, -90f)
+            // Rises only, weighted hard to the bass: the kick and bass carry the beat, while
+            // hi-hats and strums rise between beats. Measured on log-compressed magnitude rather
+            // than decibels, so a loud attack counts and a faint click in a quiet band doesn't.
+            val compressed = kotlin.math.ln(1f + 100f * peak / scale)
+            val rise = (compressed - prevDb[band]).coerceAtLeast(0f)
+            flux += rise * when {
+                // 40 Hz to about 120 Hz: the kick and the bass.
+                band < bands * 3 / 16 -> 1f
+                // Up to about 400 Hz: the body of the drums.
+                band < bands * 3 / 8 -> 0.3f
+                // Above that, a tick's splatter rises across many bands at once and would outvote the kick.
+                else -> 0f
+            }
+            prevDb[band] = compressed
         }
         times[head] = timeUs
         head = (head + 1) % cap
@@ -145,8 +169,22 @@ class AudioAnalyzer(
             for (i in 0 until seen) sum += fluxHistory[i]
             mean = sum / seen
         }
-        val gapOk = lastBeatUs == Long.MIN_VALUE || timeUs - lastBeatUs > MIN_BEAT_GAP_US
-        if (fluxCount >= 8 && gapOk && flux > mean * 1.6f + 6f) {
+        envelope[envelopeCount % ENVELOPE] = flux
+        envelopeCount++
+        if (++sinceTempo >= TEMPO_EVERY && envelopeCount >= ENVELOPE / 2) {
+            sinceTempo = 0
+            beatPeriodUs = tempo()
+        }
+        // No beat sooner than most of a period after the last: an off-beat hi-hat or a fill is not
+        // the beat. Without a clear tempo, no more than about two a second.
+        val minGap = if (beatPeriodUs > 0) (beatPeriodUs * 0.72).toLong() else UNSURE_GAP_US
+        val gapOk = lastBeatUs == Long.MIN_VALUE || timeUs - lastBeatUs > minGap
+        // And about as strong as the recent beats: a bright tick between kicks rises, but far less.
+        // The memory fades (halving in about three seconds), so a quieter passage finds its beat again.
+        beatStrength *= 0.995f
+        val strongEnough = flux >= beatStrength * 0.45f
+        if (fluxCount >= 8 && gapOk && strongEnough && flux > mean * 1.6f + ONSET_FLOOR) {
+            beatStrength = if (beatStrength <= 0f) flux else beatStrength * 0.7f + flux * 0.3f
             lastBeatUs = timeUs
             beats[beatHead] = timeUs
             beatHead = (beatHead + 1) % beats.size
@@ -157,6 +195,62 @@ class AudioAnalyzer(
     }
 
     /** The sink is playing (or paused at) [positionUs], in the same time base as the timestamps given to [process]. */
+    /**
+     * The beat period in the onset envelope: the lag between a third of a second and a second
+     * (180 to 60 bpm) at which the envelope best matches itself, leaning toward 120 bpm as people
+     * do when a rhythm could be counted at two speeds. 0 when no lag stands out.
+     */
+    private fun tempo(): Long {
+        val hopUs = n * 1_000_000.0 / sampleRate
+        val len = minOf(envelopeCount, ENVELOPE)
+        val raw = FloatArray(len) { envelope[(envelopeCount - len + it) % ENVELOPE] }
+        // Onsets land on whole analysis frames (23 ms apart), so a steady beat alternates between
+        // neighbouring lags; blurring the envelope a little lets those line up.
+        val x = FloatArray(len) { i ->
+            var sum = 0f
+            var weight = 0f
+            for (d in -2..2) {
+                val j = i + d
+                if (j in 0 until len) {
+                    val w = 3f - kotlin.math.abs(d)
+                    sum += raw[j] * w
+                    weight += w
+                }
+            }
+            sum / weight
+        }
+        val mean = x.average().toFloat()
+        var energy = 0f
+        for (i in x.indices) {
+            x[i] -= mean
+            energy += x[i] * x[i]
+        }
+        if (energy <= 1e-6f) return 0
+        val minLag = (330_000 / hopUs).toInt().coerceAtLeast(1)
+        val maxLag = (1_000_000 / hopUs).toInt().coerceAtMost(len / 2)
+        var bestLag = 0
+        var bestScore = 0f
+        var bestCorrelation = 0f
+        for (lag in minLag..maxLag) {
+            var ac = 0f
+            for (i in 0 until len - lag) ac += x[i] * x[i + lag]
+            val r = ac / energy
+            val octaves = kotlin.math.ln(lag * hopUs / 500_000.0) / kotlin.math.ln(2.0)
+            val score = r * kotlin.math.exp(-0.5 * (octaves / 0.9) * (octaves / 0.9)).toFloat()
+            if (score > bestScore) {
+                bestScore = score
+                bestLag = lag
+                bestCorrelation = r
+            }
+        }
+        return if (bestLag == 0 || bestCorrelation < MIN_TEMPO_CORRELATION) 0 else (bestLag * hopUs).toLong()
+    }
+
+    /** Beat times kept, oldest first; for tests. */
+    internal fun beatTimes(): List<Long> = synchronized(lock) {
+        List(beatCount) { beats[(beatHead - beatCount + it + beats.size) % beats.size] }
+    }
+
     fun anchor(positionUs: Long, playing: Boolean) = synchronized(lock) {
         anchorUs = positionUs
         anchorNanos = nowNanos()
@@ -179,8 +273,12 @@ class AudioAnalyzer(
         beatCount = 0
         fluxCount = 0
         lastBeatUs = Long.MIN_VALUE
+        envelopeCount = 0
+        sinceTempo = 0
+        beatPeriodUs = 0
+        beatStrength = 0f
         smooth.fill(0f)
-        prevDb.fill(-90f)
+        prevDb.fill(0f)
         anchorUs = Long.MIN_VALUE
     }
 
@@ -244,7 +342,13 @@ class AudioAnalyzer(
 
     companion object {
         const val NO_BEAT = 99f
-        private const val MIN_BEAT_GAP_US = 250_000L
+        private const val UNSURE_GAP_US = 420_000L
+
+        /** An onset must rise at least this much (compressed units) above the recent average. */
+        private const val ONSET_FLOOR = 0.6f
+        private const val ENVELOPE = 256
+        private const val TEMPO_EVERY = 16
+        private const val MIN_TEMPO_CORRELATION = 0.12f
         private const val STALE_US = 250_000L
     }
 }

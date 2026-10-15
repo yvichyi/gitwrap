@@ -59,12 +59,8 @@ object LyricTicker {
         if (text.isEmpty()) return null
         val pieces = pieces(text)
         if (pieces.size == 1) return Shown(text, text)
-        // How far through the line's characters the singing is: by word timings when known, else by time.
-        val progress = if (line.words != null) {
-            line.charProgress(at)
-        } else {
-            ((at - line.startMs).toFloat() / (line.endMs - line.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
-        }
+        // How far through the line's characters the singing is: by word timings, or the song's pace.
+        val progress = line.charProgress(at)
         val sung = (progress * pieces.sumOf { it.length }).toInt()
         var seen = 0
         for (p in pieces) {

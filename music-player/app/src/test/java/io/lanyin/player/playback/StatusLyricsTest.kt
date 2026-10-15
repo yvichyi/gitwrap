@@ -49,7 +49,8 @@ class StatusLyricsTest {
     fun `the capsule's piece follows the singing through the line`() {
         val long = lines[2]
         assertEquals("让歌词一行", LyricTicker.at(lines, long.startMs + 100)!!.piece)
-        assertEquals("唱片在掌心", LyricTicker.at(lines, long.startMs + 4_000)!!.piece)
+        // At the song's pace (about four characters a second) the third piece is sung by 2.5 s.
+        assertEquals("唱片在掌心", LyricTicker.at(lines, long.startMs + 2_500)!!.piece)
         assertEquals("慢慢转动", LyricTicker.at(lines, long.endMs - 300)!!.piece)
         // With word timings, the words decide.
         val timed = line(
@@ -68,17 +69,17 @@ class StatusLyricsTest {
 
     @Test
     fun `sinks hear only changes, and a pause clears them`() {
-        var position = 2_000L
+        var position = 1_300L
         var playing = true
         val sink = Recorder()
         val feed = MutableStateFlow<NowPlayingLyrics.Lyrics?>(NowPlayingLyrics.Lyrics(1, "演示", "澜音", lines))
         val status = StatusLyrics(CoroutineScope(Dispatchers.Unconfined), feed, { position }, { playing }, listOf(sink))
         status.tick()
         status.tick()
-        position = 2_500
+        position = 1_500
         status.tick()
         assertEquals(listOf<String?>("把今晚调"), sink.seen)
-        position = 3_000
+        position = 2_400
         status.tick()
         assertEquals("成横屏", sink.seen.last())
         playing = false

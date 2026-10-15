@@ -2,6 +2,7 @@ package io.lanyin.player.ui.player
 
 import io.lanyin.player.core.model.LyricLine
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DemoPlayerStateTest {
@@ -34,12 +35,17 @@ class DemoPlayerStateTest {
     }
 
     @Test
-    fun `a line without word timings lights up in a quick stroke, not a crawl to the next line`() {
-        val line = io.lanyin.player.core.model.LyricLine("没有逐字时间的一行", null, 10_000, 16_000)
+    fun `a line without word timings sweeps at the pace it is sung, not to the next line`() {
+        // Nine characters at 3 a second: three seconds of singing, then a pause before the next line.
+        val line = io.lanyin.player.core.model.LyricLine("没有逐字时间的一行", null, 10_000, 16_000, sungMs = 3_000)
         assertEquals(0f, line.charProgress(10_000), 0.001f)
-        assertEquals(0.5f, line.charProgress(10_210), 0.01f)
-        assertEquals(1f, line.charProgress(10_420), 0.001f)
-        assertEquals(1f, line.charProgress(12_000), 0.001f)
+        assertEquals(0.5f, line.charProgress(11_500), 0.01f)
+        assertEquals(1f, line.charProgress(13_000), 0.001f)
+        assertEquals(1f, line.charProgress(15_000), 0.001f)
+        // Without a pace from the song, a typical one: not all at once.
+        val bare = io.lanyin.player.core.model.LyricLine("没有逐字时间的一行", null, 10_000, 16_000)
+        assertTrue(bare.charProgress(10_500) < 0.3f)
+        assertEquals(1f, bare.charProgress(15_600), 0.001f)
     }
 
     @Test

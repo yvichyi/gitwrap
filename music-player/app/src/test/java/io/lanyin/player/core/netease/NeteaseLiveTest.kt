@@ -106,4 +106,24 @@ class NeteaseLiveTest {
             }
         }
     }
+    @Test
+    fun `word-timed lyrics come back for popular songs`() = runBlocking {
+        assumeTrue("set NETEASE_LIVE=1 to run", System.getenv("NETEASE_LIVE") == "1")
+        val api = NeteaseApi(NeteaseClient(OkHttpClient(), MemorySessionStore()))
+        api.ensureAnonymous()
+        // 晴天, 稻香, 起风了, 孤勇者, 海阔天空
+        for (id in listOf(186016L, 185709L, 1330348068L, 1901371647L, 347230L)) {
+            val src = api.lyrics(id)
+            val lines = io.lanyin.player.core.lyrics.LrcParser.parse(src, 240_000)
+            val timed = lines.count { it.words != null }
+            if (timed == 0) println("pace $id: " + SingingPaceProbe.describe(lines))
+            println("song $id: lrc=${src.lrc?.length} yrc=${src.wordTimed?.length} lines=${lines.size} wordTimed=$timed first=${lines.firstOrNull { it.words != null }?.let { l -> l.text + " " + l.words!!.take(3).map { w -> "${w.text}@${w.startMs}+${w.durationMs}" } }}")
+        }
+    }
+}
+
+private object SingingPaceProbe {
+    fun describe(lines: List<io.lanyin.player.core.model.LyricLine>): String =
+        "rate=" + io.lanyin.player.core.lyrics.SingingPace.rate(lines) + " " +
+            lines.drop(4).take(6).joinToString(" | ") { "${it.text}(${it.endMs - it.startMs}ms→sung ${it.sungMs})" }
 }

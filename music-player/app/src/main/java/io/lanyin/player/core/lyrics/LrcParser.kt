@@ -43,7 +43,7 @@ object LrcParser {
         }
         // NetEase marks some instrumentals with a single line instead of the flag.
         if (lines.size == 1 && lines[0].text.contains("纯音乐")) return emptyList()
-        return lines
+        return SingingPace.apply(lines)
     }
 
     /** (time, text) pairs, sorted; a line with several stamps appears once per stamp. */

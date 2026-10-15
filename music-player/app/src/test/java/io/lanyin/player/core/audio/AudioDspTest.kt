@@ -300,4 +300,38 @@ class AudioDspTest {
         analyzer.reset()
         assertEquals(AudioAnalyzer.NO_BEAT, analyzer.sinceBeat(), 0f)
     }
+    @Test
+    fun `the beat follows the kick, not the hi-hats between`() {
+        var now = 0L
+        val analyzer = AudioAnalyzer(nowNanos = { now }).apply { configure(44_100, 2, PcmEncoding.PCM16) }
+        // 120 bpm: a 60 Hz kick every half second, and a bright hi-hat every eighth of a second.
+        val rng = java.util.Random(2)
+        feed(analyzer, 8f) { f ->
+            val t = f / 44_100.0
+            val kick = if ((t % 0.5) < 0.08) 0.7f * sin(2 * PI * 60 * t).toFloat() else 0f
+            // A hi-hat is bright: noise high up the spectrum, nothing in the bass.
+            val hat = if ((t % 0.125) < 0.02) 0.35f * sin(2 * PI * 9_000 * t).toFloat() * (0.5f + rng.nextFloat()) else 0f
+            kick + hat + (rng.nextFloat() - 0.5f) * 0.01f
+        }
+        assertEquals(500_000.0, analyzer.beatPeriodUs.toDouble(), 60_000.0)
+        val late = analyzer.beatTimes().filter { it > 4_000_000 }
+        val gaps = late.zipWithNext { a, b -> b - a }
+        assertTrue("beats $late", gaps.isNotEmpty() && gaps.all { it in 400_000..600_000 })
+    }
+
+    @Test
+    fun `busy music without a steady kick gives at most about two beats a second`() {
+        var now = 0L
+        val analyzer = AudioAnalyzer(nowNanos = { now }).apply { configure(44_100, 2, PcmEncoding.PCM16) }
+        // Bursts of low noise at random moments, as a dense, uneven arrangement might give.
+        val rng = java.util.Random(3)
+        val onsets = generateSequence(0.0) { it + 0.12 + rng.nextDouble() * 0.2 }.takeWhile { it < 6.0 }.toList()
+        feed(analyzer, 6f) { f ->
+            val t = f / 44_100.0
+            val hit = onsets.any { t - it in 0.0..0.05 }
+            (if (hit) 0.6f * sin(2 * PI * 70 * t).toFloat() else 0f) + (rng.nextFloat() - 0.5f) * 0.01f
+        }
+        val gaps = analyzer.beatTimes().zipWithNext { a, b -> b - a }
+        assertTrue("gaps $gaps", gaps.all { it >= 300_000 })
+    }
 }

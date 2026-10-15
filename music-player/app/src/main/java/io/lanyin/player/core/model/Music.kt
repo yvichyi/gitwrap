@@ -59,15 +59,20 @@ data class LyricLine(
     val endMs: Long,
     /** Word timings (from YRC) when NetEase has them; [text] is the words joined. */
     val words: List<LyricWord>? = null,
+    /**
+     * For a line without word timings: how long singing it is reckoned to take, from the song's own
+     * pace (see [io.lanyin.player.core.lyrics.SingingPace]); 0 when unknown.
+     */
+    val sungMs: Long = 0,
 ) {
     /**
-     * How far through the line's characters [positionMs] is, 0..1, following the words. A line
-     * without word timings lights up in one quick stroke as it starts: when each word is sung is
-     * unknown, and an even sweep to the next line's start runs behind the voice (the gap holds
-     * breaths and instrumental bars too).
+     * How far through the line's characters [positionMs] is, 0..1, following the words. Without
+     * word timings the sweep runs at the pace the song is sung, over [sungMs] from the line's
+     * start: sweeping to the next line's start would lag the voice (the gap holds breaths and
+     * instrumental bars), and lighting the whole line at once runs far ahead of it.
      */
     fun charProgress(positionMs: Long): Float {
-        val ws = words ?: return ((positionMs - startMs).toFloat() / STROKE_MS.coerceAtMost(endMs - startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+        val ws = words ?: return ((positionMs - startMs).toFloat() / unsungSpan()).coerceIn(0f, 1f)
         val total = text.length.coerceAtLeast(1)
         var sung = 0f
         for (w in ws) {
@@ -83,9 +88,11 @@ data class LyricLine(
         return (sung / total).coerceIn(0f, 1f)
     }
 
-    companion object {
-        /** How long a line without word timings takes to light up. */
-        const val STROKE_MS = 420L
+    /** How long the sweep of a line without word timings takes. */
+    private fun unsungSpan(): Float {
+        val line = (endMs - startMs).coerceAtLeast(1)
+        val sung = if (sungMs > 0) sungMs else io.lanyin.player.core.lyrics.SingingPace.estimate(text, line)
+        return sung.coerceIn(1, line).toFloat()
     }
 }
 
