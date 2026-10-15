@@ -155,6 +155,8 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
             val now = turn.floatValue
             turned[0] += (now - turned[1]).coerceIn(0f, 0.1f) * 24f
             turned[1] = now
+            // Reading the clock redraws this every frame while the music plays.
+            clock.floatValue
             val bounce = if (listening) beatBounce(feed!!.sinceBeat(), 0.06f) else 1f
             drawPath(morphPath(this.size, Cookie, Squircle, morph, degrees = turned[0] * (1f - morph), scale = bounce), c.accent)
         }
