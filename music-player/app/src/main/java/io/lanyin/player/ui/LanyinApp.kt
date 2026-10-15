@@ -301,14 +301,16 @@ fun LanyinApp(
                 CompositionLocalProvider(LocalSharedPlayerScope provides sharedScope) {
                     if (isExpanded && !player.isEmpty) {
                         Box(Modifier.fillMaxSize()) {
-                        PlayerScreen(
-                            state = player,
-                            skin = settings.playerSkin,
-                            spin = spin,
-                            keepScreenOnInLandscape = settings.keepScreenOnInLandscape,
-                            onCollapse = { expanded = false },
-                            lyricScale = settings.lyricSize.scale,
-                        )
+                        io.lanyin.player.ui.theme.TintedBy(if (settings.followCover) io.lanyin.player.ui.theme.rememberCoverSeeds(player.coverUrl) else null) {
+                            PlayerScreen(
+                                state = player,
+                                skin = settings.playerSkin,
+                                spin = spin,
+                                keepScreenOnInLandscape = settings.keepScreenOnInLandscape,
+                                onCollapse = { expanded = false },
+                                lyricScale = settings.lyricSize.scale,
+                            )
+                        }
                             // Over the player, notices drop in from the top instead.
                             Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 12.dp, vertical = 56.dp)) {
                                 NoticeBanner(notice, onDismiss, floating = true)

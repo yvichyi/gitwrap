@@ -40,6 +40,8 @@ data class UiSettings(
     val syncPlays: Boolean = true,
     /** 音效: off (原声) unless chosen. */
     val effects: EffectsSettings = EffectsSettings(),
+    /** The player takes its accent colours from the cover playing. */
+    val followCover: Boolean = true,
 )
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -58,6 +60,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 quality = Quality.fromLevel(prefs[QUALITY]) ?: Quality.LOSSLESS,
                 downloadOnWifiOnly = prefs[DOWNLOAD_WIFI_ONLY] ?: true,
                 syncPlays = prefs[SYNC_PLAYS] ?: true,
+                followCover = prefs[FOLLOW_COVER] ?: true,
                 effects = EffectsSettings(
                     preset = EffectPreset.fromId(prefs[FX_PRESET]),
                     custom = prefs[FX_CUSTOM]?.split(',')?.mapNotNull { it.toFloatOrNull() }?.takeIf { it.size == EQ_FREQUENCIES.size }
@@ -87,6 +90,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setSyncPlays(enabled: Boolean) = dataStore.edit { it[SYNC_PLAYS] = enabled }
 
+    suspend fun setFollowCover(enabled: Boolean) = dataStore.edit { it[FOLLOW_COVER] = enabled }
+
     suspend fun setEffects(fx: EffectsSettings) = dataStore.edit {
         it[FX_PRESET] = fx.preset.id
         it[FX_CUSTOM] = fx.custom.joinToString(",")
@@ -105,6 +110,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val QUALITY = stringPreferencesKey("stream_quality")
         val DOWNLOAD_WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
         val SYNC_PLAYS = booleanPreferencesKey("sync_plays")
+        val FOLLOW_COVER = booleanPreferencesKey("follow_cover")
         val FX_PRESET = stringPreferencesKey("fx_preset")
         val FX_CUSTOM = stringPreferencesKey("fx_custom")
         val FX_BASS = floatPreferencesKey("fx_bass")

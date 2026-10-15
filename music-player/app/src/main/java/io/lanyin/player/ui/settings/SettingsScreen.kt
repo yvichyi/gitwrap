@@ -129,6 +129,15 @@ fun SettingsScreen(
                     items(PlayerSkin.entries) { skin -> SkinCard(skin, skin == settings.playerSkin, spin) { scope.launch { repository.setPlayerSkin(skin) } } }
                 }
             }
+            item {
+                Column(Modifier.padding(start = m, end = m, top = 14.dp).then(if (style.edge == EdgeKind.Hairline) Modifier else Modifier.themedSurface(tone = SurfaceTone.Flat).padding(horizontal = 16.dp))) {
+                    if (style.edge == EdgeKind.Hairline) Hairline()
+                    ToggleRow("跟随封面取色", "播放页的强调色取自正在放的封面，换歌时慢慢过渡", settings.followCover) {
+                        scope.launch { repository.setFollowCover(it) }
+                    }
+                    if (style.edge == EdgeKind.Hairline) Hairline()
+                }
+            }
 
             item { SectionTitle("播放", Modifier.padding(start = m, end = m, top = 36.dp), index = 4) }
             item {

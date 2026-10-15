@@ -591,6 +591,15 @@ class ScreenshotTest {
     // Portrait player.
     @Test fun port_dusk_dark_vinyl() = capture("port_dusk_dark_vinyl", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
     @Test fun port_neon_vinyl() = capture("port_neon_vinyl", AppTheme.NEON, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
+
+    // M6: the player's accents taken from the cover.
+    private fun tinted(primary: Long, secondary: Long?, skin: PlayerSkin) = @Composable {
+        io.lanyin.player.ui.theme.TintedBy(io.lanyin.player.ui.theme.CoverSeeds(primary.toInt(), secondary?.toInt())) { Player(skin) }
+    }
+    @Test fun tint_ink_light() = capture("tint_ink_light", AppTheme.INK, ThemeMode.LIGHT, content = tinted(0xFF2E9C8F, 0xFFE07A3F, PlayerSkin.VINYL))
+    @Test fun tint_dusk_dark() = capture("tint_dusk_dark", AppTheme.DUSK, ThemeMode.DARK, content = tinted(0xFF3A7BEA, 0xFFB65FD6, PlayerSkin.COVER))
+    @Test fun tint_neon() = capture("tint_neon", AppTheme.NEON, ThemeMode.DARK, content = tinted(0xFFFF3D7F, 0xFFFFB13D, PlayerSkin.VINYL))
+    @Test fun tint_grid_light() = capture("tint_grid_light", AppTheme.GRID, ThemeMode.LIGHT, content = tinted(0xFF2BB673, null, PlayerSkin.LYRICS))
     @Test fun port_dusk_dark_cover() = capture("port_dusk_dark_cover", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
     @Test fun port_ink_dark_lyrics() = capture("port_ink_dark_lyrics", AppTheme.INK, ThemeMode.DARK) { Player(PlayerSkin.LYRICS) }
 
