@@ -115,6 +115,11 @@ class DownloadRepository(context: Context, private val audio: AudioPipeline, pri
         DownloadService.sendRemoveDownload(appContext, DownloadsService::class.java, songId.toString(), false)
     }
 
+    /** Removes every download, finished or not, files and records alike. */
+    fun removeAll() {
+        DownloadService.sendRemoveAllDownloads(appContext, DownloadsService::class.java, false)
+    }
+
     private fun request(song: Song): DownloadRequest =
         DownloadRequest.Builder(song.id.toString(), AudioPipeline.uriFor(song.id.toString()))
             .setCustomCacheKey(AudioPipeline.downloadKey(song.id))

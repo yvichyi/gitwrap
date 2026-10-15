@@ -15,7 +15,6 @@ import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.ContentMetadata
-import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -28,8 +27,8 @@ import okhttp3.OkHttpClient
 
 /**
  * How audio reaches the player. Queue items carry `lanyin://song/{id}`; the address is resolved
- * only when the song is opened (NetEase's expire), and what has been heard is kept in a 1 GB
- * cache keyed by song and quality, so a replay needs no network at all. Downloaded songs live in
+ * only when the song is opened (NetEase's expire), and what has been heard is kept in a cache
+ * (1 GB unless changed) keyed by song and quality, so a replay needs no network at all. Downloaded songs live in
  * a store of their own that is never evicted, and are played from there whenever complete.
  */
 @OptIn(UnstableApi::class)
@@ -43,9 +42,19 @@ class AudioPipeline(context: Context, private val http: OkHttpClient, private va
 
     val database: DatabaseProvider by lazy { StandaloneDatabaseProvider(appContext) }
 
-    private val cache: SimpleCache by lazy {
-        SimpleCache(File(appContext.cacheDir, "audio"), LeastRecentlyUsedCacheEvictor(CACHE_BYTES), database)
-    }
+    private val evictor = AdjustableLruEvictor(CACHE_BYTES)
+    private val cacheLazy = lazy { SimpleCache(File(appContext.cacheDir, "audio"), evictor, database) }
+    private val cache: SimpleCache by cacheLazy
+
+    /** The most the listening cache keeps; follows the setting. */
+    val cacheLimit: Long get() = evictor.maxBytes
+
+    /** Changes [cacheLimit], evicting the oldest songs at once if over. Blocks: not on the main thread. */
+    fun setCacheLimit(bytes: Long) = evictor.setMaxBytes(bytes, if (cacheLazy.isInitialized()) cache else null)
+
+    fun cacheBytes(): Long = cache.cacheSpace
+
+    fun clearCache() = StorageManager.clear(cache)
 
     /** Downloads: kept until removed, in app storage. */
     val downloadCache: SimpleCache by lazy { SimpleCache(File(appContext.filesDir, "downloads"), NoOpCacheEvictor(), database) }
@@ -96,6 +105,7 @@ class AudioPipeline(context: Context, private val http: OkHttpClient, private va
     }
 
     companion object {
+        /** The listening cache's limit until the setting says otherwise. */
         const val CACHE_BYTES = 1L shl 30
 
         /** The same address over the other scheme, for NetEase's CDN; null for anything else. */

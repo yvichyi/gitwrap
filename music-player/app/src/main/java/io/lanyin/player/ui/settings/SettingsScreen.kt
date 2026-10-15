@@ -77,6 +77,8 @@ fun SettingsScreen(
     account: AccountState = AccountState.LoggedOut,
     onLogin: () -> Unit = {},
     onLogout: () -> Unit = {},
+    /** Stands in for the phone's storage, for previews and screenshots. */
+    storagePreview: io.lanyin.player.playback.StorageUsage? = null,
 ) {
     val scope = rememberCoroutineScope()
     val style = Lanyin.style
@@ -217,7 +219,14 @@ fun SettingsScreen(
                     if (style.edge == EdgeKind.Hairline) Hairline()
                 }
             }
-            item { SectionTitle("账号", Modifier.padding(start = m, end = m, top = 36.dp), index = 5) }
+            item { SectionTitle("存储", Modifier.padding(start = m, end = m, top = 36.dp), index = 5) }
+            item {
+                StorageSection(
+                    settings.cacheLimit, { limit -> scope.launch { repository.setCacheLimit(limit) } },
+                    Modifier.padding(start = m, end = m, top = 14.dp), preview = storagePreview,
+                )
+            }
+            item { SectionTitle("账号", Modifier.padding(start = m, end = m, top = 36.dp), index = 6) }
             item { AccountRow(account, onLogin, onLogout, Modifier.padding(start = m, end = m, top = 14.dp)) }
             item {
                 Text("澜音 0.6 · 预览版", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))

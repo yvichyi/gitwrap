@@ -1,6 +1,9 @@
 package io.lanyin.player.screenshots
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
@@ -118,13 +121,29 @@ class ScreenshotTest {
             io.lanyin.player.ui.settings.SettingsScreen(UiSettings(theme = AppTheme.INK, themeMode = ThemeMode.LIGHT), repo, onBack = {})
         }
     }
-    @Config(qualifiers = "w392dp-h1500dp-port-xhdpi")
+    @Config(qualifiers = "w392dp-h2000dp-port-xhdpi")
     @Test fun ink_settings_full() {
         val repo = repo()
         capture("ink_settings_full", AppTheme.INK, ThemeMode.LIGHT) {
-            io.lanyin.player.ui.settings.SettingsScreen(UiSettings(theme = AppTheme.INK, themeMode = ThemeMode.LIGHT), repo, onBack = {})
+            io.lanyin.player.ui.settings.SettingsScreen(UiSettings(theme = AppTheme.INK, themeMode = ThemeMode.LIGHT), repo, onBack = {}, storagePreview = sampleStorage)
         }
     }
+
+    // M6: what the app keeps on the phone.
+    private val sampleStorage = io.lanyin.player.playback.StorageUsage(
+        audioBytes = 742L shl 20, audioLimit = 1L shl 30, imageBytes = 58L shl 20, downloadBytes = 1_420L shl 20, downloadCount = 37,
+    )
+
+    @Composable
+    private fun StoragePage() {
+        androidx.compose.foundation.layout.Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 48.dp)) {
+            io.lanyin.player.ui.design.SectionTitle("存储", index = 5)
+            io.lanyin.player.ui.settings.StorageSection(1L shl 30, {}, Modifier.padding(top = 14.dp), preview = sampleStorage)
+        }
+    }
+    @Test fun storage_dusk_light() = capture("storage_dusk_light", AppTheme.DUSK, ThemeMode.LIGHT) { StoragePage() }
+    @Test fun storage_neon() = capture("storage_neon", AppTheme.NEON, ThemeMode.DARK) { StoragePage() }
+    @Test fun storage_grid() = capture("storage_grid", AppTheme.GRID, ThemeMode.LIGHT) { StoragePage() }
     @Test fun ink_port_vinyl_light() = capture("ink_port_vinyl_light", AppTheme.INK, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL) }
     @Test fun ink_port_cover_dark() = capture("ink_port_cover_dark", AppTheme.INK, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
 

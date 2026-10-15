@@ -28,6 +28,9 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import okhttp3.OkHttpClient
 
 class LanyinApplication : Application(), SingletonImageLoader.Factory {
@@ -69,6 +72,17 @@ class AppContainer(context: Context) {
     val downloads = DownloadRepository(context, audio, scope)
     val notices = Notices()
     val uploads = io.lanyin.player.data.library.CloudUploads(scope, netease::uploadToCloud, onUploaded = library::cloudChanged)
+    val storage = io.lanyin.player.playback.StorageManager(
+        audio, downloads,
+        object : io.lanyin.player.playback.ImageStore {
+            override fun size() = SingletonImageLoader.get(context).diskCache?.size ?: 0L
+            override fun clear() {
+                val loader = SingletonImageLoader.get(context)
+                loader.memoryCache?.clear()
+                loader.diskCache?.clear()
+            }
+        },
+    )
 
     @Volatile
     private var syncPlays = true
@@ -81,7 +95,7 @@ class AppContainer(context: Context) {
             scope.launch { settings.setQuality(q) }
         },
     )
-    val services = AppServices(netease, account, library, player, recent, downloads, notices, engine, uploads)
+    val services = AppServices(netease, account, library, player, recent, downloads, notices, engine, uploads, storage)
 
     init {
         // Stream quality, downloads over Wi-Fi only and play records follow the settings.
@@ -91,6 +105,11 @@ class AppContainer(context: Context) {
                 syncPlays = it.syncPlays
                 engine.effects.settings = it.effects
                 downloads.setWifiOnly(it.downloadOnWifiOnly)
+            }
+        }
+        scope.launch {
+            settings.settings.map { it.cacheLimit }.distinctUntilChanged().collect { limit ->
+                withContext(Dispatchers.IO) { audio.setCacheLimit(limit) }
             }
         }
     }

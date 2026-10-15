@@ -5,6 +5,7 @@ import io.lanyin.player.core.model.Quality
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
@@ -42,6 +43,8 @@ data class UiSettings(
     val effects: EffectsSettings = EffectsSettings(),
     /** The player takes its accent colours from the cover playing. */
     val followCover: Boolean = true,
+    /** The most the listening cache may keep, in bytes. */
+    val cacheLimit: Long = io.lanyin.player.playback.AudioPipeline.CACHE_BYTES,
 )
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -61,6 +64,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 downloadOnWifiOnly = prefs[DOWNLOAD_WIFI_ONLY] ?: true,
                 syncPlays = prefs[SYNC_PLAYS] ?: true,
                 followCover = prefs[FOLLOW_COVER] ?: true,
+                cacheLimit = prefs[CACHE_LIMIT] ?: io.lanyin.player.playback.AudioPipeline.CACHE_BYTES,
                 effects = EffectsSettings(
                     preset = EffectPreset.fromId(prefs[FX_PRESET]),
                     custom = prefs[FX_CUSTOM]?.split(',')?.mapNotNull { it.toFloatOrNull() }?.takeIf { it.size == EQ_FREQUENCIES.size }
@@ -92,6 +96,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setFollowCover(enabled: Boolean) = dataStore.edit { it[FOLLOW_COVER] = enabled }
 
+    suspend fun setCacheLimit(bytes: Long) = dataStore.edit { it[CACHE_LIMIT] = bytes }
+
     suspend fun setEffects(fx: EffectsSettings) = dataStore.edit {
         it[FX_PRESET] = fx.preset.id
         it[FX_CUSTOM] = fx.custom.joinToString(",")
@@ -111,6 +117,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val DOWNLOAD_WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
         val SYNC_PLAYS = booleanPreferencesKey("sync_plays")
         val FOLLOW_COVER = booleanPreferencesKey("follow_cover")
+        val CACHE_LIMIT = longPreferencesKey("cache_limit")
         val FX_PRESET = stringPreferencesKey("fx_preset")
         val FX_CUSTOM = stringPreferencesKey("fx_custom")
         val FX_BASS = floatPreferencesKey("fx_bass")
