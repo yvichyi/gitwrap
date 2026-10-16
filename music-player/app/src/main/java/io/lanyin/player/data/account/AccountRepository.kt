@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Whether someone is signed in, as far as the app knows right now. */
@@ -53,8 +55,25 @@ class AccountRepository(private val api: NeteaseApi, private val scope: Coroutin
         if (e.code == 301) api.logout()
         null
     } catch (e: Exception) {
-        // Offline or NetEase unreachable: keep whatever we had.
-        api.currentSession().profile
+        // Offline or NetEase unreachable: keep whatever we had. Just after a login there is
+        // nothing yet, and the account would sit at 「加载中」: keep trying in the background.
+        val session = api.currentSession()
+        if (session.loggedIn && session.profile == null) retryLater()
+        session.profile
+    }
+
+    private var retrying: Job? = null
+
+    private fun retryLater() {
+        if (retrying?.isActive == true) return
+        retrying = scope.launch {
+            for (attempt in 0 until 6) {
+                delay(3_000L shl attempt)
+                val profile = runCatching { api.account() }.getOrNull() ?: continue
+                api.saveProfile(profile)
+                return@launch
+            }
+        }
     }
 
     /** Signs in with a pasted `MUSIC_U`. */

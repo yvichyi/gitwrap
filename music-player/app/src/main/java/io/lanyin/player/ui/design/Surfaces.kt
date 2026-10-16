@@ -74,9 +74,15 @@ fun Modifier.themedSurface(
     }
     // 机: bars, sheets and buttons are keys standing on the case; cards are panels set into it.
     val key = style.edge == EdgeKind.Panel && (tone == SurfaceTone.Chrome || tone == SurfaceTone.Accent)
+    // 游: buttons are the console's magenta buttons, standing on a darker rim.
+    val button = style.edge == EdgeKind.Bezel && tone == SurfaceTone.Accent
     var m = when {
         hardShadow > 0.dp -> retroShadow(shape, c.outline, hardShadow)
         key -> keycap(shape, style, accent = tone == SurfaceTone.Accent) { press }
+        button -> drawBehind {
+            val outline = shape.createOutline(size, layoutDirection, this)
+            translate(0f, 3.dp.toPx()) { drawOutline(outline, androidx.compose.ui.graphics.lerp(c.accent, Color.Black, 0.35f)) }
+        }
         flat -> this
         style.edge == EdgeKind.Glow -> neonGlow(shape, if (tone == SurfaceTone.Accent) c.accent else c.accent.copy(alpha = 0.55f))
         // 暮: lifted off the paper on a soft, warm shadow (a faint glow of the sun at night).
@@ -95,6 +101,8 @@ fun Modifier.themedSurface(
         } else if (key) {
             // The cap is drawn behind; the content rides down with its face.
             translationY = keyTravel.toPx() * press
+        } else if (button) {
+            translationY = 3.dp.toPx() * press
         } else {
             val s = 1f - (1f - minOf(style.pressScale, 0.97f)) * press
             scaleX = s
@@ -115,6 +123,17 @@ fun Modifier.themedSurface(
         style.edge == EdgeKind.Panel -> m.background(if (flat) c.surfaceAlt else c.surface).drawBehind {
             drawRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = if (style.dark) 0.22f else 0.07f), Color.Transparent), endY = 7.dp.toPx()))
         }
+        // 报: no box, just the page; a story is ruled off above, a heavy rule over a fine one.
+        style.edge == EdgeKind.Rule -> m.background(if (tone == SurfaceTone.Chrome) c.bg else Color.Transparent).drawBehind {
+            if (tone == SurfaceTone.Card) {
+                drawRect(c.content, size = androidx.compose.ui.geometry.Size(size.width, 2.dp.toPx()))
+                drawRect(c.content, androidx.compose.ui.geometry.Offset(0f, 4.dp.toPx()), androidx.compose.ui.geometry.Size(size.width, 0.75.dp.toPx()))
+            } else {
+                drawRect(c.content.copy(alpha = 0.8f), size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
+            }
+        }
+        // 游: a little LCD, a shade darker when it's secondary.
+        style.edge == EdgeKind.Bezel -> m.background(if (flat) c.surfaceAlt else c.surface)
         else -> m.background(c.surface)
     }
     // 4. Edge.
@@ -129,6 +148,16 @@ fun Modifier.themedSurface(
         // Grey tiles on black need no edge; bars over the content get a faint one.
         EdgeKind.Dot -> if (tone == SurfaceTone.Chrome) m.border(1.dp, c.content.copy(alpha = 0.1f), shape) else m
         EdgeKind.Panel -> if (key) m else m.border(1.dp, c.outline, shape)
+        EdgeKind.Rule -> m
+        // The screen's dark bezel; buttons have none.
+        EdgeKind.Bezel -> if (button) m else m.border(if (flat) 2.dp else 3.dp, GameBezel, shape)
+        // 酸: a chrome rim on cards, a lime one on bars and sheets.
+        EdgeKind.Chrome -> when (tone) {
+            SurfaceTone.Card -> m.border(1.5.dp, ChromeBrush, shape)
+            SurfaceTone.Chrome -> m.border(1.5.dp, c.accent, shape)
+            SurfaceTone.Flat -> m.border(1.dp, c.content.copy(alpha = 0.14f), shape)
+            SurfaceTone.Accent -> m
+        }
     }
     if (onClick != null) {
         m = m.clickable(interactionSource = interaction, indication = null, onClick = onClick)

@@ -131,12 +131,16 @@ private fun LanyinStyle.markCount(): Int = when (backdrop) {
     BackdropKind.Film -> 90
     BackdropKind.Dot -> 72
     BackdropKind.Device -> 60
+    BackdropKind.Paper -> 64
+    BackdropKind.Game -> 40
+    BackdropKind.Acid -> 48
 }
 
 /**
  * A spectrum that grows out of the artwork's edge, drawn in the theme's own hand: hairline dial
  * ticks for 墨, glowing bars for 霓, soft rays for 暮, square bars for 格, a light meter's scale
- * for 影, a ring of LEDs for 点 and a level meter for 机. Mirrored left and right with the bass at
+ * for 影, a ring of LEDs for 点, a level meter for 机, a printed bar chart for 报, stepped pixel bars
+ * for 游 and lime and pink rays for 酸. Mirrored left and right with the bass at
  * the top. Redraws every frame without
  * recomposing, from [feed]: what is being heard; while paused it settles into a quiet resting ring.
  */
@@ -160,12 +164,10 @@ fun Modifier.spectrumHalo(skin: PlayerSkin, playing: Boolean, feed: io.lanyin.pl
             shape.exponent, style.markCount(),
         )
         val levels = FloatArray(SPECTRUM_BANDS)
-        val echo = FloatArray(SPECTRUM_BANDS)
         onDrawBehind {
             clock.floatValue
             feed.levels(levels)
-            feed.levels(echo, lagMs = 350)
-            drawSpectrum(style, samples, levels, echo, energy.value, reach, alpha = 1f)
+            drawSpectrum(style, samples, levels, energy.value, reach, alpha = 1f)
         }
     }
 }
@@ -180,7 +182,6 @@ private fun DrawScope.drawSpectrum(
     style: LanyinStyle,
     samples: OutlineSamples,
     levels: FloatArray,
-    echo: FloatArray,
     energy: Float,
     reach: Float,
     alpha: Float,
@@ -242,6 +243,36 @@ private fun DrawScope.drawSpectrum(
                     (if (top) c.accentAlt else c.content).copy(alpha = alpha * (if (top) 1f else 0.16f + 0.84f * v)),
                     (1.5f + 1.2f * v).dp.toPx(), Offset(px(i, out), py(i, out)),
                 )
+            }
+        }
+        // 报: a newspaper's bar chart in ink, every eighth bar in red.
+        BackdropKind.Paper -> {
+            val width = 2.dp.toPx()
+            for (i in 0 until n) {
+                val v = level(i)
+                val len = 2.dp.toPx() + v * reach
+                drawLine((if (i % 8 == 0) c.accent else c.content).copy(alpha = alpha), Offset(px(i, 0f), py(i, 0f)), Offset(px(i, len), py(i, len)), width)
+            }
+        }
+        // 游: chunky bars that grow a pixel at a time.
+        BackdropKind.Game -> {
+            val width = 4.dp.toPx()
+            val step = 4.dp.toPx()
+            for (i in 0 until n) {
+                val v = level(i)
+                val len = step * (1 + (v * reach / step).toInt())
+                drawLine(c.content.copy(alpha = alpha), Offset(px(i, 0f), py(i, 0f)), Offset(px(i, len), py(i, len)), width)
+            }
+        }
+        // 酸: rays alternating lime and pink, each tipped with a dot.
+        BackdropKind.Acid -> {
+            val width = 3.dp.toPx()
+            for (i in 0 until n) {
+                val v = level(i)
+                val len = 3.dp.toPx() + v * reach
+                val color = (if (i % 2 == 0) c.accent else c.accentAlt).copy(alpha = alpha * (0.5f + 0.5f * v))
+                drawLine(color, Offset(px(i, 0f), py(i, 0f)), Offset(px(i, len), py(i, len)), width, StrokeCap.Round)
+                drawCircle(color, width * 0.9f, Offset(px(i, len + width * 2f), py(i, len + width * 2f)))
             }
         }
         // 机: a level meter's bars, turning orange where they peak.

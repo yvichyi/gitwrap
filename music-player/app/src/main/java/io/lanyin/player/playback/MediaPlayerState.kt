@@ -77,6 +77,7 @@ class MediaPlayerState(
     override var lyrics by mutableStateOf<List<LyricLine>>(emptyList())
         private set
     override var lyricsLoading by mutableStateOf(false)
+    override var lyricsGap by mutableStateOf(io.lanyin.player.ui.player.LyricsGap.Instrumental)
         private set
     override var buffering by mutableStateOf(false)
         private set
@@ -101,6 +102,8 @@ class MediaPlayerState(
     /** Direction of a skip we asked for, applied when the player reports the change. */
     private var pendingDirection = 0
     private var errorsInARow = 0
+    /** The song already given a second try after a network error, so a dead stream isn't retried forever. */
+    private var retried: String? = null
     private var lyricsJob: Job? = null
     private var lyricsFor = 0L
     private val lyricsCache = object : LinkedHashMap<Long, List<LyricLine>>(32, 0.75f, true) {
@@ -141,6 +144,11 @@ class MediaPlayerState(
             }
             isPlaying = player.isPlaying
             buffering = player.playbackState == Player.STATE_BUFFERING
+            // A song that got going ends a run of failures.
+            if (player.playbackState == Player.STATE_READY) {
+                errorsInARow = 0
+                retried = null
+            }
             if (player.duration > 0) playerDuration = player.duration
             positionMs = player.currentPosition
         }
@@ -164,29 +172,49 @@ class MediaPlayerState(
                 return
             }
             finishListening(if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) "playend" else "ui")
-            val newIndex = c.currentMediaItemIndex
+            // The queue is otherwise only read in onEvents, which comes after this: a new list
+            // would still be the old one here, and the old list's song would get the lyrics.
+            val previous = index
+            syncQueue(c)
+            val newIndex = index
             skipDirection = when {
                 pendingDirection != 0 -> pendingDirection
-                reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || newIndex >= index -> 1
+                reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || newIndex >= previous -> 1
                 else -> -1
             }
             pendingDirection = 0
-            index = newIndex
             playerDuration = 0
             positionMs = 0
             loadLyrics(track)
             listeningTo = track.takeIf { !isEmpty }
             playingSince = if (c.isPlaying) clock() else 0L
             if (!isEmpty) recent?.record(track.toSong())
-            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) errorsInARow = 0
             if (fm && index >= queue.size - 2) topUpFm()
         }
 
         override fun onPlayerError(error: PlaybackException) {
             val c = controller ?: return
             val cause = generateSequence(error as Throwable?) { it.cause }.firstOrNull { it is UnplayableException }
-            notice = cause?.message?.let { "「${track.title}」$it，已跳过" } ?: "网络不太好，「${track.title}」没能播放"
             if (cause == null) resolver.invalidate(track.id)
+            val id = c.currentMediaItem?.mediaId
+            // A network hiccup (a tunnel, a lift): give the same song one more go from where it
+            // stopped before skipping it.
+            if (cause == null && id != null && retried != id) {
+                retried = id
+                notice = "网络不太好，正在重试「${track.title}」"
+                val at = c.currentPosition
+                scope.launch {
+                    delay(RETRY_DELAY_MS)
+                    // Unless the listener has moved on meanwhile.
+                    if (c.currentMediaItem?.mediaId == id && c.playbackState == Player.STATE_IDLE) {
+                        c.seekTo(c.currentMediaItemIndex, at)
+                        c.prepare()
+                        c.play()
+                    }
+                }
+                return
+            }
+            notice = cause?.message?.let { "「${track.title}」$it，已跳过" } ?: "网络不太好，「${track.title}」没能播放"
             errorsInARow++
             if (errorsInARow < 3 && c.hasNextMediaItem()) {
                 c.seekToNextMediaItem()
@@ -387,6 +415,11 @@ class MediaPlayerState(
 
     // —— Lyrics ——
 
+    override fun retryLyrics() {
+        lyricsFor = 0L
+        if (!isEmpty) loadLyrics(track)
+    }
+
     private fun loadLyrics(t: Track) {
         if (t.id == 0L || t.id == lyricsFor) return
         lyricsFor = t.id
@@ -412,12 +445,21 @@ class MediaPlayerState(
             if (lyricsFor == t.id) {
                 lyrics = parsed
                 lyricsLoading = false
+                lyricsGap = when {
+                    source == null -> io.lanyin.player.ui.player.LyricsGap.Failed
+                    source.missing -> io.lanyin.player.ui.player.LyricsGap.Missing
+                    else -> io.lanyin.player.ui.player.LyricsGap.Instrumental
+                }
+                // Let the next look at this song (or a tap on 重试) fetch them again.
+                if (source == null) lyricsFor = 0L
                 nowLyrics?.publish(NowPlayingLyrics.Lyrics(t.id, t.title, t.artist, parsed))
             }
         }
     }
 
     companion object {
+        /** How long to wait before trying a song again after a network error. */
+        private const val RETRY_DELAY_MS = 2_500L
         private const val EXTRA_DURATION = "lanyin.duration"
         private const val EXTRA_ALBUM = "lanyin.album"
         private const val EXTRA_ARTIST_IDS = "lanyin.artistIds"

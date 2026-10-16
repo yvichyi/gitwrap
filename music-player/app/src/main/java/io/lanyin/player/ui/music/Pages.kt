@@ -239,10 +239,11 @@ fun RecentPage(
     val liked by (services?.library?.likedIds ?: noLikes).collectAsState()
     val signedIn = services?.library?.signedIn == true || previewAccount != null
     var tab by rememberSaveable { mutableStateOf(if (previewAccount != null) ACCOUNT else PHONE) }
-    val account = if (tab == ACCOUNT) {
-        previewAccount?.let { Load.Ready(it) } ?: rememberLoad("recent-account") { services?.library?.recentPlays() ?: error("offline") }.state
-    } else {
-        Load.Ready(emptyList())
+    val accountLoader = if (tab == ACCOUNT && previewAccount == null) rememberLoad("recent-account") { services?.library?.recentPlays() ?: error("offline") } else null
+    val account = when {
+        tab != ACCOUNT -> Load.Ready(emptyList())
+        previewAccount != null -> Load.Ready(previewAccount)
+        else -> accountLoader!!.state
     }
     val playedAt = (account as? Load.Ready)?.value.orEmpty().associate { it.song.id to it.playedAt }
     val onPhone = tab == PHONE
@@ -255,7 +256,7 @@ fun RecentPage(
         isPlaying = player.isPlaying,
         onBack = onBack,
         onPlay = { list, i -> player.play(list, i, "最近播放") },
-        onRetry = {},
+        onRetry = { accountLoader?.retry?.invoke() },
         likedIds = liked,
         tabs = if (signedIn) ({ ChoiceRow(listOf(PHONE, ACCOUNT), tab, { tab = it }) }) else null,
         trailing = if (onPhone) null else ({ song -> playedAt[song.id]?.let { TrailingNote(relativeTime(it, now)) } }),
@@ -272,7 +273,8 @@ fun RankingPage(player: PlayerState, onBack: () -> Unit, preview: List<RankedSon
     val library = LocalAppServices.current?.library
     val liked by (library?.likedIds ?: noLikes).collectAsState()
     var week by rememberSaveable { mutableStateOf(true) }
-    val load = preview?.let { Load.Ready(it) } ?: rememberLoad("ranking-$week") { library?.ranking(week) ?: error("offline") }.state
+    val loader = if (preview == null) rememberLoad("ranking-$week") { library?.ranking(week) ?: error("offline") } else null
+    val load = preview?.let { Load.Ready(it) } ?: loader!!.state
     val counts = (load as? Load.Ready)?.value.orEmpty().associate { it.song.id to it.playCount }
     SongListScreen(
         title = "听歌排行",
@@ -283,7 +285,7 @@ fun RankingPage(player: PlayerState, onBack: () -> Unit, preview: List<RankedSon
         isPlaying = player.isPlaying,
         onBack = onBack,
         onPlay = { list, i -> player.play(list, i, if (week) "听歌排行 · 最近一周" else "听歌排行 · 所有时间") },
-        onRetry = {},
+        onRetry = { loader?.retry?.invoke() },
         likedIds = liked,
         tabs = { ChoiceRow(listOf("最近一周", "所有时间"), if (week) "最近一周" else "所有时间", { week = it == "最近一周" }) },
         trailing = { song -> counts[song.id]?.let { TrailingNote("$it 次") } },
@@ -323,6 +325,8 @@ fun CloudPage(
     var info by remember { mutableStateOf(preview) }
     var state by remember { mutableStateOf<Load<Unit>>(if (preview != null) Load.Ready(Unit) else Load.Loading) }
     var loadingMore by remember { mutableStateOf(false) }
+    // Set when a further page failed: stop asking (no request loop while offline) until 重试.
+    var moreFailed by remember { mutableStateOf(false) }
     var attempt by remember { mutableIntStateOf(0) }
 
     suspend fun fetch(offset: Int): Boolean = try {
@@ -353,7 +357,7 @@ fun CloudPage(
         isPlaying = player.isPlaying,
         onBack = onBack,
         onPlay = { list, i -> player.play(list, i, "音乐云盘") },
-        onRetry = { attempt++ },
+        onRetry = { moreFailed = false; attempt++ },
         likedIds = liked,
         songContext = SongContext.Cloud,
         actions = {
@@ -365,13 +369,15 @@ fun CloudPage(
         emptyText = "云盘里还没有歌。点「上传」把手机里的歌放上来",
         countText = { list -> if (info?.hasMore == true) "已加载 ${list.size} 首" else "${list.size} 首" },
         loadingMore = loadingMore,
-        onEndReached = if (info?.hasMore == true && !loadingMore) ({
+        onEndReached = if (info?.hasMore == true && !loadingMore && !moreFailed) ({
             loadingMore = true
             scope.launch {
-                fetch(songs.size)
+                if (!fetch(songs.size)) moreFailed = true
                 loadingMore = false
             }
         }) else null,
+        moreFailed = moreFailed,
+        onRetryMore = { moreFailed = false },
     )
 }
 

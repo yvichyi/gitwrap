@@ -41,16 +41,17 @@ data class LanyinColors(
 
 /**
  * How cards, the mini player and the tab bar are drawn: hairlines (墨), soft shadows (暮), neon
- * (霓), hard shadows (格), a print's thin rim (影), flat grey tiles on black (点) and the recessed
- * panels of a machine's case (机).
+ * (霓), hard shadows (格), a print's thin rim (影), flat grey tiles on black (点), the recessed
+ * panels of a machine's case (机), a newspaper's column rules (报), little LCD screens in their
+ * bezels (游) and chrome rims (酸).
  */
-enum class EdgeKind { Hairline, Soft, Glow, Brutal, Film, Dot, Panel }
+enum class EdgeKind { Hairline, Soft, Glow, Brutal, Film, Dot, Panel, Rule, Bezel, Chrome }
 
-enum class BackdropKind { Ink, Neon, Dusk, Grid, Film, Dot, Device }
+enum class BackdropKind { Ink, Neon, Dusk, Grid, Film, Dot, Device, Paper, Game, Acid }
 
-enum class SeekKind { Hairline, Pill, Segments, Block, Film, Dots, Fader }
+enum class SeekKind { Hairline, Pill, Segments, Block, Film, Dots, Fader, Ruler, Blocks, Stripe }
 
-enum class ButtonKind { Outline, Blob, NeonRing, Brutal, Aperture, Disc, Key }
+enum class ButtonKind { Outline, Blob, NeonRing, Brutal, Aperture, Disc, Key, Stamp, Pad, Burst }
 
 enum class NavKind { Pill, Text }
 
@@ -87,6 +88,8 @@ data class LyricStyle(
     /** The sung part in the text colour rather than the accent (影's subtitles, 点's white). */
     val inkSweep: Boolean = false,
     val weight: FontWeight = FontWeight.Bold,
+    /** A highlighter stroke under the sung part (报's red pen). */
+    val marker: Boolean = false,
 )
 
 @Immutable
@@ -252,6 +255,56 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             motion = Motion(0.92f, 480f), bouncy = Motion(0.7f, 420f), pressScale = 0.95f,
             iconStroke = 1.6f, dock = DockKind.Docked,
         )
+        // 报: a broadsheet. Newsprint and ink with one red, everything set in serif, headlines
+        // heavy; columns ruled off rather than boxed, photos printed in halftone, a ruler for the
+        // progress, a block of ink for the play key printed a hair off its red plate, and the
+        // line being sung marked in red pen. The night edition prints on dark stock.
+        AppTheme.PAPER -> LanyinStyle(
+            theme = theme, dark = isDark,
+            colors = if (isDark) paperNight else paper,
+            display = FontFamily.Serif, displayWeight = FontWeight.Black, displayTracking = 0.04.em,
+            body = FontFamily.Serif, numeric = FontFamily.Serif,
+            cardShape = RectangleShape, chipShape = RectangleShape, artShape = RectangleShape,
+            edge = EdgeKind.Rule, backdrop = BackdropKind.Paper, seek = SeekKind.Ruler,
+            button = ButtonKind.Stamp, nav = NavKind.Text,
+            lyric = LyricStyle(
+                centered = false, activeScale = 1f, inactiveAlpha = 0.48f, blurStep = 0.dp, staggerMs = 25, glow = false, serif = true,
+                inkSweep = true, marker = true,
+            ),
+            motion = Motion(0.95f, 650f), bouncy = Motion(0.8f, 550f), pressScale = 0.97f,
+            iconStroke = 1.6f, dock = DockKind.Docked, margin = 22.dp, quietSections = false,
+        )
+        // 游: a pocket games console. The pages are its menus, on the grey case: cards are little
+        // LCD screens in dark bezels and everything is set in a pixel face; the player is the whole
+        // console, its screen showing the cover dithered into four greens, a D-pad for skipping and
+        // a magenta A button to play.
+        AppTheme.GAME -> LanyinStyle(
+            theme = theme, dark = false,
+            colors = game,
+            display = PixelFamily, displayWeight = FontWeight.Normal, displayTracking = 0.02.em,
+            body = PixelFamily, numeric = PixelFamily,
+            cardShape = CutCornerShape(6.dp), chipShape = CutCornerShape(4.dp), artShape = RectangleShape,
+            edge = EdgeKind.Bezel, backdrop = BackdropKind.Game, seek = SeekKind.Blocks,
+            button = ButtonKind.Pad, nav = NavKind.Text,
+            lyric = LyricStyle(centered = false, activeScale = 1f, inactiveAlpha = 0.5f, blurStep = 0.dp, staggerMs = 0, glow = false, serif = false, weight = FontWeight.Normal),
+            motion = Motion(1f, 1400f), bouncy = Motion(0.75f, 1100f), pressScale = 0.94f,
+            iconStroke = 2.2f, dock = DockKind.Docked,
+        )
+        // 酸: Y2K acid. Black, a lime that hurts a little and a hot pink; headings in heavy type
+        // with a chrome gradient, chrome rims, starbursts turning behind things, a lime grid
+        // running to the horizon, a barber-pole progress and a lime disc that bursts on the beat.
+        AppTheme.ACID -> LanyinStyle(
+            theme = theme, dark = true,
+            colors = acid,
+            display = ArchivoBlackFamily, displayWeight = FontWeight.Black, displayTracking = (-0.01).em,
+            body = FontFamily.SansSerif, numeric = SpaceMonoFamily,
+            cardShape = RoundedCornerShape(24.dp), chipShape = CircleShape, artShape = RoundedCornerShape(20.dp),
+            edge = EdgeKind.Chrome, backdrop = BackdropKind.Acid, seek = SeekKind.Stripe,
+            button = ButtonKind.Burst, nav = NavKind.Pill,
+            lyric = LyricStyle(centered = false, activeScale = 1.06f, inactiveAlpha = 0.3f, blurStep = 0.4.dp, staggerMs = 30, glow = true, serif = false, weight = FontWeight.Black),
+            motion = Motion(0.72f, 700f), bouncy = Motion(0.45f, 600f), pressScale = 0.92f,
+            iconStroke = 2f,
+        )
         AppTheme.GRID -> LanyinStyle(
             theme = theme, dark = false,
             colors = grid,
@@ -322,6 +375,48 @@ private val film = LanyinColors(
 /** 影's date stamp: the orange of a point-and-shoot's printed date. */
 val FilmStamp = Color(0xFFFF8A1F)
 
+// Newsprint, ink and the red of a sub-editor's pen.
+private val paper = LanyinColors(
+    bg = Color(0xFFF1ECE1), bgDeep = Color(0xFFE6DFD0), surface = Color(0xFFF6F2E9), surfaceAlt = Color(0xFFEAE4D7),
+    content = Color(0xFF1B1A17), muted = Color(0xFF59554C), accent = Color(0xFFC8102E), accentAlt = Color(0xFF23395B),
+    onAccent = Color(0xFFF6F2E9), outline = Color(0x401B1A17), like = Color(0xFFC8102E), vinyl = Color(0xFF1B1A17),
+)
+// The night edition: dark stock, warm white ink, a brighter red.
+private val paperNight = LanyinColors(
+    bg = Color(0xFF171614), bgDeep = Color(0xFF1F1D1A), surface = Color(0xFF1C1A17), surfaceAlt = Color(0xFF25221E),
+    content = Color(0xFFE9E3D6), muted = Color(0xFFA39C8E), accent = Color(0xFFF0555A), accentAlt = Color(0xFF8FB0E0),
+    onAccent = Color(0xFF171614), outline = Color(0x40E9E3D6), like = Color(0xFFF0555A), vinyl = Color(0xFF0E0D0C),
+)
+// A grey console: its case, the green of its screen for cards, near-black green print, the
+// magenta of the A and B buttons and the navy of the lettering.
+private val game = LanyinColors(
+    bg = Color(0xFFD6D3CA), bgDeep = Color(0xFFC8C4BA), surface = Color(0xFFA9C06C), surfaceAlt = Color(0xFF9BB45E),
+    content = Color(0xFF10260F), muted = Color(0xFF3B5230), accent = Color(0xFF9A2257), accentAlt = Color(0xFF2F3A8F),
+    onAccent = Color(0xFFF4F0E8), outline = Color(0x5910260F), like = Color(0xFF9A2257), vinyl = Color(0xFF2D2C33),
+)
+// Black, white, a lime that glows and a hot pink.
+private val acid = LanyinColors(
+    bg = Color(0xFF0A0A0A), bgDeep = Color(0xFF141414), surface = Color(0xFF151515), surfaceAlt = Color(0xFF1F1F1F),
+    content = Color(0xFFFFFFFF), muted = Color(0xFFA0A0A0), accent = Color(0xFFC6FF00), accentAlt = Color(0xFFFF3EA5),
+    onAccent = Color(0xFF0A0A0A), outline = Color(0x55C6FF00), like = Color(0xFFFF3EA5), vinyl = Color(0xFF050505),
+)
+
+/** Fusion Pixel (SIL OFL), 游's face for everything, Chinese included. One weight, so bold stays crisp rather than smeared. */
+val PixelFamily = FontFamily(
+    Font(R.font.fusion_pixel, FontWeight.Normal),
+    Font(R.font.fusion_pixel, FontWeight.Medium),
+    Font(R.font.fusion_pixel, FontWeight.SemiBold),
+    Font(R.font.fusion_pixel, FontWeight.Bold),
+    Font(R.font.fusion_pixel, FontWeight.Black),
+)
+
+/** Archivo Black (SIL OFL), 酸's heading face; Chinese falls back to the system sans. */
+val ArchivoBlackFamily = FontFamily(
+    Font(R.font.archivo_black, FontWeight.Normal),
+    Font(R.font.archivo_black, FontWeight.Bold),
+    Font(R.font.archivo_black, FontWeight.Black),
+)
+
 /** Doto with round dots (SIL OFL), for 点's numbers and Latin labels; Chinese falls back to the system sans. */
 val DotoFamily = FontFamily(
     Font(R.font.doto_bold, FontWeight.Normal),
@@ -339,6 +434,9 @@ val SpaceMonoFamily = FontFamily(
     Font(R.font.space_mono_bold, FontWeight.Bold),
     Font(R.font.space_mono_bold, FontWeight.Black),
 )
+
+/** 游's screen: the four greens of the original LCD, lightest to darkest. */
+val GameLcd = listOf(Color(0xFF9BBC0F), Color(0xFF8BAC0F), Color(0xFF306230), Color(0xFF082808))
 
 /** 格's third primary, for stickers and highlights. */
 val GridYellow = Color(0xFFFACC15)

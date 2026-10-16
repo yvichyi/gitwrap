@@ -204,23 +204,27 @@ fun EqualizerPanel(curve: FloatArray, enabled: Boolean, onBand: (Int, Float) -> 
     val style = Lanyin.style
     val c = style.colors
     val bands = EQ_FREQUENCIES.size
+    // Keyed on [enabled] only: keyed on the curve, the first change would restart the gesture
+    // mid-drag and lose it. The latest callbacks are read as the finger moves.
+    val band by androidx.compose.runtime.rememberUpdatedState(onBand)
+    val done by androidx.compose.runtime.rememberUpdatedState(onDone)
     Column(modifier.fillMaxWidth()) {
         Canvas(
             Modifier
                 .fillMaxWidth()
                 .height(170.dp)
-                .pointerInput(enabled, curve.contentHashCode()) {
+                .pointerInput(enabled) {
                     if (!enabled) return@pointerInput
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         val col = ((down.position.x / size.width) * bands).toInt().coerceIn(0, bands - 1)
                         fun dbAt(y: Float) = ((0.5f - y / size.height) * 2f * EQ_RANGE_DB * 1.15f).coerceIn(-EQ_RANGE_DB, EQ_RANGE_DB)
-                        onBand(col, dbAt(down.position.y))
+                        band(col, dbAt(down.position.y))
                         drag(down.id) { change ->
                             change.consume()
-                            onBand(col, dbAt(change.position.y))
+                            band(col, dbAt(change.position.y))
                         }
-                        onDone()
+                        done()
                     }
                 },
         ) {

@@ -27,8 +27,24 @@ class StreamResolver(private val api: NeteaseApi, private val now: () -> Long = 
     /** What each song actually resolved to, for the quality label on the player. */
     val resolved: StateFlow<Map<Long, Stream>> = _resolved.asStateFlow()
 
+    /**
+     * Who is listening, as far as NetEase's answer depends on it: anonymous, or which account at
+     * which VIP level. Logging in or upgrading changes it, so a 30-second preview or a stepped-down
+     * stream fetched before is not played again in its place.
+     */
+    val tier: String
+        get() {
+            val session = api.session.value
+            val profile = session?.profile
+            return when {
+                session?.loggedIn != true -> "anon"
+                profile == null -> "user"
+                else -> "u${profile.userId}v${profile.vipType}"
+            }
+        }
+
     suspend fun resolve(songId: Long, preferred: Quality): Stream {
-        val key = "$songId:${preferred.level}"
+        val key = "$songId:${preferred.level}:$tier"
         recent[key]?.takeIf { now() - it.at < TTL_MS }?.let { return it.stream }
         var last: Stream? = null
         for (quality in ladder(preferred)) {

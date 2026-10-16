@@ -40,6 +40,9 @@ fun DrawScope.drawCoverArt(style: LanyinStyle, seed: Int) {
         AppTheme.FILM -> filmCover(style, seed)
         AppTheme.DOT -> dotCover(style, seed)
         AppTheme.DEVICE -> deviceCover(style, seed)
+        AppTheme.PAPER -> paperCover(style, seed)
+        AppTheme.GAME -> gameCover(style, seed)
+        AppTheme.ACID -> acidCover(style, seed)
     }
 }
 
@@ -291,6 +294,9 @@ fun ThemeMotif(color: Color, modifier: Modifier = Modifier) {
             }
             AppTheme.DOT -> dotMotif(color, style.colors.accentAlt)
             AppTheme.DEVICE -> deviceMotif(color, style.colors.accent)
+            AppTheme.PAPER -> paperMotif(color, style.colors.accent)
+            AppTheme.GAME -> gameMotif(color)
+            AppTheme.ACID -> acidMotif(color, style.colors.accent)
             // A frame of film with its sprocket holes.
             AppTheme.FILM -> {
                 drawRect(color, Offset(center.x - r, center.y - r * 0.75f), Size(r * 2, r * 1.5f), style = line)

@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** A chart and its top songs. */
@@ -68,10 +70,26 @@ class LibraryRepository(private val api: NeteaseApi, account: AccountRepository,
         }
     }
 
+    /** The last sync didn't get through (offline, say), even after a few tries; [refresh] tries again. */
+    private val _syncFailed = MutableStateFlow(false)
+    val syncFailed: StateFlow<Boolean> = _syncFailed.asStateFlow()
+
+    private var syncJob: Job? = null
+
     fun refresh() {
         val uid = userId ?: return
-        scope.launch { runCatching { _likedIds.value = api.likedIds(uid) } }
-        scope.launch { runCatching { _playlists.value = api.userPlaylists(uid) } }
+        _syncFailed.value = false
+        syncJob?.cancel()
+        syncJob = scope.launch {
+            // A few tries, further apart each time, before saying it didn't work.
+            for (attempt in 0 until SYNC_TRIES) {
+                val liked = runCatching { api.likedIds(uid) }.onSuccess { _likedIds.value = it }
+                val lists = runCatching { api.userPlaylists(uid) }.onSuccess { _playlists.value = it }
+                if (liked.isSuccess && lists.isSuccess || userId != uid) return@launch
+                if (attempt < SYNC_TRIES - 1) delay(2_000L shl attempt)
+            }
+            _syncFailed.value = true
+        }
     }
 
     val signedIn: Boolean get() = userId != null
@@ -234,6 +252,9 @@ class LibraryRepository(private val api: NeteaseApi, account: AccountRepository,
     companion object {
         /** NetEase's 热歌榜. */
         const val HOT_CHART_ID = 3778678L
+
+        /** How many times a sync is tried (2, 4 and 8 seconds apart) before giving up. */
+        private const val SYNC_TRIES = 4
     }
 
     private fun changed(reload: Boolean = true) {

@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import io.lanyin.player.ui.design.drawMenuCursor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -441,6 +442,8 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                             2.dp.toPx(), androidx.compose.ui.graphics.StrokeCap.Round,
                         )
                     }
+                    // 酸: a lime outline round the current tab.
+                    EdgeKind.Chrome -> Modifier.clip(shape).background(c.accent.copy(alpha = 0.12f)).border(1.5.dp, c.accent, shape)
                     // 机: the current tab is a key held down, sunk into the bar.
                     EdgeKind.Panel -> Modifier.clip(shape).background(c.bgDeep).drawBehind {
                         drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color.Black.copy(alpha = if (style.dark) 0.3f else 0.12f), androidx.compose.ui.graphics.Color.Transparent), endY = 6.dp.toPx()))
@@ -456,14 +459,32 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                         .then(indicator),
                 )
             }
-            NavKind.Text -> Box(
-                Modifier
-                    .align(Alignment.BottomStart)
-                    .offset(x = x + itemWidth / 2 - 2.5.dp)
-                    .padding(bottom = 6.dp)
-                    .size(5.dp)
-                    .background(c.accentAlt, CircleShape),
-            )
+            NavKind.Text -> when (style.edge) {
+                // 报: the current section underlined in red pen.
+                EdgeKind.Rule -> Box(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = x + itemWidth / 2 - 12.dp)
+                        .padding(bottom = 7.dp)
+                        .size(24.dp, 2.5.dp)
+                        .background(c.accent),
+                )
+                // 游: a menu cursor beside the current item.
+                EdgeKind.Bezel -> androidx.compose.foundation.Canvas(
+                    Modifier
+                        .align(Alignment.CenterStart)
+                        .offset(x = x + itemWidth / 2 - 31.dp)
+                        .size(8.dp, 10.dp),
+                ) { drawMenuCursor(c.accent) }
+                else -> Box(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = x + itemWidth / 2 - 2.5.dp)
+                        .padding(bottom = 6.dp)
+                        .size(5.dp)
+                        .background(c.accentAlt, CircleShape),
+                )
+            }
         }
         Row(Modifier.fillMaxSize()) {
             tabs.forEachIndexed { i, tab ->

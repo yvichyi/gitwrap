@@ -74,7 +74,8 @@ class AudioPipeline(context: Context, private val http: OkHttpClient, private va
         val streaming = CacheDataSource.Factory()
             .setCache(cache)
             .setUpstreamDataSourceFactory(networkFactory)
-            .setCacheKeyFactory { spec -> songId(spec.uri)?.let { "song:$it:${preferred.level}" } ?: spec.uri.toString() }
+            // Keyed by listener too: what NetEase serves (a preview, a lower quality) depends on the account.
+            .setCacheKeyFactory { spec -> songId(spec.uri)?.let { "song:$it:${preferred.level}:${resolver.tier}" } ?: spec.uri.toString() }
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
         // Read-only, and only ever opened for a download that is complete.
         val offline = CacheDataSource.Factory()

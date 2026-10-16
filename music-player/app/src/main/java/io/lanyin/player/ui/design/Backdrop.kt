@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import io.lanyin.player.ui.theme.BackdropKind
@@ -51,12 +52,19 @@ fun Backdrop(
     feed: io.lanyin.player.core.audio.AudioFeed? = null,
 ) {
     val style = Lanyin.style
-    val clock = rememberFrameClock(live)
+    // Paper, a case and a grid never move: no clock for them. 点's dots only move with the music.
+    val animated = live && when (style.backdrop) {
+        BackdropKind.Grid, BackdropKind.Device, BackdropKind.Paper, BackdropKind.Game -> false
+        BackdropKind.Dot -> playing
+        else -> true
+    }
+    val clock = rememberFrameClock(animated)
     val measurer = if (style.backdrop == BackdropKind.Grid || style.backdrop == BackdropKind.Film) androidx.compose.ui.text.rememberTextMeasurer() else null
     val energy by animateFloatAsState(if (playing) 1f else 0f, tween(1200), label = "energy")
     val audio = remember { BackdropAudio() }
-    Canvas(modifier) {
-        val t = clock.floatValue
+    // A layer of its own, so redrawing the backdrop doesn't re-record what sits on it.
+    Canvas(modifier.graphicsLayer()) {
+        val t = if (animated) clock.floatValue else 0f
         val e = energy
         val page = !live
         val heard = if (feed != null && live) audio.also { it.read(feed, t, e) } else null
@@ -68,6 +76,9 @@ fun Backdrop(
             BackdropKind.Film -> drawFilm(style, t, e, page, heard, if (page) null else measurer, trackNumber)
             BackdropKind.Dot -> drawDotField(style, t, page, heard)
             BackdropKind.Device -> drawDeviceCase(style, page)
+            BackdropKind.Paper -> drawNewsprint(style, page)
+            BackdropKind.Game -> drawGameCase(style)
+            BackdropKind.Acid -> drawAcidNight(style, t, e, page, heard)
         }
     }
 }

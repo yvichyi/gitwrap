@@ -65,6 +65,8 @@ class DownloadRepository(context: Context, private val audio: AudioPipeline, pri
     val waitingForWifi: StateFlow<Boolean> = _waitingForWifi.asStateFlow()
 
     private val byId = LinkedHashMap<String, Download>()
+    /** Each download's song, decoded once: publishing runs on the main thread every 700 ms while downloading. */
+    private val songs = HashMap<String, Song?>()
     private var polling: Job? = null
 
     /** Created on first use, on the main thread; the service shares it. */
@@ -85,6 +87,7 @@ class DownloadRepository(context: Context, private val audio: AudioPipeline, pri
 
         override fun onDownloadRemoved(downloadManager: DownloadManager, download: Download) {
             byId.remove(download.request.id)
+            songs.remove(download.request.id)
             publish()
         }
 
@@ -107,7 +110,11 @@ class DownloadRepository(context: Context, private val audio: AudioPipeline, pri
     /** Queues [songs] that aren't downloaded or on their way already; returns how many were queued. */
     fun download(songs: List<Song>): Int {
         val fresh = songs.filter { s -> s.id != 0L && byId[s.id.toString()]?.state.let { it == null || it == Download.STATE_FAILED } }
-        fresh.forEach { DownloadService.sendAddDownload(appContext, DownloadsService::class.java, request(it), false) }
+        if (fresh.isEmpty()) return 0
+        // Straight to the manager, then one start of the service to carry them on in the background
+        // (a start per song sent the service one intent per song for 下载全部).
+        fresh.forEach { manager.addDownload(request(it)) }
+        runCatching { DownloadService.start(appContext, DownloadsService::class.java) }
         return fresh.size
     }
 
@@ -158,7 +165,7 @@ class DownloadRepository(context: Context, private val audio: AudioPipeline, pri
     }
 
     private fun Download.toItem(): DownloadItem? {
-        val song = runCatching { json.decodeFromString(Song.serializer(), String(request.data)) }.getOrNull() ?: return null
+        val song = songs.getOrPut(request.id) { runCatching { json.decodeFromString(Song.serializer(), String(request.data)) }.getOrNull() } ?: return null
         val state = when (state) {
             Download.STATE_DOWNLOADING -> DownloadState.Downloading
             Download.STATE_COMPLETED -> DownloadState.Done

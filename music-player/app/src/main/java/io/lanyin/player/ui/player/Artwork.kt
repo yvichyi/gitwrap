@@ -63,7 +63,12 @@ fun PlayerArtwork(skin: PlayerSkin, isPlaying: Boolean, spin: SpinState, coverSe
 @Composable
 fun VinylRecord(isPlaying: Boolean, spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier, coverUrl: String? = null) {
     val style = Lanyin.style
-    val cover = rememberCoverPainter(coverUrl, 480)
+    // The label is printed in the theme's own medium where it has one.
+    val cover = when (style.edge) {
+        EdgeKind.Bezel -> io.lanyin.player.ui.design.rememberDitheredPainter(coverUrl, coverSeed)
+        EdgeKind.Rule -> io.lanyin.player.ui.design.rememberHalftonePainter(coverUrl, coverSeed)
+        else -> rememberCoverPainter(coverUrl, 480)
+    }
     val armAngle by animateFloatAsState(if (isPlaying) 0f else -26f, style.bouncy.spec(), label = "toneArm")
     Box(modifier.aspectRatio(1f), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize().padding(14.dp)) {
@@ -77,7 +82,10 @@ fun VinylRecord(isPlaying: Boolean, spin: SpinState, coverSeed: Int, modifier: M
                 EdgeKind.Hairline -> Unit
                 else -> drawCircle(Brush.radialGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent), center, r * 1.12f), r * 1.12f)
             }
-            rotate(spin.angle) { drawRecord(style, r, coverSeed, cover) }
+        }
+        // The record is drawn once and turned as a layer, rather than redrawn every frame.
+        Canvas(Modifier.fillMaxSize().padding(14.dp).graphicsLayer { rotationZ = spin.angle }) {
+            drawRecord(style, size.minDimension / 2f, coverSeed, cover)
         }
         Canvas(Modifier.fillMaxSize()) { drawToneArm(style, armAngle) }
     }
@@ -169,18 +177,25 @@ fun SquareCover(isPlaying: Boolean, coverSeed: Int, modifier: Modifier = Modifie
         EdgeKind.Dot -> Modifier.clip(shape).ledScreen()
         // 机: on the screen, lit pixels need no shadow.
         EdgeKind.Panel -> Modifier.clip(shape).border(1.dp, c.content.copy(alpha = 0.08f), shape)
+        // 报: a photo on the page, boxed by a fine rule.
+        EdgeKind.Rule -> Modifier.clip(shape).border(1.dp, c.content, shape)
+        // 游: the picture on the LCD, framed in its darkest green.
+        EdgeKind.Bezel -> Modifier.clip(shape).border(2.dp, c.content, shape)
+        // 酸: a lime rim glowing.
+        EdgeKind.Chrome -> Modifier.neonGlow(shape, c.accent, 0.6f).clip(shape).border(2.dp, c.accent, shape)
         else -> Modifier.shadow(28.dp, shape, ambientColor = c.accent, spotColor = Color.Black).clip(shape)
     }
-    CoverImage(
-        coverUrl,
-        coverSeed,
-        360.dp,
-        modifier
-            .aspectRatio(1f)
-            .padding(18.dp)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .then(frame),
-    )
+    val art = modifier
+        .aspectRatio(1f)
+        .padding(18.dp)
+        .graphicsLayer { scaleX = scale; scaleY = scale }
+        .then(frame)
+    when (style.edge) {
+        // 报 prints the cover in halftone, 游 shows it dithered on its LCD.
+        EdgeKind.Rule -> io.lanyin.player.ui.design.HalftoneCover(coverUrl, coverSeed, art)
+        EdgeKind.Bezel -> io.lanyin.player.ui.design.DitheredCover(coverUrl, coverSeed, art)
+        else -> CoverImage(coverUrl, coverSeed, 360.dp, art)
+    }
 }
 
 /**

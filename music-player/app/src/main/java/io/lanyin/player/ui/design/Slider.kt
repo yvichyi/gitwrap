@@ -6,6 +6,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -16,34 +18,57 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 
 /** A 0..1 slider in the theme's hand: a hairline in 墨, a square block in 格, a glowing tube in 霓. */
 @Composable
 fun ThemedSlider(value: Float, onChange: (Float) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, onDone: () -> Unit = {}) {
     val style = Lanyin.style
     val c = style.colors
+    // The gestures outlive a recomposition; they must call the latest callbacks, which carry the
+    // latest settings, or one slider would put back the others' old values.
+    val change by rememberUpdatedState(onChange)
+    val done by rememberUpdatedState(onDone)
+    val knob = 8.dp
     Canvas(
         modifier
             .fillMaxWidth()
             .height(36.dp)
+            .semantics {
+                progressBarRangeInfo = ProgressBarRangeInfo(value.coerceIn(0f, 1f), 0f..1f)
+                if (enabled) setProgress { v -> change(v.coerceIn(0f, 1f)); done(); true } else disabled()
+            }
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
+                // The knob's centre travels between its own radius from each end.
+                fun at(x: Float): Float {
+                    val r = knob.toPx()
+                    return ((x - r) / (size.width - r * 2).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                }
                 detectTapGestures { o ->
-                    onChange((o.x / size.width).coerceIn(0f, 1f))
-                    onDone()
+                    change(at(o.x))
+                    done()
                 }
             }
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
-                detectHorizontalDragGestures(onDragEnd = onDone) { change, _ ->
-                    change.consume()
-                    onChange((change.position.x / size.width).coerceIn(0f, 1f))
+                fun at(x: Float): Float {
+                    val r = knob.toPx()
+                    return ((x - r) / (size.width - r * 2).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                }
+                detectHorizontalDragGestures(onDragEnd = { done() }, onDragCancel = { done() }) { ev, _ ->
+                    ev.consume()
+                    change(at(ev.position.x))
                 }
             },
     ) {
         val v = value.coerceIn(0f, 1f)
         val y = size.height / 2
-        val r = 8.dp.toPx()
+        val r = knob.toPx()
         val x = r + (size.width - r * 2) * v
         val alpha = if (enabled) 1f else 0.35f
         val rest = c.content.copy(alpha = 0.14f * alpha)

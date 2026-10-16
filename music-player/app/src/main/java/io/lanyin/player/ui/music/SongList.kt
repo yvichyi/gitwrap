@@ -99,6 +99,9 @@ fun SongListScreen(
     /** Called when the last row comes into view, to fetch the next page. */
     onEndReached: (() -> Unit)? = null,
     loadingMore: Boolean = false,
+    /** The last further page failed; shows a 重试 row at the end instead of asking again. */
+    moreFailed: Boolean = false,
+    onRetryMore: () -> Unit = {},
     countText: (List<Song>) -> String = { "${it.size} 首" },
 ) {
     val style = Lanyin.style
@@ -162,13 +165,20 @@ fun SongListScreen(
                             modifier = Modifier.padding(start = m, end = m - 10.dp),
                         )
                     }
-                    if (onEndReached != null || loadingMore) {
+                    if (onEndReached != null || loadingMore || moreFailed) {
                         item(key = "more-${list.size}") {
                             if (onEndReached != null) LaunchedEffect(list.size) { onEndReached() }
                             Text(
-                                if (loadingMore) "正在加载更多…" else "",
-                                style = style.type.caption, color = c.muted, textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                                when {
+                                    loadingMore -> "正在加载更多…"
+                                    moreFailed -> "没能加载更多，点一下重试"
+                                    else -> ""
+                                },
+                                style = style.type.caption, color = if (moreFailed) c.content else c.muted, textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(if (moreFailed) Modifier.pressable(onClick = onRetryMore) else Modifier)
+                                    .padding(vertical = 20.dp),
                             )
                         }
                     }
@@ -271,7 +281,7 @@ fun SongRow(
         if (trailing != null) Box(Modifier.padding(start = 10.dp)) { trailing() }
         if (liked) ThemedIcon(LineIcon.HeartFilled, "已收藏", tint = c.like, size = 16.dp, modifier = Modifier.padding(start = 10.dp))
         if (onMore != null) {
-            Box(Modifier.size(width = 36.dp, height = 44.dp).pressable(onClick = onMore), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(width = 40.dp, height = 48.dp).pressable(onClick = onMore), contentAlignment = Alignment.Center) {
                 ThemedIcon(LineIcon.More, "更多", tint = c.muted, size = 20.dp)
             }
         }

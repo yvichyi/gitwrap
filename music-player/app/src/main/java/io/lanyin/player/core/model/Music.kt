@@ -135,6 +135,8 @@ data class LyricsSource(
     /** Word-timed lyrics (YRC), when NetEase has them. */
     val wordTimed: String?,
     val instrumental: Boolean,
+    /** NetEase has no lyrics for this song (as opposed to it being an instrumental). */
+    val missing: Boolean = false,
 )
 
 /** A song in the listener's cloud drive, with the file they uploaded. */

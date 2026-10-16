@@ -19,7 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -187,14 +188,17 @@ fun DeviceScreen(modifier: Modifier = Modifier, content: @Composable ColumnScope
             }
             .clip(shape)
             .background(screen.colors.bg)
-            .drawWithContent {
-                drawContent()
-                drawRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent), endY = 12.dp.toPx()))
+            .drawWithCache {
+                val shade = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent), endY = 12.dp.toPx())
                 // A faint reflection across the glass.
                 val sheen = Path().apply {
                     moveTo(size.width * 0.55f, 0f); lineTo(size.width * 0.78f, 0f); lineTo(size.width * 0.48f, size.height); lineTo(size.width * 0.25f, size.height); close()
                 }
-                drawPath(sheen, Color.White.copy(alpha = 0.025f))
+                onDrawWithContent {
+                    drawContent()
+                    drawRect(shade)
+                    drawPath(sheen, Color.White.copy(alpha = 0.025f))
+                }
             }
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
@@ -227,7 +231,9 @@ fun VuMeter(feed: io.lanyin.player.core.audio.AudioFeed, playing: Boolean, modif
     val needle = remember { floatArrayOf(0f, 0f, -1f) }
     val measurer = rememberTextMeasurer()
     val label = remember(style) { TextStyle(fontFamily = SpaceMonoFamily, fontSize = 7.sp, fontWeight = FontWeight.Bold, color = style.colors.muted) }
-    Canvas(modifier) {
+    val vu = remember(measurer, label) { measurer.measure("VU", label) }
+    // Its own layer: the needle redraws every frame, the screen around it needn't.
+    Canvas(modifier.graphicsLayer()) {
         val c = style.colors
         val t = clock.floatValue
         var target = 0f
@@ -257,7 +263,6 @@ fun VuMeter(feed: io.lanyin.player.core.audio.AudioFeed, playing: Boolean, modif
             val u = k / 8f
             drawLine(if (u > 0.72f) c.accent else c.content.copy(alpha = 0.55f), at(u, r * 0.86f), at(u, r * (if (k % 2 == 0) 0.7f else 0.76f)), 1.dp.toPx())
         }
-        val vu = measurer.measure("VU", label)
         drawText(vu, topLeft = Offset(pivot.x - vu.size.width / 2f, pivot.y - r * 0.5f))
         drawLine(c.content, pivot, at(needle[0], r * 0.98f), 1.4.dp.toPx(), StrokeCap.Round)
         drawCircle(c.content, 3.dp.toPx(), pivot)

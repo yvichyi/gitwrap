@@ -74,6 +74,7 @@ fun LibraryScreen(
     val library = LocalAppServices.current?.library
     val loaded by (library?.playlists ?: remember { MutableStateFlow(previewPlaylists) }).collectAsState()
     val signedIn = account is AccountState.LoggedIn
+    val syncFailed by (library?.syncFailed ?: remember { MutableStateFlow(false) }).collectAsState()
     val uid = (account as? AccountState.LoggedIn)?.profile?.userId
     val liked = loaded?.firstOrNull { it.specialType == 5 }
     val recentCount = LocalAppServices.current?.recent?.songs?.collectAsState()?.value?.size
@@ -88,10 +89,16 @@ fun LibraryScreen(
             LineIcon.Heart, "我喜欢的音乐",
             when {
                 liked != null -> "${liked.trackCount} 首"
+                signedIn && syncFailed -> "没能同步，点一下重试"
                 signedIn -> "正在同步"
                 else -> "登录后同步"
             },
-            onClick = if (liked != null) ({ onOpenPlaylist(liked.id, "我喜欢的音乐") }) else if (signedIn) null else onLogin,
+            onClick = when {
+                liked != null -> ({ onOpenPlaylist(liked.id, "我喜欢的音乐") })
+                signedIn && syncFailed -> ({ library?.refresh(); Unit })
+                signedIn -> null
+                else -> onLogin
+            },
         ),
         Entry(LineIcon.History, "最近播放", recentCount?.let { if (it == 0) "还没有" else "$it 首 · 本机" } ?: "本机", onClick = onOpenRecent),
         Entry(LineIcon.Chart, "听歌排行", if (signedIn) "最近一周" else "登录后可用", onClick = if (signedIn) onOpenRanking else onLogin),
@@ -125,6 +132,7 @@ fun LibraryScreen(
                     ChoiceRow(listOf("创建的歌单", "收藏的歌单"), shelf, { shelf = it }, Modifier.padding(top = 14.dp))
                     when {
                         !signedIn && previewPlaylists == null -> Placeholder("登录后，这里会列出你$shelf")
+                        shelfItems == null && syncFailed -> Placeholder("没能同步歌单，网络好了再试试", "重试") { library?.refresh() }
                         shelfItems == null -> Placeholder("正在同步…")
                         shelfItems.isEmpty() && shelf != "创建的歌单" -> Placeholder("还没有收藏歌单。在别人的歌单里点「收藏」")
                     }

@@ -3,6 +3,7 @@ package io.lanyin.player.ui.theme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
+import io.lanyin.player.ui.design.lcdStyle
 import io.lanyin.player.ui.design.screenStyle
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,6 +26,8 @@ class ContrastTest {
                 if (style.backdrop == BackdropKind.Device) {
                     block("${theme.label}/${if (style.dark) "dark" else "light"} screen", style.screenStyle().colors)
                 }
+                // …and so is 游's LCD.
+                if (style.backdrop == BackdropKind.Game) block("${theme.label} LCD", style.lcdStyle().colors)
             }
         }
     }

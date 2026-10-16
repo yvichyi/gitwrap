@@ -88,6 +88,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -108,6 +109,7 @@ import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.design.DeviceScreen
 import io.lanyin.player.ui.design.VuMeter
 import io.lanyin.player.ui.design.keycap
+import io.lanyin.player.ui.design.padKey
 import io.lanyin.player.ui.theme.BackdropKind
 import io.lanyin.player.ui.theme.ButtonKind
 import io.lanyin.player.ui.theme.DockKind
@@ -324,14 +326,17 @@ private fun PortraitPlayer(
             }
         }
         }
-        if (style.backdrop == BackdropKind.Device) {
-            // 机 shows the artwork and the lyrics on the screen set into its case.
-            DeviceScreen(Modifier.weight(1f).fillMaxWidth().padding(top = 2.dp).enter(entrance, 1)) {
+        when (style.backdrop) {
+            // 机 shows the artwork and the lyrics on the screen set into its case, 游 on its LCD.
+            BackdropKind.Device -> DeviceScreen(Modifier.weight(1f).fillMaxWidth().padding(top = 2.dp).enter(entrance, 1)) {
                 ScreenHeader(state)
                 stage(Modifier.weight(1f).fillMaxWidth())
             }
-        } else {
-            stage(Modifier.weight(1f).fillMaxWidth())
+            BackdropKind.Game -> io.lanyin.player.ui.design.GameScreen(state.isPlaying, Modifier.weight(1f).fillMaxWidth().padding(top = 2.dp).enter(entrance, 1)) {
+                LcdHeader(state)
+                stage(Modifier.weight(1f).fillMaxWidth())
+            }
+            else -> stage(Modifier.weight(1f).fillMaxWidth())
         }
         TrackTitle(state, Modifier.padding(top = 14.dp).enter(entrance, 3))
         SeekBar(
@@ -359,6 +364,17 @@ private fun artSize(skin: PlayerSkin, maxWidth: Dp, maxHeight: Dp): Modifier =
     }
 
 private const val CASSETTE_RATIO = 1.58f
+
+/** The top line of 游's LCD, as a game's status bar. */
+@Composable
+private fun LcdHeader(state: PlayerState) {
+    val style = Lanyin.style
+    val label = style.type.label.copy(fontSize = 12.sp, letterSpacing = 0.5.sp)
+    Row(Modifier.fillMaxWidth().height(24.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(if (state.isPlaying) "▶ NOW PLAYING" else "Ⅱ PAUSE", style = label, color = style.colors.content, maxLines = 1, modifier = Modifier.weight(1f))
+        Text("%02d/%02d".format(state.trackNumber, state.trackCount), style = label, color = style.colors.content, maxLines = 1)
+    }
+}
 
 /** The status line along the top of 机's screen: track counter, the VU meter, transport state. */
 @Composable
@@ -525,7 +541,7 @@ private fun StateLyrics(
             Text("歌词加载中…", style = Lanyin.style.type.caption, color = Lanyin.colors.muted)
         }
     } else if (state.lyrics.isEmpty()) {
-        Instrumental(textStyle, centered, modifier)
+        Instrumental(textStyle, centered, modifier, state.lyricsGap, state::retryLyrics)
     } else {
         val index = scrubMs?.let { lyricIndexAt(state.lyrics, it) } ?: state.currentLyricIndex
         val scrubbing = scrubMs != null
@@ -538,13 +554,27 @@ private fun StateLyrics(
 }
 
 @Composable
-private fun Instrumental(textStyle: TextStyle, centered: Boolean, modifier: Modifier = Modifier) {
+private fun Instrumental(
+    textStyle: TextStyle,
+    centered: Boolean,
+    modifier: Modifier = Modifier,
+    gap: LyricsGap = LyricsGap.Instrumental,
+    onRetry: () -> Unit = {},
+) {
     val style = Lanyin.style
     val c = style.colors
-    Box(modifier, contentAlignment = if (centered) Alignment.Center else Alignment.CenterStart) {
+    val (headline, note) = when (gap) {
+        LyricsGap.Instrumental -> "纯音乐，请欣赏" to "这首歌没有歌词"
+        LyricsGap.Missing -> "暂无歌词" to "网易云还没有这首歌的歌词"
+        LyricsGap.Failed -> "歌词没能加载" to "点一下重试"
+    }
+    Box(
+        modifier.then(if (gap == LyricsGap.Failed) Modifier.pressable(onClick = onRetry) else Modifier),
+        contentAlignment = if (centered) Alignment.Center else Alignment.CenterStart,
+    ) {
         Column(horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start) {
             Text(
-                "纯音乐，请欣赏",
+                headline,
                 style = textStyle.copy(
                     fontFamily = if (style.lyric.serif) style.display else textStyle.fontFamily,
                     fontWeight = if (style.lyric.serif) FontWeight.Medium else FontWeight.Bold,
@@ -552,7 +582,7 @@ private fun Instrumental(textStyle: TextStyle, centered: Boolean, modifier: Modi
                 ),
                 color = c.content.copy(alpha = 0.7f),
             )
-            Text("这首歌没有歌词", style = style.type.caption, color = c.muted, modifier = Modifier.padding(top = 6.dp))
+            Text(note, style = style.type.caption, color = c.muted, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }
@@ -806,10 +836,17 @@ private fun PlayerTopBar(state: PlayerState, onCollapse: () -> Unit, modifier: M
                     }
                     // 机: the maker's name and model, as printed on the case.
                     BackdropKind.Device -> Text("LANYIN · L-01", style = style.type.label.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold), color = c.content, maxLines = 1)
+                    // 报: the masthead.
+                    BackdropKind.Paper -> Text("澜音日报", style = style.type.title.copy(fontFamily = style.display, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 0.16.em), color = c.content, maxLines = 1)
+                    // 游: the console's name, in the navy of its lettering.
+                    BackdropKind.Game -> Text("LANYIN POCKET", style = style.type.label.copy(fontSize = 13.sp, letterSpacing = 1.sp), color = c.accentAlt, maxLines = 1)
+                    // 酸: a track number between stars.
+                    BackdropKind.Acid -> Text("★ TRACK %02d ★".format(state.trackNumber), style = style.type.label.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold), color = c.accent, maxLines = 1)
                     else -> Text("正在播放", style = style.type.label, color = c.muted, maxLines = 1)
                 }
                 Text(
-                    state.playlistName, style = style.type.caption.copy(fontWeight = FontWeight.Medium),
+                    if (style.backdrop == BackdropKind.Paper) "第 %02d 版 · %s".format(state.trackNumber, state.playlistName) else state.playlistName,
+                    style = style.type.caption.copy(fontWeight = FontWeight.Medium),
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp),
                 )
             }
@@ -825,7 +862,12 @@ private fun TrackTitle(state: PlayerState, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             TrackSwitch(state, Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true)) { track ->
-                Text(track.title, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // 酸's title is polished chrome, like its page titles.
+                if (Lanyin.style.edge == EdgeKind.Chrome) {
+                    Text(track.title, style = MaterialTheme.typography.headlineSmall.copy(brush = io.lanyin.player.ui.design.ChromeBrush), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                } else {
+                    Text(track.title, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
             TrackSwitch(state, Modifier.padding(top = 2.dp)) { track ->
                 Text(
@@ -914,10 +956,16 @@ private fun UtilityRow(
 private fun TransportControls(state: PlayerState, playSize: Dp, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    // 机's transport is a row of keys.
-    val keys = style.button == ButtonKind.Key
-    val cap = if (keys) Modifier.padding(2.dp).keycap(RoundedCornerShape(14.dp), style) else Modifier
+    // 机's transport is a row of keys, 游's the console's dark D-pad keys.
+    val keys = style.button == ButtonKind.Key || style.button == ButtonKind.Pad
+    val cap = when (style.button) {
+        ButtonKind.Key -> Modifier.padding(2.dp).keycap(RoundedCornerShape(14.dp), style)
+        ButtonKind.Pad -> Modifier.padding(3.dp).padKey(RoundedCornerShape(8.dp))
+        else -> Modifier
+    }
     val skipIcon = if (keys) 26.dp else 34.dp
+    val side = if (style.button == ButtonKind.Pad) io.lanyin.player.ui.design.GamePadGlyph else c.muted
+    val skip = if (style.button == ButtonKind.Pad) io.lanyin.player.ui.design.GamePadGlyph else c.content
     val scope = rememberCoroutineScope()
     val back = remember { Animatable(0f) }
     val forward = remember { Animatable(0f) }
@@ -938,19 +986,19 @@ private fun TransportControls(state: PlayerState, playSize: Dp, modifier: Modifi
                     PlayMode.REPEAT_ONE -> LineIcon.RepeatOne
                     PlayMode.SHUFFLE -> LineIcon.Shuffle
                 },
-                mode.label, state::cyclePlayMode, tint = c.muted,
+                mode.label, state::cyclePlayMode, tint = side,
             )
         }
         IconAction(
             LineIcon.Previous, "上一首", { state.skipPrevious(); push(back, -1f) },
-            Modifier.graphicsLayer { translationX = back.value * 7.dp.toPx() }.then(cap), iconSize = skipIcon,
+            Modifier.graphicsLayer { translationX = back.value * 7.dp.toPx() }.then(cap), tint = skip, iconSize = skipIcon,
         )
         PlayPauseButton(state.isPlaying, state::togglePlay, playSize, feed = state.audioFeed)
         IconAction(
             LineIcon.Next, "下一首", { state.skipNext(); push(forward, 1f) },
-            Modifier.graphicsLayer { translationX = forward.value * 7.dp.toPx() }.then(cap), iconSize = skipIcon,
+            Modifier.graphicsLayer { translationX = forward.value * 7.dp.toPx() }.then(cap), tint = skip, iconSize = skipIcon,
         )
         val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
-        IconAction(LineIcon.Queue, "播放队列", { openSheet(io.lanyin.player.ui.music.Sheet.Queue) }, cap, tint = c.muted)
+        IconAction(LineIcon.Queue, "播放队列", { openSheet(io.lanyin.player.ui.music.Sheet.Queue) }, cap, tint = side)
     }
 }

@@ -49,6 +49,8 @@ import io.lanyin.player.ui.theme.DockKind
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.PlayerSkin
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 /** Mini player: a floating pill, or a plain docked row in themes with a docked bottom bar. */
 @Composable
@@ -119,7 +121,13 @@ private fun MiniPlayButton(state: PlayerState) {
     val style = Lanyin.style
     val c = style.colors
     val morph by animateFloatAsState(if (state.isPlaying) 1f else 0f, style.bouncy.spec(), label = "miniMorph")
-    Box(Modifier.size(48.dp).pressable(onClick = state::togglePlay), contentAlignment = Alignment.Center) {
+    Box(
+        Modifier
+            .size(48.dp)
+            .pressable(onClick = state::togglePlay)
+            .semantics { contentDescription = if (state.isPlaying) "暂停" else "播放" },
+        contentAlignment = Alignment.Center,
+    ) {
         Canvas(Modifier.size(36.dp)) {
             if (style.edge == EdgeKind.Brutal) {
                 // 格: a square key with the progress as a bar filling along its foot.

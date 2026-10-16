@@ -651,6 +651,26 @@ class ScreenshotTest {
     @Config(qualifiers = LANDSCAPE)
     @Test fun device_land() = capture("m8_device_land", AppTheme.DEVICE, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL) }
 
+    // M9: 报, 游 and 酸.
+    @Test fun paper_cover() = capture("m9_paper_cover", AppTheme.PAPER, ThemeMode.LIGHT) { Player(PlayerSkin.COVER) }
+    @Test fun paper_vinyl() = capture("m9_paper_vinyl", AppTheme.PAPER, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL) }
+    @Test fun paper_lyrics() = capture("m9_paper_lyrics", AppTheme.PAPER, ThemeMode.LIGHT) { Player(PlayerSkin.LYRICS) }
+    @Test fun paper_night() = capture("m9_paper_night", AppTheme.PAPER, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun paper_land() = capture("m9_paper_land", AppTheme.PAPER, ThemeMode.LIGHT) { Player(PlayerSkin.COVER) }
+    @Test fun game_cover() = capture("m9_game_cover", AppTheme.GAME, ThemeMode.LIGHT) { Player(PlayerSkin.COVER) }
+    @Test fun game_vinyl() = capture("m9_game_vinyl", AppTheme.GAME, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL) }
+    @Test fun game_lyrics() = capture("m9_game_lyrics", AppTheme.GAME, ThemeMode.LIGHT) { Player(PlayerSkin.LYRICS) }
+    @Test fun game_paused() = capture("m9_game_paused", AppTheme.GAME, ThemeMode.LIGHT) { Player(PlayerSkin.CASSETTE, DemoPlayerState()) }
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun game_land() = capture("m9_game_land", AppTheme.GAME, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL) }
+    @Test fun acid_cover() = capture("m9_acid_cover", AppTheme.ACID, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+    @Test fun acid_vinyl() = capture("m9_acid_vinyl", AppTheme.ACID, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
+    @Test fun acid_lyrics() = capture("m9_acid_lyrics", AppTheme.ACID, ThemeMode.DARK) { Player(PlayerSkin.LYRICS) }
+    @Test fun acid_paused() = capture("m9_acid_paused", AppTheme.ACID, ThemeMode.DARK) { Player(PlayerSkin.COVER, DemoPlayerState()) }
+    @Config(qualifiers = LANDSCAPE)
+    @Test fun acid_land() = capture("m9_acid_land", AppTheme.ACID, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
+
     // M6: the player's accents taken from the cover.
     private fun tinted(primary: Long, secondary: Long?, skin: PlayerSkin) = @Composable {
         io.lanyin.player.ui.theme.TintedBy(io.lanyin.player.ui.theme.CoverSeeds(primary.toInt(), secondary?.toInt())) { Player(skin) }

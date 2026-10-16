@@ -64,12 +64,22 @@ import io.lanyin.player.ui.theme.ButtonKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.SeekKind
 import kotlinx.coroutines.launch
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.toggleableState
 
 /**
  * Play/pause whose glyph morphs between the triangle and the two bars. With a [feed] it also
  * answers the music while playing: an ink ring leaves 墨's button on each beat, 暮's glows with
  * the level, 霓's tube flares, 格's block kicks, 影's iris opens to the light, a ring of lights
- * round 点's disc fills with the level and 机's key glows.
+ * round 点's disc fills with the level, 机's key glows, 报's block slips off its red plate, 游's A
+ * button is pressed on the beat and a starburst flashes out round 酸's disc.
  */
 @Composable
 fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: Modifier = Modifier, feed: io.lanyin.player.core.audio.AudioFeed? = null) {
@@ -119,12 +129,13 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
                 val glow = r * (1.25f + 0.35f * l)
                 drawCircle(Brush.radialGradient(listOf(c.accent.copy(alpha = 0.3f * l + 0.18f * beat()), Color.Transparent), center + Offset(0f, 4.dp.toPx()), glow), glow, center + Offset(0f, 4.dp.toPx()))
             }
+            ButtonKind.Burst -> drawBeatBurst(style, beat(), clock.floatValue * 0.4f)
             else -> Unit
         }
     }
     val shape = when (style.button) {
         ButtonKind.Blob -> CircleShape
-        ButtonKind.Brutal -> RectangleShape
+        ButtonKind.Brutal, ButtonKind.Stamp -> RectangleShape
         else -> CircleShape
     }
     val glyphColor = when (style.button) {
@@ -151,15 +162,23 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
         ButtonKind.Disc -> Modifier.clip(shape).background(c.content)
         // 机: the orange key.
         ButtonKind.Key -> Modifier.keycap(shape, style, accent = true)
+        // 报: a block of ink on its red plate.
+        ButtonKind.Stamp -> Modifier.drawBehind { drawStamp(style, beat()) }
+        // 游: the A button.
+        ButtonKind.Pad -> Modifier.drawBehind { drawAButton(style) }
+        // 酸: the lime disc.
+        ButtonKind.Burst -> Modifier.drawBehind { drawLimeDisc(style, level()) }
     }
     Box(
         modifier
             .size(size)
             .then(reacts)
             .pressable(onClick = onClick)
+            .semantics { contentDescription = if (playing) "暂停" else "播放" }
             .graphicsLayer {
-                // 格's block jumps a little on the beat.
+                // 格's block jumps a little on the beat; 游's A button is pressed on it.
                 if (style.button == ButtonKind.Brutal) translationY = -3.dp.toPx() * beat().let { it * it }
+                if (style.button == ButtonKind.Pad) translationY = 3.dp.toPx() * beat().let { it * it }
             }
             .then(container),
         contentAlignment = Alignment.Center,
@@ -167,7 +186,7 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
         val glyph = when (style.button) {
             ButtonKind.Outline -> 0.32f
             ButtonKind.Aperture -> 0.3f
-            ButtonKind.Disc, ButtonKind.Key -> 0.34f
+            ButtonKind.Disc, ButtonKind.Key, ButtonKind.Stamp, ButtonKind.Pad, ButtonKind.Burst -> 0.34f
             else -> 0.42f
         }
         Canvas(Modifier.size(size * glyph)) {
@@ -309,6 +328,13 @@ fun SeekBar(
         Canvas(
             trackModifier
                 .height(32.dp)
+                // Readable and adjustable with TalkBack.
+                .semantics {
+                    contentDescription = "播放进度"
+                    stateDescription = "${formatTime(position())} / ${formatTime(durationMs)}"
+                    progressBarRangeInfo = ProgressBarRangeInfo((position().toFloat() / durationMs.coerceAtLeast(1)).coerceIn(0f, 1f), 0f..1f)
+                    setProgress { f -> onSeek((f.coerceIn(0f, 1f) * durationMs).toLong()); true }
+                }
                 .pointerInput(durationMs) {
                     detectTapGestures { o -> onSeek((o.x / size.width).coerceIn(0f, 1f).times(durationMs).toLong()) }
                 }
@@ -335,6 +361,9 @@ fun SeekBar(
                 SeekKind.Film -> drawFilmTrack(f, style)
                 SeekKind.Dots -> drawDotsTrack(f, dragging, style)
                 SeekKind.Fader -> drawFaderTrack(f, dragging, style)
+                SeekKind.Ruler -> drawRulerTrack(f, dragging, style)
+                SeekKind.Blocks -> drawBlocksTrack(f, style)
+                SeekKind.Stripe -> drawStripeTrack(f, position() / 1000f, dragging, style)
             }
         }
     }
@@ -547,6 +576,8 @@ fun ThemedButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
     }
     Box(
         modifier
+            // Before the surface, so a button that isn't ready fades fill and all, not just its label.
+            .graphicsLayer { alpha = if (enabled) 1f else 0.4f }
             .then(
                 if (hairline) {
                     Modifier.pressable(enabled = enabled, onClick = onClick).border(1.dp, c.content, style.chipShape)
@@ -554,7 +585,6 @@ fun ThemedButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
                     Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Accent, onClick = if (enabled) onClick else null)
                 },
             )
-            .graphicsLayer { alpha = if (enabled) 1f else 0.4f }
             .padding(horizontal = 22.dp, vertical = 11.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -588,7 +618,15 @@ fun ThemedSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifi
     val on by animateFloatAsState(if (checked) 1f else 0f, style.bouncy.spec(), label = "switch")
     val hairline = style.edge == EdgeKind.Hairline
     val square = style.chipShape == RectangleShape
-    Canvas(modifier.size(44.dp, 26.dp).pressable { onChange(!checked) }) {
+    Canvas(
+        modifier
+            .size(44.dp, 26.dp)
+            .pressable { onChange(!checked) }
+            .semantics {
+                role = Role.Switch
+                toggleableState = androidx.compose.ui.state.ToggleableState(checked)
+            },
+    ) {
         val h = size.height
         val r = if (square) 0f else h / 2
         if (hairline) {
@@ -644,7 +682,9 @@ fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String?
 fun PageTitle(title: String, modifier: Modifier = Modifier, subtitle: String? = null) {
     val style = Lanyin.style
     androidx.compose.foundation.layout.Column(modifier) {
-        Text(title, style = style.type.display, color = style.colors.content)
+        // 酸's page titles are polished chrome.
+        if (style.edge == EdgeKind.Chrome) Text(title, style = style.type.display.copy(brush = ChromeBrush))
+        else Text(title, style = style.type.display, color = style.colors.content)
         if (subtitle != null) {
             Text(subtitle, style = style.type.caption, color = style.colors.muted, modifier = Modifier.padding(top = 6.dp))
         }

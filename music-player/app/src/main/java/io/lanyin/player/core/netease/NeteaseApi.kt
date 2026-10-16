@@ -125,9 +125,19 @@ class NeteaseApi(private val client: NeteaseClient, private val nos: NosUploader
 
     // —— Library ——
 
+    /** Every playlist the user made or collected, a page of [limit] at a time while NetEase says there's more. */
     suspend fun userPlaylists(uid: Long, limit: Int = 100): List<Playlist> {
-        val r = client.weapi("/api/user/playlist", buildJsonObject { put("uid", uid); put("limit", limit); put("offset", 0); put("includeVideo", true) }).requireOk()
-        return r.decode<UserPlaylistsDto>().playlist.map { it.toPlaylist() }
+        val all = mutableListOf<Playlist>()
+        var offset = 0
+        // NetEase caps a user at a few thousand; the page cap is only a guard against a loop.
+        repeat(MAX_PLAYLIST_PAGES) {
+            val r = client.weapi("/api/user/playlist", buildJsonObject { put("uid", uid); put("limit", limit); put("offset", offset); put("includeVideo", true) }).requireOk()
+            val page = r.decode<UserPlaylistsDto>()
+            all += page.playlist.map { it.toPlaylist() }
+            if (!page.more || page.playlist.isEmpty()) return all.distinctBy { it.id }
+            offset += page.playlist.size
+        }
+        return all.distinctBy { it.id }
     }
 
     suspend fun likedIds(uid: Long): Set<Long> =
@@ -450,6 +460,8 @@ class NeteaseApi(private val client: NeteaseClient, private val nos: NosUploader
             translation = dto.tlyric?.lyric?.takeIf { it.isNotBlank() },
             wordTimed = dto.yrc?.lyric?.takeIf { it.isNotBlank() },
             instrumental = dto.pureMusic == true || dto.nolyric == true,
+            // 「纯音乐」 is NetEase's own mark; no lyrics or none collected yet is something else.
+            missing = dto.pureMusic != true && (dto.nolyric == true || dto.uncollected == true || dto.lrc?.lyric.isNullOrBlank()),
         )
     }
 
@@ -481,6 +493,9 @@ class NeteaseApi(private val client: NeteaseClient, private val nos: NosUploader
     private companion object {
         /** Comment threads on songs are named `R_SO_4_{id}`. */
         const val SONG_THREAD = "R_SO_4_"
+
+        /** At most this many pages of a user's playlists. */
+        const val MAX_PLAYLIST_PAGES = 30
 
         /** What the reference declares for every upload; NetEase reads the real rate from the file. */
         const val UPLOAD_BITRATE = "999000"
@@ -573,7 +588,7 @@ internal class PlaylistDto(
 
 @Serializable internal class ToplistDto(val list: List<PlaylistDto> = emptyList())
 @Serializable internal class PersonalizedDto(val result: List<PlaylistDto> = emptyList())
-@Serializable internal class UserPlaylistsDto(val playlist: List<PlaylistDto> = emptyList())
+@Serializable internal class UserPlaylistsDto(val playlist: List<PlaylistDto> = emptyList(), val more: Boolean = false)
 @Serializable internal class PlaylistDetailDto(val playlist: PlaylistDto? = null)
 @Serializable internal class LikeListDto(val ids: List<Long> = emptyList())
 @Serializable internal class DailyDto(val data: DailyDataDto? = null)
@@ -624,6 +639,7 @@ internal class LyricDto(
     val yrc: LyricTextDto? = null,
     val pureMusic: Boolean? = null,
     val nolyric: Boolean? = null,
+    val uncollected: Boolean? = null,
 )
 
 @Serializable

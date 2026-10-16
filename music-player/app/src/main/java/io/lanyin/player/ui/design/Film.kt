@@ -222,10 +222,13 @@ internal fun DrawScope.drawFilmTrack(f: Float, style: LanyinStyle) {
     val pitch = 9f * density
     val hole = Size(4f * density, 3f * density)
     var hx = pitch / 2f
+    val holeTop = top + h * 0.07f
+    val holeBottom = top + h * 0.93f - hole.height
+    val corner = CornerRadius(1f * density)
     while (hx < size.width) {
-        for (y in listOf(top + h * 0.07f, top + h * 0.93f - hole.height)) {
-            drawRoundRect(c.content.copy(alpha = if (hx < x) 0.32f else 0.16f), Offset(hx - hole.width / 2f, y), hole, CornerRadius(1f * density))
-        }
+        val color = c.content.copy(alpha = if (hx < x) 0.32f else 0.16f)
+        drawRoundRect(color, Offset(hx - hole.width / 2f, holeTop), hole, corner)
+        drawRoundRect(color, Offset(hx - hole.width / 2f, holeBottom), hole, corner)
         hx += pitch
     }
     var fx = 0f
@@ -246,11 +249,6 @@ internal fun DrawScope.drawDateStamp(text: String, topLeft: Offset, height: Floa
     val t = height * 0.13f
     var x = topLeft.x
     val y = topLeft.y
-    // Segments a b c d e f g, as on a calculator.
-    val digits = mapOf(
-        '0' to "abcdef", '1' to "bc", '2' to "abged", '3' to "abgcd", '4' to "fgbc",
-        '5' to "afgcd", '6' to "afgedc", '7' to "abc", '8' to "abcdefg", '9' to "abcfgd",
-    )
     for (ch in text) {
         when (ch) {
             ' ' -> x += dw * 0.6f
@@ -259,7 +257,7 @@ internal fun DrawScope.drawDateStamp(text: String, topLeft: Offset, height: Floa
                 x += t * 2.6f
             }
             else -> {
-                val segs = digits[ch] ?: ""
+                val segs = SevenSegments[ch] ?: ""
                 val half = height / 2f
                 fun seg(from: Offset, to: Offset) = drawLine(color, Offset(x + from.x, y + from.y), Offset(x + to.x, y + to.y), t, StrokeCap.Round)
                 // A slight forward slant, as the stamps print.
@@ -276,6 +274,12 @@ internal fun DrawScope.drawDateStamp(text: String, topLeft: Offset, height: Floa
         }
     }
 }
+
+/** Each digit's lit segments, a b c d e f g as on a calculator. */
+private val SevenSegments = mapOf(
+    '0' to "abcdef", '1' to "bc", '2' to "abged", '3' to "abgcd", '4' to "fgbc",
+    '5' to "afgcd", '6' to "afgedc", '7' to "abc", '8' to "abcdefg", '9' to "abcfgd",
+)
 
 /** How wide [drawDateStamp] draws [text] at [height]. */
 internal fun dateStampWidth(text: String, height: Float): Float = text.sumOf { ch ->

@@ -1,15 +1,17 @@
 package io.lanyin.player.ui.theme
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import coil3.SingletonImageLoader
 import coil3.compose.LocalPlatformContext
@@ -22,6 +24,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -159,15 +162,18 @@ object CoverColors {
         (0xff shl 24) or ((r * 255f + 0.5f).toInt().coerceIn(0, 255) shl 16) or ((g * 255f + 0.5f).toInt().coerceIn(0, 255) shl 8) or (b * 255f + 0.5f).toInt().coerceIn(0, 255)
 }
 
+/** Themes whose accent is part of what they are, so following the cover leaves it alone. */
+private val OwnAccent = setOf(BackdropKind.Dot, BackdropKind.Device, BackdropKind.Paper, BackdropKind.Game, BackdropKind.Acid)
+
 /** The theme's colours with the accents taken from [seeds]; the backdrop, text and like colour stay the theme's. */
 fun LanyinStyle.tintedBy(seeds: CoverSeeds): LanyinColors {
     val c = colors
     val bg = c.bg.toArgb()
     val accent = CoverColors.fit(seeds.primary, bg, dark)
     val alt = CoverColors.fit(seeds.secondary ?: seeds.primary, bg, dark, minContrast = 3f)
-    // 点 stays black and white and 机 keeps its orange key: only their one spot of colour, the
-    // red dot or the blue, comes from the cover.
-    if (backdrop == BackdropKind.Dot || backdrop == BackdropKind.Device) return c.copy(accentAlt = Color(accent))
+    // 点 stays black and white, 机 keeps its orange key, 报 its red pen, 游 its magenta buttons
+    // and 酸 its lime: only their second colour comes from the cover.
+    if (backdrop in OwnAccent) return c.copy(accentAlt = Color(accent))
     return c.copy(
         accent = Color(accent),
         accentAlt = Color(alt),
@@ -182,14 +188,33 @@ fun LanyinStyle.tintedBy(seeds: CoverSeeds): LanyinColors {
 fun TintedBy(seeds: CoverSeeds?, content: @Composable () -> Unit) {
     val style = Lanyin.style
     val target = remember(style, seeds) { seeds?.let { style.tintedBy(it) } ?: style.colors }
-    val spec = tween<Color>(700)
-    val accent by animateColorAsState(target.accent, spec, label = "tintAccent")
-    val accentAlt by animateColorAsState(target.accentAlt, spec, label = "tintAlt")
-    val onAccent by animateColorAsState(target.onAccent, spec, label = "tintOn")
-    val outline by animateColorAsState(target.outline, spec, label = "tintOutline")
-    val tinted = style.copy(colors = style.colors.copy(accent = accent, accentAlt = accentAlt, onAccent = onAccent, outline = outline))
+    // The fade between two covers' colours goes in a few steps rather than every frame: each step
+    // hands the whole tree a new style, and per frame that recomposed the player all through a skip.
+    // A change of theme starts afresh, with no fade.
+    var from by remember(style) { mutableStateOf(target) }
+    var to by remember(style) { mutableStateOf(target) }
+    val progress = remember(style) { Animatable(1f) }
+    LaunchedEffect(style, target) {
+        if (target == to) return@LaunchedEffect
+        from = blendAccents(from, to, progress.value)
+        to = target
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween(700))
+    }
+    val step by remember(progress) { derivedStateOf { (progress.value * TINT_STEPS).roundToInt() } }
+    val tinted = remember(style, from, to, step) { style.copy(colors = blendAccents(from, to, step / TINT_STEPS.toFloat())) }
     CompositionLocalProvider(LocalLanyinStyle provides tinted, content = content)
 }
+
+private const val TINT_STEPS = 8
+
+/** [to] with its accent colours [t] of the way from [from]'s. */
+private fun blendAccents(from: LanyinColors, to: LanyinColors, t: Float): LanyinColors = to.copy(
+    accent = lerp(from.accent, to.accent, t),
+    accentAlt = lerp(from.accentAlt, to.accentAlt, t),
+    onAccent = lerp(from.onAccent, to.onAccent, t),
+    outline = lerp(from.outline, to.outline, t),
+)
 
 /** The seeds of the cover at [url], once it has loaded; null meanwhile and for colourless covers. */
 @Composable

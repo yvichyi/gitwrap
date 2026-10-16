@@ -16,6 +16,9 @@ enum class AppTheme(
     DEVICE("ji", "机", "暖灰机身，按键与指针"),
     FILM("ying", "影", "胶片颗粒，光影流转", darkOnly = true),
     GRID("ge", "格", "瑞士网格，粗边硬影", lightOnly = true),
+    PAPER("bao", "报", "报纸版面，铅字和红笔"),
+    GAME("you", "游", "像素掌机，四色绿屏", lightOnly = true),
+    ACID("suan", "酸", "铬金大字，荧光绿 Y2K", darkOnly = true),
     DUSK("mu", "暮", "晚霞暖光，柔和圆角"),
     NEON("ni", "霓", "电光蓝紫，夜色限定", darkOnly = true);
 

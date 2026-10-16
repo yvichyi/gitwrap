@@ -30,7 +30,16 @@ class AudioAnalyzer(
     private val re = FloatArray(n)
     private val im = FloatArray(n)
 
+    /** The rate analysed at: the stream's, divided down by [decimate] for hi-res streams. */
     private var sampleRate = 44_100
+    /**
+     * Input frames averaged into one analysed sample. Every timing here (the FFT's bins, the
+     * smoothing, the tempo window) is tuned in 1024-sample blocks at 44.1–48 kHz; a 96 or 192 kHz
+     * stream is brought down to that so its kick still lands in the bass bands and the timing holds.
+     */
+    private var decimate = 1
+    private var acc = 0f
+    private var accCount = 0
     private var channels = 2
     private var encoding = PcmEncoding.PCM16
     private var edges = bandEdges(sampleRate)
@@ -78,11 +87,15 @@ class AudioAnalyzer(
     private var playing = false
 
     fun configure(sampleRate: Int, channels: Int, encoding: PcmEncoding) = synchronized(lock) {
-        if (sampleRate != this.sampleRate) edges = bandEdges(sampleRate)
-        this.sampleRate = sampleRate
+        decimate = (sampleRate / 44_100).coerceAtLeast(1)
+        val rate = sampleRate / decimate
+        if (rate != this.sampleRate) edges = bandEdges(rate)
+        this.sampleRate = rate
         this.channels = channels.coerceAtLeast(1)
         this.encoding = encoding
         filled = 0
+        acc = 0f
+        accCount = 0
     }
 
     /** Reads (without consuming) the frames between [buffer]'s position and limit, the first at [presentationTimeUs]. */
@@ -95,7 +108,8 @@ class AudioAnalyzer(
         }
         val frameBytes = bytes * channels
         val frameCount = b.remaining() / frameBytes
-        val usPerFrame = 1_000_000.0 / sampleRate
+        // Per input frame; an analysed sample spans [decimate] of them.
+        val usPerFrame = 1_000_000.0 / (sampleRate * decimate)
         var p = b.position()
         for (f in 0 until frameCount) {
             var sum = 0f
@@ -103,10 +117,15 @@ class AudioAnalyzer(
                 sum += sample(b, p)
                 p += bytes
             }
-            if (filled == 0) blockStartUs = presentationTimeUs + (f * usPerFrame).toLong()
-            block[filled++] = sum / channels
+            if (filled == 0 && accCount == 0) blockStartUs = presentationTimeUs + (f * usPerFrame).toLong()
+            // Averaging neighbours is a gentle low-pass before dropping to the lower rate.
+            acc += sum / channels
+            if (++accCount < decimate) continue
+            block[filled++] = acc / decimate
+            acc = 0f
+            accCount = 0
             if (filled == n) {
-                analyse(blockStartUs + (n / 2 * usPerFrame).toLong())
+                analyse(blockStartUs + (n / 2 * decimate * usPerFrame).toLong())
                 filled = 0
             }
         }
@@ -268,6 +287,8 @@ class AudioAnalyzer(
     /** After a seek or a new track: what was analysed no longer lines up. */
     fun reset() = synchronized(lock) {
         filled = 0
+        acc = 0f
+        accCount = 0
         count = 0
         head = 0
         beatCount = 0

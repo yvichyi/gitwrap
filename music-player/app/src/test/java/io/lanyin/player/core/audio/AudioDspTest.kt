@@ -247,8 +247,7 @@ class AudioDspTest {
     }
 
     /** Feeds [seconds] of [signal] (stereo PCM16, 44.1 kHz) in 4096-frame buffers, as a sink would. */
-    private fun feed(analyzer: AudioAnalyzer, seconds: Float, signal: (Int) -> Float) {
-        val rate = 44_100
+    private fun feed(analyzer: AudioAnalyzer, seconds: Float, rate: Int = 44_100, signal: (Int) -> Float) {
         val total = (rate * seconds).toInt()
         var frame = 0
         while (frame < total) {
@@ -317,6 +316,24 @@ class AudioDspTest {
         val late = analyzer.beatTimes().filter { it > 4_000_000 }
         val gaps = late.zipWithNext { a, b -> b - a }
         assertTrue("beats $late", gaps.isNotEmpty() && gaps.all { it in 400_000..600_000 })
+    }
+
+    @Test
+    fun `a hi-res stream finds the same beat as a CD-rate one`() {
+        for (rate in listOf(96_000, 192_000)) {
+            var now = 0L
+            val analyzer = AudioAnalyzer(nowNanos = { now }).apply { configure(rate, 2, PcmEncoding.PCM16) }
+            val rng = java.util.Random(4)
+            feed(analyzer, 8f, rate) { f ->
+                val t = f / rate.toDouble()
+                val kick = if ((t % 0.5) < 0.08) 0.7f * sin(2 * PI * 60 * t).toFloat() else 0f
+                kick + (rng.nextFloat() - 0.5f) * 0.01f
+            }
+            assertEquals("tempo at $rate Hz", 500_000.0, analyzer.beatPeriodUs.toDouble(), 60_000.0)
+            val late = analyzer.beatTimes().filter { it > 4_000_000 }
+            val gaps = late.zipWithNext { a, b -> b - a }
+            assertTrue("beats at $rate Hz: $late", gaps.isNotEmpty() && gaps.all { it in 400_000..600_000 })
+        }
     }
 
     @Test

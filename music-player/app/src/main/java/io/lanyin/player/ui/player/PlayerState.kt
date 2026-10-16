@@ -72,6 +72,12 @@ abstract class PlayerState {
     /** Lyrics are on their way; [lyrics] is empty meanwhile but this isn't an instrumental. */
     open val lyricsLoading: Boolean get() = false
 
+    /** Why [lyrics] is empty once loading is done. */
+    open val lyricsGap: LyricsGap get() = LyricsGap.Instrumental
+
+    /** Fetches the lyrics again after they failed to load. */
+    open fun retryLyrics() {}
+
     /** Something to tell the listener (a song skipped as unplayable, say), or null. */
     open val notice: String? get() = null
 
@@ -165,3 +171,6 @@ fun PlayerFrameDriver(state: PlayerState) {
         while (state.isPlaying && isActive) withFrameMillis(state::onFrame)
     }
 }
+
+/** Why a track shows no lyrics: it's an instrumental, NetEase has none, or they didn't load. */
+enum class LyricsGap { Instrumental, Missing, Failed }

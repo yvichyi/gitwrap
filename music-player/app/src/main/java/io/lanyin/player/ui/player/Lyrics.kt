@@ -265,6 +265,7 @@ private fun LyricRow(
             glow = if (ls.glow) sweep else null,
             block = if (brutal) io.lanyin.player.ui.theme.GridYellow else null,
             blockEdge = c.outline,
+            marker = if (ls.marker) c.accent.copy(alpha = if (style.dark) 0.38f else 0.3f) else null,
         )
         if (showTranslation && line.translation != null) {
             Text(
@@ -296,8 +297,33 @@ fun SweepText(
     blockEdge: Color = Color.Black,
     /** [progress] counts characters (word-timed lyrics) rather than width. */
     byChars: Boolean = false,
+    /** A highlighter stroke under the lower half of the sung part, drawn as it's sung. */
+    marker: Color? = null,
 ) {
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val pen = if (marker != null && progress != null) {
+        Modifier.drawBehind {
+            val l = layout ?: return@drawBehind
+            var remaining = l.sweepWidth(progress(), byChars)
+            for (li in 0 until l.lineCount) {
+                if (remaining <= 0f) break
+                val left = l.getLineLeft(li)
+                val width = l.getLineRight(li) - left
+                val top = l.getLineTop(li)
+                val h = l.getLineBottom(li) - top
+                // Over the lower half of the line, a little past the ends, as a pen stroke runs.
+                drawRoundRect(
+                    marker,
+                    Offset(left - 3.dp.toPx(), top + h * 0.5f),
+                    Size(minOf(remaining, width) + 6.dp.toPx(), h * 0.38f),
+                    androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()),
+                )
+                remaining -= width
+            }
+        }
+    } else {
+        Modifier
+    }
     val highlight = if (block != null && progress != null) {
         Modifier.drawBehind {
             val l = layout ?: return@drawBehind
@@ -323,7 +349,7 @@ fun SweepText(
     } else {
         Modifier
     }
-    Box(modifier.then(highlight)) {
+    Box(modifier.then(highlight).then(pen)) {
         Text(text, style = style.copy(color = baseColor), onTextLayout = { layout = it })
         if (progress != null) {
             Text(
