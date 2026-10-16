@@ -64,6 +64,15 @@ class PlayerInteractionTest {
         compose.onNodeWithContentDescription("收起").assertIsDisplayed()
     }
 
+    @Config(qualifiers = "w850dp-h392dp-land-xhdpi")
+    @Test
+    fun `left alone in landscape, the bars stay`() {
+        show(DemoPlayerState().apply { togglePlay() })
+        // Well past the five seconds after which it used to go full screen by itself.
+        compose.mainClock.advanceTimeBy(12_000)
+        compose.onNodeWithContentDescription("收起").assertIsDisplayed()
+    }
+
     private fun countCollapse(): Int =
         compose.onAllNodes(androidx.compose.ui.test.hasContentDescription("收起")).fetchSemanticsNodes().size
 }

@@ -73,8 +73,6 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -123,9 +121,6 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** How long the landscape chrome stays up without a touch. */
-private const val CHROME_TIMEOUT_MS = 5_000L
-
 @Composable
 fun PlayerScreen(
     state: PlayerState,
@@ -135,6 +130,8 @@ fun PlayerScreen(
     onCollapse: () -> Unit,
     modifier: Modifier = Modifier,
     lyricScale: Float = 1f,
+    /** Open landscape already full screen, as after a tap on the stage; for previews and screenshots. */
+    startFullScreen: Boolean = false,
 ) {
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val style = Lanyin.style
@@ -166,7 +163,7 @@ fun PlayerScreen(
         }
     }
 
-    // Landscape is a stage: hide system bars, keep the screen on, fold the chrome away when idle.
+    // Landscape is a stage: hide system bars and keep the screen on.
     DisposableEffect(landscape) {
         val window = (view.context as? Activity)?.window
         val controller = window?.let { WindowCompat.getInsetsController(it, view) }
@@ -180,16 +177,10 @@ fun PlayerScreen(
         view.keepScreenOn = landscape && keepScreenOnInLandscape
         onDispose { view.keepScreenOn = false }
     }
-    // Any touch restarts the idle timer; a tap on the empty stage toggles full screen.
-    var touches by remember { mutableIntStateOf(0) }
-    var chromeVisible by remember { mutableStateOf(true) }
+    // Full screen only when asked for, with a tap on the empty stage: left alone, the bars stay,
+    // since several themes' stages look their best framed by them.
+    var chromeVisible by remember { mutableStateOf(!startFullScreen) }
     LaunchedEffect(landscape) { if (!landscape) chromeVisible = true }
-    LaunchedEffect(landscape, touches, chromeVisible) {
-        if (landscape && chromeVisible) {
-            delay(CHROME_TIMEOUT_MS)
-            chromeVisible = false
-        }
-    }
 
     val onRotate = { if (landscape) orientation.lockPortrait() else orientation.lockLandscape() }
 
@@ -207,15 +198,7 @@ fun PlayerScreen(
                     shape = RoundedCornerShape(36.dp * p)
                     clip = p > 0f
                 }
-                .background(c.bg)
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (event.type == PointerEventType.Press) touches++
-                        }
-                    }
-                },
+                .background(c.bg),
         ) {
             Backdrop(
                 Modifier.matchParentSize(), live = true, playing = state.isPlaying, trackNumber = state.trackNumber, feed = state.audioFeed,
@@ -398,10 +381,9 @@ internal fun ScreenHeader(state: PlayerState, meter: Boolean = true) {
 
 /**
  * Landscape is a stage between a top bar and a control bar. The top bar carries the collapse
- * button with the title beside it, as a window title; the stage holds the artwork in its
- * spectrum halo and the lyrics, the active line level with the artwork's centre. Tap the empty
- * stage (or wait five seconds) for full screen: the bars fold away and a quiet status line with
- * the title and the time takes their place.
+ * button with the title beside it, as a window title; the stage is the theme's own. Tap the
+ * empty stage for full screen (and again to come back): the bars fold away and a quiet status
+ * line with the title and the time takes their place.
  */
 @Composable
 private fun LandscapePlayer(

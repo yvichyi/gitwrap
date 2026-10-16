@@ -18,8 +18,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Each theme's landscape player: with its bars, full screen after the idle timeout, and with the
- * square cover, for reviewing the stages. Images land in build/outputs/roborazzi/land.
+ * Each theme's landscape player: with its bars, full screen (as after a tap on the stage), and
+ * with the square cover, for reviewing the stages. Images land in build/outputs/roborazzi/land.
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -36,7 +36,7 @@ class LandscapeTest(private val theme: AppTheme, private val mode: ThemeMode) {
 
     @get:Rule val compose = createComposeRule()
 
-    private fun shot(name: String, skin: PlayerSkin, settle: Long) {
+    private fun shot(name: String, skin: PlayerSkin, settle: Long, fullScreen: Boolean = false) {
         val state = DemoPlayerState().apply {
             togglePlay()
             seekTo(14_000)
@@ -44,7 +44,7 @@ class LandscapeTest(private val theme: AppTheme, private val mode: ThemeMode) {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             LanyinTheme(theme = theme, mode = mode) {
-                PlayerScreen(state, skin, rememberSpinState(true), keepScreenOnInLandscape = true, onCollapse = {})
+                PlayerScreen(state, skin, rememberSpinState(true), keepScreenOnInLandscape = true, onCollapse = {}, startFullScreen = fullScreen)
             }
         }
         compose.mainClock.advanceTimeBy(settle)
@@ -52,6 +52,6 @@ class LandscapeTest(private val theme: AppTheme, private val mode: ThemeMode) {
     }
 
     @Test fun vinyl() = shot("vinyl", PlayerSkin.VINYL, 1_500)
-    @Test fun idle() = shot("idle", PlayerSkin.VINYL, 6_500)
+    @Test fun idle() = shot("idle", PlayerSkin.VINYL, 1_500, fullScreen = true)
     @Test fun cover() = shot("cover", PlayerSkin.COVER, 1_800)
 }

@@ -85,8 +85,8 @@ class ScreenshotTest {
     }
 
     @Composable
-    private fun Player(skin: PlayerSkin, state: DemoPlayerState = playingAt(14_000)) {
-        PlayerScreen(state, skin, rememberSpinState(state.isPlaying), keepScreenOnInLandscape = true, onCollapse = {})
+    private fun Player(skin: PlayerSkin, state: DemoPlayerState = playingAt(14_000), fullScreen: Boolean = false) {
+        PlayerScreen(state, skin, rememberSpinState(state.isPlaying), keepScreenOnInLandscape = true, onCollapse = {}, startFullScreen = fullScreen)
     }
 
     private fun app(theme: AppTheme, mode: ThemeMode, skin: PlayerSkin = PlayerSkin.VINYL) {
@@ -526,15 +526,15 @@ class ScreenshotTest {
     @Test fun grid_land_cover() = capture("grid_land_cover", AppTheme.GRID, ThemeMode.LIGHT) { Player(PlayerSkin.COVER, playingAt(9_000, track = 2)) }
 
     @Config(qualifiers = LANDSCAPE)
-    @Test fun grid_land_idle() = capture("grid_land_idle", AppTheme.GRID, ThemeMode.LIGHT, settle = 6_500) { Player(PlayerSkin.VINYL) }
+    @Test fun grid_land_idle() = capture("grid_land_idle", AppTheme.GRID, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL, fullScreen = true) }
 
     @Config(qualifiers = LANDSCAPE)
     @Test fun grid_land_lyrics() = capture("grid_land_lyrics", AppTheme.GRID, ThemeMode.LIGHT) { Player(PlayerSkin.LYRICS, playingAt(6_000, track = 3)) }
 
     @Config(qualifiers = LANDSCAPE)
     @Test fun ink_land_vinyl_idle() {
-        // After five idle seconds the chrome folds away and the stage takes the room.
-        capture("ink_land_vinyl_idle", AppTheme.INK, ThemeMode.LIGHT, settle = 6_500) { Player(PlayerSkin.VINYL) }
+        // Full screen: the chrome folded away and the stage taking the room.
+        capture("ink_land_vinyl_idle", AppTheme.INK, ThemeMode.LIGHT) { Player(PlayerSkin.VINYL, fullScreen = true) }
     }
 
     @Config(qualifiers = LANDSCAPE)
