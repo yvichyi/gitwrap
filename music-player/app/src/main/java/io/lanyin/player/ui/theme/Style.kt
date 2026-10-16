@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -190,19 +191,21 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             motion = Motion(0.85f, 1100f), bouncy = Motion(0.55f, 900f), pressScale = 0.95f,
             iconStroke = 1.6f,
         )
-        // 暮: an evening sky. Warm paper (plum by night), terracotta fading to rose, soft rounded
-        // cards that float on a gentle shadow, a low sun; nothing outlined.
+        // 暮: a postcard from the coast. Cream paper with a grain to it (by night the blue hour,
+        // deep blue going violet), a real sky running from blue to peach over the sea, a crisp sun;
+        // headings in serif, dates and figures in a postcard's display serif, stamps and postmarks
+        // to mark sections, photos with white borders, airmail red and blue.
         AppTheme.DUSK -> LanyinStyle(
             theme = theme, dark = isDark,
             colors = if (isDark) duskDark else duskLight,
-            display = FontFamily.SansSerif, displayWeight = FontWeight.SemiBold, displayTracking = 0.em,
-            body = FontFamily.SansSerif, numeric = FontFamily.SansSerif,
-            cardShape = RoundedCornerShape(22.dp), chipShape = CircleShape, artShape = RoundedCornerShape(16.dp),
+            display = FontFamily.Serif, displayWeight = FontWeight.SemiBold, displayTracking = 0.01.em,
+            body = FontFamily.SansSerif, numeric = PostcardSerifFamily,
+            cardShape = RoundedCornerShape(12.dp), chipShape = CircleShape, artShape = RoundedCornerShape(4.dp),
             edge = EdgeKind.Soft, backdrop = BackdropKind.Dusk, seek = SeekKind.Pill,
             button = ButtonKind.Blob, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = true, activeScale = 1.1f, inactiveAlpha = 0.42f, blurStep = 0.5.dp, staggerMs = 40, glow = false, serif = false),
+            lyric = LyricStyle(centered = true, activeScale = 1.08f, inactiveAlpha = 0.4f, blurStep = 0.4.dp, staggerMs = 40, glow = false, serif = true, weight = FontWeight.SemiBold),
             motion = Motion(0.85f, 380f), bouncy = Motion(0.6f, 340f), pressScale = 0.96f,
-            iconStroke = 1.9f,
+            iconStroke = 1.8f,
         )
         // 格: Swiss grid meets brutalism. Paper, ink, three primaries; heavy grotesk headlines,
         // monospaced labels, square corners, thick rules and hard shadows that you press into.
@@ -410,6 +413,12 @@ val PixelFamily = FontFamily(
     Font(R.font.fusion_pixel, FontWeight.Black),
 )
 
+/** DM Serif Display (SIL OFL), 暮's hand on a postcard: dates, figures and the odd Latin word. */
+val PostcardSerifFamily = FontFamily(
+    Font(R.font.dm_serif_display, FontWeight.Normal),
+    Font(R.font.dm_serif_display_italic, FontWeight.Normal, FontStyle.Italic),
+)
+
 /** Archivo Black (SIL OFL), 酸's heading face; Chinese falls back to the system sans. */
 val ArchivoBlackFamily = FontFamily(
     Font(R.font.archivo_black, FontWeight.Normal),
@@ -450,13 +459,13 @@ val GridYellow = Color(0xFFFACC15)
 
 // Evening light on warm paper: terracotta into rose, a brown that is almost black.
 private val duskLight = LanyinColors(
-    bg = Color(0xFFF7F1EA), bgDeep = Color(0xFFF0D3C3), surface = Color(0xFFFFFBF7), surfaceAlt = Color(0xFFF2E7DD),
-    content = Color(0xFF2A1D1A), muted = Color(0xFF7D6A62), accent = Color(0xFFD2603A), accentAlt = Color(0xFFC24E63),
-    onAccent = Color(0xFFFFF7F2), outline = Color(0x1F2A1D1A), like = Color(0xFFC9403A), vinyl = Color(0xFF241A17),
+    bg = Color(0xFFF6EFE5), bgDeep = Color(0xFFF1DCC6), surface = Color(0xFFFFFBF5), surfaceAlt = Color(0xFFF0E6D8),
+    content = Color(0xFF2A221E), muted = Color(0xFF74665E), accent = Color(0xFFCF5634), accentAlt = Color(0xFFC24E63),
+    onAccent = Color(0xFFFFF8F1), outline = Color(0x1F2A221E), like = Color(0xFFC9403A), vinyl = Color(0xFF221A17),
 )
-// …and once the sun is down: plum and ember.
+// …and once the sun is down: the blue hour, deep blue going violet, the lamps coming on amber.
 private val duskDark = LanyinColors(
-    bg = Color(0xFF17110F), bgDeep = Color(0xFF2E1B26), surface = Color(0xFF231917), surfaceAlt = Color(0xFF2D211E),
-    content = Color(0xFFF3E6DA), muted = Color(0xFFB09A8E), accent = Color(0xFFEE7A4F), accentAlt = Color(0xFFDB6280),
-    onAccent = Color(0xFF1A0F0C), outline = Color(0x24F3E6DA), like = Color(0xFFF06A5A), vinyl = Color(0xFF0E0A09),
+    bg = Color(0xFF121629), bgDeep = Color(0xFF2B2647), surface = Color(0xFF1B2036), surfaceAlt = Color(0xFF242A42),
+    content = Color(0xFFF2EAE0), muted = Color(0xFFA29EB4), accent = Color(0xFFF29C6B), accentAlt = Color(0xFFD9738E),
+    onAccent = Color(0xFF1A1320), outline = Color(0x26F2EAE0), like = Color(0xFFF06A5A), vinyl = Color(0xFF0B0D17),
 )

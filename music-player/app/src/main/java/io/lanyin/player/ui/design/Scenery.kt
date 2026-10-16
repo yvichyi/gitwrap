@@ -75,23 +75,10 @@ internal fun DrawScope.drawInkWildlife(style: LanyinStyle, t: Float, audio: Back
     }
 }
 
-/**
- * 暮, over the song: the sky deepening toward night as it plays out (stars coming through at the
- * end), gulls gliding across, and the swell rolling in under the sun.
- */
-internal fun DrawScope.drawDuskEvening(style: LanyinStyle, t: Float, audio: BackdropAudio?, progress: Float, horizon: Float) {
+/** 暮, over the song: gulls gliding across the sky, and the swell rolling in below the horizon. */
+internal fun DrawScope.drawDuskEvening(style: LanyinStyle, t: Float, audio: BackdropAudio?, horizon: Float) {
     val c = style.colors
     val w = size.width
-    val p = progress.coerceIn(0f, 1f)
-    // Night coming on from the top of the sky.
-    drawRect(Brush.verticalGradient(listOf(Color(0xFF2B1B3D).copy(alpha = 0.32f * p), Color.Transparent), startY = 0f, endY = horizon))
-    if (p > 0.55f) {
-        val stars = (p - 0.55f) / 0.45f
-        for (i in 0 until 18) {
-            val tw = 0.5f + 0.5f * sin(t * (1.3f + hash01(i, 51)) + i)
-            drawCircle(Color.White.copy(alpha = 0.55f * stars * tw), (0.7f + 0.8f * hash01(i, 52)) * density, Offset(w * hash01(i, 53), horizon * 0.5f * hash01(i, 54)))
-        }
-    }
     // Gulls, gliding with an occasional beat of the wings.
     val travel = audio?.travel(3, 20f) ?: (t * 20f)
     for (k in 0 until 3) {
@@ -104,7 +91,7 @@ internal fun DrawScope.drawDuskEvening(style: LanyinStyle, t: Float, audio: Back
             quadraticTo(x - s * 0.5f, y - s * 0.75f * flap, x, y)
             quadraticTo(x + s * 0.5f, y - s * 0.75f * flap, x + s, y - s * 0.3f * flap)
         }
-        drawPath(gull, c.content.copy(alpha = 0.42f), style = Stroke(1.5f * density, cap = StrokeCap.Round))
+        drawPath(gull, (if (style.dark) Color(0xFF0B0E20) else c.content).copy(alpha = if (style.dark) 0.7f else 0.42f), style = Stroke(1.5f * density, cap = StrokeCap.Round))
     }
     // The swell: long low waves rolling in below the horizon.
     for (k in 0 until 4) {

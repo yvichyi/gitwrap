@@ -19,7 +19,7 @@ enum class AppTheme(
     PAPER("bao", "报", "报纸版面，铅字和红笔"),
     GAME("you", "游", "像素掌机，四色绿屏", lightOnly = true),
     ACID("suan", "酸", "糖果塑料，铬金 Y2K", darkOnly = true),
-    DUSK("mu", "暮", "晚霞暖光，柔和圆角"),
+    DUSK("mu", "暮", "海边明信片，晚霞与蓝调"),
     NEON("ni", "霓", "雨后夜街，霓虹招牌", darkOnly = true);
 
     companion object {

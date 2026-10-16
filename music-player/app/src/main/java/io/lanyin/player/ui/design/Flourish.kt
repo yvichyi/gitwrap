@@ -225,6 +225,8 @@ internal fun SectionMark(index: Int?) {
             Text("▸ %02dA".format(index), style = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = fixed(11f), letterSpacing = 0.1.em), color = FilmStamp, modifier = Modifier.padding(end = 10.dp))
         }
         BackdropKind.Game -> Canvas(Modifier.padding(end = 8.dp).size(width = 9.dp, height = 12.dp)) { drawMenuCursor(c.accent) }
+        // 暮: a stamp, each section in the next of the set.
+        BackdropKind.Dusk -> Box(Modifier.padding(end = 10.dp)) { StampMark(index) }
         // 酸: a gel bead, each section in the next flavour.
         BackdropKind.Acid -> Canvas(Modifier.padding(end = 8.dp).size(14.dp)) {
             drawGelBead(Flavor.all[((index ?: 1) - 1).mod(Flavor.all.size)])
@@ -276,6 +278,8 @@ internal fun PageTitleRule(modifier: Modifier = Modifier) {
             }
         }
         BackdropKind.Paper -> DoubleRule(modifier.padding(top = 8.dp))
+        // 暮: a short run of airmail stripes.
+        BackdropKind.Dusk -> Canvas(modifier.padding(top = 8.dp).size(54.dp, 5.dp)) { drawAirmailStripes(7.dp.toPx()) }
         else -> Unit
     }
 }

@@ -40,7 +40,7 @@ import kotlin.math.sin
  * The theme's backdrop. [live] animates it (the player); pages use a still, quieter version.
  * [playing] raises its energy: a faster grid, a livelier sun. With a [feed] the player's backdrop
  * also listens: 墨 blooms ink on the beat, 暮's sun swells with the bass while clouds drift and
- * motes of light rise, 霓's horizon becomes a skyline of the spectrum, 影's light leaks flare and
+ * the glints on the sea shimmer, 霓's horizon becomes a skyline of the spectrum, 影's light leaks flare and
  * 点's grid lights up in rings.
  */
 @Composable
@@ -50,7 +50,7 @@ fun Backdrop(
     playing: Boolean = false,
     trackNumber: Int? = null,
     feed: io.lanyin.player.core.audio.AudioFeed? = null,
-    /** How far through the song, 0..1; 暮's sun sets over it in landscape. */
+    /** How far through the song, 0..1; 暮's sun sets over it. */
     progress: () -> Float = { 0f },
 ) {
     val style = Lanyin.style
@@ -80,7 +80,15 @@ fun Backdrop(
                 if (!page && wide) drawInkWildlife(style, t, heard)
             }
             BackdropKind.Neon -> if (page) drawNightWall(style) else drawNightStreet(style, t, heard)
-            BackdropKind.Dusk -> drawDusk(style, t, e, page, heard, if (!page && wide) progress() else 0f)
+            BackdropKind.Dusk -> if (page) {
+                drawDuskPaper(style)
+            } else {
+                // Portrait: the sea under the photo, the sun behind its edge. Landscape: the sea
+                // under the stage, the sun at the far end.
+                val horizon = if (wide) 0.84f else 0.5f
+                drawDuskSky(style, t, e, heard, progress(), horizon, sunAt = if (wide) 0.9f else 0.86f, sunSize = if (wide) 0.2f else 0.15f)
+                drawDuskEvening(style, t, heard, size.height * horizon)
+            }
             BackdropKind.Grid -> {
                 drawGridPaper(style, page, measurer, trackNumber)
                 if (!page && wide && trackNumber != null) drawGridPoster(style, t, heard)
@@ -354,117 +362,6 @@ internal fun hash01(i: Int, salt: Int): Float {
     x = (x xor (x ushr 13)) * 1274126177
     x = x xor (x ushr 16)
     return (x and 0xFFFFFF) / 16777216f
-}
-
-/**
- * 暮: an evening sky over warm paper. A wash of peach and rose (plum at night) from the top, a
- * low sun with a soft glow, and fine film grain. On pages the sun is a glow in the corner; on the
- * player it sits low, beside the artwork rather than behind the lyrics, and breathes with the music.
- */
-private fun DrawScope.drawDusk(style: LanyinStyle, t: Float, e: Float, page: Boolean, audio: BackdropAudio? = null, progress: Float = 0f) {
-    val c = style.colors
-    val w = size.width
-    val h = size.height
-    val dark = style.dark
-    drawRect(c.bg)
-    // The sky: rose high up, peach lower, fading into the paper.
-    val skyEnd = h * if (page) 0.42f else 0.7f
-    val rose = lerp(c.accentAlt, c.bg, if (dark) 0.55f else 0.72f)
-    drawRect(Brush.verticalGradient(0f to rose, 0.45f to c.bgDeep, 1f to c.bg, startY = 0f, endY = skyEnd), size = Size(w, skyEnd))
-    val landscape = w > h
-    val radius = when {
-        page -> w * 0.2f
-        landscape -> h * 0.2f
-        else -> w * 0.2f
-    }
-    val breathe = 1f + 0.03f * e * sin(t * 1.3f) + 0.09f * (audio?.bass ?: 0f)
-    val center = when {
-        page -> Offset(w * 0.86f, h * 0.06f)
-        // In landscape the sun sinks toward the sea as the song plays out.
-        landscape -> Offset(w * 0.9f, h * 0.87f - radius * (1.25f + 0.3f - 1.15f * progress))
-        else -> Offset(w * 0.82f, h * 0.2f)
-    }
-    val seaLine = if (landscape && !page) h * 0.87f else center.y + radius * 1.25f
-    val sunCore = if (dark) lerp(c.accent, Color(0xFFFFC08A), 0.25f) else lerp(c.accent, Color(0xFFFFD2A6), 0.45f)
-    // Glow, then the disc with a soft edge; at night an ember sunk into the sky.
-    glowBlob(sunCore.copy(alpha = if (dark) 0.22f else 0.3f), center, radius * 3.2f * breathe)
-    // Below the sea's edge the sun has set.
-    clipRect(bottom = if (landscape && !page) seaLine else h) {
-    drawCircle(
-        Brush.radialGradient(
-            0f to sunCore.copy(alpha = if (dark) 0.75f else 0.9f),
-            0.82f to sunCore.copy(alpha = if (dark) 0.6f else 0.8f),
-            1f to sunCore.copy(alpha = 0f),
-            center = center, radius = radius * breathe,
-        ),
-        radius * breathe, center,
-    )
-    }
-    // Clouds pass in front of the sun.
-    if (!page) drawClouds(style, skyEnd, drift = audio?.travel(1, 0.6f + 0.6f * e) ?: (t * (0.6f + 0.6f * e)))
-    if (!page) {
-        // A calm sea under it: a few thin glints, drifting.
-        val horizon = seaLine
-        for (k in 0 until 5) {
-            val y = horizon + k * radius * 0.16f
-            val half = radius * (0.9f - k * 0.14f)
-            val drift = sin(t * 0.6f + k) * radius * 0.06f
-            val glint = 0.6f + 0.4f * e + 0.8f * (audio?.treble ?: 0f)
-            drawLine(sunCore.copy(alpha = ((0.35f - k * 0.06f) * glint).coerceAtMost(1f)), Offset(center.x - half + drift, y), Offset(center.x + half + drift, y), radius * 0.035f, StrokeCap.Round)
-        }
-    }
-    if (!page) drawMotes(style, t, sunCore, audio)
-    if (!page && landscape) drawDuskEvening(style, t, audio, progress, seaLine)
-    drawRect(ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)), alpha = if (dark) 0.08f else 0.06f)
-}
-
-/**
- * Three soft clouds crossing the sky, nearer ones larger and quicker; a little faster while
- * playing. [drift] is how far they've come, in units of the slowest cloud's pace.
- */
-private fun DrawScope.drawClouds(style: LanyinStyle, skyEnd: Float, drift: Float) {
-    val c = style.colors
-    val w = size.width
-    val tint = if (style.dark) lerp(c.accentAlt, c.bg, 0.35f) else lerp(Color.White, c.accent, 0.12f)
-    for (k in 0 until 3) {
-        val scale = 0.7f + 0.3f * k
-        val span = w * 0.42f * scale
-        val speed = (4f + 3f * k) * density
-        val x = w + span - ((drift * speed + k * w * 0.55f) % (w + span * 2))
-        val y = skyEnd * (0.18f + 0.22f * k)
-        val alpha = (if (style.dark) 0.22f else 0.5f) * (0.6f + 0.2f * k)
-        for (puff in 0 until 4) {
-            val px = x + (puff - 1.5f) * span * 0.26f
-            val r = span * (0.2f + 0.08f * ((puff + k) % 3))
-            val py = y - r * 0.25f * (if (puff == 1 || puff == 2) 1f else 0f)
-            drawOval(
-                Brush.radialGradient(listOf(tint.copy(alpha = alpha), tint.copy(alpha = 0f)), Offset(px, py), r),
-                Offset(px - r, py - r * 0.55f), Size(r * 2, r * 1.1f),
-            )
-        }
-    }
-}
-
-/** Motes of warm light rising and swaying, brightening on each beat. */
-private fun DrawScope.drawMotes(style: LanyinStyle, t: Float, light: Color, audio: BackdropAudio?) {
-    val w = size.width
-    val h = size.height
-    val flash = audio?.pulse(t, 0.4f) ?: 0f
-    // Rising faster while the music is loud; added up, so a louder bar doesn't make them jump.
-    val climb = audio?.travel(2, 1f + 1.5f * audio.level) ?: t
-    for (i in 0 until 26) {
-        val speed = 0.018f + 0.03f * hash01(i, 41)
-        val rise = ((climb * speed + hash01(i, 42)) % 1f)
-        val y = h * (1.02f - rise * 0.95f)
-        val x = w * hash01(i, 43) + sin(t * (0.4f + hash01(i, 44)) + i) * 14f * density
-        val twinkle = 0.5f + 0.5f * sin(t * (1.5f + 2f * hash01(i, 45)) + i * 1.7f)
-        // Fade in from the bottom, out near the top.
-        val life = (rise / 0.15f).coerceAtMost(1f) * ((1f - rise) / 0.3f).coerceAtMost(1f)
-        val a = (0.18f + 0.3f * twinkle + 0.4f * flash) * life * (if (style.dark) 1f else 0.8f)
-        val r = density * (1.2f + 2.2f * hash01(i, 46))
-        drawCircle(Brush.radialGradient(listOf(light.copy(alpha = a), light.copy(alpha = 0f)), Offset(x, y), r * 4f), r * 4f, Offset(x, y))
-        drawCircle(light.copy(alpha = (a * 1.4f).coerceAtMost(1f)), r * 0.6f, Offset(x, y))
-    }
 }
 
 /** A small tile of film grain, generated once. */

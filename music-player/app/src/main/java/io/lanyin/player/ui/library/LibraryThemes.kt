@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -89,8 +90,8 @@ private fun vipName(vipType: Int) = when (vipType) {
 /**
  * The listener's card at the top of 我的, in the theme's medium: a subscriber's card for 报, a
  * character's status window for 游, a readout on 机's screen, a block with a big initial for 格,
- * a holographic member card for 酸, a name with a seal for 墨, an ID panel for 霓, a cast card
- * for 影; a plain card elsewhere.
+ * a holographic member card for 酸, a name with a seal for 墨, a sign with the name for 霓, a cast
+ * card for 影, a passport's photo page for 暮; a plain card elsewhere.
  */
 @Composable
 internal fun ThemedProfile(account: AccountState, onLogin: () -> Unit, modifier: Modifier) {
@@ -104,6 +105,7 @@ internal fun ThemedProfile(account: AccountState, onLogin: () -> Unit, modifier:
         BackdropKind.Ink -> SealedName(profile, onLogin, modifier)
         BackdropKind.Neon -> NameSign(profile, onLogin, modifier)
         BackdropKind.Film -> CastCard(profile, onLogin, modifier)
+        BackdropKind.Dusk -> PassportPage(profile, onLogin, modifier)
         else -> Profile(account, onLogin, modifier)
     }
 }
@@ -306,6 +308,82 @@ private fun MemberCard(profile: UserProfile?, onLogin: () -> Unit, modifier: Mod
     }
 }
 
+/**
+ * 暮: the photo page of a passport. Fine wavy lines printed across the paper, the photo, the
+ * holder's name and number, an entry stamp struck over the corner, and the machine-readable lines
+ * along the foot.
+ */
+@Composable
+private fun PassportPage(profile: UserProfile?, onLogin: () -> Unit, modifier: Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val paper = if (style.dark) Color(0xFF232944) else Color(0xFFFBF5EA)
+    val guilloche = (if (style.dark) Color(0xFF7FA6D6) else io.lanyin.player.ui.design.Airmail.Blue).copy(alpha = 0.09f)
+    val field = TextStyle(fontWeight = FontWeight.Medium, fontSize = fixed(8.5f), letterSpacing = 0.14.em)
+    val name = profile?.nickname ?: "GUEST"
+    val shape = RoundedCornerShape(12.dp)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(paper)
+            .drawBehind {
+                // The guilloche: fine waves across the page.
+                for (k in 0 until 14) {
+                    val path = Path()
+                    val y0 = size.height * (k + 0.5f) / 14f
+                    var x = 0f
+                    path.moveTo(0f, y0)
+                    while (x <= size.width) {
+                        path.lineTo(x, y0 + 5.dp.toPx() * kotlin.math.sin(x / 18.dp.toPx() + k * 0.7f))
+                        x += 3.dp.toPx()
+                    }
+                    drawPath(path, guilloche, style = androidx.compose.ui.graphics.drawscope.Stroke(0.8.dp.toPx()))
+                }
+            }
+            .then(if (profile == null) Modifier.pressable(onClick = onLogin) else Modifier)
+            .padding(16.dp),
+    ) {
+        Column {
+            Text("PASSPORT · 澜音护照", style = field, color = c.muted)
+            Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(58.dp, 70.dp).clip(RoundedCornerShape(3.dp)).background(c.surfaceAlt), contentAlignment = Alignment.Center) {
+                    if (profile != null) Avatar(profile.avatarUrl, profile.nickname, 70.dp, shape = androidx.compose.ui.graphics.RectangleShape)
+                    else ThemedIcon(LineIcon.User, null, tint = c.muted, size = 26.dp)
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("姓名 / NAME", style = field, color = c.muted)
+                    Text(name, style = style.type.title, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Column {
+                            Text("编号 / NO.", style = field, color = c.muted)
+                            Text(if (profile != null) "LY%06d".format(profile.userId % 1_000_000) else "——", style = TextStyle(fontFamily = style.numeric, fontSize = fixed(14f)), color = c.content)
+                        }
+                        Column {
+                            Text("签注 / VISA", style = field, color = c.muted)
+                            Text(profile?.let { vipName(it.vipType) } ?: "未登录", style = style.type.caption, color = c.content, maxLines = 1)
+                        }
+                    }
+                }
+                if (profile == null) ThemedButton("登录", onLogin)
+            }
+            // The machine-readable zone.
+            Text(
+                "P<LANYIN<<" + name.filter { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' }.uppercase().ifEmpty { "LISTENER" }.take(12).padEnd(12, '<') + "<<<<<<<<",
+                style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = fixed(10.5f), letterSpacing = 0.12.em),
+                color = c.content.copy(alpha = 0.55f), maxLines = 1, overflow = TextOverflow.Clip,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+        }
+        // The entry stamp, struck over the top corner.
+        io.lanyin.player.ui.design.Postmark(
+            "入境", "澜音", "ARRIVAL", (if (style.dark) c.accent else io.lanyin.player.ui.design.Airmail.Red).copy(alpha = 0.6f),
+            Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-6).dp), diameter = 54.dp, waves = false, angle = 14f,
+        )
+    }
+}
+
 @Composable
 private fun SealedName(profile: UserProfile?, onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
@@ -494,15 +572,9 @@ internal fun ThemedEntries(entries: List<Entry>, modifier: Modifier) {
                 }
             }
         }
-        BackdropKind.Dusk -> EntryTiles(entries, modifier) { _, e, m ->
-            Row(m.heightIn(min = 60.dp).themedSurface(shape = RoundedCornerShape(18.dp), tone = SurfaceTone.Flat, onClick = e.onClick).padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(34.dp).clip(CircleShape).background(c.accent.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { ThemedIcon(e.icon, null, tint = c.accent, size = 18.dp) }
-                Spacer(Modifier.width(10.dp))
-                Column {
-                    Text(e.title, style = style.type.body.copy(fontWeight = FontWeight.SemiBold), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(e.detail, style = style.type.caption.copy(fontSize = 11.sp), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
+        // 暮: luggage tags, each with its band of colour.
+        BackdropKind.Dusk -> EntryTiles(entries, modifier) { i, e, m ->
+            io.lanyin.player.ui.design.LuggageTag(e.icon, e.title, e.detail, io.lanyin.player.ui.design.StampInks[i % 4], e.onClick, m, tilt = if (i % 2 == 0) -0.6f else 0.6f)
         }
         BackdropKind.Game -> MenuWindow(entries, modifier)
         BackdropKind.Ink -> EntryLines(entries, modifier, leader = true) { i -> Text(io.lanyin.player.ui.home.chineseNumber(i + 1), style = style.type.body.copy(fontFamily = style.display), color = c.muted, modifier = Modifier.width(30.dp)) }

@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import io.lanyin.player.ui.design.duskSkyBrush
 import io.lanyin.player.ui.design.rememberFrameClock
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.LyricSize
@@ -98,9 +99,7 @@ internal fun Polaroid(stage: StageContext, modifier: Modifier, onClick: (() -> U
     // Paper: warm white by day; at night a dim card that doesn't glare.
     val card = if (style.dark) lerp(c.bg, c.content, 0.14f) else Color(0xFFFFFBF4)
     val pen = if (style.dark) c.content else Color(0xFF3B2A24)
-    val photo = Brush.verticalGradient(
-        listOf(lerp(c.accent, Color.White, 0.55f), lerp(c.accent, c.accentAlt, 0.5f), lerp(c.accentAlt, Color.Black, 0.35f)),
-    )
+    val dark = style.dark
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val margin = 9.dp
         val caption = 44.dp
@@ -127,12 +126,13 @@ internal fun Polaroid(stage: StageContext, modifier: Modifier, onClick: (() -> U
                 },
         ) {
             Box(
-                Modifier.padding(start = margin, end = margin, top = margin).size(width - margin * 2).clipToBounds().background(photo)
+                Modifier.padding(start = margin, end = margin, top = margin).size(width - margin * 2).clipToBounds()
                     .drawBehind {
-                        // A low sun on the sea in the photo, round the record.
+                        // The photo: the same evening, a low sun on the sea round the record.
                         val sea = size.height * 0.72f
-                        drawCircle(Color.White.copy(alpha = 0.35f), size.width * 0.16f, Offset(size.width * 0.72f, sea))
-                        drawRect(lerp(c.accentAlt, Color.Black, 0.25f).copy(alpha = 0.55f), Offset(0f, sea), Size(size.width, size.height - sea))
+                        drawRect(duskSkyBrush(dark, 0f, sea), size = Size(size.width, sea))
+                        drawCircle(Color.White.copy(alpha = if (dark) 0.25f else 0.6f), size.width * 0.16f, Offset(size.width * 0.72f, sea))
+                        drawRect(Brush.verticalGradient(listOf(if (dark) Color(0xFF2A2848) else Color(0xFF8E9DB4), if (dark) Color(0xFF12152B) else Color(0xFF5E6E88)), startY = sea, endY = size.height), Offset(0f, sea), Size(size.width, size.height - sea))
                     },
             ) {
                 StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), halo = false, heightFraction = 0.9f, onClick = onClick)
@@ -156,7 +156,7 @@ private fun Postmark(state: PlayerState, modifier: Modifier) {
     val bpm = rememberBpm(state)
     val now by rememberMinuteClock()
     val today = remember { LocalDate.now() }
-    val ink = c.accentAlt.copy(alpha = if (style.dark) 0.8f else 0.72f)
+    val ink = (if (style.dark) c.accent else io.lanyin.player.ui.design.Airmail.Red).copy(alpha = if (style.dark) 0.8f else 0.72f)
     val small = TextStyle(fontFamily = style.display, fontWeight = FontWeight.Bold, fontSize = fixedSp(7.5f), letterSpacing = 0.12.em, color = ink)
     val middle = TextStyle(fontFamily = style.numeric, fontWeight = FontWeight.Bold, fontSize = fixedSp(if (bpm != null) 15f else 11f), color = ink)
     val (top, mid, bottom) = if (bpm != null) Triple("澜音", "$bpm", "BPM") else Triple("澜音", "%02d:%02d".format(now.hour, now.minute), "%02d·%02d".format(today.monthValue, today.dayOfMonth))

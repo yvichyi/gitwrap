@@ -204,74 +204,9 @@ private fun DrawScope.neonCover(style: LanyinStyle, seed: Int) {
     }
 }
 
-/**
- * 暮's sleeves: evening skies in terracotta, rose, gold and plum. A sun over still water, hills
- * stepping back into the haze, rings of light, and light through blinds.
- */
+/** 暮's sleeves are travel photos; see [duskPhoto]. Dimmed a little at night so they don't glare on the dark page. */
 private fun DrawScope.duskCover(style: LanyinStyle, seed: Int) {
-    val c = style.colors
-    val w = size.width
-    val h = size.height
-    val gold = Color(0xFFF2B35B)
-    val plum = Color(0xFF5A3550)
-    val cream = Color(0xFFFFF4EA)
-    val sky = Brush.verticalGradient(listOf(c.accentAlt, c.accent, gold))
-    when (seed % 4) {
-        0 -> {
-            // A sun on the horizon over still water.
-            drawRect(sky, size = Size(w, h * 0.62f))
-            val sun = Offset(w * (0.5f + 0.16f * (hash01(seed, 1) - 0.5f)), h * 0.62f)
-            drawCircle(cream.copy(alpha = 0.92f), w * 0.22f, sun)
-            drawRect(Brush.verticalGradient(listOf(lerp(c.accentAlt, plum, 0.55f), plum), startY = h * 0.62f, endY = h), Offset(0f, h * 0.62f), Size(w, h * 0.38f))
-            for (k in 0 until 4) {
-                val y = h * (0.67f + k * 0.075f)
-                val half = w * (0.2f - k * 0.04f)
-                drawLine(cream.copy(alpha = 0.55f - k * 0.1f), Offset(sun.x - half, y), Offset(sun.x + half, y), h * 0.016f, StrokeCap.Round)
-            }
-        }
-        1 -> {
-            // Hills stepping back into the evening haze.
-            drawRect(Brush.verticalGradient(listOf(lerp(gold, cream, 0.3f), lerp(c.accent, gold, 0.4f))))
-            drawCircle(cream.copy(alpha = 0.9f), w * 0.13f, Offset(w * (0.3f + 0.4f * hash01(seed, 2)), h * 0.34f))
-            val layers = listOf(lerp(c.accent, cream, 0.35f), c.accentAlt, lerp(c.accentAlt, plum, 0.5f), plum)
-            layers.forEachIndexed { i, color ->
-                val base = h * (0.5f + i * 0.13f)
-                val path = Path().apply {
-                    moveTo(0f, h)
-                    lineTo(0f, base)
-                    var x = 0f
-                    while (x <= w) {
-                        lineTo(x, base - h * 0.07f * sin((x / w) * PI.toFloat() * (1.2f + i * 0.4f) + hash01(seed + i, 3) * 6f))
-                        x += w / 32f
-                    }
-                    lineTo(w, h)
-                    close()
-                }
-                drawPath(path, color)
-            }
-        }
-        2 -> {
-            // Rings of light around a low sun.
-            drawRect(plum)
-            val center = Offset(w * 0.5f, h * (0.78f + 0.1f * hash01(seed, 4)))
-            val colors = listOf(c.accentAlt, c.accent, gold, cream)
-            for (i in colors.indices) {
-                val r = w * (0.82f - i * 0.17f)
-                drawCircle(colors[i].copy(alpha = 0.55f + i * 0.15f), r, center)
-            }
-        }
-        else -> {
-            // Evening light through blinds.
-            drawRect(sky)
-            val slat = h / 9f
-            for (k in 0 until 9) {
-                val y = k * slat + slat * 0.62f
-                drawRect(plum.copy(alpha = 0.18f + 0.05f * k), Offset(0f, y), Size(w, slat * 0.38f))
-            }
-            drawCircle(cream.copy(alpha = 0.85f), w * 0.17f, Offset(w * (0.62f + 0.2f * (hash01(seed, 5) - 0.5f)), h * 0.42f))
-        }
-    }
-    // Dimmed a little at night, so the sleeves don't glare on the dark page.
+    duskPhoto(seed)
     if (style.dark) drawRect(Color.Black.copy(alpha = 0.12f))
 }
 
