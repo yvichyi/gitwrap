@@ -25,6 +25,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.offset
+import io.lanyin.player.ui.design.candyPlastic
 import io.lanyin.player.ui.design.Marquee
 import io.lanyin.player.ui.design.Sticker
 import io.lanyin.player.ui.design.retroShadow
@@ -659,13 +660,17 @@ internal fun QualityChip(text: String, caret: Boolean = false) {
     val style = Lanyin.style
     val c = style.colors
     val brutal = style.edge == EdgeKind.Brutal
-    val ink = if (brutal) c.content else c.accent
+    val chrome = style.edge == EdgeKind.Chrome
+    val ink = if (brutal) c.content else if (chrome) androidx.compose.ui.graphics.Color.White else c.accent
     Row(
         Modifier
             .then(
                 if (brutal) {
                     // 格: a yellow label boxed in ink.
                     Modifier.background(GridYellow).border(2.dp, c.outline)
+                } else if (chrome) {
+                    // 酸: a capsule of grape gel.
+                    Modifier.candyPlastic(io.lanyin.player.ui.design.Flavor.Grape, style.chipShape, glossOver = true)
                 } else {
                     Modifier.clip(style.chipShape).border(1.dp, c.accent.copy(alpha = 0.6f), style.chipShape)
                 },
@@ -750,7 +755,7 @@ internal fun PlayerTopBar(state: PlayerState, onCollapse: () -> Unit, modifier: 
                     // 游: the console's name, in the navy of its lettering.
                     BackdropKind.Game -> Text("LANYIN POCKET", style = style.type.label.copy(fontSize = 13.sp, letterSpacing = 1.sp), color = c.accentAlt, maxLines = 1)
                     // 酸: a track number between stars.
-                    BackdropKind.Acid -> Text("★ TRACK %02d ★".format(state.trackNumber), style = style.type.label.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold), color = c.accent, maxLines = 1)
+                    BackdropKind.Acid -> Text("✦ TRACK %02d ✦".format(state.trackNumber), style = style.type.label.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold, brush = io.lanyin.player.ui.design.ChromeBrush), maxLines = 1)
                     else -> Text("正在播放", style = style.type.label, color = c.muted, maxLines = 1)
                 }
                 Text(

@@ -290,9 +290,9 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             motion = Motion(1f, 1400f), bouncy = Motion(0.75f, 1100f), pressScale = 0.94f,
             iconStroke = 2.2f, dock = DockKind.Docked,
         )
-        // 酸: Y2K acid. Black, a lime that hurts a little and a hot pink; headings in heavy type
-        // with a chrome gradient, chrome rims, starbursts turning behind things, a lime grid
-        // running to the horizon, a barber-pole progress and a lime disc that bursts on the beat.
+        // 酸: the millennium in candy plastic and chrome. A grape night, translucent shells in
+        // Bondi blue and tangerine with a gloss across the top, chrome rims and a chrome wordmark;
+        // lime kept for the one thing that matters on a screen: what's playing, what to press.
         AppTheme.ACID -> LanyinStyle(
             theme = theme, dark = true,
             colors = acid,
@@ -396,9 +396,9 @@ private val game = LanyinColors(
 )
 // Black, white, a lime that glows and a hot pink.
 private val acid = LanyinColors(
-    bg = Color(0xFF0A0A0A), bgDeep = Color(0xFF141414), surface = Color(0xFF151515), surfaceAlt = Color(0xFF1F1F1F),
-    content = Color(0xFFFFFFFF), muted = Color(0xFFA0A0A0), accent = Color(0xFFC6FF00), accentAlt = Color(0xFFFF3EA5),
-    onAccent = Color(0xFF0A0A0A), outline = Color(0x55C6FF00), like = Color(0xFFFF3EA5), vinyl = Color(0xFF050505),
+    bg = Color(0xFF0E0B1A), bgDeep = Color(0xFF1B1430), surface = Color(0xFF1C1830), surfaceAlt = Color(0xFF262040),
+    content = Color(0xFFFFFFFF), muted = Color(0xFFA9A3C0), accent = Color(0xFFC6FF00), accentAlt = Color(0xFFFF3EA5),
+    onAccent = Color(0xFF0E0B1A), outline = Color(0x33FFFFFF), like = Color(0xFFFF3EA5), vinyl = Color(0xFF07060D),
 )
 
 /** Fusion Pixel (SIL OFL), 游's face for everything, Chinese included. One weight, so bold stays crisp rather than smeared. */

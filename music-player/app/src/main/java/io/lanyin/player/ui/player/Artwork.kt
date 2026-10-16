@@ -181,8 +181,8 @@ fun SquareCover(isPlaying: Boolean, coverSeed: Int, modifier: Modifier = Modifie
         EdgeKind.Rule -> Modifier.clip(shape).border(1.dp, c.content, shape)
         // 游: the picture on the LCD, framed in its darkest green.
         EdgeKind.Bezel -> Modifier.clip(shape).border(2.dp, c.content, shape)
-        // 酸: a lime rim glowing.
-        EdgeKind.Chrome -> Modifier.neonGlow(shape, c.accent, 0.6f).clip(shape).border(2.dp, c.accent, shape)
+        // 酸: a chrome rim, lifted off the plastic on a grape shadow.
+        EdgeKind.Chrome -> Modifier.shadow(20.dp, shape, ambientColor = io.lanyin.player.ui.design.Flavor.Grape, spotColor = io.lanyin.player.ui.design.Flavor.Grape).clip(shape).border(2.dp, io.lanyin.player.ui.design.ChromeBrush, shape)
         else -> Modifier.shadow(28.dp, shape, ambientColor = c.accent, spotColor = Color.Black).clip(shape)
     }
     val art = modifier

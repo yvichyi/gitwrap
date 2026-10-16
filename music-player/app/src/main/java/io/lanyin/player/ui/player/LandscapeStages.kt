@@ -9,6 +9,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +57,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import io.lanyin.player.ui.design.ChromeBrush
+import io.lanyin.player.ui.design.Flavor
+import io.lanyin.player.ui.design.drawGelBead
+import io.lanyin.player.ui.design.drawGloss
 import io.lanyin.player.ui.design.DeviceScreen
 import io.lanyin.player.ui.design.DoubleRule
 import io.lanyin.player.ui.design.Marquee
@@ -412,11 +416,15 @@ internal fun MediaPlayerStage(stage: StageContext) {
     }
 }
 
-/** 酸's window: rounded, near-black glass in a chrome frame. */
+/** 酸's window: a shell of see-through Bondi plastic, dark enough inside to read by, in a chrome frame. */
 internal fun Modifier.mediaWindow(): Modifier {
     val shape = RoundedCornerShape(22.dp)
     return clip(shape)
-        .background(Brush.verticalGradient(listOf(Color(0xFF1C1C22), Color(0xFF07070A))))
+        .background(Brush.verticalGradient(listOf(Color(0xFF0D2A3A), Color(0xFF0A1220), Color(0xFF0B1B2A))))
+        .drawBehind {
+            // The light coming through the plastic at its foot.
+            drawRect(Brush.radialGradient(listOf(Flavor.Bondi.copy(alpha = 0.22f), Color.Transparent), Offset(size.width / 2f, size.height * 1.1f), size.maxDimension * 0.55f))
+        }
         .border(2.dp, ChromeBrush, shape)
 }
 
@@ -425,14 +433,19 @@ internal fun Modifier.mediaWindow(): Modifier {
 internal fun MediaTitleBar() {
     val c = Lanyin.colors
     Row(
-        Modifier.fillMaxWidth().height(26.dp).background(Brush.verticalGradient(listOf(Color(0xFF3A3A44), Color(0xFF121216)))).padding(horizontal = 12.dp),
+        Modifier
+            .fillMaxWidth()
+            .height(26.dp)
+            .background(Brush.verticalGradient(listOf(Color(0xFF5ED6EC), Flavor.Bondi, Color(0xFF00708A))))
+            .drawBehind { drawGloss(0.5f) }
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        for (dot in listOf(c.accentAlt, c.accent, Color.White)) {
-            Box(Modifier.padding(end = 6.dp).size(9.dp).clip(CircleShape).background(dot))
+        for (dot in listOf(Flavor.Strawberry, Flavor.Tangerine, c.accent)) {
+            Canvas(Modifier.padding(end = 6.dp).size(10.dp)) { drawGelBead(dot) }
         }
         Spacer(Modifier.weight(1f))
-        Text("LANYIN MEDIA PLAYER 2000", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(10f), brush = ChromeBrush, letterSpacing = 0.08.em), maxLines = 1)
+        Text("LANYIN MEDIA PLAYER 2000", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(10f), letterSpacing = 0.08.em, shadow = androidx.compose.ui.graphics.Shadow(Color(0x99003040), Offset(0f, 1f), 2f)), color = Color.White, maxLines = 1)
         Spacer(Modifier.weight(1f))
         Text("_ □ ×", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixedSp(11f)), color = Color.White.copy(alpha = 0.7f))
     }
@@ -444,7 +457,7 @@ internal fun MediaLcd(state: PlayerState, modifier: Modifier = Modifier) {
     val c = Lanyin.colors
     Marquee(
         listOfNotNull(if (state.isPlaying) null else "❚❚ PAUSED", "${state.title} — ${state.artist}", "${state.quality.ifEmpty { "STREAM" }} ${state.format}", "TRACK ${state.trackNumber}/${state.trackCount}", rememberBpm(state)?.let { "$it BPM" }),
-        modifier.clip(RoundedCornerShape(6.dp)).border(1.dp, c.accent.copy(alpha = 0.6f), RoundedCornerShape(6.dp)),
+        modifier.clip(RoundedCornerShape(6.dp)).border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(6.dp)),
         height = 26.dp,
         fill = Color.Black,
         ink = c.accent,
@@ -480,14 +493,14 @@ internal fun Visualizer(state: PlayerState, modifier: Modifier) {
                 val inner = r * 0.62f
                 val outer = r * (0.78f + 0.3f * eased[2] * (0.6f + 0.4f * sin(i * 1.7f + t * 3f)))
                 drawLine(
-                    (if (i % 2 == 0) c.accent else c.accentAlt).copy(alpha = 0.25f + 0.5f * eased[2]),
+                    (if (i % 2 == 0) Flavor.Bondi else Color.White).copy(alpha = 0.2f + 0.5f * eased[2]),
                     center + Offset(cos(a) * inner, sin(a) * inner), center + Offset(cos(a) * outer, sin(a) * outer),
                     2.dp.toPx(), StrokeCap.Round,
                 )
             }
         }
         // Three star rings: bass outermost, swelling on the beat.
-        val rings = listOf(Triple(0, 16, c.accent), Triple(1, 12, c.accentAlt), Triple(2, 20, Color(0xFF00E5FF)))
+        val rings = listOf(Triple(0, 16, Flavor.Grape), Triple(1, 12, Flavor.Strawberry), Triple(2, 20, Flavor.Bondi))
         for ((k, points, color) in rings) {
             val radius = r * (0.7f + 0.12f * eased[k] + 0.08f * pulse) * (1f - k * 0.06f)
             val turn = t * (0.3f + 0.2f * k) * (if (k % 2 == 0) 1f else -1f)
@@ -496,7 +509,7 @@ internal fun Visualizer(state: PlayerState, modifier: Modifier) {
     }
 }
 
-/** A graphic equaliser's sixteen bars, lime rising to pink, with falling peak caps. */
+/** A graphic equaliser's sixteen bars, Bondi blue rising through tangerine to strawberry, with falling peak caps. */
 @Composable
 internal fun GraphicEq(state: PlayerState, modifier: Modifier) {
     val c = Lanyin.colors
@@ -517,7 +530,8 @@ internal fun GraphicEq(state: PlayerState, modifier: Modifier) {
             val lit = (v * cells).toInt()
             for (k in 0 until cells) {
                 val y = size.height - (k + 1) * (cell + 1.dp.toPx())
-                val color = if (k < lit) lerp(c.accent, c.accentAlt, k / cells.toFloat()) else Color.White.copy(alpha = 0.06f)
+                val f = k / cells.toFloat()
+                val color = if (k < lit) (if (f < 0.55f) Flavor.Bondi else if (f < 0.8f) Flavor.Tangerine else Flavor.Strawberry) else Color.White.copy(alpha = 0.06f)
                 drawRect(color, Offset(i * (w + gap), y), Size(w, cell))
             }
             val py = size.height - peaks[i] * size.height

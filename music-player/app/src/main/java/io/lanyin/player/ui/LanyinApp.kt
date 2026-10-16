@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import io.lanyin.player.ui.design.drawGloss
 import io.lanyin.player.ui.design.drawTubeLine
 import io.lanyin.player.ui.design.drawMenuCursor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -452,8 +453,11 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                             2.dp.toPx(), androidx.compose.ui.graphics.StrokeCap.Round,
                         )
                     }
-                    // 酸: a lime outline round the current tab.
-                    EdgeKind.Chrome -> Modifier.clip(shape).background(c.accent.copy(alpha = 0.12f)).border(1.5.dp, c.accent, shape)
+                    // 酸: the current tab is a lime gel capsule, glossed across the top.
+                    EdgeKind.Chrome -> Modifier
+                        .clip(shape)
+                        .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFFE2FF6B), c.accent, androidx.compose.ui.graphics.Color(0xFF8FC400))))
+                        .drawBehind { drawGloss(0.5f) }
                     // 机: the current tab is a key held down, sunk into the bar.
                     EdgeKind.Panel -> Modifier.clip(shape).background(c.bgDeep).drawBehind {
                         drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color.Black.copy(alpha = if (style.dark) 0.3f else 0.12f), androidx.compose.ui.graphics.Color.Transparent), endY = 6.dp.toPx()))
@@ -503,6 +507,7 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                 val tint = when {
                     !active -> c.muted
                     style.edge == EdgeKind.Brutal -> c.content
+                    style.edge == EdgeKind.Chrome -> c.onAccent
                     style.nav == NavKind.Text -> c.content
                     else -> c.accent
                 }

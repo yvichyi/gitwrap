@@ -18,7 +18,7 @@ enum class AppTheme(
     GRID("ge", "格", "瑞士网格，粗边硬影", lightOnly = true),
     PAPER("bao", "报", "报纸版面，铅字和红笔"),
     GAME("you", "游", "像素掌机，四色绿屏", lightOnly = true),
-    ACID("suan", "酸", "铬金大字，荧光绿 Y2K", darkOnly = true),
+    ACID("suan", "酸", "糖果塑料，铬金 Y2K", darkOnly = true),
     DUSK("mu", "暮", "晚霞暖光，柔和圆角"),
     NEON("ni", "霓", "雨后夜街，霓虹招牌", darkOnly = true);
 

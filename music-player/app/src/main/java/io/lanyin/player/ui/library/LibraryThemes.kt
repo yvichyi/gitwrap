@@ -46,6 +46,10 @@ import io.lanyin.player.data.account.AccountState
 import io.lanyin.player.ui.design.initialOf
 import io.lanyin.player.ui.design.Avatar
 import io.lanyin.player.ui.design.ChromeBrush
+import io.lanyin.player.ui.design.Flavor
+import io.lanyin.player.ui.design.candyPlastic
+import io.lanyin.player.ui.design.drawGelBead
+import io.lanyin.player.ui.design.drawGloss
 import io.lanyin.player.ui.design.DeviceScreen
 import io.lanyin.player.ui.design.DoubleRule
 import io.lanyin.player.ui.design.Hairline
@@ -257,7 +261,9 @@ private fun MemberCard(profile: UserProfile?, onLogin: () -> Unit, modifier: Mod
             .fillMaxWidth()
             .clip(shape)
             .background(c.surface)
-            .background(Brush.linearGradient(listOf(c.accentAlt.copy(alpha = 0.35f), c.accent.copy(alpha = 0.18f), Color(0x4400E5FF), c.accentAlt.copy(alpha = 0.25f))))
+            // Holographic foil: the flavours run together across the card, the gloss over its top.
+            .background(Brush.linearGradient(listOf(Flavor.Grape.copy(alpha = 0.42f), Flavor.Bondi.copy(alpha = 0.3f), Flavor.Strawberry.copy(alpha = 0.3f), Flavor.Grape.copy(alpha = 0.32f))))
+            .drawBehind { drawGloss(0.14f) }
             .border(1.5.dp, ChromeBrush, shape)
             .then(if (profile == null) Modifier.pressable(onClick = onLogin) else Modifier)
             .padding(18.dp),
@@ -265,9 +271,9 @@ private fun MemberCard(profile: UserProfile?, onLogin: () -> Unit, modifier: Mod
         Column {
             Text("LANYIN MEMBER", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixed(18f), brush = ChromeBrush, letterSpacing = 0.02.em))
             Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(52.dp).clip(CircleShape).border(2.dp, c.accent, CircleShape), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(52.dp).clip(CircleShape).border(2.dp, ChromeBrush, CircleShape), contentAlignment = Alignment.Center) {
                     if (profile != null) Avatar(profile.avatarUrl, profile.nickname, 52.dp)
-                    else ThemedIcon(LineIcon.User, null, tint = c.accent, size = 24.dp)
+                    else ThemedIcon(LineIcon.User, null, tint = Color.White, size = 24.dp)
                 }
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
@@ -275,7 +281,7 @@ private fun MemberCard(profile: UserProfile?, onLogin: () -> Unit, modifier: Mod
                     Text(
                         if (profile != null) "No. %06d · %s".format(profile.userId % 1_000_000, vipName(profile.vipType) ?: "MEMBER") else "扫码入会 ✦ 同步歌单",
                         style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(11f)),
-                        color = c.accent,
+                        color = Color.White.copy(alpha = 0.8f),
                         maxLines = 1,
                     )
                 }
@@ -284,13 +290,18 @@ private fun MemberCard(profile: UserProfile?, onLogin: () -> Unit, modifier: Mod
                         "登录",
                         style = style.type.body.copy(fontWeight = FontWeight.Bold),
                         color = c.onAccent,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).background(c.accent).pressable(onClick = onLogin).padding(horizontal = 18.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(Brush.verticalGradient(listOf(Color(0xFFE2FF6B), c.accent, Color(0xFF8FC400))))
+                            .drawBehind { drawGloss(0.45f) }
+                            .pressable(onClick = onLogin)
+                            .padding(horizontal = 18.dp, vertical = 8.dp),
                     )
                 }
             }
         }
         Canvas(Modifier.align(Alignment.TopEnd).size(30.dp)) {
-            drawPath(starPath(Offset(size.width / 2f, size.height / 2f), size.minDimension / 2f, size.minDimension * 0.14f, 4), c.accent)
+            drawPath(starPath(Offset(size.width / 2f, size.height / 2f), size.minDimension / 2f, size.minDimension * 0.14f, 4), Color.White)
         }
     }
 }
@@ -462,20 +473,24 @@ internal fun ThemedEntries(entries: List<Entry>, modifier: Modifier) {
                 Text(e.detail, style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(9f)), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
+        // 酸: each a tile of see-through plastic in the next flavour, a gel bead holding its icon.
         BackdropKind.Acid -> EntryTiles(entries, modifier) { i, e, m ->
-            val hot = i == 0
+            val tint = Flavor.all[i % Flavor.all.size]
+            val shape = RoundedCornerShape(22.dp)
             Row(
-                m.heightIn(min = 52.dp).clip(RoundedCornerShape(50)).background(if (hot) c.accentAlt else c.bg)
-                    .border(1.5.dp, if (hot) c.accentAlt else c.accent, RoundedCornerShape(50))
+                m.heightIn(min = 60.dp).candyPlastic(tint, shape)
                     .then(e.onClick?.let { Modifier.pressable(onClick = it) } ?: Modifier)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ThemedIcon(e.icon, null, tint = if (hot) Color.White else c.accent, size = 19.dp)
+                Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                    Canvas(Modifier.matchParentSize()) { drawGelBead(androidx.compose.ui.graphics.lerp(tint, Color.White, 0.15f)) }
+                    ThemedIcon(e.icon, null, tint = Color.White, size = 17.dp)
+                }
                 Spacer(Modifier.width(10.dp))
                 Column {
                     Text(e.title, style = style.type.body.copy(fontWeight = FontWeight.Bold), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(e.detail, style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(10f)), color = if (hot) Color.White.copy(alpha = 0.85f) else c.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(e.detail, style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(10f)), color = Color.White.copy(alpha = 0.78f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

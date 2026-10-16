@@ -726,7 +726,7 @@ fun PageTitle(title: String, modifier: Modifier = Modifier, subtitle: String? = 
                 EdgeKind.Chrome -> {
                     Text(title, style = style.type.display.copy(brush = ChromeBrush))
                     Canvas(Modifier.padding(start = 6.dp, bottom = 22.dp).size(16.dp)) {
-                        drawPath(starPath(Offset(size.width / 2f, size.height / 2f), size.minDimension / 2f, size.minDimension * 0.14f, 4), c.accent)
+                        drawPath(starPath(Offset(size.width / 2f, size.height / 2f), size.minDimension / 2f, size.minDimension * 0.14f, 4), Color.White)
                     }
                 }
                 EdgeKind.Bezel -> Text(title, style = style.type.display.copy(shadow = pixelShadow(c.accent.copy(alpha = 0.55f), 2.dp, density)), color = c.content)

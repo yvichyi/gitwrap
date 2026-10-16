@@ -198,51 +198,11 @@ private fun DrawScope.translateHeart(topLeft: Offset, area: Size, color: Color) 
     }
 }
 
-// 酸 ------------------------------------------------------------------------------------------
-
-/**
- * 酸: a lime ribbon of news running along under the header, tipped up at one end, with a hot
- * pink starburst sticker slapped over its corner.
- */
-@Composable
-internal fun AcidTicker(player: PlayerState, modifier: Modifier) {
-    val c = Lanyin.colors
-    Box(modifier.fillMaxWidth().height(58.dp)) {
-        Marquee(
-            listOfNotNull(
-                "LANYIN 澜音",
-                "正在播放 ${player.title} — ${player.artist}".takeIf { !player.isEmpty },
-                "Y2K FOREVER",
-                "今晚也要大声听歌",
-            ),
-            Modifier
-                .align(Alignment.CenterStart)
-                .padding(end = 26.dp)
-                .graphicsLayer { rotationZ = 1.4f }
-                .clip(RoundedCornerShape(50))
-                .border(1.5.dp, c.content.copy(alpha = 0.8f), RoundedCornerShape(50)),
-            height = 30.dp,
-            fill = c.accent,
-            ink = c.onAccent,
-            marks = c.accentAlt to c.onAccent,
-            font = SpaceMonoFamily,
-        )
-        Box(Modifier.align(Alignment.CenterEnd).size(58.dp).graphicsLayer { rotationZ = 14f }, contentAlignment = Alignment.Center) {
-            Canvas(Modifier.size(58.dp)) {
-                val center = Offset(size.width / 2f, size.height / 2f)
-                drawPath(starPath(center + Offset(2.dp.toPx(), 2.dp.toPx()), size.minDimension / 2f, size.minDimension * 0.36f, 14), Color.Black.copy(alpha = 0.5f))
-                drawPath(starPath(center, size.minDimension / 2f, size.minDimension * 0.36f, 14), c.accentAlt)
-            }
-            Text("NEW!", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixed(12f)), color = c.content)
-        }
-    }
-}
-
 // Titles -------------------------------------------------------------------------------------
 
 /**
  * The mark before a section's title, in the theme's hand: dot-matrix figures for 点, a printed
- * label for 机, a frame number for 影, a menu cursor for 游 and a lime spark for 酸. Null for
+ * label for 机, a frame number for 影, a menu cursor for 游 and a gel bead for 酸. Null for
  * themes without one.
  */
 @Composable
@@ -265,8 +225,9 @@ internal fun SectionMark(index: Int?) {
             Text("▸ %02dA".format(index), style = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = fixed(11f), letterSpacing = 0.1.em), color = FilmStamp, modifier = Modifier.padding(end = 10.dp))
         }
         BackdropKind.Game -> Canvas(Modifier.padding(end = 8.dp).size(width = 9.dp, height = 12.dp)) { drawMenuCursor(c.accent) }
-        BackdropKind.Acid -> Canvas(Modifier.padding(end = 8.dp).size(16.dp)) {
-            drawPath(starPath(Offset(size.width / 2f, size.height / 2f), size.minDimension / 2f, size.minDimension * 0.14f, 4), c.accent)
+        // 酸: a gel bead, each section in the next flavour.
+        BackdropKind.Acid -> Canvas(Modifier.padding(end = 8.dp).size(14.dp)) {
+            drawGelBead(Flavor.all[((index ?: 1) - 1).mod(Flavor.all.size)])
         }
         else -> Unit
     }

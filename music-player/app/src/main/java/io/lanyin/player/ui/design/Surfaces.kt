@@ -118,6 +118,8 @@ fun Modifier.themedSurface(
     // 3. Fill.
     m = when {
         tone == SurfaceTone.Accent && style.edge == EdgeKind.Glow -> m.background(c.accent.copy(alpha = 0.12f))
+        // 酸: lime gel, lighter at the top, with the gloss across it.
+        tone == SurfaceTone.Accent && style.edge == EdgeKind.Chrome -> m.background(Brush.verticalGradient(listOf(Color(0xFFE2FF6B), c.accent, Color(0xFF8FC400)))).drawBehind { drawGloss(0.45f) }
         tone == SurfaceTone.Accent -> m.background(style.accentBrush())
         style.edge == EdgeKind.Hairline -> m.background(c.bg)
         // Matte, a little light catching its top edge, and the light of a sign falling on it while it's pressed.
@@ -140,6 +142,10 @@ fun Modifier.themedSurface(
                 drawRect(c.content.copy(alpha = 0.8f), size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
             }
         }
+        // 酸: dark plastic, the light catching its top.
+        style.edge == EdgeKind.Chrome -> m.background(
+            if (flat) Brush.verticalGradient(listOf(c.surfaceAlt, c.surfaceAlt)) else Brush.verticalGradient(listOf(c.surfaceAlt, c.surface)),
+        ).drawBehind { if (!flat) drawGloss(0.06f) }
         // 游: a little LCD, a shade darker when it's secondary.
         style.edge == EdgeKind.Bezel -> m.background(if (flat) c.surfaceAlt else c.surface)
         else -> m.background(c.surface)
@@ -159,12 +165,11 @@ fun Modifier.themedSurface(
         EdgeKind.Rule -> m
         // The screen's dark bezel; buttons have none.
         EdgeKind.Bezel -> if (button) m else m.border(if (flat) 2.dp else 3.dp, GameBezel, shape)
-        // 酸: a chrome rim on cards, a lime one on bars and sheets.
+        // 酸: a soft chrome rim on cards, polished chrome round bars and sheets; gel and flat have none.
         EdgeKind.Chrome -> when (tone) {
-            SurfaceTone.Card -> m.border(1.5.dp, ChromeBrush, shape)
-            SurfaceTone.Chrome -> m.border(1.5.dp, c.accent, shape)
-            SurfaceTone.Flat -> m.border(1.dp, c.content.copy(alpha = 0.14f), shape)
-            SurfaceTone.Accent -> m
+            SurfaceTone.Card -> m.border(1.dp, ChromeSoftBrush, shape)
+            SurfaceTone.Chrome -> m.border(1.5.dp, ChromeBrush, shape)
+            SurfaceTone.Flat, SurfaceTone.Accent -> m
         }
     }
     if (onClick != null) {
