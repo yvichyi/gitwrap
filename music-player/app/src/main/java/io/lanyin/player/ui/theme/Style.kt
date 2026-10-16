@@ -49,7 +49,7 @@ enum class EdgeKind { Hairline, Soft, Glow, Brutal, Film, Dot, Panel, Rule, Beze
 
 enum class BackdropKind { Ink, Neon, Dusk, Grid, Film, Dot, Device, Paper, Game, Acid }
 
-enum class SeekKind { Hairline, Pill, Segments, Block, Film, Dots, Fader, Ruler, Blocks, Stripe }
+enum class SeekKind { Hairline, Pill, Tube, Block, Film, Dots, Fader, Ruler, Blocks, Stripe }
 
 enum class ButtonKind { Outline, Blob, NeonRing, Brutal, Aperture, Disc, Key, Stamp, Pad, Burst }
 
@@ -181,10 +181,10 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
         AppTheme.NEON -> LanyinStyle(
             theme = theme, dark = true,
             colors = neon,
-            display = FontFamily.SansSerif, displayWeight = FontWeight.Black, displayTracking = 0.06.em,
-            body = FontFamily.SansSerif, numeric = FontFamily.Monospace,
-            cardShape = CutCornerShape(14.dp), chipShape = CutCornerShape(10.dp), artShape = CutCornerShape(18.dp),
-            edge = EdgeKind.Glow, backdrop = BackdropKind.Neon, seek = SeekKind.Segments,
+            display = FontFamily.SansSerif, displayWeight = FontWeight.Bold, displayTracking = 0.02.em,
+            body = FontFamily.SansSerif, numeric = TiltNeonFamily,
+            cardShape = RoundedCornerShape(16.dp), chipShape = CircleShape, artShape = RoundedCornerShape(12.dp),
+            edge = EdgeKind.Glow, backdrop = BackdropKind.Neon, seek = SeekKind.Tube,
             button = ButtonKind.NeonRing, nav = NavKind.Pill,
             lyric = LyricStyle(centered = false, activeScale = 1.1f, inactiveAlpha = 0.35f, blurStep = 0.6.dp, staggerMs = 18, glow = true, serif = false),
             motion = Motion(0.85f, 1100f), bouncy = Motion(0.55f, 900f), pressScale = 0.95f,
@@ -330,12 +330,12 @@ private val inkDark = LanyinColors(
     content = Color(0xFFECEAE4), muted = Color(0xFF8E8B82), accent = Color(0xFFECEAE4), accentAlt = Color(0xFFD4493F),
     onAccent = Color(0xFF0B0B0B), outline = Color(0x3DECEAE4), like = Color(0xFFD4493F), vinyl = Color(0xFF1C1C1C),
 )
-// After dark neon UI palettes (a blue-tinted near-black, neon blue, a spectrum purple): blues
-// running into violet, all cool, so nothing fights; magenta only for the heart.
+// A street at night after rain: walls near black with a violet cast, matte, and the only colour
+// the light of the signs, a hot pink tube and an ice cyan one.
 private val neon = LanyinColors(
-    bg = Color(0xFF0A0F1C), bgDeep = Color(0xFF151B3D), surface = Color(0xFF0E1426), surfaceAlt = Color(0xFF141C34),
-    content = Color(0xFFE6EDFF), muted = Color(0xFF8391B3), accent = Color(0xFF22CCFF), accentAlt = Color(0xFF7C4DFF),
-    onAccent = Color(0xFF050814), outline = Color(0x5522CCFF), like = Color(0xFFFF4081), vinyl = Color(0xFF05070D),
+    bg = Color(0xFF0D0B12), bgDeep = Color(0xFF1B1526), surface = Color(0xFF17141E), surfaceAlt = Color(0xFF201B29),
+    content = Color(0xFFF3EEF7), muted = Color(0xFF968CA6), accent = Color(0xFFFF4D9A), accentAlt = Color(0xFF3DE3FF),
+    onAccent = Color(0xFF1A0610), outline = Color(0x1FFFFFFF), like = Color(0xFFFF4D9A), vinyl = Color(0xFF08070B),
 )
 // Paper is a warm off-white and the sky a dusty peach, so mustard stays an accent rather than
 // the colour of the whole page.
@@ -424,6 +424,13 @@ val DotoFamily = FontFamily(
     Font(R.font.doto_black, FontWeight.SemiBold),
     Font(R.font.doto_black, FontWeight.Bold),
     Font(R.font.doto_black, FontWeight.Black),
+)
+
+/** Tilt Neon (SIL OFL), letters bent from a single tube: 霓's signs and numbers. Chinese falls back to the system sans. */
+val TiltNeonFamily = FontFamily(
+    Font(R.font.tilt_neon, FontWeight.Normal),
+    Font(R.font.tilt_neon, FontWeight.Medium),
+    Font(R.font.tilt_neon, FontWeight.Bold),
 )
 
 /** Space Mono (SIL OFL), 机's label and counter face. */

@@ -358,7 +358,7 @@ fun SeekBar(
             when (style.seek) {
                 SeekKind.Hairline -> drawHairlineTrack(f, c.content)
                 SeekKind.Pill -> drawPillTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
-                SeekKind.Segments -> drawSegmentTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
+                SeekKind.Tube -> drawTubeTrack(f, c.accent)
                 SeekKind.Block -> drawBlockTrack(f, c.accent, c.outline, c.surface)
                 SeekKind.Film -> drawFilmTrack(f, style)
                 SeekKind.Dots -> drawDotsTrack(f, dragging, style)
@@ -427,27 +427,15 @@ private fun DrawScope.drawPillTrack(f: Float, a: Color, b: Color, rest: Color) {
     drawCircle(a, 9.dp.toPx(), Offset(x, size.height / 2f), style = Stroke(2.5.dp.toPx()))
 }
 
-private fun DrawScope.drawSegmentTrack(f: Float, lit: Color, head: Color, dim: Color) {
-    val segW = 3.dp.toPx()
-    val gap = 3.dp.toPx()
-    val h = 12.dp.toPx()
-    val top = (size.height - h) / 2f
-    val n = (size.width / (segW + gap)).toInt().coerceAtLeast(1)
-    val litCount = (f * n).toInt()
-    for (i in 0 until n) {
-        val x = i * (segW + gap)
-        when {
-            i < litCount -> {
-                drawRect(lit.copy(alpha = 0.22f), Offset(x - 1.5.dp.toPx(), top - 3.dp.toPx()), Size(segW + 3.dp.toPx(), h + 6.dp.toPx()))
-                drawRect(lit, Offset(x, top), Size(segW, h))
-            }
-            i == litCount -> {
-                drawRect(head.copy(alpha = 0.3f), Offset(x - 2.dp.toPx(), top - 5.dp.toPx()), Size(segW + 4.dp.toPx(), h + 10.dp.toPx()))
-                drawRect(head, Offset(x, top - 2.dp.toPx()), Size(segW, h + 4.dp.toPx()))
-            }
-            else -> drawRect(dim, Offset(x, top + h * 0.3f), Size(segW, h * 0.4f))
-        }
-    }
+/** 霓: a glass tube along the track, cold ahead of the head and lit behind it, the head a bright knot. */
+private fun DrawScope.drawTubeTrack(f: Float, lit: Color) {
+    val y = size.height / 2f
+    val w = 3.dp.toPx()
+    val x = (size.width * f).coerceIn(0f, size.width)
+    drawGlass(Path().apply { moveTo(x, y); lineTo(size.width, y) }, w)
+    if (x > 0f) drawTubeLine(Offset(0f, y), Offset(x, y), lit, w)
+    drawCircle(lit.copy(alpha = 0.22f), w * 3.4f, Offset(x, y))
+    drawCircle(neonCore(lit), w * 1.4f, Offset(x, y))
 }
 
 /** 格: a thick ruled bar with a hard shadow, ruler ticks and a square yellow handle. */
@@ -698,6 +686,9 @@ fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String?
                 if (style.edge == EdgeKind.Chrome) {
                     // 酸's headings are chrome, like its page titles.
                     Text(title, style = style.type.title.copy(fontFamily = style.display, brush = ChromeBrush))
+                } else if (style.edge == EdgeKind.Glow) {
+                    // 霓's are small signs, switching on as they come into view.
+                    NeonText(title, style.type.title.copy(fontWeight = FontWeight.Bold), c.accent)
                 } else {
                     Text(title, style = style.type.title, color = c.content)
                 }
@@ -739,6 +730,8 @@ fun PageTitle(title: String, modifier: Modifier = Modifier, subtitle: String? = 
                     }
                 }
                 EdgeKind.Bezel -> Text(title, style = style.type.display.copy(shadow = pixelShadow(c.accent.copy(alpha = 0.55f), 2.dp, density)), color = c.content)
+                // 霓: the page's name is its sign.
+                EdgeKind.Glow -> NeonText(title, style.type.display, c.accent)
                 else -> Text(title, style = style.type.display, color = c.content)
             }
             if (style.edge == EdgeKind.Panel) {

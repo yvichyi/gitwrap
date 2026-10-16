@@ -87,7 +87,8 @@ fun Modifier.themedSurface(
             translate(0f, 3.dp.toPx()) { drawOutline(outline, androidx.compose.ui.graphics.lerp(c.accent, Color.Black, 0.35f)) }
         }
         flat -> this
-        style.edge == EdgeKind.Glow -> neonGlow(shape, if (tone == SurfaceTone.Accent) c.accent else c.accent.copy(alpha = 0.55f))
+        // 霓: a sign's tube round what you can press; everything else matte, standing off the wall on a dark shadow.
+        style.edge == EdgeKind.Glow -> if (tone == SurfaceTone.Accent) neonGlow(shape, c.accent, 0.9f) else shadow(if (tone == SurfaceTone.Card) 10.dp else 6.dp, shape)
         // 暮: lifted off the paper on a soft, warm shadow (a faint glow of the sun at night).
         style.edge == EdgeKind.Soft -> shadow(
             elevation = if (tone == SurfaceTone.Card) 8.dp else 14.dp, shape = shape,
@@ -116,10 +117,14 @@ fun Modifier.themedSurface(
     m = m.clip(shape)
     // 3. Fill.
     m = when {
-        tone == SurfaceTone.Accent && style.edge == EdgeKind.Glow -> m.background(c.surface)
+        tone == SurfaceTone.Accent && style.edge == EdgeKind.Glow -> m.background(c.accent.copy(alpha = 0.12f))
         tone == SurfaceTone.Accent -> m.background(style.accentBrush())
         style.edge == EdgeKind.Hairline -> m.background(c.bg)
-        style.edge == EdgeKind.Glow -> m.background(c.surface.copy(alpha = 0.9f))
+        // Matte, a little light catching its top edge, and the light of a sign falling on it while it's pressed.
+        style.edge == EdgeKind.Glow -> m.background(if (flat) c.surfaceAlt else c.surface).drawBehind {
+            drawRect(Color.White.copy(alpha = 0.05f), size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
+            if (press > 0f) drawRect(c.accent.copy(alpha = 0.10f * press))
+        }
         // The cap was drawn behind, face and all.
         key -> m
         // A panel recessed into the case: a shadow along its top edge.
@@ -142,7 +147,7 @@ fun Modifier.themedSurface(
     // 4. Edge.
     m = when (style.edge) {
         EdgeKind.Hairline -> m.border(1.dp, if (tone == SurfaceTone.Accent) c.content else c.outline, shape)
-        EdgeKind.Glow -> m.border(1.dp, c.accent.copy(alpha = if (tone == SurfaceTone.Accent) 1f else if (flat) 0.35f else 0.6f), shape)
+        EdgeKind.Glow -> if (tone == SurfaceTone.Accent) m.border(1.5.dp, neonCore(c.accent), shape) else m
         EdgeKind.Brutal -> m.border(style.strokeWidth, c.outline, shape)
         // In the dark a shadow barely shows; a faint rim keeps the card's edge.
         EdgeKind.Soft -> if (style.dark) m.border(1.dp, c.content.copy(alpha = 0.07f), shape) else m

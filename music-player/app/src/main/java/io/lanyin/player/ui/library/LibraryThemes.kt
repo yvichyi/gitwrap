@@ -1,5 +1,11 @@
 package io.lanyin.player.ui.library
 
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Path
+import io.lanyin.player.ui.theme.TiltNeonFamily
+import io.lanyin.player.ui.design.drawTube
+import io.lanyin.player.ui.design.BoxSign
+import io.lanyin.player.ui.design.NeonText
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -92,7 +98,7 @@ internal fun ThemedProfile(account: AccountState, onLogin: () -> Unit, modifier:
         BackdropKind.Grid -> InitialBlock(profile, onLogin, modifier)
         BackdropKind.Acid -> MemberCard(profile, onLogin, modifier)
         BackdropKind.Ink -> SealedName(profile, onLogin, modifier)
-        BackdropKind.Neon -> IdPanel(profile, onLogin, modifier)
+        BackdropKind.Neon -> NameSign(profile, onLogin, modifier)
         BackdropKind.Film -> CastCard(profile, onLogin, modifier)
         else -> Profile(account, onLogin, modifier)
     }
@@ -316,24 +322,68 @@ private fun SealedName(profile: UserProfile?, onLogin: () -> Unit, modifier: Mod
     }
 }
 
+/**
+ * 霓: your name in lights, as a shop puts up its sign: the nickname in pink tube over a dark board,
+ * the avatar in a ring of cyan, OPEN beside it. Signed out, the sign is there but switched off.
+ */
 @Composable
-private fun IdPanel(profile: UserProfile?, onLogin: () -> Unit, modifier: Modifier) {
+private fun NameSign(profile: UserProfile?, onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    val mono = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 0.08.em)
-    Column(modifier.fillMaxWidth().themedSurface().padding(16.dp)) {
-        Text(if (profile != null) "ID // %08d".format(profile.userId % 100_000_000) else "ID // --------", style = mono.copy(fontSize = fixed(11f)), color = c.accent)
-        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(52.dp).clip(CircleShape).border(1.5.dp, c.accent, CircleShape), contentAlignment = Alignment.Center) {
-                if (profile != null) Avatar(profile.avatarUrl, profile.nickname, 52.dp)
-                else ThemedIcon(LineIcon.User, null, tint = c.accent, size = 24.dp)
+    Row(
+        modifier
+            .fillMaxWidth()
+            .themedSurface()
+            .drawBehind { drawRect(Brush.radialGradient(listOf(c.accent.copy(alpha = if (profile != null) 0.18f else 0.05f), Color.Transparent), Offset(size.width * 0.35f, 0f), size.width * 0.7f)) }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(56.dp).drawBehind {
+                drawTube(Path().apply { addOval(androidx.compose.ui.geometry.Rect(Offset(size.width / 2f, size.height / 2f), size.minDimension / 2f - 3.dp.toPx())) }, c.accentAlt, 2.dp.toPx(), if (profile != null) 1f else 0f)
+            },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (profile != null) Avatar(profile.avatarUrl, profile.nickname, 44.dp)
+            else ThemedIcon(LineIcon.User, null, tint = c.muted, size = 22.dp)
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            NeonText(profile?.nickname ?: "未登录", style.type.title.copy(fontSize = 20.sp), c.accent, lit = if (profile != null) 1f else 0f)
+            Text(
+                if (profile != null) (vipName(profile.vipType) ?: "网易云音乐") + " · 营业中" else "招牌还没亮 · 扫码登录",
+                style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (profile != null) BoxSign("OPEN", c.accentAlt, size = 10f, delayMillis = 300) else ThemedButton("登录", onLogin)
+    }
+}
+
+/**
+ * 霓: the entries as the building's directory by the lift: a lit board, a floor to each place,
+ * the floor numbers in cyan tube, switching on floor by floor.
+ */
+@Composable
+private fun DirectoryBoard(entries: List<Entry>, modifier: Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    Column(modifier.fillMaxWidth().themedSurface().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("澜音大厦 · 楼层指南", style = style.type.label, color = c.muted, modifier = Modifier.weight(1f))
+            Text("DIRECTORY", style = TextStyle(fontFamily = TiltNeonFamily, fontSize = fixed(11f), letterSpacing = 1.sp), color = c.muted)
+        }
+        entries.forEachIndexed { i, e ->
+            Box(Modifier.padding(vertical = 6.dp).fillMaxWidth().height(1.dp).background(c.content.copy(alpha = 0.08f)))
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 46.dp).then(e.onClick?.let { Modifier.pressable(onClick = it) } ?: Modifier),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                NeonText("${i + 1}F", TextStyle(fontFamily = TiltNeonFamily, fontSize = fixed(20f)), c.accentAlt, Modifier.width(46.dp), delayMillis = 120 * i)
+                ThemedIcon(e.icon, null, tint = c.muted, size = 18.dp, modifier = Modifier.padding(end = 10.dp))
+                Text(e.title, style = style.type.body, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(e.detail, style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp))
+                if (e.onClick != null) ThemedIcon(LineIcon.Forward, null, tint = c.muted, size = 16.dp, modifier = Modifier.padding(start = 4.dp))
             }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(profile?.nickname ?: "UNKNOWN USER", style = style.type.title, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(if (profile != null) "LINK: NETEASE ● ONLINE" else "LINK: OFFLINE", style = mono.copy(fontSize = fixed(10f)), color = if (profile != null) c.accent else c.muted)
-            }
-            if (profile != null) VipBadge(profile.vipType) else ThemedButton("登录", onLogin)
         }
     }
 }
@@ -448,9 +498,7 @@ internal fun ThemedEntries(entries: List<Entry>, modifier: Modifier) {
         BackdropKind.Film -> EntryLines(entries, modifier, leader = false) { i ->
             Text("▸ %02dA".format(i + 1), style = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = fixed(10f), letterSpacing = 0.1.em), color = FilmStamp, modifier = Modifier.width(52.dp))
         }
-        BackdropKind.Neon -> EntryLines(entries, modifier, leader = false) { i ->
-            Text("0x%02X".format(i + 1), style = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = fixed(11f)), color = c.accent, modifier = Modifier.width(44.dp))
-        }
+        BackdropKind.Neon -> DirectoryBoard(entries, modifier)
     }
 }
 

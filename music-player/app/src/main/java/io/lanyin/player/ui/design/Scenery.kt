@@ -122,67 +122,6 @@ internal fun DrawScope.drawDuskEvening(style: LanyinStyle, t: Float, audio: Back
 }
 
 /**
- * 霓: palm trees standing black against the glow at both ends of the horizon, swaying with the
- * bass; and on every fourth beat a star falling across the sky.
- */
-internal fun DrawScope.drawNeonPalms(style: LanyinStyle, t: Float, horizon: Float, audio: BackdropAudio?) {
-    val c = style.colors
-    val w = size.width
-    val h = size.height
-    val sway = 2.5f * sin(t * 0.8f) + 5f * (audio?.bass ?: 0f)
-    palm(Offset(w * 0.035f, horizon), h * 0.42f, -1f, sway, c.accentAlt)
-    palm(Offset(w * 0.985f, horizon), h * 0.36f, 1f, -sway, c.accent)
-    if (audio == null) return
-    for (k in 0 until 4) {
-        val n = audio.beatCount - 1 - k
-        if (n < 0 || n % 4 != 0) continue
-        val age = t - audio.beats[n % BackdropAudio.BEATS]
-        if (age < 0f || age > 0.75f) continue
-        val p = age / 0.75f
-        val start = Offset(w * (0.25f + 0.45f * hash01(n, 61)), horizon * (0.05f + 0.2f * hash01(n, 62)))
-        val dir = Offset(-0.85f, 0.42f)
-        val len = w * 0.22f
-        val head = start + dir * (len * p)
-        val tail = start + dir * (len * (p - 0.35f).coerceAtLeast(0f))
-        drawLine(Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.9f * (1f - p))), tail, head), tail, head, 2f * density, StrokeCap.Round)
-        drawCircle(Color.White.copy(alpha = 1f - p), 2.2f * density, head)
-    }
-}
-
-private operator fun Offset.times(k: Float) = Offset(x * k, y * k)
-
-/** A palm silhouette on [foot], [height] tall, leaning to [side], fronds turned by [sway] degrees, rimmed in [rim]. */
-private fun DrawScope.palm(foot: Offset, height: Float, side: Float, sway: Float, rim: Color) {
-    val dark = Color(0xFF04060C)
-    val top = foot + Offset(side * height * 0.18f, -height)
-    val trunk = Path().apply {
-        moveTo(foot.x - 5f * density, foot.y)
-        quadraticTo(foot.x + side * height * 0.02f, foot.y - height * 0.5f, top.x - 2f * density, top.y)
-        lineTo(top.x + 2f * density, top.y)
-        quadraticTo(foot.x + side * height * 0.06f + 4f * density, foot.y - height * 0.5f, foot.x + 5f * density, foot.y)
-        close()
-    }
-    drawPath(trunk, dark)
-    drawPath(trunk, rim.copy(alpha = 0.35f), style = Stroke(1f * density))
-    rotate(sway, top) {
-        for (k in 0 until 7) {
-            val a = (-160f + k * 23f) / 180f * PI.toFloat()
-            val len = height * (0.34f + 0.08f * ((k + 1) % 3))
-            val tip = top + Offset(kotlin.math.cos(a) * len, kotlin.math.sin(a) * len * 0.55f + len * 0.35f)
-            val mid = top + Offset(kotlin.math.cos(a) * len * 0.5f, kotlin.math.sin(a) * len * 0.5f - len * 0.08f)
-            val frond = Path().apply {
-                moveTo(top.x, top.y)
-                quadraticTo(mid.x, mid.y - 6f * density, tip.x, tip.y)
-                quadraticTo(mid.x, mid.y + 4f * density, top.x, top.y)
-                close()
-            }
-            drawPath(frond, dark)
-            drawPath(frond, rim.copy(alpha = 0.3f), style = Stroke(1f * density))
-        }
-    }
-}
-
-/**
  * 格's poster in landscape, moving: the red disc swelling on the beat, the blue bar sliding along
  * the grid with the bar, a yellow square turning a quarter every four beats.
  */

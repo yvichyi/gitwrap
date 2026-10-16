@@ -79,10 +79,7 @@ fun Backdrop(
                 drawInk(style, t, page, heard)
                 if (!page && wide) drawInkWildlife(style, t, heard)
             }
-            BackdropKind.Neon -> {
-                drawNeon(style, t, e, page, heard)
-                if (!page && wide) drawNeonPalms(style, t, size.height * 0.82f, heard)
-            }
+            BackdropKind.Neon -> if (page) drawNightWall(style) else drawNightStreet(style, t, heard)
             BackdropKind.Dusk -> drawDusk(style, t, e, page, heard, if (!page && wide) progress() else 0f)
             BackdropKind.Grid -> {
                 drawGridPaper(style, page, measurer, trackNumber)
@@ -357,116 +354,6 @@ internal fun hash01(i: Int, salt: Int): Float {
     x = (x xor (x ushr 13)) * 1274126177
     x = x xor (x ushr 16)
     return (x and 0xFFFFFF) / 16777216f
-}
-
-private fun DrawScope.drawNeon(style: LanyinStyle, t: Float, e: Float, page: Boolean, audio: BackdropAudio? = null) {
-    val c = style.colors
-    val w = size.width
-    val h = size.height
-    drawRect(c.bg)
-    val horizon = h * when {
-        page -> 0.8f
-        w > h -> 0.82f
-        else -> 0.5f
-    }
-    // Sky glow.
-    drawRect(Brush.verticalGradient(0f to Color.Transparent, 0.75f to c.bgDeep, 1f to c.accentAlt.copy(alpha = 0.35f), startY = 0f, endY = horizon))
-    if (!page && w > h) {
-        val sun = Offset(w * 0.8f, horizon)
-        val r = h * 0.26f
-        glowBlob(c.accentAlt.copy(alpha = 0.25f), sun, r * 1.8f)
-        val disc = Path().apply { addOval(androidx.compose.ui.geometry.Rect(sun, r)) }
-        val fill = Brush.verticalGradient(
-            // Blue at the crown sinking into violet at the horizon: a cold sun, in the theme's own hues.
-            listOf(c.accent.copy(alpha = 0.55f), c.accentAlt.copy(alpha = 0.5f)),
-            startY = sun.y - r, endY = sun.y,
-        )
-        clipPath(disc) {
-            // Solid crown, then slices that thin toward the horizon.
-            var top = sun.y - r
-            var gap = r * 0.035f
-            var slice = r * 0.5f
-            while (top < horizon) {
-                drawRect(fill, Offset(sun.x - r, top), Size(r * 2, minOf(slice, horizon - top)))
-                top += slice + gap
-                slice *= 0.62f
-                gap *= 1.15f
-            }
-        }
-    }
-    if (audio != null) drawSkyline(style, horizon, audio)
-    // The horizon flares on each beat.
-    val flare = audio?.pulse(t, 0.35f) ?: 0f
-    if (flare > 0f) drawLine(c.accent.copy(alpha = 0.35f * flare), Offset(0f, horizon), Offset(w, horizon), strokeWidth = (3f + 6f * flare) * density)
-    drawLine(lerp(c.accentAlt, c.accent, flare).copy(alpha = if (page) 0.45f else 0.8f + 0.2f * flare), Offset(0f, horizon), Offset(w, horizon), strokeWidth = 1.5f * density)
-    // Perspective grid floor, scrolling toward the viewer.
-    val vanishing = Offset(w / 2f, horizon)
-    for (i in -14..14) {
-        val bottomX = w / 2f + i * w * 0.14f
-        drawLine(c.accent.copy(alpha = 0.22f), vanishing.copy(x = w / 2f + i * w * 0.012f), Offset(bottomX, h), strokeWidth = 1f * density)
-    }
-    // Half a line a beat, so the floor runs at the song's tempo and a line crosses every other beat.
-    val scroll = (audio?.let { it.beatClock * 0.5f } ?: (t * (0.12f + 0.5f * e))) % 1f
-    for (j in 0 until 14) {
-        val z = (j + scroll) / 14f
-        val y = horizon + (h - horizon) * z.pow(2.2f)
-        drawLine(c.accent.copy(alpha = 0.06f + 0.34f * z), Offset(0f, y), Offset(w, y), strokeWidth = (0.6f + 1.4f * z) * density)
-    }
-    // Each beat sends a pulse of light down the floor toward the viewer.
-    if (audio != null) {
-        for (k in 0 until 3) {
-            val n = audio.beatCount - 1 - k
-            if (n < 0) break
-            val age = t - audio.beats[n % BackdropAudio.BEATS]
-            if (age < 0f || age > 0.9f) continue
-            val z = age / 0.9f
-            val y = horizon + (h - horizon) * z.pow(2.2f)
-            val band = (h - horizon) * 0.05f * (0.3f + z)
-            drawRect(
-                Brush.verticalGradient(listOf(Color.Transparent, c.accent.copy(alpha = 0.28f * (1f - z)), Color.Transparent), startY = y - band, endY = y + band),
-                Offset(0f, y - band), Size(w, band * 2),
-            )
-        }
-    }
-    // Floor fade so content stays legible.
-    drawRect(Brush.verticalGradient(listOf(c.bg.copy(alpha = 0.2f), c.bg.copy(alpha = 0.85f)), startY = horizon, endY = h), topLeft = Offset(0f, horizon))
-    // A few stars and the CRT scanlines.
-    for (i in 0 until 30) {
-        val twinkle = 0.3f + 0.7f * (0.5f + 0.5f * sin(t * (1f + 2f * hash01(i, 11)) + i))
-        drawCircle(c.content.copy(alpha = 0.5f * twinkle * hash01(i, 12)), radius = density * (0.6f + hash01(i, 13)), center = Offset(hash01(i, 14) * w, hash01(i, 15) * horizon * 0.85f))
-    }
-    val gap = 3f * density
-    var y = 0f
-    while (y < h) {
-        drawLine(Color.Black.copy(alpha = 0.16f), Offset(0f, y), Offset(w, y), strokeWidth = 1f)
-        y += gap
-    }
-}
-
-/**
- * The spectrum as a city on the horizon: bars mirrored from the bass in the middle out to the
- * treble at both edges, glowing blue into violet, with a faint reflection on the floor.
- */
-private fun DrawScope.drawSkyline(style: LanyinStyle, horizon: Float, audio: BackdropAudio) {
-    val c = style.colors
-    val w = size.width
-    val n = 44
-    val slot = w / n
-    val bar = slot * 0.56f
-    // Landscape keeps the city low, under the lyrics' footer.
-    val reach = size.height * if (w > size.height) 0.042f else 0.13f
-    for (i in 0 until n) {
-        val u = kotlin.math.abs(i - (n - 1) / 2f) / (n / 2f)
-        val band = (u * (audio.levels.size - 1)).toInt().coerceIn(0, audio.levels.size - 1)
-        val v = audio.levels[band]
-        val top = horizon - (1.5f * density + v * reach)
-        val color = lerp(c.accent, c.accentAlt, v)
-        val x = i * slot + (slot - bar) / 2f
-        drawRect(color.copy(alpha = 0.16f), Offset(x - bar * 0.4f, top - 2f * density), Size(bar * 1.8f, horizon - top + 2f * density))
-        drawRect(Brush.verticalGradient(listOf(color.copy(alpha = 0.95f), color.copy(alpha = 0.35f)), startY = top, endY = horizon), Offset(x, top), Size(bar, horizon - top))
-        // Reflection.
-        drawRect(color.copy(alpha = 0.12f), Offset(x, horizon), Size(bar, (horizon - top) * 0.45f))
-    }
 }
 
 /**

@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -113,89 +114,93 @@ internal fun brushStrokePath(start: Offset, length: Float, thickness: Float): Pa
     }
 }
 
+/**
+ * 霓's covers: a neon sign on a dark brick wall, its light spilling over the bricks round it.
+ * Four signs, so a row of covers isn't one picture repeated: a heart, a note over a wave, the
+ * moon and stars, a record.
+ */
 private fun DrawScope.neonCover(style: LanyinStyle, seed: Int) {
     val c = style.colors
     val w = size.width
     val h = size.height
-    drawRect(c.surface)
+    drawRect(lerp(c.surface, Color.Black, 0.3f))
+    val course = h / 9f
+    val brick = w / 3.5f
+    val mortar = Color.White.copy(alpha = 0.035f)
+    for (row in 0..9) {
+        val y = row * course
+        drawLine(mortar, Offset(0f, y), Offset(w, y), w * 0.004f)
+        var x = if (row % 2 == 0) 0f else brick / 2f
+        while (x < w) {
+            drawLine(mortar, Offset(x, y), Offset(x, y + course), w * 0.004f)
+            x += brick
+        }
+    }
+    val pink = c.accent
+    val cyan = c.accentAlt
+    val amber = Color(0xFFFFC46B)
+    val tube = w * 0.026f
+    val cx = w * (0.47f + 0.06f * hash01(seed, 1))
+    val cy = h * (0.47f + 0.05f * hash01(seed, 2))
+    val s = w * 0.62f
+    fun spill(color: Color) = drawRect(Brush.radialGradient(listOf(color.copy(alpha = 0.28f), Color.Transparent), Offset(cx, cy), w * 0.62f))
     when (seed % 4) {
         0 -> {
-            // Rings over a glowing floor.
-            val center = Offset(w * (0.4f + 0.2f * hash01(seed, 1)), h * (0.4f + 0.2f * hash01(seed, 2)))
-            for (ring in 0 until 3) {
-                val color = if ((ring + seed) % 2 == 0) c.accent else c.accentAlt
-                glowCircle(color, w * (0.14f + 0.1f * ring), center, w)
+            spill(pink)
+            drawTube(
+                Path().apply {
+                    moveTo(cx, cy + 0.36f * s)
+                    cubicTo(cx - 0.1f * s, cy + 0.26f * s, cx - 0.46f * s, cy + 0.06f * s, cx - 0.44f * s, cy - 0.14f * s)
+                    cubicTo(cx - 0.42f * s, cy - 0.38f * s, cx - 0.12f * s, cy - 0.42f * s, cx, cy - 0.2f * s)
+                    cubicTo(cx + 0.12f * s, cy - 0.42f * s, cx + 0.42f * s, cy - 0.38f * s, cx + 0.44f * s, cy - 0.14f * s)
+                    cubicTo(cx + 0.46f * s, cy + 0.06f * s, cx + 0.1f * s, cy + 0.26f * s, cx, cy + 0.36f * s)
+                },
+                pink, tube,
+            )
+            for (k in 0..2) {
+                val at = Offset(w * (0.18f + 0.64f * hash01(seed + k, 5)), h * (0.14f + 0.72f * hash01(seed + k, 6)))
+                if ((at - Offset(cx, cy)).getDistance() > s * 0.42f) drawTube(starPath(at, w * 0.05f, w * 0.012f, 4), cyan, tube * 0.6f)
             }
-            var y = h * 0.78f
-            while (y < h) {
-                drawLine(c.accentAlt.copy(alpha = 0.5f), Offset(0f, y), Offset(w, y), strokeWidth = h * 0.008f)
-                y += h * 0.045f
-            }
-        }
-        3 -> {
-            // Synthwave sun on a grid.
-            val horizon = h * 0.62f
-            drawRect(Brush.verticalGradient(listOf(c.surface, lerp(c.surface, c.accentAlt, 0.35f)), endY = horizon))
-            val sun = Offset(w * 0.5f, horizon)
-            val r = w * 0.27f
-            clipRect(bottom = horizon) {
-                drawCircle(Brush.verticalGradient(listOf(lerp(c.accent, Color.White, 0.25f), c.accentAlt), startY = sun.y - r, endY = sun.y), r, sun)
-                for (k in 0 until 4) drawRect(c.surface, Offset(0f, sun.y - r * (0.12f + k * 0.2f)), Size(w, r * (0.03f + k * 0.015f)))
-            }
-            for (i in -6..6) drawLine(c.accent.copy(alpha = 0.6f), Offset(w / 2 + i * w * 0.03f, horizon), Offset(w / 2 + i * w * 0.2f, h), w * 0.006f)
-            for (j in 1..4) {
-                val y = horizon + (h - horizon) * (j / 4f).pow(1.8f)
-                drawLine(c.accent.copy(alpha = 0.6f), Offset(0f, y), Offset(w, y), w * 0.006f)
-            }
-        }
-        2 -> {
-            // A neon prism.
-            val cx = w * (0.45f + 0.1f * hash01(seed, 3))
-            val tri = Path().apply {
-                moveTo(cx, h * 0.2f)
-                lineTo(cx + w * 0.3f, h * 0.72f)
-                lineTo(cx - w * 0.3f, h * 0.72f)
-                close()
-            }
-            glowPath(tri, c.accent, w)
-            val inner = Path().apply {
-                moveTo(cx, h * 0.62f)
-                lineTo(cx + w * 0.13f, h * 0.4f)
-                lineTo(cx - w * 0.13f, h * 0.4f)
-                close()
-            }
-            glowPath(inner, c.accentAlt, w)
         }
         1 -> {
-            // Equaliser bars.
-            val bars = 7
-            val gap = w * 0.035f
-            val bw = (w * 0.8f - gap * (bars - 1)) / bars
-            for (i in 0 until bars) {
-                val level = 0.25f + 0.7f * hash01(seed * 13 + i, 16)
-                val x = w * 0.1f + i * (bw + gap)
-                var y = h * 0.82f
-                val top = h * 0.82f - h * 0.62f * level
-                while (y > top) {
-                    val f = ((h * 0.82f - y) / (h * 0.62f)).coerceIn(0f, 1f)
-                    drawRect(lerp(c.accent, c.accentAlt, f), Offset(x, y - h * 0.035f), Size(bw, h * 0.028f))
-                    y -= h * 0.045f
-                }
+            spill(cyan)
+            // An eighth note, and a pink wave under it.
+            val head = Offset(cx - 0.1f * s, cy + 0.2f * s)
+            rotate(-22f, head) { drawTube(Path().apply { addOval(Rect(head.x - 0.15f * s, head.y - 0.1f * s, head.x + 0.15f * s, head.y + 0.1f * s)) }, cyan, tube) }
+            val stemX = head.x + 0.14f * s
+            drawTubeLine(Offset(stemX, head.y - 0.03f * s), Offset(stemX, cy - 0.38f * s), cyan, tube)
+            drawTube(Path().apply { moveTo(stemX, cy - 0.38f * s); cubicTo(stemX + 0.06f * s, cy - 0.2f * s, stemX + 0.3f * s, cy - 0.22f * s, stemX + 0.24f * s, cy - 0.02f * s) }, cyan, tube)
+            drawTube(
+                Path().apply {
+                    moveTo(w * 0.16f, h * 0.84f)
+                    var x = w * 0.16f
+                    while (x < w * 0.84f) {
+                        x += w * 0.01f
+                        lineTo(x, h * 0.84f + h * 0.025f * sin((x / w) * 6f * PI.toFloat()))
+                    }
+                },
+                pink, tube * 0.7f,
+            )
+        }
+        2 -> {
+            spill(amber)
+            // A crescent moon, and stars in cyan.
+            val moon = Path().apply { addOval(Rect(Offset(cx, cy), s * 0.32f)) }
+            val bite = Path().apply { addOval(Rect(Offset(cx + s * 0.16f, cy - s * 0.1f), s * 0.28f)) }
+            drawTube(Path.combine(androidx.compose.ui.graphics.PathOperation.Difference, moon, bite), amber, tube)
+            for (k in 0..2) {
+                val at = Offset(cx + s * (0.28f + 0.12f * k), cy - s * (0.3f - 0.22f * k))
+                drawTube(starPath(at, w * (0.05f - 0.01f * k), w * 0.012f, 4), cyan, tube * 0.6f)
             }
         }
-    }
-}
-
-/** A neon tube circle: wide faint glow, then the bright core. */
-private fun DrawScope.glowCircle(color: Color, radius: Float, center: Offset, w: Float) {
-    for ((width, alpha) in listOf(0.05f to 0.12f, 0.025f to 0.3f, 0.008f to 1f)) {
-        drawCircle(color.copy(alpha = alpha), radius = radius, center = center, style = Stroke(w * width))
-    }
-}
-
-private fun DrawScope.glowPath(path: Path, color: Color, w: Float) {
-    for ((width, alpha) in listOf(0.05f to 0.12f, 0.025f to 0.3f, 0.008f to 1f)) {
-        drawPath(path, color.copy(alpha = alpha), style = Stroke(w * width, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+        else -> {
+            spill(pink)
+            // A record: the disc in cyan, its label in pink, the arm across it.
+            drawTube(Path().apply { addOval(Rect(Offset(cx, cy), s * 0.34f)) }, cyan, tube)
+            drawTube(Path().apply { addOval(Rect(Offset(cx, cy), s * 0.11f)) }, pink, tube)
+            drawCircle(neonCore(pink), tube * 0.7f, Offset(cx, cy))
+            drawTube(Path().apply { moveTo(cx + s * 0.44f, cy - s * 0.42f); lineTo(cx + s * 0.4f, cy + s * 0.02f); lineTo(cx + s * 0.22f, cy + s * 0.16f) }, cyan, tube * 0.8f)
+        }
     }
 }
 

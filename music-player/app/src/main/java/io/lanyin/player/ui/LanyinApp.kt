@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import io.lanyin.player.ui.design.drawTubeLine
 import io.lanyin.player.ui.design.drawMenuCursor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -431,7 +432,12 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                 val indicator = when (style.edge) {
                     // 格: the current tab is a yellow index card.
                     EdgeKind.Brutal -> Modifier.retroShadow(shape, c.outline, 3.dp).background(io.lanyin.player.ui.theme.GridYellow).border(2.dp, c.outline, shape)
-                    EdgeKind.Glow -> Modifier.neonGlow(shape, c.accent, 0.7f).clip(shape).background(c.accent.copy(alpha = 0.12f)).border(1.dp, c.accent, shape)
+                    // 霓: the current tab is lit: a short pink tube under it, its light spilling up the bar.
+                    EdgeKind.Glow -> Modifier.drawBehind {
+                        val y = size.height - 3.dp.toPx()
+                        drawRect(androidx.compose.ui.graphics.Brush.radialGradient(listOf(c.accent.copy(alpha = 0.22f), androidx.compose.ui.graphics.Color.Transparent), androidx.compose.ui.geometry.Offset(size.width / 2f, y), size.width * 0.5f))
+                        drawTubeLine(androidx.compose.ui.geometry.Offset(size.width * 0.38f, y), androidx.compose.ui.geometry.Offset(size.width * 0.62f, y), c.accent, 2.5.dp.toPx())
+                    }
                     // 影: the current tab is an exposed frame between two frame lines, marked in the
                     // orange of the date stamp.
                     EdgeKind.Film -> Modifier.drawBehind {
