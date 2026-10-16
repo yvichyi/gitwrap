@@ -30,14 +30,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.lanyin.player.core.model.Playlist
@@ -57,7 +56,6 @@ import io.lanyin.player.ui.design.rememberFrameClock
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
-import kotlin.math.sin
 
 /** What heads a song list: a cover, for 每日推荐 the day itself, or an icon for the listener's own collections. */
 sealed interface ListHeader {
@@ -120,18 +118,7 @@ fun SongListScreen(
                     topActions()
                 }
             }
-            item {
-                Row(Modifier.padding(start = m, end = m, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    HeaderArt(header)
-                    Spacer(Modifier.width(18.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(title, style = style.type.title, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                        if (subtitle != null) {
-                            Text(subtitle, style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-                        }
-                    }
-                }
-            }
+            item { ListHero(title, subtitle, header, Modifier.padding(start = m, end = m, top = 8.dp)) }
             if (tabs != null) item { Box(Modifier.padding(start = m, end = m, top = 20.dp)) { tabs() } }
             when (songs) {
                 Load.Loading -> item { Placeholder("正在加载…") }
@@ -188,36 +175,37 @@ fun SongListScreen(
     }
 }
 
+/** A list's art at [size]: its cover, its glyph on a tile, or the day. */
 @Composable
-private fun HeaderArt(header: ListHeader) {
+internal fun HeaderArt(header: ListHeader, size: Dp = 112.dp) {
     val style = Lanyin.style
     val c = style.colors
     when (header) {
-        is ListHeader.Cover -> CoverImage(header.url, header.seed, 112.dp, Modifier.size(112.dp).clip(if (header.round) style.roundShape else style.artShape))
+        is ListHeader.Cover -> CoverImage(header.url, header.seed, size, Modifier.size(size).clip(if (header.round) style.roundShape else style.artShape))
         is ListHeader.Glyph -> Box(
             Modifier
-                .size(112.dp)
+                .size(size)
                 .then(if (style.edge == EdgeKind.Hairline) Modifier.border(1.dp, c.outline) else Modifier.themedSurface(shape = style.artShape, tone = SurfaceTone.Card)),
             contentAlignment = Alignment.Center,
         ) {
-            ThemedIcon(header.icon, null, tint = c.accent, size = 44.dp)
+            ThemedIcon(header.icon, null, tint = c.accent, size = size * 0.4f)
             header.fill?.let { f ->
                 // How full: a short gauge under the icon.
-                Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp).size(64.dp, 4.dp).clip(RoundedCornerShape(2.dp)).background(c.content.copy(alpha = 0.12f))) {
+                Box(Modifier.align(Alignment.BottomCenter).padding(bottom = size * 0.16f).size(size * 0.57f, 4.dp).clip(RoundedCornerShape(2.dp)).background(c.content.copy(alpha = 0.12f))) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(f.coerceIn(0.02f, 1f)).background(c.accent))
                 }
             }
         }
         is ListHeader.Day -> Column(
             Modifier
-                .size(112.dp)
+                .size(size)
                 .then(if (style.edge == EdgeKind.Hairline) Modifier else Modifier.themedSurface(shape = style.artShape, tone = SurfaceTone.Card)),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
             Text(
                 "${header.day}",
-                style = style.type.display.copy(fontFamily = style.display, fontSize = 48.sp, lineHeight = 52.sp),
+                style = style.type.display.copy(fontFamily = style.display, fontSize = 48.sp * (size / 112.dp), lineHeight = 52.sp * (size / 112.dp)),
                 color = c.accent,
             )
             Text(header.caption, style = style.type.caption, color = c.muted, maxLines = 1)
@@ -249,7 +237,7 @@ fun SongRow(
             if (playing) {
                 PlayingBars(isPlaying)
             } else {
-                Text("$number", style = style.type.caption.copy(fontFamily = style.numeric), color = c.muted, textAlign = TextAlign.Start)
+                RowNumber(number)
             }
         }
         Column(Modifier.weight(1f)) {
@@ -288,19 +276,12 @@ fun SongRow(
     }
 }
 
-/** Three bars bouncing while the song plays, still when paused. */
+/** Three bars bouncing while the song plays, still when paused, drawn in the theme's hand. */
 @Composable
 private fun PlayingBars(isPlaying: Boolean) {
-    val c = Lanyin.colors
+    val style = Lanyin.style
     val clock = rememberFrameClock(isPlaying)
-    Canvas(Modifier.size(16.dp)) {
-        val w = size.width / 5f
-        for (i in 0 until 3) {
-            val h = if (isPlaying) 0.35f + 0.65f * ((sin(clock.floatValue * (5f + i * 1.7f) + i * 1.3f) + 1f) / 2f) else 0.35f + i * 0.15f
-            val x = w / 2 + i * w * 2
-            drawLine(c.accent, Offset(x, size.height), Offset(x, size.height * (1f - h)), w, StrokeCap.Round)
-        }
-    }
+    Canvas(Modifier.size(16.dp)) { drawPlayingBars(clock.floatValue, isPlaying, style.backdrop, style.colors.accent) }
 }
 
 /** A calm line in place of content: loading, empty, or what went wrong. */

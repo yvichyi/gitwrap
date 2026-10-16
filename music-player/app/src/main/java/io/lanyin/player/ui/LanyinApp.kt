@@ -9,7 +9,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,7 +68,6 @@ import io.lanyin.player.ui.design.LocalOrientationController
 import io.lanyin.player.ui.design.LocalSharedPlayerScope
 import io.lanyin.player.ui.design.SharedPlayerScope
 import io.lanyin.player.ui.design.SurfaceTone
-import io.lanyin.player.ui.design.neonGlow
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.retroShadow
 import io.lanyin.player.ui.design.themedSurface
@@ -216,13 +214,16 @@ fun LanyinApp(
                     // Under the full player the page can't be seen: its animations stand still.
                     io.lanyin.player.ui.design.LocalFramesPaused provides (expanded && !player.isEmpty),
                 ) {
+                    // Each theme has its own way between pages.
+                    val backdrop = Lanyin.style.backdrop
+                    val motion = remember(backdrop) { pageMotion(backdrop) }
                     NavHost(
                         navController = navController,
                         startDestination = HomeRoute,
-                        enterTransition = { fadeIn(tween(220)) + scaleIn(initialScale = 0.97f) },
-                        exitTransition = { fadeOut(tween(140)) },
-                        popEnterTransition = { fadeIn(tween(220)) + scaleIn(initialScale = 0.97f) },
-                        popExitTransition = { fadeOut(tween(140)) },
+                        enterTransition = { motion.enter },
+                        exitTransition = { motion.exit },
+                        popEnterTransition = { motion.popEnter },
+                        popExitTransition = { motion.popExit },
                     ) {
                         composable<HomeRoute> {
                             HomeScreen(

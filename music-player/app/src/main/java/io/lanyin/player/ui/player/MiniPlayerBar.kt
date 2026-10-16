@@ -46,11 +46,23 @@ import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.sharedPlayer
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.theme.DockKind
-import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.PlayerSkin
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import kotlin.math.sin
+import kotlin.math.cos
+import kotlin.math.PI
+import io.lanyin.player.ui.theme.LanyinStyle
+import io.lanyin.player.ui.theme.BackdropKind
+import io.lanyin.player.ui.design.rememberFrameClock
+import io.lanyin.player.ui.design.drawTube
+import io.lanyin.player.ui.design.drawGlass
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 
 /** Mini player: a floating pill, or a plain docked row in themes with a docked bottom bar. */
 @Composable
@@ -115,12 +127,14 @@ fun MiniPlayer(
     }
 }
 
-/** Play/pause wrapped in a progress ring that fills as the song plays. */
+/** Play/pause wrapped in how far the song has got, drawn in the theme's hand (see [drawMiniProgress]). */
 @Composable
 private fun MiniPlayButton(state: PlayerState) {
     val style = Lanyin.style
     val c = style.colors
     val morph by animateFloatAsState(if (state.isPlaying) 1f else 0f, style.bouncy.spec(), label = "miniMorph")
+    // Only 影's reel turns; the others are still between frames of the position.
+    val clock = if (style.backdrop == BackdropKind.Film) rememberFrameClock(state.isPlaying) else null
     Box(
         Modifier
             .size(48.dp)
@@ -129,25 +143,122 @@ private fun MiniPlayButton(state: PlayerState) {
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.size(36.dp)) {
-            if (style.edge == EdgeKind.Brutal) {
-                // 格: a square key with the progress as a bar filling along its foot.
-                val stroke = style.strokeWidth.toPx()
-                val bar = 5.dp.toPx()
-                val f = (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
-                drawRect(c.outline, Offset(3.dp.toPx(), 3.dp.toPx()), size)
-                drawRect(c.surface)
-                drawRect(c.accent, Offset(0f, size.height - bar), Size(size.width * f, bar))
-                drawRect(c.outline, Offset(stroke / 2, stroke / 2), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke))
-                return@Canvas
-            }
-            val stroke = (if (style.dock == DockKind.Docked) 1.5.dp else 2.5.dp).toPx()
-            val inset = stroke / 2
-            drawCircle(c.content.copy(alpha = 0.14f), size.minDimension / 2 - inset, style = Stroke(stroke))
-            drawArc(
-                c.accent, -90f, 360f * state.positionMs / state.durationMs, false,
-                Offset(inset, inset), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke, cap = StrokeCap.Round),
-            )
+            val f = (state.positionMs.toFloat() / state.durationMs).let { if (it.isFinite()) it.coerceIn(0f, 1f) else 0f }
+            drawMiniProgress(style, f, clock?.floatValue ?: 0f)
         }
         Canvas(Modifier.size(13.dp)) { drawPlayPauseGlyph(morph, c.content) }
+    }
+}
+
+/**
+ * How far the song has got, round the mini player's play button. 墨: an ensō drawn with the
+ * brush, thick where it starts and drying out. 霓: a lit tube bent round a cold glass ring. 暮:
+ * an arc in the sunset's colours with the sun at its head. 格: a square key with a bar filling
+ * along its foot. 影: a take-up reel, the tape wound onto it growing as it turns. 点: a ring of
+ * dots lighting one by one, the red one at the head. 机: a knob's scale of ticks. 报: a pie,
+ * printed. 游: a pixel frame and a row of blocks. 酸: a ring of lime gel with its gloss.
+ */
+internal fun DrawScope.drawMiniProgress(style: LanyinStyle, f: Float, t: Float) {
+    val c = style.colors
+    val r = size.minDimension / 2f
+    val center = Offset(size.width / 2f, size.height / 2f)
+    when (style.backdrop) {
+        BackdropKind.Grid -> {
+            val stroke = style.strokeWidth.toPx()
+            val bar = 5.dp.toPx()
+            drawRect(c.outline, Offset(3.dp.toPx(), 3.dp.toPx()), size)
+            drawRect(c.surface)
+            drawRect(c.accent, Offset(0f, size.height - bar), Size(size.width * f, bar))
+            drawRect(c.outline, Offset(stroke / 2, stroke / 2), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke))
+        }
+        BackdropKind.Ink -> {
+            // The brush goes round once over the song: heavy at the start, thinning as it dries.
+            drawCircle(c.content.copy(alpha = 0.08f), r - 2.dp.toPx(), style = Stroke(1.dp.toPx()))
+            val steps = (72 * f).toInt()
+            for (i in 0 until steps) {
+                val a0 = (-100f + i * 5f) * PI.toFloat() / 180f
+                val a1 = (-100f + (i + 1) * 5f) * PI.toFloat() / 180f
+                val k = i / 72f
+                val rr = r - 2.5.dp.toPx() + sin(i * 0.7f) * 0.3.dp.toPx()
+                drawLine(
+                    c.content.copy(alpha = 0.85f - 0.35f * k),
+                    center + Offset(cos(a0) * rr, sin(a0) * rr), center + Offset(cos(a1) * rr, sin(a1) * rr),
+                    (3.4f - 2.2f * k).dp.toPx(), StrokeCap.Round,
+                )
+            }
+        }
+        BackdropKind.Neon -> {
+            val inset = 3.dp.toPx()
+            val rect = androidx.compose.ui.geometry.Rect(inset, inset, size.width - inset, size.height - inset)
+            drawGlass(Path().apply { addOval(rect) }, 2.dp.toPx())
+            if (f > 0f) drawTube(Path().apply { addArc(rect, -90f, 360f * f) }, c.accent, 2.dp.toPx())
+        }
+        BackdropKind.Dusk -> {
+            val stroke = 2.5.dp.toPx()
+            val inset = stroke / 2 + 2.dp.toPx()
+            drawCircle(c.content.copy(alpha = 0.12f), r - inset, style = Stroke(stroke))
+            drawArc(
+                Brush.sweepGradient(listOf(c.accentAlt, c.accent, c.accentAlt), center), -90f, 360f * f, false,
+                Offset(inset, inset), Size(size.width - inset * 2, size.height - inset * 2), style = Stroke(stroke, cap = StrokeCap.Round),
+            )
+            val a = (-90f + 360f * f) * PI.toFloat() / 180f
+            drawCircle(c.accent, 3.dp.toPx(), center + Offset(cos(a) * (r - inset), sin(a) * (r - inset)))
+        }
+        BackdropKind.Film -> {
+            // The take-up reel: the tape wound on grows with the song; the reel turns as it plays.
+            drawCircle(c.content.copy(alpha = 0.3f), r - 1.dp.toPx(), style = Stroke(1.2.dp.toPx()))
+            drawCircle(c.content.copy(alpha = 0.16f), (r * 0.42f) + (r * 0.5f) * f)
+            rotate(t * 90f, center) {
+                for (k in 0 until 3) {
+                    val a = (k * 120f) * PI.toFloat() / 180f
+                    drawCircle(c.bg.copy(alpha = 0.9f), r * 0.13f, center + Offset(cos(a) * r * 0.62f, sin(a) * r * 0.62f))
+                }
+            }
+        }
+        BackdropKind.Dot -> {
+            val n = 24
+            val lit = (f * n).toInt()
+            for (k in 0 until n) {
+                val a = (-90f + k * 360f / n) * PI.toFloat() / 180f
+                val p = center + Offset(cos(a) * (r - 2.dp.toPx()), sin(a) * (r - 2.dp.toPx()))
+                val color = when {
+                    k == lit -> c.accentAlt
+                    k < lit -> c.content
+                    else -> c.content.copy(alpha = 0.15f)
+                }
+                drawCircle(color, 1.5.dp.toPx(), p)
+            }
+        }
+        BackdropKind.Device -> {
+            val n = 20
+            for (k in 0 until n) {
+                val a = (-90f + k * 360f / n) * PI.toFloat() / 180f
+                val on = k < (f * n).toInt() + 1
+                drawLine(
+                    if (on) c.accent else c.content.copy(alpha = 0.18f),
+                    center + Offset(cos(a) * (r - 4.dp.toPx()), sin(a) * (r - 4.dp.toPx())), center + Offset(cos(a) * r, sin(a) * r),
+                    1.6.dp.toPx(), StrokeCap.Round,
+                )
+            }
+        }
+        BackdropKind.Paper -> {
+            drawArc(c.content.copy(alpha = 0.14f), -90f, 360f * f, true, Offset(1.dp.toPx(), 1.dp.toPx()), Size(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()))
+            drawCircle(c.content, r - 1.dp.toPx(), style = Stroke(1.dp.toPx()))
+        }
+        BackdropKind.Game -> {
+            val px = 2.dp.toPx()
+            drawRect(c.content, style = Stroke(px * 1.5f))
+            val n = 6
+            val gap = px
+            val w = (size.width - px * 4 - gap * (n - 1)) / n
+            for (k in 0 until (f * n).toInt().coerceAtMost(n)) drawRect(c.accent, Offset(px * 2 + k * (w + gap), size.height - px * 2 - px * 2), Size(w, px * 2))
+        }
+        BackdropKind.Acid -> {
+            val stroke = 4.dp.toPx()
+            val inset = stroke / 2
+            drawCircle(c.content.copy(alpha = 0.14f), r - inset, style = Stroke(stroke))
+            drawArc(c.accent, -90f, 360f * f, false, Offset(inset, inset), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke, cap = StrokeCap.Round))
+            drawArc(Color.White.copy(alpha = 0.6f), -90f, 360f * f, false, Offset(inset, inset), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke * 0.25f, cap = StrokeCap.Round))
+        }
     }
 }
