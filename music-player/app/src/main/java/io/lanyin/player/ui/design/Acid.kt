@@ -47,7 +47,7 @@ internal fun DrawScope.drawAcidNight(style: LanyinStyle, t: Float, e: Float, pag
     val w = size.width
     val h = size.height
     drawRect(c.bg)
-    val flare = audio?.let { (1f - it.sinceBeat(t) / 0.5f).coerceIn(0f, 1f) } ?: 0f
+    val flare = audio?.pulse(t, 0.5f) ?: 0f
     // A holographic haze in one corner.
     drawCircle(Brush.radialGradient(listOf(c.accentAlt.copy(alpha = 0.16f), Color(0x00FF3EA5)), Offset(w * 1.05f, h * 0.08f), w * 0.7f), w * 0.7f, Offset(w * 1.05f, h * 0.08f))
     // The grid.
@@ -59,7 +59,8 @@ internal fun DrawScope.drawAcidNight(style: LanyinStyle, t: Float, e: Float, pag
         val x = w / 2f + k * w * 0.16f
         drawLine(line, vanish, Offset(w / 2f + (x - w / 2f) * 4f, h * 1.6f), stroke)
     }
-    val roll = if (page) 0f else (t * (0.25f + 0.35f * e + 0.6f * (audio?.bass ?: 0f))) % 1f
+    // Half a line a beat: the floor rolls at the song's tempo.
+    val roll = if (page) 0f else (audio?.let { it.beatClock * 0.5f } ?: (t * (0.25f + 0.35f * e))) % 1f
     for (k in 0 until 14) {
         val z = (k + 1f - roll) / 14f
         val y = horizon + (h - horizon) * z * z
@@ -74,7 +75,14 @@ internal fun DrawScope.drawAcidNight(style: LanyinStyle, t: Float, e: Float, pag
     val treble = audio?.treble ?: 0f
     for (k in 0 until 7) {
         val p = Offset(w * hash01(k, 71), h * (0.05f + 0.6f * hash01(k, 72)))
-        val twinkle = 0.5f + 0.5f * sin(t * (1.6f + hash01(k, 73)) + k * 2f)
+        // With the music, two or three of them flash on each beat in turn and fade before the next.
+        val twinkle = if (audio != null) {
+            val beat = kotlin.math.floor(audio.beatClock)
+            val since = audio.beatClock - beat
+            if ((beat.toInt() + k) % 3 == 0) (1f - since) * (1f - since) else 0.12f
+        } else {
+            0.5f + 0.5f * sin(t * (1.6f + hash01(k, 73)) + k * 2f)
+        }
         val r = density * (5f + 7f * hash01(k, 74)) * (0.6f + 0.4f * twinkle + 0.5f * treble)
         drawPath(starPath(p, r, r * 0.22f, 4), (if (k % 3 == 0) c.accent else Color.White).copy(alpha = (if (page) 0.25f else 0.45f) * (0.4f + 0.6f * twinkle)))
     }

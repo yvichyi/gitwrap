@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.RectangleShape
+import io.lanyin.player.core.audio.beatPulse
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.ButtonKind
 import io.lanyin.player.ui.theme.Lanyin
@@ -94,7 +96,7 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
     fun beat(): Float {
         clock.floatValue
         if (!listening) return 0f
-        return (1f - feed!!.sinceBeat() / 0.45f).coerceIn(0f, 1f)
+        return feed!!.beatPulse(0.45f)
     }
     fun level(): Float {
         clock.floatValue
@@ -642,12 +644,43 @@ fun ThemedSwitch(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifi
     }
 }
 
-/** Section heading: a small tracked label in quiet themes, a title elsewhere. */
+/**
+ * Section heading: a small tracked label in quiet themes, a title elsewhere, with the theme's mark
+ * before it (see [SectionMark]); 报 sets it under a rule as a page of the paper, and 点 and 游 run
+ * a leader of dots out to the note.
+ */
 @Composable
 fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String? = null, index: Int? = null) {
     val style = Lanyin.style
     val c = style.colors
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
+    if (style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Paper) {
+        androidx.compose.foundation.layout.Column(modifier.fillMaxWidth()) {
+            DoubleRule()
+            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.Bottom) {
+                if (index != null) {
+                    PaperKicker(index)
+                    Spacer(Modifier.width(10.dp))
+                }
+                Text(title, style = style.type.title.copy(fontWeight = FontWeight.Black), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                if (trailing != null) {
+                    Spacer(Modifier.weight(1f).widthIn(min = 16.dp))
+                    Text(
+                        trailing,
+                        style = style.type.caption.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
+                        color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 160.dp),
+                    )
+                }
+            }
+        }
+        return
+    }
+    val leader = hasSectionLeader
+    Row(
+        modifier.fillMaxWidth(),
+        verticalAlignment = if (leader) Alignment.CenterVertically else Alignment.Bottom,
+        horizontalArrangement = if (leader) Arrangement.Start else Arrangement.SpaceBetween,
+    ) {
         if (style.edge == EdgeKind.Brutal) {
             // 格 numbers its sections like an editorial index: 「01」 then a heavy headline.
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -660,33 +693,62 @@ fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String?
         } else if (style.quietSections) {
             Text(title, style = style.type.label, color = c.muted)
         } else {
-            Text(title, style = style.type.title, color = c.content)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SectionMark(index)
+                if (style.edge == EdgeKind.Chrome) {
+                    // 酸's headings are chrome, like its page titles.
+                    Text(title, style = style.type.title.copy(fontFamily = style.display, brush = ChromeBrush))
+                } else {
+                    Text(title, style = style.type.title, color = c.content)
+                }
+            }
         }
+        if (leader) SectionLeader(Modifier.weight(1f).padding(horizontal = 10.dp))
         if (trailing != null) {
             // The title keeps its room; a long trailing note gives way on one line.
-            Spacer(Modifier.width(16.dp))
+            if (!leader) Spacer(Modifier.width(16.dp))
             Text(
                 trailing,
-                style = if (style.edge == EdgeKind.Brutal) style.type.caption.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold) else style.type.caption,
+                style = if (style.edge == EdgeKind.Brutal || style.edge == EdgeKind.Panel) style.type.caption.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold) else style.type.caption,
                 color = c.muted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
+                modifier = if (leader) Modifier.widthIn(max = 160.dp) else Modifier.weight(1f, fill = false),
             )
         }
     }
 }
 
-/** Page title in the theme's display face. */
+/**
+ * Page title in the theme's display face, with what the theme sets under or beside it: a dot rule
+ * (点), a model plate (机), sprocket holes (影), a double rule (报), a hard shadow (游) or chrome
+ * and a spark (酸).
+ */
 @Composable
 fun PageTitle(title: String, modifier: Modifier = Modifier, subtitle: String? = null) {
     val style = Lanyin.style
+    val c = style.colors
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
     androidx.compose.foundation.layout.Column(modifier) {
-        // 酸's page titles are polished chrome.
-        if (style.edge == EdgeKind.Chrome) Text(title, style = style.type.display.copy(brush = ChromeBrush))
-        else Text(title, style = style.type.display, color = style.colors.content)
+        Row(if (style.edge == EdgeKind.Panel) Modifier.fillMaxWidth() else Modifier, verticalAlignment = Alignment.Bottom) {
+            when (style.edge) {
+                EdgeKind.Chrome -> {
+                    Text(title, style = style.type.display.copy(brush = ChromeBrush))
+                    Canvas(Modifier.padding(start = 6.dp, bottom = 22.dp).size(16.dp)) {
+                        drawPath(starPath(Offset(size.width / 2f, size.height / 2f), size.minDimension / 2f, size.minDimension * 0.14f, 4), c.accent)
+                    }
+                }
+                EdgeKind.Bezel -> Text(title, style = style.type.display.copy(shadow = pixelShadow(c.accent.copy(alpha = 0.55f), 2.dp, density)), color = c.content)
+                else -> Text(title, style = style.type.display, color = c.content)
+            }
+            if (style.edge == EdgeKind.Panel) {
+                Spacer(Modifier.weight(1f))
+                ModelPlate(Modifier.padding(bottom = 10.dp))
+            }
+        }
+        PageTitleRule()
         if (subtitle != null) {
-            Text(subtitle, style = style.type.caption, color = style.colors.muted, modifier = Modifier.padding(top = 6.dp))
+            Text(subtitle, style = style.type.caption, color = c.muted, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }

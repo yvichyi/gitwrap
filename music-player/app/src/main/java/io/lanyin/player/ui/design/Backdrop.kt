@@ -85,7 +85,8 @@ fun Backdrop(
 
 /**
  * What the backdrop hears this frame: band levels (eased so shapes don't flicker), their bass,
- * middle and treble, and when the last few beats landed on the backdrop's clock.
+ * middle and treble, when the last few beats landed on the backdrop's clock, and a count of beats
+ * that runs smoothly between them, for motion that keeps time with the music.
  */
 internal class BackdropAudio {
     val levels = FloatArray(32)
@@ -105,7 +106,32 @@ internal class BackdropAudio {
         private set
     private var lastSince = 99f
 
+    /** Seconds from beat to beat, once the music has settled on a tempo; 0 before. */
+    var period = 0f
+        private set
+
+    /**
+     * Beats as they pass, counted smoothly: once there is a tempo it runs at it, and is drawn
+     * toward whole numbers on the beats, so a grid that moves one line per beat crosses on it.
+     * Before that it runs at an easy pace; it stops when the music does.
+     */
+    var beatClock = 0f
+        private set
+    private var pull = 0f
+    private var lastT = Float.NaN
+    private var dt = 0f
+    private val travelled = FloatArray(TRAVELS)
+
     fun read(feed: io.lanyin.player.core.audio.AudioFeed, t: Float, energy: Float) {
+        dt = if (lastT.isNaN() || t < lastT) 0f else minOf(t - lastT, 0.1f)
+        lastT = t
+        period = feed.beatPeriod()
+        val rate = if (period > 0f) 1f / period else FREE_BEATS_PER_SECOND
+        val advance = dt * rate * energy
+        // Ease out the error found at the last beat, never so hard the motion runs backward.
+        val correction = (pull * minOf(1f, dt * 5f)).coerceAtLeast(-0.6f * advance)
+        pull -= correction
+        beatClock += advance + correction
         if (!feed.levels(raw)) raw.fill(0f)
         for (i in levels.indices) {
             val target = raw[i] * energy
@@ -120,12 +146,29 @@ internal class BackdropAudio {
         if (energy > 0.05f && since < lastSince - 0.02f && since < 0.3f) {
             beats[beatCount % BEATS] = t - since
             beatCount++
+            if (period > 0f) {
+                val at = beatClock - since * rate
+                pull = kotlin.math.round(at) - at
+            }
         }
         lastSince = since
     }
 
     /** Seconds since the most recent beat. */
     fun sinceBeat(t: Float): Float = if (beatCount == 0) 99f else t - beats[(beatCount - 1) % BEATS]
+
+    /** How hard the last beat still rings, 1 to 0 over [seconds] (sooner at a quick tempo). */
+    fun pulse(t: Float, seconds: Float): Float = io.lanyin.player.core.audio.pulseAfter(sinceBeat(t), period, seconds)
+
+    /**
+     * How far a motion in [slot] running at [speed] a second has gone. The speed follows the music
+     * from frame to frame, so the distance is added up as it goes: worked out as time × speed, it
+     * would leap whenever the speed changed, and the further into the song the bigger the leap.
+     */
+    fun travel(slot: Int, speed: Float): Float {
+        travelled[slot] += dt * speed
+        return travelled[slot]
+    }
 
     private fun FloatArray.average(from: Int, to: Int): Float {
         var sum = 0f
@@ -135,6 +178,8 @@ internal class BackdropAudio {
 
     companion object {
         const val BEATS = 8
+        private const val TRAVELS = 4
+        private const val FREE_BEATS_PER_SECOND = 1.6f
     }
 }
 
@@ -153,7 +198,7 @@ private fun DrawScope.drawInk(style: LanyinStyle, t: Float, page: Boolean, audio
     if (page) return
     if (w <= h) {
         // Portrait: two wisps of mist drift across behind the lyrics, quicker while the music plays.
-        drawMist(style, t, h * 0.6f, w * 0.9f, h * 0.14f, speed = 5f + 9f * (audio?.level ?: 0f))
+        drawMist(style, h * 0.6f, w * 0.9f, h * 0.14f, drift = audio?.travel(0, 5f + 9f * audio.level) ?: (t * 5f))
         return
     }
 
@@ -228,12 +273,12 @@ private fun DrawScope.drawInkBlooms(style: LanyinStyle, t: Float, audio: Backdro
     }
 }
 
-/** Soft bands of mist crossing at height [y], [span] wide, wrapping round. */
-private fun DrawScope.drawMist(style: LanyinStyle, t: Float, y: Float, span: Float, thickness: Float, speed: Float) {
+/** Soft bands of mist crossing at height [y], [span] wide, [drift] dp along, wrapping round. */
+private fun DrawScope.drawMist(style: LanyinStyle, y: Float, span: Float, thickness: Float, drift: Float) {
     val c = style.colors
     val w = size.width
     for (k in 0..1) {
-        val x = ((t * speed * density + k * (w + span) / 2f) % (w + span)) - span
+        val x = ((drift * density + k * (w + span) / 2f) % (w + span)) - span
         drawOval(
             Brush.radialGradient(
                 listOf(c.content.copy(alpha = if (style.dark) 0.05f else 0.04f), c.content.copy(alpha = 0f)),
@@ -317,7 +362,7 @@ private fun DrawScope.drawNeon(style: LanyinStyle, t: Float, e: Float, page: Boo
     }
     if (audio != null) drawSkyline(style, horizon, audio)
     // The horizon flares on each beat.
-    val flare = audio?.let { (1f - it.sinceBeat(t) / 0.35f).coerceIn(0f, 1f) } ?: 0f
+    val flare = audio?.pulse(t, 0.35f) ?: 0f
     if (flare > 0f) drawLine(c.accent.copy(alpha = 0.35f * flare), Offset(0f, horizon), Offset(w, horizon), strokeWidth = (3f + 6f * flare) * density)
     drawLine(lerp(c.accentAlt, c.accent, flare).copy(alpha = if (page) 0.45f else 0.8f + 0.2f * flare), Offset(0f, horizon), Offset(w, horizon), strokeWidth = 1.5f * density)
     // Perspective grid floor, scrolling toward the viewer.
@@ -326,7 +371,8 @@ private fun DrawScope.drawNeon(style: LanyinStyle, t: Float, e: Float, page: Boo
         val bottomX = w / 2f + i * w * 0.14f
         drawLine(c.accent.copy(alpha = 0.22f), vanishing.copy(x = w / 2f + i * w * 0.012f), Offset(bottomX, h), strokeWidth = 1f * density)
     }
-    val scroll = (t * (0.12f + 0.5f * e + 0.6f * (audio?.bass ?: 0f))) % 1f
+    // Half a line a beat, so the floor runs at the song's tempo and a line crosses every other beat.
+    val scroll = (audio?.let { it.beatClock * 0.5f } ?: (t * (0.12f + 0.5f * e))) % 1f
     for (j in 0 until 14) {
         val z = (j + scroll) / 14f
         val y = horizon + (h - horizon) * z.pow(2.2f)
@@ -429,7 +475,7 @@ private fun DrawScope.drawDusk(style: LanyinStyle, t: Float, e: Float, page: Boo
         radius * breathe, center,
     )
     // Clouds pass in front of the sun.
-    if (!page) drawClouds(style, t, skyEnd, e)
+    if (!page) drawClouds(style, skyEnd, drift = audio?.travel(1, 0.6f + 0.6f * e) ?: (t * (0.6f + 0.6f * e)))
     if (!page) {
         // A calm sea under it: a few thin glints, drifting.
         val horizon = center.y + radius * 1.25f
@@ -445,16 +491,19 @@ private fun DrawScope.drawDusk(style: LanyinStyle, t: Float, e: Float, page: Boo
     drawRect(ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)), alpha = if (dark) 0.08f else 0.06f)
 }
 
-/** Three soft clouds crossing the sky, nearer ones larger and quicker; a little faster while playing. */
-private fun DrawScope.drawClouds(style: LanyinStyle, t: Float, skyEnd: Float, e: Float) {
+/**
+ * Three soft clouds crossing the sky, nearer ones larger and quicker; a little faster while
+ * playing. [drift] is how far they've come, in units of the slowest cloud's pace.
+ */
+private fun DrawScope.drawClouds(style: LanyinStyle, skyEnd: Float, drift: Float) {
     val c = style.colors
     val w = size.width
     val tint = if (style.dark) lerp(c.accentAlt, c.bg, 0.35f) else lerp(Color.White, c.accent, 0.12f)
     for (k in 0 until 3) {
         val scale = 0.7f + 0.3f * k
         val span = w * 0.42f * scale
-        val speed = (4f + 3f * k) * (0.6f + 0.6f * e) * density
-        val x = w + span - ((t * speed + k * w * 0.55f) % (w + span * 2))
+        val speed = (4f + 3f * k) * density
+        val x = w + span - ((drift * speed + k * w * 0.55f) % (w + span * 2))
         val y = skyEnd * (0.18f + 0.22f * k)
         val alpha = (if (style.dark) 0.22f else 0.5f) * (0.6f + 0.2f * k)
         for (puff in 0 until 4) {
@@ -473,11 +522,12 @@ private fun DrawScope.drawClouds(style: LanyinStyle, t: Float, skyEnd: Float, e:
 private fun DrawScope.drawMotes(style: LanyinStyle, t: Float, light: Color, audio: BackdropAudio?) {
     val w = size.width
     val h = size.height
-    val flash = audio?.let { (1f - it.sinceBeat(t) / 0.4f).coerceIn(0f, 1f) } ?: 0f
-    val lift = 1f + 1.5f * (audio?.level ?: 0f)
+    val flash = audio?.pulse(t, 0.4f) ?: 0f
+    // Rising faster while the music is loud; added up, so a louder bar doesn't make them jump.
+    val climb = audio?.travel(2, 1f + 1.5f * audio.level) ?: t
     for (i in 0 until 26) {
         val speed = 0.018f + 0.03f * hash01(i, 41)
-        val rise = ((t * speed * lift + hash01(i, 42)) % 1f)
+        val rise = ((climb * speed + hash01(i, 42)) % 1f)
         val y = h * (1.02f - rise * 0.95f)
         val x = w * hash01(i, 43) + sin(t * (0.4f + hash01(i, 44)) + i) * 14f * density
         val twinkle = 0.5f + 0.5f * sin(t * (1.5f + 2f * hash01(i, 45)) + i * 1.7f)

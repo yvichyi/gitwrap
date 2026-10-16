@@ -77,7 +77,9 @@ fun Modifier.beatRipples(skin: PlayerSkin, playing: Boolean, feed: io.lanyin.pla
         val e = energy.value
         if (e <= 0f) return@drawBehind
         clock.floatValue
-        val p = feed.sinceBeat() / RIPPLE_SECONDS
+        // Gone before the next beat, at a quick tempo, so each ring is one beat.
+        val life = feed.beatPeriod().let { if (it > 0f) minOf(RIPPLE_SECONDS, it * 0.9f) else RIPPLE_SECONDS }
+        val p = feed.sinceBeat() / life
         if (p >= 1f) return@drawBehind
         val spread = 26.dp.toPx() * FastOutSlowInEasing.transform(p)
         val alpha = (1f - p).pow(1.6f) * 0.32f * e

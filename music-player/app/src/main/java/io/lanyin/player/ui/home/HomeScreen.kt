@@ -54,8 +54,14 @@ import io.lanyin.player.ui.design.formatTime
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.player.PlayerState
+import io.lanyin.player.ui.theme.BackdropKind
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.ui.design.DoubleRule
+import io.lanyin.player.ui.design.HomeFlourish
+import io.lanyin.player.ui.design.hasHomeFlourish
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.em
 import io.lanyin.player.ui.LocalAppServices
 import io.lanyin.player.ui.music.Load
 import io.lanyin.player.ui.music.PlaylistTile
@@ -119,6 +125,7 @@ fun HomeScreen(
         player.playFm()
         onOpenPlayer()
     }
+    val flourish = hasHomeFlourish
     CompositionLocalProvider(LocalContentColor provides style.colors.content) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
             item { Header(now, account, onOpenSettings, if (signedIn) onOpenAccount else onLogin, Modifier.padding(horizontal = m)) }
@@ -141,6 +148,10 @@ fun HomeScreen(
                         height = 32.dp,
                     )
                 }
+            }
+            if (flourish) {
+                // The theme's own strip; 影's film runs edge to edge.
+                item { HomeFlourish(player, Modifier.padding(start = if (style.backdrop == BackdropKind.Film) 0.dp else m, end = if (style.backdrop == BackdropKind.Film) 0.dp else m, top = 22.dp)) }
             }
             if (account == AccountState.LoggedOut) {
                 item { ConnectLine(onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
@@ -453,6 +464,10 @@ private fun Header(now: LocalDateTime, account: AccountState, onOpenSettings: ()
     val style = Lanyin.style
     val c = style.colors
     val weekday = now.dayOfWeek.getDisplayName(JavaTextStyle.FULL, Locale.CHINA)
+    if (style.backdrop == BackdropKind.Paper) {
+        Masthead(now, weekday, account, onOpenSettings, onLogin, modifier)
+        return
+    }
     // The literary theme writes the date out in characters.
     val date = if (style.quietSections) {
         "${chineseNumber(now.monthValue)}月${chineseNumber(now.dayOfMonth)}日 · $weekday"
@@ -476,7 +491,52 @@ private fun Header(now: LocalDateTime, account: AccountState, onOpenSettings: ()
                 )
             }
         }
-        if (style.edge == EdgeKind.Hairline) {
+        HeaderActions(account, onOpenSettings, onLogin)
+    }
+}
+
+/**
+ * 报's front page: the paper's name across the top in heavy type, the edition and the actions
+ * above it, a rule, and the dateline with the issue number under it.
+ */
+@Composable
+private fun Masthead(now: LocalDateTime, weekday: String, account: AccountState, onOpenSettings: () -> Unit, onLogin: () -> Unit, modifier: Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    Column(modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "LANYIN DAILY · ${if (now.hour in 5..14) "早报" else "晚报"}",
+                style = style.type.caption.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.14.em),
+                color = c.muted, maxLines = 1, modifier = Modifier.weight(1f),
+            )
+            HeaderActions(account, onOpenSettings, onLogin)
+        }
+        Text(
+            "澜音日报",
+            style = style.type.display.copy(fontSize = 42.sp, lineHeight = 50.sp, fontWeight = FontWeight.Black, letterSpacing = 0.18.em, textAlign = TextAlign.Center),
+            color = c.content,
+            maxLines = 1,
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        )
+        DoubleRule(Modifier.padding(top = 6.dp))
+        Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("${now.year}年${now.monthValue}月${now.dayOfMonth}日　$weekday", style = style.type.caption, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(12.dp))
+            Text("${greeting(now.hour)} · 第${now.dayOfYear}期", style = style.type.caption, color = c.muted, maxLines = 1)
+        }
+        Hairline()
+    }
+}
+
+/** Settings and the account, at the header's end: bare in 墨 and 报, on the theme's surfaces elsewhere. */
+@Composable
+private fun HeaderActions(account: AccountState, onOpenSettings: () -> Unit, onLogin: () -> Unit) {
+    val style = Lanyin.style
+    val c = style.colors
+    val bare = style.edge == EdgeKind.Hairline || style.edge == EdgeKind.Rule
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (bare) {
             IconAction(LineIcon.Sliders, "设置", onOpenSettings, tint = c.muted)
         } else {
             Box(
@@ -490,7 +550,7 @@ private fun Header(now: LocalDateTime, account: AccountState, onOpenSettings: ()
             Modifier
                 .size(40.dp)
                 .then(
-                    if (style.edge == EdgeKind.Hairline) {
+                    if (bare) {
                         Modifier.clip(CircleShape).border(1.dp, c.outline, CircleShape).pressable(onClick = onLogin)
                     } else {
                         Modifier.themedSurface(shape = style.roundShape, onClick = onLogin)
@@ -499,7 +559,7 @@ private fun Header(now: LocalDateTime, account: AccountState, onOpenSettings: ()
             contentAlignment = Alignment.Center,
         ) {
             if (profile != null) {
-                Avatar(profile.avatarUrl, profile.nickname, 40.dp, shape = if (style.edge == EdgeKind.Hairline) CircleShape else style.roundShape)
+                Avatar(profile.avatarUrl, profile.nickname, 40.dp, shape = if (bare) CircleShape else style.roundShape)
             } else {
                 ThemedIcon(LineIcon.User, "登录", tint = c.muted, size = 20.dp)
             }

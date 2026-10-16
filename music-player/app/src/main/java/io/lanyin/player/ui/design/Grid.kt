@@ -44,19 +44,28 @@ import io.lanyin.player.ui.theme.LanyinStyle
 
 /**
  * 格's ribbon: a black band of monospaced capitals scrolling sideways forever, the items set off
- * by alternating yellow stars and red sparks.
+ * by alternating yellow stars and red sparks. Other themes pass their own [fill], [ink], [marks]
+ * and [font].
  */
 @Composable
-fun Marquee(items: List<String>, modifier: Modifier = Modifier, height: Dp = 28.dp, speed: Dp = 26.dp) {
-    val c = Lanyin.colors
+fun Marquee(
+    items: List<String>,
+    modifier: Modifier = Modifier,
+    height: Dp = 28.dp,
+    speed: Dp = 26.dp,
+    fill: Color = Lanyin.colors.content,
+    ink: Color = Lanyin.colors.bg,
+    marks: Pair<Color, Color> = GridYellow to Lanyin.colors.accent,
+    font: FontFamily = FontFamily.Monospace,
+) {
     val clock = rememberFrameClock(true)
     val measurer = rememberTextMeasurer()
     // A ribbon is decoration with a fixed height: keep its type at a fixed size too.
     val fontScale = LocalDensity.current.fontScale
-    val text = remember(items, c) {
+    val text = remember(items, marks) {
         buildAnnotatedString {
             items.forEachIndexed { i, item ->
-                withStyle(SpanStyle(color = if (i % 2 == 0) GridYellow else c.accent)) { append(if (i % 2 == 0) "  ★  " else "  ✦  ") }
+                withStyle(SpanStyle(color = if (i % 2 == 0) marks.first else marks.second)) { append(if (i % 2 == 0) "  ★  " else "  ✦  ") }
                 append(item)
             }
             append("   ")
@@ -66,13 +75,13 @@ fun Marquee(items: List<String>, modifier: Modifier = Modifier, height: Dp = 28.
         modifier
             .fillMaxWidth()
             .height(height)
-            .background(c.content)
+            .background(fill)
             .drawWithCache {
                 val layout = measurer.measure(
                     text,
                     TextStyle(
-                        fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
-                        fontSize = (12f / fontScale).sp, letterSpacing = 0.1.em, color = c.bg,
+                        fontFamily = font, fontWeight = FontWeight.Bold,
+                        fontSize = (12f / fontScale).sp, letterSpacing = 0.1.em, color = ink,
                     ),
                     softWrap = false,
                 )

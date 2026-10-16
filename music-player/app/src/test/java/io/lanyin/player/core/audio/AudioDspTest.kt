@@ -283,12 +283,15 @@ class AudioDspTest {
     fun `beats are found in a kick drum pattern`() {
         var now = 0L
         val analyzer = AudioAnalyzer(nowNanos = { now }).apply { configure(44_100, 2, PcmEncoding.PCM16) }
-        // A 60 Hz thump every half second, 80 ms long, over quiet noise.
+        // A 60 Hz thump every half second, dying away over 80 ms as a drum does, over quiet noise.
+        // (Cut off sharply instead, its end would click across the spectrum, and the click is an
+        // onset too.)
         val rng = java.util.Random(1)
         feed(analyzer, 4f) { f ->
             val t = f / 44_100.0
             val inBeat = (t % 0.5) < 0.08
-            (if (inBeat) 0.8f * sin(2 * PI * 60 * t).toFloat() else 0f) + (rng.nextFloat() - 0.5f) * 0.01f
+            val decay = kotlin.math.exp(-(t % 0.5) / 0.025).toFloat()
+            (if (inBeat) 0.8f * decay * sin(2 * PI * 60 * t).toFloat() else 0f) + (rng.nextFloat() - 0.5f) * 0.01f
         }
         // Just after the beat at 3.0 s.
         analyzer.anchor(3_060_000, playing = true)
@@ -316,6 +319,27 @@ class AudioDspTest {
         val late = analyzer.beatTimes().filter { it > 4_000_000 }
         val gaps = late.zipWithNext { a, b -> b - a }
         assertTrue("beats $late", gaps.isNotEmpty() && gaps.all { it in 400_000..600_000 })
+    }
+
+    @Test
+    fun `the beat keeps time through a kick left out`() {
+        var now = 0L
+        val analyzer = AudioAnalyzer(nowNanos = { now }).apply { configure(44_100, 2, PcmEncoding.PCM16) }
+        // 120 bpm with every fourth kick missing, as a syncopated bar or a break might leave it.
+        val rng = java.util.Random(5)
+        feed(analyzer, 10f) { f ->
+            val t = f / 44_100.0
+            val n = (t / 0.5).toInt()
+            val kick = if (n % 4 != 3 && (t % 0.5) < 0.08) 0.7f * kotlin.math.exp(-(t % 0.5) / 0.025).toFloat() * sin(2 * PI * 60 * t).toFloat() else 0f
+            kick + (rng.nextFloat() - 0.5f) * 0.01f
+        }
+        assertEquals(500_000.0, analyzer.beatPeriodUs.toDouble(), 30_000.0)
+        val late = analyzer.beatTimes().filter { it > 5_000_000 }
+        val gaps = late.zipWithNext { a, b -> b - a }
+        // A beat where the missing kicks would have been, too: no gap of a whole second.
+        assertTrue("beats $late", gaps.size >= 7 && gaps.all { it in 420_000..580_000 })
+        // And on the kicks, not between them.
+        assertTrue("beats $late", late.all { val off = (it % 500_000).let { o -> minOf(o, 500_000 - o) }; off < 60_000 })
     }
 
     @Test

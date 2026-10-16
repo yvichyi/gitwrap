@@ -51,7 +51,7 @@ internal fun DrawScope.drawFilm(
     val h = size.height
     drawRect(c.bg)
     drawRect(Brush.verticalGradient(listOf(c.bgDeep, c.bg), endY = h * 0.45f))
-    val flare = audio?.let { (1f - it.sinceBeat(t) / 0.6f).coerceIn(0f, 1f) } ?: 0f
+    val flare = audio?.pulse(t, 0.6f) ?: 0f
     val breathe = 0.75f + 0.25f * sin(t * 0.45f) + 0.3f * flare + 0.25f * (audio?.bass ?: 0f)
     val strength = if (page) 0.55f else 1f
     // Light leaks: red from the left, orange from the top right, wandering slowly. Bright at the

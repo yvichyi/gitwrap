@@ -138,6 +138,8 @@ abstract class PlayerState {
         }
 
         override fun sinceBeat(): Float = (positionMs / 1000f) % (1f / DEMO_BEATS_PER_SECOND)
+
+        override fun beatPeriod(): Float = 1f / DEMO_BEATS_PER_SECOND
     }
 
     /** How many comments the current song has, once known. */
