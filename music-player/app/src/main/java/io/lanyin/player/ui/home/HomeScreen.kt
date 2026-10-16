@@ -3,12 +3,9 @@ package io.lanyin.player.ui.home
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -19,38 +16,29 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.lanyin.player.ui.components.pagePadding
 import io.lanyin.player.ui.design.CoverArt
 import io.lanyin.player.ui.design.Hairline
 import io.lanyin.player.ui.design.IconAction
 import io.lanyin.player.ui.design.LineIcon
-import io.lanyin.player.ui.design.Marquee
-import io.lanyin.player.ui.design.PlayPauseButton
 import io.lanyin.player.ui.design.SectionTitle
 import io.lanyin.player.ui.design.SurfaceTone
 import io.lanyin.player.ui.design.TextLink
 import io.lanyin.player.ui.design.ThemedIcon
-import io.lanyin.player.ui.design.formatTime
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.player.PlayerState
@@ -58,13 +46,10 @@ import io.lanyin.player.ui.theme.BackdropKind
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.design.DoubleRule
-import io.lanyin.player.ui.design.HomeFlourish
-import io.lanyin.player.ui.design.hasHomeFlourish
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.em
 import io.lanyin.player.ui.LocalAppServices
 import io.lanyin.player.ui.music.Load
-import io.lanyin.player.ui.music.PlaylistTile
 import io.lanyin.player.ui.music.rememberLoad
 import io.lanyin.player.ui.design.CoverImage
 import io.lanyin.player.data.account.AccountState
@@ -90,9 +75,11 @@ data class HomePreview(
 )
 
 /**
- * Two doors in (today's picks and personal FM) drawn over their artwork, shortcuts to your own
- * music, then shelves to browse: playlists picked for you, the charts with their top three, and a
- * handful of songs to start from. 墨 draws it with rules and whitespace instead of boxes.
+ * The home page: two doors in (today's picks and personal FM), shortcuts to your own music, then
+ * shelves to browse (playlists picked for you, the charts with their top three, and a handful of
+ * songs to start from). What it shows is worked out once, in a [HomeModel]; each theme lays that
+ * out in its own medium (a newspaper's front page for 报, a game's menus for 游, a machine's
+ * panel for 机 and so on).
  */
 @Composable
 fun HomeScreen(
@@ -110,7 +97,6 @@ fun HomeScreen(
     preview: HomePreview? = null,
 ) {
     val style = Lanyin.style
-    val m = style.margin
     val now = remember { LocalDateTime.now() }
     val signedIn = account is AccountState.LoggedIn
     val library = LocalAppServices.current?.library
@@ -120,131 +106,48 @@ fun HomeScreen(
     val pickSongs = (picks as? Load.Ready)?.value?.songs.orEmpty()
     // Most doors need a login first.
     val needsLogin: (() -> Unit) -> () -> Unit = { action -> if (signedIn) action else onLogin }
-    val openLiked = needsLogin { library?.likedPlaylist()?.let { onOpenPlaylist(it.id, "我喜欢的音乐") } ?: library?.refresh() }
-    val playFm = needsLogin {
-        player.playFm()
-        onOpenPlayer()
-    }
-    val flourish = hasHomeFlourish
+    val model = HomeModel(
+        now = now,
+        account = account,
+        player = player,
+        recommended = (recommended as? Load.Ready)?.value.orEmpty(),
+        charts = (charts as? Load.Ready)?.value.orEmpty(),
+        picks = (picks as? Load.Ready)?.value?.takeIf { it.songs.isNotEmpty() },
+        openSettings = onOpenSettings,
+        openAccount = if (signedIn) onOpenAccount else onLogin,
+        login = onLogin,
+        openPlayer = onOpenPlayer,
+        openDaily = needsLogin(onOpenDaily),
+        playDaily = needsLogin { if (pickSongs.isNotEmpty()) player.play(pickSongs, 0, "每日推荐") else onOpenDaily() },
+        playFm = needsLogin {
+            player.playFm()
+            onOpenPlayer()
+        },
+        openLiked = needsLogin { library?.likedPlaylist()?.let { onOpenPlaylist(it.id, "我喜欢的音乐") } ?: library?.refresh() },
+        openCharts = onOpenCharts,
+        openRecent = onOpenRecent,
+        openDownloads = onOpenDownloads,
+        openPlaylist = { p -> onOpenPlaylist(p.id, p.name) },
+    )
     CompositionLocalProvider(LocalContentColor provides style.colors.content) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
-            item { Header(now, account, onOpenSettings, if (signedIn) onOpenAccount else onLogin, Modifier.padding(horizontal = m)) }
-            if (style.edge == EdgeKind.Brutal) {
-                // 格 tapes a ribbon across the page, a little askew.
-                item {
-                    Marquee(
-                        listOfNotNull(
-                            "澜音 LANYIN",
-                            "正在播放 ${player.title} — ${player.artist}".takeIf { !player.isEmpty },
-                            "每日推荐 №%02d".format(now.dayOfMonth),
-                            (account as? AccountState.LoggedIn)?.let { "欢迎回来 ${it.profile.nickname}" } ?: "扫码登录网易云",
-                        ),
-                        Modifier
-                            .padding(top = 22.dp, bottom = 4.dp)
-                            .graphicsLayer {
-                                rotationZ = -1.6f
-                                scaleX = 1.06f
-                            },
-                        height = 32.dp,
-                    )
-                }
-            }
-            if (flourish) {
-                // The theme's own strip; 影's film runs edge to edge.
-                item { HomeFlourish(player, Modifier.padding(start = if (style.backdrop == BackdropKind.Film) 0.dp else m, end = if (style.backdrop == BackdropKind.Film) 0.dp else m, top = 22.dp)) }
-            }
-            if (account == AccountState.LoggedOut) {
-                item { ConnectLine(onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
-            }
-            item {
-                Row(Modifier.padding(start = m, end = m, top = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FeatureTile(
-                        title = "每日推荐",
-                        note = if (signedIn) "每天 6:00 更新" else "登录后生成",
-                        onClick = needsLogin(onOpenDaily),
-                        onPlay = needsLogin {
-                            if (signedIn && pickSongs.isNotEmpty()) player.play(pickSongs, 0, "每日推荐") else onOpenDaily()
-                        },
-                        modifier = Modifier.weight(1f),
-                        art = { DailyArt(if (signedIn) pickSongs else emptyList()) },
-                        mark = { DayMark(now) },
-                    )
-                    FeatureTile(
-                        title = "私人 FM",
-                        note = if (signedIn) "越听越懂你" else "登录后开启",
-                        onClick = playFm,
-                        onPlay = playFm,
-                        modifier = Modifier.weight(1f),
-                        art = { CoverArt(77, Modifier.fillMaxSize()) },
-                        mark = { ThemedIcon(LineIcon.Radio, null, tint = Color.White, size = 26.dp) },
-                    )
-                }
-            }
-            item {
-                Shortcuts(
-                    listOf(
-                        Shortcut(LineIcon.Heart, "我喜欢", openLiked),
-                        Shortcut(LineIcon.Chart, "排行榜", onOpenCharts),
-                        Shortcut(LineIcon.History, "最近播放", onOpenRecent),
-                        Shortcut(LineIcon.Download, "下载", onOpenDownloads),
-                    ),
-                    Modifier.padding(start = m, end = m, top = 18.dp),
-                )
-            }
-            item {
-                Column(Modifier.padding(top = 34.dp)) {
-                    SectionTitle("推荐歌单", Modifier.padding(horizontal = m), trailing = if (signedIn) "为你挑的" else "大家在听", index = 1)
-                    val lists = (recommended as? Load.Ready)?.value.orEmpty()
-                    LazyRow(
-                        contentPadding = PaddingValues(start = m, end = m, top = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        if (lists.isNotEmpty()) {
-                            items(lists, key = { it.id }) { p -> PlaylistTile(p, { onOpenPlaylist(p.id, p.name) }, Modifier.width(132.dp)) }
-                        } else {
-                            // Until they arrive (or offline), the theme's own sleeves hold the space.
-                            items(6) { i -> CoverArt(10 + i, Modifier.size(132.dp).clip(style.artShape)) }
-                        }
-                    }
-                }
-            }
-            item {
-                Column(Modifier.padding(top = 34.dp)) {
-                    SectionHeader("排行榜", 2, "全部", onOpenCharts, Modifier.padding(horizontal = m))
-                    LazyRow(
-                        contentPadding = PaddingValues(start = m, end = m, top = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        when (charts) {
-                            is Load.Ready -> items(charts.value, key = { it.playlist.id }) { chart ->
-                                ChartCard(chart, { onOpenPlaylist(chart.playlist.id, chart.playlist.name) }, Modifier.width(264.dp))
-                            }
-                            else -> items(3) { i -> ChartCard(null, onOpenCharts, Modifier.width(264.dp), seed = 30 + i) }
-                        }
-                    }
-                }
-            }
-            val shown = picks as? Load.Ready
-            if (shown != null && shown.value.songs.isNotEmpty()) {
-                item {
-                    SectionTitle(shown.value.title, Modifier.padding(start = m, end = m, top = 34.dp), trailing = shown.value.note, index = 3)
-                }
-                items(shown.value.songs.size) { i ->
-                    val song = shown.value.songs[i]
-                    PickRow(
-                        song, playing = song.id == player.playingSongId,
-                        onClick = { player.play(shown.value.songs, i, shown.value.title) },
-                        modifier = Modifier.padding(start = m, end = m - 10.dp, top = if (i == 0) 10.dp else 0.dp),
-                    )
-                }
-            }
+        when (style.backdrop) {
+            BackdropKind.Ink -> InkHome(model)
+            BackdropKind.Dot -> DotHome(model)
+            BackdropKind.Device -> DeviceHome(model)
+            BackdropKind.Film -> FilmHome(model)
+            BackdropKind.Grid -> GridHome(model)
+            BackdropKind.Paper -> PaperHome(model)
+            BackdropKind.Game -> GameHome(model)
+            BackdropKind.Acid -> AcidHome(model)
+            BackdropKind.Dusk -> DuskHome(model)
+            BackdropKind.Neon -> NeonHome(model)
         }
     }
 }
 
 /** A section heading with a way to see everything. */
 @Composable
-private fun SectionHeader(title: String, index: Int, action: String, onAction: () -> Unit, modifier: Modifier) {
+internal fun SectionHeader(title: String, index: Int, action: String, onAction: () -> Unit, modifier: Modifier) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         SectionTitle(title, Modifier.weight(1f), index = index)
         TextLink(action, onAction, color = Lanyin.colors.muted)
@@ -256,7 +159,7 @@ private fun SectionHeader(title: String, index: Int, action: String, onAction: (
  * sits there in white with a play button beside it. [mark] goes in the top corner.
  */
 @Composable
-private fun FeatureTile(
+internal fun FeatureTile(
     title: String,
     note: String,
     onClick: () -> Unit,
@@ -264,12 +167,13 @@ private fun FeatureTile(
     modifier: Modifier,
     art: @Composable () -> Unit,
     mark: @Composable () -> Unit,
+    ratio: Float = 0.84f,
 ) {
     val style = Lanyin.style
     val shape = style.cardShape
     Box(
         modifier
-            .aspectRatio(0.84f)
+            .aspectRatio(ratio)
             .then(if (style.edge == EdgeKind.Hairline) Modifier.border(1.dp, style.colors.outline, shape).pressable(onClick = onClick) else Modifier.themedSurface(shape = shape, onClick = onClick))
             .clip(shape),
     ) {
@@ -285,8 +189,9 @@ private fun FeatureTile(
         Box(Modifier.align(Alignment.TopStart).padding(12.dp)) { mark() }
         Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f)) {
-                Text(title, style = style.type.title.copy(fontFamily = style.display, fontWeight = FontWeight.SemiBold, shadow = TextShade), color = Color.White, maxLines = 1)
-                Text(note, style = style.type.caption.copy(shadow = TextShade), color = Color.White.copy(alpha = 0.82f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // Tiles keep their shape whatever the font size, so their type grows only a little.
+                Text(title, style = style.type.title.copy(fontFamily = style.display, fontWeight = FontWeight.SemiBold, shadow = TextShade, fontSize = cappedSp(18f), lineHeight = cappedSp(24f)), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(note, style = style.type.caption.copy(shadow = TextShade, fontSize = cappedSp(12.5f), lineHeight = cappedSp(18f)), color = Color.White.copy(alpha = 0.82f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(8.dp))
             TilePlay(onPlay)
@@ -295,11 +200,11 @@ private fun FeatureTile(
 }
 
 /** Keeps white type legible on light artwork. */
-private val TextShade = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.45f), androidx.compose.ui.geometry.Offset(0f, 1f), 8f)
+internal val TextShade = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.45f), androidx.compose.ui.geometry.Offset(0f, 1f), 8f)
 
 /** A small play button that reads on any artwork. */
 @Composable
-private fun TilePlay(onClick: () -> Unit) {
+internal fun TilePlay(onClick: () -> Unit) {
     val style = Lanyin.style
     val brutal = style.edge == EdgeKind.Brutal
     Box(
@@ -321,7 +226,7 @@ private fun TilePlay(onClick: () -> Unit) {
 
 /** Today's picks as a mosaic of their covers; the theme's own art until they're known. */
 @Composable
-private fun DailyArt(songs: List<io.lanyin.player.core.model.Song>) {
+internal fun DailyArt(songs: List<io.lanyin.player.core.model.Song>) {
     val covers = songs.mapNotNull { s -> s.album.coverUrl?.let { it to (s.id % 97).toInt() } }.take(4)
     if (covers.size < 4) {
         CoverArt(3, Modifier.fillMaxSize())
@@ -341,7 +246,7 @@ private fun DailyArt(songs: List<io.lanyin.player.core.model.Song>) {
 
 /** The day of the month, large, on the 每日推荐 tile. */
 @Composable
-private fun DayMark(now: LocalDateTime) {
+internal fun DayMark(now: LocalDateTime) {
     val style = Lanyin.style
     Column {
         Text(
@@ -353,11 +258,11 @@ private fun DayMark(now: LocalDateTime) {
     }
 }
 
-private class Shortcut(val icon: LineIcon, val label: String, val onClick: () -> Unit)
+internal class Shortcut(val icon: LineIcon, val label: String, val onClick: () -> Unit)
 
 /** Your own music, one tap each. */
 @Composable
-private fun Shortcuts(items: List<Shortcut>, modifier: Modifier) {
+internal fun Shortcuts(items: List<Shortcut>, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val hairline = style.edge == EdgeKind.Hairline
@@ -380,7 +285,7 @@ private fun Shortcuts(items: List<Shortcut>, modifier: Modifier) {
 
 /** A chart and its top three; a placeholder sleeve while it loads. */
 @Composable
-private fun ChartCard(chart: ChartPreview?, onClick: () -> Unit, modifier: Modifier, seed: Int = 0) {
+internal fun ChartCard(chart: ChartPreview?, onClick: () -> Unit, modifier: Modifier, seed: Int = 0) {
     val style = Lanyin.style
     val c = style.colors
     val hairline = style.edge == EdgeKind.Hairline
@@ -421,7 +326,7 @@ private fun ChartCard(chart: ChartPreview?, onClick: () -> Unit, modifier: Modif
 
 /** A song to start from: cover, title, artist, and its ⋯. */
 @Composable
-private fun PickRow(song: io.lanyin.player.core.model.Song, playing: Boolean, onClick: () -> Unit, modifier: Modifier) {
+internal fun PickRow(song: io.lanyin.player.core.model.Song, playing: Boolean, onClick: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
@@ -460,7 +365,7 @@ internal fun chineseNumber(n: Int): String = when {
 }
 
 @Composable
-private fun Header(now: LocalDateTime, account: AccountState, onOpenSettings: () -> Unit, onLogin: () -> Unit, modifier: Modifier) {
+internal fun Header(now: LocalDateTime, account: AccountState, onOpenSettings: () -> Unit, onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val weekday = now.dayOfWeek.getDisplayName(JavaTextStyle.FULL, Locale.CHINA)
@@ -500,7 +405,7 @@ private fun Header(now: LocalDateTime, account: AccountState, onOpenSettings: ()
  * above it, a rule, and the dateline with the issue number under it.
  */
 @Composable
-private fun Masthead(now: LocalDateTime, weekday: String, account: AccountState, onOpenSettings: () -> Unit, onLogin: () -> Unit, modifier: Modifier) {
+internal fun Masthead(now: LocalDateTime, weekday: String, account: AccountState, onOpenSettings: () -> Unit, onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     Column(modifier.fillMaxWidth()) {
@@ -531,7 +436,7 @@ private fun Masthead(now: LocalDateTime, weekday: String, account: AccountState,
 
 /** Settings and the account, at the header's end: bare in 墨 and 报, on the theme's surfaces elsewhere. */
 @Composable
-private fun HeaderActions(account: AccountState, onOpenSettings: () -> Unit, onLogin: () -> Unit) {
+internal fun HeaderActions(account: AccountState, onOpenSettings: () -> Unit, onLogin: () -> Unit) {
     val style = Lanyin.style
     val c = style.colors
     val bare = style.edge == EdgeKind.Hairline || style.edge == EdgeKind.Rule
@@ -569,7 +474,7 @@ private fun HeaderActions(account: AccountState, onOpenSettings: () -> Unit, onL
 
 /** Not logged in yet: one calm line, not a billboard. */
 @Composable
-private fun ConnectLine(onLogin: () -> Unit, modifier: Modifier) {
+internal fun ConnectLine(onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val hairline = style.edge == EdgeKind.Hairline

@@ -52,8 +52,6 @@ import io.lanyin.player.data.account.AccountState
 import io.lanyin.player.ui.design.Avatar
 import io.lanyin.player.ui.design.VipBadge
 
-private data class Entry(val icon: LineIcon, val title: String, val detail: String, val onClick: (() -> Unit)? = null)
-
 @Composable
 fun LibraryScreen(
     onLogin: () -> Unit,
@@ -119,11 +117,11 @@ fun LibraryScreen(
     CompositionLocalProvider(LocalContentColor provides c.content) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
             item { PageTitle("我的", Modifier.padding(horizontal = m)) }
-            item { Profile(account, onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
+            item { ThemedProfile(account, onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
             item {
                 Column(Modifier.padding(start = m, end = m, top = 36.dp)) {
                     SectionTitle("音乐库", index = 1)
-                    EntryList(entries, Modifier.padding(top = 10.dp))
+                    ThemedEntries(entries, Modifier.padding(top = 12.dp))
                 }
             }
             item {
@@ -166,7 +164,7 @@ private fun NewPlaylistRow(onClick: () -> Unit, modifier: Modifier) {
 }
 
 @Composable
-private fun Profile(account: AccountState, onLogin: () -> Unit, modifier: Modifier) {
+internal fun Profile(account: AccountState, onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val hairline = style.edge == EdgeKind.Hairline
@@ -216,29 +214,5 @@ private fun Profile(account: AccountState, onLogin: () -> Unit, modifier: Modifi
             Spacer(Modifier.width(12.dp))
             ThemedButton("登录", onLogin)
         }
-    }
-}
-
-/** Rows ruled with hairlines; grouped on one card in themes that use cards. */
-@Composable
-private fun EntryList(entries: List<Entry>, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val hairline = style.edge == EdgeKind.Hairline
-    Column(modifier.fillMaxWidth().then(if (hairline) Modifier else Modifier.themedSurface(tone = SurfaceTone.Flat).padding(horizontal = 16.dp))) {
-        entries.forEachIndexed { i, e ->
-            if (i > 0 || hairline) Hairline()
-            Row(
-                Modifier.fillMaxWidth().then(e.onClick?.let { Modifier.pressable(onClick = it) } ?: Modifier).padding(vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ThemedIcon(e.icon, null, size = 22.dp)
-                Spacer(Modifier.width(14.dp))
-                Text(e.title, style = style.type.body, modifier = Modifier.weight(1f))
-                Text(e.detail, style = style.type.caption, color = c.muted)
-                if (e.onClick != null) ThemedIcon(LineIcon.Forward, null, tint = c.muted, size = 16.dp, modifier = Modifier.padding(start = 6.dp))
-            }
-        }
-        if (hairline) Hairline()
     }
 }
