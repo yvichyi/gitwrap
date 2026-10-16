@@ -71,8 +71,12 @@ import io.lanyin.player.ui.design.ThemedTextField
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.player.PlayerState
+import io.lanyin.player.ui.theme.BackdropKind
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
+import androidx.compose.ui.graphics.drawscope.inset
+import io.lanyin.player.ui.design.drawAirmailStripes
+import io.lanyin.player.ui.design.drawTubeLine
 
 /** Where a song's ⋯ was opened from, for the actions that only make sense there. */
 @Immutable
@@ -162,19 +166,43 @@ fun SheetLayer(state: SheetState, content: @Composable (Sheet) -> Unit) {
                         .padding(top = 10.dp, bottom = 8.dp),
                 ) {
                     if (style.edge == EdgeKind.Hairline) Hairline()
-                    // A grab handle.
-                    Box(
-                        Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(bottom = 8.dp)
-                            .size(36.dp, 4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(c.content.copy(alpha = 0.18f)),
-                    )
+                    SheetGrip(Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp))
                     CompositionLocalProvider(LocalContentColor provides c.content) {
                         state.shown?.let { content(it) }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * The handle a sheet is pulled by, in the theme's hand: a stroke of the brush (墨), a short lit
+ * tube (霓), airmail stripes (暮), a black bar (格), sprocket holes (影), a row of dots (点), the
+ * ridges of a grip (机), a perforation to tear along (报), pixels (游), a capsule of gel (酸).
+ */
+@Composable
+private fun SheetGrip(modifier: Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    androidx.compose.foundation.Canvas(modifier.size(120.dp, 8.dp)) {
+        val mid = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
+        val faint = c.content.copy(alpha = 0.22f)
+        when (style.backdrop) {
+            BackdropKind.Ink -> drawPath(io.lanyin.player.ui.design.brushStrokePath(androidx.compose.ui.geometry.Offset(mid.x - 24.dp.toPx(), mid.y), 48.dp.toPx(), 4.dp.toPx()), c.content.copy(alpha = 0.45f))
+            BackdropKind.Neon -> drawTubeLine(mid - androidx.compose.ui.geometry.Offset(18.dp.toPx(), 0f), mid + androidx.compose.ui.geometry.Offset(18.dp.toPx(), 0f), c.accent, 2.5.dp.toPx())
+            BackdropKind.Dusk -> inset(size.width / 2f - 26.dp.toPx(), 1.5.dp.toPx()) { drawAirmailStripes(6.dp.toPx()) }
+            BackdropKind.Grid -> drawRect(c.outline, mid - androidx.compose.ui.geometry.Offset(22.dp.toPx(), 3.dp.toPx()), androidx.compose.ui.geometry.Size(44.dp.toPx(), 6.dp.toPx()))
+            BackdropKind.Film -> for (k in -2..2) drawRoundRect(faint, mid + androidx.compose.ui.geometry.Offset(k * 11.dp.toPx() - 3.dp.toPx(), -2.dp.toPx()), androidx.compose.ui.geometry.Size(6.dp.toPx(), 4.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()))
+            BackdropKind.Dot -> for (k in -3..3) drawCircle(if (k == 0) c.accentAlt else faint, 2.dp.toPx(), mid + androidx.compose.ui.geometry.Offset(k * 7.dp.toPx(), 0f))
+            BackdropKind.Device -> for (k in -1..1) drawLine(faint, mid + androidx.compose.ui.geometry.Offset(-16.dp.toPx(), k * 2.5.dp.toPx()), mid + androidx.compose.ui.geometry.Offset(16.dp.toPx(), k * 2.5.dp.toPx()), 1.dp.toPx())
+            BackdropKind.Paper -> drawLine(c.content.copy(alpha = 0.4f), androidx.compose.ui.geometry.Offset(0f, mid.y), androidx.compose.ui.geometry.Offset(size.width, mid.y), 1.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())))
+            BackdropKind.Game -> for (k in -1..1) drawRect(c.content.copy(alpha = 0.5f), mid + androidx.compose.ui.geometry.Offset(k * 8.dp.toPx() - 2.5.dp.toPx(), -2.5.dp.toPx()), androidx.compose.ui.geometry.Size(5.dp.toPx(), 5.dp.toPx()))
+            BackdropKind.Acid -> {
+                val top = mid - androidx.compose.ui.geometry.Offset(20.dp.toPx(), 3.dp.toPx())
+                val sz = androidx.compose.ui.geometry.Size(40.dp.toPx(), 6.dp.toPx())
+                drawRoundRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFFE2FF6B), c.accent, androidx.compose.ui.graphics.Color(0xFF8FC400)), top.y, top.y + sz.height), top, sz, androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
+                drawRoundRect(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.55f), top + androidx.compose.ui.geometry.Offset(3.dp.toPx(), 1.dp.toPx()), androidx.compose.ui.geometry.Size(sz.width - 6.dp.toPx(), 1.5.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()))
             }
         }
     }

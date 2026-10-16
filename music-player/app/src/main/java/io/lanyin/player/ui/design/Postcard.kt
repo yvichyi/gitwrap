@@ -60,12 +60,11 @@ object Airmail {
 /** The stamps' colours, a set: vermilion, sea blue, olive, plum. */
 val StampInks = listOf(Color(0xFFCF5634), Color(0xFF2F5D8A), Color(0xFF6E8B4E), Color(0xFF8A4A6E))
 
+private val blueHour = arrayOf(0f to Color(0xFF0D1227), 0.38f to Color(0xFF1C2046), 0.66f to Color(0xFF382B57), 0.86f to Color(0xFF6B3E62), 1f to Color(0xFFB4626A))
+private val goldenHour = arrayOf(0f to Color(0xFFD5DEEA), 0.34f to Color(0xFFE6D5DF), 0.62f to Color(0xFFF5CDB8), 0.86f to Color(0xFFF8C79C), 1f to Color(0xFFF6B486))
+
 /** The sky from its top to the horizon: golden hour by day, the blue hour by night. */
-private fun skyStops(dark: Boolean): Array<Pair<Float, Color>> = if (dark) {
-    arrayOf(0f to Color(0xFF0D1227), 0.38f to Color(0xFF1C2046), 0.66f to Color(0xFF382B57), 0.86f to Color(0xFF6B3E62), 1f to Color(0xFFB4626A))
-} else {
-    arrayOf(0f to Color(0xFFD5DEEA), 0.34f to Color(0xFFE6D5DF), 0.62f to Color(0xFFF5CDB8), 0.86f to Color(0xFFF8C79C), 1f to Color(0xFFF6B486))
-}
+private fun skyStops(dark: Boolean): Array<Pair<Float, Color>> = if (dark) blueHour else goldenHour
 
 /** The sun: a warm white with a clean edge by day; by night an ember low on the sea. */
 private fun sunColor(dark: Boolean): Color = if (dark) Color(0xFFE8735C) else Color(0xFFFFC48A)

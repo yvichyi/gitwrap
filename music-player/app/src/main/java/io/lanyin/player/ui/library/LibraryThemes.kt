@@ -310,8 +310,8 @@ private fun MemberCard(profile: UserProfile?, onLogin: () -> Unit, modifier: Mod
 
 /**
  * 暮: the photo page of a passport. Fine wavy lines printed across the paper, the photo, the
- * holder's name and number, an entry stamp struck over the corner, and the machine-readable lines
- * along the foot.
+ * holder's name and number, an entry stamp struck over the corner (once signed in), and the
+ * machine-readable line along the foot.
  */
 @Composable
 private fun PassportPage(profile: UserProfile?, onLogin: () -> Unit, modifier: Modifier) {
@@ -376,8 +376,8 @@ private fun PassportPage(profile: UserProfile?, onLogin: () -> Unit, modifier: M
                 modifier = Modifier.padding(top = 12.dp),
             )
         }
-        // The entry stamp, struck over the top corner.
-        io.lanyin.player.ui.design.Postmark(
+        // The entry stamp, struck over the top corner once you've signed in.
+        if (profile != null) io.lanyin.player.ui.design.Postmark(
             "入境", "澜音", "ARRIVAL", (if (style.dark) c.accent else io.lanyin.player.ui.design.Airmail.Red).copy(alpha = 0.6f),
             Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-6).dp), diameter = 54.dp, waves = false, angle = 14f,
         )

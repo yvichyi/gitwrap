@@ -68,7 +68,6 @@ fun DrawScope.drawGloss(strength: Float = 0.38f) {
  * foot, a gloss across its top (over what it holds when [glossOver], as on a gel button, or
  * behind it) and, with [rim], a chrome edge.
  */
-@Composable
 fun Modifier.candyPlastic(tint: Color, shape: Shape, rim: Boolean = true, glossOver: Boolean = false): Modifier = this
     .clip(shape)
     .drawBehind {

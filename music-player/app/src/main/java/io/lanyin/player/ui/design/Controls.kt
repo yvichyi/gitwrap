@@ -75,6 +75,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.toggleableState
+import kotlin.math.sin
+import kotlin.math.cos
+import kotlin.math.PI
+import io.lanyin.player.ui.theme.BackdropKind
+import io.lanyin.player.ui.theme.LanyinStyle
 
 /**
  * Play/pause whose glyph morphs between the triangle and the two bars. With a [feed] it also
@@ -275,9 +280,7 @@ fun LikeButton(liked: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifi
             }
             .drawBehind {
                 val b = burst.value
-                if (b < 1f) {
-                    drawCircle(style.colors.like.copy(alpha = 1f - b), radius = size.minDimension * (0.2f + 0.45f * b), style = Stroke(3.dp.toPx() * (1f - b)))
-                }
+                if (b < 1f) drawLikeBurst(style, b)
             },
         contentAlignment = Alignment.Center,
     ) {
@@ -287,6 +290,72 @@ fun LikeButton(liked: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifi
             tint = color,
             modifier = Modifier.graphicsLayer { scaleX = scale.value; scaleY = scale.value },
         )
+    }
+}
+
+/**
+ * What a like sets off round the heart, [b] of the way through (0..1), in the theme's hand. 墨: a
+ * seal pressed and lifting. 霓: a ring of tube flickering on and dying. 暮: a postmark struck.
+ * 格: a comic burst of heavy strokes. 影: a flash. 点: dots flying out. 机: a ring of LEDs lit in
+ * turn. 报: a circle in red pen. 游: pixels thrown up. 酸: sparkles. Elsewhere, a ring.
+ */
+internal fun DrawScope.drawLikeBurst(style: LanyinStyle, b: Float) {
+    val c = style.colors
+    val r = size.minDimension / 2f
+    val center = Offset(size.width / 2f, size.height / 2f)
+    val fade = 1f - b
+    when (style.backdrop) {
+        BackdropKind.Ink -> {
+            val side = r * (1.1f + 0.15f * b)
+            drawRect(c.accentAlt.copy(alpha = 0.45f * fade), center - Offset(side / 2f, side / 2f), Size(side, side))
+        }
+        BackdropKind.Neon -> {
+            val lit = neonIgnite(b * 1.6f) * fade
+            drawTube(Path().apply { addOval(androidx.compose.ui.geometry.Rect(center, r * (0.62f + 0.2f * b))) }, c.like, 1.8.dp.toPx(), lit)
+        }
+        BackdropKind.Dusk -> {
+            val rr = r * (0.55f + 0.3f * b)
+            drawCircle(c.like.copy(alpha = 0.8f * fade), rr, center, style = Stroke(1.5.dp.toPx()))
+            drawCircle(c.like.copy(alpha = 0.6f * fade), rr - 3.dp.toPx(), center, style = Stroke(0.8.dp.toPx()))
+        }
+        BackdropKind.Grid -> for (k in 0 until 8) {
+            val a = k * PI.toFloat() / 4f
+            val from = r * (0.5f + 0.25f * b)
+            val to = from + r * 0.3f * fade
+            drawLine(c.outline, center + Offset(cos(a) * from, sin(a) * from), center + Offset(cos(a) * to, sin(a) * to), 2.5.dp.toPx())
+        }
+        BackdropKind.Film -> drawCircle(Color.White.copy(alpha = 0.7f * fade * fade), r * (0.6f + 0.4f * b), center)
+        BackdropKind.Dot -> for (k in 0 until 8) {
+            val a = k * PI.toFloat() / 4f
+            val d = r * (0.45f + 0.5f * b)
+            drawCircle((if (k % 2 == 0) c.like else c.content).copy(alpha = fade), 1.8.dp.toPx(), center + Offset(cos(a) * d, sin(a) * d))
+        }
+        BackdropKind.Device -> {
+            val n = 12
+            val on = (b * n * 1.5f).toInt()
+            for (k in 0 until n) {
+                val a = -PI.toFloat() / 2f + k * 2f * PI.toFloat() / n
+                val alpha = if (k <= on) fade else 0.15f * fade
+                drawCircle(c.like.copy(alpha = alpha), 1.6.dp.toPx(), center + Offset(cos(a) * r * 0.8f, sin(a) * r * 0.8f))
+            }
+        }
+        BackdropKind.Paper -> drawArc(
+            c.accent.copy(alpha = fade.coerceAtMost(0.9f)), -120f, 380f * minOf(1f, b * 2.2f), false,
+            center - Offset(r * 0.78f, r * 0.68f), Size(r * 1.56f, r * 1.36f), style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round),
+        )
+        BackdropKind.Game -> for (k in 0 until 4) {
+            val x = center.x + (k - 1.5f) * r * 0.35f
+            val y = center.y - r * (0.4f + 0.7f * b) - (k % 2) * r * 0.15f
+            val px = 3.dp.toPx()
+            drawRect(c.like.copy(alpha = fade), Offset(x - px / 2f, y - px / 2f), Size(px, px))
+        }
+        BackdropKind.Acid -> for (k in 0 until 5) {
+            val a = -PI.toFloat() / 2f + k * 2f * PI.toFloat() / 5f
+            val d = r * (0.5f + 0.45f * b)
+            val s = r * 0.22f * fade
+            drawPath(starPath(center + Offset(cos(a) * d, sin(a) * d), s, s * 0.22f, 4), (if (k % 2 == 0) Color.White else c.accent).copy(alpha = fade))
+        }
+        else -> drawCircle(c.like.copy(alpha = fade), radius = size.minDimension * (0.2f + 0.45f * b), style = Stroke(3.dp.toPx() * fade))
     }
 }
 

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -105,8 +106,9 @@ private fun HeroArt(header: ListHeader, size: Dp, modifier: Modifier = Modifier)
     when {
         header is ListHeader.Cover && style.backdrop == BackdropKind.Paper -> HalftoneCover(header.url, header.seed, modifier.size(size))
         header is ListHeader.Cover && style.backdrop == BackdropKind.Game -> DitheredCover(header.url, header.seed, modifier.size(size))
-        header is ListHeader.Cover && style.backdrop == BackdropKind.Dot -> CoverImage(header.url, header.seed, size, modifier.size(size).ledScreen())
-        header is ListHeader.Cover -> CoverImage(header.url, header.seed, size, modifier.size(size))
+        // An artist's picture stays round, as it is everywhere else; the paper and the game's screen print it square.
+        header is ListHeader.Cover && style.backdrop == BackdropKind.Dot -> CoverImage(header.url, header.seed, size, modifier.size(size).then(if (header.round) Modifier.clip(CircleShape) else Modifier).ledScreen())
+        header is ListHeader.Cover -> CoverImage(header.url, header.seed, size, modifier.size(size).then(if (header.round) Modifier.clip(CircleShape) else Modifier))
         else -> Box(modifier.size(size)) { HeaderArt(header, size) }
     }
 }

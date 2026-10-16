@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import io.lanyin.player.ui.design.drawGloss
+import io.lanyin.player.ui.design.drawMenuCursor
 import io.lanyin.player.ui.design.drawTubeLine
 import io.lanyin.player.ui.design.drawMenuCursor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -106,6 +107,10 @@ import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.NavKind
 import kotlinx.serialization.Serializable
+import io.lanyin.player.ui.design.candyPlastic
+import io.lanyin.player.ui.design.gameWindow
+import androidx.compose.foundation.shape.RoundedCornerShape
+import io.lanyin.player.ui.theme.BackdropKind
 
 @Serializable data object HomeRoute
 @Serializable data object SearchRoute
@@ -389,19 +394,66 @@ private fun NoticeBanner(notice: String?, onDismiss: () -> Unit, floating: Boole
         var shown by remember { mutableStateOf("") }
         if (notice != null) shown = notice
         val plain = style.dock == DockKind.Docked && !floating
-        Text(
-            shown,
-            style = style.type.caption,
-            color = style.colors.content,
-            maxLines = 2,
-            modifier = Modifier
+        val c = style.colors
+        val container = when (style.backdrop) {
+            // 影: a subtitle, white on a dark band.
+            BackdropKind.Film -> Modifier.background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.72f), RoundedCornerShape(4.dp))
+            // 游: a game's message window.
+            BackdropKind.Game -> Modifier.gameWindow(c.surface, c.content)
+            // 酸: a capsule of grape gel.
+            BackdropKind.Acid -> Modifier.candyPlastic(io.lanyin.player.ui.design.Flavor.Grape, style.chipShape)
+            else -> if (plain) Modifier else Modifier.background(c.bg, style.chipShape).themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome)
+        }
+        val ink = when (style.backdrop) {
+            BackdropKind.Film, BackdropKind.Acid -> androidx.compose.ui.graphics.Color.White
+            else -> c.content
+        }
+        Row(
+            Modifier
                 .fillMaxWidth()
                 .padding(horizontal = if (plain) style.margin else 0.dp, vertical = 6.dp)
                 // Over the player even docked themes give it a surface, to read over the lyrics.
-                .then(if (plain) Modifier else Modifier.background(style.colors.bg, style.chipShape).themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome))
+                .then(container)
                 .pressable(onClick = onDismiss)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
-        )
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (style.backdrop == BackdropKind.Film) Arrangement.Center else Arrangement.Start,
+        ) {
+            NoticeLead()
+            Text(shown, style = style.type.caption, color = ink, maxLines = 2)
+        }
+    }
+}
+
+/**
+ * What a notice starts with, in the theme's hand: a seal for 墨, a lit dot for 霓, a stamp for
+ * 暮, a yellow tag for 格, the red dot for 点, a printed label for 机, 「快讯」 for 报, a cursor
+ * for 游, a sparkle for 酸. 影's subtitle needs none.
+ */
+@Composable
+private fun NoticeLead() {
+    val style = Lanyin.style
+    val c = style.colors
+    val gap = Modifier.padding(end = 10.dp)
+    val mono = androidx.compose.ui.text.TextStyle(fontFamily = io.lanyin.player.ui.theme.SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = 9.sp, letterSpacing = 0.1.em)
+    when (style.backdrop) {
+        BackdropKind.Ink -> Box(gap.size(18.dp).background(c.accentAlt, RoundedCornerShape(2.dp)), contentAlignment = Alignment.Center) {
+            Text("讯", style = androidx.compose.ui.text.TextStyle(fontFamily = style.display, fontSize = 11.sp, lineHeight = 12.sp), color = c.bg)
+        }
+        BackdropKind.Neon -> androidx.compose.foundation.Canvas(gap.size(10.dp)) {
+            drawCircle(c.accent.copy(alpha = 0.3f), size.minDimension / 2f)
+            drawCircle(io.lanyin.player.ui.design.neonCore(c.accent), size.minDimension / 4f)
+        }
+        BackdropKind.Dusk -> Box(gap) { io.lanyin.player.ui.design.StampMark(1) }
+        BackdropKind.Grid -> Text("NOTE", style = mono, color = c.content, modifier = gap.background(io.lanyin.player.ui.theme.GridYellow).border(2.dp, c.outline).padding(horizontal = 4.dp))
+        BackdropKind.Dot -> Box(gap.size(7.dp).background(c.accentAlt, CircleShape))
+        BackdropKind.Device -> Text("MSG", style = mono, color = c.bg, modifier = gap.background(c.content, RoundedCornerShape(3.dp)).padding(horizontal = 4.dp))
+        BackdropKind.Paper -> Text("快讯", style = style.type.caption.copy(fontWeight = FontWeight.Black), color = c.accent, modifier = gap)
+        BackdropKind.Game -> androidx.compose.foundation.Canvas(gap.size(8.dp, 10.dp)) { drawMenuCursor(c.accent) }
+        BackdropKind.Acid -> androidx.compose.foundation.Canvas(gap.size(12.dp)) {
+            drawPath(io.lanyin.player.ui.design.starPath(androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f), size.minDimension / 2f, size.minDimension * 0.14f, 4), androidx.compose.ui.graphics.Color.White)
+        }
+        BackdropKind.Film -> Unit
     }
 }
 
