@@ -1,5 +1,8 @@
 package io.lanyin.player.ui.design
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -165,9 +168,12 @@ fun Modifier.themedSurface(
     return m
 }
 
-/** Plain press feedback for icons and other non-surface elements. */
+/**
+ * Plain press feedback for icons and other non-surface elements. A button drawn rather than
+ * written (a play glyph, say) passes its [label], which is what a screen reader says for it.
+ */
 @Composable
-fun Modifier.pressable(enabled: Boolean = true, onClick: () -> Unit): Modifier {
+fun Modifier.pressable(enabled: Boolean = true, label: String? = null, onClick: () -> Unit): Modifier {
     val style = Lanyin.style
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -177,10 +183,11 @@ fun Modifier.pressable(enabled: Boolean = true, onClick: () -> Unit): Modifier {
         val s = 1f - depth * press
         scaleX = s
         scaleY = s
-    }.clickable(
+    }.then(if (label != null) Modifier.semantics { contentDescription = label } else Modifier).clickable(
         interactionSource = interaction,
         indication = null,
         enabled = enabled,
+        role = if (label != null) Role.Button else null,
         onClick = onClick,
     )
 }

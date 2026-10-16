@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -125,7 +127,7 @@ private fun MainDisplay(model: HomeModel, modifier: Modifier) {
             Column(Modifier.weight(1f)) {
                 if (player.isEmpty) {
                     Text("NO TAPE", style = mono.copy(fontSize = fixedSp(26f), fontWeight = FontWeight.Bold), color = c.content)
-                    Text("按 1 号键，开始今天的歌", style = Lanyin.style.type.caption, color = c.muted)
+                    Text("按 1 号键，翻开今天的推荐", style = Lanyin.style.type.caption, color = c.muted)
                 } else {
                     Text(player.title, style = Lanyin.style.type.title.copy(fontWeight = FontWeight.Bold), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(player.artist, style = Lanyin.style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -134,9 +136,11 @@ private fun MainDisplay(model: HomeModel, modifier: Modifier) {
             Spacer(Modifier.width(12.dp))
             VuMeter(player.audioFeed, player.isPlaying, Modifier.size(72.dp, 40.dp))
         }
-        val f = if (player.isEmpty) 0f else (player.positionMs.toFloat() / player.durationMs).coerceIn(0f, 1f)
+        // The position changes every frame: read it while drawing, and the time only by the second.
+        val seconds by remember(player) { derivedStateOf { player.positionMs / 1000 } }
         Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Canvas(Modifier.weight(1f).height(10.dp)) {
+                val f = if (player.isEmpty) 0f else (player.positionMs.toFloat() / player.durationMs).coerceIn(0f, 1f)
                 val blocks = 24
                 val gap = 2.dp.toPx()
                 val w = (size.width - gap * (blocks - 1)) / blocks
@@ -154,7 +158,7 @@ private fun MainDisplay(model: HomeModel, modifier: Modifier) {
             }
             Spacer(Modifier.width(10.dp))
             Text(
-                if (player.isEmpty) "--:--" else "${formatTime(player.positionMs)} / ${formatTime(player.durationMs)}",
+                if (player.isEmpty) "--:--" else "${formatTime(seconds * 1000)} / ${formatTime(player.durationMs)}",
                 style = mono.copy(fontSize = fixedSp(11f)),
                 color = c.muted,
             )

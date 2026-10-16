@@ -69,7 +69,7 @@ internal fun rememberNow(): State<LocalDateTime> = produceState(LocalDateTime.no
 
 /** Text that is part of a drawing, held at its size whatever the system font scale. */
 @Composable
-private fun fixed(size: Float): androidx.compose.ui.unit.TextUnit = (size / LocalDensity.current.fontScale).sp
+private fun fixed(size: Float): androidx.compose.ui.unit.TextUnit = with(LocalDensity.current) { size.dp.toSp() }
 
 // 点 ------------------------------------------------------------------------------------------
 

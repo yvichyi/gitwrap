@@ -40,9 +40,16 @@ internal fun isUpright(ch: Char): Boolean {
         block == Character.UnicodeBlock.HALFWIDTH_AND_FULLWIDTH_FORMS
 }
 
+/** Brackets and dashes have forms of their own for setting down a column: （ becomes ︵. */
+private val VerticalForms = mapOf(
+    '（' to '︵', '）' to '︶', '「' to '﹁', '」' to '﹂', '『' to '﹃', '』' to '﹄', '《' to '︽', '》' to '︾',
+    '〈' to '︿', '〉' to '﹀', '【' to '︻', '】' to '︼', '〔' to '︹', '〕' to '︺', '—' to '︱', '…' to '︙',
+)
+
 /**
- * Splits [text] into runs for vertical setting: each CJK character on its own, Latin words kept
- * together to be turned sideways. Longer than [maxRuns] and the end becomes a vertical ellipsis.
+ * Splits [text] into runs for vertical setting: each CJK character on its own (brackets turned
+ * to their vertical forms), Latin words kept together to be turned sideways. Longer than
+ * [maxRuns] and the end becomes a vertical ellipsis.
  */
 internal fun verticalRuns(text: String, maxRuns: Int): List<Pair<String, Boolean>> {
     val runs = mutableListOf<Pair<String, Boolean>>()
@@ -52,9 +59,10 @@ internal fun verticalRuns(text: String, maxRuns: Int): List<Pair<String, Boolean
         word.clear()
     }
     for (ch in text) {
-        if (isUpright(ch)) {
+        val vertical = VerticalForms[ch]
+        if (vertical != null || isUpright(ch)) {
             flush()
-            runs += ch.toString() to true
+            runs += (vertical ?: ch).toString() to true
         } else if (ch == ' ' || ch == '/' || ch == '·') {
             flush()
         } else {
@@ -87,7 +95,7 @@ private fun VerticalText(text: String, style: TextStyle, color: Color, maxRuns: 
  * on a hanging scroll, the artist in a smaller hand beside it, closed with a red seal.
  */
 @Composable
-fun Inscription(state: PlayerState, modifier: Modifier = Modifier) {
+fun Inscription(state: PlayerState, modifier: Modifier = Modifier, titleRuns: Int = 9, artistRuns: Int = 6) {
     val style = Lanyin.style
     val c = style.colors
     val titleStyle = TextStyle(fontFamily = style.display, fontSize = 20.sp, lineHeight = 25.sp, fontWeight = FontWeight.Medium)
@@ -96,11 +104,11 @@ fun Inscription(state: PlayerState, modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(30.dp))
-            VerticalText(state.artist, artistStyle, c.muted, maxRuns = 6)
+            VerticalText(state.artist, artistStyle, c.muted, maxRuns = artistRuns)
             Spacer(Modifier.height(10.dp))
             Seal(state.artist.firstOrNull()?.toString() ?: "澜", 22.dp)
         }
-        VerticalText(state.title, titleStyle, c.content.copy(alpha = 0.85f), maxRuns = 9)
+        VerticalText(state.title, titleStyle, c.content.copy(alpha = 0.85f), maxRuns = titleRuns)
     }
 }
 

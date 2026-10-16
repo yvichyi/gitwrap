@@ -50,11 +50,16 @@ fun Backdrop(
     playing: Boolean = false,
     trackNumber: Int? = null,
     feed: io.lanyin.player.core.audio.AudioFeed? = null,
+    /** How far through the song, 0..1; 暮's sun sets over it in landscape. */
+    progress: () -> Float = { 0f },
 ) {
     val style = Lanyin.style
-    // Paper, a case and a grid never move: no clock for them. 点's dots only move with the music.
+    val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    // Paper, a case and a grid never move: no clock for them (格's poster does, in landscape,
+    // while the music plays). 点's dots only move with the music.
     val animated = live && when (style.backdrop) {
-        BackdropKind.Grid, BackdropKind.Device, BackdropKind.Paper, BackdropKind.Game -> false
+        BackdropKind.Device, BackdropKind.Paper, BackdropKind.Game -> false
+        BackdropKind.Grid -> playing && landscape
         BackdropKind.Dot -> playing
         else -> true
     }
@@ -68,11 +73,21 @@ fun Backdrop(
         val e = energy
         val page = !live
         val heard = if (feed != null && live) audio.also { it.read(feed, t, e) } else null
+        val wide = size.width > size.height
         when (style.backdrop) {
-            BackdropKind.Ink -> drawInk(style, t, page, heard)
-            BackdropKind.Neon -> drawNeon(style, t, e, page, heard)
-            BackdropKind.Dusk -> drawDusk(style, t, e, page, heard)
-            BackdropKind.Grid -> drawGridPaper(style, page, measurer, trackNumber)
+            BackdropKind.Ink -> {
+                drawInk(style, t, page, heard)
+                if (!page && wide) drawInkWildlife(style, t, heard)
+            }
+            BackdropKind.Neon -> {
+                drawNeon(style, t, e, page, heard)
+                if (!page && wide) drawNeonPalms(style, t, size.height * 0.82f, heard)
+            }
+            BackdropKind.Dusk -> drawDusk(style, t, e, page, heard, if (!page && wide) progress() else 0f)
+            BackdropKind.Grid -> {
+                drawGridPaper(style, page, measurer, trackNumber)
+                if (!page && wide && trackNumber != null) drawGridPoster(style, t, heard)
+            }
             BackdropKind.Film -> drawFilm(style, t, e, page, heard, if (page) null else measurer, trackNumber)
             BackdropKind.Dot -> drawDotField(style, t, page, heard)
             BackdropKind.Device -> drawDeviceCase(style, page)
@@ -128,8 +143,9 @@ internal class BackdropAudio {
         period = feed.beatPeriod()
         val rate = if (period > 0f) 1f / period else FREE_BEATS_PER_SECOND
         val advance = dt * rate * energy
-        // Ease out the error found at the last beat, never so hard the motion runs backward.
-        val correction = (pull * minOf(1f, dt * 5f)).coerceAtLeast(-0.6f * advance)
+        // Ease out the error found at the last beat, never so hard the motion runs backward, and
+        // only while it moves: stopped, the clock stays stopped.
+        val correction = if (advance > 0f) (pull * minOf(1f, dt * 5f)).coerceAtLeast(-0.6f * advance) else 0f
         pull -= correction
         beatClock += advance + correction
         if (!feed.levels(raw)) raw.fill(0f)
@@ -147,7 +163,8 @@ internal class BackdropAudio {
             beats[beatCount % BEATS] = t - since
             beatCount++
             if (period > 0f) {
-                val at = beatClock - since * rate
+                // Back to where the clock stood on the beat, at the pace it has been running.
+                val at = beatClock - since * rate * energy
                 pull = kotlin.math.round(at) - at
             }
         }
@@ -207,24 +224,8 @@ private fun DrawScope.drawInk(style: LanyinStyle, t: Float, page: Boolean, audio
     for (layer in 0..2) {
         val base = h * (0.62f + layer * 0.1f)
         val amp = h * (0.2f - layer * 0.045f)
-        val from = w * (0.4f + 0.06f * layer)
-        val ridge = Path().apply {
-            moveTo(from, h)
-            var x = from
-            while (x <= w + 8f) {
-                val u = (x - from) / (w - from)
-                // Peaks from a few slow sines, eased in from the left so the range starts low.
-                val peaks = 0.55f + 0.3f * sin(u * 7.1f + layer * 2.1f) + 0.15f * sin(u * 17.3f + layer)
-                // Rise out of the ground at the left rather than starting on a cliff.
-                val rise = (u / 0.3f).coerceIn(0f, 1f).let { it * it * (3f - 2f * it) }
-                lineTo(x, h - (h - (base - amp * peaks)) * rise)
-                x += 6f
-            }
-            lineTo(w, h)
-            close()
-        }
         val alpha = (if (style.dark) 0.07f else 0.06f) * (1f + layer * 0.5f)
-        drawPath(ridge, Brush.verticalGradient(listOf(ink.copy(alpha = alpha), ink.copy(alpha = 0f)), startY = base - amp, endY = h))
+        drawPath(InkRidges.at(size, layer), Brush.verticalGradient(listOf(ink.copy(alpha = alpha), ink.copy(alpha = 0f)), startY = base - amp, endY = h))
     }
     // A band of mist drifting slowly across the foot of the hills.
     val drift = (t * 6f * density) % w
@@ -234,6 +235,39 @@ private fun DrawScope.drawInk(style: LanyinStyle, t: Float, page: Boolean, audio
             Brush.radialGradient(listOf(c.bg.copy(alpha = 0.7f), c.bg.copy(alpha = 0f)), Offset(x + w * 0.3f, h * 0.8f), w * 0.3f),
             Offset(x, h * 0.72f), Size(w * 0.6f, h * 0.16f),
         )
+    }
+}
+
+/** 墨's three ridges, nearest last. They stand still, so they're traced once for a size, not every frame. */
+private object InkRidges {
+    private var traced = Size.Zero
+    private val ridges = arrayOfNulls<Path>(3)
+
+    fun at(size: Size, layer: Int): Path {
+        if (size != traced) {
+            traced = size
+            for (i in ridges.indices) ridges[i] = trace(size.width, size.height, i)
+        }
+        return ridges[layer]!!
+    }
+
+    private fun trace(w: Float, h: Float, layer: Int) = Path().apply {
+        val base = h * (0.62f + layer * 0.1f)
+        val amp = h * (0.2f - layer * 0.045f)
+        val from = w * (0.4f + 0.06f * layer)
+        moveTo(from, h)
+        var x = from
+        while (x <= w + 8f) {
+            val u = (x - from) / (w - from)
+            // Peaks from a few slow sines, eased in from the left so the range starts low.
+            val peaks = 0.55f + 0.3f * sin(u * 7.1f + layer * 2.1f) + 0.15f * sin(u * 17.3f + layer)
+            // Rise out of the ground at the left rather than starting on a cliff.
+            val rise = (u / 0.3f).coerceIn(0f, 1f).let { it * it * (3f - 2f * it) }
+            lineTo(x, h - (h - (base - amp * peaks)) * rise)
+            x += 6f
+        }
+        lineTo(w, h)
+        close()
     }
 }
 
@@ -440,7 +474,7 @@ private fun DrawScope.drawSkyline(style: LanyinStyle, horizon: Float, audio: Bac
  * low sun with a soft glow, and fine film grain. On pages the sun is a glow in the corner; on the
  * player it sits low, beside the artwork rather than behind the lyrics, and breathes with the music.
  */
-private fun DrawScope.drawDusk(style: LanyinStyle, t: Float, e: Float, page: Boolean, audio: BackdropAudio? = null) {
+private fun DrawScope.drawDusk(style: LanyinStyle, t: Float, e: Float, page: Boolean, audio: BackdropAudio? = null, progress: Float = 0f) {
     val c = style.colors
     val w = size.width
     val h = size.height
@@ -459,12 +493,16 @@ private fun DrawScope.drawDusk(style: LanyinStyle, t: Float, e: Float, page: Boo
     val breathe = 1f + 0.03f * e * sin(t * 1.3f) + 0.09f * (audio?.bass ?: 0f)
     val center = when {
         page -> Offset(w * 0.86f, h * 0.06f)
-        landscape -> Offset(w * 0.9f, h * 0.62f)
+        // In landscape the sun sinks toward the sea as the song plays out.
+        landscape -> Offset(w * 0.9f, h * 0.87f - radius * (1.25f + 0.3f - 1.15f * progress))
         else -> Offset(w * 0.82f, h * 0.2f)
     }
+    val seaLine = if (landscape && !page) h * 0.87f else center.y + radius * 1.25f
     val sunCore = if (dark) lerp(c.accent, Color(0xFFFFC08A), 0.25f) else lerp(c.accent, Color(0xFFFFD2A6), 0.45f)
     // Glow, then the disc with a soft edge; at night an ember sunk into the sky.
     glowBlob(sunCore.copy(alpha = if (dark) 0.22f else 0.3f), center, radius * 3.2f * breathe)
+    // Below the sea's edge the sun has set.
+    clipRect(bottom = if (landscape && !page) seaLine else h) {
     drawCircle(
         Brush.radialGradient(
             0f to sunCore.copy(alpha = if (dark) 0.75f else 0.9f),
@@ -474,11 +512,12 @@ private fun DrawScope.drawDusk(style: LanyinStyle, t: Float, e: Float, page: Boo
         ),
         radius * breathe, center,
     )
+    }
     // Clouds pass in front of the sun.
     if (!page) drawClouds(style, skyEnd, drift = audio?.travel(1, 0.6f + 0.6f * e) ?: (t * (0.6f + 0.6f * e)))
     if (!page) {
         // A calm sea under it: a few thin glints, drifting.
-        val horizon = center.y + radius * 1.25f
+        val horizon = seaLine
         for (k in 0 until 5) {
             val y = horizon + k * radius * 0.16f
             val half = radius * (0.9f - k * 0.14f)
@@ -488,6 +527,7 @@ private fun DrawScope.drawDusk(style: LanyinStyle, t: Float, e: Float, page: Boo
         }
     }
     if (!page) drawMotes(style, t, sunCore, audio)
+    if (!page && landscape) drawDuskEvening(style, t, audio, progress, seaLine)
     drawRect(ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)), alpha = if (dark) 0.08f else 0.06f)
 }
 

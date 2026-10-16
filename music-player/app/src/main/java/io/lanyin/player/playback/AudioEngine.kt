@@ -137,6 +137,12 @@ internal class AnalyzingAudioSink(sink: AudioSink, private val analyzer: AudioAn
         super.pause()
     }
 
+    // The renderer says so when one track gives way to the next without a flush.
+    override fun handleDiscontinuity() {
+        analyzer.newStream()
+        super.handleDiscontinuity()
+    }
+
     override fun flush() {
         lastTimeUs = Long.MIN_VALUE
         analyzer.reset()

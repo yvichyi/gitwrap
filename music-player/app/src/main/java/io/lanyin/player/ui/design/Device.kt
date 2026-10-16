@@ -214,7 +214,14 @@ fun DeviceScreen(modifier: Modifier = Modifier, content: @Composable ColumnScope
  * rest when the music stops.
  */
 @Composable
-fun VuMeter(feed: io.lanyin.player.core.audio.AudioFeed, playing: Boolean, modifier: Modifier = Modifier) {
+fun VuMeter(
+    feed: io.lanyin.player.core.audio.AudioFeed,
+    playing: Boolean,
+    modifier: Modifier = Modifier,
+    /** The bands it reads: all but the top by default, or the low or high end for a pair of meters. */
+    bands: IntRange = 0 until 24,
+    label: String = "VU",
+) {
     val style = Lanyin.style
     var settling by remember { mutableStateOf(false) }
     LaunchedEffect(playing) {
@@ -230,8 +237,8 @@ fun VuMeter(feed: io.lanyin.player.core.audio.AudioFeed, playing: Boolean, modif
     // Position, velocity and the clock at the last frame.
     val needle = remember { floatArrayOf(0f, 0f, -1f) }
     val measurer = rememberTextMeasurer()
-    val label = remember(style) { TextStyle(fontFamily = SpaceMonoFamily, fontSize = 7.sp, fontWeight = FontWeight.Bold, color = style.colors.muted) }
-    val vu = remember(measurer, label) { measurer.measure("VU", label) }
+    val labelStyle = remember(style) { TextStyle(fontFamily = SpaceMonoFamily, fontSize = 7.sp, fontWeight = FontWeight.Bold, color = style.colors.muted) }
+    val vu = remember(measurer, labelStyle, label) { measurer.measure(label, labelStyle) }
     // Its own layer: the needle redraws every frame, the screen around it needn't.
     Canvas(modifier.graphicsLayer()) {
         val c = style.colors
@@ -239,8 +246,8 @@ fun VuMeter(feed: io.lanyin.player.core.audio.AudioFeed, playing: Boolean, modif
         var target = 0f
         if (feed.levels(levels)) {
             var sum = 0f
-            for (i in 0 until 24) sum += levels[i] * (if (i < 8) 1.3f else 0.8f)
-            target = (sum / 24f * 1.35f).coerceIn(0f, 1.06f) * energy
+            for (i in bands) sum += levels[i] * (if (i < 8) 1.3f else 0.8f)
+            target = (sum / bands.count() * 1.35f).coerceIn(0f, 1.06f) * energy
         }
         val dt = if (needle[2] < 0f) 0f else (t - needle[2]).coerceIn(0f, 0.05f)
         needle[2] = t

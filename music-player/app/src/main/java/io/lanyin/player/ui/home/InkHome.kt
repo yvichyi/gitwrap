@@ -123,7 +123,7 @@ private fun Frontispiece(model: HomeModel, modifier: Modifier) {
                 Text(model.dailyNote, style = style.type.caption, color = c.muted)
             }
             Text(chineseNumber(model.now.dayOfMonth), style = style.type.display.copy(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Light), color = c.content, modifier = Modifier.padding(end = 14.dp))
-            Box(Modifier.size(42.dp).clip(CircleShape).border(1.dp, c.content, CircleShape).pressable(onClick = model.playDaily), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(42.dp).clip(CircleShape).border(1.dp, c.content, CircleShape).pressable(label = "播放每日推荐", onClick = model.playDaily), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.size(12.dp)) { drawPlayPauseGlyph(0f, c.content) }
             }
         }

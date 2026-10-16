@@ -100,7 +100,7 @@ private fun DrawScope.drawEdgePrint(measurer: TextMeasurer, trackNumber: Int) {
     }
     val layout = measurer.measure(
         text,
-        TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = (8.5f / fontScale).sp, letterSpacing = 0.18.em),
+        TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 8.5.dp.toSp(), letterSpacing = 0.18.em),
     )
     // Turned a quarter clockwise its glyphs face outward, the line reading downwards.
     val pivot = Offset(size.width - 3.dp.toPx(), size.height * 0.1f)

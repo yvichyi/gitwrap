@@ -291,11 +291,16 @@ class AudioAnalyzer(
         sums[0] = 0f
         for (i in 0 until len) {
             var s = 0f
+            var weight = 0
             for (d in -2..2) {
                 val j = i + d
-                if (j in 0 until len) s += work[j] * (3 - abs(d))
+                if (j in 0 until len) {
+                    s += work[j] * (3 - abs(d))
+                    weight += 3 - abs(d)
+                }
             }
-            shaped[i] = s / 9f
+            // At the ends, by the weight that fell inside: the newest hops aren't to read low.
+            shaped[i] = s / weight
             sums[i + 1] = sums[i] + shaped[i]
         }
         // What rises above its surroundings (0.4 s around), so a loud passage doesn't outweigh the pulse.
@@ -304,7 +309,9 @@ class AudioAnalyzer(
         for (i in 0 until len) {
             val from = (i - span / 2).coerceAtLeast(0)
             val to = (i + span - span / 2).coerceAtMost(len)
-            shaped[i] = (shaped[i] - (sums[to] - sums[from]) / span).coerceAtLeast(0f)
+            // The window is cut short at the ends; average over what it holds, or the newest
+            // hops would stand out above a mean too low and pull the phase toward "a beat just now".
+            shaped[i] = (shaped[i] - (sums[to] - sums[from]) / (to - from)).coerceAtLeast(0f)
             mean += shaped[i]
         }
         mean /= len
@@ -436,6 +443,23 @@ class AudioAnalyzer(
             anchorNanos = nowNanos()
         }
         this.playing = playing
+    }
+
+    /**
+     * A new track straight on from the last, with no seek between (gapless): the music runs on,
+     * so the spectrum and where the speaker is stay, but the tempo is the new track's own. The
+     * onsets heard so far, the tempo found in them and the beat grid locked to it start over.
+     */
+    fun newStream() = synchronized(lock) {
+        envelopeCount = 0
+        sinceTempo = 0
+        periodCount = 0
+        period = 0f
+        misses = 0
+        correlation = 0f
+        beatPeriodUs = 0
+        kickCount = 0
+        kickStrength = 0f
     }
 
     /** After a seek or a new track: what was analysed no longer lines up. */

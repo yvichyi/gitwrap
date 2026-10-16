@@ -24,6 +24,8 @@ fun AudioFeed.beatPulse(seconds: Float): Float = pulseAfter(sinceBeat(), beatPer
 
 /** [beatPulse] from the time since a beat and the period. */
 fun pulseAfter(since: Float, period: Float, seconds: Float): Float {
+    // A beat "after now" is a clock that has stopped behind it, not a beat that rings.
+    if (since < 0f) return 0f
     val span = if (period > 0f) minOf(seconds, period * 0.8f) else seconds
     return (1f - since / span).coerceIn(0f, 1f)
 }

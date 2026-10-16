@@ -247,13 +247,13 @@ class AudioDspTest {
     }
 
     /** Feeds [seconds] of [signal] (stereo PCM16, 44.1 kHz) in 4096-frame buffers, as a sink would. */
-    private fun feed(analyzer: AudioAnalyzer, seconds: Float, rate: Int = 44_100, signal: (Int) -> Float) {
+    private fun feed(analyzer: AudioAnalyzer, seconds: Float, rate: Int = 44_100, fromUs: Long = 0, signal: (Int) -> Float) {
         val total = (rate * seconds).toInt()
         var frame = 0
         while (frame < total) {
             val count = minOf(4_096, total - frame)
             val buf = FloatArray(count * 2) { i -> signal(frame + i / 2) }
-            analyzer.process(pcm16(buf), frame * 1_000_000L / rate)
+            analyzer.process(pcm16(buf), fromUs + frame * 1_000_000L / rate)
             frame += count
         }
     }
@@ -340,6 +340,25 @@ class AudioDspTest {
         assertTrue("beats $late", gaps.size >= 7 && gaps.all { it in 420_000..580_000 })
         // And on the kicks, not between them.
         assertTrue("beats $late", late.all { val off = (it % 500_000).let { o -> minOf(o, 500_000 - o) }; off < 60_000 })
+    }
+
+    @Test
+    fun `a track that follows straight on finds its own tempo`() {
+        var now = 0L
+        val analyzer = AudioAnalyzer(nowNanos = { now }).apply { configure(44_100, 2, PcmEncoding.PCM16) }
+        val rng = java.util.Random(6)
+        fun kicks(period: Double): (Int) -> Float = { f ->
+            val t = f / 44_100.0
+            val kick = if ((t % period) < 0.08) 0.7f * kotlin.math.exp(-(t % period) / 0.025).toFloat() * sin(2 * PI * 60 * t).toFloat() else 0f
+            kick + (rng.nextFloat() - 0.5f) * 0.01f
+        }
+        feed(analyzer, 8f, signal = kicks(0.5))
+        assertEquals(500_000.0, analyzer.beatPeriodUs.toDouble(), 30_000.0)
+        // Gapless: no flush, the timestamps run on, and the old tempo is let go at once.
+        analyzer.newStream()
+        assertEquals(0L, analyzer.beatPeriodUs)
+        feed(analyzer, 8f, fromUs = 8_000_000, signal = kicks(0.6))
+        assertEquals(600_000.0, analyzer.beatPeriodUs.toDouble(), 36_000.0)
     }
 
     @Test

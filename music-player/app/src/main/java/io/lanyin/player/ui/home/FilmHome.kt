@@ -212,7 +212,7 @@ private fun Frame(title: String, note: String, onClick: () -> Unit, onPlay: () -
                 Text(title, style = style.type.title.copy(fontFamily = style.display), color = Color.White, maxLines = 1)
                 Text(note, style = style.type.caption, color = Color.White.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Box(Modifier.size(32.dp).background(Color.White.copy(alpha = 0.92f), CircleShape).pressable(onClick = onPlay), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(32.dp).background(Color.White.copy(alpha = 0.92f), CircleShape).pressable(label = "播放", onClick = onPlay), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.size(11.dp)) { drawPlayPauseGlyph(0f, Color(0xFF111111)) }
             }
         }

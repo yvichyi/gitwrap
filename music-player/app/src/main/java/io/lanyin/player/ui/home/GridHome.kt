@@ -161,9 +161,11 @@ private fun ColorBlock(door: Door, number: Int, fill: Color, ink: Color, modifie
         Text("%02d".format(number), style = mono.copy(fontSize = fixedSp(11f)), color = ink, modifier = Modifier.align(Alignment.TopEnd))
         Text(
             door.label,
-            style = style.type.title.copy(fontWeight = FontWeight.Black, fontSize = cappedSp(17f), lineHeight = cappedSp(20f)),
+            style = style.type.title.copy(fontWeight = FontWeight.Black, fontSize = cappedSp(17f, maxScale = 1.08f), lineHeight = cappedSp(20f, maxScale = 1.08f)),
             color = ink,
             maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.align(Alignment.BottomStart),
         )
     }

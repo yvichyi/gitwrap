@@ -60,8 +60,6 @@ fun Marquee(
 ) {
     val clock = rememberFrameClock(true)
     val measurer = rememberTextMeasurer()
-    // A ribbon is decoration with a fixed height: keep its type at a fixed size too.
-    val fontScale = LocalDensity.current.fontScale
     val text = remember(items, marks) {
         buildAnnotatedString {
             items.forEachIndexed { i, item ->
@@ -81,7 +79,8 @@ fun Marquee(
                     text,
                     TextStyle(
                         fontFamily = font, fontWeight = FontWeight.Bold,
-                        fontSize = (12f / fontScale).sp, letterSpacing = 0.1.em, color = ink,
+                        // A ribbon is decoration with a fixed height: its type is held at a fixed size too.
+                        fontSize = 12.dp.toSp(), letterSpacing = 0.1.em, color = ink,
                     ),
                     softWrap = false,
                 )
@@ -105,7 +104,7 @@ fun Marquee(
 fun Sticker(lines: List<String>, modifier: Modifier = Modifier, size: Dp = 66.dp) {
     val c = Lanyin.colors
     val clock = rememberFrameClock(true)
-    val fontScale = LocalDensity.current.fontScale
+    val density = LocalDensity.current
     Box(
         modifier
             .size(size)
@@ -122,7 +121,7 @@ fun Sticker(lines: List<String>, modifier: Modifier = Modifier, size: Dp = 66.dp
             lines.joinToString("\n"),
             style = TextStyle(
                 fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
-                fontSize = (9f / fontScale).sp, lineHeight = (11f / fontScale).sp, textAlign = TextAlign.Center,
+                fontSize = with(density) { 9.dp.toSp() }, lineHeight = with(density) { 11.dp.toSp() }, textAlign = TextAlign.Center,
             ),
             color = c.outline,
         )
@@ -182,7 +181,7 @@ internal fun DrawScope.drawGridPaper(style: LanyinStyle, page: Boolean, measurer
     val sizePx = if (landscape) h * 0.66f else w * 0.6f
     val layout = measurer.measure(
         numeral,
-        TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black, fontSize = (sizePx / density / fontScale).sp, letterSpacing = (-0.04).em),
+        TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black, fontSize = (sizePx / density).dp.toSp(), letterSpacing = (-0.04).em),
     )
     val topLeft = if (landscape) {
         Offset(w - layout.size.width * 0.94f, h - layout.size.height * 0.98f)
@@ -194,13 +193,6 @@ internal fun DrawScope.drawGridPaper(style: LanyinStyle, page: Boolean, measurer
     } else {
         // Mostly behind the record in portrait: a flat printed tint reads better than an outline.
         drawText(layout, color = c.content.copy(alpha = 0.055f), topLeft = topLeft)
-    }
-    if (landscape) {
-        drawCircle(c.accent, h * 0.07f, Offset(w * 0.9f, h * 0.24f))
-        drawCircle(c.outline, h * 0.07f, Offset(w * 0.9f, h * 0.24f), style = Stroke(2.5.dp.toPx()))
-        val bar = Size(w * 0.12f, h * 0.035f)
-        drawRect(c.accentAlt, Offset(w * 0.78f, h * 0.36f), bar)
-        drawRect(c.outline, Offset(w * 0.78f, h * 0.36f), bar, style = Stroke(2.5.dp.toPx()))
     }
 }
 

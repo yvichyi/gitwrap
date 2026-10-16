@@ -217,7 +217,10 @@ fun PlayerScreen(
                     }
                 },
         ) {
-            Backdrop(Modifier.matchParentSize(), live = true, playing = state.isPlaying, trackNumber = state.trackNumber, feed = state.audioFeed)
+            Backdrop(
+                Modifier.matchParentSize(), live = true, playing = state.isPlaying, trackNumber = state.trackNumber, feed = state.audioFeed,
+                progress = { state.positionMs.toFloat() / state.durationMs },
+            )
             if (landscape) {
                 LandscapePlayer(
                     state, skin, spin, chromeVisible, onToggleChrome = { chromeVisible = !chromeVisible },
@@ -356,7 +359,7 @@ private fun PortraitPlayer(
 }
 
 /** A square for records and covers, the tape's own proportions for the cassette, fitted to the box. */
-private fun artSize(skin: PlayerSkin, maxWidth: Dp, maxHeight: Dp): Modifier =
+internal fun artSize(skin: PlayerSkin, maxWidth: Dp, maxHeight: Dp): Modifier =
     if (skin == PlayerSkin.CASSETTE) {
         Modifier.width(minOf(maxWidth, maxHeight * CASSETTE_RATIO))
     } else {
@@ -367,7 +370,7 @@ private const val CASSETTE_RATIO = 1.58f
 
 /** The top line of 游's LCD, as a game's status bar. */
 @Composable
-private fun LcdHeader(state: PlayerState) {
+internal fun LcdHeader(state: PlayerState) {
     val style = Lanyin.style
     val label = style.type.label.copy(fontSize = 12.sp, letterSpacing = 0.5.sp)
     Row(Modifier.fillMaxWidth().height(24.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -378,13 +381,13 @@ private fun LcdHeader(state: PlayerState) {
 
 /** The status line along the top of 机's screen: track counter, the VU meter, transport state. */
 @Composable
-private fun ScreenHeader(state: PlayerState) {
+internal fun ScreenHeader(state: PlayerState, meter: Boolean = true) {
     val style = Lanyin.style
     val c = style.colors
     val label = style.type.label.copy(fontFamily = style.numeric, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.1.sp)
     Row(Modifier.fillMaxWidth().height(32.dp), verticalAlignment = Alignment.CenterVertically) {
         Text("TRK %02d/%02d".format(state.trackNumber, state.trackCount), style = label, color = c.muted, maxLines = 1, modifier = Modifier.weight(1f))
-        VuMeter(state.audioFeed, state.isPlaying, Modifier.size(64.dp, 32.dp))
+        if (meter) VuMeter(state.audioFeed, state.isPlaying, Modifier.size(64.dp, 32.dp))
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(6.dp).background(if (state.isPlaying) c.accent else c.muted.copy(alpha = 0.5f), androidx.compose.foundation.shape.CircleShape))
             Spacer(Modifier.width(6.dp))
@@ -412,6 +415,11 @@ private fun LandscapePlayer(
     onRotate: () -> Unit,
     lyricScale: Float,
 ) {
+    // 游 turns the whole screen into the console, its buttons doing the transport.
+    if (Lanyin.style.backdrop == BackdropKind.Game) {
+        ConsoleLandscape(state, skin, spin, chromeVisible, onToggleChrome, dismissDrag, onCollapse, onRotate, lyricScale)
+        return
+    }
     val entrance = rememberEntrance(Unit)
     var scrubMs by remember { mutableStateOf<Long?>(null) }
     Column(
@@ -423,7 +431,7 @@ private fun LandscapePlayer(
         AnimatedVisibility(chromeVisible, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
             LandscapeTopBar(state, onCollapse, onRotate, modifier = dismissDrag.enter(entrance, 0))
         }
-        Row(
+        Box(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
@@ -438,36 +446,18 @@ private fun LandscapePlayer(
                     modifier = Modifier.fillMaxSize().enter(entrance, 1),
                 )
             } else {
-                BoxWithConstraints(
-                    Modifier.weight(0.42f).fillMaxHeight().then(dismissDrag),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    // Leave room around the artwork for the spectrum halo, whichever side is short.
-                    val halo = 20.dp
-                    Box(
-                        artSize(skin, maxWidth - halo * 2, maxHeight * 0.82f).spectrumHalo(skin, state.isPlaying, state.audioFeed),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        // The halo stays put while the record is swiped away and the next slides in.
-                        SwipeToSkip(state) {
-                            PlayerArtwork(skin, state.isPlaying, spin, state.coverSeed, Modifier.fillMaxWidth().sharedPlayer("artwork", zIndex = 1f), state.coverUrl)
-                        }
-                        QualitySticker(state, Modifier.align(Alignment.TopStart))
-                    }
-                }
-                Spacer(Modifier.width(36.dp))
-                val inscribed = Lanyin.style.edge == EdgeKind.Hairline && !chromeVisible
-                val inscriptionRoom by animateDpAsState(if (inscribed) 76.dp else 0.dp, tween(400), label = "inscriptionRoom")
-                Box(Modifier.weight(0.58f).fillMaxHeight()) {
-                    // Left-aligned beside the artwork so the lyrics read as one column.
-                    StageLyrics(
-                        state, chromeVisible,
-                        textStyle = lyricTextStyle(LyricSize.BASE_SP, lyricScale),
-                        centered = false,
-                        scrubMs = scrubMs,
-                        modifier = Modifier.fillMaxSize().padding(end = inscriptionRoom).enter(entrance, 1),
-                    )
-                    InscriptionOverlay(inscribed, state, Modifier.align(Alignment.TopEnd).padding(top = 12.dp))
+                val stage = StageContext(state, skin, spin, chromeVisible, scrubMs, lyricScale, dismissDrag, entrance)
+                when (Lanyin.style.backdrop) {
+                    BackdropKind.Device -> DeviceStage(stage)
+                    BackdropKind.Film -> CinemaStage(stage)
+                    BackdropKind.Dot -> GlyphStage(stage)
+                    BackdropKind.Acid -> MediaPlayerStage(stage)
+                    BackdropKind.Paper -> BroadsheetStage(stage)
+                    BackdropKind.Ink -> ScrollStage(stage)
+                    BackdropKind.Grid -> PosterStage(stage)
+                    BackdropKind.Dusk -> PostcardStage(stage)
+                    BackdropKind.Neon -> SignStage(stage)
+                    BackdropKind.Game -> Unit
                 }
             }
         }
@@ -481,21 +471,13 @@ private fun LandscapePlayer(
     }
 }
 
-/** 墨's inscription, fading in a moment after the stage goes full screen. */
-@Composable
-private fun InscriptionOverlay(visible: Boolean, state: PlayerState, modifier: Modifier = Modifier) {
-    AnimatedVisibility(visible, modifier, enter = fadeIn(tween(900, delayMillis = 300)), exit = fadeOut(tween(200))) {
-        Inscription(state)
-    }
-}
-
 /**
  * Lyrics with a footer of where the track is from and what plays next. The anchor is worked out
  * from the measured footer so the active line stays at the stage's vertical centre, level with
  * the artwork, while the footer folds in and out.
  */
 @Composable
-private fun StageLyrics(
+internal fun StageLyrics(
     state: PlayerState,
     chromeVisible: Boolean,
     textStyle: TextStyle,
@@ -524,7 +506,7 @@ private fun StageLyrics(
 
 /** The track's lyrics, or a quiet note for an instrumental. */
 @Composable
-private fun StateLyrics(
+internal fun StateLyrics(
     state: PlayerState,
     textStyle: TextStyle,
     centered: Boolean,
@@ -554,7 +536,7 @@ private fun StateLyrics(
 }
 
 @Composable
-private fun Instrumental(
+internal fun Instrumental(
     textStyle: TextStyle,
     centered: Boolean,
     modifier: Modifier = Modifier,
@@ -587,38 +569,41 @@ private fun Instrumental(
     }
 }
 
-/** Where the track is playing from, and what comes next. */
+/** Where the track is playing from, and what comes next; the source gives way first when space is short. */
 @Composable
-private fun StageFooter(state: PlayerState, centered: Boolean) {
+internal fun StageFooter(state: PlayerState, centered: Boolean) {
     val style = Lanyin.style
     val c = style.colors
     Row(
         Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = if (centered) Arrangement.Center else Arrangement.Start,
+        horizontalArrangement = if (centered) Arrangement.Center else Arrangement.SpaceBetween,
     ) {
-        ThemedIcon(LineIcon.Note, null, tint = c.muted, size = 14.dp)
-        Spacer(Modifier.width(6.dp))
-        Text(
-            buildAnnotatedString {
-                append(state.playlistName)
-                withStyle(SpanStyle(fontFamily = style.numeric)) { append("  ${state.trackNumber} / ${state.trackCount}") }
-            },
-            style = style.type.caption, color = c.muted, maxLines = 1,
-        )
-        if (centered) Spacer(Modifier.width(28.dp)) else Spacer(Modifier.weight(1f).widthIn(min = 16.dp))
-        Text("下一首", style = style.type.label, color = c.muted)
-        Spacer(Modifier.width(8.dp))
-        Text(
-            state.next.title, style = style.type.caption, color = c.content.copy(alpha = 0.72f),
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 200.dp),
-        )
+        Row(Modifier.weight(1f, fill = false).padding(end = if (centered) 28.dp else 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            ThemedIcon(LineIcon.Note, null, tint = c.muted, size = 14.dp)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                buildAnnotatedString {
+                    append(state.playlistName)
+                    withStyle(SpanStyle(fontFamily = style.numeric)) { append("  ${state.trackNumber} / ${state.trackCount}") }
+                },
+                style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("下一首", style = style.type.label, color = c.muted, maxLines = 1)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                state.next.title, style = style.type.caption, color = c.content.copy(alpha = 0.72f),
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 160.dp),
+            )
+        }
     }
 }
 
 /** What is playing and the time, in place of the bars while the stage is full screen. */
 @Composable
-private fun ImmersiveStatus(state: PlayerState, showTitle: Boolean = true) {
+internal fun ImmersiveStatus(state: PlayerState, showTitle: Boolean = true) {
     val style = Lanyin.style
     val c = style.colors
     val now by rememberMinuteClock()
@@ -669,7 +654,7 @@ private fun ImmersiveStatus(state: PlayerState, showTitle: Boolean = true) {
 
 /** The current time, updated on the minute. */
 @Composable
-private fun rememberMinuteClock(): State<LocalTime> = produceState(LocalTime.now()) {
+internal fun rememberMinuteClock(): State<LocalTime> = produceState(LocalTime.now()) {
     while (true) {
         val now = LocalTime.now()
         value = now
@@ -679,7 +664,7 @@ private fun rememberMinuteClock(): State<LocalTime> = produceState(LocalTime.now
 
 /** Collapse, the title beside it like a window title, and the track's tags and actions. */
 @Composable
-private fun LandscapeTopBar(state: PlayerState, onCollapse: () -> Unit, onRotate: () -> Unit, modifier: Modifier = Modifier) {
+internal fun LandscapeTopBar(state: PlayerState, onCollapse: () -> Unit, onRotate: () -> Unit, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val openMore = io.lanyin.player.ui.music.LocalOpenSheet.current
@@ -706,7 +691,7 @@ private fun LandscapeTopBar(state: PlayerState, onCollapse: () -> Unit, onRotate
 
 /** 格 slaps a turning sticker with the quality and format over the artwork's corner. */
 @Composable
-private fun QualitySticker(state: PlayerState, modifier: Modifier = Modifier) {
+internal fun QualitySticker(state: PlayerState, modifier: Modifier = Modifier) {
     if (Lanyin.style.edge != EdgeKind.Brutal) return
     TrackSwitch(state, modifier.offset((-6).dp, (-6).dp)) { track ->
         Sticker(listOf(state.quality, state.format.substringBefore(" ·"), "★"))
@@ -718,7 +703,7 @@ private fun QualitySticker(state: PlayerState, modifier: Modifier = Modifier) {
  * tracked label in 墨. Tapping it opens the quality picker.
  */
 @Composable
-private fun QualityTags(state: PlayerState, chipFirst: Boolean = false, showFormat: Boolean = true) {
+internal fun QualityTags(state: PlayerState, chipFirst: Boolean = false, showFormat: Boolean = true) {
     val style = Lanyin.style
     val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
     // Unknown until the stream has been resolved; still a way in to choosing one.
@@ -748,7 +733,7 @@ private fun QualityTags(state: PlayerState, chipFirst: Boolean = false, showForm
 }
 
 @Composable
-private fun QualityChip(text: String, caret: Boolean = false) {
+internal fun QualityChip(text: String, caret: Boolean = false) {
     val style = Lanyin.style
     val c = style.colors
     val brutal = style.edge == EdgeKind.Brutal
@@ -772,7 +757,7 @@ private fun QualityChip(text: String, caret: Boolean = false) {
 }
 
 @Composable
-private fun LandscapeControlBar(state: PlayerState, onScrub: (Long?) -> Unit, modifier: Modifier = Modifier) {
+internal fun LandscapeControlBar(state: PlayerState, onScrub: (Long?) -> Unit, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val docked = style.dock == DockKind.Docked
     Column(modifier) {
@@ -798,10 +783,12 @@ private fun LandscapeControlBar(state: PlayerState, onScrub: (Long?) -> Unit, mo
  * than intended, and 歌词大小 already lets anyone who wants them bigger say so.
  */
 @Composable
-private fun lyricTextStyle(baseSp: Float, scale: Float): TextStyle {
-    val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
-    val size = baseSp * scale * Lanyin.style.lyric.sizeScale / fontScale
-    return MaterialTheme.typography.headlineSmall.copy(fontSize = size.sp, lineHeight = (size * 1.36f).sp)
+internal fun lyricTextStyle(baseSp: Float, scale: Float): TextStyle {
+    // Through dp, which undoes the system's font scaling whether it is linear or not.
+    val size = (baseSp * scale * Lanyin.style.lyric.sizeScale).dp
+    return with(androidx.compose.ui.platform.LocalDensity.current) {
+        MaterialTheme.typography.headlineSmall.copy(fontSize = size.toSp(), lineHeight = (size * 1.36f).toSp())
+    }
 }
 
 /** Collapse, where the music is playing from (centred, like a page title), and more. */
@@ -885,7 +872,7 @@ private fun TrackTitle(state: PlayerState, modifier: Modifier = Modifier) {
  * wrapper keeps its place (and any shared-element key), only the content changes.
  */
 @Composable
-private fun TrackSwitch(state: PlayerState, modifier: Modifier = Modifier, content: @Composable (Track) -> Unit) {
+internal fun TrackSwitch(state: PlayerState, modifier: Modifier = Modifier, content: @Composable (Track) -> Unit) {
     AnimatedContent(
         targetState = state.track,
         modifier = modifier,
@@ -901,7 +888,7 @@ private fun TrackSwitch(state: PlayerState, modifier: Modifier = Modifier, conte
 
 /** The comment bubble, with NetEase's way of counting over its shoulder: 「999+」「1w+」「10w+」. */
 @Composable
-private fun CommentButton(state: PlayerState, tint: androidx.compose.ui.graphics.Color) {
+internal fun CommentButton(state: PlayerState, tint: androidx.compose.ui.graphics.Color) {
     val style = Lanyin.style
     val nav = io.lanyin.player.ui.LocalNavigator.current
     LaunchedEffect(state.track.id) { state.loadCommentCount() }
@@ -953,7 +940,7 @@ private fun UtilityRow(
 
 /** Transport; skip buttons give a little push in their direction, the mode icon pops as it changes. */
 @Composable
-private fun TransportControls(state: PlayerState, playSize: Dp, modifier: Modifier = Modifier) {
+internal fun TransportControls(state: PlayerState, playSize: Dp, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
     // 机's transport is a row of keys, 游's the console's dark D-pad keys.

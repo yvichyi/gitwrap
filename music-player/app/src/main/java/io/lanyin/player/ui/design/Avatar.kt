@@ -52,10 +52,10 @@ fun Avatar(url: String?, name: String, size: Dp, modifier: Modifier = Modifier, 
     val c = Lanyin.colors
     Box(modifier.size(size).clip(shape).background(c.surfaceAlt), contentAlignment = Alignment.Center) {
         Text(
-            name.take(1).ifEmpty { "?" },
+            initialOf(name),
             color = c.muted,
             fontWeight = FontWeight.Medium,
-            fontSize = (size.value * 0.4f / LocalDensity.current.fontScale).sp,
+            fontSize = with(LocalDensity.current) { (size * 0.4f).toSp() },
         )
         RemoteImage(url, size, Modifier.fillMaxSize())
     }
@@ -105,3 +105,6 @@ fun rememberCoverPainter(url: String?, sizePx: Int): Painter? {
     val state by painter.state.collectAsState()
     return painter.takeIf { state is AsyncImagePainter.State.Success }
 }
+
+/** The first character of [name] whole (an emoji is two chars, and half of one shows as �), or "?". */
+fun initialOf(name: String): String = name.trim().let { if (it.isEmpty()) "?" else it.substring(0, it.offsetByCodePoints(0, 1)) }

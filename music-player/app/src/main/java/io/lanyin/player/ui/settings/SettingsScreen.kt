@@ -158,8 +158,8 @@ fun SettingsScreen(
                     // What the player will show at this size.
                     val preview = androidx.compose.material3.MaterialTheme.typography.headlineSmall.copy(
                         // Same size as the player: the in-app setting, not the system font scale.
-                        fontSize = (settings.lyricSize.sp / androidx.compose.ui.platform.LocalDensity.current.fontScale).sp,
-                        lineHeight = (settings.lyricSize.sp * 1.36f / androidx.compose.ui.platform.LocalDensity.current.fontScale).sp,
+                        fontSize = with(androidx.compose.ui.platform.LocalDensity.current) { settings.lyricSize.sp.dp.toSp() },
+                        lineHeight = with(androidx.compose.ui.platform.LocalDensity.current) { (settings.lyricSize.sp * 1.36f).dp.toSp() },
                         fontFamily = if (style.lyric.serif) style.display else null,
                         fontWeight = if (style.lyric.serif) FontWeight.Medium else FontWeight.Bold,
                     )

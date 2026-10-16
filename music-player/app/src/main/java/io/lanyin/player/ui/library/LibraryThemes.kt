@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import io.lanyin.player.core.model.UserProfile
 import io.lanyin.player.data.account.AccountState
+import io.lanyin.player.ui.design.initialOf
 import io.lanyin.player.ui.design.Avatar
 import io.lanyin.player.ui.design.ChromeBrush
 import io.lanyin.player.ui.design.DeviceScreen
@@ -66,7 +67,7 @@ internal data class Entry(val icon: LineIcon, val title: String, val detail: Str
 
 /** Type that is part of a drawing, held at its size whatever the system font scale. */
 @Composable
-private fun fixed(size: Float): TextUnit = (size / LocalDensity.current.fontScale).sp
+private fun fixed(size: Float): TextUnit = with(LocalDensity.current) { size.dp.toSp() }
 
 private fun vipName(vipType: Int) = when (vipType) {
     0 -> null
@@ -220,7 +221,7 @@ private fun InitialBlock(profile: UserProfile?, onLogin: () -> Unit, modifier: M
     Row(modifier.fillMaxWidth().themedSurface().height(IntrinsicSize.Min)) {
         Box(Modifier.width(88.dp).fillMaxHeight().background(if (profile != null) c.accent else c.content), contentAlignment = Alignment.Center) {
             Text(
-                profile?.nickname?.take(1) ?: "?",
+                profile?.nickname?.let(::initialOf) ?: "?",
                 style = TextStyle(fontWeight = FontWeight.Black, fontSize = fixed(46f), lineHeight = fixed(50f)),
                 color = Color.White,
             )
@@ -305,7 +306,7 @@ private fun SealedName(profile: UserProfile?, onLogin: () -> Unit, modifier: Mod
             }
             if (profile != null) {
                 Box(Modifier.size(26.dp).background(c.accentAlt), contentAlignment = Alignment.Center) {
-                    Text(profile.nickname.take(1), style = style.type.caption.copy(fontFamily = style.display, fontSize = 14.sp), color = c.bg)
+                    Text(initialOf(profile.nickname), style = style.type.caption.copy(fontFamily = style.display, fontSize = 14.sp), color = c.bg)
                 }
             } else {
                 ThemedButton("登录", onLogin)

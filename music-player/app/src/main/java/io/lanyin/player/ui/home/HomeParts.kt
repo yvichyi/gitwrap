@@ -71,18 +71,22 @@ internal fun DotLeader(modifier: Modifier = Modifier, color: Color = Lanyin.colo
     }
 }
 
-/** Type that is part of a drawing, held at its size whatever the system font scale. */
+/**
+ * Type that is part of a drawing, held at its size whatever the system font scale. Set through
+ * dp: dividing by the font scale doesn't undo Android 14's nonlinear scaling, which grows large
+ * type less than small.
+ */
 @Composable
-internal fun fixedSp(size: Float): TextUnit = (size / LocalDensity.current.fontScale).sp
+internal fun fixedSp(size: Float): TextUnit = with(LocalDensity.current) { size.dp.toSp() }
 
 /**
  * Type on a fixed-size tile, allowed to grow with the system font size only so far ([maxScale]),
  * so a name still fits its tile on a phone set to large text.
  */
 @Composable
-internal fun cappedSp(size: Float, maxScale: Float = 1.15f): TextUnit {
-    val scale = LocalDensity.current.fontScale
-    return (size * minOf(scale, maxScale) / scale).sp
+internal fun cappedSp(size: Float, maxScale: Float = 1.15f): TextUnit = with(LocalDensity.current) {
+    // As large as the system would set it, up to the cap, compared in dp so either scaling holds.
+    minOf(size.sp.toDp(), (size * maxScale).dp).toSp()
 }
 
 /** 14 → 「十四」 as a column count, or the digits for anything past ninety-nine. */

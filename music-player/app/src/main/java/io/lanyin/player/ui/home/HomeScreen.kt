@@ -22,6 +22,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +41,7 @@ import io.lanyin.player.ui.design.SurfaceTone
 import io.lanyin.player.ui.design.TextLink
 import io.lanyin.player.ui.design.ThemedIcon
 import io.lanyin.player.ui.design.pressable
+import io.lanyin.player.ui.design.rememberNow
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.player.PlayerState
 import io.lanyin.player.ui.theme.BackdropKind
@@ -97,7 +99,8 @@ fun HomeScreen(
     preview: HomePreview? = null,
 ) {
     val style = Lanyin.style
-    val now = remember { LocalDateTime.now() }
+    // Ticks over each minute, so the greeting and the date are never left behind.
+    val now by rememberNow()
     val signedIn = account is AccountState.LoggedIn
     val library = LocalAppServices.current?.library
     val recommended = preview?.let { Load.Ready(it.recommended) } ?: rememberLoad(signedIn) { library?.recommendedPlaylists().orEmpty() }.state
@@ -210,7 +213,7 @@ internal fun TilePlay(onClick: () -> Unit) {
     Box(
         Modifier
             .size(34.dp)
-            .pressable(onClick = onClick)
+            .pressable(label = "播放", onClick = onClick)
             .then(
                 if (brutal) {
                     Modifier.background(io.lanyin.player.ui.theme.GridYellow).border(2.dp, style.colors.outline)

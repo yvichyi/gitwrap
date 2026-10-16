@@ -101,7 +101,7 @@ private fun CoverStory(model: HomeModel, modifier: Modifier) {
             Column(Modifier.weight(1f)) {
                 Text("每日推荐", style = style.type.display.copy(fontSize = 34.sp, lineHeight = 40.sp, color = Color.White))
                 Text(
-                    if (model.signedIn) "今天为你挑了 ${model.pickSongs.size} 首，从《${model.pickSongs.firstOrNull()?.name ?: ""}》开始" else model.dailyNote,
+                    model.pickSongs.firstOrNull()?.let { "今天为你挑了 ${model.pickSongs.size} 首，从《${it.name}》开始" } ?: model.dailyNote,
                     style = style.type.body,
                     color = Color.White.copy(alpha = 0.88f),
                     maxLines = 2,
@@ -109,7 +109,7 @@ private fun CoverStory(model: HomeModel, modifier: Modifier) {
                 )
             }
             Spacer(Modifier.width(12.dp))
-            Box(Modifier.size(52.dp).clip(CircleShape).background(style.accentBrush()).pressable(onClick = model.playDaily), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(52.dp).clip(CircleShape).background(style.accentBrush()).pressable(label = "播放每日推荐", onClick = model.playDaily), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.size(16.dp)) { drawPlayPauseGlyph(0f, style.colors.onAccent) }
             }
         }
