@@ -1,0 +1,5 @@
+# The app's own code, compiled ahead of time on install: opening the app, the pages and the
+# player (with its per-theme stages and backdrops) run from compiled code from the first frame
+# instead of warming up through the interpreter. The libraries ship their own rules.
+Lio/lanyin/player/**;
+HSPLio/lanyin/player/**->**(**)**

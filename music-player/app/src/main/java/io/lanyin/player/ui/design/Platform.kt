@@ -54,14 +54,22 @@ val LocalOrientationController = staticCompositionLocalOf<OrientationController>
 }
 
 /**
- * Seconds that advance only while [running], read in draw lambdas so animated backdrops redraw
- * every frame without recomposing anything.
+ * True where nothing drawn can be seen: the pages under the full player. Frame clocks there stand
+ * still, so a page's tickers, meters and dancing bars don't redraw sixty times a second unseen.
+ */
+val LocalFramesPaused = androidx.compose.runtime.compositionLocalOf { false }
+
+/**
+ * Seconds that advance only while [running] (and the drawing can be seen; see
+ * [LocalFramesPaused]), read in draw lambdas so animated backdrops redraw every frame without
+ * recomposing anything.
  */
 @Composable
 fun rememberFrameClock(running: Boolean): FloatState {
     val seconds = remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(running) {
-        if (!running) return@LaunchedEffect
+    val live = running && !LocalFramesPaused.current
+    LaunchedEffect(live) {
+        if (!live) return@LaunchedEffect
         var last = -1L
         while (isActive) {
             withFrameNanos { now ->

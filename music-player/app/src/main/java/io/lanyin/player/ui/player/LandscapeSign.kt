@@ -2,6 +2,7 @@ package io.lanyin.player.ui.player
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,14 +76,14 @@ internal fun SignStage(stage: StageContext) {
 private val Hud = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 0.14.em)
 
 @Composable
-private fun SignHead(state: PlayerState) {
+internal fun SignHead(state: PlayerState) {
     val c = Lanyin.colors
     val clock = rememberFrameClock(state.isPlaying)
     val bpm = rememberBpm(state)
     Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         // Lit on each beat and dimming between them; dark while paused.
         Text(
-            "ON AIR",
+            if (state.isPlaying) "ON AIR" else "OFF AIR",
             style = Hud.copy(fontSize = fixedSp(11f)),
             color = Color.White,
             modifier = Modifier
@@ -121,7 +123,7 @@ private fun ignite(v: Float): Float = when {
 }
 
 @Composable
-private fun NeonSign(stage: StageContext, modifier: Modifier) {
+internal fun NeonSign(stage: StageContext, modifier: Modifier) {
     val state = stage.state
     val style = Lanyin.style
     val c = style.colors
@@ -141,6 +143,8 @@ private fun NeonSign(stage: StageContext, modifier: Modifier) {
         color = c.accent.copy(alpha = 0.55f), drawStyle = Stroke(glass),
     )
     val lit = lerp(c.accent, Color.White, 0.5f)
+    // Switched off at the wall while paused: the tubes fall to a dull glow.
+    val power by animateFloatAsState(if (state.isPlaying) 1f else 0.35f, tween(if (state.isPlaying) 260 else 700), label = "signPower")
     Column(modifier, verticalArrangement = Arrangement.Center) {
         // As tall as the room allows up to a sign's height, centred in the room left over.
         Box(
@@ -154,17 +158,19 @@ private fun NeonSign(stage: StageContext, modifier: Modifier) {
                     // Every so often the transformer buzzes and the frame dips for a moment.
                     val buzz = if (state.isPlaying && (t % 7.3f) in 3.1f..3.17f) 0.35f else 1f
                     // The glass behind the tubes, and the two wires it hangs from.
+                    // A dark backing board, so what's behind the sign doesn't show through the glass.
+                    drawRoundRect(c.bg.copy(alpha = 0.84f), cornerRadius = CornerRadius(16.dp.toPx()))
                     drawRoundRect(c.accentAlt.copy(alpha = 0.06f), cornerRadius = CornerRadius(16.dp.toPx()))
                     for (x in listOf(size.width * 0.18f, size.width * 0.82f)) {
                         drawLine(c.muted.copy(alpha = 0.5f), Offset(x, -12.dp.toPx()), Offset(x, 0f), 1.dp.toPx())
                         drawRect(c.muted.copy(alpha = 0.7f), Offset(x - 3.dp.toPx(), -2.dp.toPx()), Size(6.dp.toPx(), 4.dp.toPx()))
                     }
-                    tube(c.accentAlt, 16.dp.toPx(), (0.7f + 0.3f * pulse) * buzz)
+                    tube(c.accentAlt, 16.dp.toPx(), (0.7f + 0.3f * pulse) * buzz * power)
                 }
                 .padding(horizontal = 22.dp, vertical = 14.dp),
             contentAlignment = Alignment.CenterStart,
         ) {
-            Column(Modifier.graphicsLayer { alpha = 0.3f + 0.7f * ignite(ignition.value) }) {
+            Column(Modifier.graphicsLayer { alpha = (0.3f + 0.7f * ignite(ignition.value)) * (0.4f + 0.6f * power) }) {
                 SungText(
                     text, big,
                     progress = {

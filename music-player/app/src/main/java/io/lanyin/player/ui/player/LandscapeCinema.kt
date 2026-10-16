@@ -1,6 +1,10 @@
 package io.lanyin.player.ui.player
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -66,7 +70,7 @@ internal fun CinemaStage(stage: StageContext) {
 }
 
 @Composable
-private fun FilmGate(stage: StageContext, modifier: Modifier) {
+internal fun FilmGate(stage: StageContext, modifier: Modifier, onClick: (() -> Unit)? = null) {
     val state = stage.state
     val clock = rememberFrameClock(state.isPlaying)
     // How far the film has run, and the clock at the last frame.
@@ -104,12 +108,12 @@ private fun FilmGate(stage: StageContext, modifier: Modifier) {
             val top = (size.height - gate.height) / 2f
             drawRect(Brush.radialGradient(listOf(Color(0x33FFE6C0), Color.Transparent), Offset(size.width / 2f, size.height / 2f), gate.width * 0.8f), Offset(b, top), gate)
         }
-        StageArtwork(stage, Modifier.size(window, window).then(stage.dismissDrag), halo = false, heightFraction = 0.94f)
+        StageArtwork(stage, Modifier.size(window, window).then(stage.dismissDrag), halo = false, heightFraction = 0.94f, onClick = onClick)
     }
 }
 
 @Composable
-private fun CinemaScreen(stage: StageContext, modifier: Modifier) {
+internal fun CinemaScreen(stage: StageContext, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val state = stage.state
@@ -124,6 +128,10 @@ private fun CinemaScreen(stage: StageContext, modifier: Modifier) {
     // measured once and set one by one.
     val reel = remember(state.trackNumber, index, bpm, stamp) {
         measurer.measure("REEL ${state.trackNumber} · SCENE ${(index + 1).coerceAtLeast(1)}" + (bpm?.let { " · BPM $it" } ?: ""), stamp)
+    }
+    // Without the tempo, for a screen too narrow to hold it beside the timecode.
+    val reelShort = remember(state.trackNumber, index, stamp) {
+        measurer.measure("REEL ${state.trackNumber} · SCENE ${(index + 1).coerceAtLeast(1)}", stamp)
     }
     val figures = remember(stamp) { "0123456789:".associateWith { measurer.measure(it.toString(), stamp) } }
     Box(modifier) {
@@ -148,13 +156,14 @@ private fun CinemaScreen(stage: StageContext, modifier: Modifier) {
                 drawCircle(Color(0xFFFFEBD0).copy(alpha = 0.35f * twinkle), (0.8f + 1.4f * hash01(k, 8)) * density, Offset(size.width * u, size.height * v))
             }
             // Reel and scene at the top left, the running timecode at the top right.
-            drawText(reel, topLeft = Offset(14.dp.toPx(), 12.dp.toPx()))
-            // HH:MM:SS:FF, set from the right.
-            val ms = state.positionMs
-            val fields = longArrayOf(ms / 3_600_000, ms / 60_000 % 60, ms / 1_000 % 60, (ms % 1_000) * 24 / 1_000)
             val zero = figures.getValue('0')
             val colon = figures.getValue(':')
             val width = zero.size.width * 8f + colon.size.width * 3f
+            val room = size.width - width - 50.dp.toPx()
+            drawText(if (reel.size.width <= room) reel else reelShort, topLeft = Offset(14.dp.toPx(), 12.dp.toPx()))
+            // HH:MM:SS:FF, set from the right.
+            val ms = state.positionMs
+            val fields = longArrayOf(ms / 3_600_000, ms / 60_000 % 60, ms / 1_000 % 60, (ms % 1_000) * 24 / 1_000)
             var x = size.width - width - 14.dp.toPx()
             val y = 12.dp.toPx()
             fields.forEachIndexed { i, v ->
@@ -169,8 +178,21 @@ private fun CinemaScreen(stage: StageContext, modifier: Modifier) {
             }
             drawCircle(if (state.isPlaying) Color(0xFFE5484D) else Color(0xFF5A2A2A), 3.dp.toPx(), Offset(size.width - width - 22.dp.toPx(), y + zero.size.height / 2f))
         }
-        Column(Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        // Paused, the projector's lamp is turned down and the screen says so.
+        val lamp by animateFloatAsState(if (state.isPlaying) 1f else 0.55f, tween(500), label = "lamp")
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 14.dp).graphicsLayer { alpha = lamp },
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Spacer(Modifier.weight(1f))
+            AnimatedVisibility(!state.isPlaying, enter = fadeIn(tween(400)), exit = fadeOut(tween(150))) {
+                Text(
+                    "— 暂停放映 · INTERMISSION —",
+                    style = mono.copy(fontSize = fixedSp(10f), color = FilmStamp),
+                    maxLines = 1,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+            }
             val subtitle = lyricTextStyle(LyricSize.BASE_SP * 1.08f, stage.lyricScale).copy(
                 fontFamily = style.display, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center,
                 shadow = Shadow(Color.Black.copy(alpha = 0.8f), Offset(0f, 2f), 6f),

@@ -209,7 +209,11 @@ fun LanyinApp(
         Box(Modifier.fillMaxSize().background(Lanyin.colors.bg)) {
             Box(Modifier.fillMaxSize()) {
                 Backdrop(Modifier.fillMaxSize())
-                CompositionLocalProvider(LocalBottomChromePadding provides bottomChromeHeight(Lanyin.style.dock, showMini, onTopLevel)) {
+                CompositionLocalProvider(
+                    LocalBottomChromePadding provides bottomChromeHeight(Lanyin.style.dock, showMini, onTopLevel),
+                    // Under the full player the page can't be seen: its animations stand still.
+                    io.lanyin.player.ui.design.LocalFramesPaused provides (expanded && !player.isEmpty),
+                ) {
                     NavHost(
                         navController = navController,
                         startDestination = HomeRoute,

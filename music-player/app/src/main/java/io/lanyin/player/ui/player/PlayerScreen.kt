@@ -28,10 +28,8 @@ import androidx.compose.foundation.layout.offset
 import io.lanyin.player.ui.design.Marquee
 import io.lanyin.player.ui.design.Sticker
 import io.lanyin.player.ui.design.retroShadow
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -69,7 +67,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
@@ -217,12 +214,13 @@ fun PlayerScreen(
 }
 
 /**
- * Top to bottom: where the music is playing from, the artwork with a few lines of lyrics under it,
- * title and artist, the progress line with its times beneath, transport, and a quiet row of
- * secondary actions. Everything rises into place in turn when the player opens; the artwork
- * settles back when paused and throws a ripple on every beat while playing. Swipe the artwork to
- * change track; tap it (or the lyrics) for the full lyrics. Dragging the progress line scrubs the
- * lyrics along with it.
+ * Top to bottom: where the music is playing from, the theme's own stage (the artwork with the
+ * lyrics as that theme sets them: a scroll, a poster, a neon sign, a front page…), title and
+ * artist, the progress line with its times beneath, transport, and a quiet row of secondary
+ * actions. Everything rises into place in turn when the player opens; the artwork settles back
+ * when paused and throws a ripple on every beat while playing. Swipe the artwork to change track;
+ * tap it (or the lyrics) for the full lyrics. Dragging the progress line scrubs the lyrics along
+ * with it. 游 is the whole console instead.
  */
 @Composable
 private fun PortraitPlayer(
@@ -239,6 +237,13 @@ private fun PortraitPlayer(
     val lyricsOnly = skin == PlayerSkin.LYRICS || showLyrics
     val entrance = rememberEntrance(Unit)
     var scrubMs by remember { mutableStateOf<Long?>(null) }
+    // The bars always show in portrait, so the stages leave out their own footers.
+    val stage = StageContext(state, skin, spin, chromeVisible = false, scrubMs, lyricScale, dismissDrag, entrance)
+    val toggleLyrics = if (skin == PlayerSkin.LYRICS) null else ({ showLyrics = !showLyrics })
+    if (style.backdrop == BackdropKind.Game) {
+        ConsolePortrait(stage, lyricsOnly, toggleLyrics, onCollapse, onRotate, onScrub = { scrubMs = it })
+        return
+    }
     Column(
         Modifier
             .fillMaxSize()
@@ -247,82 +252,28 @@ private fun PortraitPlayer(
             .padding(horizontal = 24.dp),
     ) {
         PlayerTopBar(state, onCollapse, modifier = dismissDrag.enter(entrance, 0))
-        val stage = @Composable { stageModifier: Modifier ->
         AnimatedContent(
             targetState = lyricsOnly,
             transitionSpec = { (fadeIn(tween(260)) + scaleIn(initialScale = 0.96f)) togetherWith (fadeOut(tween(160)) + scaleOut(targetScale = 1.02f)) },
-            modifier = stageModifier,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
             label = "artOrLyrics",
         ) { lyrics ->
-            val textStyle = lyricTextStyle(LyricSize.BASE_SP, lyricScale)
             if (lyrics) {
-                StateLyrics(state, textStyle, centered = style.lyric.centered, anchorFraction = 0.4f, scrubMs = scrubMs, modifier = Modifier.fillMaxSize())
-            } else {
-                Column(Modifier.fillMaxSize()) {
-                    BoxWithConstraints(
-                        Modifier.weight(1f).fillMaxWidth().then(dismissDrag),
-                        // Sit a little low so artwork and lyrics read as one group.
-                        contentAlignment = BiasAlignment(0f, 0.45f),
-                    ) {
-                        // A record or tape settles back a little when paused; covers already do.
-                        val settle by animateFloatAsState(
-                            if (state.isPlaying || skin == PlayerSkin.COVER) 1f else 0.95f,
-                            style.bouncy.spec(), label = "artSettle",
-                        )
-                        Box(
-                            artSize(skin, maxWidth, maxHeight)
-                                .spectrumHalo(skin, state.isPlaying, state.audioFeed)
-                                .beatRipples(skin, state.isPlaying, state.audioFeed)
-                                .artworkBackdrop(skin)
-                                .graphicsLayer {
-                                    scaleX = settle
-                                    scaleY = settle
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            SwipeToSkip(state) {
-                                PlayerArtwork(
-                                    skin, state.isPlaying, spin, state.coverSeed,
-                                    coverUrl = state.coverUrl,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .sharedPlayer("artwork", zIndex = 1f)
-                                        .pressable { showLyrics = true },
-                                )
-                            }
-                            QualitySticker(state, Modifier.align(Alignment.TopStart))
-                        }
-                    }
-                    // A short window onto the lyrics: the line being sung with its neighbours.
-                    StateLyrics(
-                        state,
-                        textStyle = lyricTextStyle(16f, lyricScale),
-                        centered = true,
-                        anchorFraction = 0.5f,
-                        interactive = false,
-                        showTranslation = false,
-                        scrubMs = scrubMs,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp)
-                            .enter(entrance, 2)
-                            .clickable(remember { MutableInteractionSource() }, indication = null) { showLyrics = true },
-                    )
+                val full = @Composable { m: Modifier ->
+                    StateLyrics(state, lyricTextStyle(LyricSize.BASE_SP, lyricScale), centered = style.lyric.centered, anchorFraction = 0.4f, scrubMs = scrubMs, modifier = m)
                 }
+                // 机 keeps its lyrics on the screen set into its case.
+                if (style.backdrop == BackdropKind.Device) {
+                    DeviceScreen(Modifier.fillMaxSize().padding(top = 2.dp)) {
+                        ScreenHeader(state)
+                        full(Modifier.weight(1f).fillMaxWidth())
+                    }
+                } else {
+                    full(Modifier.fillMaxSize())
+                }
+            } else {
+                PortraitStage(stage, onShowLyrics = { showLyrics = true })
             }
-        }
-        }
-        when (style.backdrop) {
-            // 机 shows the artwork and the lyrics on the screen set into its case, 游 on its LCD.
-            BackdropKind.Device -> DeviceScreen(Modifier.weight(1f).fillMaxWidth().padding(top = 2.dp).enter(entrance, 1)) {
-                ScreenHeader(state)
-                stage(Modifier.weight(1f).fillMaxWidth())
-            }
-            BackdropKind.Game -> io.lanyin.player.ui.design.GameScreen(state.isPlaying, Modifier.weight(1f).fillMaxWidth().padding(top = 2.dp).enter(entrance, 1)) {
-                LcdHeader(state)
-                stage(Modifier.weight(1f).fillMaxWidth())
-            }
-            else -> stage(Modifier.weight(1f).fillMaxWidth())
         }
         TrackTitle(state, Modifier.padding(top = 14.dp).enter(entrance, 3))
         SeekBar(
@@ -333,7 +284,7 @@ private fun PortraitPlayer(
         TransportControls(state, playSize = 72.dp, Modifier.fillMaxWidth().padding(top = 4.dp).enter(entrance, 5))
         UtilityRow(
             state,
-            onToggleLyrics = if (skin == PlayerSkin.LYRICS) null else ({ showLyrics = !showLyrics }),
+            onToggleLyrics = toggleLyrics,
             lyricsShown = lyricsOnly,
             onRotate = onRotate,
             modifier = Modifier.padding(top = 6.dp, bottom = 8.dp).enter(entrance, 6),
@@ -350,17 +301,6 @@ internal fun artSize(skin: PlayerSkin, maxWidth: Dp, maxHeight: Dp): Modifier =
     }
 
 private const val CASSETTE_RATIO = 1.58f
-
-/** The top line of 游's LCD, as a game's status bar. */
-@Composable
-internal fun LcdHeader(state: PlayerState) {
-    val style = Lanyin.style
-    val label = style.type.label.copy(fontSize = 12.sp, letterSpacing = 0.5.sp)
-    Row(Modifier.fillMaxWidth().height(24.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(if (state.isPlaying) "▶ NOW PLAYING" else "Ⅱ PAUSE", style = label, color = style.colors.content, maxLines = 1, modifier = Modifier.weight(1f))
-        Text("%02d/%02d".format(state.trackNumber, state.trackCount), style = label, color = style.colors.content, maxLines = 1)
-    }
-}
 
 /** The status line along the top of 机's screen: track counter, the VU meter, transport state. */
 @Composable
@@ -775,7 +715,7 @@ internal fun lyricTextStyle(baseSp: Float, scale: Float): TextStyle {
 
 /** Collapse, where the music is playing from (centred, like a page title), and more. */
 @Composable
-private fun PlayerTopBar(state: PlayerState, onCollapse: () -> Unit, modifier: Modifier = Modifier) {
+internal fun PlayerTopBar(state: PlayerState, onCollapse: () -> Unit, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
     Box(modifier.fillMaxWidth().heightIn(min = 56.dp)) {
@@ -826,7 +766,7 @@ private fun PlayerTopBar(state: PlayerState, onCollapse: () -> Unit, modifier: M
 }
 
 @Composable
-private fun TrackTitle(state: PlayerState, modifier: Modifier = Modifier) {
+internal fun TrackTitle(state: PlayerState, modifier: Modifier = Modifier) {
     val c = Lanyin.colors
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
@@ -899,7 +839,7 @@ internal fun commentBadge(n: Int): String = when {
 
 /** The quieter actions under the transport: quality on the left, comments, lyrics and rotation on the right. */
 @Composable
-private fun UtilityRow(
+internal fun UtilityRow(
     state: PlayerState,
     onToggleLyrics: (() -> Unit)?,
     lyricsShown: Boolean,

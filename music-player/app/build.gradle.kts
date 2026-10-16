@@ -14,8 +14,8 @@ android {
         applicationId = "io.lanyin.player"
         minSdk = 29
         targetSdk = 36
-        versionCode = 13
-        versionName = "0.13.0-m12"
+        versionCode = 14
+        versionName = "0.14.0-m13"
     }
 
     buildTypes {

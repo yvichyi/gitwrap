@@ -57,23 +57,33 @@ internal fun GlyphStage(stage: StageContext) {
         Box(Modifier.weight(0.42f).fillMaxHeight()) {
             GlyphLights(stage.state, Modifier.matchParentSize())
             StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), heightFraction = 0.72f)
-            rememberBpm(stage.state)?.let { bpm ->
-                Text(
-                    "$bpm BPM",
-                    style = androidx.compose.ui.text.TextStyle(fontFamily = io.lanyin.player.ui.theme.DotoFamily, fontWeight = androidx.compose.ui.text.font.FontWeight.Black, fontSize = fixedSp(14f)),
-                    color = Lanyin.colors.muted,
-                    modifier = Modifier.align(androidx.compose.ui.Alignment.BottomStart).padding(4.dp),
-                )
-            }
+            GlyphTempo(stage.state, Modifier.align(androidx.compose.ui.Alignment.BottomStart).padding(4.dp))
         }
         Spacer(Modifier.width(30.dp))
         DotMatrixLyrics(stage, Modifier.weight(0.58f).fillMaxHeight().enter(stage.entrance, 1))
     }
 }
 
+/** The tempo in dots, 「96 BPM」, or 「PAUSED」 while stopped. */
+@Composable
+internal fun GlyphTempo(state: PlayerState, modifier: Modifier = Modifier) {
+    val bpm = rememberBpm(state)
+    val text = when {
+        !state.isPlaying -> "PAUSED"
+        bpm != null -> "$bpm BPM"
+        else -> return
+    }
+    Text(
+        text,
+        style = androidx.compose.ui.text.TextStyle(fontFamily = io.lanyin.player.ui.theme.DotoFamily, fontWeight = androidx.compose.ui.text.font.FontWeight.Black, fontSize = fixedSp(14f)),
+        color = Lanyin.colors.muted,
+        modifier = modifier,
+    )
+}
+
 /** The Glyph strips round the artwork, lit by the music. */
 @Composable
-private fun GlyphLights(state: PlayerState, modifier: Modifier) {
+internal fun GlyphLights(state: PlayerState, modifier: Modifier) {
     val c = Lanyin.colors
     val clock = rememberFrameClock(state.isPlaying)
     val levels = remember { FloatArray(32) }
@@ -160,7 +170,7 @@ internal fun dotText(text: String, rows: Int): DotText {
 
 /** The line being sung on a dot-matrix display, with the line before above and the next two below. */
 @Composable
-private fun DotMatrixLyrics(stage: StageContext, modifier: Modifier) {
+internal fun DotMatrixLyrics(stage: StageContext, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val state = stage.state

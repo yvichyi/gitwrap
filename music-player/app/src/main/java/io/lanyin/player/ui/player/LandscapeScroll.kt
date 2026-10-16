@@ -67,22 +67,31 @@ internal fun ScrollStage(stage: StageContext) {
         StageArtwork(stage, Modifier.weight(0.36f).fillMaxHeight().then(stage.dismissDrag))
         Spacer(Modifier.width(20.dp))
         Column(Modifier.weight(0.64f).fillMaxHeight().enter(stage.entrance, 1)) {
-            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                // As many characters of the title as its column has room for above the tempo seal.
-                val row = with(LocalDensity.current) { 25.sp.toDp() }
-                val titleRuns = ((maxHeight - 84.dp) / row).toInt().coerceIn(2, 9)
-                Row(Modifier.fillMaxSize()) {
-                    ScrollLyrics(stage, Modifier.weight(1f).fillMaxHeight())
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.fillMaxHeight(), horizontalAlignment = Alignment.End) {
-                        Inscription(state, Modifier.padding(top = 4.dp), titleRuns = titleRuns, artistRuns = (titleRuns - 3).coerceAtLeast(1))
-                        Spacer(Modifier.weight(1f))
-                        TempoSeal(state)
-                    }
-                }
-            }
+            ScrollSheet(stage, Modifier.weight(1f).fillMaxWidth())
             AnimatedVisibility(stage.chromeVisible, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
                 StageFooter(state, centered = false)
+            }
+        }
+    }
+}
+
+/**
+ * The scroll with the title inscribed at its right edge and the tempo seal beneath. [lyricsModifier]
+ * goes on the lyrics alone (a tap to open the full lyrics, in portrait).
+ */
+@Composable
+internal fun ScrollSheet(stage: StageContext, modifier: Modifier, lyricsModifier: Modifier = Modifier) {
+    BoxWithConstraints(modifier) {
+        // As many characters of the title as its column has room for above the tempo seal.
+        val row = with(LocalDensity.current) { 25.sp.toDp() }
+        val titleRuns = ((maxHeight - 84.dp) / row).toInt().coerceIn(2, 9)
+        Row(Modifier.fillMaxSize()) {
+            ScrollLyrics(stage, Modifier.weight(1f).fillMaxHeight().then(lyricsModifier))
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.fillMaxHeight(), horizontalAlignment = Alignment.End) {
+                Inscription(stage.state, Modifier.padding(top = 4.dp), titleRuns = titleRuns, artistRuns = (titleRuns - 3).coerceAtLeast(1))
+                Spacer(Modifier.weight(1f))
+                TempoSeal(stage.state)
             }
         }
     }

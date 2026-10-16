@@ -73,7 +73,7 @@ internal fun PosterStage(stage: StageContext) {
 }
 
 @Composable
-private fun PosterHead(stage: StageContext) {
+internal fun PosterHead(stage: StageContext) {
     val state = stage.state
     val c = Lanyin.colors
     val mono = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixedSp(11f), letterSpacing = 0.08.em)
@@ -101,7 +101,7 @@ private fun PosterHead(stage: StageContext) {
 }
 
 @Composable
-private fun PosterLine(stage: StageContext, modifier: Modifier) {
+internal fun PosterLine(stage: StageContext, modifier: Modifier) {
     val state = stage.state
     val style = Lanyin.style
     val c = style.colors
@@ -131,46 +131,49 @@ private fun PosterLine(stage: StageContext, modifier: Modifier) {
             else -> state.lineProgress()
         }
     }
-    Column(
-        modifier.padding(top = 14.dp).drawWithContent {
-            drawContent()
-            val w = wipe.value
-            if (w < 1f) {
-                // Grows from the left to cover the old line, then leaves to the right off the new.
-                val from = if (w < 0.5f) 0f else size.width * (w - 0.5f) * 2f
-                val to = if (w < 0.5f) size.width * w * 2f else size.width
-                drawRect(c.accent, Offset(from, 0f), Size(to - from, size.height))
-                drawRect(c.outline, Offset(from, 0f), Size(to - from, size.height), style = Stroke(2.dp.toPx()))
-            }
-        },
-    ) {
-        SungText(
-            text, big,
-            // A character at a time, as a printer would set it.
-            progress = { val n = text.length.coerceAtLeast(1); floor(progress() * n) / n },
-            paintSung = { drawText(it, c.content) },
-            modifier = Modifier.padding(bottom = 18.dp),
-            decorate = { l ->
-                // The bar under the line, filling smoothly with the singing.
-                val top = l.size.height + 8.dp.toPx()
-                val bar = Size(l.size.width.toFloat(), 7.dp.toPx())
-                drawRect(c.surface, Offset(0f, top), bar)
-                drawRect(c.accent, Offset(0f, top), Size(bar.width * progress(), bar.height))
-                drawRect(c.outline, Offset(0f, top), bar, style = Stroke(2.dp.toPx()))
+    Box(modifier) {
+        Column(
+            Modifier.fillMaxSize().padding(top = 14.dp).drawWithContent {
+                drawContent()
+                val w = wipe.value
+                if (w < 1f) {
+                    // Grows from the left to cover the old line, then leaves to the right off the new.
+                    val from = if (w < 0.5f) 0f else size.width * (w - 0.5f) * 2f
+                    val to = if (w < 0.5f) size.width * w * 2f else size.width
+                    drawRect(c.accent, Offset(from, 0f), Size(to - from, size.height))
+                    drawRect(c.outline, Offset(from, 0f), Size(to - from, size.height), style = Stroke(2.dp.toPx()))
+                }
             },
-        )
-        line?.translation?.let {
-            Text(it, style = mono.copy(fontSize = fixedSp(12f), letterSpacing = 0.02.em), color = c.content.copy(alpha = 0.75f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Spacer(Modifier.weight(1f))
-        if (lines.size > 1) LineIndex(lines.size, shown, Modifier.padding(bottom = 10.dp).fillMaxWidth().height(10.dp))
-        lines.getOrNull(shown + 1)?.text?.takeIf { it.isNotBlank() }?.let { next ->
-            Row(Modifier.padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("NEXT →", style = mono, color = c.bg, modifier = Modifier.background(c.outline).padding(horizontal = 5.dp, vertical = 1.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(next, style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        ) {
+            SungText(
+                text, big,
+                // A character at a time, as a printer would set it.
+                progress = { val n = text.length.coerceAtLeast(1); floor(progress() * n) / n },
+                paintSung = { drawText(it, c.content) },
+                modifier = Modifier.padding(bottom = 18.dp),
+                decorate = { l ->
+                    // The bar under the line, filling smoothly with the singing.
+                    val top = l.size.height + 8.dp.toPx()
+                    val bar = Size(l.size.width.toFloat(), 7.dp.toPx())
+                    drawRect(c.surface, Offset(0f, top), bar)
+                    drawRect(c.accent, Offset(0f, top), Size(bar.width * progress(), bar.height))
+                    drawRect(c.outline, Offset(0f, top), bar, style = Stroke(2.dp.toPx()))
+                },
+            )
+            line?.translation?.let {
+                Text(it, style = mono.copy(fontSize = fixedSp(12f), letterSpacing = 0.02.em), color = c.content.copy(alpha = 0.75f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.weight(1f))
+            if (lines.size > 1) LineIndex(lines.size, shown, Modifier.padding(bottom = 10.dp).fillMaxWidth().height(10.dp))
+            lines.getOrNull(shown + 1)?.text?.takeIf { it.isNotBlank() }?.let { next ->
+                Row(Modifier.padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("NEXT →", style = mono, color = c.bg, modifier = Modifier.background(c.outline).padding(horizontal = 5.dp, vertical = 1.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(next, style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
+        PosterPauseStamp(state, Modifier.align(Alignment.TopEnd).padding(top = 2.dp))
     }
 }
 
@@ -179,7 +182,7 @@ private fun PosterLine(stage: StageContext, modifier: Modifier) {
  * black, the one being sung in red, those to come left open. A long song's squares narrow to bars.
  */
 @Composable
-private fun LineIndex(count: Int, current: Int, modifier: Modifier) {
+internal fun LineIndex(count: Int, current: Int, modifier: Modifier) {
     val c = Lanyin.colors
     Canvas(modifier) {
         val cell = minOf(size.height + 4.dp.toPx(), size.width / count)

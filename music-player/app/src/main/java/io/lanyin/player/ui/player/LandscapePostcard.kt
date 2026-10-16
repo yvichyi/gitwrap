@@ -90,7 +90,7 @@ internal fun PostcardStage(stage: StageContext) {
 }
 
 @Composable
-private fun Polaroid(stage: StageContext, modifier: Modifier) {
+internal fun Polaroid(stage: StageContext, modifier: Modifier, onClick: (() -> Unit)? = null) {
     val state = stage.state
     val style = Lanyin.style
     val c = style.colors
@@ -135,7 +135,7 @@ private fun Polaroid(stage: StageContext, modifier: Modifier) {
                         drawRect(lerp(c.accentAlt, Color.Black, 0.25f).copy(alpha = 0.55f), Offset(0f, sea), Size(size.width, size.height - sea))
                     },
             ) {
-                StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), halo = false, heightFraction = 0.9f)
+                StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), halo = false, heightFraction = 0.9f, onClick = onClick)
             }
             Column(Modifier.align(Alignment.BottomStart).padding(start = margin + 2.dp, end = margin, bottom = 5.dp)) {
                 Text(state.title, style = TextStyle(fontFamily = style.display, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Medium, fontSize = fixedSp(15f)), color = pen, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -191,7 +191,7 @@ private fun Postmark(state: PlayerState, modifier: Modifier) {
 
 /** How long until the sun is down: a small sun sinking to its line, and the time left in the song. */
 @Composable
-private fun Sunset(state: PlayerState) {
+internal fun Sunset(state: PlayerState) {
     val style = Lanyin.style
     val c = style.colors
     // Recomposes once a second, not every frame.
@@ -205,7 +205,7 @@ private fun Sunset(state: PlayerState) {
         }
         Spacer(Modifier.width(8.dp))
         Text(
-            "距日落  %d:%02d".format(left / 60, left % 60),
+            (if (state.isPlaying) "距日落  " else "日落暂停  ") + "%d:%02d".format(left / 60, left % 60),
             style = style.type.caption.copy(fontFamily = style.numeric, letterSpacing = 0.08.em),
             color = c.muted,
         )
@@ -215,7 +215,7 @@ private fun Sunset(state: PlayerState) {
 }
 
 @Composable
-private fun HorizonLyrics(stage: StageContext, modifier: Modifier) {
+internal fun HorizonLyrics(stage: StageContext, modifier: Modifier) {
     val state = stage.state
     val style = Lanyin.style
     val c = style.colors

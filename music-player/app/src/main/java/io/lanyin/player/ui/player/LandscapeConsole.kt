@@ -124,7 +124,10 @@ internal fun ConsoleLandscape(
                 val stage = StageContext(state, skin, spin, chromeVisible, scrubMs, lyricScale, dismissDrag, entrance)
                 Row(Modifier.weight(1f).fillMaxWidth()) {
                     if (skin != PlayerSkin.LYRICS) {
-                        StageArtwork(stage, Modifier.weight(0.42f).fillMaxHeight().then(dismissDrag), heightFraction = 0.9f)
+                        Box(Modifier.weight(0.42f).fillMaxHeight()) {
+                            StageArtwork(stage, Modifier.fillMaxSize().then(dismissDrag), heightFraction = 0.9f)
+                            LcdOverlay(state, Modifier.matchParentSize())
+                        }
                         Spacer(Modifier.width(12.dp))
                     }
                     StageLyricsColumn(stage, Modifier.weight(0.58f).fillMaxHeight(), baseSp = LyricSize.BASE_SP * 0.9f, centered = skin == PlayerSkin.LYRICS)
@@ -154,7 +157,7 @@ internal fun ConsoleLandscape(
 
 /** The D-pad: a dark cross standing on its rim, each arm a button that dips as it's pressed. */
 @Composable
-private fun DPad(state: PlayerState, onQueue: () -> Unit, modifier: Modifier) {
+internal fun DPad(state: PlayerState, onQueue: () -> Unit, modifier: Modifier) {
     val sources = remember { List(4) { MutableInteractionSource() } }
     val pressed = sources.map { it.collectIsPressedAsState().value }
     Box(modifier) {
@@ -208,7 +211,7 @@ private fun DrawScope.arrow(at: Offset, r: Float, color: Color) {
 
 /** SELECT or START: a little slanted rubber pill with its job written under it. */
 @Composable
-private fun MenuPill(name: String, job: String, onClick: () -> Unit) {
+internal fun MenuPill(name: String, job: String, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val down by source.collectIsPressedAsState()
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable(interactionSource = source, indication = null, onClick = onClick).semantics { contentDescription = job }) {
@@ -223,7 +226,7 @@ private fun MenuPill(name: String, job: String, onClick: () -> Unit) {
 
 /** B: a smaller magenta button that steps through the play modes, showing which it's on. */
 @Composable
-private fun BButton(state: PlayerState, modifier: Modifier) {
+internal fun BButton(state: PlayerState, modifier: Modifier) {
     val c = Lanyin.colors
     val source = remember { MutableInteractionSource() }
     val down by source.collectIsPressedAsState()
@@ -256,7 +259,7 @@ private fun BButton(state: PlayerState, modifier: Modifier) {
 
 /** A little pixel figure on the LCD that changes pose on each beat. */
 @Composable
-private fun BeatSprite(state: PlayerState, modifier: Modifier) {
+internal fun BeatSprite(state: PlayerState, modifier: Modifier) {
     val clock = rememberFrameClock(state.isPlaying)
     val ink = Lanyin.colors.content
     val poses = remember {
@@ -280,7 +283,7 @@ private fun BeatSprite(state: PlayerState, modifier: Modifier) {
 
 /** The speaker's slanted slots, a little brighter as the bass pushes. */
 @Composable
-private fun SpeakerSlots(state: PlayerState, modifier: Modifier) {
+internal fun SpeakerSlots(state: PlayerState, modifier: Modifier) {
     val clock = rememberFrameClock(state.isPlaying)
     val levels = remember { FloatArray(32) }
     val eased = remember { floatArrayOf(0f) }

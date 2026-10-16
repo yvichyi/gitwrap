@@ -1,6 +1,9 @@
 package io.lanyin.player.ui.player
 
 import androidx.compose.animation.AnimatedContent
+import io.lanyin.player.ui.design.pressable
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -75,7 +78,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** What a theme's landscape stage works with. */
+/** What a theme's stage works with, in landscape or portrait. */
 internal class StageContext(
     val state: PlayerState,
     val skin: PlayerSkin,
@@ -93,21 +96,47 @@ internal fun fixedSp(size: Float): TextUnit = with(LocalDensity.current) { size.
 
 /**
  * The artwork fitted to its box with room for the spectrum halo round it (when [halo]), swiped
- * to change track, 格's sticker on its corner.
+ * to change track, 格's sticker on its corner. A record or tape settles back a little when
+ * paused. [onClick] is for a tap on it (the full lyrics, in portrait); with [ripples] it throws
+ * a ripple on each beat.
  */
 @Composable
-internal fun StageArtwork(stage: StageContext, modifier: Modifier, halo: Boolean = true, heightFraction: Float = 0.82f) {
+internal fun StageArtwork(
+    stage: StageContext,
+    modifier: Modifier,
+    halo: Boolean = true,
+    heightFraction: Float = 0.82f,
+    onClick: (() -> Unit)? = null,
+    ripples: Boolean = false,
+) {
     val state = stage.state
+    val settle by animateFloatAsState(
+        if (state.isPlaying || stage.skin == PlayerSkin.COVER) 1f else 0.95f,
+        Lanyin.style.bouncy.spec(), label = "artSettle",
+    )
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val room = if (halo) 20.dp else 4.dp
         Box(
             artSize(stage.skin, maxWidth - room * 2, maxHeight * heightFraction)
-                .then(if (halo) Modifier.spectrumHalo(stage.skin, state.isPlaying, state.audioFeed) else Modifier),
+                .then(if (halo) Modifier.spectrumHalo(stage.skin, state.isPlaying, state.audioFeed) else Modifier)
+                .then(if (ripples) Modifier.beatRipples(stage.skin, state.isPlaying, state.audioFeed) else Modifier)
+                .artworkBackdrop(stage.skin)
+                .graphicsLayer {
+                    scaleX = settle
+                    scaleY = settle
+                },
             contentAlignment = Alignment.Center,
         ) {
             // The halo stays put while the record is swiped away and the next slides in.
             SwipeToSkip(state) {
-                PlayerArtwork(stage.skin, state.isPlaying, stage.spin, state.coverSeed, Modifier.fillMaxWidth().sharedPlayer("artwork", zIndex = 1f), state.coverUrl)
+                PlayerArtwork(
+                    stage.skin, state.isPlaying, stage.spin, state.coverSeed,
+                    Modifier
+                        .fillMaxWidth()
+                        .sharedPlayer("artwork", zIndex = 1f)
+                        .then(if (onClick != null) Modifier.pressable(onClick = onClick) else Modifier),
+                    state.coverUrl,
+                )
             }
             QualitySticker(state, Modifier.align(Alignment.TopStart))
         }
@@ -202,7 +231,7 @@ private fun DeckPanel(state: PlayerState, modifier: Modifier) {
 
 /** A mechanical counter: four digits of minutes and seconds, each rolling up as it changes. */
 @Composable
-private fun TapeCounter(seconds: Int, modifier: Modifier) {
+internal fun TapeCounter(seconds: Int, modifier: Modifier) {
     val digits = listOf(seconds / 600 % 10, seconds / 60 % 10, seconds % 60 / 10, seconds % 10)
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
         digits.forEachIndexed { i, d ->
@@ -224,7 +253,7 @@ private fun TapeCounter(seconds: Int, modifier: Modifier) {
 
 /** A knob with a scale round it, its pointer turned as far as the song has got. */
 @Composable
-private fun PositionKnob(state: PlayerState, modifier: Modifier) {
+internal fun PositionKnob(state: PlayerState, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val clock = rememberFrameClock(state.isPlaying)
@@ -255,7 +284,7 @@ private fun PositionKnob(state: PlayerState, modifier: Modifier) {
 
 /** The speaker grille, its holes darkening with the bass as the cone pushes. */
 @Composable
-private fun PulsingGrille(state: PlayerState, modifier: Modifier) {
+internal fun PulsingGrille(state: PlayerState, modifier: Modifier) {
     val style = Lanyin.style
     val clock = rememberFrameClock(state.isPlaying)
     val levels = remember { FloatArray(32) }
@@ -299,7 +328,10 @@ internal fun BroadsheetStage(stage: StageContext) {
         DoubleRule(Modifier.padding(bottom = 10.dp))
         Row(Modifier.weight(1f).fillMaxWidth()) {
             Column(Modifier.weight(0.36f).fillMaxHeight()) {
-                StageArtwork(stage, Modifier.weight(1f).fillMaxWidth().then(stage.dismissDrag), heightFraction = 0.95f)
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), heightFraction = 0.95f)
+                    PaperPauseStamp(state, Modifier.align(Alignment.Center))
+                }
                 Text(
                     "图：《${state.title}》　${state.artist}",
                     style = style.type.caption.copy(fontStyle = FontStyle.Italic, fontSize = 11.sp),
@@ -325,17 +357,25 @@ internal fun BroadsheetStage(stage: StageContext) {
                 StageLyricsColumn(stage, Modifier.weight(1f).fillMaxWidth().enter(stage.entrance, 2), baseSp = LyricSize.BASE_SP * 0.9f)
             }
         }
-        Marquee(
-            listOf("快讯", "下一首《${state.next.title}》", "${state.playlistName} 第 ${state.trackNumber} / ${state.trackCount} 首", "澜音日报 · 号外"),
-            Modifier.padding(top = 6.dp),
-            height = 20.dp,
-            speed = 22.dp,
-            fill = c.content,
-            ink = c.bg,
-            marks = c.accent to c.bg,
-            font = style.display,
-        )
+        PaperTicker(state, Modifier.padding(top = 6.dp))
     }
+}
+
+/** The paper's ticker along the foot of the page: what's next, where it's from. */
+@Composable
+internal fun PaperTicker(state: PlayerState, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    Marquee(
+        listOf("快讯", "下一首《${state.next.title}》", "${state.playlistName} 第 ${state.trackNumber} / ${state.trackCount} 首", "澜音日报 · 号外"),
+        modifier,
+        height = 20.dp,
+        speed = 22.dp,
+        fill = c.content,
+        ink = c.bg,
+        marks = c.accent to c.bg,
+        font = style.display,
+    )
 }
 
 // 酸 -------------------------------------------------------------------------------------------
@@ -348,30 +388,15 @@ internal fun BroadsheetStage(stage: StageContext) {
  */
 @Composable
 internal fun MediaPlayerStage(stage: StageContext) {
-    val c = Lanyin.colors
     val state = stage.state
-    val shape = RoundedCornerShape(22.dp)
     Column(
         Modifier
             .fillMaxSize()
             .padding(vertical = 4.dp)
             .enter(stage.entrance, 1)
-            .clip(shape)
-            .background(Brush.verticalGradient(listOf(Color(0xFF1C1C22), Color(0xFF07070A))))
-            .border(2.dp, ChromeBrush, shape),
+            .mediaWindow(),
     ) {
-        Row(
-            Modifier.fillMaxWidth().height(26.dp).background(Brush.verticalGradient(listOf(Color(0xFF3A3A44), Color(0xFF121216)))).padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            for (dot in listOf(c.accentAlt, c.accent, Color.White)) {
-                Box(Modifier.padding(end = 6.dp).size(9.dp).clip(CircleShape).background(dot))
-            }
-            Spacer(Modifier.weight(1f))
-            Text("LANYIN MEDIA PLAYER 2000", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(10f), brush = ChromeBrush, letterSpacing = 0.08.em), maxLines = 1)
-            Spacer(Modifier.weight(1f))
-            Text("_ □ ×", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixedSp(11f)), color = Color.White.copy(alpha = 0.7f))
-        }
+        MediaTitleBar()
         Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
             Box(Modifier.weight(0.42f).fillMaxHeight()) {
                 Visualizer(state, Modifier.matchParentSize())
@@ -379,15 +404,7 @@ internal fun MediaPlayerStage(stage: StageContext) {
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(0.58f).fillMaxHeight()) {
-                Marquee(
-                    listOfNotNull("${state.title} — ${state.artist}", "${state.quality.ifEmpty { "STREAM" }} ${state.format}", "TRACK ${state.trackNumber}/${state.trackCount}", rememberBpm(state)?.let { "$it BPM" }),
-                    Modifier.clip(RoundedCornerShape(6.dp)).border(1.dp, c.accent.copy(alpha = 0.6f), RoundedCornerShape(6.dp)),
-                    height = 26.dp,
-                    fill = Color.Black,
-                    ink = c.accent,
-                    marks = c.accentAlt to c.accent,
-                    font = SpaceMonoFamily,
-                )
+                MediaLcd(state)
                 StageLyricsColumn(stage, Modifier.weight(1f).fillMaxWidth().padding(top = 6.dp), baseSp = LyricSize.BASE_SP * 0.92f)
                 GraphicEq(state, Modifier.fillMaxWidth().height(30.dp).padding(top = 6.dp))
             }
@@ -395,9 +412,50 @@ internal fun MediaPlayerStage(stage: StageContext) {
     }
 }
 
+/** 酸's window: rounded, near-black glass in a chrome frame. */
+internal fun Modifier.mediaWindow(): Modifier {
+    val shape = RoundedCornerShape(22.dp)
+    return clip(shape)
+        .background(Brush.verticalGradient(listOf(Color(0xFF1C1C22), Color(0xFF07070A))))
+        .border(2.dp, ChromeBrush, shape)
+}
+
+/** The chrome window's title bar: traffic-light buttons, the player's name, the window controls. */
+@Composable
+internal fun MediaTitleBar() {
+    val c = Lanyin.colors
+    Row(
+        Modifier.fillMaxWidth().height(26.dp).background(Brush.verticalGradient(listOf(Color(0xFF3A3A44), Color(0xFF121216)))).padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        for (dot in listOf(c.accentAlt, c.accent, Color.White)) {
+            Box(Modifier.padding(end = 6.dp).size(9.dp).clip(CircleShape).background(dot))
+        }
+        Spacer(Modifier.weight(1f))
+        Text("LANYIN MEDIA PLAYER 2000", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(10f), brush = ChromeBrush, letterSpacing = 0.08.em), maxLines = 1)
+        Spacer(Modifier.weight(1f))
+        Text("_ □ ×", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixedSp(11f)), color = Color.White.copy(alpha = 0.7f))
+    }
+}
+
+/** The LCD strip scrolling the title, the stream, the track and the tempo in lime. */
+@Composable
+internal fun MediaLcd(state: PlayerState, modifier: Modifier = Modifier) {
+    val c = Lanyin.colors
+    Marquee(
+        listOfNotNull(if (state.isPlaying) null else "❚❚ PAUSED", "${state.title} — ${state.artist}", "${state.quality.ifEmpty { "STREAM" }} ${state.format}", "TRACK ${state.trackNumber}/${state.trackCount}", rememberBpm(state)?.let { "$it BPM" }),
+        modifier.clip(RoundedCornerShape(6.dp)).border(1.dp, c.accent.copy(alpha = 0.6f), RoundedCornerShape(6.dp)),
+        height = 26.dp,
+        fill = Color.Black,
+        ink = c.accent,
+        marks = c.accentAlt to c.accent,
+        font = SpaceMonoFamily,
+    )
+}
+
 /** Rings of stars and rays behind the disc, swelling with the bass, mids and treble and turning with the beat. */
 @Composable
-private fun Visualizer(state: PlayerState, modifier: Modifier) {
+internal fun Visualizer(state: PlayerState, modifier: Modifier) {
     val c = Lanyin.colors
     val clock = rememberFrameClock(state.isPlaying)
     val levels = remember { FloatArray(32) }
@@ -440,7 +498,7 @@ private fun Visualizer(state: PlayerState, modifier: Modifier) {
 
 /** A graphic equaliser's sixteen bars, lime rising to pink, with falling peak caps. */
 @Composable
-private fun GraphicEq(state: PlayerState, modifier: Modifier) {
+internal fun GraphicEq(state: PlayerState, modifier: Modifier) {
     val c = Lanyin.colors
     val clock = rememberFrameClock(state.isPlaying)
     val levels = remember { FloatArray(32) }
