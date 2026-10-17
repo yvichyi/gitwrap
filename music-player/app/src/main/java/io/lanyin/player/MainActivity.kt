@@ -10,6 +10,9 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.lanyin.player.ui.LanyinApp
 import io.lanyin.player.ui.LocalAppServices
+import io.lanyin.player.ui.LocalThemeReveal
+import io.lanyin.player.ui.ThemeReveal
+import io.lanyin.player.ui.ThemeRevealHost
 import io.lanyin.player.ui.design.ActivityOrientationController
 import io.lanyin.player.ui.design.LocalHapticsOn
 import io.lanyin.player.ui.design.LocalOrientationController
@@ -26,15 +29,19 @@ class MainActivity : ComponentActivity() {
             // Null until DataStore's first read so the wrong theme never flashes.
             val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
             val orientation = remember { ActivityOrientationController(this) }
+            val reveal = remember { ThemeReveal() }
             settings?.let { s ->
                 CompositionLocalProvider(
                     LocalOrientationController provides orientation,
                     LocalAppServices provides container.services,
                     LocalReduceMotion provides (s.reduceMotion || systemAnimationsOff()),
                     LocalHapticsOn provides s.haptics,
+                    LocalThemeReveal provides reveal,
                 ) {
-                    LanyinTheme(theme = s.theme, mode = s.themeMode) {
-                        LanyinApp(settings = s, settingsRepository = container.settings)
+                    ThemeRevealHost(reveal, key = s.theme to s.themeMode) {
+                        LanyinTheme(theme = s.theme, mode = s.themeMode) {
+                            LanyinApp(settings = s, settingsRepository = container.settings)
+                        }
                     }
                 }
             }

@@ -173,7 +173,11 @@ fun Modifier.themedSurface(
         }
     }
     if (onClick != null) {
-        m = m.clickable(interactionSource = interaction, indication = null, onClick = onClick)
+        val haptic = rememberThemeHaptic()
+        m = m.clickable(interactionSource = interaction, indication = null) {
+            haptic()
+            onClick()
+        }
     }
     return m
 }
@@ -189,6 +193,7 @@ fun Modifier.pressable(enabled: Boolean = true, label: String? = null, onClick: 
     val pressed by interaction.collectIsPressedAsState()
     val press by animateFloatAsState(if (pressed) 1f else 0f, style.bouncy.spec(), label = "press")
     val depth = if (style.pressScale >= 1f) 0.08f else (1f - style.pressScale) * 1.4f
+    val haptic = rememberThemeHaptic()
     return graphicsLayer {
         val s = 1f - depth * press
         scaleX = s
@@ -198,7 +203,10 @@ fun Modifier.pressable(enabled: Boolean = true, label: String? = null, onClick: 
         indication = null,
         enabled = enabled,
         role = if (label != null) Role.Button else null,
-        onClick = onClick,
+        onClick = {
+            haptic()
+            onClick()
+        },
     )
 }
 

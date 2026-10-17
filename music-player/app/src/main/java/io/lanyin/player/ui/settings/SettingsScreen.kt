@@ -68,6 +68,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 
 @Composable
 fun SettingsScreen(
@@ -81,6 +83,7 @@ fun SettingsScreen(
     storagePreview: io.lanyin.player.playback.StorageUsage? = null,
 ) {
     val scope = rememberCoroutineScope()
+    val reveal = io.lanyin.player.ui.LocalThemeReveal.current
     val style = Lanyin.style
     val c = style.colors
     val m = style.margin
@@ -101,8 +104,13 @@ fun SettingsScreen(
                 )
                 LazyRow(state = themes, contentPadding = PaddingValues(start = m, end = m, top = 14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(AppTheme.entries) { theme ->
-                        ThemeCard(theme, settings.themeMode, selected = theme == settings.theme) {
-                            scope.launch { repository.setTheme(theme) }
+                        ThemeCard(theme, settings.themeMode, selected = theme == settings.theme) { from ->
+                            if (theme == settings.theme) return@ThemeCard
+                            scope.launch {
+                                // The new theme opens from the card.
+                                reveal?.before(from)
+                                repository.setTheme(theme)
+                            }
                         }
                     }
                 }
@@ -113,7 +121,10 @@ fun SettingsScreen(
                 Column(Modifier.padding(start = m, end = m, top = 14.dp)) {
                     ChoiceRow(ThemeMode.entries.map { it.label }, settings.themeMode.label, { label ->
                         val mode = ThemeMode.entries.first { it.label == label }
-                        scope.launch { repository.setThemeMode(mode) }
+                        if (mode != settings.themeMode) scope.launch {
+                            reveal?.before()
+                            repository.setThemeMode(mode)
+                        }
                     })
                     if (settings.theme.darkOnly || settings.theme.lightOnly) {
                         Text(
@@ -289,7 +300,9 @@ private fun AccountRow(account: AccountState, onLogin: () -> Unit, onLogout: () 
 
 /** A miniature of the app rendered in [theme], so each theme shows its own shapes and backdrop. */
 @Composable
-private fun ThemeCard(theme: AppTheme, mode: ThemeMode, selected: Boolean, onClick: () -> Unit) {
+private fun ThemeCard(theme: AppTheme, mode: ThemeMode, selected: Boolean, onClick: (androidx.compose.ui.geometry.Offset) -> Unit) {
+    // Where the card is on screen, for the new theme to open from.
+    var centre by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(androidx.compose.ui.geometry.Offset.Unspecified) }
     val outer = Lanyin.style
     val frame = if (outer.edge == EdgeKind.Hairline) androidx.compose.ui.graphics.RectangleShape else RoundedCornerShape(22.dp)
     val inner = if (outer.edge == EdgeKind.Hairline) androidx.compose.ui.graphics.RectangleShape else RoundedCornerShape(18.dp)
@@ -297,10 +310,11 @@ private fun ThemeCard(theme: AppTheme, mode: ThemeMode, selected: Boolean, onCli
         Box(
             Modifier
                 .size(128.dp, 196.dp)
+                .onGloballyPositioned { centre = it.boundsInRoot().center }
                 .border(if (selected) 1.5.dp else 1.dp, if (selected) outer.colors.content else outer.colors.outline, frame)
                 .padding(5.dp)
                 .clip(inner)
-                .pressable(onClick = onClick),
+                .pressable(onClick = { onClick(centre) }),
         ) {
             // A miniature: drawn at a fixed text size so a large system font can't burst it.
             val density = androidx.compose.ui.platform.LocalDensity.current
