@@ -31,6 +31,7 @@ class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
     private val scope = kotlinx.coroutines.MainScope()
     private var statusLyrics: StatusLyrics? = null
+    private var lyricon: LyriconLyrics? = null
     private var destroying = false
     private lateinit var queueStore: QueueStore
     private var saving: kotlinx.coroutines.Job? = null
@@ -59,6 +60,9 @@ class PlaybackService : MediaSessionService() {
             override fun onEvents(player: Player, events: Player.Events) {
                 if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_POSITION_DISCONTINUITY)) {
                     saveQueueSoon()
+                }
+                if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_POSITION_DISCONTINUITY, Player.EVENT_PLAYBACK_PARAMETERS_CHANGED)) {
+                    lyricon?.playback(player.isPlaying, player.currentPosition, player.playbackParameters.speed)
                 }
             }
         })
@@ -97,12 +101,16 @@ class PlaybackService : MediaSessionService() {
         setMediaNotificationProvider(ticker)
         ticker.repost = { if (!destroying) session?.let { onUpdateNotification(it, player.playWhenReady) } }
         val capsule = LyricCapsule(this)
+        // And 词幕 (Lyricon), which takes the whole song and keeps time itself.
+        val lyricon = LyriconLyrics(this, scope, container.nowLyrics.current, duration = { player.duration.coerceAtLeast(0) })
+            .also { this.lyricon = it; it.start() }
         statusLyrics = StatusLyrics(
             scope, container.nowLyrics.current,
             position = { player.currentPosition },
             playing = {
                 ticker.enabled = container.tickerLyrics
                 capsule.enabled = container.capsuleLyrics
+                lyricon.setEnabled(container.tickerLyrics)
                 player.isPlaying
             },
             sinks = listOf(ticker, capsule),
@@ -148,6 +156,7 @@ class PlaybackService : MediaSessionService() {
         destroying = true
         // Clear the capsule, but don't post the media notification again on the way out.
         statusLyrics?.stop()
+        lyricon?.stop()
         scope.cancel()
         session?.run {
             player.release()

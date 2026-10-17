@@ -115,4 +115,41 @@ class StatusLyricsTest {
         val manager = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().getSystemService(android.app.NotificationManager::class.java)
         assertEquals(0, manager.activeNotifications.size)
     }
+
+    @Test
+    fun `Lyricon gets the whole song, word timings and translations, without blank lines`() {
+        val sung = listOf(
+            LyricLine("", null, 0, 1_000),
+            LyricLine("把今晚调成横屏", "Turn tonight sideways", 1_000, 4_000, listOf(LyricWord("把今晚", 1_000, 900), LyricWord("调成横屏", 1_900, 1_600))),
+            LyricLine("让歌词亮起", null, 4_000, 0),
+            LyricLine("最后一句", " ", 9_000, 0),
+        )
+        val song = LyriconLyrics.toLyricon(NowPlayingLyrics.Lyrics(42, "横屏", "澜音", sung), durationMs = 200_000)
+        assertEquals("42", song.id)
+        assertEquals("横屏", song.name)
+        assertEquals(200_000L, song.duration)
+        val lines = song.lyrics!!
+        assertEquals(listOf("把今晚调成横屏", "让歌词亮起", "最后一句"), lines.map { it.text })
+        assertEquals("Turn tonight sideways", lines[0].translation)
+        assertEquals(listOf(1_900L to 3_500L), lines[0].words!!.drop(1).map { it.begin to it.end })
+        // An unknown end runs to the next line, or five seconds for the last; a blank translation is none.
+        assertEquals(9_000L, lines[1].end)
+        assertEquals(14_000L, lines[2].end)
+        assertNull(lines[2].translation)
+        // Nothing is dropped by Lyricon's own clean-up.
+        assertEquals(3, song.normalize().lyrics!!.size)
+    }
+
+    @Test
+    fun `without the Lyricon module nothing breaks`() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val now = MutableStateFlow<NowPlayingLyrics.Lyrics?>(null)
+        val lyricon = LyriconLyrics(context, CoroutineScope(Dispatchers.Unconfined), now, duration = { 200_000 })
+        lyricon.start()
+        lyricon.setEnabled(true)
+        now.value = NowPlayingLyrics.Lyrics(1, "a", "b", lines)
+        lyricon.playback(playing = true, positionMs = 2_000, speed = 1f)
+        lyricon.setEnabled(false)
+        lyricon.stop()
+    }
 }
