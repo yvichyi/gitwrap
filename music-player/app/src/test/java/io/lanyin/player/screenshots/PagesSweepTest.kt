@@ -83,6 +83,14 @@ class PagesSweepTest(private val theme: AppTheme, private val mode: ThemeMode) {
         CommentsPage(song, onBack = {}, controller = controller, now = now)
     }
 
+    @Test fun status() = shot("status") {
+        androidx.compose.foundation.layout.Column(Modifier.fillMaxSize(), verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center) {
+            io.lanyin.player.ui.music.Placeholder("正在加载…")
+            io.lanyin.player.ui.music.Placeholder("连不上网易云，检查一下网络", "重试")
+            io.lanyin.player.ui.music.Placeholder("还没有评论，来说第一句")
+        }
+    }
+
     @Test fun search() = shot("search") {
         io.lanyin.player.ui.search.SearchScreen(
             previewHistory = listOf("陈奕迅", "夜曲", "Lemon", "City Pop 合集", "坂本龙一"),

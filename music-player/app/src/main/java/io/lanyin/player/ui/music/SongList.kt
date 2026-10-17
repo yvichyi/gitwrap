@@ -290,7 +290,7 @@ fun Placeholder(text: String, actionLabel: String? = null, onAction: () -> Unit 
     val style = Lanyin.style
     val c = style.colors
     Column(Modifier.fillMaxWidth().padding(vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        ThemeMotif(c.content.copy(alpha = 0.18f), Modifier.size(56.dp))
+        io.lanyin.player.ui.design.StatusMark(io.lanyin.player.ui.design.statusKindOf(text, actionLabel != null))
         Text(text, style = style.type.caption, color = c.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 12.dp, start = 32.dp, end = 32.dp))
         if (actionLabel != null) TextLink(actionLabel, onAction, Modifier.padding(top = 4.dp))
     }
