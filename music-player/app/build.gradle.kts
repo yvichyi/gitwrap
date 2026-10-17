@@ -1,9 +1,28 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.roborazzi)
+}
+
+// Release signing comes from keystore.properties next to settings.gradle.kts (never committed;
+// storeFile, storePassword, keyAlias, keyPassword) or the LANYIN_KEYSTORE, LANYIN_KEYSTORE_PASSWORD,
+// LANYIN_KEY_ALIAS and LANYIN_KEY_PASSWORD environment variables. With neither, release builds come
+// out unsigned and the preview build is signed with the debug key as before.
+val releaseKeys: Map<String, String>? = run {
+    val file = rootProject.file("keystore.properties")
+    val keys = if (file.isFile) {
+        Properties().apply { file.inputStream().use { load(it) } }.let { p -> p.stringPropertyNames().associateWith { p.getProperty(it).trim() } }
+    } else {
+        mapOf(
+            "storeFile" to "LANYIN_KEYSTORE", "storePassword" to "LANYIN_KEYSTORE_PASSWORD",
+            "keyAlias" to "LANYIN_KEY_ALIAS", "keyPassword" to "LANYIN_KEY_PASSWORD",
+        ).mapNotNull { (key, env) -> providers.environmentVariable(env).orNull?.let { key to it } }.toMap()
+    }
+    keys.takeIf { k -> listOf("storeFile", "storePassword", "keyAlias", "keyPassword").all { !k[it].isNullOrEmpty() } }
 }
 
 android {
@@ -18,6 +37,20 @@ android {
         versionName = "0.15.0-m14"
     }
 
+    signingConfigs {
+        if (releaseKeys != null) {
+            create("release") {
+                storeFile = rootProject.file(releaseKeys.getValue("storeFile"))
+                storePassword = releaseKeys.getValue("storePassword")
+                keyAlias = releaseKeys.getValue("keyAlias")
+                keyPassword = releaseKeys.getValue("keyPassword")
+                enableV1Signing = false
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -26,6 +59,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
         }
         // Shrunk like release but debug-signed, for small side-loadable test builds.
         create("preview") {

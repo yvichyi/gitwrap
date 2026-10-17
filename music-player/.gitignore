@@ -8,3 +8,6 @@ captures/
 *.keystore
 *.jks
 *.apk
+
+# Release signing keys (see app/build.gradle.kts).
+keystore.properties
