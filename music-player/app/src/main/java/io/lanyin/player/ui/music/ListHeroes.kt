@@ -385,18 +385,22 @@ private fun DrawScope.drawDisc(hole: Color) {
     drawCircle(hole, r * 0.12f, center)
 }
 
-/** A row's number in the theme's hand: Chinese numerals for 墨, frame numbers for 影, zero-padded where figures are machine-set. */
+/**
+ * A row's number in the theme's hand: Chinese numerals for 墨, frame numbers for 影, zero-padded
+ * where figures are machine-set. [strong] sets it in the accent, for the head of a chart.
+ */
 @Composable
-internal fun RowNumber(number: Int) {
+internal fun RowNumber(number: Int, strong: Boolean = false) {
     val style = Lanyin.style
     val c = style.colors
     val base = style.type.caption.copy(fontFamily = style.numeric)
+    val tint = if (strong) c.accent else c.muted
     when (style.backdrop) {
-        BackdropKind.Ink -> Text(if (number < 100) io.lanyin.player.ui.home.chineseNumber(number) else "$number", style = base, color = c.muted, maxLines = 1)
-        BackdropKind.Film -> Text("%02dA".format(number), style = base.copy(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(10.5f)), color = FilmStamp.copy(alpha = 0.85f), maxLines = 1)
-        BackdropKind.Dusk -> Text("$number", style = base.copy(fontStyle = FontStyle.Italic, fontSize = fixed(15f)), color = c.muted, maxLines = 1)
-        BackdropKind.Grid, BackdropKind.Device, BackdropKind.Dot, BackdropKind.Acid -> Text("%02d".format(number), style = base.copy(fontWeight = FontWeight.Bold), color = c.muted, maxLines = 1)
-        else -> Text("$number", style = base, color = c.muted, maxLines = 1)
+        BackdropKind.Ink -> Text(if (number < 100) io.lanyin.player.ui.home.chineseNumber(number) else "$number", style = base, color = tint, maxLines = 1)
+        BackdropKind.Film -> Text("%02dA".format(number), style = base.copy(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(10.5f)), color = FilmStamp.copy(alpha = if (strong) 1f else 0.85f), maxLines = 1)
+        BackdropKind.Dusk -> Text("$number", style = base.copy(fontStyle = FontStyle.Italic, fontSize = fixed(15f)), color = tint, maxLines = 1)
+        BackdropKind.Grid, BackdropKind.Device, BackdropKind.Dot, BackdropKind.Acid -> Text("%02d".format(number), style = base.copy(fontWeight = FontWeight.Bold), color = tint, maxLines = 1)
+        else -> Text("$number", style = if (strong) base.copy(fontWeight = FontWeight.Bold) else base, color = tint, maxLines = 1)
     }
 }
 

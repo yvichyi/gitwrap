@@ -10,6 +10,7 @@ import io.lanyin.player.core.model.CloudPage
 import io.lanyin.player.core.model.CloudSong
 import io.lanyin.player.core.model.Comment
 import io.lanyin.player.core.model.CommentPage
+import io.lanyin.player.core.model.HotSearch
 import io.lanyin.player.core.model.CommentSort
 import io.lanyin.player.core.model.CommentUser
 import io.lanyin.player.core.model.LyricsSource
@@ -239,6 +240,12 @@ class NeteaseApi(private val client: NeteaseClient, private val nos: NosUploader
 
     suspend fun searchPlaylists(keywords: String, limit: Int = 30): List<Playlist> =
         cloudsearch(keywords, 1000, limit).decode<SearchDto>().result?.playlists.orEmpty().map { it.toPlaylist() }
+
+    /** What people are searching for now (热搜榜); public, no login needed. */
+    suspend fun hotSearches(): List<HotSearch> =
+        client.weapi("/api/hotsearchlist/get").requireOk().decode<HotSearchDto>().data.mapNotNull { d ->
+            d.searchWord?.trim()?.takeIf { it.isNotEmpty() }?.let { HotSearch(it, d.score, d.content?.trim()?.takeIf { c -> c.isNotEmpty() }) }
+        }
 
     private suspend fun cloudsearch(keywords: String, type: Int, limit: Int): NeteaseResponse =
         client.eapi(
@@ -596,6 +603,8 @@ internal class PlaylistDto(
 @Serializable internal class RecommendResourceDto(val recommend: List<PlaylistDto> = emptyList())
 @Serializable internal class FmDto(val data: List<SongDto> = emptyList())
 @Serializable internal class SearchDto(val result: SearchResultDto? = null)
+@Serializable internal class HotSearchDto(val data: List<HotWordDto> = emptyList())
+@Serializable internal class HotWordDto(val searchWord: String? = null, val score: Long = 0, val content: String? = null)
 @Serializable
 internal class SearchResultDto(
     val songs: List<SongDto> = emptyList(),

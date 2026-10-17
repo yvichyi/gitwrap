@@ -12,6 +12,7 @@ import io.lanyin.player.core.model.Album
 import io.lanyin.player.core.model.Artist
 import io.lanyin.player.core.model.Comment
 import io.lanyin.player.core.model.CommentPage
+import io.lanyin.player.core.model.HotSearch
 import io.lanyin.player.core.model.CommentUser
 import io.lanyin.player.core.model.QuotedComment
 import io.lanyin.player.core.model.Song
@@ -30,7 +31,7 @@ import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** The comments page and the play queue in every theme. Images land in build/outputs/roborazzi/pages. */
+/** The comments page, the play queue and search before typing in every theme. Images land in build/outputs/roborazzi/pages. */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w392dp-h850dp-port-xhdpi")
@@ -80,6 +81,22 @@ class PagesSweepTest(private val theme: AppTheme, private val mode: ThemeMode) {
         val scope = rememberCoroutineScope()
         val controller = remember { CommentsController(100, null, scope, me = null).apply { preview(samplePage()) } }
         CommentsPage(song, onBack = {}, controller = controller, now = now)
+    }
+
+    @Test fun search() = shot("search") {
+        io.lanyin.player.ui.search.SearchScreen(
+            previewHistory = listOf("陈奕迅", "夜曲", "Lemon", "City Pop 合集", "坂本龙一"),
+            previewHot = listOf(
+                HotSearch("晴天", 3_120_000, "周杰伦的夏天又来了"),
+                HotSearch("海阔天空", 2_480_000, null),
+                HotSearch("夜に駆ける", 1_960_000, "YOASOBI 新巡演官宣"),
+                HotSearch("后来", 1_210_000, null),
+                HotSearch("起风了", 980_000, "毕业季点播第一"),
+                HotSearch("稻香", 720_000, null),
+                HotSearch("光年之外", 540_000, null),
+                HotSearch("孤勇者", 410_000, null),
+            ),
+        )
     }
 
     @Test fun queue() = shot("queue") {

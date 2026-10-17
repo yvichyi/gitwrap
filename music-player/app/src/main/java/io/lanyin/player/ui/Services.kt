@@ -23,6 +23,7 @@ class AppServices(
     val engine: io.lanyin.player.playback.AudioEngine,
     val uploads: io.lanyin.player.data.library.CloudUploads,
     val storage: io.lanyin.player.playback.StorageManager,
+    val searchHistory: io.lanyin.player.data.library.SearchHistory,
 )
 
 val LocalAppServices = staticCompositionLocalOf<AppServices?> { null }

@@ -1,6 +1,7 @@
 package io.lanyin.player.data.library
 
 import io.lanyin.player.core.model.CloudPage
+import io.lanyin.player.core.model.HotSearch
 import io.lanyin.player.core.model.Playlist
 import io.lanyin.player.core.model.RankedSong
 import io.lanyin.player.core.model.RecentPlay
@@ -175,6 +176,15 @@ class LibraryRepository(private val api: NeteaseApi, account: AccountRepository,
     suspend fun searchAlbums(keywords: String) = api.searchAlbums(keywords)
 
     suspend fun searchPlaylists(keywords: String) = api.searchPlaylists(keywords)
+
+    @Volatile
+    private var hot: Pair<Long, List<HotSearch>>? = null
+
+    /** 热搜榜, asked again after ten minutes. */
+    suspend fun hotSearches(): List<HotSearch> {
+        hot?.let { (at, words) -> if (System.currentTimeMillis() - at < 10 * 60_000L) return words }
+        return api.hotSearches().also { hot = System.currentTimeMillis() to it }
+    }
 
     // —— Cloud drive ——
 

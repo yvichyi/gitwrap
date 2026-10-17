@@ -24,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.lanyin.player.ui.components.pagePadding
 import io.lanyin.player.ui.design.ChoiceRow
@@ -32,11 +31,11 @@ import io.lanyin.player.ui.design.Hairline
 import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.PageTitle
 import io.lanyin.player.ui.design.SurfaceTone
-import io.lanyin.player.ui.design.ThemeMotif
 import io.lanyin.player.ui.design.ThemedIcon
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.core.model.HotSearch
 import io.lanyin.player.core.model.Song
 import io.lanyin.player.ui.LocalAppServices
 import io.lanyin.player.ui.design.ThemedTextField
@@ -67,6 +66,8 @@ fun SearchScreen(
     player: PlayerState? = null,
     initialQuery: String = "",
     initialResults: List<Song>? = null,
+    previewHot: List<HotSearch>? = null,
+    previewHistory: List<String>? = null,
     onOpenArtist: (Long, String) -> Unit = { _, _ -> },
     onOpenAlbum: (Long, String) -> Unit = { _, _ -> },
     onOpenPlaylist: (Long, String) -> Unit = { _, _ -> },
@@ -82,6 +83,21 @@ fun SearchScreen(
     var results by remember { mutableStateOf<Load<SearchResults>?>(initialResults?.let { Load.Ready(SearchResults.Songs(it)) }) }
     var attempt by remember { mutableIntStateOf(0) }
     val keyboard = LocalSoftwareKeyboardController.current
+    val searchHistory = LocalAppServices.current?.searchHistory
+    val history = previewHistory ?: searchHistory?.words?.collectAsState()?.value.orEmpty()
+    var hot by remember { mutableStateOf(previewHot.orEmpty()) }
+    LaunchedEffect(library) {
+        if (library == null || previewHot != null) return@LaunchedEffect
+        hot = try {
+            library.hotSearches()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    // Words that found something worth opening are kept for next time.
+    fun keepQuery() = searchHistory?.record(query)
     LaunchedEffect(query, kind, attempt) {
         val q = query.trim()
         if (q.isEmpty() || library == null) {
@@ -114,7 +130,7 @@ fun SearchScreen(
                     Modifier.padding(start = m, end = m, top = 24.dp, bottom = 8.dp),
                     leading = LineIcon.Search,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
+                    keyboardActions = KeyboardActions(onSearch = { keyboard?.hide(); keepQuery() }),
                 )
             }
             item {
@@ -124,20 +140,7 @@ fun SearchScreen(
                 )
             }
             when (val r = results) {
-                null -> item {
-                    Column(
-                        Modifier.fillMaxWidth().padding(horizontal = m * 2, vertical = 56.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        ThemeMotif(c.content.copy(alpha = 0.22f), Modifier.size(120.dp))
-                        Text("想听点什么？", style = style.type.title, modifier = Modifier.padding(top = 20.dp))
-                        Text(
-                            "输入歌名、歌手或专辑，边打字边找。",
-                            style = style.type.caption, color = c.muted, textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                    }
-                }
+                null -> searchStart(history, hot, onPick = { query = it; keyboard?.hide() }, onClearHistory = { searchHistory?.clear() })
                 Load.Loading -> item { Placeholder("正在找…") }
                 is Load.Failed -> item { Placeholder(r.message, "重试") { attempt++ } }
                 is Load.Ready -> {
@@ -151,6 +154,7 @@ fun SearchScreen(
                                 isPlaying = player?.isPlaying == true,
                                 onClick = {
                                     keyboard?.hide()
+                                    keepQuery()
                                     player?.play(value.items, i, "搜索「${query.trim()}」")
                                 },
                                 onMore = { openSheet(io.lanyin.player.ui.music.Sheet.TrackActions(song)) },
@@ -159,13 +163,13 @@ fun SearchScreen(
                             )
                         }
                         is SearchResults.Artists -> itemsIndexed(value.items, key = { _, a -> a.id }) { _, a ->
-                            ResultRow(a.pictureUrl, a.name, "${a.albumCount} 张专辑", round = true, seed = (a.id % 97).toInt()) { onOpenArtist(a.id, a.name) }
+                            ResultRow(a.pictureUrl, a.name, "${a.albumCount} 张专辑", round = true, seed = (a.id % 97).toInt()) { keepQuery(); onOpenArtist(a.id, a.name) }
                         }
                         is SearchResults.Albums -> itemsIndexed(value.items, key = { _, a -> a.id }) { _, a ->
-                            ResultRow(a.coverUrl, a.name, listOf(a.artistName, "${a.size} 首").filter { it.isNotEmpty() }.joinToString(" · "), round = false, seed = (a.id % 97).toInt()) { onOpenAlbum(a.id, a.name) }
+                            ResultRow(a.coverUrl, a.name, listOf(a.artistName, "${a.size} 首").filter { it.isNotEmpty() }.joinToString(" · "), round = false, seed = (a.id % 97).toInt()) { keepQuery(); onOpenAlbum(a.id, a.name) }
                         }
                         is SearchResults.Playlists -> itemsIndexed(value.items, key = { _, p -> p.id }) { _, p ->
-                            io.lanyin.player.ui.music.PlaylistRow(p, { onOpenPlaylist(p.id, p.name) }, Modifier.padding(horizontal = m))
+                            io.lanyin.player.ui.music.PlaylistRow(p, { keepQuery(); onOpenPlaylist(p.id, p.name) }, Modifier.padding(horizontal = m))
                         }
                     }
                 }

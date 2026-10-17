@@ -128,6 +128,9 @@ data class ArtistHit(val id: Long, val name: String, val pictureUrl: String?, va
 /** A row in album search results. */
 data class AlbumHit(val id: Long, val name: String, val coverUrl: String?, val artistName: String, val size: Int)
 
+/** A line of 热搜榜: the words, how hot they are, and NetEase's note on why, when it gives one. */
+data class HotSearch(val word: String, val score: Long, val note: String?)
+
 /** Raw lyric documents; parsed into timed lines by the lyrics package. */
 data class LyricsSource(
     val lrc: String?,

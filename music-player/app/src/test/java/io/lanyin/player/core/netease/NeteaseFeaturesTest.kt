@@ -292,6 +292,21 @@ class NeteaseFeaturesTest {
         }
     }
 
+    // —— Search ——
+
+    @Test
+    fun `hot searches read the words and notes, leaving out blank ones`() = runBlocking {
+        reply("""{"code":200,"data":[{"searchWord":"晴天","score":3120000,"content":"周杰伦经典","iconType":1},{"searchWord":"  ","score":10},{"searchWord":"海阔天空","score":980000,"content":""}],"message":"success"}""")
+        val hot = api.hotSearches()
+        assertEquals(listOf("晴天", "海阔天空"), hot.map { it.word })
+        assertEquals(3_120_000L, hot[0].score)
+        assertEquals("周杰伦经典", hot[0].note)
+        assertNull(hot[1].note)
+        val r = server.takeRequest()
+        assertEquals("/weapi/hotsearchlist/get", r.path)
+        assertTrue(sent(r).containsKey("csrf_token"))
+    }
+
     // —— Cloud upload ——
 
     private fun uploadApi() = NeteaseApi(
