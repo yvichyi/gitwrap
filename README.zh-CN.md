@@ -108,6 +108,7 @@ gitwrap --year 2026         # 指定年份
 gitwrap --author a@x.com,b@y.com   # 多身份（换过公司/改过邮箱？）
 gitwrap ~/projects          # 聚合目录下所有仓库
 gitwrap --json              # 机器可读输出
+gitwrap --html card.html    # 可分享的单文件 HTML 卡片（亮/暗色，适配手机）
 gitwrap --ascii             # 纯 ASCII 符号，兼容老终端
 gitwrap --no-color          # 无色纯文本
 ```
@@ -127,7 +128,7 @@ gitwrap --no-color          # 无色纯文本
 ```bash
 git clone https://github.com/yvichyi/gitwrap
 cd gitwrap
-python -m unittest discover -s tests -v   # 26 个测试，无需联网
+python -m unittest discover -s tests -v   # 30 个测试，无需联网
 ```
 
 ## 许可
