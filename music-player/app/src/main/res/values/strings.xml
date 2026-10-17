@@ -3,4 +3,5 @@
     <string name="app_name">澜音</string>
     <string name="downloads_channel">下载</string>
     <string name="lyrics_channel">状态栏歌词</string>
+    <string name="desktop_lyrics">桌面歌词</string>
 </resources>

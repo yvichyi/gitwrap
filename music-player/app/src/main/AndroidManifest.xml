@@ -11,6 +11,8 @@
     <!-- Android 16 Live Updates: lets the lyric capsule sit in the status bar. Not a runtime permission. -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- 桌面歌词: the line being sung floats over other apps. Granted by the person on a system page. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- To open NetEase Cloud Music for its QR scanner (package visibility, API 30+). -->
     <queries>
@@ -71,6 +73,21 @@
             android:name="androidx.media3.exoplayer.scheduler.PlatformScheduler$PlatformSchedulerService"
             android:exported="true"
             android:permission="android.permission.BIND_JOB_SERVICE" />
+        <!-- The 桌面歌词 switch in quick settings. -->
+        <service
+            android:name=".ui.desktop.DesktopLyricsTile"
+            android:exported="true"
+            android:icon="@drawable/ic_notify_lyric"
+            android:label="@string/desktop_lyrics"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
+
         <!-- Hands a lyric card to the app it's shared with, and nothing else. -->
         <provider
             android:name="androidx.core.content.FileProvider"

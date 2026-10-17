@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import io.lanyin.player.core.audio.EQ_FREQUENCIES
 import io.lanyin.player.core.audio.EffectAmounts
 import io.lanyin.player.core.audio.EffectPreset
@@ -54,7 +55,18 @@ data class UiSettings(
     val reduceMotion: Boolean = false,
     /** A tap under the finger when pressing things, in each theme's own feel. */
     val haptics: Boolean = true,
+    /** 桌面歌词: the line being sung floats over other apps while 澜音 is out of sight. */
+    val desktopLyrics: Boolean = false,
+    /** Locked, it lets touches through to what's under it. */
+    val desktopLyricsLocked: Boolean = false,
+    /** Where it floats: its top, as a share of the screen's height. */
+    val desktopLyricsY: Float = 0.16f,
+    /** Its type size, a step from 0 (smallest) to [DESKTOP_SIZES] - 1. */
+    val desktopLyricsSize: Int = 2,
 )
+
+/** How many sizes 桌面歌词 comes in. */
+const val DESKTOP_SIZES = 5
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
@@ -78,6 +90,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 lyricCapsule = prefs[LYRIC_CAPSULE] ?: true,
                 reduceMotion = prefs[REDUCE_MOTION] ?: false,
                 haptics = prefs[HAPTICS] ?: true,
+                desktopLyrics = prefs[DESKTOP_LYRICS] ?: false,
+                desktopLyricsLocked = prefs[DESKTOP_LOCKED] ?: false,
+                desktopLyricsY = (prefs[DESKTOP_Y] ?: 0.16f).coerceIn(0f, 0.9f),
+                desktopLyricsSize = (prefs[DESKTOP_SIZE] ?: 2).coerceIn(0, DESKTOP_SIZES - 1),
                 effects = EffectsSettings(
                     preset = EffectPreset.fromId(prefs[FX_PRESET]),
                     custom = prefs[FX_CUSTOM]?.split(',')?.mapNotNull { it.toFloatOrNull() }?.takeIf { it.size == EQ_FREQUENCIES.size }
@@ -128,6 +144,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setHaptics(enabled: Boolean) = dataStore.edit { it[HAPTICS] = enabled }
 
+    suspend fun setDesktopLyrics(enabled: Boolean) = dataStore.edit { it[DESKTOP_LYRICS] = enabled }
+
+    suspend fun setDesktopLyricsLocked(locked: Boolean) = dataStore.edit { it[DESKTOP_LOCKED] = locked }
+
+    suspend fun setDesktopLyricsY(y: Float) = dataStore.edit { it[DESKTOP_Y] = y.coerceIn(0f, 0.9f) }
+
+    suspend fun setDesktopLyricsSize(size: Int) = dataStore.edit { it[DESKTOP_SIZE] = size.coerceIn(0, DESKTOP_SIZES - 1) }
+
     suspend fun setEffects(fx: EffectsSettings) = dataStore.edit {
         it[FX_PRESET] = fx.preset.id
         it[FX_CUSTOM] = fx.custom.joinToString(",")
@@ -160,6 +184,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val LYRIC_CAPSULE = booleanPreferencesKey("lyric_capsule")
         val REDUCE_MOTION = booleanPreferencesKey("reduce_motion")
         val HAPTICS = booleanPreferencesKey("haptics")
+        val DESKTOP_LYRICS = booleanPreferencesKey("desktop_lyrics")
+        val DESKTOP_LOCKED = booleanPreferencesKey("desktop_lyrics_locked")
+        val DESKTOP_Y = floatPreferencesKey("desktop_lyrics_y")
+        val DESKTOP_SIZE = intPreferencesKey("desktop_lyrics_size")
         val FX_PRESET = stringPreferencesKey("fx_preset")
         val FX_CUSTOM = stringPreferencesKey("fx_custom")
         val FX_BASS = floatPreferencesKey("fx_bass")

@@ -1,7 +1,9 @@
 package io.lanyin.player
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.os.Bundle
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -29,6 +31,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import okhttp3.OkHttpClient
@@ -43,6 +46,27 @@ class LanyinApplication : Application(), SingletonImageLoader.Factory {
         container.account.start()
         container.player.connect()
         container.downloads.start()
+        // Whether any of the app's screens is showing; 桌面歌词 stays away while one is.
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            private var started = 0
+
+            override fun onActivityStarted(activity: Activity) {
+                started++
+                container.appVisible.value = true
+            }
+
+            override fun onActivityStopped(activity: Activity) {
+                started = (started - 1).coerceAtLeast(0)
+                container.appVisible.value = started > 0
+            }
+
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+            override fun onActivityResumed(activity: Activity) = Unit
+            override fun onActivityPaused(activity: Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+            override fun onActivityDestroyed(activity: Activity) = Unit
+        })
+        container.desktopLyrics.start()
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
@@ -108,6 +132,10 @@ class AppContainer(context: Context) {
         nowLyrics = nowLyrics,
     )
     val services = AppServices(netease, account, library, player, recent, downloads, notices, engine, uploads, storage, searchHistory)
+
+    /** Whether one of the app's screens is showing. */
+    val appVisible = MutableStateFlow(false)
+    val desktopLyrics = io.lanyin.player.ui.desktop.DesktopLyricsWindow(context, scope, player, settings, appVisible)
 
     init {
         // Stream quality, downloads over Wi-Fi only and play records follow the settings.

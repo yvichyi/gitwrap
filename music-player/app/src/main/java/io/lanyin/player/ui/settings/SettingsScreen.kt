@@ -247,6 +247,12 @@ fun SettingsScreen(
                         Hairline()
                         LyricCapsuleRow(settings.lyricCapsule) { scope.launch { repository.setLyricCapsule(it) } }
                     }
+                    Hairline()
+                    DesktopLyricsRows(
+                        settings.desktopLyrics, settings.desktopLyricsLocked,
+                        onEnable = { scope.launch { repository.setDesktopLyrics(it) } },
+                        onLock = { scope.launch { repository.setDesktopLyricsLocked(it) } },
+                    )
                     if (style.edge == EdgeKind.Hairline) Hairline()
                 }
             }
@@ -422,6 +428,44 @@ private fun LyricCapsuleRow(checked: Boolean, onChange: (Boolean) -> Unit) {
             }
         }
         onChange(it)
+    }
+}
+
+/**
+ * 桌面歌词 and its lock. Turning it on without the permission to float over other apps opens the
+ * system page that grants it, and it comes on when that's granted and the person is back.
+ */
+@Composable
+private fun DesktopLyricsRows(enabled: Boolean, locked: Boolean, onEnable: (Boolean) -> Unit, onLock: (Boolean) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var permitted by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(io.lanyin.player.ui.desktop.DesktopLyricsWindow.canDraw(context)) }
+    var asked by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+        permitted = io.lanyin.player.ui.desktop.DesktopLyricsWindow.canDraw(context)
+        if (asked && permitted) onEnable(true)
+        asked = false
+    }
+    val on = enabled && permitted
+    ToggleRow(
+        "桌面歌词",
+        "离开澜音后，正在唱的那句浮在其他应用上面；点一下出现控制，按住上下拖可以挪位置" + if (permitted) "" else "。需要允许「显示在其他应用上层」",
+        on,
+    ) { want ->
+        if (want && !permitted) {
+            asked = true
+            runCatching {
+                context.startActivity(
+                    android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + context.packageName))
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
+        } else {
+            onEnable(want)
+        }
+    }
+    if (on) {
+        Hairline()
+        ToggleRow("锁定桌面歌词", "锁定后点不到它，点击直接落到下面的应用；在快捷开关里点一下「桌面歌词」也能解锁", locked, onLock)
     }
 }
 
