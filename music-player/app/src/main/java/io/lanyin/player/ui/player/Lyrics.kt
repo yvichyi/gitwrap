@@ -14,7 +14,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -107,6 +107,7 @@ fun LyricsView(
     val appear = remember(lines) { Animatable(0f) }
     LaunchedEffect(lines) { appear.animateTo(1f, tween(900, easing = LinearEasing)) }
     val scope = rememberCoroutineScope()
+    val openSheet = io.lanyin.player.ui.music.LocalOpenSheet.current
     var drag by remember { mutableFloatStateOf(0f) }
     var settleJob by remember { mutableStateOf<Job?>(null) }
 
@@ -177,7 +178,12 @@ fun LyricsView(
                             }
                             .then(
                                 if (interactive) {
-                                    Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                                    // Tap to go there; hold to share the line as a card.
+                                    Modifier.combinedClickable(
+                                        interactionSource = remember { MutableInteractionSource() }, indication = null,
+                                        onLongClickLabel = "分享这句歌词",
+                                        onLongClick = { if (line.text.isNotBlank()) openSheet(io.lanyin.player.ui.music.Sheet.ShareLyric(line.text, line.translation)) },
+                                    ) {
                                         settleJob?.cancel()
                                         drag = 0f
                                         onSeek(line.startMs)

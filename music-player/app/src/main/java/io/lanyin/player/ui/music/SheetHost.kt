@@ -67,6 +67,13 @@ fun AppSheets(
     SheetLayer(sheets) { sheet ->
         when (sheet) {
             Sheet.Queue -> QueueSheet(player)
+            is Sheet.ShareLyric -> io.lanyin.player.ui.share.ShareLyricSheet(
+                io.lanyin.player.ui.share.CardLyric(
+                    sheet.line, sheet.translation, player.title, player.artist, player.track.album, player.coverUrl, player.coverSeed,
+                ),
+                onDone = sheets::dismiss,
+                notify = ::notify,
+            )
             is Sheet.TrackActions -> {
                 val song = sheet.song
                 TrackActionsSheet(
@@ -93,6 +100,9 @@ fun AppSheets(
                     onComments = {
                         sheets.dismiss()
                         nav?.openComments?.invoke(song)
+                    },
+                    onShareLyric = player.currentLine?.text?.takeIf { player.track.id == song.id && it.isNotBlank() }?.let { line ->
+                        { sheets.open(Sheet.ShareLyric(line, player.currentLine?.translation)) }
                     },
                     onOpenArtist = {
                         sheets.dismiss()

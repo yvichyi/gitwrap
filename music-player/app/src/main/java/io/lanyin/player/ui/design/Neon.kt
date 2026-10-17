@@ -188,7 +188,7 @@ fun HangingSign(
 
 /** A box sign in a tube frame, for a word or two: OPEN, ON AIR. */
 @Composable
-fun BoxSign(text: String, color: Color, modifier: Modifier = Modifier, lit: Float = 1f, size: Float = 13f, delayMillis: Int = 0) {
+fun BoxSign(text: String, color: Color, modifier: Modifier = Modifier, lit: Float = 1f, size: Float = 13f, delayMillis: Int = 0, ignite: Boolean = true) {
     Box(
         modifier
             .drawBehind {
@@ -202,7 +202,7 @@ fun BoxSign(text: String, color: Color, modifier: Modifier = Modifier, lit: Floa
             }
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
-        NeonText(text, TextStyle(fontFamily = io.lanyin.player.ui.theme.TiltNeonFamily, fontSize = size.sp, letterSpacing = 1.sp), color, lit = lit, delayMillis = delayMillis)
+        NeonText(text, TextStyle(fontFamily = io.lanyin.player.ui.theme.TiltNeonFamily, fontSize = size.sp, letterSpacing = 1.sp), color, lit = lit, ignite = ignite, delayMillis = delayMillis)
     }
 }
 

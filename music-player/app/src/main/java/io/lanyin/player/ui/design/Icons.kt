@@ -21,6 +21,7 @@ import io.lanyin.player.ui.theme.Lanyin
  */
 enum class LineIcon(internal val strokes: String, internal val fills: String = "") {
     Home("M4 10.5L12 4l8 6.5V20h-5.5v-6h-5v6H4z"),
+    Share("M17.5 8.5a2.5 2.5 0 1 0 0-5a2.5 2.5 0 1 0 0 5zM6.5 14.5a2.5 2.5 0 1 0 0-5a2.5 2.5 0 1 0 0 5zM17.5 20.5a2.5 2.5 0 1 0 0-5a2.5 2.5 0 1 0 0 5zM8.7 10.8l6.6-3.6M8.7 13.2l6.6 3.6"),
     Search("M17.5 11a6.5 6.5 0 1 1-13 0a6.5 6.5 0 1 1 13 0zM16 16l4 4"),
     Library("M5 5v14M9.5 5v14M13.5 5.6l5 13.6"),
     Note("M9.5 17V5.5l9-2V15M9.5 17a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0zM18.5 15a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0z"),

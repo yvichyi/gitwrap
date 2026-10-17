@@ -101,6 +101,8 @@ sealed interface Sheet {
     data class ConfirmDownload(val songs: List<Song>, val title: String) : Sheet
     data object Effects : Sheet
     data object Quality : Sheet
+    /** A line of the song playing, to share as a card. */
+    data class ShareLyric(val line: String, val translation: String? = null) : Sheet
 }
 
 /** Opens a sheet from anywhere below the app shell. */
@@ -283,6 +285,8 @@ fun TrackActionsSheet(
     onComments: () -> Unit = {},
     onRemoveFromPlaylist: () -> Unit = {},
     onDeleteFromCloud: () -> Unit = {},
+    /** Only for the song playing, with a line being sung. */
+    onShareLyric: (() -> Unit)? = null,
 ) {
     val style = Lanyin.style
     val c = style.colors
@@ -309,6 +313,7 @@ fun TrackActionsSheet(
             DownloadState.Done -> ConfirmRow(LineIcon.Check, "已下载 · 删除下载", "再点一次，删除下载的文件", onRemoveDownload, tint = c.accent)
         }
         ActionRow(LineIcon.Comment, "评论", onComments)
+        if (onShareLyric != null) ActionRow(LineIcon.Share, "分享这句歌词", onShareLyric)
         song.artists.filter { it.id != 0L }.take(4).forEach { a ->
             ActionRow(LineIcon.User, "歌手：${a.name}", { onOpenArtist(a) })
         }
