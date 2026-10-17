@@ -13,9 +13,11 @@ import io.github.proify.lyricon.provider.ProviderLogo
 import io.lanyin.player.R
 import io.lanyin.player.core.model.LyricLine
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 词幕 (Lyricon), the LSPosed status-bar lyrics module, reached through its provider SDK: it gets
@@ -42,7 +44,11 @@ class LyriconLyrics(
             )
         }.onFailure { Log.w(TAG, "Lyricon unavailable: ${it.message}") }.getOrNull() ?: return
         watching = scope.launch {
-            lyrics.collect { now -> provider?.player?.setSong(now?.let { toLyricon(it, duration()) }) }
+            lyrics.collect { now ->
+                // The duration is read here, on the player's thread; the song is encoded and sent off it.
+                val song = now?.let { toLyricon(it, duration()) }
+                withContext(Dispatchers.Default) { runCatching { provider?.player?.setSong(song) } }
+            }
         }
     }
 
