@@ -77,20 +77,30 @@ class LibraryRepository(private val api: NeteaseApi, account: AccountRepository,
 
     private var syncJob: Job? = null
 
+    /** A sync is under way (for pull-to-refresh). */
+    private val _syncing = MutableStateFlow(false)
+    val syncing: StateFlow<Boolean> = _syncing.asStateFlow()
+
     fun refresh() {
         val uid = userId ?: return
         _syncFailed.value = false
         syncJob?.cancel()
-        syncJob = scope.launch {
-            // A few tries, further apart each time, before saying it didn't work.
-            for (attempt in 0 until SYNC_TRIES) {
-                val liked = runCatching { api.likedIds(uid) }.onSuccess { _likedIds.value = it }
-                val lists = runCatching { api.userPlaylists(uid) }.onSuccess { _playlists.value = it }
-                if (liked.isSuccess && lists.isSuccess || userId != uid) return@launch
-                if (attempt < SYNC_TRIES - 1) delay(2_000L shl attempt)
-            }
-            _syncFailed.value = true
+        _syncing.value = true
+        val job = scope.launch { sync(uid) }
+        syncJob = job
+        // Only the latest sync says when syncing is over, not one it replaced.
+        job.invokeOnCompletion { if (syncJob === job) _syncing.value = false }
+    }
+
+    private suspend fun sync(uid: Long) {
+        // A few tries, further apart each time, before saying it didn't work.
+        for (attempt in 0 until SYNC_TRIES) {
+            val liked = runCatching { api.likedIds(uid) }.onSuccess { _likedIds.value = it }
+            val lists = runCatching { api.userPlaylists(uid) }.onSuccess { _playlists.value = it }
+            if (liked.isSuccess && lists.isSuccess || userId != uid) return
+            if (attempt < SYNC_TRIES - 1) delay(2_000L shl attempt)
         }
+        _syncFailed.value = true
     }
 
     val signedIn: Boolean get() = userId != null
@@ -141,8 +151,8 @@ class LibraryRepository(private val api: NeteaseApi, account: AccountRepository,
     private var chartPreviews: Pair<Long, List<ChartPreview>>? = null
 
     /** The first few charts with their top three songs, for the home page; kept ten minutes. */
-    suspend fun chartPreviews(count: Int = 4): List<ChartPreview> {
-        chartPreviews?.takeIf { System.currentTimeMillis() - it.first < 10 * 60_000 }?.let { return it.second }
+    suspend fun chartPreviews(count: Int = 4, fresh: Boolean = false): List<ChartPreview> {
+        if (!fresh) chartPreviews?.takeIf { System.currentTimeMillis() - it.first < 10 * 60_000 }?.let { return it.second }
         val previews = coroutineScope {
             api.charts().take(count).map { chart -> async { ChartPreview(chart, runCatching { api.playlistHead(chart.id, 3).songs }.getOrDefault(emptyList())) } }.awaitAll()
         }

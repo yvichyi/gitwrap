@@ -71,7 +71,7 @@ fun StatusMark(kind: StatusKind, modifier: Modifier = Modifier) {
     }
 }
 
-private fun DrawScope.drawLoading(style: LanyinStyle, t: Float) {
+internal fun DrawScope.drawLoading(style: LanyinStyle, t: Float) {
     val c = style.colors
     val w = size.width
     val h = size.height

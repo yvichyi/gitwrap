@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -81,6 +85,37 @@ class PagesSweepTest(private val theme: AppTheme, private val mode: ThemeMode) {
         val scope = rememberCoroutineScope()
         val controller = remember { CommentsController(100, null, scope, me = null).apply { preview(samplePage()) } }
         CommentsPage(song, onBack = {}, controller = controller, now = now)
+    }
+
+    @Test fun refresh() = shot("refresh") {
+        io.lanyin.player.ui.design.ThemedPullRefresh(refreshing = true, onRefresh = {}) {
+            androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize()) {
+                items(12) { i -> io.lanyin.player.ui.music.SongRow(song.copy(id = i.toLong(), name = "第 ${i + 1} 首"), i + 1, playing = false, isPlaying = false, onClick = {}) }
+            }
+        }
+    }
+
+    /** The moment a row starts playing, a quarter of the way through its flash. */
+    @Test fun picked() {
+        var playing by androidx.compose.runtime.mutableStateOf(false)
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            LanyinTheme(theme = theme, mode = mode) {
+                Box(Modifier.fillMaxSize()) {
+                    Backdrop(Modifier.fillMaxSize())
+                    androidx.compose.foundation.layout.Column(Modifier.padding(top = 80.dp)) {
+                        for (i in 0 until 3) io.lanyin.player.ui.music.SongRow(song.copy(id = i.toLong()), i + 1, playing = i == 1 && playing, isPlaying = true, onClick = {}, modifier = Modifier.padding(horizontal = 16.dp))
+                    }
+                }
+            }
+        }
+        compose.mainClock.advanceTimeBy(500)
+        compose.runOnUiThread {
+            playing = true
+            androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        }
+        compose.mainClock.advanceTimeBy(200)
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/pages/${theme.name.lowercase()}_picked.png")
     }
 
     @Test fun status() = shot("status") {

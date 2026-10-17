@@ -18,8 +18,8 @@ sealed interface Load<out T> {
     data class Failed(val message: String) : Load<Nothing>
 }
 
-/** A fetch tied to [key], with a way to try again. */
-class Loader<T>(val state: Load<T>, val retry: () -> Unit)
+/** A fetch tied to [key], with a way to try again; [busy] while fetching, even over what's shown. */
+class Loader<T>(val state: Load<T>, val retry: () -> Unit, val busy: Boolean = false)
 
 /**
  * A fetch tied to [key], with a way to try again. A change of [refresh] fetches again too, but
@@ -29,18 +29,24 @@ class Loader<T>(val state: Load<T>, val retry: () -> Unit)
 fun <T> rememberLoad(key: Any?, refresh: Any? = null, fetch: suspend () -> T): Loader<T> {
     var attempt by remember(key) { mutableIntStateOf(0) }
     var state by remember(key) { mutableStateOf<Load<T>>(Load.Loading) }
+    var busy by remember(key) { mutableStateOf(false) }
     LaunchedEffect(key, attempt, refresh) {
         val shown = state
         if (shown !is Load.Ready) state = Load.Loading
-        state = try {
-            Load.Ready(fetch())
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            if (shown is Load.Ready) shown else Load.Failed(describe(e))
+        busy = true
+        try {
+            state = try {
+                Load.Ready(fetch())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (shown is Load.Ready) shown else Load.Failed(describe(e))
+            }
+        } finally {
+            busy = false
         }
     }
-    return Loader(state) { attempt++ }
+    return Loader(state, { attempt++ }, busy)
 }
 
 fun describe(e: Throwable): String = when {

@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -103,9 +105,15 @@ fun HomeScreen(
     val now by rememberNow()
     val signedIn = account is AccountState.LoggedIn
     val library = LocalAppServices.current?.library
-    val recommended = preview?.let { Load.Ready(it.recommended) } ?: rememberLoad(signedIn) { library?.recommendedPlaylists().orEmpty() }.state
-    val charts = preview?.let { Load.Ready(it.charts) } ?: rememberLoad("home-charts") { library?.chartPreviews() ?: error("offline") }.state
-    val picks = preview?.let { Load.Ready(it.picks) } ?: rememberLoad(signedIn) { library?.picks() ?: error("offline") }.state
+    // Pulled down: everything fetched again, what's shown staying until the new arrives.
+    var pulls by remember { mutableIntStateOf(0) }
+    val recommendedLoad = rememberLoad(signedIn, pulls) { library?.recommendedPlaylists().orEmpty() }
+    val chartsLoad = rememberLoad("home-charts", pulls) { library?.chartPreviews(fresh = pulls > 0) ?: error("offline") }
+    val picksLoad = rememberLoad(signedIn, pulls) { library?.picks() ?: error("offline") }
+    val refreshing = pulls > 0 && (recommendedLoad.busy || chartsLoad.busy || picksLoad.busy)
+    val recommended = preview?.let { Load.Ready(it.recommended) } ?: recommendedLoad.state
+    val charts = preview?.let { Load.Ready(it.charts) } ?: chartsLoad.state
+    val picks = preview?.let { Load.Ready(it.picks) } ?: picksLoad.state
     val pickSongs = (picks as? Load.Ready)?.value?.songs.orEmpty()
     // Most doors need a login first.
     val needsLogin: (() -> Unit) -> () -> Unit = { action -> if (signedIn) action else onLogin }
@@ -133,6 +141,7 @@ fun HomeScreen(
         openPlaylist = { p -> onOpenPlaylist(p.id, p.name) },
     )
     CompositionLocalProvider(LocalContentColor provides style.colors.content) {
+        io.lanyin.player.ui.design.ThemedPullRefresh(refreshing, onRefresh = { pulls++; library?.refresh() }) {
         when (style.backdrop) {
             BackdropKind.Ink -> InkHome(model)
             BackdropKind.Dot -> DotHome(model)
@@ -144,6 +153,7 @@ fun HomeScreen(
             BackdropKind.Acid -> AcidHome(model)
             BackdropKind.Dusk -> DuskHome(model)
             BackdropKind.Neon -> NeonHome(model)
+        }
         }
     }
 }

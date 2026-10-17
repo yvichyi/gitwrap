@@ -51,6 +51,7 @@ import io.lanyin.player.ui.design.TextLink
 import io.lanyin.player.ui.design.ThemeMotif
 import io.lanyin.player.ui.design.ThemedButton
 import io.lanyin.player.ui.design.ThemedIcon
+import io.lanyin.player.ui.design.pickedFlash
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.rememberFrameClock
 import io.lanyin.player.ui.design.themedSurface
@@ -233,7 +234,7 @@ fun SongRow(
     val style = Lanyin.style
     val c = style.colors
     Row(
-        modifier.fillMaxWidth().heightIn(min = 60.dp).pressable(onClick = onClick).padding(vertical = 8.dp),
+        modifier.fillMaxWidth().heightIn(min = 60.dp).pickedFlash(playing).pressable(onClick = onClick).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.width(36.dp), contentAlignment = Alignment.CenterStart) {

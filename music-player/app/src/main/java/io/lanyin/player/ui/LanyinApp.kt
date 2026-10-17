@@ -1,6 +1,7 @@
 package io.lanyin.player.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.VisibilityThreshold
@@ -223,13 +224,20 @@ fun LanyinApp(
                     val backdrop = Lanyin.style.backdrop
                     val reduced = io.lanyin.player.ui.design.LocalReduceMotion.current
                     val motion = remember(backdrop, reduced) { if (reduced) quietPageMotion else pageMotion(backdrop) }
+                    // Between two tabs, the pages move the way the tabs lie.
+                    fun tabOf(entry: androidx.navigation.NavBackStackEntry) = tabs.indexOfFirst { tab -> entry.destination.hierarchy.any { it.hasRoute(tab.route::class) } }
+                    fun AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.tabSwitch(): TabMotion? {
+                        val from = tabOf(initialState)
+                        val to = tabOf(targetState)
+                        return if (from >= 0 && to >= 0 && from != to) tabMotion(backdrop, to - from, reduced) else null
+                    }
                     NavHost(
                         navController = navController,
                         startDestination = HomeRoute,
-                        enterTransition = { motion.enter },
-                        exitTransition = { motion.exit },
-                        popEnterTransition = { motion.popEnter },
-                        popExitTransition = { motion.popExit },
+                        enterTransition = { tabSwitch()?.enter ?: motion.enter },
+                        exitTransition = { tabSwitch()?.exit ?: motion.exit },
+                        popEnterTransition = { tabSwitch()?.enter ?: motion.popEnter },
+                        popExitTransition = { tabSwitch()?.exit ?: motion.popExit },
                     ) {
                         composable<HomeRoute> {
                             HomeScreen(

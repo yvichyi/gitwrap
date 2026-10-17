@@ -115,6 +115,8 @@ fun LibraryScreen(
         if (shelf == "创建的歌单") all.filter { it.creatorId == uid && it.specialType != 5 } else all.filter { it.creatorId != uid }
     }
     CompositionLocalProvider(LocalContentColor provides c.content) {
+        val syncing by (library?.syncing ?: remember { MutableStateFlow(false) }).collectAsState()
+        io.lanyin.player.ui.design.ThemedPullRefresh(syncing, onRefresh = { library?.refresh() }) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
             item { PageTitle("我的", Modifier.padding(horizontal = m)) }
             item { ThemedProfile(account, onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
@@ -142,6 +144,7 @@ fun LibraryScreen(
             items(shelfItems.orEmpty(), key = { it.id }) { p ->
                 PlaylistRow(p, { onOpenPlaylist(p.id, p.name) }, Modifier.padding(horizontal = m))
             }
+        }
         }
     }
 }
