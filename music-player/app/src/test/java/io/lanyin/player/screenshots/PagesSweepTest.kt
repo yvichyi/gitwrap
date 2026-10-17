@@ -87,6 +87,15 @@ class PagesSweepTest(private val theme: AppTheme, private val mode: ThemeMode) {
         CommentsPage(song, onBack = {}, controller = controller, now = now)
     }
 
+    @Test fun actions() = shot("actions") {
+        androidx.compose.foundation.layout.Column(Modifier.padding(top = 60.dp)) {
+            io.lanyin.player.ui.music.TrackActionsSheet(
+                song.copy(album = Album(5, "潮汐", null)), liked = true, onToggleLike = {}, onOpenArtist = {}, onOpenAlbum = { _, _ -> },
+                onShareLyric = {},
+            )
+        }
+    }
+
     @Test fun refresh() = shot("refresh") {
         io.lanyin.player.ui.design.ThemedPullRefresh(refreshing = true, onRefresh = {}) {
             androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize()) {

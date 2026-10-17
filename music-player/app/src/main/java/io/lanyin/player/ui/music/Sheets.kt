@@ -8,6 +8,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import io.lanyin.player.ui.design.candyPlastic
+import io.lanyin.player.ui.design.retroShadow
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -302,59 +307,128 @@ fun TrackActionsSheet(
         CoverImage(song.album.coverUrl, (song.id % 97).toInt(), 48.dp, Modifier.size(48.dp).clip(style.artShape))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(song.name, style = style.type.body.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(song.name, style = style.type.body.copy(fontWeight = FontWeight.SemiBold), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(song.artistLine, style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
     Hairline(Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
-    Column(Modifier.verticalScroll(rememberScrollState())) {
-        ActionRow(if (liked) LineIcon.HeartFilled else LineIcon.Heart, if (liked) "从「我喜欢的音乐」移除" else "收藏到「我喜欢的音乐」", onToggleLike, tint = if (liked) c.like else c.content)
-        ActionRow(LineIcon.Plus, "添加到歌单", onAddToPlaylist)
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 6.dp)) {
+        // Numbered for the themes that number their menus (墨, 报, 影).
+        var n = 0
+        ActionRow(if (liked) LineIcon.HeartFilled else LineIcon.Heart, if (liked) "从「我喜欢的音乐」移除" else "收藏到「我喜欢的音乐」", onToggleLike, ++n, tint = if (liked) c.like else c.content)
+        ActionRow(LineIcon.Plus, "添加到歌单", onAddToPlaylist, ++n)
         when (download?.state) {
-            null -> ActionRow(LineIcon.Download, "下载", onDownload)
-            DownloadState.Failed -> ActionRow(LineIcon.Download, "下载失败，再试一次", onDownload)
+            null -> ActionRow(LineIcon.Download, "下载", onDownload, ++n)
+            DownloadState.Failed -> ActionRow(LineIcon.Download, "下载失败，再试一次", onDownload, ++n)
             DownloadState.Queued, DownloadState.Downloading -> ConfirmRow(
                 LineIcon.Close,
                 if (download.state == DownloadState.Queued) "等待下载 · 取消" else "下载中 ${(download.progress * 100).toInt()}% · 取消",
-                "再点一次，取消下载", onRemoveDownload,
+                "再点一次，取消下载", onRemoveDownload, ++n,
             )
-            DownloadState.Done -> ConfirmRow(LineIcon.Check, "已下载 · 删除下载", "再点一次，删除下载的文件", onRemoveDownload, tint = c.accent)
+            DownloadState.Done -> ConfirmRow(LineIcon.Check, "已下载 · 删除下载", "再点一次，删除下载的文件", onRemoveDownload, ++n, tint = c.accent)
         }
-        ActionRow(LineIcon.Comment, "评论", onComments)
-        if (onShareLyric != null) ActionRow(LineIcon.Share, "分享这句歌词", onShareLyric)
+        ActionRow(LineIcon.Comment, "评论", onComments, ++n)
+        if (onShareLyric != null) ActionRow(LineIcon.Share, "分享这句歌词", onShareLyric, ++n)
         song.artists.filter { it.id != 0L }.take(4).forEach { a ->
-            ActionRow(LineIcon.User, "歌手：${a.name}", { onOpenArtist(a) })
+            ActionRow(LineIcon.User, "歌手：${a.name}", { onOpenArtist(a) }, ++n)
         }
-        if (song.album.id != 0L) ActionRow(LineIcon.Library, "专辑：${song.album.name}", { onOpenAlbum(song.album.id, song.album.name) })
+        if (song.album.id != 0L) ActionRow(LineIcon.Library, "专辑：${song.album.name}", { onOpenAlbum(song.album.id, song.album.name) }, ++n)
         when (context) {
-            is SongContext.OwnPlaylist -> ConfirmRow(LineIcon.Trash, "从「${context.name}」中删除", "再点一次，从歌单删除", onRemoveFromPlaylist)
-            SongContext.Cloud -> ConfirmRow(LineIcon.Trash, "从云盘删除", "再点一次，从云盘删除这个文件", onDeleteFromCloud)
+            is SongContext.OwnPlaylist -> ConfirmRow(LineIcon.Trash, "从「${context.name}」中删除", "再点一次，从歌单删除", onRemoveFromPlaylist, ++n)
+            SongContext.Cloud -> ConfirmRow(LineIcon.Trash, "从云盘删除", "再点一次，从云盘删除这个文件", onDeleteFromCloud, ++n)
             SongContext.None -> Unit
         }
     }
 }
 
+/**
+ * One action in a ⋯ menu, in the theme's form: a line of a table of contents with its leader
+ * and number (墨), a tube between rows (霓), a stop on the itinerary under an airmail edge (暮), a
+ * boxed button with a hard shadow (格), a shot on the list (影), dots between rows (点), a key
+ * (机), an index entry with its page (报), a menu item with the ▶ on the first (游), a candy
+ * capsule (酸). [index] counts from 1.
+ */
 @Composable
-private fun ActionRow(icon: LineIcon, label: String, onClick: () -> Unit, tint: Color = Lanyin.colors.content) {
+private fun ActionRow(icon: LineIcon, label: String, onClick: () -> Unit, index: Int, tint: Color = Lanyin.colors.content) {
     val style = Lanyin.style
-    Row(
-        Modifier.fillMaxWidth().pressable(onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ThemedIcon(icon, null, tint = tint, size = 22.dp)
-        Spacer(Modifier.width(16.dp))
-        Text(label, style = style.type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    val c = style.colors
+    val kind = style.backdrop
+    val shape = RoundedCornerShape(
+        when (kind) {
+            BackdropKind.Acid -> 22.dp
+            BackdropKind.Device -> 10.dp
+            else -> 0.dp
+        },
+    )
+    val boxed = kind == BackdropKind.Grid || kind == BackdropKind.Device || kind == BackdropKind.Acid
+    val outer = when (kind) {
+        BackdropKind.Grid -> Modifier.padding(horizontal = 20.dp, vertical = 5.dp)
+            .retroShadow(RectangleShape, c.outline, 3.dp).background(c.surface).border(2.dp, c.outline)
+        BackdropKind.Device -> Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+            .shadow(2.dp, shape).background(c.surface, shape)
+        BackdropKind.Acid -> Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+            .candyPlastic(io.lanyin.player.ui.design.Flavor.all[(index - 1) % io.lanyin.player.ui.design.Flavor.all.size], shape)
+        else -> Modifier
+    }
+    Column(Modifier.fillMaxWidth().then(outer)) {
+        Row(
+            Modifier.fillMaxWidth().pressable(onClick = onClick).padding(horizontal = if (boxed) 14.dp else 20.dp, vertical = if (boxed) 11.dp else 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            when (kind) {
+                BackdropKind.Film -> Text("SC.%02d".format(index), style = style.type.caption.copy(fontFamily = io.lanyin.player.ui.theme.SpaceMonoFamily, fontWeight = FontWeight.Bold), color = io.lanyin.player.ui.theme.FilmStamp, modifier = Modifier.width(48.dp))
+                BackdropKind.Game -> Text(if (index == 1) "▶" else "", style = style.type.body.copy(fontFamily = style.display), color = c.content, modifier = Modifier.width(20.dp))
+                else -> Unit
+            }
+            ThemedIcon(icon, null, tint = if (kind == BackdropKind.Acid) Color.White else tint, size = 22.dp)
+            Spacer(Modifier.width(16.dp))
+            val labelStyle = when (kind) {
+                BackdropKind.Dusk -> style.type.body.copy(fontFamily = style.display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                BackdropKind.Grid -> style.type.body.copy(fontWeight = FontWeight.Black)
+                BackdropKind.Paper -> style.type.body.copy(fontFamily = style.display)
+                BackdropKind.Game -> style.type.body.copy(fontFamily = style.display)
+                else -> style.type.body
+            }
+            val leader = kind == BackdropKind.Ink || kind == BackdropKind.Paper
+            Text(label, style = labelStyle, color = if (kind == BackdropKind.Acid) Color.White else c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = if (leader) Modifier.widthIn(max = 210.dp) else Modifier)
+            if (leader) {
+                // The dotted leader out to the number, as a table of contents runs.
+                androidx.compose.foundation.Canvas(Modifier.weight(1f).padding(horizontal = 10.dp).height(4.dp)) {
+                    var x = 0f
+                    val step = 5.dp.toPx()
+                    while (x < size.width) {
+                        drawCircle(c.muted.copy(alpha = 0.6f), 0.8.dp.toPx(), androidx.compose.ui.geometry.Offset(x, size.height / 2f))
+                        x += step
+                    }
+                }
+                Text(
+                    if (kind == BackdropKind.Ink) io.lanyin.player.ui.home.chineseNumber(index) else "第${index}版",
+                    style = style.type.caption.copy(fontFamily = if (kind == BackdropKind.Paper) style.display else androidx.compose.ui.text.font.FontFamily.Serif),
+                    color = if (kind == BackdropKind.Paper) c.accent else c.muted,
+                )
+            }
+        }
+        // What lies between rows.
+        when (kind) {
+            BackdropKind.Neon -> androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(3.dp)) {
+                drawTubeLine(androidx.compose.ui.geometry.Offset(0f, size.height / 2f), androidx.compose.ui.geometry.Offset(size.width, size.height / 2f), c.accent.copy(alpha = 0.5f), 1.2.dp.toPx(), lit = 0.35f)
+            }
+            BackdropKind.Dot -> io.lanyin.player.ui.design.DotRule(Modifier.padding(horizontal = 20.dp))
+            BackdropKind.Dusk -> androidx.compose.foundation.Canvas(Modifier.padding(start = 58.dp, end = 20.dp).fillMaxWidth().height(2.dp)) { drawAirmailStripes(5.dp.toPx(), 0.45f) }
+            else -> Unit
+        }
     }
 }
 
 /** An action that can't be undone: the first tap asks, the second does it. */
 @Composable
-private fun ConfirmRow(icon: LineIcon, label: String, confirmLabel: String, onConfirm: () -> Unit, tint: Color = Lanyin.colors.content) {
+private fun ConfirmRow(icon: LineIcon, label: String, confirmLabel: String, onConfirm: () -> Unit, index: Int, tint: Color = Lanyin.colors.content) {
     var armed by remember { mutableStateOf(false) }
     val c = Lanyin.colors
     ActionRow(
         icon, if (armed) confirmLabel else label,
         onClick = { if (armed) onConfirm() else armed = true },
+        index = index,
         tint = if (armed) c.like else tint,
     )
 }
@@ -448,8 +522,8 @@ fun NameSheet(
 @Composable
 fun PlaylistActionsSheet(playlist: Playlist, onRename: () -> Unit, onDelete: () -> Unit) {
     SheetTitle(playlist.name, "${playlist.trackCount} 首")
-    ActionRow(LineIcon.Edit, "改名", onRename)
-    ConfirmRow(LineIcon.Trash, "删除歌单", "再点一次，删除「${playlist.name}」", onDelete)
+    ActionRow(LineIcon.Edit, "改名", onRename, 1)
+    ConfirmRow(LineIcon.Trash, "删除歌单", "再点一次，删除「${playlist.name}」", onDelete, 2)
 }
 
 /** Asks before downloading a whole list. */
