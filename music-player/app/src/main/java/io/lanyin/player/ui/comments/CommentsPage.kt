@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.LocalContentColor
@@ -58,6 +58,7 @@ import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.music.Placeholder
 import io.lanyin.player.ui.music.relativeTime
 import io.lanyin.player.ui.music.shortCount
+import io.lanyin.player.ui.theme.BackdropKind
 import io.lanyin.player.ui.theme.DockKind
 import io.lanyin.player.ui.theme.EdgeKind
 import io.lanyin.player.ui.theme.Lanyin
@@ -119,9 +120,9 @@ fun CommentsPage(
                     controller.error != null -> item { Placeholder(controller.error!!, "重试", controller::retry) }
                     controller.comments.isEmpty() -> item { Placeholder("还没有评论，来说第一句") }
                     else -> {
-                        items(controller.comments, key = { it.id }) { comment ->
+                        itemsIndexed(controller.comments, key = { _, it -> it.id }) { i, comment ->
                             CommentRow(
-                                comment, now,
+                                comment, now, i,
                                 onLike = { controller.toggleLike(comment) },
                                 onReply = {
                                     controller.replyTo = comment
@@ -146,40 +147,60 @@ fun CommentsPage(
     }
 }
 
+/**
+ * One comment, set as the theme sets things: a note in the margin (墨), a tile on the wall (霓),
+ * a postcard (暮), a boxed block with its number (格), a line of a screenplay (影), a grey tile
+ * (点), a line in the device's log (机), a letter to the editor (报), a game's dialogue window
+ * (游), a bubble of coloured gel (酸).
+ */
 @Composable
-private fun CommentRow(comment: Comment, now: Long, onLike: () -> Unit, onReply: () -> Unit, modifier: Modifier = Modifier) {
+private fun CommentRow(comment: Comment, now: Long, index: Int, onLike: () -> Unit, onReply: () -> Unit, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    Column(modifier.fillMaxWidth().pressable(onClick = onReply).padding(vertical = 12.dp)) {
+    val kind = style.backdrop
+    // Letters, screenplay lines and log lines go without a face.
+    val face = kind != BackdropKind.Film && kind != BackdropKind.Paper && kind != BackdropKind.Device
+    val framed = kind != BackdropKind.Ink && kind != BackdropKind.Film && kind != BackdropKind.Paper
+    // On 酸's coloured plastic grey won't read; white does.
+    val quiet = if (kind == BackdropKind.Acid) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f) else c.muted
+    Column(
+        modifier
+            .fillMaxWidth()
+            .padding(vertical = if (framed) 6.dp else 0.dp)
+            .commentFrame(index)
+            .pressable(onClick = onReply)
+            .padding(commentInset(kind)),
+    ) {
         Row(verticalAlignment = Alignment.Top) {
-            Avatar(comment.user.avatarUrl, comment.user.nickname, 36.dp)
-            Spacer(Modifier.width(12.dp))
+            if (face) {
+                Avatar(comment.user.avatarUrl, comment.user.nickname, 36.dp)
+                Spacer(Modifier.width(12.dp))
+            }
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(comment.user.nickname, style = style.type.caption.copy(fontWeight = FontWeight.Medium), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            listOfNotNull(relativeTime(comment.timeMs, now), comment.location).joinToString(" · "),
-                            style = style.type.label, color = c.muted, maxLines = 1,
-                        )
-                    }
+                    CommentByline(comment, now, index, Modifier.weight(1f), quiet)
                     Row(Modifier.pressable(onClick = onLike).padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (comment.likedCount > 0) {
                             Text(
                                 shortCount(comment.likedCount),
                                 style = style.type.caption.copy(fontFamily = style.numeric),
-                                color = if (comment.liked) c.like else c.muted,
+                                color = if (comment.liked) c.like else quiet,
                                 modifier = Modifier.padding(end = 4.dp),
                             )
                         }
-                        ThemedIcon(if (comment.liked) LineIcon.HeartFilled else LineIcon.Heart, if (comment.liked) "取消点赞" else "点赞", tint = if (comment.liked) c.like else c.muted, size = 17.dp)
+                        ThemedIcon(if (comment.liked) LineIcon.HeartFilled else LineIcon.Heart, if (comment.liked) "取消点赞" else "点赞", tint = if (comment.liked) c.like else quiet, size = 17.dp)
                     }
                 }
-                Text(comment.content, style = style.type.body, modifier = Modifier.padding(top = 6.dp))
+                Text(
+                    comment.content,
+                    style = if (kind == BackdropKind.Dusk) style.type.body.copy(fontFamily = style.display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic) else style.type.body,
+                    // A screenplay's dialogue sits in from the margin.
+                    modifier = Modifier.padding(top = 6.dp, start = if (kind == BackdropKind.Film) 24.dp else 0.dp),
+                )
                 comment.replyTo?.let { quoted ->
                     Text(
                         buildAnnotatedString {
-                            withStyle(SpanStyle(color = c.accent)) { append("@${quoted.nickname}") }
+                            withStyle(SpanStyle(color = c.accent)) { append(if (kind == BackdropKind.Paper) "原信 @${quoted.nickname}" else "@${quoted.nickname}") }
                             append("：")
                             append(quoted.content)
                         },
@@ -187,7 +208,7 @@ private fun CommentRow(comment: Comment, now: Long, onLike: () -> Unit, onReply:
                         modifier = Modifier
                             .padding(top = 8.dp)
                             .fillMaxWidth()
-                            .then(if (style.edge == EdgeKind.Hairline) Modifier else Modifier.clip(style.chipShape))
+                            .then(if (style.edge == EdgeKind.Hairline || kind == BackdropKind.Paper) Modifier else Modifier.clip(style.chipShape))
                             .background(c.content.copy(alpha = if (style.dark) 0.07f else 0.045f))
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     )

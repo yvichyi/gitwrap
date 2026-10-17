@@ -250,6 +250,15 @@ fun QueueSheet(player: PlayerState) {
                     .padding(horizontal = 20.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // The number in the theme's hand, or the bars while it plays.
+                Box(Modifier.width(36.dp), contentAlignment = Alignment.CenterStart) {
+                    if (current) {
+                        val clock = io.lanyin.player.ui.design.rememberFrameClock(player.isPlaying)
+                        androidx.compose.foundation.Canvas(Modifier.size(16.dp)) { drawPlayingBars(clock.floatValue, player.isPlaying, style.backdrop, c.accent) }
+                    } else {
+                        RowNumber(i + 1)
+                    }
+                }
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         t.title,
@@ -260,7 +269,6 @@ fun QueueSheet(player: PlayerState) {
                     )
                     Text(" · ${t.artist}", style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                if (current) ThemedIcon(LineIcon.Note, "正在播放", tint = c.accent, size = 16.dp, modifier = Modifier.padding(start = 10.dp))
             }
         }
     }
