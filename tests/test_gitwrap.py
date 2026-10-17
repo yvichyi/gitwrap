@@ -22,6 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from gitwrap.card import render_html  # noqa: E402
 from gitwrap.cli import main  # noqa: E402
 from gitwrap.collector import clean_path, collect_repo  # noqa: E402
 from gitwrap.render import render  # noqa: E402
@@ -253,6 +254,23 @@ class TestRender(Factory):
         text = render(self.build_stats(repo, 2025), color=False)
         self.assertNotIn("\033[", text)
 
+    def test_html_card_is_standalone(self) -> None:
+        repo = self.make_year_repo()
+        page = render_html(self.build_stats(repo, 2025))
+        self.assertTrue(page.startswith("<!doctype html>"))
+        for m in ("<title>Year in Code 2025</title>", "The numbers", "When you commit",
+                  "Commit personality", "Languages", "Highlights", "Your words"):
+            self.assertIn(m, page, f"missing card marker: {m}")
+        self.assertEqual(page.count('<i class="l'), 7 * 24)
+        self.assertNotRegex(page, r'(src|href)="https?:')  # no external assets
+
+    def test_html_escapes_user_text(self) -> None:
+        repo = self.make_repo("escape")
+        self.commit_at(repo, "2025-03-15T10:00:00+08:00", "<b>.py", "add script")
+        page = render_html(self.build_stats(repo, 2025))
+        self.assertIn("&lt;b&gt;.py", page)
+        self.assertNotIn("<b>.py", page)
+
 
 class TestCLI(Factory):
 
@@ -274,6 +292,22 @@ class TestCLI(Factory):
                     "top_languages", "top_words", "busiest_day"):
             self.assertIn(key, data)
         self.assertEqual(data["total_commits"], 1)
+
+    def test_html_written_to_file(self) -> None:
+        repo = self.make_repo("cli-repo")
+        self.commit_at(repo, "2025-05-05T11:00:00+08:00", "a.py", "hello card")
+        out_file = self.tmp / "card.html"
+        code, out = self.run_cli("--year", "2025", "--html", str(out_file))
+        self.assertEqual(code, 0)
+        self.assertIn("wrote", out)
+        self.assertIn("1 commit", out_file.read_text(encoding="utf-8"))
+
+    def test_html_to_stdout(self) -> None:
+        repo = self.make_repo("cli-repo")
+        self.commit_at(repo, "2025-05-05T11:00:00+08:00", "a.py", "hello card")
+        code, out = self.run_cli("--year", "2025", "--html", "-")
+        self.assertEqual(code, 0)
+        self.assertTrue(out.startswith("<!doctype html>"))
 
     def test_author_filter_multiple_emails(self) -> None:
         repo = self.make_repo("cli-repo", email="a@x.com")

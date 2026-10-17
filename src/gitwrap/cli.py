@@ -9,6 +9,7 @@ from pathlib import Path
 
 from . import __version__
 from .collector import collect, default_email
+from .card import render_html
 from .render import render
 from .stats import build, pick_year
 
@@ -41,8 +42,12 @@ def build_parser() -> argparse.ArgumentParser:
                         help="repository or directory to scan (repeatable; default: cwd)")
     parser.add_argument("--depth", type=int, default=4,
                         help="max depth when searching directories for repos (default: 4)")
-    parser.add_argument("--json", action="store_true", dest="as_json",
+    output = parser.add_mutually_exclusive_group()
+    output.add_argument("--json", action="store_true", dest="as_json",
                         help="emit machine-readable JSON instead of the report")
+    output.add_argument("--html", type=str, default=None, metavar="FILE",
+                        help="write a shareable, self-contained HTML card to FILE "
+                             "('-' for stdout)")
     parser.add_argument("--no-color", action="store_true",
                         help="disable colored output")
     parser.add_argument("--ascii", action="store_true",
@@ -129,6 +134,19 @@ def main(argv: list[str] | None = None) -> int:
     if args.as_json:
         json.dump(stats_to_json(st), sys.stdout, indent=2, ensure_ascii=False)
         sys.stdout.write("\n")
+        return 0
+
+    if args.html is not None:
+        page = render_html(st)
+        if args.html == "-":
+            sys.stdout.write(page)
+            return 0
+        try:
+            Path(args.html).write_text(page, encoding="utf-8")
+        except OSError as exc:
+            print(f"gitwrap: cannot write {args.html}: {exc.strerror}", file=sys.stderr)
+            return 2
+        print(f"gitwrap: wrote {args.html}")
         return 0
 
     color = not args.no_color and sys.stdout.isatty()

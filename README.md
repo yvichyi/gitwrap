@@ -108,6 +108,7 @@ gitwrap --year 2026         # a specific year
 gitwrap --author a@x.com,b@y.com   # multiple identities (changed jobs? changed emails?)
 gitwrap ~/projects          # aggregate every repo under a folder
 gitwrap --json              # machine-readable output
+gitwrap --html card.html    # shareable single-file HTML card (light/dark, phone-friendly)
 gitwrap --ascii             # pure-ASCII glyphs for legacy consoles
 gitwrap --no-color          # plain text
 ```
@@ -127,7 +128,7 @@ Measured end-to-end on a synthetic repo of **10,000 commits: 0.23 s** (budget: 3
 ```bash
 git clone https://github.com/yvichyi/gitwrap
 cd gitwrap
-python -m unittest discover -s tests -v   # 26 tests, no network needed
+python -m unittest discover -s tests -v   # 30 tests, no network needed
 ```
 
 ## License
