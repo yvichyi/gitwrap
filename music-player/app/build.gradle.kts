@@ -60,6 +60,8 @@ tasks.withType<Test>().configureEach {
     // Test runs aren't worth keeping in the build cache: hundreds of screenshots a run, and a
     // rerun is what's wanted anyway.
     outputs.cacheIf { false }
+    // Backdrops follow the local time; screenshots are taken at a fixed one, in the evening.
+    systemProperty("lanyin.fixedHour", "18.5")
 }
 
 kotlin {

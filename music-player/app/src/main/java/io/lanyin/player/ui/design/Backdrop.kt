@@ -59,6 +59,7 @@ fun Backdrop(
     val settling by remember { androidx.compose.runtime.derivedStateOf { energy > 0.01f } }
     val clock = rememberFrameClock(animated && (playing || settling))
     val measurer = if (style.backdrop == BackdropKind.Grid || style.backdrop == BackdropKind.Film) androidx.compose.ui.text.rememberTextMeasurer() else null
+    val hour by rememberHour()
     val audio = remember { BackdropAudio() }
     // A layer of its own, so redrawing the backdrop doesn't re-record what sits on it.
     Canvas(modifier.graphicsLayer()) {
@@ -66,7 +67,7 @@ fun Backdrop(
         val e = energy
         val page = !live
         val heard = if (feed != null && live) audio.also { it.read(feed, t, e) } else null
-        drawBackdropFrame(style, t, e, page, heard, progress(), trackNumber, measurer)
+        drawBackdropFrame(style, t, e, page, heard, progress(), trackNumber, measurer, hour)
     }
 }
 
@@ -83,21 +84,23 @@ internal fun DrawScope.drawBackdropFrame(
     progress: Float,
     trackNumber: Int?,
     measurer: androidx.compose.ui.text.TextMeasurer?,
+    /** The local time, for the themes that follow it; see [TimeOfDay]. */
+    hour: Float = 18.5f,
 ) {
     val wide = size.width > size.height
     when (style.backdrop) {
         BackdropKind.Ink -> {
-            drawInk(style, t, page, heard)
+            drawInk(style, t, page, heard, hour)
             if (!page && wide) drawInkWildlife(style, t, heard)
         }
-        BackdropKind.Neon -> if (page) drawNightWall(style) else drawNightStreet(style, t, heard)
+        BackdropKind.Neon -> if (page) drawNightWall(style) else drawNightStreet(style, t, heard, hour)
         BackdropKind.Dusk -> if (page) {
             drawDuskPaper(style)
         } else {
             // Portrait: the sea under the photo, the sun behind its edge. Landscape: the sea
             // under the stage, the sun at the far end.
             val horizon = if (wide) 0.84f else 0.5f
-            drawDuskSky(style, t, e, heard, progress, horizon, sunAt = if (wide) 0.9f else 0.86f, sunSize = if (wide) 0.2f else 0.15f)
+            drawDuskSky(style, t, e, heard, progress, horizon, sunAt = if (wide) 0.9f else 0.86f, sunSize = if (wide) 0.2f else 0.15f, hour = hour)
             drawDuskEvening(style, t, heard, size.height * horizon)
         }
         BackdropKind.Grid -> {
@@ -219,13 +222,16 @@ private fun DrawScope.glowBlob(color: Color, center: Offset, radius: Float) {
     drawCircle(Brush.radialGradient(listOf(color, color.copy(alpha = 0f)), center, radius), radius, center)
 }
 
-private fun DrawScope.drawInk(style: LanyinStyle, t: Float, page: Boolean, audio: BackdropAudio? = null) {
+private fun DrawScope.drawInk(style: LanyinStyle, t: Float, page: Boolean, audio: BackdropAudio? = null, hour: Float = 12f) {
     val c = style.colors
     val w = size.width
     val h = size.height
     drawRect(c.bg)
     val swell = 1f + 0.03f * sin(t * 0.4f) + 0.08f * (audio?.bass ?: 0f)
     glowBlob(c.content.copy(alpha = if (style.dark) 0.05f else 0.045f), Offset(w * 0.85f, h * 0.12f), w * 0.8f * swell)
+    // At night a moon, painted as ink paintings paint it: the wash goes round it and the paper is left.
+    val night = nightness(hour)
+    if (night > 0f && !page) drawInkMoon(style, Offset(w * (if (w > h) 0.78f else 0.8f), h * (if (w > h) 0.2f else 0.1f)), minOf(w, h) * 0.07f, night)
     if (audio != null) drawInkBlooms(style, t, audio)
     if (page) return
     if (w <= h) {
@@ -251,6 +257,21 @@ private fun DrawScope.drawInk(style: LanyinStyle, t: Float, page: Boolean, audio
             Offset(x, h * 0.72f), Size(w * 0.6f, h * 0.16f),
         )
     }
+}
+
+/**
+ * 烘云托月: a ring of ink wash round the moon, the moon itself the paper left blank (by night,
+ * a disc a shade lighter than the dark); [night] fades it in.
+ */
+private fun DrawScope.drawInkMoon(style: LanyinStyle, at: Offset, r: Float, night: Float) {
+    val ink = style.colors.content
+    drawCircle(
+        Brush.radialGradient(0f to Color.Transparent, 0.32f to ink.copy(alpha = 0.10f * night), 0.55f to ink.copy(alpha = 0.05f * night), 1f to Color.Transparent, center = at, radius = r * 3.2f),
+        r * 3.2f, at,
+    )
+    drawCircle(style.colors.bg, r, at)
+    if (style.dark) drawCircle(ink.copy(alpha = 0.10f * night), r, at)
+    drawCircle(ink.copy(alpha = 0.16f * night), r, at, style = Stroke(0.8f * density))
 }
 
 /** 墨's three ridges, nearest last. They stand still, so they're traced once for a size, not every frame. */

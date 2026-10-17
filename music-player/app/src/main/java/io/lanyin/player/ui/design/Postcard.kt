@@ -57,6 +57,36 @@ object Airmail {
 /** The stamps' colours, a set: vermilion, sea blue, olive, plum. */
 val StampInks = listOf(Color(0xFFCF5634), Color(0xFF2F5D8A), Color(0xFF6E8B4E), Color(0xFF8A4A6E))
 
+/** The light-mode sky through the day: dawn, day, evening (the golden hour) and late twilight. */
+private val dawn = arrayOf(0f to Color(0xFFCAD3E6), 0.34f to Color(0xFFE6D0E0), 0.62f to Color(0xFFF7D6CC), 0.86f to Color(0xFFFBE2C8), 1f to Color(0xFFFCE6C4))
+private val noon = arrayOf(0f to Color(0xFFA9C8E8), 0.34f to Color(0xFFC6DCF0), 0.62f to Color(0xFFDCE8F2), 0.86f to Color(0xFFEDF0EE), 1f to Color(0xFFF4EFE2))
+private val twilight = arrayOf(0f to Color(0xFF8E95B9), 0.34f to Color(0xFFADA2C4), 0.62f to Color(0xFFD7B3BE), 0.86f to Color(0xFFEDB9A6), 1f to Color(0xFFF1B08E))
+
+/** One frame's sky, kept from frame to frame and worked out again only when the minute or the mode changes. */
+private object SkyNow {
+    private var key = -1
+    private var stops: Array<Pair<Float, Color>> = arrayOf()
+    fun at(hour: Float, dark: Boolean): Array<Pair<Float, Color>> {
+        val k = (hour * 60).toInt() * 2 + if (dark) 1 else 0
+        if (k != key) {
+            key = k
+            stops = if (dark) blueHour else lightSky(hour)
+        }
+        return stops
+    }
+}
+
+/** The light-mode sky at [hour], blending from one part of the day into the next over an hour or so. */
+private fun lightSky(hour: Float): Array<Pair<Float, Color>> {
+    // Waypoints round the clock; between two, the sky is the mix of them.
+    val points = listOf(0f to twilight, 5f to twilight, 6.5f to dawn, 8.5f to noon, 15.5f to noon, 17.5f to goldenHour, 19.5f to goldenHour, 21f to twilight, 24f to twilight)
+    val i = points.indexOfLast { it.first <= hour }.coerceIn(0, points.size - 2)
+    val (h0, a) = points[i]
+    val (h1, b) = points[i + 1]
+    val f = if (h1 > h0) ((hour - h0) / (h1 - h0)).coerceIn(0f, 1f) else 0f
+    return Array(a.size) { k -> a[k].first to lerp(a[k].second, b[k].second, f) }
+}
+
 private val blueHour = arrayOf(0f to Color(0xFF0D1227), 0.38f to Color(0xFF1C2046), 0.66f to Color(0xFF382B57), 0.86f to Color(0xFF6B3E62), 1f to Color(0xFFB4626A))
 private val goldenHour = arrayOf(0f to Color(0xFFD5DEEA), 0.34f to Color(0xFFE6D5DF), 0.62f to Color(0xFFF5CDB8), 0.86f to Color(0xFFF8C79C), 1f to Color(0xFFF6B486))
 
@@ -110,23 +140,25 @@ internal fun DrawScope.drawDuskPaper(style: LanyinStyle) {
  * [horizon] is where the sea starts, as a fraction of the height; the sea fades into the paper
  * below it so what stands there stays readable.
  */
-internal fun DrawScope.drawDuskSky(style: LanyinStyle, t: Float, e: Float, audio: BackdropAudio?, progress: Float, horizon: Float, sunAt: Float, sunSize: Float) {
+internal fun DrawScope.drawDuskSky(style: LanyinStyle, t: Float, e: Float, audio: BackdropAudio?, progress: Float, horizon: Float, sunAt: Float, sunSize: Float, hour: Float = 18.5f) {
     val c = style.colors
     val dark = style.dark
     val w = size.width
     val h = size.height
     val sea = h * horizon
+    val sky = SkyNow.at(hour, dark)
     drawRect(c.bg)
-    drawRect(Brush.verticalGradient(*skyStops(dark), endY = sea), size = Size(w, sea))
+    drawRect(Brush.verticalGradient(*sky, endY = sea), size = Size(w, sea))
     // The sea: darker than the sky, holding a little of its warmth at the horizon, fading to paper.
     val water = if (dark) Color(0xFF1B2142) else Color(0xFFC3CAD6)
     val seaEnd = sea + (h - sea) * (if (dark) 0.55f else 0.4f)
-    drawRect(Brush.verticalGradient(0f to lerp(water, skyStops(dark).last().second, 0.45f), 0.3f to water, 1f to c.bg, startY = sea, endY = seaEnd), Offset(0f, sea), Size(w, seaEnd - sea))
+    drawRect(Brush.verticalGradient(0f to lerp(water, sky.last().second, 0.45f), 0.3f to water, 1f to c.bg, startY = sea, endY = seaEnd), Offset(0f, sea), Size(w, seaEnd - sea))
     // Night coming on from the top as the song goes.
     val p = if (progress.isFinite()) progress.coerceIn(0f, 1f) else 0f
     drawRect(Brush.verticalGradient(listOf(Color(0xFF141A3A).copy(alpha = (if (dark) 0.2f else 0.28f) * p), Color.Transparent), endY = sea), size = Size(w, sea))
-    if (dark || p > 0.6f) {
-        val shown = if (dark) 1f else (p - 0.6f) / 0.4f
+    val night = nightness(hour)
+    if (dark || p > 0.6f || night > 0f) {
+        val shown = if (dark) 1f else maxOf((p - 0.6f) / 0.4f, night * 0.8f).coerceIn(0f, 1f)
         for (i in 0 until 22) {
             val tw = 0.55f + 0.45f * sin(t * (1.1f + hash01(i, 51)) + i)
             drawCircle(Color.White.copy(alpha = 0.6f * shown * tw * (0.4f + 0.6f * hash01(i, 55))), (0.6f + 0.8f * hash01(i, 52)) * density, Offset(w * hash01(i, 53), sea * 0.55f * hash01(i, 54)))

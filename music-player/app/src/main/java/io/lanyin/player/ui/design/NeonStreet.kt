@@ -54,7 +54,13 @@ internal fun DrawScope.drawNightWall(style: LanyinStyle) {
  * markings run toward you, half a line a beat, and the signs and the sun lie in it broken up by
  * ripples. Rain falls through it all.
  */
-internal fun DrawScope.drawNightStreet(style: LanyinStyle, t: Float, audio: BackdropAudio?) {
+internal fun DrawScope.drawNightStreet(style: LanyinStyle, t: Float, audio: BackdropAudio?, hour: Float = 21f) {
+    // Small hours: most windows dark and the road quiet.
+    val late = when {
+        hour < 5f -> 1f
+        hour >= 23f -> hour - 23f
+        else -> 0f
+    }
     val c = style.colors
     val w = size.width
     val h = size.height
@@ -70,11 +76,11 @@ internal fun DrawScope.drawNightStreet(style: LanyinStyle, t: Float, audio: Back
         size = Size(w, horizon),
     )
     if (wide) drawStreetSun(style, Offset(vx, horizon), h * 0.24f)
-    drawSkylineWindows(style, horizon, vx, audio)
+    drawSkylineWindows(style, horizon, vx, audio, late)
     // The street.
     drawRect(Brush.verticalGradient(listOf(lerp(c.bgDeep, Color.Black, 0.35f), c.bg), startY = horizon, endY = h), Offset(0f, horizon), Size(w, h - horizon))
     drawLine(lerp(c.accentAlt, c.accent, 0.5f).copy(alpha = 0.35f + 0.5f * pulse), Offset(0f, horizon), Offset(w, horizon), (1f + 2f * pulse) * density)
-    drawLanes(style, horizon, vx, audio, t)
+    drawLanes(style, horizon, vx, audio, t, late)
     // The near buildings, their bases running down to the street's edges.
     val leftEdge = w * if (wide) 0.12f else 0.17f
     val rightEdge = w - w * if (wide) 0.07f else 0.17f
@@ -118,7 +124,7 @@ private fun DrawScope.drawStreetReflection(color: Color, x: Float, horizon: Floa
 }
 
 /** The far skyline, its windows lit by the spectrum: the bass to the left, the treble to the right. */
-private fun DrawScope.drawSkylineWindows(style: LanyinStyle, horizon: Float, vx: Float, audio: BackdropAudio?) {
+private fun DrawScope.drawSkylineWindows(style: LanyinStyle, horizon: Float, vx: Float, audio: BackdropAudio?, late: Float = 0f) {
     val c = style.colors
     NeonBatch.windows.forEach { it.reset() }
     val w = size.width
@@ -147,7 +153,8 @@ private fun DrawScope.drawSkylineWindows(style: LanyinStyle, horizon: Float, vx:
                 val seed = hash01(i * 37 + row * 7 + col, 63)
                 // Some windows always lit; more come on as the band rises, from the bottom up.
                 val rise = (horizon - wy) / bh
-                val on = seed < 0.18f || (level > 0.05f && seed < 0.18f + level * 0.9f && rise < 0.25f + level)
+                val always = 0.18f * (1f - 0.6f * late)
+                val on = seed < always || (level > 0.05f && seed < always + level * 0.9f && rise < 0.25f + level)
                 if (on) {
                     val tint = if (hash01(i * 13 + row + col, 64) < 0.75f) 0 else if (seed < 0.09f) 1 else 2
                     NeonBatch.windows[tint * 4 + step].apply {
@@ -180,7 +187,7 @@ private fun DrawScope.drawSkylineWindows(style: LanyinStyle, horizon: Float, vx:
 }
 
 /** The lane markings, running toward you half a line a beat, and a band of light down them on each beat. */
-private fun DrawScope.drawLanes(style: LanyinStyle, horizon: Float, vx: Float, audio: BackdropAudio?, t: Float) {
+private fun DrawScope.drawLanes(style: LanyinStyle, horizon: Float, vx: Float, audio: BackdropAudio?, t: Float, late: Float = 0f) {
     val c = style.colors
     val w = size.width
     val h = size.height
@@ -192,7 +199,7 @@ private fun DrawScope.drawLanes(style: LanyinStyle, horizon: Float, vx: Float, a
         val z1 = (j + scroll + 0.45f) / n
         if (z0 > 1f) continue
         fun at(z: Float) = Offset(vx + (bottomX - vx) * z.pow(2f), horizon + (h - horizon) * z.pow(2f))
-        drawLine(Color(0xFFE9E2D0).copy(alpha = 0.10f + 0.3f * z0), at(z0), at(z1.coerceAtMost(1f)), (1f + 5f * z0) * density, StrokeCap.Butt)
+        drawLine(Color(0xFFE9E2D0).copy(alpha = (0.10f + 0.3f * z0) * (1f - 0.45f * late)), at(z0), at(z1.coerceAtMost(1f)), (1f + 5f * z0) * density, StrokeCap.Butt)
     }
     // The edges of the road, to the vanishing point.
     for (edgeX in listOf(-w * 0.2f, w * 1.2f)) {
