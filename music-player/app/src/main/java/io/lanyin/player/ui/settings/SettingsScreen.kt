@@ -153,7 +153,7 @@ fun SettingsScreen(
                         scope.launch { repository.setFollowCover(it) }
                     }
                     Hairline()
-                    ToggleRow("封面按主题重绘", "点用彩色灯点、报用彩色网点、游用像素画出封面；关掉后封面保持原样", settings.coverMedium) {
+                    ToggleRow("封面按主题重绘", "点用灯点、报用网点、游用四色像素画出封面；关掉后封面保持原样", settings.coverMedium) {
                         scope.launch { repository.setCoverMedium(it) }
                     }
                     if (style.edge == EdgeKind.Hairline) Hairline()

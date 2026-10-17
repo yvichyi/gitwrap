@@ -15,8 +15,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import io.lanyin.player.ui.theme.Lanyin
@@ -104,9 +102,9 @@ internal fun DrawScope.drawStamp(style: LanyinStyle, beat: Float) {
 }
 
 /**
- * A cover printed as a newspaper photo: dots on a 45° screen, each as large as the picture is
- * dark (or strongly coloured) there and inked in its colour there, as the colour pages are
- * printed. With 封面按主题重绘 off, the cover as it is.
+ * A cover printed as a newspaper photo: ink dots on a 45° screen, each as large as the picture is
+ * dark there (as light, on the night edition's dark stock). With 封面按主题重绘 off, the cover
+ * as it is.
  */
 @Composable
 fun HalftoneCover(url: String?, seed: Int, modifier: Modifier = Modifier) {
@@ -116,10 +114,10 @@ fun HalftoneCover(url: String?, seed: Int, modifier: Modifier = Modifier) {
     }
     val style = Lanyin.style
     val n = 56
-    val cells = rememberCoverPixels(url, seed, n)
+    val cells = rememberCoverLuminance(url, seed, n)
     Canvas(modifier) {
         drawRect(style.colors.surface)
-        drawColorHalftone(style, 44f, cells, n)
+        drawHalftone(style, lines = 44f) { u, v -> cells.sampleCells(n, u, v) }
     }
 }
 
@@ -129,43 +127,17 @@ fun rememberHalftonePainter(url: String?, seed: Int): androidx.compose.ui.graphi
     if (!LocalCoverMedium.current) return rememberCoverPainter(url, 480)
     val style = Lanyin.style
     val n = 40
-    val cells = rememberCoverPixels(url, seed, n)
+    val cells = rememberCoverLuminance(url, seed, n)
     return androidx.compose.runtime.remember(cells, style) {
         object : androidx.compose.ui.graphics.painter.Painter() {
             override val intrinsicSize: Size get() = Size.Unspecified
             override fun DrawScope.onDraw() {
                 drawRect(style.colors.surface)
-                drawColorHalftone(style, 26f, cells, n)
+                drawHalftone(style, lines = 26f) { u, v -> cells.sampleCells(n, u, v) }
             }
         }
     }
 }
-
-/**
- * [cells] (n×n ARGB) in colour halftone: a strongly coloured patch prints as large dots of its
- * colour even when it's light, so a cover keeps its colours; the ink is pulled a little towards
- * the paper's black, as cheap colour print is.
- */
-private fun DrawScope.drawColorHalftone(style: LanyinStyle, lines: Float, cells: IntArray, n: Int) {
-    val ink = style.colors.content
-    drawHalftone(
-        style, lines,
-        inkAt = { u, v ->
-            val c = Color(cells.nearestCell(n, u, v))
-            val lum = luminance(c.toArgb())
-            // Pale colours would vanish on the paper: darken them towards the ink.
-            lerp(c, ink, (0.12f + (lum - 0.7f).coerceAtLeast(0f) * 1.2f).coerceIn(0f, 0.6f))
-        },
-    ) { u, v ->
-        val c = Color(cells.nearestCell(n, u, v))
-        val hi = maxOf(c.red, c.green, c.blue)
-        val sat = if (hi <= 0f) 0f else (hi - minOf(c.red, c.green, c.blue)) / hi
-        val l = cells.sampleLuminance(n, u, v)
-        if (style.dark) l else l * (1f - 0.55f * sat)
-    }
-}
-
-private fun IntArray.sampleLuminance(n: Int, u: Float, v: Float): Float = luminance(nearestCell(n, u, v))
 
 /**
  * Halftone over the whole draw area from [lightness] (0 black … 1 white at a point in 0..1 on
@@ -175,7 +147,6 @@ internal fun DrawScope.drawHalftone(
     style: LanyinStyle,
     lines: Float,
     ink: Color = style.colors.content,
-    inkAt: ((Float, Float) -> Color)? = null,
     lightness: (Float, Float) -> Float,
 ) {
     val w = size.width
@@ -193,7 +164,7 @@ internal fun DrawScope.drawHalftone(
             // Darkness drives the dot's area, with a little contrast so the paper stays clean.
             val d = (((if (style.dark) l else 1f - l) - 0.06f) * 1.15f).coerceIn(0f, 1f)
             val r = pitch * 0.62f * sqrt(d)
-            if (r > 0.35f) drawCircle(inkAt?.invoke((x / w).coerceIn(0f, 1f), (y / h).coerceIn(0f, 1f)) ?: ink, r, Offset(x, y))
+            if (r > 0.35f) drawCircle(ink, r, Offset(x, y))
         }
     }
 }
