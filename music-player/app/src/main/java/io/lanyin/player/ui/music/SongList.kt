@@ -152,6 +152,9 @@ fun SongListScreen(
                             modifier = Modifier.padding(start = m, end = m - 10.dp),
                         )
                     }
+                    if (list.isNotEmpty() && onEndReached == null && !loadingMore && !moreFailed) {
+                        item(key = "end") { io.lanyin.player.ui.design.ListEnd(list.size) }
+                    }
                     if (onEndReached != null || loadingMore || moreFailed) {
                         item(key = "more-${list.size}") {
                             if (onEndReached != null) LaunchedEffect(list.size) { onEndReached() }

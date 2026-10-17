@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -290,4 +291,59 @@ internal fun statusKindOf(text: String, hasAction: Boolean): StatusKind = when {
     text.startsWith("正在") -> StatusKind.Loading
     hasAction -> StatusKind.Failed
     else -> StatusKind.Empty
+}
+
+/**
+ * The foot of a list once everything is there, in the theme's hand: 「— 终 —」 and the seal (墨),
+ * LAST CALL in a dim tube (霓), the signature on a postcard (暮), a black bar with the count (格),
+ * THE END (影), a dotted line run out to the red dot (点), ■ STOP on the display (机), （本版完）
+ * (报), - THE END - (游), a chrome sparkle (酸). [count] is how many there were.
+ */
+@Composable
+fun ListEnd(count: Int, modifier: Modifier = Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    Box(modifier.fillMaxWidth().padding(top = 18.dp, bottom = 28.dp), contentAlignment = Alignment.Center) {
+        when (style.backdrop) {
+            BackdropKind.Ink -> androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("—　终　—", style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Serif, fontSize = fixed(13f), letterSpacing = 0.2.em), color = c.muted)
+                Box(Modifier.padding(start = 8.dp).size(16.dp).background(c.accentAlt, RoundedCornerShape(2.dp)), contentAlignment = Alignment.Center) {
+                    Text("澜", style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Serif, fontSize = fixed(9f)), color = c.bg)
+                }
+            }
+            BackdropKind.Neon -> NeonText("LAST CALL", TextStyle(fontFamily = TiltNeonFamily, fontSize = fixed(15f), letterSpacing = 0.12.em), c.accent.copy(alpha = 0.55f), ignite = false)
+            BackdropKind.Dusk -> Text(
+                "— wish you were here · $count 首 —",
+                style = TextStyle(fontFamily = style.display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = fixed(13f)), color = c.muted,
+            )
+            BackdropKind.Grid -> Text(
+                "END · ${"%02d".format(count)} ITEMS", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(11f), letterSpacing = 0.1.em),
+                color = c.surface, modifier = Modifier.background(c.outline).padding(horizontal = 10.dp, vertical = 3.dp),
+            )
+            BackdropKind.Film -> androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("THE END", style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Serif, fontSize = fixed(18f), letterSpacing = 0.3.em), color = Color(0xFFEDE6DA).copy(alpha = 0.85f))
+                Text("REEL 1 · $count SHOTS", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9f)), color = FilmStamp, modifier = Modifier.padding(top = 2.dp))
+            }
+            BackdropKind.Dot -> Canvas(Modifier.size(160.dp, 10.dp)) {
+                val pitch = 7.dp.toPx()
+                var x = pitch / 2f
+                while (x < size.width - pitch) {
+                    drawCircle(c.content.copy(alpha = 0.35f), 1.6.dp.toPx(), Offset(x, size.height / 2f))
+                    x += pitch
+                }
+                drawCircle(c.accentAlt, 3.dp.toPx(), Offset(size.width - pitch / 2f, size.height / 2f))
+            }
+            BackdropKind.Device -> Text(
+                "■ STOP · ${"%02d".format(count)} TRK", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(11f), letterSpacing = 0.1.em),
+                color = c.accent, modifier = Modifier.background(Color(0xFF1C1C1F), RoundedCornerShape(6.dp)).padding(horizontal = 10.dp, vertical = 4.dp),
+            )
+            BackdropKind.Paper -> Text("（本版完）", style = TextStyle(fontFamily = style.display, fontSize = fixed(13f), letterSpacing = 0.1.em), color = c.muted)
+            BackdropKind.Game -> Text("- THE END -", style = TextStyle(fontFamily = style.display, fontSize = fixed(13f)), color = c.content)
+            BackdropKind.Acid -> androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                Canvas(Modifier.size(12.dp)) { drawPath(starPath(center, size.minDimension / 2f, size.minDimension / 9f, 4), ChromeBrush) }
+                Text("  that's all  ", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(11f), brush = ChromeBrush))
+                Canvas(Modifier.size(12.dp)) { drawPath(starPath(center, size.minDimension / 2f, size.minDimension / 9f, 4), ChromeBrush) }
+            }
+        }
+    }
 }
