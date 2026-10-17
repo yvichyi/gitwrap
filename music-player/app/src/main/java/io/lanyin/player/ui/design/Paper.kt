@@ -31,7 +31,7 @@ internal fun DrawScope.drawNewsprint(style: LanyinStyle, page: Boolean) {
     val h = size.height
     drawRect(c.bg)
     drawRect(ShaderBrush(ImageShader(newsprintTile(density), TileMode.Repeated, TileMode.Repeated)), alpha = if (style.dark) 0.05f else 0.07f)
-    drawRect(ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)), alpha = if (style.dark) 0.05f else 0.06f)
+    drawRect(grainBrush, alpha = if (style.dark) 0.05f else 0.06f)
     // A crease that stays put while a page scrolls under it would read as a glitch, and in
     // landscape it would run through the middle of the lyrics.
     if (page || w > h) return

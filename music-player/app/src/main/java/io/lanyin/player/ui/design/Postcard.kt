@@ -20,11 +20,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -74,7 +71,7 @@ internal fun duskSkyBrush(dark: Boolean, top: Float, height: Float): Brush = Bru
 
 /** Film grain over the whole of it, a little heavier at night. */
 private fun DrawScope.drawGrain(dark: Boolean, strength: Float = 1f) {
-    drawRect(ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)), alpha = (if (dark) 0.12f else 0.09f) * strength)
+    drawRect(grainBrush, alpha = (if (dark) 0.12f else 0.09f) * strength)
 }
 
 /**

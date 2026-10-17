@@ -13,8 +13,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
+// The same graphics mode as the other drawing tests in this package, so they can share a JVM.
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35])
 class FrameClockTest {
     @get:Rule val compose = createComposeRule()
@@ -33,6 +36,24 @@ class FrameClockTest {
         assertEquals(0f, clock.floatValue, 0f)
         covered = false
         // Let the write reach the composition before running the frames.
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(1_000)
+        assertTrue("clock ${clock.floatValue}", clock.floatValue > 0.5f)
+    }
+
+    @Test
+    fun `with motion reduced the clock stands still, and runs again when it isn't`() {
+        var reduced by mutableStateOf(true)
+        lateinit var clock: FloatState
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            CompositionLocalProvider(LocalReduceMotion provides reduced) {
+                clock = rememberFrameClock(running = true)
+            }
+        }
+        compose.mainClock.advanceTimeBy(1_000)
+        assertEquals(0f, clock.floatValue, 0f)
+        reduced = false
         compose.waitForIdle()
         compose.mainClock.advanceTimeBy(1_000)
         assertTrue("clock ${clock.floatValue}", clock.floatValue > 0.5f)

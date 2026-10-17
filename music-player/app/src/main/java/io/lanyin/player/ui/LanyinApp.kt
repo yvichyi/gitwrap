@@ -221,7 +221,8 @@ fun LanyinApp(
                 ) {
                     // Each theme has its own way between pages.
                     val backdrop = Lanyin.style.backdrop
-                    val motion = remember(backdrop) { pageMotion(backdrop) }
+                    val reduced = io.lanyin.player.ui.design.LocalReduceMotion.current
+                    val motion = remember(backdrop, reduced) { if (reduced) quietPageMotion else pageMotion(backdrop) }
                     NavHost(
                         navController = navController,
                         startDestination = HomeRoute,

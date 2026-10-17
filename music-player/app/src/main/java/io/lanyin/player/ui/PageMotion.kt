@@ -21,6 +21,9 @@ import kotlin.math.floor
 /** How pages come and go: forward ([enter], [exit]) and back ([popEnter], [popExit]). */
 internal class PageMotion(val enter: EnterTransition, val exit: ExitTransition, val popEnter: EnterTransition, val popExit: ExitTransition)
 
+/** With motion reduced: a short fade, whatever the theme. */
+internal val quietPageMotion = PageMotion(fadeIn(tween(150)), fadeOut(tween(100)), fadeIn(tween(150)), fadeOut(tween(100)))
+
 /** An easing that moves in [n] jumps, as a game's screen does. */
 private fun stepped(n: Int) = Easing { f -> floor(f * n) / n }
 

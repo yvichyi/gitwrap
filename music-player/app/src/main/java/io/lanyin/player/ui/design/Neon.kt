@@ -79,6 +79,9 @@ fun NeonText(
     textAlign: TextAlign? = null,
 ) {
     val density = LocalDensity.current
+    // No flicker when motion is reduced: the sign is simply lit.
+    @Suppress("NAME_SHADOWING")
+    val ignite = ignite && !LocalReduceMotion.current
     val on = remember { Animatable(if (ignite) 0f else 1f) }
     LaunchedEffect(Unit) {
         if (!ignite) return@LaunchedEffect

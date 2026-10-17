@@ -6,11 +6,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -23,7 +20,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.lerp
 import io.lanyin.player.ui.theme.FilmStamp
 import io.lanyin.player.ui.theme.LanyinStyle
@@ -69,7 +65,7 @@ internal fun DrawScope.drawFilm(
     // Grain: a new frame of it twelve times a second on the player.
     val frame = if (page) 0 else (t * 12f).toInt()
     translate(-96f * hash01(frame, 81), -96f * hash01(frame, 82)) {
-        drawRect(ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)), Offset.Zero, Size(w + 96f, h + 96f), alpha = if (page) 0.07f else 0.1f)
+        drawRect(grainBrush, Offset.Zero, Size(w + 96f, h + 96f), alpha = if (page) 0.07f else 0.1f)
     }
     if (page) return
     // Dust and the odd scratch.
@@ -165,7 +161,7 @@ internal fun DrawScope.filmCover(style: LanyinStyle, seed: Int) {
         }
     }
     drawRect(Brush.radialGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.45f), center = Offset(w / 2f, h / 2f), radius = maxOf(w, h) * 0.75f))
-    drawRect(ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)), alpha = 0.12f)
+    drawRect(grainBrush, alpha = 0.12f)
 }
 
 /**

@@ -213,6 +213,14 @@ fun SettingsScreen(
                         scope.launch { repository.setKeepScreenOnInLandscape(it) }
                     }
                     Hairline()
+                    ToggleRow("减少动效", "背景、唱片和装饰动画停下来，霓虹不再闪烁，也更省电；系统里关掉了动画时会自动这样", settings.reduceMotion) {
+                        scope.launch { repository.setReduceMotion(it) }
+                    }
+                    Hairline()
+                    ToggleRow("触感反馈", "按下时轻轻震一下，每个主题的手感不同；跟随系统的触感设置", settings.haptics) {
+                        scope.launch { repository.setHaptics(it) }
+                    }
+                    Hairline()
                     ToggleRow("只在 Wi-Fi 下下载", "用流量时，下载会等连上 Wi-Fi 再开始", settings.downloadOnWifiOnly) {
                         scope.launch { repository.setDownloadOnWifiOnly(it) }
                     }

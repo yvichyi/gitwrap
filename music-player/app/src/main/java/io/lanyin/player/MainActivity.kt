@@ -11,7 +11,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.lanyin.player.ui.LanyinApp
 import io.lanyin.player.ui.LocalAppServices
 import io.lanyin.player.ui.design.ActivityOrientationController
+import io.lanyin.player.ui.design.LocalHapticsOn
 import io.lanyin.player.ui.design.LocalOrientationController
+import io.lanyin.player.ui.design.LocalReduceMotion
+import io.lanyin.player.ui.design.systemAnimationsOff
 import io.lanyin.player.ui.theme.LanyinTheme
 
 class MainActivity : ComponentActivity() {
@@ -24,7 +27,12 @@ class MainActivity : ComponentActivity() {
             val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
             val orientation = remember { ActivityOrientationController(this) }
             settings?.let { s ->
-                CompositionLocalProvider(LocalOrientationController provides orientation, LocalAppServices provides container.services) {
+                CompositionLocalProvider(
+                    LocalOrientationController provides orientation,
+                    LocalAppServices provides container.services,
+                    LocalReduceMotion provides (s.reduceMotion || systemAnimationsOff()),
+                    LocalHapticsOn provides s.haptics,
+                ) {
                     LanyinTheme(theme = s.theme, mode = s.themeMode) {
                         LanyinApp(settings = s, settingsRepository = container.settings)
                     }

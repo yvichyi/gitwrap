@@ -57,6 +57,9 @@ tasks.withType<Test>().configureEach {
     providers.environmentVariable("ROBOLECTRIC_REPO_URL").orNull?.let {
         systemProperty("robolectric.dependency.repo.url", it)
     }
+    // Test runs aren't worth keeping in the build cache: hundreds of screenshots a run, and a
+    // rerun is what's wanted anyway.
+    outputs.cacheIf { false }
 }
 
 kotlin {

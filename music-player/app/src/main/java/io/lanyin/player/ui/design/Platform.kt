@@ -11,6 +11,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.FloatState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -60,26 +62,57 @@ val LocalOrientationController = staticCompositionLocalOf<OrientationController>
 val LocalFramesPaused = androidx.compose.runtime.compositionLocalOf { false }
 
 /**
- * Seconds that advance only while [running] (and the drawing can be seen; see
- * [LocalFramesPaused]), read in draw lambdas so animated backdrops redraw every frame without
+ * True when motion should be kept to what's needed: chosen in settings, or the system's animations
+ * are off. Frame clocks stand still (backdrops, meters, tickers, the turning record), neon lights
+ * without flickering and pages simply fade from one to the next.
+ */
+val LocalReduceMotion = androidx.compose.runtime.compositionLocalOf { false }
+
+/** Whether presses give a tap under the finger (see the 触感反馈 setting). */
+val LocalHapticsOn = androidx.compose.runtime.compositionLocalOf { false }
+
+/** Whether the system has animations turned off (developer options or accessibility), checked again each time the app comes back. */
+@Composable
+fun systemAnimationsOff(): Boolean {
+    var off by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(!android.animation.ValueAnimator.areAnimatorsEnabled()) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        off = !android.animation.ValueAnimator.areAnimatorsEnabled()
+        onPauseOrDispose { }
+    }
+    return off
+}
+
+/**
+ * Seconds that advance only while [running] (and the drawing can be seen, see
+ * [LocalFramesPaused]; and motion isn't reduced, see [LocalReduceMotion]), read in draw lambdas so animated backdrops redraw every frame without
  * recomposing anything.
  */
 @Composable
 fun rememberFrameClock(running: Boolean): FloatState {
     val seconds = remember { mutableFloatStateOf(0f) }
-    val live = running && !LocalFramesPaused.current
+    val live = running && !LocalFramesPaused.current && !LocalReduceMotion.current
     LaunchedEffect(live) {
         if (!live) return@LaunchedEffect
         var last = -1L
+        var pending = 0L
         while (isActive) {
             withFrameNanos { now ->
-                if (last >= 0) seconds.floatValue += (now - last) / 1_000_000_000f
+                if (last >= 0) pending += now - last
                 last = now
+                // On 120Hz screens and up, decoration moves every other frame: smooth enough for
+                // drifting clouds and rain, and half the drawing.
+                if (pending >= MIN_TICK_NANOS) {
+                    seconds.floatValue += pending / 1_000_000_000f
+                    pending = 0L
+                }
             }
         }
     }
     return seconds
 }
+
+/** The shortest step a frame clock takes: about 100 a second at most. */
+private const val MIN_TICK_NANOS = 10_000_000L
 
 /** The scopes needed to morph the mini player into the full player. */
 @OptIn(ExperimentalSharedTransitionApi::class)

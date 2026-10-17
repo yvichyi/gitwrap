@@ -29,11 +29,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -57,7 +54,7 @@ internal val GamePad = Color(0xFF2D2C33)
 /** 游: the console's grey case with the faint texture of moulded plastic. */
 internal fun DrawScope.drawGameCase(style: LanyinStyle) {
     drawRect(style.colors.bg)
-    drawRect(ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)), alpha = 0.05f)
+    drawRect(grainBrush, alpha = 0.05f)
 }
 
 /** Inside 游's screen the theme turns to the four greens of the original LCD. */

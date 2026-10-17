@@ -1,6 +1,7 @@
 package io.lanyin.player.ui.design
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -119,6 +120,7 @@ private fun DrawScope.drawStreetReflection(color: Color, x: Float, horizon: Floa
 /** The far skyline, its windows lit by the spectrum: the bass to the left, the treble to the right. */
 private fun DrawScope.drawSkylineWindows(style: LanyinStyle, horizon: Float, vx: Float, audio: BackdropAudio?) {
     val c = style.colors
+    NeonBatch.windows.forEach { it.reset() }
     val w = size.width
     val block = lerp(c.bg, Color.Black, 0.3f)
     val window = 2.dp.toPx()
@@ -134,6 +136,8 @@ private fun DrawScope.drawSkylineWindows(style: LanyinStyle, horizon: Float, vx:
         drawRect(block, Offset(x, top), Size(bw - 1.dp.toPx(), bh))
         val band = ((x / w) * 31).toInt().coerceIn(0, 31)
         val level = audio?.levels?.get(band) ?: 0f
+        // Brightness in four steps, so the windows of the whole skyline go down in a dozen paths.
+        val step = (level * 4f).toInt().coerceIn(0, 3)
         var wy = top + pitch
         var row = 0
         while (wy < horizon - pitch) {
@@ -145,8 +149,14 @@ private fun DrawScope.drawSkylineWindows(style: LanyinStyle, horizon: Float, vx:
                 val rise = (horizon - wy) / bh
                 val on = seed < 0.18f || (level > 0.05f && seed < 0.18f + level * 0.9f && rise < 0.25f + level)
                 if (on) {
-                    val tint = if (hash01(i * 13 + row + col, 64) < 0.75f) Color(0xFFFFD9A8) else if (seed < 0.09f) c.accentAlt else c.accent
-                    drawRect(tint.copy(alpha = 0.32f + 0.4f * level), Offset(wx, wy), Size(window, window * 1.3f))
+                    val tint = if (hash01(i * 13 + row + col, 64) < 0.75f) 0 else if (seed < 0.09f) 1 else 2
+                    NeonBatch.windows[tint * 4 + step].apply {
+                        moveTo(wx, wy)
+                        lineTo(wx + window, wy)
+                        lineTo(wx + window, wy + window * 1.3f)
+                        lineTo(wx, wy + window * 1.3f)
+                        close()
+                    }
                 }
                 wx += pitch
                 col++
@@ -156,6 +166,16 @@ private fun DrawScope.drawSkylineWindows(style: LanyinStyle, horizon: Float, vx:
         }
         x += bw
         i++
+    }
+    // The lit windows, a path for each tint and brightness.
+    for (k in NeonBatch.windows.indices) {
+        val level = (k % 4 + 0.5f) / 4f
+        val tint = when (k / 4) {
+            0 -> Color(0xFFFFD9A8)
+            1 -> c.accentAlt
+            else -> c.accent
+        }
+        drawPath(NeonBatch.windows[k], tint.copy(alpha = 0.32f + 0.4f * level))
     }
 }
 
@@ -222,10 +242,30 @@ private fun DrawScope.drawRain(style: LanyinStyle, t: Float, audio: BackdropAudi
     val heavy = 0.6f + 0.6f * (audio?.level ?: 0f)
     val len = 14.dp.toPx()
     val slant = 3.dp.toPx()
+    // Fainter and brighter drops, each lot one path.
+    val (faint, bright) = NeonBatch.rain
+    faint.reset()
+    bright.reset()
     for (i in 0 until drops) {
         val speed = h * (1.0f + 0.7f * hash01(i, 71))
         val y = ((t * speed + hash01(i, 72) * h * 1.3f) % (h * 1.3f)) - h * 0.15f
         val x = hash01(i, 73) * (w + slant * 4f) - slant * 2f + y / h * slant * 4f
-        drawLine(style.colors.content.copy(alpha = (0.05f + 0.07f * hash01(i, 74)) * heavy), Offset(x, y), Offset(x - slant, y + len), 1.dp.toPx(), StrokeCap.Round)
+        val path = if (hash01(i, 74) < 0.5f) faint else bright
+        path.moveTo(x, y)
+        path.lineTo(x - slant, y + len)
     }
+    val stroke = Stroke(1.dp.toPx(), cap = StrokeCap.Round)
+    drawPath(faint, style.colors.content.copy(alpha = 0.07f * heavy), style = stroke)
+    drawPath(bright, style.colors.content.copy(alpha = 0.11f * heavy), style = stroke)
+}
+
+/**
+ * Paths reused from frame to frame for what 霓 draws many of, so the rain and the lit windows go
+ * down as a few draws rather than hundreds, and nothing new is made each frame. Backdrops draw on
+ * the main thread, one at a time.
+ */
+private object NeonBatch {
+    val rain = Pair(Path(), Path())
+    /** Three tints (warm white, the two neons) by four brightness steps. */
+    val windows = Array(12) { Path() }
 }

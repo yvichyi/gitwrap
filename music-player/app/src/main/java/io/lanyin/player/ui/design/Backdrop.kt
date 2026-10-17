@@ -54,9 +54,11 @@ fun Backdrop(
         BackdropKind.Dot -> playing
         else -> true
     }
-    val clock = rememberFrameClock(animated)
-    val measurer = if (style.backdrop == BackdropKind.Grid || style.backdrop == BackdropKind.Film) androidx.compose.ui.text.rememberTextMeasurer() else null
     val energy by animateFloatAsState(if (playing) 1f else 0f, tween(1200), label = "energy")
+    // Paused, the scene settles and then holds still: no drawing while nothing is playing.
+    val settling by remember { androidx.compose.runtime.derivedStateOf { energy > 0.01f } }
+    val clock = rememberFrameClock(animated && (playing || settling))
+    val measurer = if (style.backdrop == BackdropKind.Grid || style.backdrop == BackdropKind.Film) androidx.compose.ui.text.rememberTextMeasurer() else null
     val audio = remember { BackdropAudio() }
     // A layer of its own, so redrawing the backdrop doesn't re-record what sits on it.
     Canvas(modifier.graphicsLayer()) {
@@ -64,33 +66,50 @@ fun Backdrop(
         val e = energy
         val page = !live
         val heard = if (feed != null && live) audio.also { it.read(feed, t, e) } else null
-        val wide = size.width > size.height
-        when (style.backdrop) {
-            BackdropKind.Ink -> {
-                drawInk(style, t, page, heard)
-                if (!page && wide) drawInkWildlife(style, t, heard)
-            }
-            BackdropKind.Neon -> if (page) drawNightWall(style) else drawNightStreet(style, t, heard)
-            BackdropKind.Dusk -> if (page) {
-                drawDuskPaper(style)
-            } else {
-                // Portrait: the sea under the photo, the sun behind its edge. Landscape: the sea
-                // under the stage, the sun at the far end.
-                val horizon = if (wide) 0.84f else 0.5f
-                drawDuskSky(style, t, e, heard, progress(), horizon, sunAt = if (wide) 0.9f else 0.86f, sunSize = if (wide) 0.2f else 0.15f)
-                drawDuskEvening(style, t, heard, size.height * horizon)
-            }
-            BackdropKind.Grid -> {
-                drawGridPaper(style, page, measurer, trackNumber)
-                if (!page && wide && trackNumber != null) drawGridPoster(style, t, heard)
-            }
-            BackdropKind.Film -> drawFilm(style, t, e, page, heard, if (page) null else measurer, trackNumber)
-            BackdropKind.Dot -> drawDotField(style, t, page, heard)
-            BackdropKind.Device -> drawDeviceCase(style, page)
-            BackdropKind.Paper -> drawNewsprint(style, page)
-            BackdropKind.Game -> drawGameCase(style)
-            BackdropKind.Acid -> drawAcidNight(style, t, e, page, heard)
+        drawBackdropFrame(style, t, e, page, heard, progress(), trackNumber, measurer)
+    }
+}
+
+/**
+ * One frame of the theme's backdrop: [t] the clock, [e] the energy (0 still, 1 playing), [page]
+ * for the quiet version under pages, [audio] what's heard, [progress] how far through the song.
+ */
+internal fun DrawScope.drawBackdropFrame(
+    style: LanyinStyle,
+    t: Float,
+    e: Float,
+    page: Boolean,
+    heard: BackdropAudio?,
+    progress: Float,
+    trackNumber: Int?,
+    measurer: androidx.compose.ui.text.TextMeasurer?,
+) {
+    val wide = size.width > size.height
+    when (style.backdrop) {
+        BackdropKind.Ink -> {
+            drawInk(style, t, page, heard)
+            if (!page && wide) drawInkWildlife(style, t, heard)
         }
+        BackdropKind.Neon -> if (page) drawNightWall(style) else drawNightStreet(style, t, heard)
+        BackdropKind.Dusk -> if (page) {
+            drawDuskPaper(style)
+        } else {
+            // Portrait: the sea under the photo, the sun behind its edge. Landscape: the sea
+            // under the stage, the sun at the far end.
+            val horizon = if (wide) 0.84f else 0.5f
+            drawDuskSky(style, t, e, heard, progress, horizon, sunAt = if (wide) 0.9f else 0.86f, sunSize = if (wide) 0.2f else 0.15f)
+            drawDuskEvening(style, t, heard, size.height * horizon)
+        }
+        BackdropKind.Grid -> {
+            drawGridPaper(style, page, measurer, trackNumber)
+            if (!page && wide && trackNumber != null) drawGridPoster(style, t, heard)
+        }
+        BackdropKind.Film -> drawFilm(style, t, e, page, heard, if (page) null else measurer, trackNumber)
+        BackdropKind.Dot -> drawDotField(style, t, page, heard)
+        BackdropKind.Device -> drawDeviceCase(style, page)
+        BackdropKind.Paper -> drawNewsprint(style, page)
+        BackdropKind.Game -> drawGameCase(style)
+        BackdropKind.Acid -> drawAcidNight(style, t, e, page, heard)
     }
 }
 
@@ -353,6 +372,11 @@ internal fun hash01(i: Int, salt: Int): Float {
     x = (x xor (x ushr 13)) * 1274126177
     x = x xor (x ushr 16)
     return (x and 0xFFFFFF) / 16777216f
+}
+
+/** [grain] tiled, as a brush, made once rather than every frame. */
+internal val grainBrush: androidx.compose.ui.graphics.Brush by lazy {
+    androidx.compose.ui.graphics.ShaderBrush(androidx.compose.ui.graphics.ImageShader(grain, androidx.compose.ui.graphics.TileMode.Repeated, androidx.compose.ui.graphics.TileMode.Repeated))
 }
 
 /** A small tile of film grain, generated once. */

@@ -135,6 +135,9 @@ class SpinState {
 fun rememberSpinState(running: Boolean, secondsPerTurn: Float = 14f): SpinState {
     val spin = remember { SpinState() }
     val speed = remember { Animatable(0f) }
+    // With motion reduced the record stands still.
+    @Suppress("NAME_SHADOWING")
+    val running = running && !io.lanyin.player.ui.design.LocalReduceMotion.current
     LaunchedEffect(running) {
         launch {
             speed.animateTo(

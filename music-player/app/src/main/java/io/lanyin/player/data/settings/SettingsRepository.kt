@@ -50,6 +50,10 @@ data class UiSettings(
     val statusBarLyrics: Boolean = true,
     /** On Android 16 and later, as a Live Update capsule too. */
     val lyricCapsule: Boolean = true,
+    /** Backdrops, the record and the decorations hold still, and neon doesn't flicker; on as well whenever the system's animations are off. */
+    val reduceMotion: Boolean = false,
+    /** A tap under the finger when pressing things, in each theme's own feel. */
+    val haptics: Boolean = true,
 )
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -72,6 +76,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 cacheLimit = prefs[CACHE_LIMIT] ?: io.lanyin.player.playback.AudioPipeline.CACHE_BYTES,
                 statusBarLyrics = prefs[STATUS_LYRICS] ?: true,
                 lyricCapsule = prefs[LYRIC_CAPSULE] ?: true,
+                reduceMotion = prefs[REDUCE_MOTION] ?: false,
+                haptics = prefs[HAPTICS] ?: true,
                 effects = EffectsSettings(
                     preset = EffectPreset.fromId(prefs[FX_PRESET]),
                     custom = prefs[FX_CUSTOM]?.split(',')?.mapNotNull { it.toFloatOrNull() }?.takeIf { it.size == EQ_FREQUENCIES.size }
@@ -118,6 +124,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setLyricCapsule(enabled: Boolean) = dataStore.edit { it[LYRIC_CAPSULE] = enabled }
 
+    suspend fun setReduceMotion(enabled: Boolean) = dataStore.edit { it[REDUCE_MOTION] = enabled }
+
+    suspend fun setHaptics(enabled: Boolean) = dataStore.edit { it[HAPTICS] = enabled }
+
     suspend fun setEffects(fx: EffectsSettings) = dataStore.edit {
         it[FX_PRESET] = fx.preset.id
         it[FX_CUSTOM] = fx.custom.joinToString(",")
@@ -148,6 +158,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val CACHE_LIMIT = longPreferencesKey("cache_limit")
         val STATUS_LYRICS = booleanPreferencesKey("status_lyrics")
         val LYRIC_CAPSULE = booleanPreferencesKey("lyric_capsule")
+        val REDUCE_MOTION = booleanPreferencesKey("reduce_motion")
+        val HAPTICS = booleanPreferencesKey("haptics")
         val FX_PRESET = stringPreferencesKey("fx_preset")
         val FX_CUSTOM = stringPreferencesKey("fx_custom")
         val FX_BASS = floatPreferencesKey("fx_bass")

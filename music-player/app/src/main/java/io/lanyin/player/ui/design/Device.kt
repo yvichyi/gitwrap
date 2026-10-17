@@ -25,12 +25,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -62,7 +59,7 @@ internal fun DrawScope.drawDeviceCase(style: LanyinStyle, page: Boolean) {
     val w = size.width
     val h = size.height
     drawRect(Brush.verticalGradient(listOf(lerp(c.bg, Color.White, if (style.dark) 0.03f else 0.16f), c.bg, c.bgDeep)))
-    drawRect(ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)), alpha = if (style.dark) 0.06f else 0.05f)
+    drawRect(grainBrush, alpha = if (style.dark) 0.06f else 0.05f)
     if (page) return
     val inset = 11.dp.toPx()
     drawScrew(style, Offset(inset, h - inset), 20f)
@@ -319,7 +316,7 @@ internal fun DrawScope.deviceCover(style: LanyinStyle, seed: Int) {
             }
         }
     }
-    drawRect(ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)), alpha = 0.08f)
+    drawRect(grainBrush, alpha = 0.08f)
 }
 
 /** 机's motif: a knob with its pointer and a scale of dots round it. */
