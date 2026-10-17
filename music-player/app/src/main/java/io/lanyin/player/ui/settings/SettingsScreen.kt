@@ -152,6 +152,10 @@ fun SettingsScreen(
                     ToggleRow("跟随封面取色", "播放页的强调色取自正在放的封面，换歌时慢慢过渡", settings.followCover) {
                         scope.launch { repository.setFollowCover(it) }
                     }
+                    Hairline()
+                    ToggleRow("封面按主题重绘", "点用彩色灯点、报用彩色网点、游用像素画出封面；关掉后封面保持原样", settings.coverMedium) {
+                        scope.launch { repository.setCoverMedium(it) }
+                    }
                     if (style.edge == EdgeKind.Hairline) Hairline()
                 }
             }

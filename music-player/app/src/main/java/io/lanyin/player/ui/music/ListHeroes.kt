@@ -107,7 +107,7 @@ private fun HeroArt(header: ListHeader, size: Dp, modifier: Modifier = Modifier)
         header is ListHeader.Cover && style.backdrop == BackdropKind.Paper -> HalftoneCover(header.url, header.seed, modifier.size(size))
         header is ListHeader.Cover && style.backdrop == BackdropKind.Game -> DitheredCover(header.url, header.seed, modifier.size(size))
         // An artist's picture stays round, as it is everywhere else; the paper and the game's screen print it square.
-        header is ListHeader.Cover && style.backdrop == BackdropKind.Dot -> CoverImage(header.url, header.seed, size, modifier.size(size).then(if (header.round) Modifier.clip(CircleShape) else Modifier).ledScreen())
+        header is ListHeader.Cover && style.backdrop == BackdropKind.Dot -> CoverImage(header.url, header.seed, size, modifier.size(size).then(if (header.round) Modifier.clip(CircleShape) else Modifier).ledScreen(enabled = io.lanyin.player.ui.design.LocalCoverMedium.current))
         header is ListHeader.Cover -> CoverImage(header.url, header.seed, size, modifier.size(size).then(if (header.round) Modifier.clip(CircleShape) else Modifier))
         else -> Box(modifier.size(size)) { HeaderArt(header, size) }
     }

@@ -174,7 +174,7 @@ fun SquareCover(isPlaying: Boolean, coverSeed: Int, modifier: Modifier = Modifie
         EdgeKind.Glow -> Modifier.neonGlow(shape, c.accent).clip(shape).border(1.dp, c.accent, shape)
         EdgeKind.Hairline -> Modifier.clip(shape).border(1.dp, c.outline, shape)
         // 点: the cover as the glyph matrix would light it.
-        EdgeKind.Dot -> Modifier.clip(shape).ledScreen()
+        EdgeKind.Dot -> Modifier.clip(shape).ledScreen(enabled = io.lanyin.player.ui.design.LocalCoverMedium.current)
         // 机: on the screen, lit pixels need no shadow.
         EdgeKind.Panel -> Modifier.clip(shape).border(1.dp, c.content.copy(alpha = 0.08f), shape)
         // 报: a photo on the page, boxed by a fine rule.

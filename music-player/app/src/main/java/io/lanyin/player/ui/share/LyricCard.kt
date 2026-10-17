@@ -291,7 +291,7 @@ private fun DotCard(lyric: CardLyric) {
             Box(Modifier.size(8.dp).background(c.accentAlt, CircleShape))
             Text("  NOW PLAYING", style = TextStyle(fontFamily = DotoFamily, fontWeight = FontWeight.Black, fontSize = fixed(14f)), color = c.content)
         }
-        CoverImage(lyric.coverUrl, lyric.coverSeed, 160.dp, Modifier.padding(top = 18.dp).size(150.dp).clip(RoundedCornerShape(18.dp)).ledScreen())
+        CoverImage(lyric.coverUrl, lyric.coverSeed, 160.dp, Modifier.padding(top = 18.dp).size(150.dp).clip(RoundedCornerShape(18.dp)).ledScreen(enabled = io.lanyin.player.ui.design.LocalCoverMedium.current))
         Spacer(Modifier.weight(1f))
         Text(lyric.line, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = fixed(24f), lineHeight = fixed(32f)), color = c.content)
         lyric.translation?.let { Text(it, style = TextStyle(fontSize = fixed(12f), lineHeight = fixed(17f)), color = c.muted, modifier = Modifier.padding(top = 6.dp)) }

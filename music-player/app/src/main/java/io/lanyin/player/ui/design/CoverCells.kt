@@ -16,14 +16,20 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import io.lanyin.player.ui.theme.Lanyin
 
-/**
- * The cover at [url] sampled down to [n]×[n] luminances in 0..1, row by row, for themes that
- * redraw a cover in their own medium: 游 dithers it into four greens, 报 prints it in halftone.
- * Until the cover has loaded, and for songs without one, it samples the theme's generated sleeve
- * for [seed] instead.
- */
+/** The cover at [url] sampled down to [n]×[n] luminances in 0..1, row by row; see [rememberCoverPixels]. */
 @Composable
 fun rememberCoverLuminance(url: String?, seed: Int, n: Int): FloatArray {
+    val pixels = rememberCoverPixels(url, seed, n)
+    return remember(pixels) { FloatArray(n * n) { i -> luminance(pixels[i]) } }
+}
+
+/**
+ * The cover at [url] sampled down to [n]×[n] ARGB pixels, row by row, for themes that redraw a
+ * cover in their own medium: 游 in pixels, 报 in halftone. Until the cover has loaded, and for
+ * songs without one, it samples the theme's generated sleeve for [seed] instead.
+ */
+@Composable
+fun rememberCoverPixels(url: String?, seed: Int, n: Int): IntArray {
     val style = Lanyin.style
     val density = LocalDensity.current
     var loaded: AsyncImagePainter? = null
@@ -40,9 +46,7 @@ fun rememberCoverLuminance(url: String?, seed: Int, n: Int): FloatArray {
         CanvasDrawScope().draw(density, LayoutDirection.Ltr, Canvas(bitmap), Size(n.toFloat(), n.toFloat())) {
             if (painter != null) with(painter) { draw(size) } else drawCoverArt(style, seed)
         }
-        val pixels = IntArray(n * n)
-        bitmap.readPixels(pixels)
-        FloatArray(n * n) { i -> luminance(pixels[i]) }
+        IntArray(n * n).also { bitmap.readPixels(it) }
     }
 }
 
@@ -53,6 +57,10 @@ internal fun luminance(argb: Int): Float {
     val b = (argb and 0xff) / 255f
     return 0.2126f * r + 0.7152f * g + 0.0722f * b
 }
+
+/** The pixel of [cells] (n×n ARGB, row by row) nearest a point in 0..1 on each axis. */
+internal fun IntArray.nearestCell(n: Int, u: Float, v: Float): Int =
+    this[(v * n).toInt().coerceIn(0, n - 1) * n + (u * n).toInt().coerceIn(0, n - 1)]
 
 /** [cells] (n×n, row by row) at a point in 0..1 on each axis, bilinearly. */
 internal fun FloatArray.sampleCells(n: Int, u: Float, v: Float): Float {

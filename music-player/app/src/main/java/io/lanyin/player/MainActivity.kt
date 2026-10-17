@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
                     LocalAppServices provides container.services,
                     LocalReduceMotion provides (s.reduceMotion || systemAnimationsOff()),
                     LocalHapticsOn provides s.haptics,
+                    io.lanyin.player.ui.design.LocalCoverMedium provides s.coverMedium,
                     LocalThemeReveal provides reveal,
                 ) {
                     ThemeRevealHost(reveal, key = s.theme to s.themeMode) {

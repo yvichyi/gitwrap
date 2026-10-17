@@ -33,8 +33,10 @@ data class DemoTrack(
     val lyrics: List<LyricLine>,
     val quality: String = "无损",
     val format: String = "FLAC · 44.1kHz",
+    /** A real cover's address; tests hand these to a stand-in image loader. */
+    val coverUrl: String? = null,
 ) {
-    fun toTrack(id: Long) = Track(id, title, artist, album, coverSeed, durationMs)
+    fun toTrack(id: Long) = Track(id, title, artist, album, coverSeed, durationMs, coverUrl)
 }
 
 /**
@@ -221,7 +223,7 @@ private val longLyrics = timed(
     ),
 )
 
-internal val demoQueue = listOf(
+val demoQueue = listOf(
     DemoTrack("澜音试播", "澜音", "潮汐 · 演示", coverSeed = 3, durationMs = 64_000, lyrics = demoLyrics),
     DemoTrack("潮汐（伴奏）", "澜音", "潮汐 · 演示", coverSeed = 6, durationMs = 46_000, lyrics = emptyList()),
     DemoTrack("落日磁带", "澜音乐队", "黄昏 · 演示", coverSeed = 5, durationMs = 50_000, lyrics = sunsetLyrics, quality = "极高", format = "MP3 · 320kbps"),

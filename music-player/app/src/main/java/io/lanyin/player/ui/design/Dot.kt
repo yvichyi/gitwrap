@@ -99,11 +99,12 @@ internal fun DrawScope.drawDotField(style: LanyinStyle, t: Float, page: Boolean,
 }
 
 /**
- * Shows what's drawn through an LED screen: in grey, and only inside a grid of round lights
- * [pitch] apart, so a cover reads as the glyph matrix would light it. Between the lights is
- * whatever lies behind (点's black).
+ * Shows what's drawn through an LED screen: only inside a grid of round lights [pitch] apart, in
+ * its own colours a little muted, so a cover reads as a colour matrix would light it and stays
+ * recognisable. Between the lights is whatever lies behind (点's black). Off ([enabled] false),
+ * the cover shows as it is.
  */
-fun Modifier.ledScreen(pitch: Dp = 4.dp): Modifier = this
+fun Modifier.ledScreen(pitch: Dp = 4.dp, enabled: Boolean = true): Modifier = if (!enabled) this else this
     .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
     .drawWithCache {
         val side = pitch.toPx().toInt().coerceAtLeast(2)
@@ -112,8 +113,8 @@ fun Modifier.ledScreen(pitch: Dp = 4.dp): Modifier = this
         val mask = ShaderBrush(ImageShader(tile.asImageBitmap(), TileMode.Repeated, TileMode.Repeated))
         onDrawWithContent {
             drawContent()
-            // Grey: take the saturation of black.
-            drawRect(Color.Black, blendMode = BlendMode.Saturation)
+            // Muted a little, as LEDs never quite reach a print's colours.
+            drawRect(Color.Black.copy(alpha = 0.3f), blendMode = BlendMode.Saturation)
             // A touch brighter, as a lit LED is.
             drawRect(Color.White.copy(alpha = 0.06f), blendMode = BlendMode.Screen)
             drawRect(mask, blendMode = BlendMode.DstIn)

@@ -68,6 +68,12 @@ val LocalFramesPaused = androidx.compose.runtime.compositionLocalOf { false }
  */
 val LocalReduceMotion = androidx.compose.runtime.compositionLocalOf { false }
 
+/**
+ * Whether 点, 报 and 游 redraw covers in their medium (LED lights, halftone, pixels) or show them
+ * as they are (see the 封面按主题重绘 setting).
+ */
+val LocalCoverMedium = androidx.compose.runtime.compositionLocalOf { true }
+
 /** Whether presses give a tap under the finger (see the 触感反馈 setting). */
 val LocalHapticsOn = androidx.compose.runtime.compositionLocalOf { false }
 

@@ -55,6 +55,8 @@ data class UiSettings(
     val reduceMotion: Boolean = false,
     /** A tap under the finger when pressing things, in each theme's own feel. */
     val haptics: Boolean = true,
+    /** 点, 报 and 游 redraw covers in their medium (LED lights, halftone, pixels); off, covers show as they are. */
+    val coverMedium: Boolean = true,
     /** 桌面歌词: the line being sung floats over other apps while 澜音 is out of sight. */
     val desktopLyrics: Boolean = false,
     /** Locked, it lets touches through to what's under it. */
@@ -90,6 +92,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 lyricCapsule = prefs[LYRIC_CAPSULE] ?: true,
                 reduceMotion = prefs[REDUCE_MOTION] ?: false,
                 haptics = prefs[HAPTICS] ?: true,
+                coverMedium = prefs[COVER_MEDIUM] ?: true,
                 desktopLyrics = prefs[DESKTOP_LYRICS] ?: false,
                 desktopLyricsLocked = prefs[DESKTOP_LOCKED] ?: false,
                 desktopLyricsY = (prefs[DESKTOP_Y] ?: 0.16f).coerceIn(0f, 0.9f),
@@ -144,6 +147,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setHaptics(enabled: Boolean) = dataStore.edit { it[HAPTICS] = enabled }
 
+    suspend fun setCoverMedium(enabled: Boolean) = dataStore.edit { it[COVER_MEDIUM] = enabled }
+
     suspend fun setDesktopLyrics(enabled: Boolean) = dataStore.edit { it[DESKTOP_LYRICS] = enabled }
 
     suspend fun setDesktopLyricsLocked(locked: Boolean) = dataStore.edit { it[DESKTOP_LOCKED] = locked }
@@ -184,6 +189,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val LYRIC_CAPSULE = booleanPreferencesKey("lyric_capsule")
         val REDUCE_MOTION = booleanPreferencesKey("reduce_motion")
         val HAPTICS = booleanPreferencesKey("haptics")
+        val COVER_MEDIUM = booleanPreferencesKey("cover_medium")
         val DESKTOP_LYRICS = booleanPreferencesKey("desktop_lyrics")
         val DESKTOP_LOCKED = booleanPreferencesKey("desktop_lyrics_locked")
         val DESKTOP_Y = floatPreferencesKey("desktop_lyrics_y")

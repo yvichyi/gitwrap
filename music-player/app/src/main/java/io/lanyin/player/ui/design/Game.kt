@@ -143,34 +143,66 @@ internal fun lcdShade(lightness: Float, x: Int, y: Int): Int {
 }
 
 /**
- * A cover as the console's screen would show it: [n] pixels across, dithered into the four LCD
- * greens and scaled up without smoothing, so each pixel stays a sharp square.
+ * A cover as the console's screen would show it: [n] pixels across in a sixteen-colour palette,
+ * ordered-dithered and scaled up without smoothing, so each pixel stays a sharp square and the
+ * cover keeps its colours. With 封面按主题重绘 off, the cover as it is.
  */
 @Composable
 fun DitheredCover(url: String?, seed: Int, modifier: Modifier = Modifier, n: Int = 48) {
+    if (!LocalCoverMedium.current) {
+        CoverImage(url, seed, 360.dp, modifier)
+        return
+    }
     val image = rememberDitheredImage(url, seed, n)
     Canvas(modifier) { drawPixels(image) }
 }
 
-/** The cover dithered into the LCD greens at [n] pixels across. */
+/** The cover in [PixelPalette] at [n] pixels across. */
 @Composable
 fun rememberDitheredImage(url: String?, seed: Int, n: Int = 48): ImageBitmap {
-    val cells = rememberCoverLuminance(url, seed, n)
+    val cells = rememberCoverPixels(url, seed, n)
     return remember(cells) {
-        val pixels = IntArray(n * n) { i ->
-            // Lift the contrast a little: covers are rarely as punchy as four flat greens need.
-            val l = ((cells[i] - 0.5f) * 1.25f + 0.52f).coerceIn(0f, 1f)
-            GameLcd[lcdShade(l, i % n, i / n)].toArgb()
-        }
+        val pixels = IntArray(n * n) { i -> pixelColor(cells[i], i % n, i / n) }
         android.graphics.Bitmap.createBitmap(pixels, n, n, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
     }
 }
 
-/** [rememberDitheredImage] as a painter that keeps its pixels square, for a record's label. */
+/** [rememberDitheredImage] as a painter that keeps its pixels square, for a record's label; the cover as it is with 封面按主题重绘 off. */
 @Composable
-fun rememberDitheredPainter(url: String?, seed: Int): androidx.compose.ui.graphics.painter.Painter {
+fun rememberDitheredPainter(url: String?, seed: Int): androidx.compose.ui.graphics.painter.Painter? {
+    if (!LocalCoverMedium.current) return rememberCoverPainter(url, 480)
     val image = rememberDitheredImage(url, seed, 32)
     return remember(image) { androidx.compose.ui.graphics.painter.BitmapPainter(image, filterQuality = FilterQuality.None) }
+}
+
+/** Sixteen colours, as an old handheld's colour screen or a fantasy console has: enough to keep a cover's colours, few enough to look like pixel art. */
+internal val PixelPalette = intArrayOf(
+    0xFF000000.toInt(), 0xFF1D2B53.toInt(), 0xFF7E2553.toInt(), 0xFF008751.toInt(),
+    0xFFAB5236.toInt(), 0xFF5F574F.toInt(), 0xFFC2C3C7.toInt(), 0xFFFFF1E8.toInt(),
+    0xFFFF004D.toInt(), 0xFFFFA300.toInt(), 0xFFFFEC27.toInt(), 0xFF00E436.toInt(),
+    0xFF29ADFF.toInt(), 0xFF83769C.toInt(), 0xFFFF77A8.toInt(), 0xFFFFCCAA.toInt(),
+)
+
+/** The palette colour for [argb] at pixel ([x], [y]): nudged by the ordered-dither threshold, then the nearest. */
+internal fun pixelColor(argb: Int, x: Int, y: Int): Int {
+    val nudge = (bayer[(y and 3) * 4 + (x and 3)] - 0.5f) * 56f
+    val r = (argb shr 16 and 0xff) + nudge
+    val g = (argb shr 8 and 0xff) + nudge
+    val b = (argb and 0xff) + nudge
+    var best = PixelPalette[0]
+    var bestD = Float.MAX_VALUE
+    for (p in PixelPalette) {
+        val dr = r - (p shr 16 and 0xff)
+        val dg = g - (p shr 8 and 0xff)
+        val db = b - (p and 0xff)
+        // Weighted as the eye weighs them.
+        val d = 2f * dr * dr + 4f * dg * dg + 3f * db * db
+        if (d < bestD) {
+            bestD = d
+            best = p
+        }
+    }
+    return best
 }
 
 private fun DrawScope.drawPixels(image: ImageBitmap) {
