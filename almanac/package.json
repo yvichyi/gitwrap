@@ -1,0 +1,16 @@
+{
+  "name": "shihou-almanac",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Development scripts for 时候, an offline seventy-two pentads almanac",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-data.mjs",
+    "check": "node scripts/check.mjs",
+    "test:browser": "node scripts/browser-check.mjs"
+  },
+  "devDependencies": {
+    "astronomy-engine": "2.1.19",
+    "playwright": "1.63.0"
+  }
+}

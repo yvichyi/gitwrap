@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<!--A:HEAD-->
+<title>时候</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="七十二候物候历：今天是哪一候、一年的岁轮、你自己的物候笔记。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one almanac page. Today's pentad is set like a printed plate (vertical name + seal),
+   then the year wheel, the notebook and the term table. The page colour is the current pentad's colour. */
+:root {
+  --h: 75; --c: 0.06;                                   /* hue and chroma of the current pentad, set by script */
+  --ground: oklch(0.952 calc(var(--c) * 0.42) var(--h));
+  --surface: oklch(0.982 calc(var(--c) * 0.2) var(--h));
+  --ink: oklch(0.25 calc(var(--c) * 0.3) var(--h));
+  --ink-2: oklch(0.46 calc(var(--c) * 0.35) var(--h));
+  --rule: oklch(0.3 calc(var(--c) * 0.4) var(--h) / 0.18);
+  --stamp: oklch(0.48 calc(var(--c) * 1.25 + 0.04) var(--h));
+  --stamp-ink: oklch(0.98 0.01 var(--h));
+  --sun: oklch(0.72 0.16 62);
+  --danger: oklch(0.52 0.17 25);
+  --seg-l: 0.8; --seg-k: 1.25;                          /* wheel segment lightness and chroma gain */
+
+  --f-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  --f-text: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif;
+  --f-ui: system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: oklch(0.2 calc(var(--c) * 0.32) var(--h));
+    --surface: oklch(0.245 calc(var(--c) * 0.3) var(--h));
+    --ink: oklch(0.93 calc(var(--c) * 0.2) var(--h));
+    --ink-2: oklch(0.74 calc(var(--c) * 0.3) var(--h));
+    --rule: oklch(0.9 calc(var(--c) * 0.3) var(--h) / 0.16);
+    --stamp: oklch(0.7 calc(var(--c) * 1.2 + 0.05) var(--h));
+    --stamp-ink: oklch(0.18 0.02 var(--h));
+    --sun: oklch(0.82 0.15 78);
+    --danger: oklch(0.72 0.15 25);
+    --seg-l: 0.6; --seg-k: 1.15;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: oklch(0.2 calc(var(--c) * 0.32) var(--h));
+  --surface: oklch(0.245 calc(var(--c) * 0.3) var(--h));
+  --ink: oklch(0.93 calc(var(--c) * 0.2) var(--h));
+  --ink-2: oklch(0.74 calc(var(--c) * 0.3) var(--h));
+  --rule: oklch(0.9 calc(var(--c) * 0.3) var(--h) / 0.16);
+  --stamp: oklch(0.7 calc(var(--c) * 1.2 + 0.05) var(--h));
+  --stamp-ink: oklch(0.18 0.02 var(--h));
+  --sun: oklch(0.82 0.15 78);
+  --danger: oklch(0.72 0.15 25);
+  --seg-l: 0.6; --seg-k: 1.15;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--ground); color: var(--ink);
+  font: 15px/1.65 var(--f-ui);
+  transition: background-color .8s ease;
+}
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
+
+.page {
+  max-width: 1120px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 18px 64px;
+  display: grid; gap: 64px;
+}
+
+/* Masthead */
+.top { margin-bottom: -24px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px 16px; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+.wordmark { margin: 0; font: 900 22px/1 var(--f-display); letter-spacing: .14em; }
+.wordmark small { font: 400 12px var(--f-ui); letter-spacing: .14em; color: var(--ink-2); margin-left: .6em; }
+.today-date { font: 13px var(--f-num); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+/* Today plate */
+.plate { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(18px, 5vw, 72px); align-items: start; }
+.plate-name { display: flex; gap: 12px; align-items: flex-end; }
+.vname {
+  margin: 0; writing-mode: vertical-rl;
+  font: 900 clamp(42px, min(15vw, calc(600px / var(--n, 4))), 132px)/1.04 var(--f-display);
+  letter-spacing: .06em; white-space: nowrap;
+}
+.stamp {
+  writing-mode: vertical-rl; background: var(--stamp); color: var(--stamp-ink);
+  font: 600 17px/1 var(--f-display); letter-spacing: .12em;
+  padding: 9px 6px; border-radius: 3px; margin-bottom: .3em;
+}
+.plate-body { display: grid; gap: 18px; max-width: 62ch; min-width: 0; padding-top: 6px; }
+.eyebrow { margin: 0; font-size: 13px; letter-spacing: .14em; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.eyebrow b { color: var(--ink); font-weight: 600; }
+.plain { margin: 0; font: 600 clamp(21px, 2.7vw, 30px)/1.4 var(--f-text); text-wrap: balance; }
+.pair { margin: 0; display: grid; gap: 14px 28px; }
+@media (min-width: 760px) { .pair { grid-template-columns: 1fr 1fr; } }
+.pair dt { font-size: 12px; letter-spacing: .16em; color: var(--ink-2); margin-bottom: 4px; }
+.pair dd { margin: 0; font: 15.5px/1.8 var(--f-text); }
+.term-line { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+.term-line b { color: var(--ink); font-weight: 600; margin-right: .5em; }
+
+.span { display: grid; gap: 8px; }
+.span-ends { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; font: 12px var(--f-num); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.bar { position: relative; height: 2px; background: var(--rule); }
+.bar i { position: absolute; inset: 0 auto 0 0; width: calc(var(--p, 0) * 100%); background: var(--ink); }
+.bar i::after { content: ""; position: absolute; right: -6px; top: -5px; width: 12px; height: 12px; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 3px var(--ground); }
+.countdown { margin: 0; font-size: 14px; text-wrap: pretty; }
+.countdown .num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.echo { margin: 0; padding: 10px 14px; border-left: 2px solid var(--stamp); font: 14.5px/1.7 var(--f-text); background: var(--surface); }
+.echo span { display: block; font: 12px var(--f-ui); letter-spacing: .1em; color: var(--ink-2); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.btn { border: 1px solid var(--ink); background: transparent; padding: 7px 16px; border-radius: 999px; cursor: pointer; font-size: 14px; line-height: 1.4; }
+.btn:hover { background: var(--surface); }
+.btn.solid { background: var(--ink); color: var(--ground); }
+.btn.solid:hover { opacity: .88; }
+.btn.quiet { border-color: var(--rule); }
+.btn[disabled] { opacity: .45; cursor: default; }
+
+/* Section heads */
+.sec { display: grid; gap: 22px; }
+.sec-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; border-bottom: 1px solid var(--rule); padding-bottom: 10px; }
+.sec-head h2 { margin: 0; font: 900 26px/1.2 var(--f-display); letter-spacing: .12em; text-wrap: balance; }
+.sec-head p { margin: 0; font-size: 13px; color: var(--ink-2); }
+
+/* Year wheel */
+.year-pick { display: flex; align-items: center; gap: 6px; }
+.year-pick output { font: 500 15px var(--f-num); min-width: 4.2ch; text-align: center; font-variant-numeric: tabular-nums; }
+.icon-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--rule); background: transparent; cursor: pointer; line-height: 1; font-size: 18px; }
+.icon-btn:hover { background: var(--surface); }
+.wheel-wrap { display: grid; gap: 28px; align-items: center; }
+@media (min-width: 880px) { .wheel-wrap { grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); } }
+#wheel { display: block; width: 100%; max-width: 620px; margin: 0 auto; aspect-ratio: 1; height: auto; border-radius: 50%; touch-action: manipulation; }
+#wheel .seg { fill: oklch(var(--seg-l) calc(var(--sc) * var(--seg-k)) var(--sh)); cursor: pointer; transition: opacity .3s; }
+#wheel .seg.ahead { opacity: .5; }
+#wheel .seg:hover { opacity: .85; }
+#wheel .term-label { font: 600 25px var(--f-display); fill: var(--ink); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+#wheel .term-tick { stroke: var(--rule); stroke-width: 1.5; }
+#wheel .month-tick { stroke: var(--ink-2); stroke-width: 1.5; }
+#wheel .month-label { font: 16px var(--f-num); fill: var(--ink-2); text-anchor: middle; dominant-baseline: central; }
+#wheel .hand { stroke: var(--sun); stroke-width: 3; stroke-linecap: round; }
+#wheel .sun { fill: var(--sun); stroke: var(--ground); stroke-width: 5; pointer-events: none; }
+#wheel .sel { fill: none; stroke: var(--ink); stroke-width: 3.5; stroke-linejoin: round; pointer-events: none; }
+#wheel .dot { fill: var(--ink); pointer-events: none; }
+#wheel .c-year { font: 500 72px var(--f-num); fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+#wheel .c-sub { font: 19px var(--f-ui); fill: var(--ink-2); text-anchor: middle; dominant-baseline: central; letter-spacing: .08em; }
+
+.detail { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: clamp(18px, 3vw, 28px); display: grid; gap: 14px; min-width: 0; }
+.d-head { display: flex; align-items: center; gap: 12px; }
+.d-swatch { width: 18px; height: 18px; border-radius: 3px; flex: none; background: oklch(var(--seg-l) calc(var(--sc) * var(--seg-k)) var(--sh)); }
+.detail h3 { margin: 0; font: 900 clamp(26px, 3.4vw, 34px)/1.25 var(--f-display); letter-spacing: .08em; text-wrap: balance; }
+.d-meta { margin: 0; font-size: 13px; color: var(--ink-2); }
+.d-meta .num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.d-plain { margin: 0; font: 600 18px/1.5 var(--f-text); }
+.detail .pair { grid-template-columns: 1fr; }
+.d-notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; border-top: 1px solid var(--rule); padding-top: 12px; font-size: 14px; }
+.d-notes .num { font-family: var(--f-num); color: var(--ink-2); margin-right: .7em; font-variant-numeric: tabular-nums; }
+.d-nav { display: flex; justify-content: space-between; gap: 8px; }
+
+/* Notebook */
+.note-form { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+@media (max-width: 620px) { .note-form { grid-template-columns: minmax(0, 1fr) auto; } .note-form .f-text { grid-column: 1 / -1; grid-row: 1; } }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-size: 12px; letter-spacing: .12em; color: var(--ink-2); }
+.field input { width: 100%; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 12px; min-height: 40px; }
+.field input:focus-visible { outline-offset: 0; }
+.note-hint { margin: 0; font-size: 13px; color: var(--ink-2); }
+.note-hint b { color: var(--ink); font-weight: 600; }
+.note-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--rule); }
+.note-list li { display: grid; grid-template-columns: 7.2em minmax(0, 1fr) auto auto; gap: 4px 16px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--rule); }
+.note-list .n-date { font: 13px var(--f-num); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.note-list .n-text { font: 15.5px/1.6 var(--f-text); overflow-wrap: anywhere; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+.chip::before { content: ""; width: 9px; height: 9px; border-radius: 2px; background: oklch(var(--seg-l) calc(var(--sc) * var(--seg-k)) var(--sh)); }
+.del { border: 0; background: none; color: var(--ink-2); cursor: pointer; font-size: 13px; padding: 4px 6px; border-radius: 4px; }
+.del:hover { color: var(--danger); }
+.del.armed { color: var(--danger); font-weight: 600; }
+@media (max-width: 620px) {
+  .note-list li { grid-template-columns: minmax(0, 1fr) auto; }
+  .note-list .n-date { grid-column: 1; }
+  .note-list .chip { grid-column: 1; grid-row: 3; }
+  .note-list .n-text { grid-column: 1 / -1; grid-row: 2; }
+  .note-list .del { grid-column: 2; grid-row: 1; justify-self: end; }
+}
+.note-list li.example { color: var(--ink-2); }
+.note-list li.example .n-text { color: var(--ink-2); }
+.tag { font: 11px var(--f-ui); letter-spacing: .1em; border: 1px solid var(--rule); border-radius: 3px; padding: 1px 6px; color: var(--ink-2); }
+.empty { margin: 0; font: 15px/1.8 var(--f-text); color: var(--ink-2); }
+.nb-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.file-btn { position: relative; overflow: hidden; display: inline-block; }
+.file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.file-btn:focus-within { outline: 2px solid var(--stamp); outline-offset: 3px; }
+.store-note { font-size: 13px; color: var(--ink-2); }
+
+/* Term table */
+.table-scroll { overflow-x: auto; }
+.terms { width: 100%; min-width: 640px; border-collapse: collapse; }
+.terms th { text-align: left; font: 500 12px var(--f-ui); letter-spacing: .12em; color: var(--ink-2); padding: 8px 12px; border-bottom: 1px solid var(--ink); }
+.terms td { padding: 10px 12px; border-bottom: 1px solid var(--rule); vertical-align: baseline; }
+.terms td.t-name { font: 600 18px var(--f-display); letter-spacing: .08em; white-space: nowrap; }
+.terms td.t-num { font: 13.5px var(--f-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.terms td.t-hou { font-size: 13.5px; }
+.terms td.t-hou span { display: inline-block; margin-right: 1.3em; white-space: nowrap; }
+.terms td.t-hou .num { font-family: var(--f-num); color: var(--ink-2); margin-left: .35em; font-size: 12px; }
+.terms tr.now td { background: var(--surface); }
+.terms tr.now td.t-name::after { content: "现在"; font: 11px var(--f-ui); letter-spacing: .1em; color: var(--stamp-ink); background: var(--stamp); border-radius: 3px; padding: 1px 5px; margin-left: 8px; vertical-align: 2px; }
+
+/* Colophon */
+.colophon { display: grid; gap: 10px; font-size: 13px; line-height: 1.8; color: var(--ink-2); max-width: 72ch; border-top: 1px solid var(--rule); padding-top: 16px; }
+.colophon p { margin: 0; }
+.colophon a { color: inherit; }
+
+/* Card dialog and toast */
+dialog { border: 0; border-radius: 8px; padding: 16px; background: var(--surface); color: var(--ink); width: min(92vw, 460px); }
+dialog::backdrop { background: rgb(0 0 0 / .45); }
+dialog img { display: block; width: 100%; height: auto; border-radius: 4px; }
+.dlg-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+.dlg-row p { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+.toast {
+  position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  background: var(--ink); color: var(--ground); padding: 8px 16px; border-radius: 999px; font-size: 14px;
+  max-width: calc(100vw - 32px); box-shadow: 0 6px 24px rgb(0 0 0 / .18); z-index: 20;
+}
+.oor { padding: 24px; border: 1px solid var(--rule); border-radius: 6px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+<!--/A:HEAD-->
+</head>
+<body>
+<!--A:BODY-->
+<div class="page">
+  <header class="top">
+    <p class="wordmark">时候<small>七十二候物候历</small></p>
+    <span class="today-date" id="today-date"></span>
+  </header>
+
+  <p class="oor" id="oor" hidden>设备时间不在 1900–2100 年之间，无法显示今天是哪一候。请检查设备的日期设置。</p>
+  <section class="plate" id="plate" aria-labelledby="today-name">
+    <div class="plate-name">
+      <h1 class="vname" id="today-name">时候</h1>
+      <div class="stamp" id="today-stamp" aria-hidden="true">节气</div>
+    </div>
+    <div class="plate-body">
+      <p class="eyebrow" id="today-eyebrow"></p>
+      <p class="plain" id="today-plain"></p>
+      <dl class="pair">
+        <div><dt>古人看见</dt><dd id="today-old"></dd></div>
+        <div><dt>今天知道</dt><dd id="today-new"></dd></div>
+      </dl>
+      <p class="term-line" id="today-term"></p>
+      <div class="span">
+        <div class="span-ends"><span id="span-start"></span><span id="span-end"></span></div>
+        <div class="bar"><i id="span-bar"></i></div>
+        <p class="countdown" id="countdown"></p>
+      </div>
+      <p class="echo" id="echo" hidden></p>
+      <div class="actions">
+        <button class="btn solid" type="button" id="go-note">记一笔</button>
+        <button class="btn" type="button" id="make-card">今日卡片</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="wheel-title">
+    <div class="sec-head">
+      <h2 id="wheel-title">岁轮</h2>
+      <div class="year-pick">
+        <button class="icon-btn" type="button" id="year-prev" aria-label="上一年">‹</button>
+        <output id="year-label" aria-live="polite"></output>
+        <button class="icon-btn" type="button" id="year-next" aria-label="下一年">›</button>
+        <button class="btn quiet" type="button" id="year-now">回到今天</button>
+      </div>
+    </div>
+    <div class="wheel-wrap">
+      <svg id="wheel" viewBox="-500 -500 1000 1000" tabindex="0" role="group" aria-label="岁轮：一年七十二候，从顶端的立春开始顺时针排列。点选一候查看详情，或用左右方向键切换。"></svg>
+      <article class="detail" id="detail" aria-live="polite"></article>
+    </div>
+  </section>
+
+  <section class="sec" id="notebook" aria-labelledby="nb-title">
+    <div class="sec-head">
+      <h2 id="nb-title">物候笔记</h2>
+      <p id="store-label">保存在这台设备的浏览器里</p>
+    </div>
+    <form class="note-form" id="note-form" autocomplete="off">
+      <div class="field f-date"><label for="note-date">日期</label><input type="date" id="note-date" min="1900-01-01" max="2100-12-31" required></div>
+      <div class="field f-text"><label for="note-text">看见了什么</label><input type="text" id="note-text" maxlength="200" placeholder="比如：楼下的桂花开了" required></div>
+      <button class="btn solid" type="submit" id="note-add">记下</button>
+    </form>
+    <p class="note-hint" id="note-hint"></p>
+    <ol class="note-list" id="note-list"></ol>
+    <div class="nb-tools">
+      <button class="btn quiet" type="button" id="export">导出笔记</button>
+      <span class="btn quiet file-btn">导入笔记<input type="file" id="import" accept="application/json,.json" aria-label="导入笔记（JSON 文件）"></span>
+      <span class="store-note" id="store-note"></span>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="table-title">
+    <div class="sec-head">
+      <h2 id="table-title">节气表</h2>
+      <p>交节时刻为北京时间</p>
+    </div>
+    <div class="table-scroll">
+      <table class="terms" id="terms">
+        <thead><tr><th scope="col">节气</th><th scope="col">太阳黄经</th><th scope="col">交节时刻</th><th scope="col">三候与起始日</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="colophon">
+    <p>七十二候把一年按太阳在黄道上每走 5° 分成一候，每候约五天，三候为一个节气。条文是今天通行的版本，源于《逸周书·时训解》，释义参考元代吴澄的《月令七十二候集解》。它记录的是两千多年前黄河中下游的物候，和今天各地的实际情况常有出入，“今天知道”一栏讲的也只是一般情形。</p>
+    <p>每一候的起始时刻用 <a href="https://github.com/cosinekitty/astronomy" target="_blank" rel="noopener">Astronomy Engine</a> 按太阳视黄经计算，覆盖 1900–2100 年，与天文台公布的节气时刻相差约一分钟以内。页面不联网也能用；笔记只保存在你自己这里。</p>
+  </footer>
+</div>
+
+<dialog id="card-dialog" aria-labelledby="card-title">
+  <h2 id="card-title" hidden>今日卡片</h2>
+  <img id="card-img" alt="">
+  <div class="dlg-row">
+    <p>手机上也可以长按图片保存。</p>
+    <div class="actions">
+      <button class="btn" type="button" id="card-close">关闭</button>
+      <button class="btn solid" type="button" id="card-save">保存图片</button>
+    </div>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- Content ---------- */
+// Index 0 is 立春 (solar longitude 315°); each term spans 15°, three pentads of 5°.
+const TERMS = /*TERMS:BEGIN*/[
+{"n":"立春","d":"春季开始。古人以立春为一年农事之始。"},
+{"n":"雨水","d":"降水由雪转为雨，雨量渐渐增多。"},
+{"n":"惊蛰","d":"春雷乍动，惊醒蛰伏在土中的动物。"},
+{"n":"春分","d":"昼夜几乎等长，太阳直射赤道。"},
+{"n":"清明","d":"天气清朗，草木繁茂。"},
+{"n":"谷雨","d":"雨水滋润百谷。"},
+{"n":"立夏","d":"夏季开始。"},
+{"n":"小满","d":"麦类籽粒渐渐饱满，还未成熟。"},
+{"n":"芒种","d":"有芒的麦子要收，稻子要种。"},
+{"n":"夏至","d":"白昼最长，太阳直射北回归线。"},
+{"n":"小暑","d":"开始炎热，但还不是最热。"},
+{"n":"大暑","d":"一年中最热的时候。"},
+{"n":"立秋","d":"秋季开始。"},
+{"n":"处暑","d":"“处”是停止，暑气到这里结束。"},
+{"n":"白露","d":"夜里转凉，露水凝结。"},
+{"n":"秋分","d":"昼夜几乎等长，太阳再次直射赤道。"},
+{"n":"寒露","d":"露水更冷，快要凝成霜。"},
+{"n":"霜降","d":"开始出现霜。"},
+{"n":"立冬","d":"冬季开始。"},
+{"n":"小雪","d":"开始下雪，雪量还小。"},
+{"n":"大雪","d":"雪量增多。"},
+{"n":"冬至","d":"白昼最短，太阳直射南回归线。"},
+{"n":"小寒","d":"进入一年中最冷的时段。"},
+{"n":"大寒","d":"一年中最冷的时候。冬至后白天渐长，但地面散失的热量仍多于吸收的，所以最冷落在一月。"}
+]/*TERMS:END*/;
+
+// n 候名 · p 白话 · o 古人看见 · k 今天知道 · h/c the pentad's colour (OKLCH hue, chroma)
+const PENTADS = /*PENTADS:BEGIN*/[
+{"n":"东风解冻","p":"东风送暖，冰冻开始融化。","o":"古人认为东风属春，是它把冻住的大地吹开。","k":"冬季风减弱，偏东、偏南的暖湿气流增多，气温回升，冻土和冰面先从表层开始融化。","h":195,"c":0.045},
+{"n":"蛰虫始振","p":"在土里过冬的虫子开始苏醒、动弹。","o":"地下的虫子感到阳气回升，开始活动。","k":"昆虫的体温随环境变化。土壤温度回升到一定程度，越冬的幼虫和成虫才恢复活动。","h":105,"c":0.05},
+{"n":"鱼陟负冰","p":"鱼游到水面附近，像背着冰。陟，上升。","o":"鱼从深水游上来，水面的碎冰还没化完，看上去像驮着冰。","k":"入春后冰层变薄、透光增加，上层的水先暖起来，鱼从越冬的深水区游上来觅食。","h":220,"c":0.05},
+{"n":"獭祭鱼","p":"水獭把捕到的鱼摆在岸边，像在祭祀。","o":"古人以为水獭要先祭天，然后才吃。","k":"鱼多时，水獭会把吃不完的鱼留在岸边，这并不是祭祀。欧亚水獭如今在华北已很少见。","h":230,"c":0.05},
+{"n":"候雁北","p":"大雁开始往北飞。","o":"雁随季节往返，古人用它来确认时令。","k":"鸿雁、豆雁等多在长江中下游越冬，早春北迁，到东北、蒙古和西伯利亚繁殖。","h":75,"c":0.04},
+{"n":"草木萌动","p":"草木开始抽出嫩芽。","o":"地气上升，草木随之萌发。","k":"萌芽受温度累积和日照长短共同调控。许多树木要先经历足够长的冬季低温，春天才会发芽。","h":130,"c":0.08},
+{"n":"桃始华","p":"桃花开始开放。华，同“花”。","o":"桃花一开，就是春天最醒目的标志。","k":"华北平原的桃花今天多在三月下旬到四月开放，比这一候晚。物候条文和今天的实际日期常对不上。","h":0,"c":0.09},
+{"n":"仓庚鸣","p":"黄鹂开始鸣叫。","o":"仓庚就是黄鹂，古人以它的歌声作为春深的信号。","k":"黑枕黄鹂是夏候鸟，在华北通常要到五月前后才到，比这一候晚一个多月。","h":95,"c":0.1},
+{"n":"鹰化为鸠","p":"鹰变成了鸠。古注说鸠是布谷鸟。","o":"开春后鹰少了，鸠多了起来，古人便以为是鹰变成了鸠。","k":"越冬的猛禽北迁离开，鸠鸽和杜鹃开始活跃。大杜鹃腹部有横斑，样子很像雀鹰，这种相似被认为是一种拟态。","h":60,"c":0.04},
+{"n":"玄鸟至","p":"燕子从南方飞回来。","o":"玄鸟就是燕子，春分来，秋天走。","k":"家燕在长江流域多在三月出现，到华北通常要到四月前后。","h":250,"c":0.05},
+{"n":"雷乃发声","p":"开始打雷。","o":"阳气渐盛，与阴气相争，发而为雷。","k":"雷暴需要近地面的暖湿空气强烈上升。入春后地面升温快，对流增强，雷暴才逐渐出现。","h":280,"c":0.06},
+{"n":"始电","p":"开始出现闪电。","o":"古人把雷和电分开记，作为春天的两个信号。","k":"闪电和雷声其实同时产生：闪电把空气瞬间加热到约三万度，空气猛烈膨胀发出雷声。光比声音快，所以总是先看见闪电。","h":290,"c":0.07},
+{"n":"桐始华","p":"桐树开始开花。","o":"桐花开在清明前后，古诗常用它写暮春。","k":"这里的桐一般认为是泡桐。它紫色或白色的大花在长叶之前开放，华北多在四月中下旬。","h":310,"c":0.07},
+{"n":"田鼠化为鴽","p":"田鼠变成了鴽，一种鹌鹑类的小鸟。","o":"田鼠少见了，鴽多起来，古人以为是一种变成了另一种。","k":"鼠和鸟不会互相转化。春天鹌鹑类开始在田野里频繁活动和鸣叫，而田鼠多在夜间和地下活动，便有了此消彼长的印象。","h":70,"c":0.05},
+{"n":"虹始见","p":"开始看到彩虹。","o":"古人认为虹是阴阳交会之气。","k":"彩虹是阳光在雨滴里折射、反射形成的，需要太阳和阵雨同时出现。春末阵雨增多，彩虹也就多了。","h":200,"c":0.07},
+{"n":"萍始生","p":"浮萍开始生长。","o":"水温回暖，池塘水面出现浮萍。","k":"浮萍靠出芽繁殖，条件合适时两三天就能翻一倍，所以几乎是转眼间就铺满水面。","h":135,"c":0.1},
+{"n":"鸣鸠拂其羽","p":"斑鸠一边鸣叫，一边拍打翅膀。","o":"古人看见鸠鸟拍翅理羽，记作暮春的景象。","k":"这正是鸠鸽类的繁殖季。斑鸠求偶时常腾空拍翅，再展开翅膀滑翔下来，同时不停地鸣叫。","h":40,"c":0.04},
+{"n":"戴胜降于桑","p":"戴胜鸟落在桑树上。","o":"戴胜出现在桑林间时，正该采桑养蚕。","k":"戴胜头顶有扇形羽冠，在华北多为夏候鸟或留鸟，常在地面用细长的嘴啄食昆虫。","h":55,"c":0.09},
+{"n":"蝼蝈鸣","p":"蝼蝈开始鸣叫。","o":"蝼蝈指什么，古人就有分歧：有人说是蝼蛄，有人说是蛙。","k":"雄蝼蛄会在地下挖出喇叭形的洞口，借它放大鸣声；蛙在入夏后进入繁殖期，夜里叫得最响。","h":120,"c":0.07},
+{"n":"蚯蚓出","p":"蚯蚓钻出地面。","o":"蚯蚓感到阳气，从土里出来。","k":"初夏雨后常能看到大量蚯蚓爬上地面。原因可能与土壤积水、借湿润地面迁移有关，至今仍有争论。","h":30,"c":0.06},
+{"n":"王瓜生","p":"王瓜的藤蔓快速生长。","o":"王瓜是一种野生的葫芦科藤本。","k":"王瓜和栝楼同属。初夏抽藤，夏季开出边缘呈流苏状的白花，花在夜间开放。","h":125,"c":0.09},
+{"n":"苦菜秀","p":"苦菜开花了。秀，开花。","o":"苦菜是古人常吃的野菜，开花后就不再鲜嫩。","k":"苦菜一般认为指苣荬菜、苦苣菜一类的菊科植物，茎叶折断会流出白色乳汁，味道发苦。","h":100,"c":0.11},
+{"n":"靡草死","p":"细软的草开始枯死。","o":"靡草是枝叶细软、喜阴的草，阳气一盛就枯死。","k":"葶苈等早春植物趁光照充足、气温不高时迅速长大、结籽，入夏就枯黄，以种子度过炎热。","h":85,"c":0.07},
+{"n":"麦秋至","p":"麦子成熟的时节到了。","o":"“秋”指收获的时候。对麦子来说，初夏就是它的秋天。","k":"冬小麦秋天播种，越冬后返青，华北平原多在五月底到六月中旬收割。","h":80,"c":0.1},
+{"n":"螳螂生","p":"小螳螂孵出来了。","o":"去年深秋产下的螳螂卵，这时孵化。","k":"螳螂把卵产在泡沫状的卵鞘里，卵鞘干后变硬，保护卵过冬。一个卵鞘能孵出几十到上百只小螳螂。","h":135,"c":0.1},
+{"n":"鵙始鸣","p":"伯劳开始鸣叫。","o":"鵙就是伯劳，古人知道它性情凶猛。","k":"伯劳体形不大，却会捕食昆虫、蜥蜴甚至小鸟，还把猎物挂在棘刺上，因此有“屠夫鸟”之称。","h":45,"c":0.06},
+{"n":"反舌无声","p":"反舌鸟不再鸣叫。","o":"反舌鸟能学百鸟的叫声，到这时却安静了。","k":"反舌一般认为是乌鸫，也叫百舌。鸣禽的歌唱多集中在求偶和占地盘的繁殖初期，进入育雏阶段后明显减少。","h":260,"c":0.03},
+{"n":"鹿角解","p":"鹿角脱落。","o":"古人把鹿归为阳兽，认为夏至阴气初生，鹿感到阴气而落角。","k":"梅花鹿、马鹿通常在春季脱角，夏至前后正是新角（鹿茸）快速生长的时候。这一条和冬至的“麋角解”对称，更像是一套阴阳安排。","h":50,"c":0.07},
+{"n":"蜩始鸣","p":"蝉开始鸣叫。","o":"蜩就是蝉，夏至以后蝉声渐起。","k":"只有雄蝉会叫，靠腹部的鼓膜快速振动发声。蝉的若虫要在地下生活好几年，才钻出地面羽化。","h":115,"c":0.08},
+{"n":"半夏生","p":"半夏开始生长。","o":"半夏得名于它生在夏季之半。","k":"半夏是天南星科的小草本，块茎可以入药，但生的有毒。","h":145,"c":0.08},
+{"n":"温风至","p":"吹来的风都是热的。","o":"暑气上升，连风都带着热。","k":"夏季风盛行，暖湿空气从海上源源而来，加上日照强，风本身就是热的。","h":60,"c":0.1},
+{"n":"蟋蟀居宇","p":"蟋蟀躲到屋檐下。","o":"《诗经》说蟋蟀“七月在野，八月在宇，九月在户，十月蟋蟀入我床下”。","k":"诗里的月份是夏历，比公历晚一个多月。天气转凉时，蟋蟀会躲进墙缝、屋檐等暖和的地方，离人越来越近。","h":75,"c":0.06},
+{"n":"鹰始挚","p":"小鹰开始练习搏击。挚，击。","o":"古注说这时鹰已有肃杀之气，开始练习搏击。","k":"许多猛禽在初夏育雏。幼鸟出巢后要跟着亲鸟练习飞行和捕猎，才能在秋冬独立生存。","h":45,"c":0.07},
+{"n":"腐草为萤","p":"腐烂的草变成了萤火虫。","o":"萤火虫多从潮湿的草丛里飞出来，古人以为它是腐草化成的。","k":"陆生萤火虫的幼虫生活在潮湿的落叶和腐殖质里，捕食蜗牛等，在土中化蛹。成虫羽化后从草丛飞出，看上去就像腐草化成。","h":150,"c":0.08},
+{"n":"土润溽暑","p":"土地潮湿，天气闷热。溽，湿热。","o":"暑气蒸腾，地面湿润，人最难受。","k":"湿度高时汗水难以蒸发，人体散热变慢，所以同样的气温，潮湿时感觉更热。","h":70,"c":0.07},
+{"n":"大雨时行","p":"时常下大雨。","o":"暑热极盛，大雨应时而降。","k":"七月下旬到八月上旬是华北的主汛期，人称“七下八上”，暴雨多集中在这段时间。","h":230,"c":0.07},
+{"n":"凉风至","p":"开始刮起凉风。","o":"立秋后西北风渐起，暑气开始退去。","k":"立秋时多数地方仍然炎热，俗称“秋老虎”。但北方的冷空气开始活跃，一场冷空气过后，早晚就会明显转凉。","h":190,"c":0.05},
+{"n":"白露降","p":"早晨开始出现露水。","o":"古人以为露是从天上降下来的。","k":"露是地面和草叶在夜里辐射降温，让贴近它们的空气中的水汽凝结而成，并不是从天上落下来的。","h":200,"c":0.03},
+{"n":"寒蝉鸣","p":"寒蝉开始鸣叫。","o":"寒蝉是秋天叫的蝉，叫声凄切。","k":"寒蝉一般认为是蒙古寒蝉一类的晚季蝉，比夏天常见的蚱蝉小，多在夏末秋初鸣叫。","h":140,"c":0.05},
+{"n":"鹰乃祭鸟","p":"鹰捕到许多鸟，摆放开来，像在祭祀。","o":"古人看到鹰把猎物陈列开，以为它先祭天再进食。","k":"秋季是许多猛禽迁徙的时节，它们需要大量捕食来补充体力。“祭”是古人的拟人说法。","h":55,"c":0.06},
+{"n":"天地始肃","p":"天地间开始有萧瑟之气。","o":"肃，指秋天的肃杀和收敛。","k":"太阳直射点南移，北方白昼变短、日照减弱，草木生长放缓，开始为过冬做准备。","h":85,"c":0.04},
+{"n":"禾乃登","p":"谷物成熟了。登，成熟、收获。","o":"禾泛指谷物，尤其指粟，也就是小米。","k":"粟是黄河流域最古老的作物之一，已有八千年以上的栽培历史。早熟的谷子这时开始收获。","h":85,"c":0.1},
+{"n":"鸿雁来","p":"大雁从北方飞来。","o":"鸿雁南飞，是秋天到了的信号。","k":"雁群南迁时常排成“人”字或“一”字，后面的雁借前面的雁翼尖带起的上升气流，可以省力。","h":70,"c":0.04},
+{"n":"玄鸟归","p":"燕子飞回南方。","o":"燕子春来秋去，准时得让古人用它来定季节。","k":"我国的家燕多到华南或东南亚越冬，离开前常先在电线上成群聚集。","h":245,"c":0.05},
+{"n":"群鸟养羞","p":"鸟儿储备食物，准备过冬。羞，同“馐”，美食。","o":"古人以为群鸟开始贮藏食物。","k":"星鸦、松鸦、山雀等确实会把种子藏起来，冬天凭记忆找回。更多的鸟则是在秋天大量进食，积累脂肪。","h":60,"c":0.07},
+{"n":"雷始收声","p":"雷声开始停息。","o":"阴气渐盛，雷就不再发声。","k":"入秋后地面降温，大气上下温差变小、趋于稳定，强对流减少，雷暴也就少了。","h":260,"c":0.04},
+{"n":"蛰虫坯户","p":"要过冬的虫子用泥土把洞口封小。坯，用泥土涂抹。","o":"虫子先把洞口抹小，等到天寒再完全封死。","k":"许多昆虫和小动物在秋天找好越冬的地方。土层和封闭的洞穴能减缓温度变化，帮它们熬过严寒。","h":65,"c":0.05},
+{"n":"水始涸","p":"河湖的水开始干涸。","o":"秋天雨少，水位下降。","k":"雨季结束后降水骤减，蒸发却仍然旺盛，河湖水位随之回落。","h":80,"c":0.04},
+{"n":"鸿雁来宾","p":"最后一批大雁也来了，像客人一样。","o":"古注说先到的雁为主，后到的雁为宾。","k":"雁群的迁徙往往持续一两个月，不同种群、不同年龄的雁分批南下。","h":65,"c":0.05},
+{"n":"雀入大水为蛤","p":"雀鸟钻进海里，变成了蛤蜊。","o":"深秋雀鸟少见，海边却多了花纹与雀羽相似的蛤蜊，古人便以为是雀入水化为蛤。","k":"鸟不会变成贝。这一条保留了古人的推理方式：一种东西少了，一种相似的东西多了，就认为是前者变成了后者。","h":50,"c":0.06},
+{"n":"菊有黄华","p":"菊花开出黄色的花。","o":"菊在百花凋零时开放，古人以它为深秋的标志。","k":"菊花是短日照植物，白天短到一定程度才开花。花农用遮光或补光，就能让它在任何季节开放。","h":90,"c":0.12},
+{"n":"豺乃祭兽","p":"豺把捕到的猎物摆开，像在祭祀。","o":"古人以为豺要先祭兽，然后才吃。","k":"豺是群居的犬科动物，常集体围猎。如今它在我国大部分地区已极为罕见，是国家一级保护动物。","h":45,"c":0.08},
+{"n":"草木黄落","p":"草木枯黄，叶子飘落。","o":"秋霜过后，草木凋零。","k":"叶子变黄，是叶绿素分解后，原本被盖住的类胡萝卜素显露出来；叶柄基部长出离层，叶子就脱落了。","h":75,"c":0.1},
+{"n":"蛰虫咸俯","p":"蛰伏的虫子都垂下头，不吃不动。咸，全都。","o":"虫子全部进入冬眠。","k":"许多昆虫在越冬前进入“滞育”，代谢大幅降低，有的还会在体内积累甘油等防冻物质。","h":55,"c":0.04},
+{"n":"水始冰","p":"水面开始结冰。","o":"立冬时节，北方的水面结起薄冰。","k":"水在 4°C 时密度最大。表层水冷到 4°C 以下反而变轻，浮在上面结冰，冰又像盖子一样护住下面的水，所以湖泊从上往下冻，鱼能在冰下过冬。","h":215,"c":0.04},
+{"n":"地始冻","p":"土地开始冻结。","o":"寒气渐渐渗入地下。","k":"水结成冰体积会膨胀约 9%。土壤冻结时会把地面向上顶起，这就是“冻胀”，也是北方道路冬天开裂的原因之一。","h":60,"c":0.025},
+{"n":"雉入大水为蜃","p":"野鸡钻进海里，变成了大蛤。","o":"蜃是大蛤。初冬野鸡少见，海边多见带花纹的大蛤，古人以为是野鸡所化。","k":"和“雀入大水为蛤”一样，是对此消彼长的猜测。后来人们还以为海上的幻景是蜃吐气形成的，于是有了“海市蜃楼”。","h":25,"c":0.06},
+{"n":"虹藏不见","p":"彩虹不再出现。","o":"古人认为阴气盛、阳气伏，虹便藏起来了。","k":"彩虹需要阳光照在雨滴上。北方冬季降水少，又多以雪的形式落下，雪花不能像水滴那样折射出彩虹。","h":240,"c":0.025},
+{"n":"天气上升地气下降","p":"天上的气往上升，地下的气往下沉。","o":"古人认为天地之气不再相交，于是万物闭藏。","k":"冬季近地面常出现“逆温”：地面冷却快，冷空气沉在下层，上层反而更暖，空气上下不交换，烟尘和雾霾因此容易积聚。","h":250,"c":0.03},
+{"n":"闭塞而成冬","p":"天地闭塞，转入严冬。","o":"天地不通，阳气潜藏。","k":"北半球冬季太阳高度低、白昼短，地面接收的太阳辐射少于散失的热量，气温持续下降。","h":255,"c":0.03},
+{"n":"鹖鴠不鸣","p":"寒号鸟不再叫了。","o":"鹖鴠是一种夜里鸣叫、盼着天亮的动物，民间叫它寒号鸟。","k":"寒号鸟其实不是鸟，一般认为是复齿鼯鼠，一种会滑翔的松鼠，它的粪便就是中药“五灵脂”。它冬天很少外出。","h":270,"c":0.03},
+{"n":"虎始交","p":"老虎开始交配。","o":"古人认为此时阴气极盛而阳气萌动，虎感而交合。","k":"东北虎全年都可能交配，冬季到早春相对集中。","h":60,"c":0.09},
+{"n":"荔挺出","p":"荔草抽出新芽。","o":"荔是一种耐寒的草，古人说它在隆冬也能抽芽。","k":"荔一般认为是马蔺，鸢尾属，极耐寒耐旱，春天开淡蓝紫色的花，常用来固沙护坡。在今天的华北，它要到早春才萌发。","h":275,"c":0.06},
+{"n":"蚯蚓结","p":"蚯蚓在土里蜷缩成团。","o":"古人说蚯蚓阴曲阳伸。冬至阳气初生，阴气仍盛，所以蚯蚓还蜷着。","k":"冬天蚯蚓会钻到冻土层以下，有的种类会几条缠成一团，减少水分散失，进入休眠。","h":40,"c":0.03},
+{"n":"麋角解","p":"麋鹿的角脱落。","o":"古人把麋归为阴兽，冬至一阳初生，麋感到阳气而落角。","k":"这一条恰好准确：麋鹿是少数在冬季脱角的鹿。它曾在中国野外绝迹，1985 年起从英国引回，如今已重新有了野生种群。","h":55,"c":0.04},
+{"n":"水泉动","p":"地下的泉水开始流动。","o":"冬至阳气初生，深处的泉水最先感知。","k":"地下几米深处的温度几乎终年不变，冬天比地面暖，所以泉眼常年不冻，寒冷的早晨还会冒出白汽。","h":205,"c":0.05},
+{"n":"雁北乡","p":"大雁准备往北飞。乡，同“向”。","o":"古人认为阳气已动，雁感知到了，开始向北。","k":"候鸟的迁徙时间主要由日照长度的变化触发。冬至过后白昼渐长，雁的身体开始为迁徙做准备。","h":230,"c":0.03},
+{"n":"鹊始巢","p":"喜鹊开始筑巢。","o":"喜鹊感知阳气，最早开始筑巢。","k":"喜鹊在冬末就开始衔枝筑巢，巢建在高树上，带有顶盖，要用成百上千根树枝。","h":250,"c":0.04},
+{"n":"雉始雊","p":"野鸡开始鸣叫求偶。雊，雉鸣。","o":"雄雉在田野里高声啼叫。","k":"雄环颈雉求偶时会发出响亮的“咯咯”声，同时快速拍打翅膀。","h":20,"c":0.08},
+{"n":"鸡始乳","p":"母鸡开始孵小鸡。乳，生育。","o":"大寒时节，母鸡开始下蛋孵雏。","k":"鸡的产蛋量受日照长短影响很大，白天变长会刺激产蛋。现代鸡场常用人工光照让鸡全年产蛋。","h":80,"c":0.06},
+{"n":"征鸟厉疾","p":"鹰隼一类的猛禽，捕猎更加凶猛迅速。","o":"征鸟指远飞的猛禽；厉疾，凶猛迅疾。","k":"隆冬时食物稀少，猛禽又需要更多能量来维持体温，捕食也就更加积极。","h":265,"c":0.04},
+{"n":"水泽腹坚","p":"湖泊河流冻得最结实，一直冻到中央。","o":"腹坚，指冰冻得坚实，直到水泽中央。","k":"冰越厚长得越慢：冰本身导热差，像一层被子挡住下面的水散热，所以冻到一定厚度后就很难再增厚。","h":220,"c":0.04}
+]/*PENTADS:END*/;
+
+/* ---------- Time ---------- */
+// Start of every pentad from 1899 冬至 to 2101, in minutes since 1970 (UTC), delta-encoded.
+const TIMES = /*TIMES:BEGIN*/{"start":-36830824,"startIndex":63,"offset":6900,"diffs":"4m4h4h4k4q4v4z555f5s676m707d7w8g929na5anbabwcld5dne4epfaftg7gjgvh8hlhuhyhzi2i5i6i2hvhkhdh5gugffwffezeje0decqc4bmb2ai9t988n867r786r695w5m5e544v4n4j4j4l4n4n4p4x585j5v656h6x7h808j8z9ja3arbebzcid0dmeaetfbfog3gkh0hchkhphvi2i7i6i3hxhthohhh5gpgbfxfkf2ehdvdbcscabob0ad9s9b8s897n756p6d615o5b504t4r4o4l4i4h4m4t51595g5q646k717i7w8e8y9la8arbabucgd5dqe8epf5fpg8gngxh7hghri0i3i3i1i2i1hxhohbh1grgfg1fhexegdydgcuc7bkazah9y9c8p857o796u6e5y5l5b554y4r4l4h4j4m4q4u4x555f5u676l6x7d7w8h939ka3ambabyckd3dle4eqfafsg5ghgvhahlhthwhyi3i6i6i1hshkhfh6gtgdfwfgf0eke0dccqc6bob4ag9t988p8a7r786q6a5z5o5f544u4n4m4l4m4l4m4q4y595j5t636h6y7h7z8h8x9ha4arbdbxcfd0dne9esf8fng3gmh0hbhhhohxi4i7i6i1hxhvhrhhh3gpgcfzflf2efdvddcucbbmazad9u9c8t877m756s6e615n5a504w4s4o4k4h4i4o4v51585f5q656m717g7v8f8z9na7apb8bvcid5dpe6enf6frg8glgwh5hihthzi2i1i2i3i3hwhmhbh2gtggfzffeyege0dfctc5bkb1ai9w9a8o847q7a6t6c5w5l5d554y4q4j4i4l4n4q4s4x565i5v686j6x7f7y8j929ka2aobcc0cjd1dle5esfbfqg3ghgwhbhkhrhuhyi5i6i4hyhrhmhfh6gsgbfwfhf2ejdydbcqc8bqb2af9t988s8a7q776p6b605q5d534t4o4n4m4l4k4l4r50595j5r626i707i7z8f8x9ia6asbcbucfd1dpe9erf6fmg5gngzh8hghohyi4i5i3i0hzhwhqhfh1gpgeg0flezefdwdfcwc9bmazae9x9d8s877m776t6g605m59524y4s4n4i4h4j4p4v50555e5r666m6z7e7u8f919ma5anb9bvcjd5dne5enf9fsg7gkguh7hkhuhyi0i1i4i5i3huhlhch4gugffxffeyeje0dfcrc5blb2ai9w988o867r7a6s6b5w5n5e554x4o4j4k4l4m4p4q4x565j5v656i6w7f7z8j909ia2apbdbzchd0dle8etfafpg2gjgzhbhkhqhui1i6i7i4hxhshnhhh6gqgafxfif3eidvdbcsc9bpb0ae9s9a8s8a7o766p6d615p5c514u4q4p4m4j4j4m4s52595h5q646j717i7x8e8x9ja7asb9bucfd3dpe8eof5fog6gmgyh6hghqhzi3i4i1i1i0hxhphch1gqgfg1fjexefdydfcwc7bkazag9y9c8q867n786u6f5z5l5a544z4s4m4h4i4m4q4v4y555f5t686l6y7d7w8g929la3anb9bwckd3dle3epf9frg6ghguh8hlhshwhzi1i6i6i1hthkheh5gvgefwfgf0eke1ddcrc6bnb4ah9u988p887s796q6a5x5o5f544u4n4l4k4m4m4m4p4y585j5t646h6x7g808h8y9ha3aqbebxcfd0dme8etf8fng3gkh0hahihohwi3i6i7i1hxhuhqhih4gpgcfzflf3ehdwdccucbbob0ae9t9c8t897n756q6e615o5a504v4r4o4k4h4i4m4t51585f5p646l717g7v8e8y9la7aqb9bucgd5dpe7enf6fqg8gmgwh5hhhsi0i2i2i1i3i1hxhnhch1gsggg0fhexege0dgcvc6bkb0aj9x9c8p857p7a6u6d5y5k5c554z4q4k4h4j4m4q4t4x545g5u686j6w7d7x8h929ka1anbbbycjd2dke5eqfbfrg4gggwhahlhrhvhyi4i6i5i0hrhlhfh6gtgcfwfgf2eldydccrc8bpb4ah9t998r8a7s796q6b5z5q5f534u4o4n4m4l4l4l4q4y595j5r626g6y7h7z8e8w9ga4arbcbuceczdne9eqf6fmg4glgzhahghohxi4i6i4i1hyhwhqhhh2gpgeg0fmf1egdwdecwcbbnazaf9w9e8t887n766u6f625n5a524x4t4o4j4h4j4o4v50565e5q656l707e7t8e8z9la5anb7btchd4dne4emf7frg7gjgvh5hjhthzi1i1i3i5i3hwhmhch4gughfzfgeyeie1dgctc6blb2aj9x998p867q7b6t6c5w5m5e564x4p4k4j4l4n4p4r4x565i5u676i6w7e7y8i919ha2anbcbyciczdke5esfafog3gggxhbhkhqhti0i5i7i4hyhshnhhh6gsgbfxfjf3ekdxdbcscabqb2af9t9a8s8b7q766q6c615q5d524t4q4o4m4l4j4l4s505a5i5r626j707i7y8d8x9ja5asbabtced2doe8eof5fmg5glgyh6hehphxi4i3i2i0hzhwhpheh1gqgeg2fkezefdydgcxc9bmazah9y9e8s867o786v6g605m5a544y4t4n4i4h4l4q4u50555e5s676l6z7d7u8g919la4amb8bvcjd4dle3enf9frg5gigth7hjhthxhyi1i4i4i2huhkhch5guggfxfff0eke1dfcsc6bnb4ak9v9a8p887t7a6s6b5y5o5f554w4o4k4k4m4m4o4p4x575i5u646h6w7f7z8h8y9ha2apbdbxcgczdke8esf9fog2gjgzhbhihphui2i6i7i2hxhthphhh5gqgbfyflf3eidwdcctcbbpb1af9t9c8u897p766q6f625p5c504v4r4p4l4j4i4m4t51585g5p646j717h7v8d8x9ka7aqb9btcfd3dpe8enf5fog8gmgxh5hghri0i3i3i1i1i1hxhphch1grgfg1fiexegdydhcvc7bkb0ah9y9c8q867o7a6u6f5y5l5c554z4s4l4i4i4n4q4u4y555f5u676l6x7d7v8h929ka2anb9bxcjd2dle3epfafrg4ghguh9hlhshwhyi2i6i6i1hshkhfh6gugdfwfgf2eke0ddcrc7bob4ai9u988q8a7s796r6a5z5p5f554u4o4l4m4m4l4m4q4y585j5t626h6x7g808f8w9ha2arbcbvcecydme9eqf7fmg2glgzhahghohwi3i7i6i1hxhwhqhih4gpgdg1fmf2ehdxdecwcbbob1ae9v9e8u887o756s6g615o5a514w4s4o4j4h4i4n4u51565e5p646l707f7u8c8z9ka6aob7btchd4dne5enf5fqg8gkgvh5hihthzi2i2i2i4i3hyhnhch3gugig0fhezeie1dhcvc6blb2ak9y9b8p857q7b6u6c5x5l5d554y4p4j4i4j4m4p4s4w545h5t676i6v7d7x8h919ia1anbabycid1dje5erfafqg3gggxhahlhrhuhzi5i7i5hzhshmhhh7gtgcfxfjf3eldzdccscabqb4ah9t9a8s8c7r786q6b615q5e534t4p4n4m4l4j4k4r4z595h5r616h6y7h7y8d8v9ha4arbabtcdd0dne8epf5fmg4glgyh8hfhohxi4i5i3i0hyhxhqhfh2gqgeg2flf1egdydfcycbbnb0ag9y9f8u887o786v6h615n5b534y4t4o4j4h4j4p4v50555d5r656k6z7c7t8e8z9ka3amb6btcid3dle2emf6frg6gigth5hjhthyhzi1i4i5i2hwhlhdh4gvghfzfgf0eje3dgctc7bnb4ak9y9a8p887t7c6t6c5y5n5f574x4o4k4k4l4n4o4q4x565h5u656g6v7e7x8h8y9ga0anbbbxcfcydje5erf9fng1ghgxhbhjhohui1i6i7i4hxhthphih6gsgcfyfkf5ekdxddctccbqb3af9u9b8v8a7r766r6d635p5d524u4r4o4m4k4i4m4s51595h5p626j707h7w8c8x9ia6aqb8bsced1doe7enf4fmg5glgxh5hfhphyi3i4i1i0i0hxhpheh1grgfg2fkezegdydhcxc9bmb0ah9z9e8s867o7a6v6g605l5c544z4t4m4i4i4l4q4v4z545f5t676l6x7d7u8g919la2amb7bwcjd2dke2enf9fqg4ghgsh7hkhshvhxi1i5i5i1hshkhdh6gugffxfgf1ele1dfcrc8bob6aj9w9a8q8a7t7b6s6c5y5q5f564v4o4l4l4m4m4n4p4x585j5t636f6w7g7y8g8x9fa1aqbbbwcecydke7erf7flg1gjgyhahhhnhui2i6i6i1hxhthqhhh5gpgdfzfmf3eidxdecvcdbpb2af9w9d8v8b7p776s6g625p5c524v4t4o4l4i4i4m4u51575e5p636k707e7u8c8x9ka5aob7bscfd3doe5emf4fpg7gkgwh5hghshzi2i2i1i3i2hxhohch2gsghg2fheyehe0dicvc7bmb1aj9z9c8q867q7b6v6e5y5m5d554z4r4l4h4j4n4q4t4w545g5u676i6w7c7w8g919ia1amb9bxcid0dje4epfafpg4gggvh9hlhrhvhyi3i7i6hzhshmhfh7gugdfwfhf3eldzddcsc8bqb4ah9u9a8r8b7s796r6b615q5f544u4p4m4n4m4k4m4q4z595i5s626g6y7h7y8e8v9ga3arbabucdcydme7eqf5fkg3gkgyh8hghmhxi3i6i3i0hyhwhqhhh3gpgeg1fmf2egdxdfcxccbob0af9x9f8u887p776u6g625o5a534x4t4p4j4h4j4p4u51565e5q646l707d7t8d8y9la4amb6btcgd3dme3elf5fqg6gjgth5hhhshzi0i1i2i5i3hwhmhdh4gugig0fhf0eje2dicuc7bnb3al9y9b8q877r7c6u6c5x5n5e564x4p4j4i4l4m4o4r4v555h5u656h6u7d7x8h8z9ga0anbabxchcydje4erf9fog2gggxhahkhqhti0i6i7i5hyhthohhh8gtgcfyflf4emdzddctcbbsb4ag9u9b8u8c7r786q6c625q5d524t4q4n4m4k4i4k4r4z595h5p616h6z7g7w8d8v9ha5aqb9btcdd0doe7eof4fmg5glgyh7hehphyi4i4i2i0i0hxhqhfh2gqgfg3flf0ehdydhcycabnb1ah9z9f8t887o796w6g615m5b544z4t4n4h4h4k4q4u4y545e5r656k6y7b7u8d909ka2alb6bucid3dke2emf8fqg5ghgth7hjhshxhzi1i4i6i2huhlhdh6gvggfyfhf0ele3dgctc8bob6ak9y9a8r8a7u7c6t6c5z5p5g564x4o4l4k4m4m4n4q4w565i5t636e6v7d7x8g8w9ea0anbabvcecxdie6eqf7fmg0gigxhahjhnhui2i6i7i3hyhthqhjh6gsgcg0fmf5ekdydecvcdbrb4ag9v9e8v8c7q786s6f645q5d524v4s4p4l4j4i4m4t50585f5o626i707f7t8b8w9ha5aob6brcdd1dme5emf3fmg6gkgwh5hfhqhzi3i3i2i2i2hyhqhdh3gsgig3fjf0ehe1djcxc9bmb1ak9z9e8s867q7b6w6f5z5m5c564z4s4l4i4i4m4q4u4x545f5t666k6w7b7u8g909ja0alb7bwchd1die2enf9fpg3gfgth8hkhrhvhyi2i6i6i1hshlhgh7gvgffxfif2ene2dectc9bqb6aj9w9a8s8b7u7a6s6c605q5g554v4p4m4m4m4l4m4q4y585j5s626f6x7g7y8e8w9fa1aqbabucdcxdke6eqf5fkg0gjgxh8hghlhvi2i5i5hzhxhvhqhhh4gqgdg1fmf4eidydfcxcebqb2ag9y9f8w8b7p786u6h645p5c524x4t4p4l4i4i4o4u51565e5p646j707e7s8c8x9ka4amb6brcfd3dle4ekf4fog6gjgth4hghrhyi1i0i2i3i2hwhnhch3gugig1fiezeje2djcvc9bnb3ala09d8r887s7c6w6f5y5n5e574z4q4k4i4k4n4p4s4w545g5t666h6u7c7v8h8z9ga0alb9bwcgczdie3epf9fpg1gggvhahjhqhuhzi4i7i5hzhshmhhh8gtgdfxfjf4eme0dectcabrb6ah9v9b8u8c7t796r6d625r5f534v4p4o4m4m4j4l4r4z595i5q616g6y7g7x8d8v9ga3aqb9bsccczdme7epf4fkg3glgyh7hehnhxi3i5i3i0hyhxhqhfh2gqgeg2fmf1egdydgcxccbnb1ag9z9f8u887p796v6h625n5c534z4u4o4j4h4k4q4v50555e5q666k6z7c7t8d8z9ka3amb5btchd2dle2elf5fqg5gigsh5hihshxhzi1i3i4i3hvhlhdh4gvgifyfhf0eke3dhcuc7bob5al9y9b8q897t7c6v6c5y5o5g574x4p4k4k4l4n4p4q4v565i5t646g6v7c7x8g8y9f9zambabwcecxdie4eqf8fmg0gggxhahihohti0i6i7i4hyhthohjh7gsgdfzfmf5eldzdecvccbsb5ag9v9d8v8c7s776r6f625r5d524u4r4o4m4j4i4l4s4z595f5o626h6z7f7v8b8v9ha4apb7brcdd0dne6emf3fmg4glgxh5hehqhyi4i4i1i1i1hyhrheh2gsghg3flf1ehe0djcycabnb1aja09f8s887p7a6w6g605l5c544z4s4m4h4h4l4p4u4x535e5r666j6w7b7t8e909ja1alb6bvchd1dke1enf8fqg4gggth7hkhshwhyi1i6i5i2huhlheh7gwggfxfif2eme3dgctc8bqb7ak9x9b8r8b7v7b6t6c605p5h554w4o4l4m4l4m4m4p4w575i5s626e6v7e7x8f8v9ea0anbabucdcwdje5eqf6fkg0gigxh9hhhmhui2i6i5i2hwhvhqhih5grgdg0fnf5ejdydfcxcebrb3ah9x9f8w8c7r786t6h645r5c534w4t4p4m4i4i4n4t50585d5o626j6z7d7t8a8v9ia3anb5bpcdd1dme3ekf3fmg5gkguh3hfhrhzi2i1i2i3i2hyhohdh4gtgjg2fkf0eie2dkcxc9bob3ala09e8s887r7d6w6f605m5e56504r4l4i4j4m4q4s4w545f5s666h6v7a7u8f8z9g9zakb7bvcgcydhe1eof8fog2geguh8hkhqhvhyi3i7i6i0hthmhhh8gwgefyfjf5ene2decucabsb7aj9w9a8u8c7u7a6s6c615r5g544v4o4n4n4l4l4l4p4z585i5r616f6x7g7x8d8u9fa1apbabscccxdke6eof4fkg1gjgxh7hehmhwi2i6i3i0hxhwhrhhh3gqgeg2fnf3eidydhcycdbqb2ah9y9g8w8a7p796v6h635p5b534y4u4p4k4h4j4o4u51555e5p646k6z7d7s8c8y9ja3amb5brcgd2dke2ekf4fpg5ghgth3hhhrhxi0hzi2i4i2hwhmhch4gugig1fhf1eke3djcwc8bob6ama09d8r897u7d6w6e5z5o5f574z4q4k4j4l4n4o4r4v555g5t646g6t7c7v8g8x9f9yalb9bvcfcxdhe2epf8fmg1gegwh9hjhohthzi4i7i5hyhshohhh8gtgdfzflf5ene0decvccbtb6ai9x9c8w8d7u796s6e645r5f544u4q4p4m4l4j4k4r4z585h5o606g6y7f7v8b8u9fa3aob8bqcbczdme6emf3fkg4gkgxh6hehohyi3i5i2i1i0hxhrhfh3grggg3fmf1ehe0dicyccbob1aja09g8u887p7a6x6h625n5b554z4u4n4i4i4k4p4v4y545e5q656k6x7b7s8d8y9ja2akb5bschd1dje1elf7fpg4ghgsh6hjhshxhyi1i4i6i2hvhlheh6gwghfzfhf1eme3dhcuc8bpb7al9y9b8r8b7u7c6u6d5z5q5g574x4p4l4l4m4n4n4q4w575h5t636f6v7d7x8f8w9d9zanb9bucdcwdhe4epf6flfzgggxh8hhhnhti0i6i6i3hxhthqhih7gsgdg0fmf6eldzdfcwcebsb4ah9x9e8x8c7s786t6g645r5e524w4s4p4m4k4i4l4t51585e5p616i6z7e7u8a8v9ha3anb6bqccczdme4ekf2fmg4gjgvh4hehphzi2i2i2i1i2hyhqheh3gtgjg4fkf1eje2dkcycbbob3aka29f8t887q7c6x6g605m5d554z4s4m4h4i4l4p4t4w535e5s656i6v7a7t8e8z9ha0ajb6bvcgd0dhe1emf8fpg2gfgth7hkhrhvhyi2i7i6i1hthnhgh8gwggfyfkf4ene4dgcucabsb8ak9x9c8t8c7v7b6t6c615r5g554v4o4m4l4m4l4l4o4x575i5r606f6v7e7x8d8v9da1aob9btcccwdje6epf5fkg0gigyh8hfhmhvi2i6i5i0hyhvhqhih5gqgeg2fnf4ejdzdgcycfbrb3ah9z9g8x8b7r796v6i645q5c534x4u4p4l4h4i4o4t50565d5o636j6y7d7r8b8v9ja3alb4bqced1dle2ekf3fng5gigth4hfhrhzi0i1i1i4i2hxhohch4gugjg2fjf0eke3dkcxcabob5ama19f8s897t7e6x6g605n5f58504r4l4i4k4n4p4s4v545f5s656g6t7a7t8f8x9f9xajb7bucecxdge0eof7fng0geguh8hjhqhthyi4i8i5i0hshohih8gvgffzfkf6eoe1dgcucdbtb7ak9w9d8v8e7u7b6s6f635s5g544v4q4o4n4l4k4l4q4z585h5p606f6x7f7v8b8t9ea1aob7bqcbcwdke6emf2fjg2gjgwh7hdhnhxi3i5i3i0i0hxhrhhh3gsggg3fof3eie0dhd0cdbpb3aia09h8v8a7p7a6w6i635o5b544z4u4o4j4h4k4p4u50545d5q646k6y7b7s8b8y9ja1akb5brcfd1dje1ekf4fog4ghgrh4hhhshwhzi0i3i5i2hwhlheh5gwgig0fif2ele5djcvc9bpb7ama09d8r8b7u7e6v6e5z5p5g584y4p4l4k4l4n4p4q4v565h5t636f6u7c7w8f8w9e9yalb9bvcdcvdge3epf6fkfzgegvh9hhhmhshzi5i6i3hxhshohih8gsgdg0fmf6eme0dfcwcfbtb6aj9x9e8x8e7u796t6g655s5f534v4s4p4n4k4j4l4r50585g5o606h6y7e7u8a8t9ga3anb6bpcbcydme4elf1fkg3gjgvh4hehohxi2i3i1i1i0hyhqhfh2gsgig3fmf1eje1djd0ccbob3aka29h8u897r7c6x6i615n5d564z4t4n4i4h4l4p4u4x535d5r646j6v7a7r8d8y9i9zajb4btcgd0dhe1ekf7fpg3gfgsh6hjhshvhyi1i6i6i2hthmhfh7gxggfzfif3ene4dhcucabrb8al9y9c8s8c7w7c6u6d605r5h564x4o4m4l4m4m4m4p4x565i5s616f6u7d7x8e8u9d9zanb9btcbcwdhe5epf5fjg0gggxh9hghlhui1i6i6i1hxhuhqhjh5grgdg1fnf6ejdzdfcycebsb3ai9x9g8x8c7r796u6h645r5d534x4t4q4l4j4i4n4t51575e5o616j6y7e7s8a8v9ha3amb4bqccd0dle2ekf1fmg5gigth3hfhqhyi1i1i2i2i2hyhoheh3gugjg3fkf0eke3dkcycbbob4ama19g8s897s7d6x6h605m5e57504s4l4h4k4m4p4s4w535e5s656g6u797t8e8y9f9yaib6bucfcxdge0emf7fng1gdgth8hjhqhthyi3i7i6i1hthnhhh9gwggfzflf5epe3dhcvccbtb8al9x9d8v8d7v7c6s6e625r5g554v4p4m4m4m4k4k4p4x575h5p606e6v7e7w8b8t9da0anb8brcacwdje6enf3fjg0gjgxh7hehmhwi3i5i5i0hzhwhshih5grggg3fof5eje0did0cebrb4aia09h8x8b7q7a6v6j635p5c534y4t4o4k4h4i4n4u4z545c5o636j6x7b7r8a8w9ia1akb4bqced1dje1ejf4fog4ghgsh4hghshyi0i0i2i5i3hxhmheh5gvgkg1fjf2ele5dkcxcabpb7ana29e8t8a7u7f6x6f605o5h57504q4l4j4k4n4p4q4v545f5s646e6t7a7u8e8w9d9xajb7btcdcvdfe1eof6flfzgdguh8hihohshzi4i7i4hyhthohih9gugeg0fmf6eoe2dgcwcebub8ak9y9e8x8f7v7b6t6g655t5g554v4s4p4n4l4j4l4r4z585g5o606f6w7e7u898s9ea1amb6boc9cwdke3elf1fig1gjgvh5hchnhxi3i4i2i1i0hyhrhgh4gsgig4fof3eje1dkd1cebpb4aka29i8w8a7r7b6y6j635o5c564z4u4o4j4h4l4p4u4y545c5q646j6v7a7r8b8x9ha0aib3brcfczdhdzejf4fog3gfgqh5hihrhwhyi0i5i5i3hvhmhfh7gxgjg0fjf4ene6djcvcbbrb8ana09d8t8c7v7e6w6e605q5h574y4p4l4l4m4n4n4p4w565i5s626f6t7d7v8f8v9d9xalb9btcccudge3eof5fjfygfgwh7hghmhsi0i4i6i2hwhuhphih7gsgeg0fnf7eme0dgcxcgbtb6aj9y9g8y8e7t7a6t6i655s5f534w4t4q4n4j4i4m4t50585f5n616i6y7e7t898u9ga3amb5bpcbczdke3ekf0flg3giguh2hdhphxi1i2i0i1i1hxhpheh2gugig4flf1eke2dld0ccbpb4ana39h8u8a7s7e6z6i615o5e57514t4m4i4i4m4q4t4w535d5r656h6u797s8c8y9g9yaib4btcfcxdgdzelf6fog1gegrh6hjhqhvhxi1i6i6i1hthmhgh8gxggfzfkf4epe4dhcwcbbtb9am9z9d8v8e7w7d6u6e625s5i574w4p4n4m4m4l4m4p4x565h5r606e6u7d7w8c8s9d9yanb8brcacvdhe5enf4fjfzghgxh8hfhlhvi2i6i5i0hyhwhrhih5grgfg2fof6eje0dgczcgbrb4ai9z9h8y8c7r7a6v6i655q5d544x4u4q4l4i4i4n4u50565d5o626j6y7c7r8a8u9ia2akb4bpccd1dke1ejf2fmg5ghgth3hfhrhyi0i1i2i3i3hyhnheh4gvgjg3fjf1ele4dkcycabpb5ana29f8s8a7t7f6x6g605o5g57504s4l4j4k4n4p4s4v545f5t646g6t7a7t8e8x9e9xaib7btcdcwdfe0emf6fmfzgdgsh8hihphshyi3i7i5hzhshohih9gvgffzflf7epe2dgcwcdbvb8al9x9e8w8f7v7b6t6f645s5h554v4q4o4n4m4j4l4q4y585h5o606f6v7f7u8a8t9da0anb6bpcacvdje4emf1fig0gigwh5hehmhwi2i5i3i0i0hxhshih4gsghg4fpf4eke1dkd1cfbqb4aka19i8x8b7r7a6x6j635o5c544z4t4o4j4g4j4o4t4z535c5o636i6w7a7q8a8x9ha0ajb3bqced0die0ejf3fog3ghgrh3hihrhxhzi1i3i6i3hwhnheh7gxgkg1fkf3ene6dkcxcbbqb9aoa19e8t8b7w7e6w6f5z5q5g584y4p4k4k4k4n4n4p4u555f5s626e6s7a7v8e8u9d9xajb8btcccvdfe2eof5fkfzgegvh8hhhnhshzi5i7i3hyhthohjh8gugdg1fnf7ene1dgcycfbub8aj9y9g8y8f7v7a6u6h655t5g534w4s4q4m4k4j4k4s4z575f5n5z6g6w7e7s898s9ea1amb4boc9cxdke3ekf0fjg2gigvh3hdhohxi2i3i2i0i1hyhrhfh4gtgig5fnf2eke2dld1cebqb4ama39i8w8b7s7d6z6j635o5e56514u4n4i4i4l4p4t4x525d5p646h6u787q8a8x9f9xahb2brcdcxdgdyeif5fng1gegqh5hihrhvhxi1i6i6i3huhnhgh8gygig1fkf5epe6djcwccbtbaana09e8u8e7x7e6v6f615s5h584x4p4m4m4m4m4m4p4w565g5r616d6t7b7v8c8t9b9xakb8brc9ctdge3emf3fifygfgwh7hfhlhti1i6i6i2hxhvhrhkh7gsgfg2fpf7eme1dhczchbtb6aj9z9h8z8d7t7a6v6i655s5e534x4t4q4m4i4i4m4t50575d5n616i6x7d7r898t9ga2alb3bncbczdje2eif0fkg4ghgsh2hdhqhxi1i1i0i2i2hyhpheh4gugkg4flf2ele4dmd0ccbpb6aoa39h8v8a7u7e6z6i615o5f58504t4m4i4j4n4p4t4v535e5r656g6s797s8d8x9e9waib4bscecwdedyelf5flfzgdgqh6hihohthwi2i5i5i0hthmhhh8gxgfg0flf6epe5dhcxcdbvbaan9z9e8x8g7x7d6v6f645t5i574w4q4o4n4m4l4l4p4y575h5p5z6d6v7d7v8a8r9c9yamb7bpc8cudie3emf1fhfzghgvh6hdhlhvi1i5i4i0hyhwhshih4gsggg4fpf5eke1djd1cgbsb5aka19j8z8c7s7b6x6k655q5d554z4u4p4l4h4i4o4u4z545c5o626i6w7a7q898u9ha0ajb2bocdczdie0eif2fmg3ghgrh2hghrhxi0i0i2i5i3hxhnheh6gwgkg2fkf2eme6dlcycbbqb7apa29f8u8b7v7f6y6g605p5h594z4r4l4k4l4n4o4r4v545f5s646e6t797u8e8v9d9waib6btcccvdee0enf5flfygdgth7hihnhshyi4i6i4hyhthohih9gugffzfmf8eoe2dgcwcfbvb8ak9y9f8y8f7w7b6u6g655t5h554w4r4p4o4l4k4l4r4z585g5o606f6w7e7u898s9da0anb5boc9cvdje4ekf0fhg1gigvh3hdhmhwi2i4i2i0i0hxhshgh4gsgig5fof4eke2dkd2cebrb5ala39i8x8b7s7c6z6j635p5d56504u4o4i4h4k4p4u4x535c5p636i6v787q8a8w9h9yahb2bqcdcydhdyeif3fng2gegqh4hihqhwhyi1i4i6i3hwhmhgh8gygjg2fkf4epe7dlcxccbsbaapa19f8u8d7x7f6w6f605r5h584y4p4l4k4m4m4m4p4u555g5r616d6s7a7v8c8u9b9wakb7bscacudfe2enf4fjfygfgvh8hghmhti0i5i7i3hxhvhqhkh8gtgfg2fpf8ene1dicychbvb7ak9z9h8z8f7u7a6v6i655t5e544w4s4q4m4j4h4l4s4z575d5n5z6g6x7c7r888s9fa1alb3boc9cydke2eif1fjg3giguh3hdhohyi2i2i1i2i2hyhrheh4gugkg5fmf3ele3dnd1cdbqb6ana49j8v8b7u7e706j625o5f58514t4n4i4i4m4p4t4w525d5q636h6s787q8b8w9e9wagb3brcdcwdedxejf5flg0gdgqh5hihqhuhwi2i5i6i2huhmhhh9gyghg0flf6eqe6djcxcdbubbaoa19e8w8g7y7e6w6g635t5j574y4q4n4n4m4m4l4p4x565h5q606c6t7c7u8a8s9a9xakb6bpc8csdge2elf1fhfxgggvh6hehlhti2i5i5i1hyhwhshkh6gtggg4fqf7eme2did2chbub6aka09k8z8d7t7b6x6j665r5e544y4u4q4l4i4i4n4t50555c5n616h6x7b7p888u9fa1aib2bncaczdidzehf0flg2ghgrh1hfhphyi0i0i2i4i3hyhpheh5gxgkg5flf3eme6dnd0ccbrb7apa49h8u8b7v7g6y6i615o5g59504s4l4j4k4m4q4r4v535e5s646f6s797s8d8w9d9wahb5bscccvdddzelf5fkfygcgrh7hhhnhshwi3i6i4hzhshohhh9gwgfg0fmf7eqe4dhcycebwbaama09f8y8g7x7d6u6g655u5i564w4r4o4o4l4l4k4q4y585g5o5z6e6v7e7t8a8r9c9zamb5boc8cvdie3ekf0fgg0ghguh4hchlhvi1i4i2i0hyhxhrhhh4gsghg5fpf5eke2dkd3cgbsb6ala39k8z8d7s7d6y6l655q5e55504v4p4j4h4k4o4t4z535b5o626h6v797p888v9f9zahb1bocccydgdzegf2fmg3gegqh3hghqhxhyi0i3i5i3hwhnhfh6gygkg2fkf4eoe7dmcyccbsbaapa39g8u8d7x7g6y6g625q5i594z4r4l4k4m4m4o4p4v545f5r626d6r797u8c8t9b9wahb6bscactdee0emf5fjfxgdguh8hghnhshzi4i7i4hyhthqhjh9gugeg1fof8eoe2dhcycgbvb8al9z9g8z8f7w7b6u6i665t5g544w4t4q4n4k4j4l4r4z585e5n5z6f6w7d7s888r9ea0alb3bnc9cvdje2ejezfig2ghguh3hchnhxi2i3i2i0i1hzhrhgh3gugjg5fof3eke3dmd2cebrb5ama49j8x8b7s7e706j635p5e57514u4o4i4i4l4q4t4x535c5q636h6u787p8b8v9f9xagb1bqcccxdedxehf4flg0gdgph4hhhphvhwi1i4i6i2hvhmhgh9gygjg1flf5eqe7dkcycdbtbcaoa29f8v8f7y7f6w6g625s5j584x4q4m4m4m4m4m4p4v565g5r606c6s7b7u8c8r9a9wakb6bqc8csdee2elf2fhfxgegvh6hehlhsi1i5i6i1hyhvhrhkh8gtggg4fqf8eoe2did1cibvb8aka19i908f7u7b6w6j665s5e544x4t4p4m4i4h4m4s4z555c5m606g6w7b7q878s9ea0akb2bmc9cydje0ehf0fjg3ghgsh2hdhphxi2i1i1i3i2hzhqheh5gwglg5fnf3eme6dnd2cdbsb7apa59i8w8b7v7f706i625p5f59504t4l4i4j4m4p4s4u525d5q646f6r777r8b8w9d9vagb3brcdcvdddxekf5flfygcgrh5hihohthwi2i6i5i0hthnhhh9gxghg0fmf7eqe5djcxcebwbbaoa09g8x8h7y7f6w6g645u5j574x4r4o4n4n4l4k4q4x565h5o5z6c6u7c7t898r9a9xakb5boc7ctdge2ekf0fgfygggvh5hchkhui2i5i3i0hzhwhshjh5gsghg5fqf7ele2dkd2cibub6ala39k908e7u7c6z6l665r5f554z4v4q4l4i4j4n4u4z545b5n616g6w797o878t9f9yahb0bmcacxdgdyegf0fkg2gfgqh1hfhqhwi0i0i2i4i4hyhohfh7gxgmg4flf4eoe8dnd0cdbsb9aqa59h8v8c7x7h6z6h625q5h5a504r4m4j4l4n4p4q4u545e5s626d6s787s8c8u9b9vagb5brcactdddyelf3fjfxgcgsh7hghnhrhyi4i6i5hyhthphjhagwgfg2fnf9eqe4dicycgbxbaam9z9g8z8h7x7c6v6h665t5i554w4s4p4o4l4j4k4r4z575f5o5y6f6v7d7t888r9c9zalb4bnc8cudie2ejezfhg0ggguh3hchlhwi2i3i1i0i0hyhrhhh4gtgig6fpf5ele3dmd3cgbsb7ama49l8y8d7t7e706k655q5e56514v4p4j4h4l4p4t4y535b5o636h6u787p898v9f9xagb0bpcccwdfdxegf2fmg0gdgph2hghqhuhxi0i3i5i2hwhmhfh8gygjg2flf5epe8dmcycdbubcaqa39g8w8f7z7h6y6g635s5j594z4r4m4l4m4n4n4p4v555f5r616c6r7a7t8b8s9a9vaib5bqc9csdde0elf3fhfxgdgth7hfhlhshzi5i6i3hxhvhqhkh9gtggg2fpf9epe2djd0chbxb8ala19i918g7v7c6w6j675t5g544x4t4r4m4k4h4m4r50565d5m5z6f6w7b7q878r9da0ajb2bmc8cwdje0eieyfjg1gigsh2hdhohxi2i2i2i1i2hzhrhgh4gvgkg7fnf4ele5dnd2cebsb6aoa59j8x8c7u7f706j635p5f58514u4n4i4j4m4p4t4w525c5q646g6s777q8b8v9e9vagb1bqcdcvdddxeif4flfzgcgph5hhhphthwi1i6i5i2hthnhhh9gygig0flf7eqe7djcycdbvbcaoa19g8w8g7z7f6w6g635u5j584x4q4o4n4m4m4m4o4x565h5q5z6c6t7b7u8a8r9a9wakb6boc8crdfe2ekf1fgfxgegvh5hdhkhti1i5i5i0hyhwhshkh7gsghg4frf8ene2dkd2cjbvb7ala29k918e7u7c6x6l665s5e554y4u4q4l4i4h4n4s4z555b5m606g6w797p868s9e9zaib0bmc9cxdhdyegezfkg2gfgrh1hehphxi0i1i1i4i4hyhqhfh6gxgmg6fmf5eoe7dpd1cebsb9ara59j8w8c7w7h706i625p5h58514s4k4j4j4m4p4q4u515e5q626d6r777q8b8v9b9uafb4bqcbcudcdyekf4fkfxgcgrh7hhhohshxi3i6i6i0hthohjhagxghg1fof8ere6djcycgbxbbaoa09h8z8h7y7e6v6h655v5i564w4r4o4n4m4j4k4p4y565f5n5y6c6u7b7t878q9a9yakb4bnc6ctdhe2ejezfgfzgggvh4hchlhvi2i4i3i0i0hxhthih5gtgig6fqf6eme3dmd3cibtb7ana49l908e7u7d706m665r5e56514v4q4k4h4j4p4t4y535b5m626g6u777o878s9e9xafazbmcacwdfdweff0fkg0gegoh2hfhphwhyhzi3i5i3hxhnhfh8gygmg3fmf5epe9dnd0cebtbcara59h8w8f7z7h706i625s5j5a504s4m4l4m4n4o4p4v535f5r616c6r787r8b8s999uafb4bpc9cqdcdyekf1fhfwgbgsh6hfhmhqhzi4i6i4hyhuhqhlhagvggg3fqfaeqe4djd0cibybaama19i918h7x7d6v6j675u5h554x4t4q4n4k4j4k4r4z575e5m5y6e6v7c7q878q9b9zajb2blc7cudhe0eheyfgg0gggsh2hbhmhwi2i2i1i1i1hyhshhh5gugkg7fqf5eme4dod4cgbtb7aoa69l8y8d7u7f716k655p5f57524u4o4j4i4l4p4t4x525b5p636h6s777p8a8u9e9wafb1bocccvdddwegf2flfzgbgoh3hfhphthwhzi4i5i1huhmhgh8gygjg2flf6ere8dlczcebvbcara39g8x8h7z7h6y6h635u5k594z4q4n4m4n4n4m4p4v565g5q606c6r7a7u8a8r9a9uajb5bpc7crdde1ekf1fgfvgdguh5hdhkhrhzi5i4i1hxhuhrhjh8gtggg3fqf9eoe2dkd2cjbwb9ama29k928h7w7c6y6l675u5g554y4u4r4m4j4i4m4s4z565b5m5z6f6v7a7o868r9d9yaib0blc8cvdhdzegeyfig1gggrh0hdhohxi0i1i1i2i3hyhqhfh5gwgmg6fnf4ene6dpd2cfbsb9aqa69k8x8d7w7h716j645p5h59524t4n4i4k4m4p4s4v515d5q626f6r767q8a8u9c9uaeb2bqcbctdddweif4fkfygbgqh5hhhohthwi2i6i6i1hthnhihagyghg1fmf8ere6djcycfbxbbapa19g8x8i7y7f6w6h645v5j574x4r4o4o4m4l4l4p4x575g5o5z6c6t7b7t898q9a9wakb4bnc7crdge1ekezfgfxgfguh5hchkhui2i5i3i1hyhxhshjh6gtgig5frf7eme3dld3cibvb7ala49l908f7u7c6z6l675s5e55504v4q4l4i4i4o4t4z545b5n606h6v787o868t9e9xagazbmc9cwdfdxefezfjg1gegph0hehphwhzhzi2i5i3hyhohfh7gzgmg5fmf5epe9dod1cebubaasa69i8w8e7y7h706j625r5i59514s4l4j4l4n4o4q4u535e5q626c6q777r8b8t9a9tafb3bqc9csdbdxekf3fifwgagsh6hghmhrhxi4i7i5hzhuhphkhbgxghg2fpfbere6djd0cibybcaoa19i908i7y7d6w6i665u5i554w4s4p4n4k4j4j4q4x565e5m5x6c6u7b7r878p9a9xakb2bmc6ctdhe1eieyfgfzggguh3hbhmhwi2i4i2i1i0hzhthih5gugkg7frf6ene5dnd5cibub7aoa69m908e7u7f716l665q5e57514v4p4i4i4j4o4t4x525a5n626f6t767o878t9e9waeazbncbcvdedvegf0flg0gcgoh2hghphvhxhzi4i5i3hwhnhfh9gyglg3fmf6eqe9dnd0cebvbdara59i8x8g807i6z6i635t5k5a504r4n4m4m4n4n4p4u555f5q606b6q787s8a8r989tahb3bpc7cqdbdzejf1fgfvgcgsh6hehkhrhzi5i6i2hyhuhrhlh9gvggg4fqfbepe4dkd2cjbybbana29k928i7x7d6x6l685v5h554y4u4r4n4k4i4l4s4z565c5l5y6e6u7b7o858p9b9yahb0bkc5cudgdzefewfhfzgggrh1hbhnhwi1i2i1i2i2i0hrhhh5gxglg8fqf5eoe6dqd4cgbub9aqa79l8z8d7w7h716l655q5g59514v4n4j4i4m4p4t4v525c5o636f6r767o8a8t9d9taeb0bocbctdcdvegf2fkfygagoh4hghohthvi1i5i6i1huhnhihagzgjg2fmf8ese8dld0cfbxbdaqa39h8y8i7z7h6x6h655u5k584y4r4n4n4n4m4l4p4w565g5p5y6c6s7a7t898q999vaib5bnc6crdee0ekezfffwgdguh4hchjhsi1i4i4i0hyhvhshkh7gtghg5frf9ene4dld3ckbwb9ana39m928h7v7e6z6m675u5g554z4w4q4n4i4i4n4t4z545b5m5z6g6v787o868q9d9yagazbkc8cvdgdxeeexfig1gegpgzhchphvhzi0i0i3i3hyhpheh6gxgmg6fnf5eoe9dpd2cgbtbbasa79k8y8e7y7j716l635r5i5b524t4m4k4l4m4q4q4v525d5q626d6p777p8a8t9a9tadb2bpc9csdadweif2fjfwgagph5hghnhrhxi2i6i5i0hthohjhbgxgig1fofaese6dkd0cgbzbcapa29h908j7z7f6x6h675v5j574x4s4p4o4l4k4l4p4x575f5m5y6b6t7b7s878o999xajb2bmc5crdge0eiezfefygfguh3hbhlhui2i4i3i1hzhyhthih6gugjg6frf8eme4dmd5cibvb7aoa59m908f7u7e706m675r5f56514w4q4k4h4k4o4u4y535a5n616g6u787n878s9e9wafaybmcacvdedvefezfjg0gdgoh0hehphvhyhyi3i4i3hxhnhfh8gygmg3fmf6eqe8dod1cebubcasa59i8x8f7z7i706i635s5k5a514r4m4l4m4n4o4q4u545f5q616c6q787r8b8s999tafb3bpc8cqdbdxekf1fhfugbgrh5hfhlhqhxi4i6i4hxhuhqhkhbgvghg3fqfaese4dkd2cjbybcana29k918j7y7d6x6j685v5h564w4t4q4n4k4i4l4q4y565d5l5x6d6u7a7q858o9b9xaib1bkc5ctdgdzegexfgfzgfgsh2hahmhwi2i2i2i1i1hzhthhh6gvglg9fqf7ene6dpd6cibub9apa89m908e7v7g726l655r5f58514u4o4i4i4k4o4t4v515a5o616f6r757n888t9c9vadazbncacvdcdveff2fkfzgbgoh3hghphuhwi0i4i6i3hvhnhhh9h0gkg3fmf7ese9dnd0cfbwbeara49i8y8h807i6z6h645u5k594z4r4m4m4n4m4l4o4v545f5q5y6a6r787s898p989tahb4bnc6cqdce0ejf0fgfvgcguh5hdhkhsi0i4i6i2hxhwhrhlh8gughg5frfaepe4dld3ckbybaana39l938i7x7e6y6m685v5h554z4v4r4n4j4i4m4s4z555b5k5z6e6u787o848p9b9xafazbic6cudfdweeewfhfzgfgph0hbhohwi0i1i0i3i3hzhrhfh7gxgmg8fof6epe8dqd4cgbvbaasa79m8z8e7x7j726l655r5h5a534u4n4j4k4n4p4s4u525c5p626d6q757o898t9a9sacb0bnc9crdaduegf1fifwgagoh3hghnhshwi1i6i6i1huhphihcgzgjg3fofaete8dmd0chbzbeaqa39i908i807h6x6i655v5k584y4r4o4n4m4l4l4o4w565g5n5x6b6s7a7s878o999uaib3blc5cqdedzeieyfefwgegth3hbhkhti1i4i4i0hzhxhthkh7gugjg6ftf9eoe5dnd5ckbxb9ana59n928h7v7e706n675t5f56504w4q4l4i4i4n4t4z535a5m606f6v777n868r9d9wafaybkc8cvdfdveeexfjfzgdgogzhchohvhyhzi1i3i3hxhohfh7gygmg5fnf6epeadpd3cfbvbcata79k8z8f807j726j645s5k5b514t4m4l4l4n4p4q4u525e5q616c6p777q8a8s989tadb2bpc8cqdadweif1fhfvg9gqh5hfhlhqhwi3i6i4hyhthphkhagxghg2fqfaete6dkd1cjc0bdapa39k928k7z7g6x6k685w5j574y4s4q4o4m4j4k4p4y565e5l5x6b6t7a7q858n999wahb1bkc4crdfdzegexfefygfgsh2hahlhvi2i3i2i0i1hzhshjh6guglg8frf7eoe6dod6cjbvb9apa79o918f7w7g726n665s5f58524w4p4k4h4k4p4t4x515b5m616f6s767m878s9c9uadaybmc9cudcdveef0fjfzgcgnh1hfhphvhxhzi4i5i3hxhnhgh9gzgmg3fnf7ereadnd1cfbvbeasa59i8y8g817i706i645t5k5b504r4n4m4m4n4n4p4v545f5q606a6q787s8a8q989sagb3boc6cpdbdyejf0fgfugbgsh5hehkhrhyi5i6i2hyhvhrhlhagvghg4frfbeqe5dld2ckbzbbaoa29l938i7y7e6y6l685v5i554z4u4r4n4k4i4l4s4y565c5l5y6d6u7a7o848p9a9xahazbic5ctdfdxeeewfffzgegqh0hahmhwi0i2i0i2i2hzhshhh6gwgng8frf6epe7drd5cibvbaasa89n908e7x7i736m655r5g59534v4n4j4i4m4p4s4v505c5n626e6q757n888s9b9tacazbnc9csdbdteff1fjfxg9goh2hghohshwi1i5i6i2hvhnhjhbh0gkg3fofaeteadnd1chbybfasa49j8z8j817h6z6i655u5l584y4r4n4n4m4l4k4o4v545f5o5x6a6q797r888o979tahb3bmc4cqdcdzejezfefvgdgth4hdhjhsi1i5i5i1hyhwhthlh8gvgig6ftfaepe5dnd4cmbybaaoa59n938i7x7e706n685u5h55504v4r4m4i4i4m4s4z535b5k5y6f6t787m848p9c9wafaxbjc6cudedwedexfhfzgdgpgzhchnhwhzhzi1i3i3hyhqhfh7gxgng7fof6epe9drd3chbvbbaua89l8z8g7z7k736l655r5k5b524v4m4k4l4n4q4r4u515d5p626c6p757p888s999racb0bnc8cqd9dtehf1fgfvg8gph4hfhmhqhwi2i5i6hzhuhohkhbgzgig3fpfbete8dld2cic0beara49j918l807h6y6j685w5k584y4s4q4o4m4k4l4p4x555f5m5w6b6s797r858n979uahb1bjc3cqdddyegewfdfwgegrh2hbhjhti1i4i3i0i0hyhuhjh7gvgkg9fsfaeoe6dod7clbwbaapa79o938g7w7g716o675t5f58514w4q4k4i4j4o4t4y525a5m606f6t767m858r9c9vadaxbkc8cuddduedexfjfygcgngzhdhphuhxhzi2i4i3hxhohgh8gzgmg6fnf6erebdpd2cgbwbdaua79j8z8g817j716k635t5k5b514s4n4l4m4n4o4p4u535e5q606b6p777q8a8r989saeb2boc7cpdadweif1fffugagqh5hehkhphxi4i5i3hyhthqhkhagwghg4fqfbese6dld2ckc0bdapa39l938k807f6y6l695w5j574y4u4r4o4k4j4k4r4y565d5k5x6c6t7a7o848n999wahazbic4crdfdxefevfefxgfgqh0hahkhvi1i2i0i1i0hzhshih5gwglg8frf7epe7dqd6cjbwbaara99n928g7x7i736n675s5g5a534w4o4k4i4l4p4t4w515a5n616e6r747m878r9b9tabayblc8ctdadteef0fifxgagnh1hfhohuhwhzi4i6i3hvhohhhah0glg4fnf8eteadod1cgbybfasa69i8z8j817j6z6i655v5l5a4z4r4n4n4m4m4m4o4v545f5o5y6a6q777r888p969sagb2bmc5cpdadyejezfefugbgth4hdhjhri0i5i6i2hyhvhshmh9gvgig6fsfbeqe5dmd4clbzbbaoa49m938j7x7e6z6m695v5h564z4v4r4n4j4i4l4s4z555b5k5y6e6u787n848o9b9wagaxbjc5ctdedwedevfgfygegpgzhahnhvi0i0i0i2i3hzhrhgh6gxgng8fpf6eqe8drd5cibvbbasa99m908f7y7j736m655r5i5b524v4n4j4k4m4q4r4v515c5o626d6p757o888s999sacaybnc8crd9dtegf0fhfvg9gnh3hfhmhrhvi1i6i5i1huhohjhcgzgkg3fpfbeueadnd1cic0bgasa49j918l817i6y6j665w5k594y4r4o4n4m4l4j4o4w545f5m5w6a6q797q868m979tagb2bkc3cpdcdyehexfdfvgdgsh3hbhjhti0i5i4i1hzhxhuhlh8gvgkg8fufbepe7dod7cmbybbaqa69p948i7x7f716o685u5g56514v4r4k4h4i4n4s4x53595k5y6e6t757m838q9b9vadawbjc7ctdddvecexfifzgcgogzhdhohvhzhzi1i4i4hyhphgh8gzgng7fof7ereadrd4chbwbdaua99l8z8h807l726l655s5k5b534t4m4k4l4n4p4p4t525d5p606b6o757o898q989qacb1bnc6cpd9duehf1fgfug8gqh4hfhlhqhxi3i6i4hzhuhqhkhcgxgig4fqfcete8dmd2ckc1beara49k948l817g6z6l695x5k584z4t4r4o4m4k4k4q4x565d5l5w6b6s797o848m979uagaybic2cpdddxeeevfcfwgdgrh0hahjhui1i3i2i0i1hyhuhjh7gvgmg9ftf9epe7dqd8clbxbbara89q928h7y7h746o685t5h59534w4q4l4i4k4p4t4x525a5m606e6s747l858r9b9sabawbkc7csdadsecexfifxg9gmh0hdhohuhwhyi4i5i3hxhohhhah1gmg6fof8euebdqd3chbybfaua79k908i827j716k645v5l5b504s4n4l4n4n4n4o4u535f5p5z6a6p767r888p979raeb2bmc5cod9dweiezfefsgagrh4hdhjhqhyi3i6i3hxhvhrhmhagwgig5ftfcese6dnd4cmc0bdaqa49n948k807f6z6m6a5w5i574y4v4r4o4k4i4l4r4z555c5k5x6d6t797o838o999wagaybic3csdedxedeufefygdgpgzh9hlhui0i0i0i0i2hyhrhhh5gwgmg9fqf7epe9drd6cjbwbcasaa9o928g7y7k746o665t5i5a544w4o4k4j4m4p4t4v515b5o616e6p757m878s9a9rabayblc8crdadseeezfifwg8gmh2hehnhrhvi0i4i5i1huhohhhbh0gkg3fofaeueadod2chc0bgata69k918k827k706j665x5l5b4z4r4p4n4n4m4l4o4v545f5n5x696p787q878m969safb2bkc3codadyeheyfcfugcgsh3hchihsi0i5i4i1hyhxhthlh9gvgjg7ftfceqe5dod5cnbzbbapa69o958j7y7f706o6a5v5h56504w4r4n4i4i4n4s4y545a5k5y6d6t777m838o9b9vaeawbic5ctdddvecewfgfzgdgogyhchnhvi0hzi1i3i3hzhqhgh7gzgng7fpf7eqe9drd5chbvbcaua99l908g7z7k736l655s5j5b534u4n4k4l4m4q4q4u525c5p616c6p757n898r989racazbnc7cqd8duegf0fgfvg8goh3hfhmhqhwi2i6i5i0huhphjhcgzgjg4fpfceue8dnd2cjc0bgara49k928l817h6z6j685x5k594y4s4p4o4n4j4k4p4x555e5m5w6a6q797q848m979tagb0bic2cpdcdxefewfbfvgdgrh1hahjhti0i4i3i0i0hyhuhkh7gwglg9fufaeqe7dqd8cmbybbara89p948i7x7h726p685t5h57524w4q4k4h4j4o4s4x51595l5z6d6s747l848p9b9tabawbic7csdbdtecewfifxgbgngyhdhohvhxhzi2i5i4hyhphhh9h1gog6fpf8etecdrd4cibxbfawa89l908h827l726k645u5k5b514s4m4l4l4m4n4o4t515d5o5z696o757o888p969qacb1bmc5cod8dvehf0ffftg9gqh5hehkhqhxi4i6i5hyhvhrhlhcgygig5fsfdete8dnd3cmc2beara59l958l817g6z6m6a5x5j574y4u4r4o4l4i4k4q4x555c5k5v6b6s787n828m979uagaxbhc2cqdcdxedeufcfxgdgqgzh9hkhui1i2i0i1i1hzhthih6gwgmgafsf8eqe8drd8ckbxbcasaa9q938h7y7j756o685t5i5a544w4q4k4i4m4p4t4w505a5n606d6q737l858q9a9raaavbkc6crd8dreceyfgfwg8glh0hehnhshvhzi4i5i3hwhohhhbh1gng4fpfaevecdpd3cic0bgava79l918k837k726k665w5l5b514s4n4n4n4m4m4o4u545e5o5x696o767q868n959qadb1bkc2cnd8dwegexfcfsgagqh3hchihqhzi4i5i2hyhwhthmhbgwgjg7fufdese8dnd6coc1bdara69o968k7z7g716n6b5v5j56504v4s4n4j4h4m4r4y555a5k5x6c6t777m828n999vaeawbhc3csdddueceufefxgdgogyh9hmhuhzi0i0i2i2hzhrhgh7gygng9frf7eqeadtd6cjbxbcavaa9o918h807k756n665s5j5b544v4o4j4k4n4p4r4v505c5o616c6o747n878r999qabayblc7cqd8dsefezfgfvg7gmh2hehmhrhui0i5i5i1hthohjhbh0gjg4fpfbeveadod2ckc1bgaua69k938m837j706l685x5m5a4z4t4p4o4n4l4l4o4w555e5m5w696q777q848m959safazbjc1cndbdwegevfbftgcgrh1hahihri0i4i3i0hyhyhthlh8gvgkg8fufbeqe7dpd8cnc0bcara89q958k7z7h736p6a5v5i58524x4r4m4i4j4n4t4y53595k5y6d6s757l828o9a9uabavbhc5csdbdteaevfgfygbgmgyhchnhvhyhyi2i4i3hzhphhh8h0gog7fpf8esecdsd4cibxbeawa99m918h817m736l665t5l5b534u4m4l4l4o4o4q4t525c5p606a6o747o888p979pacazbmc5cod8dtegezffftg8gph3hehlhqhwi3i6i5hzhuhrhlhcgygjg5frfdeue8dnd3clc2bfara59l948m817i6z6k6a5x5k594y4t4r4o4m4k4k4p4y555e5l5v6b6r797o848m969uafazbhc2codcdxedeufcfvgcgqh0h9hihui0i3i1i0i0hyhuhjh6gwgmg9fuf9eqe8dqd9clbybcasa99q948i7y7i746p695t5h59534x4q4k4j4k4o4t4x515a5m606e6q747l858p9b9saaawbic7crdadrebexfhfwg9glgzhdhnhthvhzi2i5i4hwhohhhbh1gng6fpfaeuecdsd3cjbzbhava99l918j847l726k655v5m5b514s4n4l4m4n4m4n4t535d5o5y686n767o878o959padb0blc3cnd8dvegeyfefsg9gqh4hchjhqhyi4i6i3hzhvhshmhcgxgjg7ftfeeue8dod5coc2bfara69o968m807h706n6a5x5j574z4u4s4n4k4h4k4q4y545b5i5w6b6s777l828m979vaeawbhc2cqdddweceufdfxgdgpgzh9hmhvi0i1i0i2i2i0hshhh7gxgngafsf8eqeadsd8ckbxbdatab9p938h807k756o685t5i5b544w4o4k4j4m4p4s4u515a5m606d6o737l868q989qaaawbkc6cqd8dredeyfhfvg8glh1hfhnhrhvi0i5i5i3huhohjhbh1gmg4fpfbevecdpd3cjc1bhaua79l928m847k716l675x5n5b504s4p4o4n4m4m4n4v545f5m5w696o767p858l949qaeazbic1cmd8dvefewfafsgagqh2hbhhhrhzi4i5i1hyhxhuhmhagwgkg8fvfdese8dpd8coc1beara79q978k807h726p6b5w5i57524w4s4n4j4i4m4t4y535a5j5x6d6s767k818n999tacaubgc3crdbdseaeufefxgagngxhahmhuhzhzi1i3i3i0hqhhh8h0gpg9frf8esecdud6ckbxbeawab9o918h817m746n665t5j5c534v4m4k4l4m4p4q4t515c5o606b6n737n878q979paaayblc6cod6dsefeyffftg7gnh2hehlhqhvi1i5i5i1hthqhkhch0gkg4frfdeweadod4clc2bhata79l948n837i706l695y5l5a4y4t4q4o4n4k4k4o4x555d5l5v6a6q787o848l959safazbhc1cndbdweeeufbftgbgqh0h9hhhsi0i2i2hzhzhxhuhjh7gwgkgafufaere7drd8cobzbdasaa9r958k7z7i746q6b5v5h59534y4r4l4j4j4o4t4x52595k5z6d6r747k838o9a9saaavbgc5crdadreaevfgfwgaglgxhchmhuhwhyi1i4i3hyhohgh9h1gog6fpf9eteddsd5cjbybhawaa9n918j837n736m665v5m5c534t4n4l4m4n4o4o4t525c5o5z686n747o868o949pabayblc3cnd6dtegeyfdfsg7gph3hehjhphxi3i6i4hzhvhrhmhcgygjg6fsfeeve8dod5cnc2bgasa69n958n827h706n6a5y5k584z4u4s4o4l4j4k4q4x555c5j5v6b6r787m828l969tafawbgc1cpdcdvedetfbfwgcgqgzh8hkhui0i2i1i0i1i0hthih7gxgmgaftf9eqe9dsd8clbybcatab9p948h7z7j756p685u5h5a544x4p4k4j4l4p"}/*TIMES:END*/;
+const BJ = 8 * 3600e3;          // terms are reckoned in Beijing time (UTC+8)
+const MIN = 60000;
+const FIRST_YEAR = 1900, LAST_YEAR = 2100;
+
+const BOUNDS = (() => {
+  const out = [TIMES.start];
+  for (let i = 0; i < TIMES.diffs.length; i += 2) out.push(out[out.length - 1] + TIMES.offset + parseInt(TIMES.diffs.slice(i, i + 2), 36));
+  return out;
+})();
+const pentadAt = k => (TIMES.startIndex + k) % 72;
+
+// The pentad containing instant ms, or null outside the data range.
+function locate(ms) {
+  const m = ms / MIN;
+  if (!(m >= BOUNDS[0] && m < BOUNDS[BOUNDS.length - 1])) return null;
+  let lo = 0, hi = BOUNDS.length - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (BOUNDS[mid] <= m) lo = mid; else hi = mid; }
+  return occ(lo);
+}
+function occ(k) { return { k, i: pentadAt(k), start: BOUNDS[k] * MIN, end: BOUNDS[k + 1] * MIN }; }
+
+// A "wheel year" runs from 3 January (Beijing) to the next, so it holds each pentad exactly once:
+// 小寒 (around 5 Jan) through 冬至's last pentad (around 31 Dec or 1 Jan).
+const yearCache = new Map();
+function wheelYear(y) {
+  if (yearCache.has(y)) return yearCache.get(y);
+  const from = (Date.UTC(y, 0, 3) - BJ) / MIN, to = (Date.UTC(y + 1, 0, 3) - BJ) / MIN;
+  const map = new Array(72);
+  for (let k = 0; k < BOUNDS.length - 1; k++) if (BOUNDS[k] >= from && BOUNDS[k] < to) map[pentadAt(k)] = occ(k);
+  yearCache.set(y, map);
+  return map;
+}
+function yearOf(ms) {
+  const d = new Date(ms + BJ), y = d.getUTCFullYear();
+  return ms < Date.UTC(y, 0, 3) - BJ ? y - 1 : y;
+}
+
+const pad = n => String(n).padStart(2, '0');
+function bj(ms) { const d = new Date(ms + BJ); return { y: d.getUTCFullYear(), mo: d.getUTCMonth() + 1, d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes(), wd: d.getUTCDay() }; }
+const fmtMD = ms => { const t = bj(ms); return `${t.mo}月${t.d}日`; };
+const fmtHM = ms => { const t = bj(ms); return `${pad(t.h)}:${pad(t.mi)}`; };
+const fmtYMD = ms => { const t = bj(ms); return `${t.y}年${t.mo}月${t.d}日`; };
+const isoDate = ms => { const t = bj(ms); return `${t.y}-${pad(t.mo)}-${pad(t.d)}`; };
+const WEEK = '日一二三四五六';
+const ORD = ['一候', '二候', '三候'];
+const termOf = i => TERMS[Math.floor(i / 3)];
+const lonOf = i => (315 + 5 * i) % 360;
+function pentadOfDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  if (!m) return null;
+  return locate(Date.UTC(+m[1], +m[2] - 1, +m[3], 12) - BJ);   // noon decides the day's pentad
+}
+// A note written on the day it describes belongs to the pentad of the moment it was written;
+// any other date is judged at noon.
+function pentadOfNote(n) {
+  const c = Date.parse(n.created);
+  return !isNaN(c) && isoDate(c) === n.date ? locate(c) : pentadOfNote(n);
+}
+const pentadOfInput = iso => iso === isoDate(state.now) ? locate(state.now) : pentadOfDate(iso);
+function span(ms) {
+  const mins = Math.max(0, Math.round(ms / MIN)), d = Math.floor(mins / 1440), h = Math.floor(mins % 1440 / 60), m = mins % 60;
+  if (d > 0) return `<span class="num">${d}</span> 天 <span class="num">${h}</span> 小时`;
+  if (h > 0) return `<span class="num">${h}</span> 小时 <span class="num">${m}</span> 分`;
+  return `<span class="num">${m}</span> 分钟`;
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const segStyle = i => `--sh:${PENTADS[i].h};--sc:${PENTADS[i].c}`;
+
+/* ---------- State ---------- */
+const $ = id => document.getElementById(id);
+const state = { now: Date.now(), cur: null, year: null, sel: null, notes: [], mode: 'local', cloud: null };
+
+/* ---------- Notes storage ---------- */
+// Local: this browser's storage. Cloud: the viewer's private db subtree when the page runs inside claude.ai.
+const LS_KEY = 'shihou.notes.v1';
+function validNote(n) { return n && typeof n.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(n.id) && /^\d{4}-\d{2}-\d{2}$/.test(n.date) && typeof n.text === 'string' && n.text.trim(); }
+function cleanNote(n) { return { id: n.id, date: n.date, text: String(n.text).trim().slice(0, 200), created: typeof n.created === 'string' ? n.created : new Date().toISOString() }; }
+function loadLocal() {
+  try { const v = JSON.parse(localStorage.getItem(LS_KEY) || '[]'); return Array.isArray(v) ? v.filter(validNote).map(cleanNote) : []; }
+  catch { return []; }
+}
+function saveLocal(notes) { try { localStorage.setItem(LS_KEY, JSON.stringify(notes)); return true; } catch { return false; } }
+const newId = () => 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+async function addNotes(list) {
+  if (state.mode === 'cloud') {
+    try {
+      for (const n of list) await state.cloud.doc(n.id).set({ date: n.date, text: n.text, created: n.created });
+      return true;
+    } catch (e) {
+      if (e && e.code === 'invalid_argument') fallBackToLocal('你在这个页面上只有查看权限，笔记改存在这台设备的浏览器里。');
+      else { toast('没有保存成功，请稍后再试。'); return false; }
+    }
+  }
+  state.notes = state.notes.concat(list);
+  if (!saveLocal(state.notes)) toast('浏览器不允许保存，笔记在关闭页面后会丢失。请先导出。');
+  renderNotes();
+  return true;
+}
+async function removeNote(id) {
+  if (state.mode === 'cloud') {
+    try { await state.cloud.doc(id).delete(); } catch { toast('没有删除成功，请稍后再试。'); }
+    return;
+  }
+  state.notes = state.notes.filter(n => n.id !== id);
+  saveLocal(state.notes);
+  renderNotes();
+}
+function fallBackToLocal(msg) {
+  if (state.unsub) state.unsub();
+  state.mode = 'local'; state.cloud = null; state.unsub = null;
+  state.notes = loadLocal();
+  renderStore(); renderNotes();
+  if (msg) toast(msg);
+}
+async function connectCloud() {
+  if (!window.claude || typeof window.claude.use !== 'function') return;
+  try {
+    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    if (!db || !user) return;
+    const uid = await user.id();
+    if (!uid) return;
+    const col = db.collection('data/users/' + uid);
+    state.cloud = col; state.mode = 'cloud';
+    renderStore();
+    state.unsub = col.onSnapshot(snap => {
+      state.notes = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(validNote).map(cleanNote);
+      renderNotes();
+    }, () => fallBackToLocal());
+  } catch { /* stay local */ }
+}
+
+/* ---------- Rendering: today ---------- */
+function applyColour(i) {
+  const root = document.documentElement.style;
+  root.setProperty('--h', PENTADS[i].h);
+  root.setProperty('--c', PENTADS[i].c);
+}
+
+function renderToday() {
+  const cur = state.cur, t = bj(state.now);
+  $('today-date').textContent = `${t.y}年${t.mo}月${t.d}日 星期${WEEK[t.wd]} · 北京时间`;
+  $('plate').hidden = !cur;
+  $('oor').hidden = !!cur;
+  if (!cur) return;
+  const p = PENTADS[cur.i], term = termOf(cur.i);
+  const name = $('today-name');
+  name.textContent = p.n;
+  name.style.setProperty('--n', [...p.n].length);
+  $('today-stamp').textContent = term.n;
+  $('today-eyebrow').innerHTML = `<b>${esc(term.n)} · ${ORD[cur.i % 3]}</b><span>全年第 ${cur.i + 1} 候 · 太阳黄经 ${lonOf(cur.i)}°起</span>`;
+  $('today-plain').textContent = p.p;
+  $('today-old').textContent = p.o;
+  $('today-new').textContent = p.k;
+  $('today-term').innerHTML = `<b>${esc(term.n)}</b>${esc(term.d)}`;
+  const next = occ(cur.k + 1), np = PENTADS[next.i];
+  $('span-start').textContent = `${fmtMD(cur.start)} ${fmtHM(cur.start)} 起`;
+  $('span-end').textContent = `${fmtMD(cur.end)} ${fmtHM(cur.end)}`;
+  const nextLabel = next.i % 3 === 0 ? `进入${termOf(next.i).n} · ${np.n}` : `进入${np.n}`;
+  $('countdown').dataset.next = nextLabel;
+  renderClock();
+  renderEcho();
+}
+
+// The parts that move with the clock.
+function renderClock() {
+  const cur = state.cur;
+  if (!cur) return;
+  const p = Math.min(1, Math.max(0, (state.now - cur.start) / (cur.end - cur.start)));
+  $('span-bar').style.setProperty('--p', p.toFixed(4));
+  $('countdown').innerHTML = `再过 ${span(cur.end - state.now)}，${esc($('countdown').dataset.next || '')}`;
+  const sub = document.querySelector('#wheel .c-sub');
+  if (sub && state.year === yearOf(state.now)) sub.textContent = `太阳黄经 ${(lonOf(cur.i) + 5 * p).toFixed(2)}°`;
+  const hand = document.querySelector('#wheel .hand-g');
+  if (hand) hand.setAttribute('transform', `rotate(${(5 * (cur.i + p)).toFixed(3)})`);
+}
+
+function renderEcho() {
+  const el = $('echo'), cur = state.cur;
+  if (!cur) { el.hidden = true; return; }
+  const thisYear = yearOf(state.now);
+  const past = state.notes
+    .map(n => ({ n, o: pentadOfNote(n) }))
+    .filter(x => x.o && x.o.i === cur.i && yearOf(x.o.start) < thisYear)
+    .sort((a, b) => b.n.date.localeCompare(a.n.date));
+  if (!past.length) { el.hidden = true; return; }
+  const top = past[0], y = yearOf(top.o.start);
+  const label = y === thisYear - 1 ? '去年此候' : `${y} 年此候`;
+  el.innerHTML = `<span>${label}，你记下</span>${esc(top.n.text)}${past.length > 1 ? `<span>往年同一候共有 ${past.length} 条笔记</span>` : ''}`;
+  el.hidden = false;
+}
+
+/* ---------- Rendering: wheel ---------- */
+const R_IN = 370, R_OUT = 452, R_LABEL = 322, R_MONTH = 268;
+const pt = (r, a) => { const t = a * Math.PI / 180; return [(r * Math.sin(t)).toFixed(2), (-r * Math.cos(t)).toFixed(2)]; };
+function sector(r0, r1, a0, a1) {
+  const [x0, y0] = pt(r1, a0), [x1, y1] = pt(r1, a1), [x2, y2] = pt(r0, a1), [x3, y3] = pt(r0, a0);
+  const big = a1 - a0 > 180 ? 1 : 0;
+  return `M${x0} ${y0}A${r1} ${r1} 0 ${big} 1 ${x1} ${y1}L${x2} ${y2}A${r0} ${r0} 0 ${big} 0 ${x3} ${y3}Z`;
+}
+function segAngles(i) {
+  const gapA = i % 3 === 0 ? 0.9 : 0.25, gapB = i % 3 === 2 ? 0.9 : 0.25;
+  return [5 * i + gapA, 5 * (i + 1) - gapB];
+}
+
+function renderWheel() {
+  const y = state.year, map = wheelYear(y), isNow = y === yearOf(state.now);
+  const cur = state.cur;
+  let s = '';
+  for (let i = 0; i < 72; i++) {
+    const [a0, a1] = segAngles(i);
+    const ahead = isNow && cur && i !== cur.i && map[i] && map[i].start > state.now;
+    s += `<path class="seg${ahead ? ' ahead' : ''}" data-i="${i}" style="${segStyle(i)}" d="${sector(R_IN, R_OUT, a0, a1)}"><title>${esc(termOf(i).n)}${ORD[i % 3]} · ${esc(PENTADS[i].n)}</title></path>`;
+  }
+  for (let j = 0; j < 24; j++) {
+    const [x1, y1] = pt(R_LABEL - 30, 15 * j), [x2, y2] = pt(R_IN - 6, 15 * j);
+    s += `<line class="term-tick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+    const [lx, ly] = pt(R_LABEL, 15 * j + 7.5);
+    s += `<text class="term-label" x="${lx}" y="${ly}">${TERMS[j].n}</text>`;
+  }
+  // Gregorian months, placed where the 1st of each month falls in this year's cycle.
+  for (let m = 0; m < 12; m++) {
+    const o = locate(Date.UTC(y, m, 1) - BJ);
+    if (!o) continue;
+    const a = 5 * (o.i + (Date.UTC(y, m, 1) - BJ - o.start) / (o.end - o.start));
+    const [x1, y1] = pt(R_MONTH + 10, a), [x2, y2] = pt(R_MONTH + 24, a), [lx, ly] = pt(R_MONTH - 14, a);
+    s += `<line class="month-tick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/><text class="month-label" x="${lx}" y="${ly}">${m + 1}月</text>`;
+  }
+  // Notes made in this wheel year.
+  const counts = new Map();
+  for (const n of state.notes) {
+    const o = pentadOfNote(n);
+    if (!o || yearOf(o.start) !== y) continue;
+    const c = counts.get(o.i) || 0;
+    counts.set(o.i, c + 1);
+    if (c > 3) continue;
+    const [x, yy] = pt(R_OUT + 16 + c * 14, 5 * o.i + 2.5);
+    s += `<circle class="dot" cx="${x}" cy="${yy}" r="5.5"/>`;
+  }
+  if (state.sel != null) {
+    const [a0, a1] = segAngles(state.sel);
+    s += `<path class="sel" d="${sector(R_IN - 5, R_OUT + 5, a0 - 0.2, a1 + 0.2)}"/>`;
+  }
+  s += `<text class="c-year" x="0" y="-18">${y}</text>`;
+  s += `<text class="c-sub" x="0" y="44">${isNow ? '' : '小寒至冬至'}</text>`;
+  if (isNow && cur) {
+    s += `<g class="hand-g"><line class="hand" x1="0" y1="-150" x2="0" y2="${-(R_IN - 2)}"/><circle class="sun" cx="0" cy="${-(R_IN + R_OUT) / 2}" r="17"/></g>`;
+  }
+  $('wheel').innerHTML = s;
+  $('year-label').textContent = y;
+  $('year-prev').disabled = y <= FIRST_YEAR;
+  $('year-next').disabled = y >= LAST_YEAR;
+  renderClock();
+}
+
+function renderDetail() {
+  const i = state.sel, p = PENTADS[i], term = termOf(i), o = wheelYear(state.year)[i];
+  const isCur = state.cur && o && o.k === state.cur.k;
+  const when = o
+    ? `<span class="num">${fmtYMD(o.start)} ${fmtHM(o.start)}</span> 至 <span class="num">${fmtMD(o.end)} ${fmtHM(o.end)}</span>${isCur ? ' · 就是现在' : ''}`
+    : '超出可计算的年份范围';
+  const mine = state.notes
+    .map(n => ({ n, o: pentadOfNote(n) }))
+    .filter(x => x.o && x.o.i === i)
+    .sort((a, b) => b.n.date.localeCompare(a.n.date));
+  $('detail').innerHTML = `
+    <div class="d-head"><span class="d-swatch" style="${segStyle(i)}"></span><h3>${esc(p.n)}</h3></div>
+    <p class="d-meta">${esc(term.n)} · ${ORD[i % 3]} · 全年第 ${i + 1} 候 · 太阳黄经 ${lonOf(i)}°–${lonOf(i) + 5}°</p>
+    <p class="d-meta">${when}</p>
+    <p class="d-plain">${esc(p.p)}</p>
+    <dl class="pair"><div><dt>古人看见</dt><dd>${esc(p.o)}</dd></div><div><dt>今天知道</dt><dd>${esc(p.k)}</dd></div></dl>
+    ${mine.length ? `<ul class="d-notes">${mine.map(x => `<li><span class="num">${esc(x.n.date)}</span>${esc(x.n.text)}</li>`).join('')}</ul>` : ''}
+    <div class="d-nav"><button class="btn quiet" type="button" data-step="-1">‹ 上一候</button><button class="btn quiet" type="button" data-step="1">下一候 ›</button></div>`;
+}
+
+function select(i) {
+  state.sel = ((i % 72) + 72) % 72;
+  renderWheel(); renderDetail();
+}
+
+/* ---------- Rendering: notebook ---------- */
+function renderStore() {
+  const cloud = state.mode === 'cloud';
+  $('store-label').textContent = cloud ? '保存在你的 claude.ai 账号里，只有你能看到' : '保存在这台设备的浏览器里';
+  $('store-note').textContent = cloud ? '' : '换设备或清理浏览器前，先导出备份。';
+}
+
+function renderHint() {
+  const o = pentadOfInput($('note-date').value);
+  $('note-hint').innerHTML = o
+    ? `将记在 <b>${esc(termOf(o.i).n)} · ${esc(PENTADS[o.i].n)}</b>（${yearOf(o.start)} 年第 ${o.i + 1} 候）`
+    : '请选择 1900–2100 年之间的日期。';
+}
+
+function renderNotes() {
+  const list = $('note-list');
+  const notes = state.notes.slice().sort((a, b) => b.date.localeCompare(a.date) || b.created.localeCompare(a.created));
+  if (!notes.length) {
+    const ex = state.cur ? state.cur.i : 50;
+    list.innerHTML = `<li class="example"><span class="n-date">示例</span><span class="n-text">楼下那棵桂花开了，整条路都是香的。</span><span class="chip" style="${segStyle(ex)}">${esc(termOf(ex).n)} · ${esc(PENTADS[ex].n)}</span><span class="tag">示例</span></li>
+      <li class="example"><span class="n-date"></span><span class="n-text empty">还没有笔记。看见花开、鸟来、第一场霜，就记下来。明年到了同一候，这里会提醒你去年看见了什么。</span><span></span><span></span></li>`;
+  } else {
+    list.innerHTML = notes.map(n => {
+      const o = pentadOfNote(n);
+      const chip = o ? `<span class="chip" style="${segStyle(o.i)}">${esc(termOf(o.i).n)} · ${esc(PENTADS[o.i].n)}</span>` : '<span></span>';
+      return `<li><span class="n-date">${esc(n.date)}</span><span class="n-text">${esc(n.text)}</span>${chip}<button class="del" type="button" data-del="${esc(n.id)}">删除</button></li>`;
+    }).join('');
+  }
+  $('export').disabled = !notes.length;
+  renderEcho();
+  if (state.year != null) { renderWheel(); renderDetail(); }
+}
+
+/* ---------- Rendering: term table ---------- */
+function renderTable() {
+  const y = state.year, map = wheelYear(y);
+  $('table-title').textContent = `${y} 年节气表`;
+  const order = [];
+  for (let j = 22; j < 46; j++) order.push(j % 24);     // 小寒 … 冬至, in calendar order
+  $('terms').tBodies[0].innerHTML = order.map(j => {
+    const os = [0, 1, 2].map(q => map[3 * j + q]);
+    if (!os[0]) return '';
+    const now = state.cur && os.some(o => o && o.k === state.cur.k);
+    const hou = os.map((o, q) => o ? `<span>${esc(PENTADS[3 * j + q].n)}<span class="num">${fmtMD(o.start)}</span></span>` : '').join('');
+    return `<tr${now ? ' class="now"' : ''}><td class="t-name">${TERMS[j].n}</td><td class="t-num">${lonOf(3 * j)}°</td><td class="t-num">${fmtMD(os[0].start)} ${fmtHM(os[0].start)}</td><td class="t-hou">${hou}</td></tr>`;
+  }).join('');
+}
+
+function setYear(y) {
+  state.year = Math.min(LAST_YEAR, Math.max(FIRST_YEAR, y));
+  renderWheel(); renderDetail(); renderTable();
+}
+
+/* ---------- Card ---------- */
+function oklch(L, C, H) {
+  const h = H * Math.PI / 180, a = C * Math.cos(h), b = C * Math.sin(h);
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.2914855480 * b) ** 3;
+  const f = x => { x = Math.min(1, Math.max(0, x)); return Math.round(255 * (x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055)); };
+  return `rgb(${f(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s)},${f(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s)},${f(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)})`;
+}
+function wrapLines(ctx, text, maxW) {
+  const lines = []; let line = '';
+  for (const ch of text) {
+    if (ctx.measureText(line + ch).width > maxW && line) {
+      if ('，。、；：！？”）》'.includes(ch)) { line += ch; continue; }   // keep closing punctuation on the line
+      lines.push(line); line = ch;
+    } else line += ch;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+async function drawCard() {
+  const cur = state.cur, p = PENTADS[cur.i], term = termOf(cur.i);
+  const W = 1080, H = 1440, c = p.c, h = p.h;
+  const serif = '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif';
+  const sans = '-apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif';
+  const mono = '"IBM Plex Mono", ui-monospace, Menlo, monospace';
+  try { await Promise.all([document.fonts.load(`900 120px "Noto Serif SC"`, p.n + term.n), document.fonts.load(`600 52px "Noto Serif SC"`, p.p + p.k + '时候')]); } catch { /* fall back to system fonts */ }
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const ground = oklch(0.952, c * 0.42, h), ink = oklch(0.25, c * 0.3, h), ink2 = oklch(0.46, c * 0.35, h), stamp = oklch(0.48, c * 1.25 + 0.04, h);
+  ctx.fillStyle = ground; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = ink; ctx.globalAlpha = 0.22; ctx.lineWidth = 2; ctx.strokeRect(48, 48, W - 96, H - 96); ctx.globalAlpha = 1;
+
+  const chars = [...p.n], size = Math.min(210, Math.floor(980 / chars.length));
+  const cx = W - 120 - size / 2, top = 130;
+  ctx.fillStyle = ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `900 ${size}px ${serif}`;
+  chars.forEach((ch, j) => ctx.fillText(ch, cx, top + size * 1.04 * (j + 0.5)));
+  const bottom = top + size * 1.04 * chars.length;
+  const sw = 66, sh = 2 * 52 + 30, sx = cx - size / 2 - 30 - sw, sy = bottom - sh;
+  ctx.fillStyle = stamp; ctx.fillRect(sx, sy, sw, sh);
+  ctx.fillStyle = oklch(0.98, 0.01, h); ctx.font = `600 46px ${serif}`;
+  [...term.n].forEach((ch, j) => ctx.fillText(ch, sx + sw / 2, sy + 15 + 52 * (j + 0.5)));
+
+  const x0 = 110, maxW = Math.min(600, sx - 50 - x0);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = ink2; ctx.font = `500 34px ${sans}`;
+  ctx.fillText(`${term.n} · ${ORD[cur.i % 3]}`, x0, 190);
+  ctx.font = `30px ${mono}`;
+  ctx.fillText(fmtYMD(state.now), x0, 244);
+  ctx.fillStyle = ink; ctx.font = `600 52px ${serif}`;
+  let y = 400;
+  for (const line of wrapLines(ctx, p.p, maxW)) { ctx.fillText(line, x0, y); y += 76; }
+  y += 30;
+  ctx.fillStyle = ink2; ctx.font = `500 26px ${sans}`; ctx.fillText('今天知道', x0, y); y += 52;
+  ctx.fillStyle = ink; ctx.font = `400 32px ${serif}`;
+  let lines = wrapLines(ctx, p.k, maxW);
+  const room = Math.max(1, Math.floor((H - 220 - y) / 52));
+  if (lines.length > room) { lines = lines.slice(0, room); lines[room - 1] = lines[room - 1].slice(0, -1) + '…'; }
+  for (const line of lines) { ctx.fillText(line, x0, y); y += 52; }
+
+  ctx.fillStyle = ink; ctx.font = `900 46px ${serif}`; ctx.fillText('时候', x0, H - 110);
+  ctx.fillStyle = ink2; ctx.font = `26px ${mono}`; ctx.textAlign = 'right';
+  ctx.fillText(`${cur.i + 1} / 72`, W - 110, H - 112);
+  return cv;
+}
+
+async function saveFile(filename, blob) {
+  if (window.claude && typeof window.claude.use === 'function') {
+    const dl = await window.claude.use('downloads');
+    if (!dl) { toast('这个视图不能保存文件。'); return false; }
+    try { await dl.save({ filename, data: blob }); return true; }
+    catch (e) { if (e && e.code !== 'declined') toast('没有保存成功。'); return false; }
+  }
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  return true;
+}
+
+/* ---------- Toast ---------- */
+let toastTimer = 0;
+function toast(msg) {
+  const el = $('toast'); el.textContent = msg; el.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 3200);
+}
+
+/* ---------- Events ---------- */
+function wire() {
+  $('wheel').addEventListener('click', e => { const seg = e.target.closest('[data-i]'); if (seg) select(+seg.dataset.i); });
+  $('wheel').addEventListener('keydown', e => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (step) { e.preventDefault(); select(state.sel + step); }
+    else if (e.key === 'Home' && state.cur) { e.preventDefault(); setYear(yearOf(state.now)); select(state.cur.i); }
+  });
+  $('detail').addEventListener('click', e => { const b = e.target.closest('[data-step]'); if (b) select(state.sel + +b.dataset.step); });
+  $('year-prev').addEventListener('click', () => setYear(state.year - 1));
+  $('year-next').addEventListener('click', () => setYear(state.year + 1));
+  $('year-now').addEventListener('click', () => { setYear(yearOf(state.now)); if (state.cur) select(state.cur.i); });
+
+  $('go-note').addEventListener('click', () => {
+    $('note-date').value = isoDate(state.now); renderHint();
+    $('notebook').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    $('note-text').focus({ preventScroll: true });
+  });
+  $('note-date').addEventListener('input', renderHint);
+  $('note-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const date = $('note-date').value, text = $('note-text').value.trim();
+    if (!pentadOfDate(date)) { toast('请选择 1900–2100 年之间的日期。'); return; }
+    if (!text) { $('note-text').focus(); return; }
+    $('note-add').disabled = true;
+    const ok = await addNotes([{ id: newId(), date, text: text.slice(0, 200), created: new Date().toISOString() }]);
+    $('note-add').disabled = false;
+    if (ok) { $('note-text').value = ''; const o = pentadOfInput(date); toast(`记在了${PENTADS[o.i].n}`); }
+  });
+  $('note-list').addEventListener('click', e => {
+    const b = e.target.closest('[data-del]');
+    if (!b) return;
+    if (b.classList.contains('armed')) { removeNote(b.dataset.del); return; }
+    b.classList.add('armed'); b.textContent = '确认删除';
+    setTimeout(() => { if (b.isConnected) { b.classList.remove('armed'); b.textContent = '删除'; } }, 3500);
+  });
+  $('export').addEventListener('click', async () => {
+    const data = JSON.stringify({ app: 'shihou', version: 1, exported: new Date().toISOString(), notes: state.notes }, null, 2);
+    if (await saveFile(`时候-物候笔记-${isoDate(state.now)}.json`, new Blob([data], { type: 'application/json' }))) toast(`导出了 ${state.notes.length} 条笔记`);
+  });
+  $('import').addEventListener('change', async e => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    let incoming;
+    try { const v = JSON.parse(await file.text()); incoming = (Array.isArray(v) ? v : v.notes) || []; }
+    catch { toast('这个文件不是“时候”导出的笔记。'); return; }
+    const have = new Set(state.notes.map(n => n.id)), seen = new Set(state.notes.map(n => n.date + '\n' + n.text));
+    const add = incoming.filter(validNote).map(cleanNote).filter(n => !have.has(n.id) && !seen.has(n.date + '\n' + n.text));
+    if (!add.length) { toast('没有新的笔记可以导入。'); return; }
+    if (await addNotes(add)) toast(`导入了 ${add.length} 条笔记`);
+  });
+
+  const dlg = $('card-dialog');
+  let cardBlob = null;
+  $('make-card').addEventListener('click', async () => {
+    if (!state.cur) return;
+    $('make-card').disabled = true;
+    try {
+      const cv = await drawCard();
+      cardBlob = await new Promise(r => cv.toBlob(r, 'image/png'));
+      $('card-img').src = cv.toDataURL('image/png');
+      $('card-img').alt = `今日卡片：${termOf(state.cur.i).n}，${PENTADS[state.cur.i].n}`;
+      if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    } finally { $('make-card').disabled = false; }
+  });
+  $('card-close').addEventListener('click', () => dlg.close());
+  $('card-save').addEventListener('click', async () => {
+    if (cardBlob && await saveFile(`时候-${isoDate(state.now)}-${PENTADS[state.cur.i].n}.png`, cardBlob)) dlg.close();
+  });
+}
+
+/* ---------- Clock ---------- */
+function tick() {
+  state.now = Date.now();
+  const cur = locate(state.now);
+  if (!cur || !state.cur || cur.k !== state.cur.k) {
+    state.cur = cur;
+    if (cur) applyColour(cur.i);
+    renderToday(); renderWheel(); renderDetail(); renderTable();
+  } else renderClock();
+}
+
+function start() {
+  state.cur = locate(state.now);
+  if (state.cur) applyColour(state.cur.i);
+  state.year = state.cur ? yearOf(state.now) : 2026;
+  state.sel = state.cur ? state.cur.i : 0;
+  state.notes = loadLocal();
+  $('note-date').value = isoDate(state.now);
+  wire();
+  renderToday(); renderStore(); renderHint(); renderNotes(); renderTable();
+  setInterval(tick, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+  connectCloud();
+}
+start();
+})();
+</script>
+<!--/A:BODY-->
+</body>
+</html>
