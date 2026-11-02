@@ -65,10 +65,19 @@ data class UiSettings(
     val desktopLyricsY: Float = 0.16f,
     /** Its type size, a step from 0 (smallest) to [DESKTOP_SIZES] - 1. */
     val desktopLyricsSize: Int = 2,
+    /** On the theme's card (paper strip, sign, postcard…) rather than the words alone (轻). */
+    val desktopLyricsCard: Boolean = false,
+    /** A second line under it: the translation, or the line after. */
+    val desktopLyricsSecondLine: Boolean = true,
+    /** How opaque it is, from [DESKTOP_MIN_OPACITY] to 1. */
+    val desktopLyricsOpacity: Float = 1f,
 )
 
 /** How many sizes 桌面歌词 comes in. */
 const val DESKTOP_SIZES = 5
+
+/** As faint as 桌面歌词 can be set and still be read. */
+const val DESKTOP_MIN_OPACITY = 0.3f
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
@@ -97,6 +106,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 desktopLyricsLocked = prefs[DESKTOP_LOCKED] ?: false,
                 desktopLyricsY = (prefs[DESKTOP_Y] ?: 0.16f).coerceIn(0f, 0.9f),
                 desktopLyricsSize = (prefs[DESKTOP_SIZE] ?: 2).coerceIn(0, DESKTOP_SIZES - 1),
+                desktopLyricsCard = prefs[DESKTOP_CARD] ?: false,
+                desktopLyricsSecondLine = prefs[DESKTOP_SECOND] ?: true,
+                desktopLyricsOpacity = (prefs[DESKTOP_OPACITY] ?: 1f).coerceIn(DESKTOP_MIN_OPACITY, 1f),
                 effects = EffectsSettings(
                     preset = EffectPreset.fromId(prefs[FX_PRESET]),
                     custom = prefs[FX_CUSTOM]?.split(',')?.mapNotNull { it.toFloatOrNull() }?.takeIf { it.size == EQ_FREQUENCIES.size }
@@ -157,6 +169,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setDesktopLyricsSize(size: Int) = dataStore.edit { it[DESKTOP_SIZE] = size.coerceIn(0, DESKTOP_SIZES - 1) }
 
+    suspend fun setDesktopLyricsCard(card: Boolean) = dataStore.edit { it[DESKTOP_CARD] = card }
+
+    suspend fun setDesktopLyricsSecondLine(shown: Boolean) = dataStore.edit { it[DESKTOP_SECOND] = shown }
+
+    suspend fun setDesktopLyricsOpacity(opacity: Float) = dataStore.edit { it[DESKTOP_OPACITY] = opacity.coerceIn(DESKTOP_MIN_OPACITY, 1f) }
+
     suspend fun setEffects(fx: EffectsSettings) = dataStore.edit {
         it[FX_PRESET] = fx.preset.id
         it[FX_CUSTOM] = fx.custom.joinToString(",")
@@ -194,6 +212,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val DESKTOP_LOCKED = booleanPreferencesKey("desktop_lyrics_locked")
         val DESKTOP_Y = floatPreferencesKey("desktop_lyrics_y")
         val DESKTOP_SIZE = intPreferencesKey("desktop_lyrics_size")
+        val DESKTOP_CARD = booleanPreferencesKey("desktop_lyrics_card")
+        val DESKTOP_SECOND = booleanPreferencesKey("desktop_lyrics_second_line")
+        val DESKTOP_OPACITY = floatPreferencesKey("desktop_lyrics_opacity")
         val FX_PRESET = stringPreferencesKey("fx_preset")
         val FX_CUSTOM = stringPreferencesKey("fx_custom")
         val FX_BASS = floatPreferencesKey("fx_bass")

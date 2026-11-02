@@ -256,7 +256,15 @@ fun SettingsScreen(
                         settings.desktopLyrics, settings.desktopLyricsLocked,
                         onEnable = { scope.launch { repository.setDesktopLyrics(it) } },
                         onLock = { scope.launch { repository.setDesktopLyricsLocked(it) } },
-                    )
+                    ) {
+                        Hairline()
+                        DesktopLyricsLook(
+                            settings,
+                            onCard = { scope.launch { repository.setDesktopLyricsCard(it) } },
+                            onSecondLine = { scope.launch { repository.setDesktopLyricsSecondLine(it) } },
+                            onOpacity = { scope.launch { repository.setDesktopLyricsOpacity(it) } },
+                        )
+                    }
                     Hairline()
                     BackgroundPlayback()
                     if (style.edge == EdgeKind.Hairline) Hairline()
@@ -445,7 +453,7 @@ private fun LyricCapsuleRow(checked: Boolean, onChange: (Boolean) -> Unit) {
  * system page that grants it, and it comes on when that's granted and the person is back.
  */
 @Composable
-private fun DesktopLyricsRows(enabled: Boolean, locked: Boolean, onEnable: (Boolean) -> Unit, onLock: (Boolean) -> Unit) {
+private fun DesktopLyricsRows(enabled: Boolean, locked: Boolean, onEnable: (Boolean) -> Unit, onLock: (Boolean) -> Unit, more: @Composable () -> Unit = {}) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var permitted by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(io.lanyin.player.ui.desktop.DesktopLyricsWindow.canDraw(context)) }
     var asked by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -475,6 +483,41 @@ private fun DesktopLyricsRows(enabled: Boolean, locked: Boolean, onEnable: (Bool
     if (on) {
         Hairline()
         ToggleRow("锁定桌面歌词", "锁定后点不到它，点击直接落到下面的应用；在快捷开关里点一下「桌面歌词」也能解锁", locked, onLock)
+        more()
+    }
+}
+
+/**
+ * How 桌面歌词 looks: the words alone (轻) or on the theme's card, whether a second line shows,
+ * and how faint it is.
+ */
+@Composable
+private fun DesktopLyricsLook(settings: UiSettings, onCard: (Boolean) -> Unit, onSecondLine: (Boolean) -> Unit, onOpacity: (Float) -> Unit) {
+    val style = Lanyin.style
+    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+        Text("样式", style = style.type.body)
+        Text(
+            if (settings.desktopLyricsCard) "卡片：放在主题自己的底子上（宣纸、灯牌、明信片……），醒目一些" else "轻：只有字，带一圈淡淡的描边，不挡后面的内容",
+            style = style.type.caption, color = style.colors.muted, modifier = Modifier.padding(bottom = 8.dp),
+        )
+        ChoiceRow(listOf("轻", "卡片"), if (settings.desktopLyricsCard) "卡片" else "轻", { onCard(it == "卡片") })
+    }
+    Hairline()
+    ToggleRow("第二行", "在这句下面显示翻译，没有翻译时显示下一句", settings.desktopLyricsSecondLine, onSecondLine)
+    Hairline()
+    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+        Text("不透明度 ${(settings.desktopLyricsOpacity * 100).toInt()}%", style = style.type.body)
+        // The setting runs 30%..100%; the slider runs 0..1 across that.
+        val span = 1f - io.lanyin.player.data.settings.DESKTOP_MIN_OPACITY
+        var dragged by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Float?>(null) }
+        io.lanyin.player.ui.design.ThemedSlider(
+            dragged ?: ((settings.desktopLyricsOpacity - io.lanyin.player.data.settings.DESKTOP_MIN_OPACITY) / span),
+            { dragged = it },
+            onDone = {
+                dragged?.let { onOpacity(io.lanyin.player.data.settings.DESKTOP_MIN_OPACITY + it * span) }
+                dragged = null
+            },
+        )
     }
 }
 

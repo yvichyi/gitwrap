@@ -49,7 +49,11 @@ class DesktopLyricTest(private val theme: AppTheme, private val mode: ThemeMode)
     private val sung = DesktopLine("让歌词一行一行亮起", "let the lyrics light up line by line", timed = true)
     private val next = DesktopLine("唱片在掌心慢慢转动", "下一句：晚风吹过海面", timed = true)
 
-    @Test fun strip() {
+    @Test fun light() = strip(card = false, "desktop")
+
+    @Test fun card() = strip(card = true, "desktop-card")
+
+    private fun strip(card: Boolean, folder: String) {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             LanyinTheme(theme = theme, mode = mode, applySystemBars = false) {
@@ -59,7 +63,7 @@ class DesktopLyricTest(private val theme: AppTheme, private val mode: ThemeMode)
                         Modifier.weight(1f).fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFFFFF3C4), Color(0xFF9AD8FF), Color(0xFFFFB3C7)))),
                         contentAlignment = Alignment.Center,
                     ) {
-                        DesktopLyric(sung, { 0.45f }, size = 2, modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth())
+                        DesktopLyric(sung, { 0.45f }, size = 2, modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth(), card = card)
                     }
                     // A dark one, with the controls out.
                     Box(
@@ -67,7 +71,7 @@ class DesktopLyricTest(private val theme: AppTheme, private val mode: ThemeMode)
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            DesktopLyric(next, { 1f }, size = 3, modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth())
+                            DesktopLyric(next, { 1f }, size = 3, modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth(), card = card)
                             DesktopControls(true, {}, {}, {}, {}, {}, {}, {}, Modifier.padding(top = 8.dp))
                         }
                     }
@@ -75,6 +79,6 @@ class DesktopLyricTest(private val theme: AppTheme, private val mode: ThemeMode)
             }
         }
         compose.mainClock.advanceTimeBy(800)
-        compose.onRoot().captureRoboImage("build/outputs/roborazzi/desktop/${theme.name.lowercase()}.png")
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/$folder/${theme.name.lowercase()}.png")
     }
 }

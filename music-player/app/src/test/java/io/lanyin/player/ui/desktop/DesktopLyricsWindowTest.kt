@@ -64,7 +64,8 @@ class DesktopLyricsWindowTest {
     private fun until(done: () -> Boolean): Boolean {
         repeat(200) {
             Snapshot.sendApplyNotifications()
-            shadowOf(Looper.getMainLooper()).idle()
+            // Moves the main looper's clock too, so a fade-out runs its course.
+            shadowOf(Looper.getMainLooper()).idleFor(50, TimeUnit.MILLISECONDS)
             if (done()) return true
             Thread.sleep(10)
         }

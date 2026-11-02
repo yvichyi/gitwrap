@@ -38,6 +38,7 @@ import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
@@ -91,6 +92,7 @@ class DesktopLyricsWindow(
     private val windows = context.getSystemService(WindowManager::class.java)
     private val current = MutableStateFlow(UiSettings())
     private var host: Host? = null
+    private var leaving: kotlinx.coroutines.Job? = null
     private var writes: ObserverHandle? = null
 
     fun start() {
@@ -123,7 +125,7 @@ class DesktopLyricsWindow(
     fun stop() {
         writes?.dispose()
         writes = null
-        hide()
+        hide(now = true)
     }
 
     /** Playing now, or paused for less than a few seconds (so a pause to answer something doesn't make it blink). */
@@ -139,7 +141,13 @@ class DesktopLyricsWindow(
         }
 
     private fun show() {
-        if (host != null) return
+        host?.let { h ->
+            // Asked back while fading out: stay, and fade in again.
+            leaving?.cancel()
+            leaving = null
+            h.showing.value = true
+            return
+        }
         val h = Host(context)
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -160,7 +168,7 @@ class DesktopLyricsWindow(
             val y = params.y.toFloat() / screenHeight().coerceAtLeast(1)
             scope.launch { settings.setDesktopLyricsY(y) }
         }
-        h.compose.setContent { Content() }
+        h.compose.setContent { Content(h) }
         place(h, current.value, add = false)
         // The permission can go between checking and adding; then there's simply no window.
         if (runCatching { windows.addView(h.frame, params) }.isFailure) {
@@ -170,8 +178,23 @@ class DesktopLyricsWindow(
         host = h
     }
 
-    private fun hide() {
+    /** Fades out, then takes the window away; [now] skips the fade. */
+    private fun hide(now: Boolean = false) {
         val h = host ?: return
+        leaving?.cancel()
+        leaving = null
+        if (now) {
+            remove(h)
+            return
+        }
+        h.showing.value = false
+        leaving = scope.launch {
+            delay(FADE_MS + 40)
+            if (host === h && !h.showing.value) remove(h)
+        }
+    }
+
+    private fun remove(h: Host) {
         host = null
         runCatching { windows.removeView(h.frame) }
         h.destroy()
@@ -203,7 +226,7 @@ class DesktopLyricsWindow(
     private fun maxY(): Int = (screenHeight() * 0.9f).roundToInt()
 
     @Composable
-    private fun Content() {
+    private fun Content(h: Host) {
         val s by current.collectAsState()
         CompositionLocalProvider(
             LocalReduceMotion provides (s.reduceMotion || systemAnimationsOff()),
@@ -211,7 +234,7 @@ class DesktopLyricsWindow(
         ) {
             LanyinTheme(theme = s.theme, mode = s.themeMode, applySystemBars = false) {
                 DesktopLyricsPanel(
-                    player, s,
+                    player, s, visible = h.showing.value,
                     onSize = { size -> scope.launch { settings.setDesktopLyricsSize(size) } },
                     onLock = {
                         scope.launch { settings.setDesktopLyricsLocked(true) }
@@ -234,6 +257,9 @@ class DesktopLyricsWindow(
         override val savedStateRegistry: SavedStateRegistry get() = saved.savedStateRegistry
         override val viewModelStore = ViewModelStore()
         var params: WindowManager.LayoutParams? = null
+
+        /** False while fading out on the way to being taken away. */
+        val showing = mutableStateOf(true)
         val frame = DragFrame(context)
         val compose = ComposeView(context)
 
@@ -260,6 +286,9 @@ class DesktopLyricsWindow(
 
         /** How long a pause lasts before the lyrics go. */
         const val PAUSE_GRACE_MS = 4_000L
+
+        /** How long they take to fade in or out. */
+        const val FADE_MS = 280L
 
         fun canDraw(context: Context): Boolean = Settings.canDrawOverlays(context)
     }
@@ -334,7 +363,15 @@ internal fun DesktopLyricsPanel(
     onLock: () -> Unit,
     onClose: () -> Unit,
     controlsShown: Boolean = false,
+    /** False while fading out. */
+    visible: Boolean = true,
 ) {
+    // Comes in softly and leaves the same way, rather than popping up over what's being read.
+    val reducedFade = LocalReduceMotion.current
+    val fade = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(visible) {
+        fade.animateTo(if (visible) 1f else 0f, tween(if (reducedFade) 0 else DesktopLyricsWindow.FADE_MS.toInt()))
+    }
     LaunchedEffect(player, player.isPlaying) {
         while (player.isPlaying && isActive) {
             withFrameMillis(player::onFrame)
@@ -351,15 +388,18 @@ internal fun DesktopLyricsPanel(
         }
     }
     val index = player.currentLyricIndex
-    val line = desktopLine(player.lyrics, index, player.title, player.artist)
+    val line = desktopLine(player.lyrics, index, player.title, player.artist).let { if (s.desktopLyricsSecondLine) it else it.copy(second = null) }
     val source = player.lyrics.getOrNull(index)
     val reduced = LocalReduceMotion.current
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        Modifier.fillMaxWidth().graphicsLayer { alpha = fade.value }.padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         // Each line keeps its own progress while it fades out under the next.
         Crossfade(line to source, animationSpec = tween(if (reduced) 0 else 220), label = "desktopLine") { (l, sungLine) ->
             DesktopLyric(
-                l, progress = { sungLine?.charProgress(player.positionMs) ?: 1f }, size = s.desktopLyricsSize,
-                modifier = Modifier.fillMaxWidth().pointerInput(Unit) {
+                l, progress = { sungLine?.charProgress(player.positionMs) ?: 1f }, size = s.desktopLyricsSize, card = s.desktopLyricsCard,
+                modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = s.desktopLyricsOpacity }.pointerInput(Unit) {
                     detectTapGestures {
                         shown = !shown
                         touched++

@@ -32,6 +32,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
+import io.lanyin.player.ui.theme.GameLcd
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -83,16 +85,21 @@ internal val DesktopTypeSizes = floatArrayOf(15f, 17f, 19f, 22f, 25f)
 private fun fixed(size: Float): TextUnit = with(LocalDensity.current) { size.dp.toSp() }
 
 /**
- * The line floating over other apps, in the theme's medium: a strip of rice paper with its seal
+ * The line floating over other apps. By default (轻) only the words, see [LightLyric]; on a
+ * [card], in the theme's medium: a strip of rice paper with its seal
  * (墨), a neon sign on a dark wall (霓), a postcard's back (暮), a boxed label with the highlighter
  * (格), a subtitle in the letterbox (影), the LED pill (点), the device's screen (机), a strip of
  * newsprint underlined in red (报), a dialogue window typing it out (游), a candy-plastic sticker
  * in chrome (酸). [progress] (0..1 through the line) is read at draw time.
  */
 @Composable
-fun DesktopLyric(line: DesktopLine, progress: () -> Float, size: Int, modifier: Modifier = Modifier) {
+fun DesktopLyric(line: DesktopLine, progress: () -> Float, size: Int, modifier: Modifier = Modifier, card: Boolean = false) {
     val type = fixed(DesktopTypeSizes[size.coerceIn(0, DesktopTypeSizes.lastIndex)])
     val sung: () -> Float = if (line.timed) progress else ({ 1f })
+    if (!card) {
+        LightLyric(line, sung, type, modifier)
+        return
+    }
     when (Lanyin.style.backdrop) {
         BackdropKind.Ink -> InkStrip(line, sung, type, modifier)
         BackdropKind.Neon -> NeonStrip(line, sung, type, modifier)
@@ -104,6 +111,80 @@ fun DesktopLyric(line: DesktopLine, progress: () -> Float, size: Int, modifier: 
         BackdropKind.Paper -> PaperStrip(line, sung, type, modifier)
         BackdropKind.Game -> GameStrip(line, sung, type, modifier)
         BackdropKind.Acid -> AcidStrip(line, sung, type, modifier)
+    }
+}
+
+/** How 轻 sets a theme's words: its face, how strong the unsung words are, and what the singing fills them with. */
+private class LightLook(val font: FontFamily?, val weight: FontWeight, val italic: Boolean, val unsung: Float, val wholeChars: Boolean, val paint: DrawScope.(TextLayoutResult) -> Unit)
+
+@Composable
+private fun lightLook(): LightLook {
+    val style = Lanyin.style
+    val c = style.colors
+    return when (style.backdrop) {
+        // 墨: a brush face, the sung words in the seal's vermilion.
+        BackdropKind.Ink -> LightLook(FontFamily.Serif, FontWeight.Normal, false, 0.85f, false) { drawText(it, color = Color(0xFFE5533D)) }
+        // 霓: the tube lights as it's sung.
+        BackdropKind.Neon -> LightLook(null, FontWeight.Bold, false, 0.8f, false) {
+            drawText(it, color = c.accent, shadow = Shadow(c.accent, Offset.Zero, 16f))
+            drawText(it, color = lerp(c.accent, Color.White, 0.4f))
+        }
+        // 暮: the postcard hand, inked in the sunset.
+        BackdropKind.Dusk -> LightLook(style.display, FontWeight.Normal, true, 0.85f, false) {
+            drawText(it, brush = Brush.horizontalGradient(listOf(Color(0xFFFFB27A), Color(0xFFFF7FA0))), alpha = 1f)
+        }
+        // 格: heavy, the highlighter yellow a character at a time.
+        BackdropKind.Grid -> LightLook(null, FontWeight.Black, false, 0.85f, true) { drawText(it, color = GridYellow) }
+        // 影: a subtitle, cream as it's said.
+        BackdropKind.Film -> LightLook(null, FontWeight.Normal, false, 0.6f, false) { drawText(it, color = Color(0xFFFFE9B0)) }
+        // 点: white LEDs lighting.
+        BackdropKind.Dot -> LightLook(null, FontWeight.Bold, false, 0.45f, false) { drawText(it, color = Color.White) }
+        // 机: the display's orange.
+        BackdropKind.Device -> LightLook(null, FontWeight.Bold, false, 0.85f, false) { drawText(it, color = c.accent) }
+        // 报: the masthead's face, the red pen.
+        BackdropKind.Paper -> LightLook(style.display, FontWeight.Black, false, 0.85f, false) { drawText(it, color = Color(0xFFE8443A)) }
+        // 游: pixels, typed out in the screen's brightest green.
+        BackdropKind.Game -> LightLook(style.display, FontWeight.Normal, false, 0.5f, true) { drawText(it, color = GameLcd[0]) }
+        // 酸: the lime it keeps for what's playing.
+        BackdropKind.Acid -> LightLook(null, FontWeight.Black, false, 0.85f, false) { drawText(it, color = c.accent) }
+    }
+}
+
+/**
+ * 轻: only the words, centred, with nothing behind them but a faint dark outline that keeps them
+ * readable over a white page or a dark photo alike. The theme shows in the face and in the colour
+ * the singing fills them with.
+ */
+@Composable
+private fun LightLyric(line: DesktopLine, sung: () -> Float, type: TextUnit, modifier: Modifier) {
+    val look = lightLook()
+    val base = TextStyle(
+        fontFamily = look.font, fontWeight = look.weight, fontStyle = if (look.italic) FontStyle.Italic else FontStyle.Normal,
+        fontSize = type, textAlign = TextAlign.Center,
+    )
+    val outline = Color.Black.copy(alpha = 0.42f)
+    // Opaque greys rather than see-through white, so the outline never shows through the letters.
+    val unsung = lerp(Color(0xFF7A7A7A), Color.White, look.unsung)
+    val progress = if (look.wholeChars) wholeChars(line.text, sung) else sung
+    Column(modifier.padding(horizontal = 8.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            // The outline, under the same layout as the words.
+            Text(
+                line.text, style = base.copy(color = outline, drawStyle = Stroke(width = with(LocalDensity.current) { 2.dp.toPx() }, join = androidx.compose.ui.graphics.StrokeJoin.Round)),
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth(),
+            )
+            SungText(
+                line.text, base.copy(color = unsung), progress,
+                paintSung = look.paint, maxLines = 1, modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (!line.second.isNullOrBlank()) {
+            val small = base.copy(fontSize = type * 0.62f, fontWeight = FontWeight.Normal)
+            Box(Modifier.fillMaxWidth().padding(top = 2.dp), contentAlignment = Alignment.Center) {
+                Text(line.second, style = small.copy(color = outline, drawStyle = Stroke(width = with(LocalDensity.current) { 1.4.dp.toPx() }, join = androidx.compose.ui.graphics.StrokeJoin.Round)), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
+                Text(line.second, style = small.copy(color = Color(0xFFEDEDED)), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
+            }
+        }
     }
 }
 
