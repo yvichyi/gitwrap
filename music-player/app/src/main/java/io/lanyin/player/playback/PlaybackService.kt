@@ -104,6 +104,7 @@ class PlaybackService : MediaSessionService() {
         // And 词幕 (Lyricon), which takes the whole song and keeps time itself.
         val lyricon = LyriconLyrics(this, scope, container.nowLyrics.current, duration = { player.duration.coerceAtLeast(0) })
             .also { this.lyricon = it; it.start() }
+        followSleepTimer(player, container.sleepTimer)
         statusLyrics = StatusLyrics(
             scope, container.nowLyrics.current,
             position = { player.currentPosition },
@@ -118,6 +119,43 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
+
+    /**
+     * 定时关闭: counting down, the volume falls over the last half minute and then playback
+     * pauses; at the end of the song, the player pauses there by itself. Either way the timer is
+     * then cleared and the volume restored; cancelled, everything goes back as it was.
+     */
+    private fun followSleepTimer(player: ExoPlayer, timer: SleepTimer) {
+        player.addListener(object : Player.Listener {
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM && timer.state.value?.endOfTrack == true) {
+                    timer.cancel()
+                }
+            }
+        })
+        var countdown: kotlinx.coroutines.Job? = null
+        scope.launch {
+            timer.state.collect { set ->
+                countdown?.cancel()
+                player.volume = 1f
+                player.pauseAtEndOfMediaItems = set?.endOfTrack == true
+                if (set?.endsAt == null) return@collect
+                countdown = scope.launch {
+                    while (true) {
+                        val left = timer.remainingMs() ?: break
+                        if (left <= 0L) {
+                            player.pause()
+                            player.volume = 1f
+                            timer.cancel()
+                            break
+                        }
+                        player.volume = timer.volumeAt()
+                        kotlinx.coroutines.delay(if (left > SleepTimer.FADE_MS) (left - SleepTimer.FADE_MS).coerceAtMost(15_000L) else 250L)
+                    }
+                }
+            }
+        }
+    }
 
     /** Saves the queue a moment after it changes, and every so often while playing, off the main thread. */
     private fun saveQueueSoon() {

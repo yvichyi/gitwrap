@@ -24,6 +24,7 @@ class AppServices(
     val uploads: io.lanyin.player.data.library.CloudUploads,
     val storage: io.lanyin.player.playback.StorageManager,
     val searchHistory: io.lanyin.player.data.library.SearchHistory,
+    val sleepTimer: io.lanyin.player.playback.SleepTimer = io.lanyin.player.playback.SleepTimer(),
 )
 
 val LocalAppServices = staticCompositionLocalOf<AppServices?> { null }

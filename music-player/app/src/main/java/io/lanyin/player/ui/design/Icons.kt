@@ -54,6 +54,7 @@ enum class LineIcon(internal val strokes: String, internal val fills: String = "
     Trash("M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13M10.5 11v5.5M13.5 11v5.5"),
     Edit("M14.5 5.5l4 4L9 19H5v-4zM12.5 7.5l4 4"),
     Close("M6.5 6.5l11 11M17.5 6.5l-11 11"),
+    Moon("M19.5 14.5A8 8 0 1 1 9.5 4.5a6.5 6.5 0 0 0 10 10z"),
     Send("M20 4L3.5 10.5l7 3l3 7zM10.5 13.5L20 4"),
     Equalizer("M6 4v16M12 4v16M18 4v16M3.5 14h5M9.5 8h5M15.5 16h5"),
     CaretDown("M8 10l4 4l4-4"),

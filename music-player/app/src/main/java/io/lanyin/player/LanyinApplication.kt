@@ -100,6 +100,7 @@ class AppContainer(context: Context, val diagnostics: io.lanyin.player.diagnosti
     val engine = AudioEngine()
     val recent = RecentRepository(File(context.filesDir, "recent.json"), scope)
     val searchHistory = io.lanyin.player.data.library.SearchHistory(File(context.filesDir, "search-history.json"), scope)
+    val sleepTimer = io.lanyin.player.playback.SleepTimer()
     val downloads = DownloadRepository(context, audio, scope)
     val notices = Notices()
     val nowLyrics = io.lanyin.player.playback.NowPlayingLyrics()
@@ -137,7 +138,7 @@ class AppContainer(context: Context, val diagnostics: io.lanyin.player.diagnosti
         },
         nowLyrics = nowLyrics,
     )
-    val services = AppServices(netease, account, library, player, recent, downloads, notices, engine, uploads, storage, searchHistory)
+    val services = AppServices(netease, account, library, player, recent, downloads, notices, engine, uploads, storage, searchHistory, sleepTimer)
 
     /** Whether one of the app's screens is showing. */
     val appVisible = MutableStateFlow(false)

@@ -41,6 +41,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -108,6 +109,7 @@ sealed interface Sheet {
     data object Quality : Sheet
     /** A line of the song playing, to share as a card. */
     data class ShareLyric(val line: String, val translation: String? = null) : Sheet
+    data object SleepTimer : Sheet
 }
 
 /** Opens a sheet from anywhere below the app shell. */
@@ -220,7 +222,7 @@ private fun SheetGrip(modifier: Modifier) {
 private fun SheetTitle(title: String, note: String? = null, trailing: @Composable () -> Unit = {}) {
     val style = Lanyin.style
     Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = style.type.title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Text(title, style = style.type.title, color = style.colors.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
         if (note != null) {
             Spacer(Modifier.width(10.dp))
             Text(note, style = style.type.caption, color = style.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
@@ -300,6 +302,9 @@ fun TrackActionsSheet(
     onDeleteFromCloud: () -> Unit = {},
     /** Only for the song playing, with a line being sung. */
     onShareLyric: (() -> Unit)? = null,
+    /** Only for the song playing: 定时关闭, with what's left of a timer already set. */
+    onSleepTimer: (() -> Unit)? = null,
+    sleepNote: String? = null,
 ) {
     val style = Lanyin.style
     val c = style.colors
@@ -329,6 +334,7 @@ fun TrackActionsSheet(
         }
         ActionRow(LineIcon.Comment, "评论", onComments, ++n)
         if (onShareLyric != null) ActionRow(LineIcon.Share, "分享这句歌词", onShareLyric, ++n)
+        if (onSleepTimer != null) ActionRow(LineIcon.Moon, if (sleepNote != null) "定时关闭 · $sleepNote" else "定时关闭", onSleepTimer, ++n)
         song.artists.filter { it.id != 0L }.take(4).forEach { a ->
             ActionRow(LineIcon.User, "歌手：${a.name}", { onOpenArtist(a) }, ++n)
         }
@@ -544,5 +550,58 @@ fun ConfirmDownloadSheet(title: String, count: Int, quality: String, wifiOnly: B
     Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
         Spacer(Modifier.weight(1f))
         ThemedButton("下载 $count 首", onConfirm, enabled = count > 0)
+    }
+}
+
+/**
+ * 定时关闭: after 15 to 90 minutes, or once this song ends. Near the end the music fades out
+ * over half a minute before it pauses.
+ */
+@Composable
+fun SleepTimerSheet(timer: io.lanyin.player.playback.SleepTimer, onDone: () -> Unit) {
+    val set by timer.state.collectAsState()
+    val left = rememberSleepLeft(timer)
+    SheetTitle(
+        "定时关闭",
+        when {
+            set?.endOfTrack == true -> "这首播完就停"
+            left != null -> "还剩 $left"
+            else -> "到点前半分钟渐弱，然后暂停"
+        },
+    )
+    var n = 0
+    for (minutes in listOf(15, 30, 45, 60, 90)) {
+        ActionRow(LineIcon.Moon, "$minutes 分钟后", {
+            timer.start(minutes)
+            onDone()
+        }, ++n)
+    }
+    ActionRow(LineIcon.Moon, "播完这首", {
+        timer.endOfTrack()
+        onDone()
+    }, ++n)
+    if (set != null) {
+        ActionRow(LineIcon.Close, "取消定时", {
+            timer.cancel()
+            onDone()
+        }, ++n, tint = Lanyin.colors.accent)
+    }
+}
+
+/** What's left of the timer as 「23:40」, ticking each second; 「这首播完」 when it waits for the song's end; null when off. */
+@Composable
+fun rememberSleepLeft(timer: io.lanyin.player.playback.SleepTimer): String? {
+    val set by timer.state.collectAsState()
+    val left by androidx.compose.runtime.produceState<Long?>(timer.remainingMs(), set) {
+        while (true) {
+            value = timer.remainingMs()
+            if (value == null) break
+            kotlinx.coroutines.delay(1_000)
+        }
+    }
+    return when {
+        set?.endOfTrack == true -> "这首播完"
+        left != null -> left!!.let { ms -> val s = (ms + 999) / 1000; "%d:%02d".format(s / 60, s % 60) }
+        else -> null
     }
 }

@@ -856,6 +856,18 @@ internal fun UtilityRow(
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         QualityTags(state, chipFirst = true, showFormat = false)
         Spacer(Modifier.weight(1f))
+        // While 定时关闭 counts down: the moon and what's left; a tap to change it.
+        io.lanyin.player.ui.LocalAppServices.current?.sleepTimer?.let { timer ->
+            io.lanyin.player.ui.music.rememberSleepLeft(timer)?.let { left ->
+                androidx.compose.foundation.layout.Row(
+                    Modifier.pressable(label = "定时关闭") { openSheet(io.lanyin.player.ui.music.Sheet.SleepTimer) }.padding(horizontal = 6.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ThemedIcon(LineIcon.Moon, null, tint = c.accent, size = 16.dp)
+                    androidx.compose.material3.Text(left, style = Lanyin.style.type.caption.copy(fontFamily = Lanyin.style.numeric), color = c.accent, modifier = Modifier.padding(start = 3.dp))
+                }
+            }
+        }
         CommentButton(state, c.muted)
         IconAction(LineIcon.Equalizer, "音效", { openSheet(io.lanyin.player.ui.music.Sheet.Effects) }, tint = c.muted)
         if (onToggleLyrics != null) {
