@@ -42,7 +42,12 @@ class LanyinApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(this)
+        // First, so a crash while setting up is written down too.
+        val diagnostics = io.lanyin.player.diagnostics.Diagnostics(File(filesDir, "diagnostics")).also {
+            it.installCrashHandler()
+            io.lanyin.player.diagnostics.Diag.current = it
+        }
+        container = AppContainer(this, diagnostics)
         container.account.start()
         container.player.connect()
         container.downloads.start()
@@ -58,6 +63,7 @@ class LanyinApplication : Application(), SingletonImageLoader.Factory {
             override fun onActivityStopped(activity: Activity) {
                 started = (started - 1).coerceAtLeast(0)
                 container.appVisible.value = started > 0
+                if (started == 0) diagnostics.flush()
             }
 
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
@@ -76,7 +82,7 @@ class LanyinApplication : Application(), SingletonImageLoader.Factory {
 }
 
 /** Hand-wired dependencies: few enough that a DI framework would cost more than it saves. */
-class AppContainer(context: Context) {
+class AppContainer(context: Context, val diagnostics: io.lanyin.player.diagnostics.Diagnostics) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val settings = SettingsRepository(context.settingsDataStore)
     val http: OkHttpClient = OkHttpClient.Builder()
@@ -138,6 +144,13 @@ class AppContainer(context: Context) {
     val desktopLyrics = io.lanyin.player.ui.desktop.DesktopLyricsWindow(context, scope, player, settings, appVisible)
 
     init {
+        // What diagnostics gathered is written down now and then, off the main thread.
+        scope.launch(Dispatchers.IO) {
+            while (true) {
+                kotlinx.coroutines.delay(60_000)
+                diagnostics.flush()
+            }
+        }
         // Stream quality, downloads over Wi-Fi only and play records follow the settings.
         scope.launch {
             settings.settings.collect {

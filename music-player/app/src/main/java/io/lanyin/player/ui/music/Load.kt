@@ -40,6 +40,7 @@ fun <T> rememberLoad(key: Any?, refresh: Any? = null, fetch: suspend () -> T): L
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                io.lanyin.player.diagnostics.Diag.error("加载失败", "${e::class.simpleName}: ${e.message}")
                 if (shown is Load.Ready) shown else Load.Failed(describe(e))
             }
         } finally {

@@ -171,6 +171,11 @@ fun LanyinApp(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val destination = backStackEntry?.destination
     val selectedTab = tabs.indexOfFirst { tab -> destination?.hierarchy?.any { it.hasRoute(tab.route::class) } == true }
+    // Where the person is, in their words, for the diagnostics.
+    val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    LaunchedEffect(destination, expanded, landscape) {
+        io.lanyin.player.diagnostics.Diag.current?.where = screenName(destination, expanded && !player.isEmpty) + if (landscape) "（横屏）" else ""
+    }
     val onTopLevel = destination == null || selectedTab >= 0
     // The mini player follows you into lists, but not into settings, login or comments (which has its own bar).
     val showMini = !player.isEmpty && destination?.hierarchy?.any {
@@ -604,5 +609,30 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                 }
             }
         }
+    }
+}
+
+/** The page as the person would name it, for the diagnostics. */
+private fun screenName(destination: androidx.navigation.NavDestination?, playerOpen: Boolean): String {
+    if (playerOpen) return "播放页"
+    val d = destination ?: return "首页"
+    fun on(route: kotlin.reflect.KClass<*>) = d.hierarchy.any { it.hasRoute(route) }
+    return when {
+        on(HomeRoute::class) -> "首页"
+        on(SearchRoute::class) -> "搜索"
+        on(LibraryRoute::class) -> "我的"
+        on(SettingsRoute::class) -> "设置"
+        on(LoginRoute::class) -> "登录"
+        on(PlaylistRoute::class) -> "歌单"
+        on(DailyRoute::class) -> "每日推荐"
+        on(ChartsRoute::class) -> "排行榜"
+        on(ArtistRoute::class) -> "歌手"
+        on(AlbumRoute::class) -> "专辑"
+        on(RecentRoute::class) -> "最近播放"
+        on(CloudRoute::class) -> "云盘"
+        on(DownloadsRoute::class) -> "下载"
+        on(RankingRoute::class) -> "听歌排行"
+        on(CommentsRoute::class) -> "评论"
+        else -> "其他"
     }
 }

@@ -195,6 +195,8 @@ class MediaPlayerState(
         override fun onPlayerError(error: PlaybackException) {
             val c = controller ?: return
             val cause = generateSequence(error as Throwable?) { it.cause }.firstOrNull { it is UnplayableException }
+            // What went wrong, not which song.
+            io.lanyin.player.diagnostics.Diag.error("播放出错", "${error.errorCodeName}: ${(cause ?: error.cause ?: error).message}")
             if (cause == null) resolver.invalidate(track.id)
             val id = c.currentMediaItem?.mediaId
             // A network hiccup (a tunnel, a lift): give the same song one more go from where it

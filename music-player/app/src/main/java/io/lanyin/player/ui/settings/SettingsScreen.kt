@@ -257,6 +257,8 @@ fun SettingsScreen(
                         onEnable = { scope.launch { repository.setDesktopLyrics(it) } },
                         onLock = { scope.launch { repository.setDesktopLyricsLocked(it) } },
                     )
+                    Hairline()
+                    BackgroundPlayback()
                     if (style.edge == EdgeKind.Hairline) Hairline()
                 }
             }
@@ -269,8 +271,11 @@ fun SettingsScreen(
             }
             item { SectionTitle("账号", Modifier.padding(start = m, end = m, top = 36.dp), index = 6) }
             item { AccountRow(account, onLogin, onLogout, Modifier.padding(start = m, end = m, top = 14.dp)) }
+            item { SectionTitle("诊断", Modifier.padding(start = m, end = m, top = 36.dp), trailing = "只存在这台手机上", index = 7) }
+            item { SettingsGroup(Modifier.padding(start = m, end = m, top = 14.dp)) { DiagnosticsLines(settings) } }
             item {
-                Text("澜音 0.8 · 预览版", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))
+                val context = androidx.compose.ui.platform.LocalContext.current
+                Text("澜音 ${appVersion(context)}", style = style.type.caption, color = c.muted, modifier = Modifier.fillMaxWidth().padding(m))
             }
         }
     }
