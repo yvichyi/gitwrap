@@ -110,6 +110,7 @@ sealed interface Sheet {
     /** A line of the song playing, to share as a card. */
     data class ShareLyric(val line: String, val translation: String? = null) : Sheet
     data object SleepTimer : Sheet
+    data object LyricOffset : Sheet
 }
 
 /** Opens a sheet from anywhere below the app shell. */
@@ -304,6 +305,8 @@ fun TrackActionsSheet(
     onShareLyric: (() -> Unit)? = null,
     /** Only for the song playing: 定时关闭, with what's left of a timer already set. */
     onSleepTimer: (() -> Unit)? = null,
+    /** Only for the song playing, when it has lyrics: 歌词时间微调. */
+    onLyricOffset: (() -> Unit)? = null,
     sleepNote: String? = null,
 ) {
     val style = Lanyin.style
@@ -334,6 +337,7 @@ fun TrackActionsSheet(
         }
         ActionRow(LineIcon.Comment, "评论", onComments, ++n)
         if (onShareLyric != null) ActionRow(LineIcon.Share, "分享这句歌词", onShareLyric, ++n)
+        if (onLyricOffset != null) ActionRow(LineIcon.Lyrics, "歌词时间微调", onLyricOffset, ++n)
         if (onSleepTimer != null) ActionRow(LineIcon.Moon, if (sleepNote != null) "定时关闭 · $sleepNote" else "定时关闭", onSleepTimer, ++n)
         song.artists.filter { it.id != 0L }.take(4).forEach { a ->
             ActionRow(LineIcon.User, "歌手：${a.name}", { onOpenArtist(a) }, ++n)
@@ -603,5 +607,48 @@ fun rememberSleepLeft(timer: io.lanyin.player.playback.SleepTimer): String? {
         set?.endOfTrack == true -> "这首播完"
         left != null -> left!!.let { ms -> val s = (ms + 999) / 1000; "%d:%02d".format(s / 60, s % 60) }
         else -> null
+    }
+}
+
+/**
+ * 歌词时间微调 for the song playing: the line being sung, to judge by, and buttons that move the
+ * lyrics earlier or later by a tenth or half a second. Remembered for this song only.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun LyricOffsetSheet(player: PlayerState) {
+    val style = Lanyin.style
+    val c = style.colors
+    val offset = player.lyricOffsetMs
+    val seconds = "%.1f".format(kotlin.math.abs(offset) / 1000f)
+    SheetTitle(
+        "歌词时间微调",
+        when {
+            offset > 0 -> "歌词推后了 $seconds 秒"
+            offset < 0 -> "歌词提前了 $seconds 秒"
+            else -> "和网易云给的时间一致"
+        },
+    )
+    Text(
+        player.currentLine?.text?.takeIf { it.isNotBlank() } ?: "（这首还没唱到歌词）",
+        style = style.type.title, color = c.accent, maxLines = 2, overflow = TextOverflow.Ellipsis,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+    )
+    androidx.compose.foundation.layout.FlowRow(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+        // Earlier on one line, later on the next.
+        maxItemsInEachRow = 2,
+    ) {
+        io.lanyin.player.ui.design.ThemedChip("提前 0.5 秒", false, { player.shiftLyrics(-500) })
+        io.lanyin.player.ui.design.ThemedChip("提前 0.1 秒", false, { player.shiftLyrics(-100) })
+        io.lanyin.player.ui.design.ThemedChip("推后 0.1 秒", false, { player.shiftLyrics(100) })
+        io.lanyin.player.ui.design.ThemedChip("推后 0.5 秒", false, { player.shiftLyrics(500) })
+    }
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("歌词比唱的慢就「提前」，快了就「推后」。只对这首歌，会记住。", style = style.type.caption, color = c.muted, modifier = Modifier.weight(1f))
+        if (offset != 0L) io.lanyin.player.ui.design.TextLink("恢复", { player.resetLyricOffset() }, Modifier.padding(start = 12.dp))
     }
 }

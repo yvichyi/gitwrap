@@ -87,6 +87,13 @@ class PagesSweepTest(private val theme: AppTheme, private val mode: ThemeMode) {
         CommentsPage(song, onBack = {}, controller = controller, now = now)
     }
 
+    @Test fun offset() = shot("offset") {
+        val player = remember { io.lanyin.player.ui.player.DemoPlayerState().apply { seekTo(14_000) } }
+        androidx.compose.foundation.layout.Column(Modifier.padding(top = 60.dp)) {
+            io.lanyin.player.ui.music.LyricOffsetSheet(player)
+        }
+    }
+
     @Test fun sleep() = shot("sleep") {
         val timer = remember { io.lanyin.player.playback.SleepTimer().apply { start(30) } }
         androidx.compose.foundation.layout.Column(Modifier.padding(top = 60.dp)) {

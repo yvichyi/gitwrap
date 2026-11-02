@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
+import io.lanyin.player.data.library.shifted
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -55,6 +56,8 @@ class MediaPlayerState(
     private val setPreferred: (Quality) -> Unit = {},
     /** Where the lyrics of what plays are published for the status bar. */
     private val nowLyrics: NowPlayingLyrics? = null,
+    /** 歌词时间微调, per song. */
+    private val offsets: io.lanyin.player.data.library.LyricOffsets? = null,
 ) : PlayerState() {
 
     override val audioFeed: io.lanyin.player.core.audio.AudioFeed get() = feed ?: super.audioFeed
@@ -76,7 +79,34 @@ class MediaPlayerState(
         private set
     override var lyrics by mutableStateOf<List<LyricLine>>(emptyList())
         private set
+
+    /** The lyrics as NetEase timed them, before 歌词时间微调. */
+    private var rawLyrics: List<LyricLine> = emptyList()
+
+    override var lyricOffsetMs by mutableLongStateOf(0L)
+        private set
+
+    /** Shows [lines] for [t], moved by its offset, here and wherever lyrics are published. */
+    private fun showLyrics(t: Track, lines: List<LyricLine>) {
+        rawLyrics = lines
+        lyricOffsetMs = offsets?.get(t.id) ?: 0L
+        val shown = lines.shifted(lyricOffsetMs)
+        lyrics = shown
+        nowLyrics?.publish(NowPlayingLyrics.Lyrics(t.id, t.title, t.artist, shown))
+    }
+
+    override fun shiftLyrics(deltaMs: Long) = setOffset(lyricOffsetMs + deltaMs)
+
+    override fun resetLyricOffset() = setOffset(0L)
+
+    private fun setOffset(ms: Long) {
+        val t = track.takeIf { !isEmpty && it.id == lyricsFor } ?: return
+        offsets?.set(t.id, ms.coerceIn(-MAX_OFFSET_MS, MAX_OFFSET_MS))
+        showLyrics(t, rawLyrics)
+    }
+
     override var lyricsLoading by mutableStateOf(false)
+        private set
     override var lyricsGap by mutableStateOf(io.lanyin.player.ui.player.LyricsGap.Instrumental)
         private set
     override var buffering by mutableStateOf(false)
@@ -427,14 +457,12 @@ class MediaPlayerState(
         lyricsFor = t.id
         lyricsJob?.cancel()
         lyricsCache[t.id]?.let {
-            lyrics = it
             lyricsLoading = false
-            nowLyrics?.publish(NowPlayingLyrics.Lyrics(t.id, t.title, t.artist, it))
+            showLyrics(t, it)
             return
         }
-        lyrics = emptyList()
         lyricsLoading = true
-        nowLyrics?.publish(NowPlayingLyrics.Lyrics(t.id, t.title, t.artist, emptyList()))
+        showLyrics(t, emptyList())
         lyricsJob = scope.launch {
             var source: LyricsSource? = null
             for (attempt in 0 until 3) {
@@ -445,7 +473,6 @@ class MediaPlayerState(
             val parsed = source?.let { LrcParser.parse(it, t.durationMs) }.orEmpty()
             if (source != null) lyricsCache[t.id] = parsed
             if (lyricsFor == t.id) {
-                lyrics = parsed
                 lyricsLoading = false
                 lyricsGap = when {
                     source == null -> io.lanyin.player.ui.player.LyricsGap.Failed
@@ -454,12 +481,15 @@ class MediaPlayerState(
                 }
                 // Let the next look at this song (or a tap on 重试) fetch them again.
                 if (source == null) lyricsFor = 0L
-                nowLyrics?.publish(NowPlayingLyrics.Lyrics(t.id, t.title, t.artist, parsed))
+                showLyrics(t, parsed)
             }
         }
     }
 
     companion object {
+        /** 歌词时间微调 goes no further than this either way. */
+        private const val MAX_OFFSET_MS = 10_000L
+
         /** How long to wait before trying a song again after a network error. */
         private const val RETRY_DELAY_MS = 2_500L
         private const val EXTRA_DURATION = "lanyin.duration"

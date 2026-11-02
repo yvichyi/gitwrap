@@ -78,6 +78,15 @@ abstract class PlayerState {
     /** Fetches the lyrics again after they failed to load. */
     open fun retryLyrics() {}
 
+    /** How late this song's lyrics are set to run, in ms (歌词时间微调); negative is earlier. */
+    open val lyricOffsetMs: Long get() = 0L
+
+    /** Moves this song's lyrics by [deltaMs] (later when positive), and remembers it for the song. */
+    open fun shiftLyrics(deltaMs: Long) = Unit
+
+    /** Sets this song's lyrics back to their own timing. */
+    open fun resetLyricOffset() = Unit
+
     /** Something to tell the listener (a song skipped as unplayable, say), or null. */
     open val notice: String? get() = null
 

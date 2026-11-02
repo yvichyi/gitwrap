@@ -137,6 +137,7 @@ class AppContainer(context: Context, val diagnostics: io.lanyin.player.diagnosti
             scope.launch { settings.setQuality(q) }
         },
         nowLyrics = nowLyrics,
+        offsets = io.lanyin.player.data.library.LyricOffsets(File(context.filesDir, "lyric-offsets.json"), scope),
     )
     val services = AppServices(netease, account, library, player, recent, downloads, notices, engine, uploads, storage, searchHistory, sleepTimer)
 

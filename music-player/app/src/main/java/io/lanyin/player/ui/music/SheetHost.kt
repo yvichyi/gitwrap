@@ -105,6 +105,7 @@ fun AppSheets(
                         { sheets.open(Sheet.ShareLyric(line, player.currentLine?.translation)) }
                     },
                     onSleepTimer = services?.sleepTimer?.takeIf { player.track.id == song.id }?.let { { sheets.open(Sheet.SleepTimer) } },
+                    onLyricOffset = if (player.track.id == song.id && player.lyrics.isNotEmpty()) ({ sheets.open(Sheet.LyricOffset) }) else null,
                     sleepNote = services?.sleepTimer?.let { rememberSleepLeft(it) },
                     onOpenArtist = {
                         sheets.dismiss()
@@ -189,6 +190,7 @@ fun AppSheets(
                 )
             }
             Sheet.SleepTimer -> services?.sleepTimer?.let { SleepTimerSheet(it, onDone = { sheets.dismiss() }) }
+            Sheet.LyricOffset -> LyricOffsetSheet(player)
             Sheet.Quality -> io.lanyin.player.ui.effects.QualitySheet(
                 quality, listOf(player.quality, player.format).filter { it.isNotEmpty() }.joinToString(" · "),
             ) { q ->
