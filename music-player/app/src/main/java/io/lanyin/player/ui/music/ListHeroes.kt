@@ -147,26 +147,33 @@ private fun HeroText(title: String, subtitle: String?, modifier: Modifier = Modi
     }
 }
 
-/** 墨: the art mounted as a hanging scroll between its rollers, the title beside it and a seal under. */
+/**
+ * 墨: the art mounted as a hanging scroll and hung in the middle of the page between its
+ * rollers, the collector's seal stamped on the mount's corner; the title written beneath it,
+ * centred and spaced, as a label is.
+ */
 @Composable
 private fun InkHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Roller(120.dp)
-            Box(Modifier.background(lerp(c.bg, c.content, if (style.dark) 0.08f else 0.05f)).padding(horizontal = 8.dp, vertical = 10.dp)) {
-                HeroArt(header, 96.dp)
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Roller(220.dp)
+        Box(Modifier.background(lerp(c.bg, c.content, if (style.dark) 0.08f else 0.05f)).padding(horizontal = 16.dp, vertical = 18.dp)) {
+            HeroArt(header, 172.dp)
+            Box(
+                Modifier.align(Alignment.BottomEnd).offset(x = 10.dp, y = 12.dp).size(22.dp).background(c.accentAlt, RoundedCornerShape(2.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("藏", style = TextStyle(fontFamily = style.display, fontSize = fixed(13f), lineHeight = fixed(14f)), color = c.bg)
             }
-            Roller(120.dp)
         }
-        Spacer(Modifier.width(20.dp))
-        Column(Modifier.weight(1f)) {
-            HeroText(title, subtitle, titleStyle = style.type.display.copy(fontSize = style.type.title.fontSize * 1.25f, lineHeight = style.type.title.lineHeight * 1.25f))
-            // The collector's seal.
-            Box(Modifier.padding(top = 12.dp).size(26.dp).background(c.accentAlt, RoundedCornerShape(3.dp)), contentAlignment = Alignment.Center) {
-                Text("藏", style = TextStyle(fontFamily = style.display, fontSize = fixed(15f), lineHeight = fixed(16f)), color = c.bg)
-            }
+        Roller(220.dp)
+        Text(
+            title, style = style.type.display.copy(fontSize = 26.sp, lineHeight = 34.sp, letterSpacing = 0.12.em, textAlign = TextAlign.Center),
+            color = c.content, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 20.dp),
+        )
+        if (subtitle != null) {
+            Text(subtitle, style = style.type.caption.copy(textAlign = TextAlign.Center), color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }
@@ -277,24 +284,32 @@ private fun DuskHero(title: String, subtitle: String?, header: ListHeader, modif
     }
 }
 
-/** 格: a poster block. The art boxed in ink on its hard shadow, a yellow label, the title heavy. */
+/**
+ * 格: a poster. The art as a block across the full measure, boxed in heavy ink on its hard
+ * shadow, a yellow LIST label struck over its corner; the title beneath in the heaviest weight,
+ * set tight and flush left.
+ */
 @Composable
 private fun GridHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        HeroArt(header, 112.dp, Modifier.retroShadow(RectangleShape, c.outline, 6.dp).border(2.5.dp, c.outline))
-        Spacer(Modifier.width(20.dp))
-        HeroText(
-            title, subtitle, Modifier.weight(1f),
-            titleStyle = style.type.title.copy(fontWeight = FontWeight.Black, fontSize = style.type.title.fontSize * 1.25f, lineHeight = style.type.title.lineHeight * 1.2f),
-            above = {
-                Text(
-                    "LIST", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(10f), letterSpacing = 0.12.em), color = c.content,
-                    modifier = Modifier.padding(bottom = 8.dp).background(GridYellow).border(2.dp, c.outline).padding(horizontal = 6.dp, vertical = 1.dp),
-                )
-            },
+    Column(modifier.fillMaxWidth()) {
+        Box(Modifier.padding(end = 8.dp, bottom = 8.dp)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(1.6f).retroShadow(RectangleShape, c.outline, 8.dp).border(3.dp, c.outline)) {
+                HeroFill(header, Modifier.fillMaxSize().padding(3.dp))
+            }
+            Text(
+                "LIST", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(11f), letterSpacing = 0.14.em), color = c.content,
+                modifier = Modifier.offset(x = (-6).dp, y = (-8).dp).graphicsLayer { rotationZ = -4f }.background(GridYellow).border(2.dp, c.outline).padding(horizontal = 8.dp, vertical = 2.dp),
+            )
+        }
+        Text(
+            title, style = style.type.title.copy(fontWeight = FontWeight.Black, fontSize = 34.sp, lineHeight = 38.sp, letterSpacing = (-0.02).em),
+            color = c.content, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 18.dp),
         )
+        if (subtitle != null) {
+            Text(subtitle, style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+        }
     }
 }
 
@@ -333,21 +348,27 @@ private fun FilmHero(title: String, subtitle: String?, header: ListHeader, modif
     }
 }
 
-/** 点: the art shown through the LED matrix, a dotted label over the title and a dot rule under. */
+/**
+ * 点: the art large on the LED matrix, its corners rounded as the screen's are; PLAYLIST in red
+ * dots over the title beside it, flush to the art's foot; a dot rule under the whole.
+ */
 @Composable
 private fun DotHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     Column(modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            HeroArt(header, 112.dp, Modifier.clip(RoundedCornerShape(14.dp)))
-            Spacer(Modifier.width(18.dp))
-            HeroText(
-                title, subtitle, Modifier.weight(1f),
-                above = { Text("PLAYLIST", style = TextStyle(fontFamily = DotoFamily, fontWeight = FontWeight.Black, fontSize = fixed(14f)), color = c.accentAlt, modifier = Modifier.padding(bottom = 4.dp)) },
-            )
+        Row(verticalAlignment = Alignment.Bottom) {
+            HeroArt(header, 164.dp, Modifier.clip(RoundedCornerShape(20.dp)))
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text("PLAYLIST", style = TextStyle(fontFamily = DotoFamily, fontWeight = FontWeight.Black, fontSize = fixed(15f)), color = c.accentAlt)
+                Text(title, style = style.type.title.copy(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold), color = c.content, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                if (subtitle != null) {
+                    Text(subtitle, style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+                }
+            }
         }
-        DotRule(Modifier.padding(top = 16.dp))
+        DotRule(Modifier.padding(top = 18.dp))
     }
 }
 

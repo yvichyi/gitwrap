@@ -223,7 +223,7 @@ internal fun HorizonLyrics(stage: StageContext, modifier: Modifier) {
     val clock = rememberFrameClock(state.isPlaying)
     val big = lyricTextStyle(LyricSize.BASE_SP * 1.25f, stage.lyricScale).copy(
         fontFamily = style.display, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center,
-        color = c.content.copy(alpha = if (style.dark) 0.4f else 0.36f),
+        color = c.content.copy(alpha = if (style.dark) 0.42f else 0.5f),
     )
     val sunset = Brush.horizontalGradient(listOf(c.accent, c.accentAlt))
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -250,7 +250,9 @@ internal fun HorizonLyrics(stage: StageContext, modifier: Modifier) {
                             else -> state.lineProgress()
                         }
                     },
-                    paintSung = { drawText(it, sunset) },
+                    // At full strength: drawn with a brush, text takes the layout's own alpha otherwise,
+                    // the unsung line's, and the sung words came out as faint as the rest.
+                    paintSung = { drawText(it, sunset, alpha = 1f) },
                     modifier = Modifier.padding(bottom = with(androidx.compose.ui.platform.LocalDensity.current) { reflection.toDp() } * 0.62f),
                     decorate = { l ->
                         // The horizon the line stands on, and the line again upside down in the sea
