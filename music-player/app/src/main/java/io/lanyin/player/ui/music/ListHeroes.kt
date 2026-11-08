@@ -4,6 +4,16 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
+import io.lanyin.player.ui.design.DeviceScreen
+import io.lanyin.player.ui.design.drawDateStamp
+import io.lanyin.player.ui.design.dateStampWidth
+import io.lanyin.player.ui.design.drawStamp
+import io.lanyin.player.ui.theme.PostcardSerifFamily
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -113,6 +123,19 @@ private fun HeroArt(header: ListHeader, size: Dp, modifier: Modifier = Modifier)
     }
 }
 
+/** The art filling the box [modifier] gives it, cropped to it: a cover, or the header's glyph or day centred. */
+@Composable
+private fun HeroFill(header: ListHeader, modifier: Modifier) {
+    val style = Lanyin.style
+    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+        when {
+            header is ListHeader.Cover && style.backdrop == BackdropKind.Game -> DitheredCover(header.url, header.seed, Modifier.fillMaxSize())
+            header is ListHeader.Cover -> CoverImage(header.url, header.seed, maxOf(maxWidth, maxHeight), Modifier.fillMaxSize())
+            else -> HeaderArt(header, minOf(maxWidth, maxHeight) * 0.78f)
+        }
+    }
+}
+
 /** Title and subtitle in the theme's type, beside the art. */
 @Composable
 private fun HeroText(title: String, subtitle: String?, modifier: Modifier = Modifier, titleStyle: TextStyle = Lanyin.style.type.title, above: (@Composable () -> Unit)? = null) {
@@ -160,60 +183,97 @@ private fun Roller(width: Dp) {
     }
 }
 
-/** 霓: the art in a tube frame throwing its light on the wall, the title lit as a sign. */
+/**
+ * 霓: the list as the sign over a door. The art large in a rounded tube frame, its light thrown
+ * on the bricks round it, and the title lit underneath in the pink tube, centred like a sign.
+ */
 @Composable
 private fun NeonHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
-                .lightSpill(c.accentAlt, reach = 0.75f, strength = 0.2f)
+                .lightSpill(c.accentAlt, reach = 1f, strength = 0.24f)
                 .drawWithContent {
                     drawContent()
-                    val inset = 3.dp.toPx()
-                    drawTubeFrame(Offset(inset, inset), Size(size.width - inset * 2, size.height - inset * 2), 14.dp.toPx(), c.accentAlt, 2.dp.toPx())
+                    val inset = 4.dp.toPx()
+                    drawTubeFrame(Offset(inset, inset), Size(size.width - inset * 2, size.height - inset * 2), 24.dp.toPx(), c.accentAlt, 2.5.dp.toPx())
                 }
-                .padding(10.dp),
+                .padding(16.dp),
         ) {
-            HeroArt(header, 100.dp, Modifier.clip(RoundedCornerShape(8.dp)))
+            HeroArt(header, 196.dp, Modifier.clip(RoundedCornerShape(14.dp)))
         }
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            NeonText(title, style.type.title.copy(fontWeight = FontWeight.Bold), c.accent, maxLines = 2)
-            if (subtitle != null) Text(subtitle, style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+        NeonText(
+            title, style.type.display.copy(fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold), c.accent,
+            Modifier.padding(top = 14.dp), maxLines = 2, textAlign = TextAlign.Center,
+        )
+        if (subtitle != null) {
+            Text(subtitle, style = style.type.caption.copy(textAlign = TextAlign.Center), color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }
 
-/** 暮: the art as a white-bordered print taped down at an angle, a postmark struck over its corner. */
+/**
+ * 暮: the list as a postcard sent home. The art fills the card under its white border, 「Greetings
+ * from」 in the corner and the title set big over the foot of the picture; a stamp at the top
+ * right with the postmark struck half over it.
+ */
 @Composable
 private fun DuskHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
     val style = Lanyin.style
-    val c = style.colors
     val paper = if (style.dark) Color(0xFF2A2F48) else Color(0xFFFFFCF6)
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box {
-            Box(
-                Modifier
-                    .padding(top = 8.dp, end = 10.dp)
-                    .graphicsLayer { rotationZ = -3f }
-                    .drawBehind {
-                        drawRoundRect(Color.Black.copy(alpha = if (style.dark) 0.35f else 0.1f), Offset(2.dp.toPx(), 4.dp.toPx()), size, CornerRadius(2.dp.toPx()))
-                        drawRoundRect(paper, cornerRadius = CornerRadius(2.dp.toPx()))
-                    }
-                    .drawWithContent {
-                        drawContent()
-                        rotate(5f, Offset(size.width / 2f, 0f)) {
-                            drawRect(c.accent.copy(alpha = 0.3f), Offset(size.width * 0.3f, -7.dp.toPx()), Size(size.width * 0.4f, 14.dp.toPx()))
+    val shade = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.45f), Offset(0f, 1f), 8f)
+    Box(modifier.fillMaxWidth()) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp)
+                .graphicsLayer { rotationZ = -1.2f }
+                .drawBehind {
+                    drawRoundRect(Color.Black.copy(alpha = if (style.dark) 0.35f else 0.1f), Offset(2.dp.toPx(), 5.dp.toPx()), size, CornerRadius(4.dp.toPx()))
+                    drawRoundRect(paper, cornerRadius = CornerRadius(4.dp.toPx()))
+                }
+                .padding(9.dp),
+        ) {
+            Box(Modifier.fillMaxWidth().aspectRatio(1.4f).clip(style.artShape)) {
+                when (header) {
+                    is ListHeader.Cover -> HeroFill(header, Modifier.fillMaxSize())
+                    // No picture of its own: a view from the trip, and the day or the list's mark
+                    // printed in the corner the way a card's caption is.
+                    else -> {
+                        io.lanyin.player.ui.design.CoverArt(if (header is ListHeader.Day) header.day else 5, Modifier.fillMaxSize())
+                        Column(Modifier.align(Alignment.TopEnd).padding(top = 86.dp, end = 16.dp), horizontalAlignment = Alignment.End) {
+                            when (header) {
+                                is ListHeader.Day -> {
+                                    Text("${header.day}", style = style.type.display.copy(fontSize = 52.sp, lineHeight = 54.sp, shadow = shade), color = Color.White)
+                                    Text(header.caption, style = style.type.caption.copy(shadow = shade), color = Color.White.copy(alpha = 0.9f))
+                                }
+                                is ListHeader.Glyph -> io.lanyin.player.ui.design.ThemedIcon(header.icon, null, tint = Color.White, size = 44.dp)
+                                else -> Unit
+                            }
                         }
                     }
-                    .padding(start = 6.dp, end = 6.dp, top = 6.dp, bottom = 16.dp),
-            ) { HeroArt(header, 100.dp, Modifier.clip(RectangleShape)) }
-            Postmark("澜音", "♪", "LIST", (if (style.dark) c.accent else Airmail.Red).copy(alpha = 0.7f), Modifier.align(Alignment.BottomEnd).offset(x = 6.dp, y = 4.dp), diameter = 40.dp, waves = false, angle = -14f)
+                }
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.3f), 0.3f to Color.Transparent, 0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.62f))))
+                Text(
+                    "Greetings from",
+                    style = TextStyle(fontFamily = PostcardSerifFamily, fontStyle = FontStyle.Italic, fontSize = fixed(17f), shadow = shade),
+                    color = Color.White, modifier = Modifier.padding(14.dp),
+                )
+                Column(Modifier.align(Alignment.BottomStart).padding(14.dp)) {
+                    Text(title, style = style.type.display.copy(fontSize = 30.sp, lineHeight = 36.sp, shadow = shade), color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (subtitle != null) {
+                        Text(subtitle, style = style.type.caption.copy(shadow = shade), color = Color.White.copy(alpha = 0.88f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
         }
-        Spacer(Modifier.width(18.dp))
-        HeroText(title, subtitle, Modifier.weight(1f), titleStyle = style.type.title.copy(fontSize = style.type.title.fontSize * 1.15f))
+        // The stamp in the corner, and the postmark struck over its edge.
+        Canvas(Modifier.align(Alignment.TopEnd).offset(x = (-14).dp, y = 16.dp).size(34.dp, 40.dp).graphicsLayer { rotationZ = 5f }) {
+            drawStamp(androidx.compose.ui.geometry.Rect(Offset(2.dp.toPx(), 2.dp.toPx()), Size(size.width - 4.dp.toPx(), size.height - 4.dp.toPx())), Airmail.Red, paper, Color.Transparent)
+        }
+        Postmark("澜音", "♪", "LIST", Color.White.copy(alpha = 0.85f), Modifier.align(Alignment.TopEnd).offset(x = (-30).dp, y = 34.dp), diameter = 44.dp, waves = false, angle = -14f)
     }
 }
 
@@ -238,36 +298,38 @@ private fun GridHero(title: String, subtitle: String?, header: ListHeader, modif
     }
 }
 
-/** 影: the art as a frame on a strip of film, its sprockets and edge code, the title as a slate. */
+/**
+ * 影: the list opens like a film. The picture in a wide frame, letterboxed, the lens's falloff at
+ * its edges and the camera's orange date stamp in its corner, the slate's scene and take in the
+ * bar above; then the title as a title card, centred and spaced, the credits under it.
+ */
 @Composable
 private fun FilmHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
     val style = Lanyin.style
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column {
-            Box(
-                Modifier
-                    .background(Color(0xFF141210), RoundedCornerShape(2.dp))
-                    .drawBehind {
-                        val hole = Size(6.dp.toPx(), 4.dp.toPx())
-                        var x = 4.dp.toPx()
-                        while (x + hole.width < size.width) {
-                            for (y in listOf(3.dp.toPx(), size.height - 3.dp.toPx() - hole.height)) {
-                                drawRoundRect(Color(0xFFEDE6DA).copy(alpha = 0.85f), Offset(x, y), hole, CornerRadius(1.dp.toPx()))
-                            }
-                            x += 11.dp.toPx()
-                        }
-                    }
-                    .padding(horizontal = 6.dp, vertical = 12.dp),
-            ) { HeroArt(header, 100.dp) }
-            Text("▸ 01A  LANYIN 400", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9f), letterSpacing = 0.1.em), color = FilmStamp, modifier = Modifier.padding(top = 4.dp))
+    val c = style.colors
+    val stamp = remember { java.time.LocalDate.now().let { "'%02d %d %02d".format(it.year % 100, it.monthValue, it.dayOfMonth) } }
+    val mono = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9f), letterSpacing = 0.14.em)
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1.78f).clip(RoundedCornerShape(2.dp)).background(Color.Black)) {
+            HeroFill(header, Modifier.fillMaxSize())
+            Canvas(Modifier.matchParentSize()) {
+                drawRect(Brush.radialGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.62f)), Offset(size.width / 2f, size.height / 2f), size.width * 0.72f))
+                val bar = size.height * 0.11f
+                drawRect(Color.Black, size = Size(size.width, bar))
+                drawRect(Color.Black, Offset(0f, size.height - bar), Size(size.width, bar))
+                val h = 11.dp.toPx()
+                drawDateStamp(stamp, Offset(size.width - dateStampWidth(stamp, h) - 14.dp.toPx(), size.height - bar - h - 10.dp.toPx()), h)
+            }
+            Text("SCENE 01 · TAKE 01", style = mono, color = Color.White.copy(alpha = 0.72f), modifier = Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 5.dp))
+            Text("● REC", style = mono, color = Color(0xFFE5483B), modifier = Modifier.align(Alignment.TopEnd).padding(end = 12.dp, top = 5.dp))
         }
-        Spacer(Modifier.width(18.dp))
-        HeroText(
-            title, subtitle, Modifier.weight(1f),
-            above = {
-                Text("SCENE 1 · TAKE 1", style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(9.5f), letterSpacing = 0.14.em), color = style.colors.muted, modifier = Modifier.padding(bottom = 6.dp))
-            },
+        Text(
+            title, style = style.type.display.copy(fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = 0.08.em, textAlign = TextAlign.Center),
+            color = c.content, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 18.dp),
         )
+        if (subtitle != null) {
+            Text(subtitle, style = style.type.caption.copy(letterSpacing = 0.1.em, textAlign = TextAlign.Center), color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+        }
     }
 }
 
@@ -289,30 +351,47 @@ private fun DotHero(title: String, subtitle: String?, header: ListHeader, modifi
     }
 }
 
-/** 机: the art on a little screen set into the case, a printed label over the title. */
+/**
+ * 机: the list on the device's screen. A status line along the top (TRACK LIST, a lit READY),
+ * the art large on the glass with the title in lit white beside it, and the screen's row of
+ * LED segments along its foot.
+ */
 @Composable
 private fun DeviceHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .background(c.bgDeep, RoundedCornerShape(12.dp))
-                .drawBehind {
-                    drawRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = if (style.dark) 0.35f else 0.12f), Color.Transparent), endY = 8.dp.toPx()))
+    val mono = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9.5f), letterSpacing = 0.12.em)
+    DeviceScreen(modifier.fillMaxWidth()) {
+        val style = Lanyin.style
+        val c = style.colors
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("TRACK LIST", style = mono, color = c.muted)
+            Spacer(Modifier.weight(1f))
+            Box(Modifier.size(6.dp).background(c.accent, CircleShape))
+            Spacer(Modifier.width(6.dp))
+            Text("READY", style = mono, color = c.content)
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.Bottom) {
+            HeroArt(header, 132.dp, Modifier.clip(RoundedCornerShape(8.dp)))
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = style.type.title.copy(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold), color = c.content, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                if (subtitle != null) {
+                    Text(subtitle, style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
                 }
-                .padding(7.dp),
-        ) { HeroArt(header, 100.dp, Modifier.clip(RoundedCornerShape(6.dp))) }
-        Spacer(Modifier.width(18.dp))
-        HeroText(
-            title, subtitle, Modifier.weight(1f),
-            above = {
-                Text(
-                    "TRACK LIST", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9f), letterSpacing = 0.1.em), color = c.bg,
-                    modifier = Modifier.padding(bottom = 8.dp).background(c.content, RoundedCornerShape(3.dp)).padding(horizontal = 5.dp, vertical = 1.dp),
-                )
-            },
-        )
+            }
+        }
+        Canvas(Modifier.fillMaxWidth().padding(top = 14.dp).height(5.dp)) {
+            val n = 32
+            val gap = 2.dp.toPx()
+            val w = (size.width - gap * (n - 1)) / n
+            for (i in 0 until n) {
+                val color = when {
+                    i < 7 -> c.content.copy(alpha = 0.85f)
+                    i < 9 -> c.accent
+                    else -> c.content.copy(alpha = 0.1f)
+                }
+                drawRoundRect(color, Offset(i * (w + gap), 0f), Size(w, size.height), CornerRadius(1.dp.toPx()))
+            }
+        }
     }
 }
 
@@ -337,40 +416,121 @@ private fun PaperHero(title: String, subtitle: String?, header: ListHeader, modi
     }
 }
 
-/** 游: the art in the screen's frame and a dialogue window announcing the list. */
+/**
+ * 游: the list as a game cartridge. A grey cart with its grip ridges and the arrow moulded into
+ * it, the art printed on its label in the screen's four greens; beside it the box's words: NEW
+ * GAME, the title in pixels, PRESS Ⓐ.
+ */
 @Composable
 private fun GameHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
+    val pixel = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily)
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        HeroArt(header, 96.dp, Modifier.border(3.dp, c.content))
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f).gameWindow(c.surface, c.content).padding(horizontal = 14.dp, vertical = 12.dp)) {
-            Text("▶ $title", style = style.type.body.copy(fontWeight = FontWeight.Bold), color = c.content, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (subtitle != null) Text(subtitle, style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+        Cartridge(header, Modifier.width(164.dp))
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text("★ NEW GAME", style = pixel.copy(fontSize = fixed(10f)), color = c.accent)
+            Text(title, style = pixel.copy(fontSize = 24.sp, lineHeight = 29.sp), color = c.content, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+            if (subtitle != null) {
+                Text(subtitle, style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+            }
+            Text("PRESS Ⓐ TO PLAY", style = pixel.copy(fontSize = fixed(10f)), color = c.accentAlt, modifier = Modifier.padding(top = 10.dp))
         }
     }
 }
 
-/** 酸: a CD in its jewel case, the disc slid half out with its rainbow; the title in chrome. */
+/** A cartridge: grey plastic with a clipped corner, grip ridges, a moulded arrow and the label. */
+@Composable
+private fun Cartridge(header: ListHeader, modifier: Modifier) {
+    val c = Lanyin.colors
+    val body = Color(0xFF8F8D99)
+    Box(
+        modifier
+            .aspectRatio(0.86f)
+            .drawBehind {
+                val w = size.width
+                val h = size.height
+                val clip = w * 0.12f
+                val r = 6.dp.toPx()
+                val shell = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, 0f); lineTo(w - clip, 0f); lineTo(w, clip); lineTo(w, h - r)
+                    quadraticTo(w, h, w - r, h); lineTo(r, h); quadraticTo(0f, h, 0f, h - r); close()
+                }
+                translate(3.dp.toPx(), 4.dp.toPx()) { drawPath(shell, Color.Black.copy(alpha = 0.22f)) }
+                drawPath(shell, Brush.verticalGradient(listOf(lerp(body, Color.White, 0.16f), body, lerp(body, Color.Black, 0.12f))))
+                // The grip: ridges across the top.
+                for (k in 0 until 4) {
+                    val y = h * 0.035f + k * 3.dp.toPx()
+                    drawLine(Color.Black.copy(alpha = 0.2f), Offset(w * 0.1f, y), Offset(w * 0.72f, y), 1.dp.toPx())
+                    drawLine(Color.White.copy(alpha = 0.22f), Offset(w * 0.1f, y + 1.dp.toPx()), Offset(w * 0.72f, y + 1.dp.toPx()), 1.dp.toPx())
+                }
+                // The arrow moulded in at the foot.
+                val tip = Offset(w / 2f, h - 5.dp.toPx())
+                val arrow = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(tip.x, tip.y); lineTo(tip.x - 7.dp.toPx(), tip.y - 7.dp.toPx()); lineTo(tip.x + 7.dp.toPx(), tip.y - 7.dp.toPx()); close()
+                }
+                drawPath(arrow, Color.Black.copy(alpha = 0.22f))
+            }
+            .padding(start = 13.dp, end = 13.dp, top = 22.dp, bottom = 18.dp),
+    ) {
+        Column(Modifier.fillMaxSize().clip(RoundedCornerShape(3.dp)).background(Color(0xFFEFEDE6)).padding(5.dp)) {
+            Box(Modifier.fillMaxWidth().weight(1f).border(1.5.dp, c.content)) { HeroFill(header, Modifier.fillMaxSize()) }
+            Text(
+                "LANYIN", style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(8f), letterSpacing = 0.1.em),
+                color = c.accentAlt, modifier = Modifier.padding(top = 3.dp),
+            )
+        }
+    }
+}
+
+/**
+ * 酸: the list as a CD on the shelf. The jewel case large and tilted, its chrome edge and the
+ * shine across the plastic, the hinge down its side; the disc slid out to the right with its
+ * rainbow; a starburst stuck on the corner; the title in chrome beneath, centred.
+ */
 @Composable
 private fun AcidHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(142.dp, 112.dp)) {
-            // The disc, behind the case.
-            Canvas(Modifier.align(Alignment.CenterEnd).size(100.dp)) { drawDisc(c.bg) }
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(272.dp, 210.dp).lightSpill(c.accent, reach = 0.8f, strength = 0.14f)) {
+            Canvas(Modifier.align(Alignment.CenterEnd).size(184.dp)) { drawDisc(c.bg) }
             Box(
                 Modifier
-                    .size(112.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .border(2.dp, ChromeBrush, RoundedCornerShape(6.dp))
-                    .drawWithContent { drawContent(); drawGloss(0.22f) },
-            ) { HeroArt(header, 112.dp) }
+                    .align(Alignment.CenterStart)
+                    .padding(start = 6.dp)
+                    .size(190.dp)
+                    .graphicsLayer { rotationZ = -4f }
+                    .drawBehind { drawRoundRect(Color.Black.copy(alpha = 0.35f), Offset(4.dp.toPx(), 7.dp.toPx()), size, CornerRadius(8.dp.toPx())) }
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(3.dp, ChromeBrush, RoundedCornerShape(8.dp))
+                    .drawWithContent {
+                        drawContent()
+                        drawGloss(0.3f)
+                        // The hinge: a clear strip down the left edge.
+                        drawRect(Color.White.copy(alpha = 0.16f), size = Size(12.dp.toPx(), size.height))
+                        drawLine(Color.White.copy(alpha = 0.45f), Offset(12.dp.toPx(), 0f), Offset(12.dp.toPx(), size.height), 1.dp.toPx())
+                    },
+            ) { HeroArt(header, 190.dp) }
+            Box(Modifier.align(Alignment.TopEnd).offset(x = (-34).dp, y = 2.dp).size(58.dp).graphicsLayer { rotationZ = 12f }, contentAlignment = Alignment.Center) {
+                Canvas(Modifier.matchParentSize()) {
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    val r = size.minDimension / 2f
+                    drawPath(io.lanyin.player.ui.design.starPath(center + Offset(2.dp.toPx(), 2.dp.toPx()), r, r * 0.68f, 16), Color.Black.copy(alpha = 0.4f))
+                    drawPath(io.lanyin.player.ui.design.starPath(center, r, r * 0.68f, 16), Brush.verticalGradient(listOf(Color(0xFFE6FF7A), c.accent, Color(0xFF8BC400)), 0f, size.height))
+                    drawPath(io.lanyin.player.ui.design.starPath(center, r, r * 0.68f, 16), ChromeBrush, style = Stroke(1.dp.toPx()))
+                }
+                Text("NEW!", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixed(12f)), color = Color(0xFF1A0A2E))
+            }
         }
-        Spacer(Modifier.width(14.dp))
-        HeroText(title, subtitle, Modifier.weight(1f), titleStyle = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = style.type.title.fontSize * 1.1f, lineHeight = style.type.title.lineHeight * 1.1f, brush = ChromeBrush))
+        Text(
+            title, style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = 28.sp, lineHeight = 33.sp, brush = ChromeBrush, textAlign = TextAlign.Center),
+            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp),
+        )
+        if (subtitle != null) {
+            Text(subtitle, style = style.type.caption.copy(textAlign = TextAlign.Center), color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+        }
     }
 }
 
