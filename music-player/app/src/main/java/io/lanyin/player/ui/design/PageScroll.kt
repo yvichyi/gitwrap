@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,7 +31,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -51,11 +58,49 @@ private const val REVEAL_SPAN = 0.42f
  * the list scrolls are simply there. With motion reduced it starts at the end.
  */
 @Composable
-fun rememberReveal(key: Any?): State<Float> {
+fun rememberReveal(key: Any?, skip: Boolean = false): State<Float> {
     val reduced = LocalReduceMotion.current
-    val progress = remember(key) { Animatable(if (reduced) 1f else 0f) }
+    val progress = remember(key) { Animatable(if (reduced || skip) 1f else 0f) }
     LaunchedEffect(key) { progress.animateTo(1f, tween(REVEAL_MS, easing = LinearEasing)) }
     return progress.asState()
+}
+
+/**
+ * A lazy column whose items rise into place one after another the first time the page is shown:
+ * not again on coming back to it (the page remembers it has played), nor for items further down
+ * as they scroll in.
+ */
+@Composable
+fun RevealLazyColumn(
+    modifier: Modifier = Modifier,
+    state: LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(0.dp),
+    content: LazyListScope.() -> Unit,
+) {
+    var played by rememberSaveable { mutableStateOf(false) }
+    val reveal = rememberReveal(Unit, skip = played)
+    LaunchedEffect(Unit) { played = true }
+    LazyColumn(modifier, state, contentPadding) {
+        RevealScope(this, reveal).content()
+    }
+}
+
+/** Hands each item on to [scope] wrapped to rise in at its turn, counted in the order they are added. */
+private class RevealScope(private val scope: LazyListScope, private val reveal: State<Float>) : LazyListScope by scope {
+    private var next = 0
+
+    override fun item(key: Any?, contentType: Any?, content: @Composable LazyItemScope.() -> Unit) {
+        val index = next++
+        val r = reveal
+        scope.item(key, contentType) { Box(Modifier.revealed(r, index)) { content() } }
+    }
+
+    override fun items(count: Int, key: ((index: Int) -> Any)?, contentType: (index: Int) -> Any?, itemContent: @Composable LazyItemScope.(index: Int) -> Unit) {
+        val base = next
+        next += count
+        val r = reveal
+        scope.items(count, key, contentType) { k -> Box(Modifier.revealed(r, base + k)) { itemContent(k) } }
+    }
 }
 
 /** Rise and fade into place at this row's turn of [reveal]; rows far down the list don't wait. */

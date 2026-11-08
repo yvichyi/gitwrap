@@ -56,7 +56,7 @@ internal fun GridHome(model: HomeModel) {
     val m = style.margin
     val player = model.player
     val now = model.now
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
         item { Poster(model, Modifier.padding(horizontal = m)) }
         item {
             Marquee(

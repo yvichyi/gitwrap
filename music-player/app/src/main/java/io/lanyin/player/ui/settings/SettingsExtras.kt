@@ -161,7 +161,7 @@ private fun about(context: Context, s: UiSettings): List<String> {
     )
 }
 
-/** 「0.17.0-m16」 and its build number. */
+/** 「0.19.0-m18」 and its build number. */
 internal fun appVersion(context: Context): String = runCatching {
     val info = context.packageManager.getPackageInfo(context.packageName, 0)
     val code = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else @Suppress("DEPRECATION") info.versionCode.toLong()

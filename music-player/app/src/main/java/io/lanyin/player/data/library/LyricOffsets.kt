@@ -26,11 +26,22 @@ class LyricOffsets(private val file: File?, private val scope: CoroutineScope) {
     operator fun get(songId: Long): Long = offsets[songId] ?: 0L
 
     fun set(songId: Long, ms: Long) {
-        val next = if (ms == 0L) offsets - songId else offsets + (songId to ms)
-        offsets = next
+        synchronized(this) { offsets = if (ms == 0L) offsets - songId else offsets + (songId to ms) }
         val f = file ?: return
         scope.launch(Dispatchers.IO) {
-            mutex.withLock { runCatching { f.writeText(Json.encodeToString(serializer, next)) } }
+            mutex.withLock {
+                // Whatever order the writes run in, each writes the latest offsets, whole: to a
+                // file beside it first, then moved over the old one, so the file never holds an
+                // older state than the last change, nor half of one for a reader to meet.
+                runCatching {
+                    val next = File(f.parentFile, f.name + ".new")
+                    next.writeText(Json.encodeToString(serializer, offsets))
+                    if (!next.renameTo(f)) {
+                        f.writeText(next.readText())
+                        next.delete()
+                    }
+                }
+            }
         }
     }
 }

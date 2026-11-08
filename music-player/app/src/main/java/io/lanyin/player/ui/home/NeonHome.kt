@@ -72,7 +72,7 @@ internal fun NeonHome(model: HomeModel) {
     val style = Lanyin.style
     val c = style.colors
     val m = style.margin
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
         item { StreetHeader(model, Modifier.padding(horizontal = m)) }
         item {
             Row(Modifier.padding(start = m, end = m, top = 22.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {

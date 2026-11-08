@@ -67,7 +67,7 @@ import java.util.Locale
 internal fun AcidHome(model: HomeModel) {
     val style = Lanyin.style
     val m = style.margin
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
         item { Wordmark(model, Modifier.padding(horizontal = m)) }
         item { Cases(model, Modifier.padding(start = m, end = m, top = 14.dp)) }
         item { GelDoors(model, Modifier.padding(start = m, end = m, top = 10.dp)) }

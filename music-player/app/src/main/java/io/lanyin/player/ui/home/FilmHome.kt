@@ -69,7 +69,7 @@ private val SheetWhite = Color(0xFFE9E1D3)
 internal fun FilmHome(model: HomeModel) {
     val style = Lanyin.style
     val m = style.margin
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
         item {
             Row(Modifier.padding(horizontal = m), verticalAlignment = Alignment.CenterVertically) {
                 Text(

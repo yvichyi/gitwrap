@@ -76,7 +76,7 @@ import java.util.Locale
 internal fun DuskHome(model: HomeModel) {
     val style = Lanyin.style
     val m = style.margin
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
         item { DuskHeader(model, Modifier.padding(horizontal = m)) }
         if (!model.signedIn) item { ConnectLine(model.login, Modifier.padding(start = m, end = m, top = 18.dp)) }
         item { CoverPostcard(model, Modifier.padding(start = m, end = m, top = 20.dp)) }

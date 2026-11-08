@@ -64,7 +64,7 @@ import kotlinx.coroutines.delay
 internal fun GameHome(model: HomeModel) {
     val style = Lanyin.style
     val m = style.margin
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
         item { Hud(model, Modifier.padding(horizontal = m)) }
         item { TitleScreen(model, Modifier.padding(start = m, end = m, top = 16.dp)) }
         if (!model.signedIn) item { NoSaveData(model.login, Modifier.padding(start = m, end = m, top = 16.dp)) }

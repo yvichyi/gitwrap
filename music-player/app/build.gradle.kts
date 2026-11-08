@@ -33,8 +33,8 @@ android {
         applicationId = "io.lanyin.player"
         minSdk = 29
         targetSdk = 36
-        versionCode = 18
-        versionName = "0.18.0-m17"
+        versionCode = 19
+        versionName = "0.19.0-m18"
     }
 
     signingConfigs {

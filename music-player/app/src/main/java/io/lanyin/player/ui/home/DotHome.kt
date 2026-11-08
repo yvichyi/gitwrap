@@ -49,7 +49,7 @@ internal fun DotHome(model: HomeModel) {
     val style = Lanyin.style
     val m = style.margin
     val gap = 10.dp
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
         item { DotHeader(model, Modifier.padding(horizontal = m)) }
         item { DotWidget(model.player, Modifier.padding(start = m, end = m, top = 18.dp)) }
         item {

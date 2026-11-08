@@ -67,7 +67,7 @@ import io.lanyin.player.ui.theme.SpaceMonoFamily
 internal fun DeviceHome(model: HomeModel) {
     val style = Lanyin.style
     val m = style.margin
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
         item { Faceplate(model, Modifier.padding(horizontal = m)) }
         item { MainDisplay(model, Modifier.padding(start = m, end = m, top = 16.dp)) }
         item { Keypad(model, Modifier.padding(start = m, end = m, top = 22.dp)) }

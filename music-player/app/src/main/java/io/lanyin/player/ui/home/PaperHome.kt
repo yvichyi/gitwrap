@@ -51,7 +51,7 @@ private val Avoid = listOf("切歌太快", "只听前奏", "外放", "开得太�
 internal fun PaperHome(model: HomeModel) {
     val style = Lanyin.style
     val m = style.margin
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
         item { Header(model.now, model.account, model.openSettings, model.openAccount, Modifier.padding(horizontal = m)) }
         item { LeadStory(model, Modifier.padding(start = m, end = m, top = 16.dp)) }
         if (!model.signedIn) item { SubscribeNotice(model.login, Modifier.padding(start = m, end = m, top = 22.dp)) }
