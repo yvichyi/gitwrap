@@ -1,11 +1,14 @@
 package io.lanyin.player.ui.player
 
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
@@ -28,10 +31,10 @@ class PlayerInteractionTest {
 
     @get:Rule val compose = createComposeRule()
 
-    private fun show(state: DemoPlayerState) {
+    private fun show(state: DemoPlayerState, theme: AppTheme = AppTheme.INK) {
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            LanyinTheme(theme = AppTheme.INK, mode = ThemeMode.LIGHT) {
+            LanyinTheme(theme = theme, mode = ThemeMode.LIGHT) {
                 PlayerScreen(state, PlayerSkin.VINYL, rememberSpinState(false), keepScreenOnInLandscape = false, onCollapse = {})
             }
         }
@@ -72,6 +75,40 @@ class PlayerInteractionTest {
         compose.mainClock.advanceTimeBy(12_000)
         compose.onNodeWithContentDescription("收起").assertIsDisplayed()
     }
+
+    /** Opens the lyrics from the artwork, then taps the empty space above the first line. */
+    private fun lyricsAndBack(theme: AppTheme, shown: String = "显示封面", hidden: String = "显示歌词") {
+        val state = DemoPlayerState()
+        show(state, theme)
+        compose.onNodeWithContentDescription(hidden).assertExists()
+        compose.onAllNodesWithTag("swipeToSkip")[0].performClick()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.onNodeWithContentDescription(shown).assertExists()
+
+        // A tap on a line jumps there and keeps the lyrics.
+        val line = state.lyrics[2]
+        compose.onNodeWithText(line.text).performClick()
+        compose.mainClock.advanceTimeBy(1_000)
+        assertEquals(line.startMs, state.positionMs)
+        compose.onNodeWithContentDescription(shown).assertExists()
+        compose.mainClock.advanceTimeBy(4_000)
+
+        // Above the lines, where nothing is: back to the cover.
+        compose.onRoot().performTouchInput { click(androidx.compose.ui.geometry.Offset(width * 0.5f, height * 0.13f)) }
+        // Robolectric's paused looper holds back the snapshot's apply notice a phone sends at once.
+        compose.runOnUiThread { Snapshot.sendApplyNotifications() }
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.onNodeWithContentDescription(hidden).assertExists()
+    }
+
+    @Test
+    fun `in portrait, a tap beside the lyrics brings the cover back`() = lyricsAndBack(AppTheme.INK)
+
+    @Test
+    fun `in portrait, a tap beside the lyrics on 机's screen brings the cover back`() = lyricsAndBack(AppTheme.DEVICE)
+
+    @Test
+    fun `in portrait, a tap beside the lyrics on 游's screen brings the cover back`() = lyricsAndBack(AppTheme.GAME, shown = "封面", hidden = "歌词")
 
     private fun countCollapse(): Int =
         compose.onAllNodes(androidx.compose.ui.test.hasContentDescription("收起")).fetchSemanticsNodes().size

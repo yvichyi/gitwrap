@@ -65,6 +65,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -263,14 +264,15 @@ private fun PortraitPlayer(
                 val full = @Composable { m: Modifier ->
                     StateLyrics(state, lyricTextStyle(LyricSize.BASE_SP, lyricScale), centered = style.lyric.centered, anchorFraction = 0.4f, scrubMs = scrubMs, modifier = m)
                 }
+                val back = if (toggleLyrics == null) null else ({ showLyrics = false })
                 // 机 keeps its lyrics on the screen set into its case.
                 if (style.backdrop == BackdropKind.Device) {
-                    DeviceScreen(Modifier.fillMaxSize().padding(top = 2.dp)) {
+                    DeviceScreen(Modifier.fillMaxSize().padding(top = 2.dp).backToCover(back)) {
                         ScreenHeader(state)
                         full(Modifier.weight(1f).fillMaxWidth())
                     }
                 } else {
-                    full(Modifier.fillMaxSize())
+                    full(Modifier.fillMaxSize().backToCover(back))
                 }
             } else {
                 PortraitStage(stage, onShowLyrics = { showLyrics = true })
@@ -425,6 +427,18 @@ internal fun StageLyrics(
             }
         }
     }
+}
+
+/**
+ * A tap on the lyrics that no line takes (beside a short line, between lines, above the first,
+ * on the note of an instrumental) goes back to the cover. A tap on a line still jumps there and
+ * a drag still browses: both are taken by the lyrics first, so they never reach this.
+ */
+@Composable
+internal fun Modifier.backToCover(onBack: (() -> Unit)?): Modifier {
+    if (onBack == null) return this
+    val latest by rememberUpdatedState(onBack)
+    return pointerInput(Unit) { detectTapGestures { latest() } }
 }
 
 /** The track's lyrics, or a quiet note for an instrumental. */

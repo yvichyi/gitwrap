@@ -333,7 +333,8 @@ internal fun ConsolePortrait(
             .padding(horizontal = 24.dp),
     ) {
         PlayerTopBar(state, onCollapse, modifier = stage.dismissDrag.enter(entrance, 0))
-        GameScreen(state.isPlaying, Modifier.weight(1f).fillMaxWidth().padding(top = 2.dp).enter(entrance, 1)) {
+        // With the lyrics up, a tap anywhere on the screen but a line or the progress brings the cover back.
+        GameScreen(state.isPlaying, Modifier.weight(1f).fillMaxWidth().padding(top = 2.dp).enter(entrance, 1).backToCover(onToggleLyrics.takeIf { lyricsOnly })) {
             val label = Lanyin.style.type.label.copy(fontFamily = PixelFamily, letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified)
             Row(Modifier.fillMaxWidth().height(24.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(if (state.isPlaying) "▶ NOW PLAYING" else "Ⅱ PAUSE", style = label, color = Lanyin.colors.content, maxLines = 1)
