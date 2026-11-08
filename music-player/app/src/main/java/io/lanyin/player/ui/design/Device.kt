@@ -96,8 +96,10 @@ internal fun DrawScope.drawKeycap(shape: Shape, keys: KeyColors, press: Float = 
     val outline = shape.createOutline(size, layoutDirection, this)
     val travel = keyTravel.toPx() * press
     if (shadow) {
-        for ((dy, a) in listOf(6f to 0.04f, 4f to 0.06f, 2.5f to 0.08f)) {
-            translate(0f, dy * density) { drawOutline(outline, Color.Black.copy(alpha = a * (1f - 0.6f * press))) }
+        // A tight contact shadow where the key meets the case, not a haze round it: real keys sit
+        // in the panel, they don't float over it.
+        for ((dy, a) in listOf(3.5f to 0.05f, 1.8f to 0.1f)) {
+            translate(0f, keyTravel.toPx() + dy * density * (1f - 0.5f * press)) { drawOutline(outline, Color.Black.copy(alpha = a)) }
         }
     }
     translate(0f, keyTravel.toPx()) { drawOutline(outline, keys.lip) }

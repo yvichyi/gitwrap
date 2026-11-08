@@ -1,6 +1,7 @@
 package io.lanyin.player.ui.home
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,20 +22,26 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import io.lanyin.player.core.model.Song
 import io.lanyin.player.ui.components.pagePadding
 import io.lanyin.player.ui.design.DeviceScreen
@@ -166,15 +174,29 @@ private fun MainDisplay(model: HomeModel, modifier: Modifier) {
     }
 }
 
-/** Six raised keys, numbered on their caps and named on the case beneath; the first is orange. */
+/**
+ * Six keys set in a keybed, a recess in the case with its shadowed upper edge and a bright lower
+ * lip: numbered on their caps, named on the case beneath in mono and in words; the first orange.
+ */
 @Composable
 private fun Keypad(model: HomeModel, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val doors = model.doors
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .drawBehind {
+                val r = CornerRadius(18.dp.toPx())
+                drawRoundRect(Color.White.copy(alpha = if (style.dark) 0.05f else 0.7f), Offset(0f, 1.dp.toPx()), size, r)
+                drawRoundRect(lerp(c.bgDeep, Color.Black, if (style.dark) 0.3f else 0.07f), cornerRadius = r)
+                drawRoundRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = if (style.dark) 0.4f else 0.14f), Color.Transparent), endY = 12.dp.toPx()), cornerRadius = r)
+            }
+            .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
         for (row in 0..1) {
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 for (col in 0..2) {
                     val i = row * 3 + col
                     val door = doors[i]
@@ -183,11 +205,11 @@ private fun Keypad(model: HomeModel, modifier: Modifier) {
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                .height(58.dp)
-                                .themedSurface(shape = RoundedCornerShape(12.dp), tone = if (lead) SurfaceTone.Accent else SurfaceTone.Chrome, onClick = door.onClick),
+                                .height(52.dp)
+                                .themedSurface(shape = RoundedCornerShape(10.dp), tone = if (lead) SurfaceTone.Accent else SurfaceTone.Chrome, onClick = door.onClick),
                             contentAlignment = Alignment.Center,
                         ) {
-                            ThemedIcon(door.icon, door.label, tint = if (lead) c.onAccent else c.content, size = 22.dp)
+                            ThemedIcon(door.icon, door.label, tint = if (lead) c.onAccent else c.content, size = 21.dp)
                             Text(
                                 "${i + 1}",
                                 style = mono.copy(fontSize = fixedSp(9f), fontWeight = FontWeight.Bold),
@@ -195,8 +217,8 @@ private fun Keypad(model: HomeModel, modifier: Modifier) {
                                 modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 5.dp),
                             )
                         }
-                        Text(door.code, style = mono.copy(fontSize = fixedSp(10f), fontWeight = FontWeight.Bold, letterSpacing = 0.08.em), color = c.content, modifier = Modifier.padding(top = 8.dp))
-                        Text(door.label, style = style.type.caption, color = c.muted, maxLines = 1)
+                        Text(door.code, style = mono.copy(fontSize = fixedSp(9.5f), fontWeight = FontWeight.Bold, letterSpacing = 0.1.em), color = c.content, modifier = Modifier.padding(top = 9.dp))
+                        Text(door.label, style = style.type.caption.copy(fontSize = 11.sp), color = c.muted, maxLines = 1)
                     }
                 }
             }
@@ -204,24 +226,73 @@ private fun Keypad(model: HomeModel, modifier: Modifier) {
     }
 }
 
-/** The recommended playlists as tapes in a rack: the cover, a printed label with its number and length. */
+/** The recommended playlists as cassettes in a rack, each with its cover on the label. */
 @Composable
 private fun TapeRack(model: HomeModel, padding: PaddingValues) {
-    val style = Lanyin.style
-    val c = style.colors
     val lists = model.recommended.slots(6)
-    LazyRow(contentPadding = padding, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyRow(contentPadding = padding, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         items(lists.size) { i ->
             val p = lists[i]
-            Column(Modifier.width(128.dp).themedSurface(onClick = { if (p != null) model.openPlaylist(p) }).padding(8.dp)) {
-                ShelfCover(p, i, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(6.dp)))
-                Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("T%02d".format(i + 1), style = mono.copy(fontSize = fixedSp(10f), fontWeight = FontWeight.Bold), color = c.accent)
-                    Spacer(Modifier.weight(1f))
-                    Text(if (p != null) "${p.trackCount} TRK" else "-- TRK", style = mono.copy(fontSize = fixedSp(9f)), color = c.muted)
-                }
-                Text(p?.name ?: "空白磁带", style = style.type.caption, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Tape(p, i, { if (p != null) model.openPlaylist(p) }, Modifier.width(184.dp))
+        }
+    }
+}
+
+/**
+ * A cassette: a smoked shell with its four screws and the head opening at its foot, a paper label
+ * printed with the playlist's cover, its side and number, its name over an orange stripe; and
+ * under the label the window with the two reels.
+ */
+@Composable
+private fun Tape(p: io.lanyin.player.core.model.Playlist?, i: Int, onClick: () -> Unit, modifier: Modifier) {
+    val c = Lanyin.colors
+    val shell = Color(0xFF2B2B29)
+    val paper = Color(0xFFF4F1EA)
+    val ink = Color(0xFF1C1C1A)
+    Column(
+        modifier
+            .aspectRatio(1.56f)
+            .pressable(onClick = onClick)
+            .drawBehind {
+                val w = size.width
+                val h = size.height
+                val corner = CornerRadius(8.dp.toPx())
+                drawRoundRect(Color.Black.copy(alpha = 0.16f), Offset(0f, 3.dp.toPx()), size, corner)
+                drawRoundRect(shell, cornerRadius = corner)
+                drawRoundRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.12f), Color.Transparent), endY = h * 0.35f), cornerRadius = corner)
+                for (x in listOf(5.dp.toPx(), w - 5.dp.toPx())) for (y in listOf(5.dp.toPx(), h - 5.dp.toPx())) drawCircle(Color.White.copy(alpha = 0.22f), 1.7.dp.toPx(), Offset(x, y))
+                val head = androidx.compose.ui.graphics.Path().apply { moveTo(w * 0.2f, h); lineTo(w * 0.26f, h * 0.84f); lineTo(w * 0.74f, h * 0.84f); lineTo(w * 0.8f, h); close() }
+                drawPath(head, Color.White.copy(alpha = 0.07f))
+                for (x in listOf(w * 0.37f, w * 0.63f)) drawCircle(Color.Black.copy(alpha = 0.55f), 2.4.dp.toPx(), Offset(x, h * 0.93f))
             }
+            .padding(start = 9.dp, end = 9.dp, top = 8.dp, bottom = 18.dp),
+    ) {
+        Row(Modifier.fillMaxWidth().weight(0.66f).clip(RoundedCornerShape(4.dp)).background(paper)) {
+            ShelfCover(p, i, Modifier.fillMaxHeight().aspectRatio(1f))
+            Column(Modifier.weight(1f).padding(start = 7.dp, end = 6.dp, top = 4.dp, bottom = 5.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("A", style = mono.copy(fontSize = fixedSp(10f), fontWeight = FontWeight.Bold), color = c.accent)
+                    Spacer(Modifier.weight(1f))
+                    Text("T%02d".format(i + 1), style = mono.copy(fontSize = fixedSp(9f), fontWeight = FontWeight.Bold), color = ink.copy(alpha = 0.55f))
+                }
+                Spacer(Modifier.weight(1f))
+                Text(p?.name ?: "空白磁带", style = TextStyle(fontSize = fixedSp(11f), lineHeight = fixedSp(14f), fontWeight = FontWeight.Medium), color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Box(Modifier.padding(top = 3.dp).fillMaxWidth().height(2.dp).background(c.accent))
+            }
+        }
+        Canvas(Modifier.fillMaxWidth().weight(0.34f).padding(start = 30.dp, end = 30.dp, top = 6.dp)) {
+            val wr = size.height / 2f
+            drawRoundRect(Color(0xFF121211), cornerRadius = CornerRadius(wr))
+            val r = size.height * 0.36f
+            for (cx in listOf(wr, size.width - wr)) {
+                val center = Offset(cx, size.height / 2f)
+                drawCircle(Color(0xFFE9E6DE), r, center)
+                for (k in 0 until 6) {
+                    rotate(k * 60f, center) { drawRect(Color(0xFF121211), Offset(center.x - r * 0.12f, center.y - r * 0.82f), Size(r * 0.24f, r * 0.32f)) }
+                }
+            }
+            // The tape wound between them.
+            drawRect(Color(0xFF3A2A1E), Offset(wr + r, size.height * 0.3f), Size(size.width - 2 * (wr + r), size.height * 0.4f))
         }
     }
 }
