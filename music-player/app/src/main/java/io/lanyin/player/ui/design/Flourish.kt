@@ -167,11 +167,15 @@ fun DoubleRule(modifier: Modifier = Modifier, color: Color = Lanyin.colors.conte
 
 /** A role-playing game's window: [fill], a [frame] inset from its edge, a shadow under it. */
 fun Modifier.gameWindow(fill: Color, frame: Color): Modifier = drawBehind {
-    val corner = CornerRadius(6.dp.toPx())
-    drawRoundRect(Color.Black.copy(alpha = 0.25f), Offset(3.dp.toPx(), 3.dp.toPx()), size, corner)
+    // A handheld's window: a hard shadow a pixel step down, the fill, a heavy outer line and a
+    // fine inner one, the corners only just eased.
+    val corner = CornerRadius(3.dp.toPx())
+    drawRoundRect(frame.copy(alpha = 0.28f), Offset(3.dp.toPx(), 3.dp.toPx()), size, corner)
     drawRoundRect(fill, size = size, cornerRadius = corner)
-    val inset = 4.dp.toPx()
-    drawRoundRect(frame, Offset(inset, inset), Size(size.width - inset * 2, size.height - inset * 2), CornerRadius(3.dp.toPx()), style = Stroke(2.dp.toPx()))
+    val outer = 2.5.dp.toPx()
+    drawRoundRect(frame, Offset(outer / 2f, outer / 2f), Size(size.width - outer, size.height - outer), corner, style = Stroke(outer))
+    val inset = 5.dp.toPx()
+    drawRoundRect(frame.copy(alpha = 0.8f), Offset(inset, inset), Size(size.width - inset * 2, size.height - inset * 2), CornerRadius(1.dp.toPx()), style = Stroke(1.dp.toPx()))
 }
 
 /** [count] pixel hearts in a row, as a game shows lives. */

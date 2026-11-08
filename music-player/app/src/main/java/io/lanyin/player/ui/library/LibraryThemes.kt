@@ -48,8 +48,6 @@ import io.lanyin.player.ui.design.initialOf
 import io.lanyin.player.ui.design.Avatar
 import io.lanyin.player.ui.design.ChromeBrush
 import io.lanyin.player.ui.design.Flavor
-import io.lanyin.player.ui.design.candyPlastic
-import io.lanyin.player.ui.design.drawGelBead
 import io.lanyin.player.ui.design.drawGloss
 import io.lanyin.player.ui.design.DeviceScreen
 import io.lanyin.player.ui.design.DoubleRule
@@ -158,32 +156,32 @@ private fun StatusWindow(profile: UserProfile?, onLogin: () -> Unit, modifier: M
     Row(
         modifier
             .fillMaxWidth()
-            .gameWindow(c.accentAlt, c.onAccent)
+            .gameWindow(c.surface, c.content)
             .then(if (profile == null) Modifier.pressable(onClick = onLogin) else Modifier)
             .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(56.dp).border(2.dp, c.onAccent).padding(3.dp)) {
+        Box(Modifier.size(56.dp).border(2.dp, c.content).padding(3.dp)) {
             if (profile != null) Avatar(profile.avatarUrl, profile.nickname, 50.dp, shape = androidx.compose.ui.graphics.RectangleShape)
-            else Text("?", style = pixel.copy(fontSize = fixed(28f)), color = c.onAccent, modifier = Modifier.align(Alignment.Center))
+            else Text("?", style = pixel.copy(fontSize = fixed(28f)), color = c.content, modifier = Modifier.align(Alignment.Center))
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(profile?.nickname ?: "NO SAVE DATA", style = pixel.copy(fontSize = fixed(17f)), color = c.onAccent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(profile?.nickname ?: "NO SAVE DATA", style = pixel.copy(fontSize = fixed(17f)), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (profile != null && profile.vipType != 0) "LV.99" else "LV.01", style = pixel.copy(fontSize = fixed(13f)), color = Color(0xFFFFD34E))
+                Text(if (profile != null && profile.vipType != 0) "LV.99" else "LV.01", style = pixel.copy(fontSize = fixed(13f)), color = c.accent)
                 Spacer(Modifier.width(8.dp))
-                Text("HP", style = pixel.copy(fontSize = fixed(13f)), color = c.onAccent)
+                Text("HP", style = pixel.copy(fontSize = fixed(13f)), color = c.content)
                 Spacer(Modifier.width(4.dp))
-                PixelHearts(3, Color(0xFFFF6B9A), Modifier.size(width = 40.dp, height = 11.dp))
+                PixelHearts(3, c.accent, Modifier.size(width = 40.dp, height = 11.dp))
             }
             if (profile != null) {
-                Text("存档已同步 · ${vipName(profile.vipType) ?: "普通玩家"}", style = pixel.copy(fontSize = fixed(12f)), color = c.onAccent.copy(alpha = 0.75f), modifier = Modifier.padding(top = 4.dp))
+                Text("存档已同步 · ${vipName(profile.vipType) ?: "普通玩家"}", style = pixel.copy(fontSize = fixed(12f)), color = c.content.copy(alpha = 0.75f), modifier = Modifier.padding(top = 4.dp))
             } else {
                 Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("▶ ", style = pixel.copy(fontSize = fixed(15f)), color = c.onAccent)
-                    Text("登录", style = pixel.copy(fontSize = fixed(15f)), color = c.onAccent)
-                    Text("　扫码读取存档", style = pixel.copy(fontSize = fixed(12f)), color = c.onAccent.copy(alpha = 0.7f))
+                    Text("▶ ", style = pixel.copy(fontSize = fixed(15f)), color = c.content)
+                    Text("登录", style = pixel.copy(fontSize = fixed(15f)), color = c.content)
+                    Text("　扫码读取存档", style = pixel.copy(fontSize = fixed(12f)), color = c.content.copy(alpha = 0.7f))
                 }
             }
         }
@@ -551,27 +549,8 @@ internal fun ThemedEntries(entries: List<Entry>, modifier: Modifier) {
                 Text(e.detail, style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(9f)), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        // 酸: each a tile of see-through plastic in the next flavour, a gel bead holding its icon.
-        BackdropKind.Acid -> EntryTiles(entries, modifier) { i, e, m ->
-            val tint = Flavor.all[i % Flavor.all.size]
-            val shape = RoundedCornerShape(22.dp)
-            Row(
-                m.heightIn(min = 60.dp).candyPlastic(tint, shape)
-                    .then(e.onClick?.let { Modifier.pressable(onClick = it) } ?: Modifier)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
-                    Canvas(Modifier.matchParentSize()) { drawGelBead(androidx.compose.ui.graphics.lerp(tint, Color.White, 0.15f)) }
-                    ThemedIcon(e.icon, null, tint = Color.White, size = 17.dp)
-                }
-                Spacer(Modifier.width(10.dp))
-                Column {
-                    Text(e.title, style = style.type.body.copy(fontWeight = FontWeight.Bold), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(e.detail, style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(10f)), color = Color.White.copy(alpha = 0.78f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
+        // 酸: the playlist window of a media player of the time.
+        BackdropKind.Acid -> PlaylistWindow(entries, modifier)
         // 暮: luggage tags, each with its band of colour.
         BackdropKind.Dusk -> EntryTiles(entries, modifier) { i, e, m ->
             io.lanyin.player.ui.design.LuggageTag(e.icon, e.title, e.detail, io.lanyin.player.ui.design.StampInks[i % 4], e.onClick, m, tilt = if (i % 2 == 0) -0.6f else 0.6f)
@@ -586,6 +565,40 @@ internal fun ThemedEntries(entries: List<Entry>, modifier: Modifier) {
             Text("▸ %02dA".format(i + 1), style = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = fixed(10f), letterSpacing = 0.1.em), color = FilmStamp, modifier = Modifier.width(52.dp))
         }
         BackdropKind.Neon -> DirectoryBoard(entries, modifier)
+    }
+}
+
+/**
+ * 酸: the entries as the playlist window of a media player of the turn of the century: the chrome
+ * title bar with its gel buttons, LIBRARY.M3U; a dark glass list with lime track numbers and
+ * the detail in mono; a status line along the foot.
+ */
+@Composable
+private fun PlaylistWindow(entries: List<Entry>, modifier: Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val mono = TextStyle(fontFamily = SpaceMonoFamily)
+    val shape = RoundedCornerShape(10.dp)
+    Column(modifier.fillMaxWidth().clip(shape).background(Color(0xE60E0820)).border(2.dp, io.lanyin.player.ui.design.ChromeBrush, shape)) {
+        io.lanyin.player.ui.player.MediaTitleBar("LIBRARY.M3U")
+        entries.forEachIndexed { i, e ->
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 50.dp).then(e.onClick?.let { Modifier.pressable(onClick = it) } ?: Modifier).padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("%02d.".format(i + 1), style = mono.copy(fontWeight = FontWeight.Bold, fontSize = fixed(12f)), color = c.accent, modifier = Modifier.width(34.dp))
+                ThemedIcon(e.icon, null, tint = c.content.copy(alpha = 0.85f), size = 17.dp)
+                Spacer(Modifier.width(10.dp))
+                Text(e.title, style = style.type.body, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(e.detail, style = mono.copy(fontSize = fixed(10f)), color = c.muted, maxLines = 1)
+            }
+            if (i < entries.lastIndex) Box(Modifier.padding(horizontal = 14.dp).fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.07f)))
+        }
+        Row(Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.35f)).padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("${entries.size} ITEMS", style = mono.copy(fontSize = fixed(9f), letterSpacing = 0.1.em), color = c.muted)
+            Spacer(Modifier.weight(1f))
+            Text("◉ READY", style = mono.copy(fontSize = fixed(9f), letterSpacing = 0.1.em), color = c.accent)
+        }
     }
 }
 
@@ -642,17 +655,17 @@ private fun EntryLines(entries: List<Entry>, modifier: Modifier, leader: Boolean
 private fun MenuWindow(entries: List<Entry>, modifier: Modifier) {
     val c = Lanyin.colors
     val pixel = TextStyle(fontFamily = PixelFamily)
-    Column(modifier.fillMaxWidth().gameWindow(c.accentAlt, c.onAccent).padding(horizontal = 14.dp, vertical = 12.dp)) {
+    Column(modifier.fillMaxWidth().gameWindow(c.surface, c.content).padding(horizontal = 14.dp, vertical = 12.dp)) {
         entries.forEachIndexed { i, e ->
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 46.dp).then(e.onClick?.let { Modifier.pressable(onClick = it) } ?: Modifier).padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("▶", style = pixel.copy(fontSize = fixed(14f)), color = c.onAccent.copy(alpha = if (i == 0) 1f else 0f), modifier = Modifier.width(20.dp))
-                ThemedIcon(e.icon, null, tint = c.onAccent, size = 18.dp)
+                Text("▶", style = pixel.copy(fontSize = fixed(14f)), color = c.content.copy(alpha = if (i == 0) 1f else 0f), modifier = Modifier.width(20.dp))
+                ThemedIcon(e.icon, null, tint = c.content, size = 18.dp)
                 Spacer(Modifier.width(10.dp))
-                Text(e.title, style = pixel.copy(fontSize = fixed(16f)), color = c.onAccent, maxLines = 1, modifier = Modifier.weight(1f))
-                Text(e.detail, style = pixel.copy(fontSize = fixed(12f)), color = c.onAccent.copy(alpha = 0.65f), maxLines = 1)
+                Text(e.title, style = pixel.copy(fontSize = fixed(16f)), color = c.content, maxLines = 1, modifier = Modifier.weight(1f))
+                Text(e.detail, style = pixel.copy(fontSize = fixed(12f)), color = c.content.copy(alpha = 0.65f), maxLines = 1)
             }
         }
     }

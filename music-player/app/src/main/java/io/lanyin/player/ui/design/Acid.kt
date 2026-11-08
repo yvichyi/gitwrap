@@ -114,9 +114,10 @@ internal fun starPath(center: Offset, outer: Float, inner: Float, points: Int, t
 
 /**
  * 酸: Y2K after dark. A deep grape glass like a CRT's, a holographic light leak across the top,
- * glossy bubbles of coloured plastic adrift (rising slowly behind the player, faster with the
- * music, a little fuller on the beat), a faint grid to the horizon on the player, and a few white
- * sparkles that flash in turn on the beats.
+ * a few white sparkles that flash in turn on the beats. Behind the player, glossy bubbles of
+ * coloured plastic adrift (rising slowly, faster with the music, a little fuller on the beat) and
+ * a faint grid to the horizon; behind the pages, only two soft pools of light, so nothing drifts
+ * over the words.
  */
 internal fun DrawScope.drawAcidNight(style: LanyinStyle, t: Float, e: Float, page: Boolean, audio: BackdropAudio?) {
     val c = style.colors
@@ -145,10 +146,16 @@ internal fun DrawScope.drawAcidNight(style: LanyinStyle, t: Float, e: Float, pag
         }
         drawRect(Brush.verticalGradient(listOf(c.bg, Color.Transparent), startY = horizon - 2f, endY = horizon + (h - horizon) * 0.3f), Offset(0f, horizon - 2f), Size(w, (h - horizon) * 0.3f + 2f))
     }
-    // Bubbles of plastic, rising.
+    if (page) {
+        // Behind the pages no bubbles drift over the words: two soft pools of coloured light
+        // instead, grape up on the left and Bondi blue low on the right, as a backlit case glows.
+        drawCircle(Brush.radialGradient(listOf(Flavor.Grape.copy(alpha = 0.2f), Color.Transparent), Offset(w * 0.05f, h * 0.18f), w * 0.75f), w * 0.75f, Offset(w * 0.05f, h * 0.18f))
+        drawCircle(Brush.radialGradient(listOf(Flavor.Bondi.copy(alpha = 0.12f), Color.Transparent), Offset(w * 1.0f, h * 0.82f), w * 0.8f), w * 0.8f, Offset(w * 1.0f, h * 0.82f))
+    }
+    // Bubbles of plastic, rising behind the player.
     val swell = 1f + 0.08f * (audio?.pulse(t, 0.45f) ?: 0f)
     val rise = audio?.travel(1, 0.02f + 0.06f * audio.level) ?: 0f
-    for (k in 0 until (if (page) 5 else 7)) {
+    for (k in 0 until (if (page) 0 else 7)) {
         val r = minOf(w, h) * (0.05f + 0.09f * hash01(k, 91)) * swell
         val y = ((hash01(k, 92) - rise * (0.6f + 0.8f * hash01(k, 93))) % 1f + 1f) % 1f
         val p = Offset(w * hash01(k, 94), -r + (h + 2 * r) * y)

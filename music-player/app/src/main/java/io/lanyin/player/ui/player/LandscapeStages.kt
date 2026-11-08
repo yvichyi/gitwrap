@@ -428,9 +428,9 @@ internal fun Modifier.mediaWindow(): Modifier {
         .border(2.dp, ChromeBrush, shape)
 }
 
-/** The chrome window's title bar: traffic-light buttons, the player's name, the window controls. */
+/** The chrome window's title bar: traffic-light buttons, the window's [title], the window controls. */
 @Composable
-internal fun MediaTitleBar() {
+internal fun MediaTitleBar(title: String = "LANYIN MEDIA PLAYER 2000") {
     val c = Lanyin.colors
     Row(
         Modifier
@@ -445,7 +445,7 @@ internal fun MediaTitleBar() {
             Canvas(Modifier.padding(end = 6.dp).size(10.dp)) { drawGelBead(dot) }
         }
         Spacer(Modifier.weight(1f))
-        Text("LANYIN MEDIA PLAYER 2000", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(10f), letterSpacing = 0.08.em, shadow = androidx.compose.ui.graphics.Shadow(Color(0x99003040), Offset(0f, 1f), 2f)), color = Color.White, maxLines = 1)
+        Text(title, style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(10f), letterSpacing = 0.08.em, shadow = androidx.compose.ui.graphics.Shadow(Color(0x99003040), Offset(0f, 1f), 2f)), color = Color.White, maxLines = 1)
         Spacer(Modifier.weight(1f))
         Text("_ □ ×", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixedSp(11f)), color = Color.White.copy(alpha = 0.7f))
     }

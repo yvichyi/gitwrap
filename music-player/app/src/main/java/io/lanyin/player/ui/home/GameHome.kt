@@ -53,10 +53,6 @@ import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
 import kotlinx.coroutines.delay
 
-private val Gold = Color(0xFFFFD34E)
-private val Silver = Color(0xFFC9D2E3)
-private val Bronze = Color(0xFFE59A62)
-private val HeartPink = Color(0xFFFF6B9A)
 
 /**
  * 游: the home page as a game. A status line with lives and level; the title screen on the green
@@ -144,7 +140,7 @@ private fun TitleScreen(model: HomeModel, modifier: Modifier) {
     Box(
         modifier
             .fillMaxWidth()
-            .height(176.dp)
+            .height(204.dp)
             .themedSurface(onClick = if (player.isEmpty) model.playDaily else model.openPlayer)
             .background(GameLcd[0])
             .drawBehind {
@@ -162,7 +158,7 @@ private fun TitleScreen(model: HomeModel, modifier: Modifier) {
                 }
             },
     ) {
-        Column(Modifier.align(Alignment.Center).padding(bottom = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.align(Alignment.Center).padding(bottom = 56.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("澜音", style = pixel.copy(fontSize = fixedSp(46f), lineHeight = fixedSp(50f), letterSpacing = 0.1.em), color = ink)
             Text("LANYIN  MUSIC  QUEST", style = pixel.copy(fontSize = fixedSp(12f), letterSpacing = 0.12.em), color = GameLcd[2])
             Text(
@@ -172,19 +168,57 @@ private fun TitleScreen(model: HomeModel, modifier: Modifier) {
                 modifier = Modifier.padding(top = 14.dp),
             )
         }
+        // The level's first screen behind the title: clouds drifting over two rows of hills and
+        // the ground, all on the LCD's grid.
+        val clock by io.lanyin.player.ui.design.rememberFrameClock(true)
+        Canvas(Modifier.matchParentSize()) { drawPixelLand(clock) }
         // A note bobbing in the corner, as title screens have a sprite.
         Canvas(Modifier.align(Alignment.TopStart).padding(14.dp).size(22.dp)) { drawPixelNote(ink) }
         Canvas(Modifier.align(Alignment.TopEnd).padding(14.dp).size(22.dp)) { drawPixelNote(GameLcd[2]) }
         Text(
             if (player.isEmpty) "© 2026 LANYIN" else "NOW · ${player.title}",
             style = pixel.copy(fontSize = fixedSp(11f)),
-            color = GameLcd[2],
+            color = GameLcd[0],
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
         )
     }
+}
+
+/**
+ * The title screen's landscape, snapped to the LCD's 3dp grid: two clouds drifting left at
+ * different speeds, a far range of hills in the mid green, near hills in the dark one, and the
+ * ground along the foot where the credit line sits.
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPixelLand(t: Float) {
+    val px = 3.dp.toPx()
+    fun snap(v: Float) = kotlin.math.floor(v / px) * px
+    val w = size.width
+    val h = size.height
+    // Clouds: blocky, drifting, wrapping round.
+    val cloud = listOf("0011100", "0111110", "1111111")
+    for ((k, speed) in listOf(0 to 9f, 1 to 5f)) {
+        val span = w + 7 * px * 2
+        val x0 = snap(((w * (0.2f + 0.5f * k) - t * speed * px / 3f) % span + span) % span - 7 * px)
+        val y0 = snap(h * (0.1f + 0.08f * k))
+        cloud.forEachIndexed { y, row ->
+            row.forEachIndexed { x, ch -> if (ch == '1') drawRect(GameLcd[1], Offset(x0 + x * px * 2, y0 + y * px), Size(px * 2, px)) }
+        }
+    }
+    // Far hills, then near hills, then the ground.
+    fun hills(base: Float, amp: Float, period: Float, phase: Float, color: Color) {
+        var x = 0f
+        while (x < w) {
+            val top = snap(base - amp * (0.5f + 0.5f * kotlin.math.sin((x / period + phase) * 6.283f)))
+            drawRect(color, Offset(x, top), Size(px, h - top))
+            x += px
+        }
+    }
+    hills(h - 30.dp.toPx(), 30.dp.toPx(), w * 0.55f, 0.15f, GameLcd[1])
+    hills(h - 22.dp.toPx(), 20.dp.toPx(), w * 0.3f, 0.6f, GameLcd[2])
+    drawRect(GameLcd[3], Offset(0f, snap(h - 24.dp.toPx())), Size(w, h))
 }
 
 /** A quaver drawn in pixels. */
@@ -204,15 +238,15 @@ private fun NoSaveData(onLogin: () -> Unit, modifier: Modifier) {
     Column(
         modifier
             .fillMaxWidth()
-            .gameWindow(c.accentAlt, c.onAccent)
+            .gameWindow(c.surface, c.content)
             .pressable(onClick = onLogin)
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
-        Text("NO SAVE DATA", style = pixel.copy(fontSize = fixedSp(13f), letterSpacing = 0.1.em), color = Gold)
-        Text("还没有存档。扫码登录网易云，读取你的歌单和红心。", style = pixel.copy(fontSize = fixedSp(15f), lineHeight = fixedSp(22f)), color = c.onAccent, modifier = Modifier.padding(top = 6.dp))
+        Text("NO SAVE DATA", style = pixel.copy(fontSize = fixedSp(13f), letterSpacing = 0.1.em), color = c.accent)
+        Text("还没有存档。扫码登录网易云，读取你的歌单和红心。", style = pixel.copy(fontSize = fixedSp(15f), lineHeight = fixedSp(22f)), color = c.content, modifier = Modifier.padding(top = 6.dp))
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("▶ 读取存档", style = pixel.copy(fontSize = fixedSp(14f)), color = c.onAccent, modifier = Modifier.weight(1f))
-            Text("▼", style = pixel.copy(fontSize = fixedSp(13f)), color = c.onAccent.copy(alpha = if (blink) 1f else 0f))
+            Text("▶ 读取存档", style = pixel.copy(fontSize = fixedSp(14f)), color = c.content, modifier = Modifier.weight(1f))
+            Text("▼", style = pixel.copy(fontSize = fixedSp(13f)), color = c.content.copy(alpha = if (blink) 1f else 0f))
         }
     }
 }
@@ -225,10 +259,10 @@ private fun MainMenu(model: HomeModel, modifier: Modifier) {
     Column(
         modifier
             .fillMaxWidth()
-            .gameWindow(c.accentAlt, c.onAccent)
+            .gameWindow(c.surface, c.content)
             .padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 10.dp),
     ) {
-        Text("MENU", style = pixel.copy(fontSize = fixedSp(12f), letterSpacing = 0.14.em), color = c.onAccent.copy(alpha = 0.7f), modifier = Modifier.padding(start = 6.dp, bottom = 2.dp))
+        Text("MENU", style = pixel.copy(fontSize = fixedSp(12f), letterSpacing = 0.14.em), color = c.content.copy(alpha = 0.7f), modifier = Modifier.padding(start = 6.dp, bottom = 2.dp))
         for (row in 0 until 3) {
             Row {
                 for (col in 0 until 2) {
@@ -252,10 +286,10 @@ private fun MenuChoice(door: Door, first: Boolean, modifier: Modifier) {
             .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("▶", style = pixel.copy(fontSize = fixedSp(14f)), color = c.onAccent.copy(alpha = if (pressed || first) 1f else 0f), modifier = Modifier.width(18.dp))
+        Text("▶", style = pixel.copy(fontSize = fixedSp(14f)), color = c.content.copy(alpha = if (pressed || first) 1f else 0f), modifier = Modifier.width(18.dp))
         Column {
-            Text(door.label, style = pixel.copy(fontSize = fixedSp(17f)), color = c.onAccent, maxLines = 1)
-            Text(door.note, style = pixel.copy(fontSize = fixedSp(11f)), color = c.onAccent.copy(alpha = 0.6f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(door.label, style = pixel.copy(fontSize = fixedSp(17f)), color = c.content, maxLines = 1)
+            Text(door.note, style = pixel.copy(fontSize = fixedSp(11f)), color = c.content.copy(alpha = 0.6f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -313,15 +347,15 @@ private fun HighScores(model: HomeModel, modifier: Modifier) {
     Column(
         modifier
             .fillMaxWidth()
-            .gameWindow(Color(0xFF15142A), c.onAccent)
+            .gameWindow(c.surface, c.content)
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("HIGH SCORE", style = pixel.copy(fontSize = fixedSp(14f), letterSpacing = 0.12.em), color = Gold.copy(alpha = if (blink) 1f else 0.75f), modifier = Modifier.weight(1f))
-            Text(first.nameOr(0), style = pixel.copy(fontSize = fixedSp(13f)), color = c.onAccent.copy(alpha = 0.75f))
+            Text("HIGH SCORE", style = pixel.copy(fontSize = fixedSp(14f), letterSpacing = 0.12.em), color = c.accent.copy(alpha = if (blink) 1f else 0.7f), modifier = Modifier.weight(1f))
+            Text(first.nameOr(0), style = pixel.copy(fontSize = fixedSp(13f)), color = c.content.copy(alpha = 0.75f))
         }
         val top = first?.top.orEmpty()
-        listOf("1ST" to Gold, "2ND" to Silver, "3RD" to Bronze).forEachIndexed { i, (rank, color) ->
+        listOf("1ST" to c.accent, "2ND" to c.accentAlt, "3RD" to c.muted).forEachIndexed { i, (rank, color) ->
             val song: Song? = top.getOrNull(i)
             Row(
                 Modifier.fillMaxWidth().padding(top = 8.dp).pressable(onClick = { if (first != null) model.openPlaylist(first.playlist) else model.openCharts() }),
@@ -329,8 +363,8 @@ private fun HighScores(model: HomeModel, modifier: Modifier) {
             ) {
                 Text(rank, style = pixel.copy(fontSize = fixedSp(15f)), color = color, modifier = Modifier.width(44.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(song?.name ?: "- - - - -", style = pixel.copy(fontSize = fixedSp(15f)), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (song != null) Text(song.artistLine, style = pixel.copy(fontSize = fixedSp(11f)), color = Color.White.copy(alpha = 0.55f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(song?.name ?: "- - - - -", style = pixel.copy(fontSize = fixedSp(15f)), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (song != null) Text(song.artistLine, style = pixel.copy(fontSize = fixedSp(11f)), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -339,7 +373,7 @@ private fun HighScores(model: HomeModel, modifier: Modifier) {
                 Text(
                     "▶ ${chart.nameOr(k + 1)}",
                     style = pixel.copy(fontSize = fixedSp(13f)),
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = c.content,
                     maxLines = 1,
                     modifier = Modifier.pressable(onClick = { if (chart != null) model.openPlaylist(chart.playlist) else model.openCharts() }).padding(vertical = 6.dp),
                 )
