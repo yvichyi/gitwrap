@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.sp
 import io.lanyin.player.ui.components.pagePadding
 import io.lanyin.player.ui.design.Hairline
@@ -115,17 +117,56 @@ private fun Frontispiece(model: HomeModel, modifier: Modifier) {
     val c = style.colors
     Column(modifier) {
         Box(Modifier.fillMaxWidth().aspectRatio(1.5f).border(1.dp, c.outline).padding(6.dp).pressable(onClick = model.openDaily)) {
-            DailyArt(model.pickSongs)
+            // The day's covers once there are picks; before that, the day itself, as a calendar leaf.
+            if (model.pickSongs.count { it.album.coverUrl != null } >= 4) DailyArt(model.pickSongs) else CalendarLeaf(model.now)
         }
         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("今日 · 每日推荐", style = style.type.title.copy(fontSize = 20.sp, lineHeight = 26.sp), color = c.content)
                 Text(model.dailyNote, style = style.type.caption, color = c.muted)
             }
-            Text(chineseNumber(model.now.dayOfMonth), style = style.type.display.copy(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Light), color = c.content, modifier = Modifier.padding(end = 14.dp))
             Box(Modifier.size(42.dp).clip(CircleShape).border(1.dp, c.content, CircleShape).pressable(label = "播放每日推荐", onClick = model.playDaily), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.size(12.dp)) { drawPlayPauseGlyph(0f, c.content) }
             }
+        }
+    }
+}
+
+/**
+ * A leaf of a tear-off calendar (手撕日历): the day in a big serif figure, red on a Sunday as the
+ * printers do it; the month above, the year in characters, the weekday below; the perforation
+ * along the top where it was torn from the block.
+ */
+@Composable
+private fun CalendarLeaf(now: java.time.LocalDateTime) {
+    val style = Lanyin.style
+    val c = style.colors
+    val weekend = now.dayOfWeek == java.time.DayOfWeek.SUNDAY || now.dayOfWeek == java.time.DayOfWeek.SATURDAY
+    val year = now.year.toString().map { "〇一二三四五六七八九"[it - '0'] }.joinToString("")
+    Box(Modifier.fillMaxSize()) {
+        Canvas(Modifier.fillMaxWidth().height(6.dp)) {
+            val gap = 7.dp.toPx()
+            var x = gap / 2f
+            while (x < size.width) {
+                drawCircle(c.outline, 1.4.dp.toPx(), Offset(x, size.height / 2f))
+                x += gap
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 12.dp)) {
+            Text("${chineseNumber(now.monthValue)}月", style = style.type.label, color = c.muted, modifier = Modifier.weight(1f))
+            Text(year, style = style.type.label, color = c.muted)
+        }
+        Column(Modifier.align(Alignment.Center).padding(top = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "${now.dayOfMonth}",
+                style = style.type.display.copy(fontSize = 86.sp, lineHeight = 88.sp, fontWeight = FontWeight.Normal),
+                color = if (weekend) c.accentAlt else c.content,
+            )
+            Text(now.dayOfWeek.getDisplayName(JavaTextStyle.FULL, Locale.CHINA), style = style.type.caption.copy(letterSpacing = 0.3.em), color = c.muted)
+        }
+        // 今日: a small red seal in the corner.
+        Box(Modifier.align(Alignment.BottomEnd).padding(10.dp).size(20.dp).background(c.accentAlt), contentAlignment = Alignment.Center) {
+            Text("今", style = style.type.caption.copy(fontFamily = style.display, fontSize = 12.sp, lineHeight = 13.sp), color = c.bg)
         }
     }
 }

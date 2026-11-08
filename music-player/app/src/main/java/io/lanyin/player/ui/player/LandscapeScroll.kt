@@ -85,8 +85,22 @@ internal fun ScrollSheet(stage: StageContext, modifier: Modifier, lyricsModifier
         // As many characters of the title as its column has room for above the tempo seal.
         val row = with(LocalDensity.current) { 25.sp.toDp() }
         val titleRuns = ((maxHeight - 84.dp) / row).toInt().coerceIn(2, 9)
+        // A song sung in a Latin script would lie on its side all down the scroll: its words are
+        // set across instead, the title still inscribed beside them.
+        val across = remember(stage.state.lyrics) {
+            val sung = stage.state.lyrics.filter { it.text.isNotBlank() }
+            sung.isNotEmpty() && sung.count { !mostlyUpright(it.text) } * 2 > sung.size
+        }
         Row(Modifier.fillMaxSize()) {
-            ScrollLyrics(stage, Modifier.weight(1f).fillMaxHeight().then(lyricsModifier))
+            if (across) {
+                StateLyrics(
+                    stage.state, lyricTextStyle(16f, stage.lyricScale), centered = true, anchorFraction = 0.42f,
+                    modifier = Modifier.weight(1f).fillMaxHeight().then(lyricsModifier),
+                    interactive = false, showTranslation = false, scrubMs = stage.scrubMs,
+                )
+            } else {
+                ScrollLyrics(stage, Modifier.weight(1f).fillMaxHeight().then(lyricsModifier))
+            }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.fillMaxHeight(), horizontalAlignment = Alignment.End) {
                 Inscription(stage.state, Modifier.padding(top = 4.dp), titleRuns = titleRuns, artistRuns = (titleRuns - 3).coerceAtLeast(1))
@@ -128,15 +142,28 @@ private class Glyph(val layout: TextLayoutResult, val upright: Boolean, val char
 private fun measureRuns(measurer: TextMeasurer, text: String, style: TextStyle): List<Glyph> =
     verticalRuns(text, Int.MAX_VALUE).map { (run, upright) -> Glyph(measurer.measure(run, style, softWrap = false), upright, run.length) }
 
-/** [glyphs] packed into columns no taller than [height]: the glyph indices in each. */
+/**
+ * [glyphs] packed into columns no taller than [height]: the glyph indices in each. A line too long
+ * for one column is shared out evenly between as few as it needs (nine characters go five and
+ * four), so no character is ever left alone at the head of a column of its own.
+ */
 private fun pack(glyphs: List<Glyph>, cell: Float, height: Float): List<IntRange> {
     if (glyphs.isEmpty()) return emptyList()
+    val greedy = fill(glyphs, cell, height, Float.MAX_VALUE, Int.MAX_VALUE)
+    if (greedy.size <= 1) return greedy
+    val target = glyphs.sumOf { extent(it, cell).toDouble() }.toFloat() / greedy.size
+    return fill(glyphs, cell, height, target, greedy.size)
+}
+
+/** Columns filled in order, each closed once it passes [target] by half a glyph (or would pass [height]), at most [count]. */
+private fun fill(glyphs: List<Glyph>, cell: Float, height: Float, target: Float, count: Int): List<IntRange> {
     val columns = mutableListOf<IntRange>()
     var start = 0
     var used = 0f
     for (i in glyphs.indices) {
         val e = extent(glyphs[i], cell)
-        if (i > start && used + e > height) {
+        val full = used + e > height || used + e / 2f > target && columns.size < count - 1
+        if (i > start && full) {
             columns += start until i
             start = i
             used = 0f
@@ -145,6 +172,13 @@ private fun pack(glyphs: List<Glyph>, cell: Float, height: Float): List<IntRange
     }
     columns += start until glyphs.size
     return columns
+}
+
+/** Whether [text] is mostly characters that stand upright in a column (Chinese, Japanese, Korean). */
+internal fun mostlyUpright(text: String): Boolean {
+    val letters = text.filter { !it.isWhitespace() && it.isLetterOrDigit() }
+    if (letters.isEmpty()) return true
+    return letters.count { isUpright(it) } * 2 >= letters.length
 }
 
 /** How far down the column a glyph runs: a cell upright, its length (and a little air) sideways. */
@@ -179,7 +213,9 @@ private fun ScrollLyrics(stage: StageContext, modifier: Modifier) {
         val pad = 8.dp.toPx()
         val room = size.height - pad * 2
         fun mainOf(i: Int) = mains.getOrPut(i) { measureRuns(measurer, lines[i].text, mainStyle) }
-        fun noteOf(i: Int) = notes.getOrPut(i) { lines[i].translation?.let { measureRuns(measurer, it, noteStyle) } ?: emptyList() }
+        // A translation gets its own narrower column only when it too stands upright; a Latin one
+        // would have to lie on its side down the page, and is left to the full lyrics.
+        fun noteOf(i: Int) = notes.getOrPut(i) { lines[i].translation?.takeIf(::mostlyUpright)?.let { measureRuns(measurer, it, noteStyle) } ?: emptyList() }
         fun widthOf(i: Int) = pack(mainOf(i), cell, room).size.coerceAtLeast(1) * pitch + pack(noteOf(i), noteCell, room).size * notePitch
 
         // Where each line's right edge falls with line [anchor] in the writing position, two lanes

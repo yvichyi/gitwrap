@@ -88,6 +88,36 @@ private fun DrawScope.inkCover(style: LanyinStyle, seed: Int) {
     drawRect(c.accentAlt, topLeft = Offset(w * 0.74f, h * 0.76f), size = Size(w * 0.1f, w * 0.1f))
 }
 
+/**
+ * 圆相 (ensō): a circle in one stroke of the brush, round [center] at radius [r]. It starts
+ * pressed down at the upper left, runs clockwise, and lifts into a thin dry tail before it
+ * closes; the brush is never quite even, so the edge breathes a little.
+ */
+internal fun ensoPath(center: Offset, r: Float, thickness: Float): Path {
+    val steps = 72
+    val start = -150f
+    val sweep = 318f
+    val outer = ArrayList<Offset>(steps + 1)
+    val inner = ArrayList<Offset>(steps + 1)
+    for (i in 0..steps) {
+        val f = i / steps.toFloat()
+        val a = Math.toRadians((start + sweep * f).toDouble())
+        // Full almost at once, then lifting off towards the end.
+        val press = sin(PI.toFloat() / 2f * (f * 5f).coerceAtMost(1f))
+        val half = thickness / 2f * (0.35f + 0.65f * press) * (1f - 0.82f * f.pow(2.4f))
+        val rr = r * (1f + 0.022f * sin(f * 9.4f) - 0.03f * f)
+        val dir = Offset(kotlin.math.cos(a).toFloat(), kotlin.math.sin(a).toFloat())
+        outer += center + dir * (rr + half)
+        inner += center + dir * (rr - half * 0.85f)
+    }
+    return Path().apply {
+        moveTo(outer[0].x, outer[0].y)
+        outer.drop(1).forEach { lineTo(it.x, it.y) }
+        inner.asReversed().forEach { lineTo(it.x, it.y) }
+        close()
+    }
+}
+
 /** One horizontal stroke of a loaded brush: pressed down at the start, lifting into a dry tail. */
 internal fun brushStrokePath(start: Offset, length: Float, thickness: Float): Path {
     val steps = 48
@@ -220,11 +250,8 @@ fun ThemeMotif(color: Color, modifier: Modifier = Modifier) {
         val r = minOf(w, h) * 0.38f
         val line = Stroke(style.iconStroke * density * 1.2f, cap = StrokeCap.Round)
         when (style.theme) {
-            AppTheme.INK -> {
-                // A single brush stroke and a seal: calligraphy, not a loading spinner.
-                drawPath(brushStrokePath(Offset(w * 0.12f, h * 0.55f), w * 0.7f, h * 0.13f), color)
-                drawRect(color, Offset(w * 0.78f, h * 0.24f), Size(w * 0.09f, w * 0.09f))
-            }
+            // 圆相: the circle of one breath of the brush, left open. Emptiness, said the ink way.
+            AppTheme.INK -> drawPath(ensoPath(center, r, r * 0.3f), color)
             AppTheme.NEON -> for (i in 0 until 3) drawCircle(color.copy(alpha = 1f - i * 0.28f), r * (0.45f + i * 0.28f), center, style = line)
             AppTheme.GRID -> gridMotif(style)
             AppTheme.DUSK -> for (i in 0 until 4) {
