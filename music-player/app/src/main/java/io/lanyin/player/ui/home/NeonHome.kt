@@ -54,6 +54,7 @@ import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.TiltNeonFamily
 import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
+import io.lanyin.player.ui.design.lightSpill
 
 /** A third colour of tube for 霓, beside the pink and the cyan: amber. */
 private val Amber = Color(0xFFFFC46B)
@@ -179,24 +180,29 @@ private fun Pictograms(model: HomeModel, modifier: Modifier) {
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         model.doors.drop(2).forEachIndexed { i, door ->
             val tube = tubes[i % tubes.size]
+            // No tile behind it: a little sign fixed straight to the bricks, its light on the wall
+            // round it, the pictogram and its name both bent in the same tube.
             Column(
                 Modifier
                     .weight(1f)
                     .heightIn(min = 76.dp)
-                    .themedSurface(tone = SurfaceTone.Flat, onClick = door.onClick)
-                    .padding(vertical = 12.dp),
+                    .lightSpill(tube, reach = 0.75f, strength = 0.16f)
+                    .pressable(onClick = door.onClick)
+                    .padding(vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // The pictogram's light on the wall round it, then the tube itself.
                 Box(
-                    Modifier.size(36.dp).drawBehind {
-                        drawCircle(Brush.radialGradient(listOf(tube.copy(alpha = 0.32f), Color.Transparent)), size.minDimension * 0.75f)
+                    Modifier.size(44.dp).drawBehind {
+                        drawCircle(Brush.radialGradient(listOf(tube.copy(alpha = 0.36f), Color.Transparent)), size.minDimension * 0.7f)
                     },
                     contentAlignment = Alignment.Center,
                 ) {
-                    ThemedIcon(door.icon, null, tint = neonCore(tube), size = 22.dp)
+                    ThemedIcon(door.icon, null, tint = neonCore(tube), size = 26.dp)
                 }
-                Text(door.label, style = Lanyin.style.type.caption, color = c.content, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+                io.lanyin.player.ui.design.NeonText(
+                    door.label, Lanyin.style.type.caption.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold), tube,
+                    Modifier.padding(top = 6.dp), ignite = false,
+                )
             }
         }
     }

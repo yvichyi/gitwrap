@@ -424,8 +424,9 @@ internal fun DrawScope.duskPhoto(seed: Int) {
 }
 
 /**
- * A luggage tag: kraft card with its end cut off at the corners, an eyelet through a band of
- * [band], and [label] and [note] written on it. Set down at a slight [tilt].
+ * A luggage tag: kraft card with its end cut off at the corners, the airline's stripe of [band]
+ * along its top, a brass eyelet with the string looped through it, and [label] and [note]
+ * written on it. Set down at a slight [tilt].
  */
 @Composable
 fun LuggageTag(icon: LineIcon, label: String, note: String, band: Color, onClick: (() -> Unit)?, modifier: Modifier = Modifier, tilt: Float = 0f) {
@@ -452,14 +453,20 @@ fun LuggageTag(icon: LineIcon, label: String, note: String, band: Color, onClick
                 }
                 translate(0f, 2.dp.toPx()) { drawPath(tag, Color.Black.copy(alpha = if (style.dark) 0.3f else 0.06f)) }
                 drawPath(tag, kraft)
-                // The band across the tag's end, and the eyelet through the card.
-                drawRect(band.copy(alpha = if (style.dark) 0.75f else 0.9f), Offset(26.dp.toPx(), 0f), Size(4.dp.toPx(), size.height))
-                val eye = Offset(13.dp.toPx(), size.height / 2f)
-                drawCircle(c.bg, 4.dp.toPx(), eye)
-                drawCircle(c.muted.copy(alpha = 0.7f), 5.5.dp.toPx(), eye, style = Stroke(1.5.dp.toPx()))
+                // The airline's stripe along the top edge, printed on the card.
+                clipPath(tag) { drawRect(band.copy(alpha = if (style.dark) 0.8f else 0.9f), size = Size(size.width, 3.dp.toPx())) }
+                // The eyelet, a ring of brass round the hole, and the string looped through it.
+                val eye = Offset(12.dp.toPx(), size.height / 2f)
+                val string = Path().apply {
+                    moveTo(eye.x, eye.y)
+                    cubicTo(eye.x - 6.dp.toPx(), eye.y - 9.dp.toPx(), -6.dp.toPx(), eye.y - 7.dp.toPx(), -10.dp.toPx(), eye.y + 2.dp.toPx())
+                }
+                drawPath(string, c.muted.copy(alpha = 0.55f), style = Stroke(1.2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round))
+                drawCircle(c.bg, 2.6.dp.toPx(), eye)
+                drawCircle(Color(0xFFB08D57).copy(alpha = if (style.dark) 0.7f else 0.9f), 4.dp.toPx(), eye, style = Stroke(1.6.dp.toPx()))
             }
             .then(if (onClick != null) Modifier.pressable(onClick = onClick) else Modifier)
-            .padding(start = 38.dp, end = 10.dp, top = 9.dp, bottom = 9.dp),
+            .padding(start = 26.dp, end = 10.dp, top = 10.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ThemedIcon(icon, null, tint = bandInk, size = 18.dp)

@@ -51,6 +51,9 @@ import io.lanyin.player.ui.design.formatTime
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.theme.FilmStamp
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.ui.design.dateStampWidth
+import io.lanyin.player.ui.design.drawDateStamp
+import androidx.compose.ui.draw.clip
 
 private val FilmBase = Color(0xFF0B0A09)
 private val SheetWhite = Color(0xFFE9E1D3)
@@ -69,11 +72,14 @@ internal fun FilmHome(model: HomeModel) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
         item {
             Row(Modifier.padding(horizontal = m), verticalAlignment = Alignment.CenterVertically) {
-                Text("LANYIN PICTURES", style = edge.copy(fontSize = fixedSp(10f)), color = style.colors.muted, modifier = Modifier.weight(1f))
+                Text(
+                    "REEL %02d · %d.%02d.%02d".format(model.now.dayOfMonth, model.now.year, model.now.monthValue, model.now.dayOfMonth),
+                    style = edge.copy(fontSize = fixedSp(10f)), color = style.colors.muted, modifier = Modifier.weight(1f),
+                )
                 HeaderActions(model.account, model.openSettings, model.openAccount)
             }
         }
-        item { Slate(model, Modifier.padding(start = m, end = m, top = 10.dp)) }
+        item { TitleSequence(model, Modifier.padding(start = m, end = m, top = 10.dp)) }
         item { FeatureStrip(model, Modifier.padding(top = 22.dp)) }
         item { Labels(model, Modifier.padding(start = m, end = m, top = 18.dp)) }
         if (!model.signedIn) item { ConnectLine(model.login, Modifier.padding(start = m, end = m, top = 18.dp)) }
@@ -100,64 +106,44 @@ internal fun FilmHome(model: HomeModel) {
 
 private val edge = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 0.14.em)
 
-/** The clapperboard: striped sticks over a grid of chalked fields. */
+/**
+ * The opening titles: a letterboxed still of the day (the lens's falloff at its edges, the
+ * camera's orange date stamp), LANYIN PICTURES PRESENTS and the greeting set as the film's
+ * title across it, and the credit line beneath.
+ */
 @Composable
-private fun Slate(model: HomeModel, modifier: Modifier) {
+private fun TitleSequence(model: HomeModel, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val now = model.now
-    val line = c.content.copy(alpha = 0.45f)
-    Column(modifier.fillMaxWidth().border(1.dp, line)) {
-        Canvas(Modifier.fillMaxWidth().height(20.dp)) {
-            drawRect(c.content)
-            // The sticks' diagonal bands.
-            val band = 16.dp.toPx()
-            var x = -size.height
-            var k = 0
-            while (x < size.width + size.height) {
-                if (k % 2 == 0) {
-                    val path = Path().apply {
-                        moveTo(x, size.height)
-                        lineTo(x + band, size.height)
-                        lineTo(x + band + size.height, 0f)
-                        lineTo(x + size.height, 0f)
-                        close()
-                    }
-                    drawPath(path, FilmBase)
-                }
-                x += band
-                k++
+    val stamp = "'%02d %d %02d".format(now.year % 100, now.monthValue, now.dayOfMonth)
+    val shade = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 1f), 10f)
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1.9f).clip(androidx.compose.foundation.shape.RoundedCornerShape(2.dp)).background(Color.Black)) {
+            CoverArt(now.dayOfMonth, Modifier.fillMaxSize())
+            Canvas(Modifier.matchParentSize()) {
+                drawRect(Brush.radialGradient(listOf(Color.Black.copy(alpha = 0.15f), Color.Black.copy(alpha = 0.7f)), Offset(size.width / 2f, size.height / 2f), size.width * 0.7f))
+                val bar = size.height * 0.12f
+                drawRect(Color.Black, size = Size(size.width, bar))
+                drawRect(Color.Black, Offset(0f, size.height - bar), Size(size.width, bar))
+                val h = 10.dp.toPx()
+                drawDateStamp(stamp, Offset(size.width - dateStampWidth(stamp, h) - 12.dp.toPx(), size.height - bar - h - 8.dp.toPx()), h)
             }
-        }
-        SlateRow(line, listOf("PROD." to "澜音 LANYIN", "ROLL" to "%02d".format(now.dayOfMonth)))
-        SlateRow(line, listOf("SCENE" to greeting(now.hour), "TAKE" to "01"), big = true)
-        SlateRow(line, listOf("DATE" to "%d.%02d.%02d".format(now.year, now.monthValue, now.dayOfMonth), "DIRECTOR" to (model.profile?.nickname ?: "你")), stamp = true)
-    }
-}
-
-@Composable
-private fun SlateRow(line: Color, cells: List<Pair<String, String>>, big: Boolean = false, stamp: Boolean = false) {
-    val style = Lanyin.style
-    val c = style.colors
-    Box(Modifier.fillMaxWidth().height(1.dp).background(line))
-    Row(Modifier.height(IntrinsicSize.Min)) {
-        cells.forEachIndexed { i, (label, value) ->
-            if (i > 0) Box(Modifier.width(1.dp).fillMaxHeight().background(line))
-            Column(Modifier.weight(if (i == 0) 1.6f else 1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Text(label, style = edge.copy(fontSize = fixedSp(9f)), color = c.muted)
+            Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("LANYIN PICTURES PRESENTS", style = edge.copy(fontSize = fixedSp(9f), letterSpacing = 0.3.em, shadow = shade), color = Color.White.copy(alpha = 0.78f))
                 Text(
-                    value,
-                    style = when {
-                        big -> style.type.display.copy(fontSize = 28.sp, lineHeight = 34.sp)
-                        stamp && i == 0 -> edge.copy(fontSize = 15.sp, letterSpacing = 0.06.em)
-                        else -> style.type.title
-                    },
-                    color = if (stamp && i == 0) FilmStamp else c.content,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    greeting(now.hour),
+                    style = style.type.display.copy(fontSize = 36.sp, lineHeight = 42.sp, letterSpacing = 0.16.em, shadow = shade),
+                    color = Color.White,
+                    modifier = Modifier.padding(top = 6.dp),
                 )
             }
         }
+        Text(
+            "DIRECTED BY  ${model.profile?.nickname ?: "你"}   ·   %d.%02d.%02d".format(now.year, now.monthValue, now.dayOfMonth),
+            style = edge.copy(fontSize = fixedSp(9f), letterSpacing = 0.2.em), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 10.dp),
+        )
     }
 }
 
