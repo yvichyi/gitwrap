@@ -45,6 +45,8 @@ import io.lanyin.player.ui.music.SongRow
 import io.lanyin.player.ui.music.describe
 import io.lanyin.player.ui.player.PlayerState
 import androidx.compose.foundation.lazy.itemsIndexed
+import io.lanyin.player.ui.design.ScrolledTitleBar
+import io.lanyin.player.ui.design.revealed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.LaunchedEffect
@@ -121,8 +123,12 @@ fun SearchScreen(
             Load.Failed(describe(e))
         }
     }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Each new set of results rises into place, row after row.
+    val reveal = io.lanyin.player.ui.design.rememberReveal((results as? Load.Ready)?.value)
     CompositionLocalProvider(LocalContentColor provides c.content) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+      androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = pagePadding()) {
             item { PageTitle("搜索", Modifier.padding(horizontal = m), subtitle = "歌名、歌手或专辑") }
             item {
                 ThemedTextField(
@@ -159,22 +165,29 @@ fun SearchScreen(
                                 },
                                 onMore = { openSheet(io.lanyin.player.ui.music.Sheet.TrackActions(song)) },
                                 downloaded = song.id in downloaded,
-                                modifier = Modifier.padding(start = m, end = m - 10.dp),
+                                modifier = Modifier.revealed(reveal, i).padding(start = m, end = m - 10.dp),
                             )
                         }
-                        is SearchResults.Artists -> itemsIndexed(value.items, key = { _, a -> a.id }) { _, a ->
-                            ResultRow(a.pictureUrl, a.name, "${a.albumCount} 张专辑", round = true, seed = (a.id % 97).toInt()) { keepQuery(); onOpenArtist(a.id, a.name) }
+                        is SearchResults.Artists -> itemsIndexed(value.items, key = { _, a -> a.id }) { i, a ->
+                            androidx.compose.foundation.layout.Box(Modifier.revealed(reveal, i)) {
+                                ResultRow(a.pictureUrl, a.name, "${a.albumCount} 张专辑", round = true, seed = (a.id % 97).toInt()) { keepQuery(); onOpenArtist(a.id, a.name) }
+                            }
                         }
-                        is SearchResults.Albums -> itemsIndexed(value.items, key = { _, a -> a.id }) { _, a ->
-                            ResultRow(a.coverUrl, a.name, listOf(a.artistName, "${a.size} 首").filter { it.isNotEmpty() }.joinToString(" · "), round = false, seed = (a.id % 97).toInt()) { keepQuery(); onOpenAlbum(a.id, a.name) }
+                        is SearchResults.Albums -> itemsIndexed(value.items, key = { _, a -> a.id }) { i, a ->
+                            androidx.compose.foundation.layout.Box(Modifier.revealed(reveal, i)) {
+                                ResultRow(a.coverUrl, a.name, listOf(a.artistName, "${a.size} 首").filter { it.isNotEmpty() }.joinToString(" · "), round = false, seed = (a.id % 97).toInt()) { keepQuery(); onOpenAlbum(a.id, a.name) }
+                            }
                         }
-                        is SearchResults.Playlists -> itemsIndexed(value.items, key = { _, p -> p.id }) { _, p ->
-                            io.lanyin.player.ui.music.PlaylistRow(p, { keepQuery(); onOpenPlaylist(p.id, p.name) }, Modifier.padding(horizontal = m))
+                        is SearchResults.Playlists -> itemsIndexed(value.items, key = { _, p -> p.id }) { i, p ->
+                            io.lanyin.player.ui.music.PlaylistRow(p, { keepQuery(); onOpenPlaylist(p.id, p.name) }, Modifier.revealed(reveal, i).padding(horizontal = m))
                         }
                     }
                 }
             }
         }
+        // Once the title and the field have scrolled away, the page's name stays in a slim bar.
+        ScrolledTitleBar(listState, "搜索", showAfter = 2)
+      }
     }
 }
 

@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import io.lanyin.player.ui.design.ScrolledTitleBar
+import io.lanyin.player.ui.design.revealed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
@@ -117,7 +120,11 @@ fun LibraryScreen(
     CompositionLocalProvider(LocalContentColor provides c.content) {
         val syncing by (library?.syncing ?: remember { MutableStateFlow(false) }).collectAsState()
         io.lanyin.player.ui.design.ThemedPullRefresh(syncing, onRefresh = { library?.refresh() }) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+        val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+        // The playlists rise into place when they first arrive, and again when the shelf changes.
+        val reveal = io.lanyin.player.ui.design.rememberReveal(shelf to (shelfItems != null))
+        Box(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = pagePadding()) {
             item { PageTitle("我的", Modifier.padding(horizontal = m)) }
             item { ThemedProfile(account, onLogin, Modifier.padding(start = m, end = m, top = 24.dp)) }
             item {
@@ -141,9 +148,11 @@ fun LibraryScreen(
             if (signedIn && shelf == "创建的歌单" && shelfItems != null) {
                 item(key = "new") { NewPlaylistRow({ openSheet(io.lanyin.player.ui.music.Sheet.NewPlaylist()) }, Modifier.padding(horizontal = m)) }
             }
-            items(shelfItems.orEmpty(), key = { it.id }) { p ->
-                PlaylistRow(p, { onOpenPlaylist(p.id, p.name) }, Modifier.padding(horizontal = m))
+            itemsIndexed(shelfItems.orEmpty(), key = { _, p -> p.id }) { i, p ->
+                PlaylistRow(p, { onOpenPlaylist(p.id, p.name) }, Modifier.revealed(reveal, i).padding(horizontal = m))
             }
+        }
+        ScrolledTitleBar(listState, "我的", showAfter = 1)
         }
         }
     }

@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.lanyin.player.core.model.Album
 import io.lanyin.player.core.model.Artist
@@ -52,7 +54,7 @@ class ListPageTest(private val theme: AppTheme, private val mode: ThemeMode) {
         )
     }
 
-    private fun shot(name: String, title: String, subtitle: String?, header: ListHeader) {
+    private fun shot(name: String, title: String, subtitle: String?, header: ListHeader, scrolled: Boolean = false) {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             LanyinTheme(theme = theme, mode = mode) {
@@ -60,17 +62,24 @@ class ListPageTest(private val theme: AppTheme, private val mode: ThemeMode) {
                 Box(Modifier.fillMaxSize()) {
                     Backdrop(Modifier.fillMaxSize())
                     SongListScreen(
-                        title, subtitle, header, Load.Ready(songs), playingId = 102, isPlaying = true,
+                        title, subtitle, header, Load.Ready(if (scrolled) songs + songs.map { it.copy(id = it.id + 50) } else songs), playingId = 102, isPlaying = true,
                         onBack = {}, onPlay = { _, _ -> }, onRetry = {}, likedIds = setOf(100, 105),
                     )
                 }
             }
         }
         compose.mainClock.advanceTimeBy(1_500)
+        if (scrolled) {
+            // Far enough that the hero has gone and the slim title bar has come down.
+            compose.onRoot().performTouchInput { swipeUp(startY = bottom * 0.85f, endY = top + height * 0.35f, durationMillis = 600) }
+            compose.mainClock.advanceTimeBy(1_500)
+        }
         compose.onRoot().captureRoboImage("build/outputs/roborazzi/lists/${theme.name.lowercase()}_$name.png")
     }
 
     @Test fun playlist() = shot("playlist", "深夜写代码", "潮汐里的鲸 · 写给夜里还亮着的屏幕", ListHeader.Cover(null, 7))
 
     @Test fun daily() = shot("daily", "每日推荐", "根据你的口味生成，每天 6:00 更新", ListHeader.Day(16, "10月 · 周五"))
+
+    @Test fun scrolled() = shot("scrolled", "深夜写代码", "潮汐里的鲸 · 写给夜里还亮着的屏幕", ListHeader.Cover(null, 7), scrolled = true)
 }

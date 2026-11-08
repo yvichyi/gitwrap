@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import io.lanyin.player.ui.design.parallaxAway
+import io.lanyin.player.ui.design.ScrolledTitleBar
+import io.lanyin.player.ui.design.revealed
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -110,8 +113,12 @@ fun SongListScreen(
     val services = LocalAppServices.current
     val liveDownloaded = services?.downloads?.done?.collectAsState()?.value
     val downloaded = downloadedIds ?: liveDownloaded ?: emptySet()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // The rows rise into place, one after another, when they first arrive.
+    val reveal = io.lanyin.player.ui.design.rememberReveal(songs is Load.Ready)
     CompositionLocalProvider(LocalContentColor provides c.content) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding(extraTop = 4.dp)) {
+      Box(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = pagePadding(extraTop = 4.dp)) {
             item {
                 Row(Modifier.fillMaxWidth().padding(horizontal = m - 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconAction(LineIcon.Back, "返回", onBack)
@@ -119,7 +126,8 @@ fun SongListScreen(
                     topActions()
                 }
             }
-            item { ListHero(title, subtitle, header, Modifier.padding(start = m, end = m, top = 8.dp)) }
+            // As the page scrolls, the hero drifts up behind the rows and fades.
+            item { ListHero(title, subtitle, header, Modifier.parallaxAway(listState, 1).padding(start = m, end = m, top = 8.dp)) }
             if (tabs != null) item { Box(Modifier.padding(start = m, end = m, top = 20.dp)) { tabs() } }
             when (songs) {
                 Load.Loading -> item { Placeholder("正在加载…") }
@@ -150,7 +158,7 @@ fun SongListScreen(
                             onClick = { onPlay(list, i) },
                             onMore = { openSheet(Sheet.TrackActions(song, songContext)) },
                             trailing = trailing?.let { t -> { t(song) } },
-                            modifier = Modifier.padding(start = m, end = m - 10.dp),
+                            modifier = Modifier.revealed(reveal, i).padding(start = m, end = m - 10.dp),
                         )
                     }
                     if (list.isNotEmpty() && onEndReached == null && !loadingMore && !moreFailed) {
@@ -176,6 +184,9 @@ fun SongListScreen(
                 }
             }
         }
+        // Past the hero, the title stays in a slim bar over the top.
+        ScrolledTitleBar(listState, title, showAfter = 2, onBack = onBack, actions = topActions)
+      }
     }
 }
 

@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import io.lanyin.player.ui.theme.AppTheme
@@ -31,11 +32,11 @@ class PlayerInteractionTest {
 
     @get:Rule val compose = createComposeRule()
 
-    private fun show(state: DemoPlayerState, theme: AppTheme = AppTheme.INK) {
+    private fun show(state: DemoPlayerState, theme: AppTheme = AppTheme.INK, onCollapse: () -> Unit = {}) {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             LanyinTheme(theme = theme, mode = ThemeMode.LIGHT) {
-                PlayerScreen(state, PlayerSkin.VINYL, rememberSpinState(false), keepScreenOnInLandscape = false, onCollapse = {})
+                PlayerScreen(state, PlayerSkin.VINYL, rememberSpinState(false), keepScreenOnInLandscape = false, onCollapse = onCollapse)
             }
         }
         compose.mainClock.advanceTimeBy(500)
@@ -109,6 +110,27 @@ class PlayerInteractionTest {
 
     @Test
     fun `in portrait, a tap beside the lyrics on 游's screen brings the cover back`() = lyricsAndBack(AppTheme.GAME, shown = "封面", hidden = "歌词")
+
+    /** Pulls the top bar down by [by] of the screen's height over [ms]; how many times it closed. */
+    private fun pull(by: Float, ms: Long): Int {
+        var closed = 0
+        show(DemoPlayerState(), onCollapse = { closed++ })
+        compose.onNodeWithContentDescription("收起").performTouchInput {
+            val screen = 1_700f
+            swipeDown(startY = centerY, endY = centerY + screen * by, durationMillis = ms)
+        }
+        compose.mainClock.advanceTimeBy(1_000)
+        return closed
+    }
+
+    @Test
+    fun `pulled down a little, the player springs back`() = assertEquals(0, pull(0.05f, 600))
+
+    @Test
+    fun `pulled down past a fifth of the screen, the player closes`() = assertEquals(1, pull(0.3f, 700))
+
+    @Test
+    fun `flicked down, the player closes`() = assertEquals(1, pull(0.1f, 60))
 
     private fun countCollapse(): Int =
         compose.onAllNodes(androidx.compose.ui.test.hasContentDescription("收起")).fetchSemanticsNodes().size

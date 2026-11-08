@@ -30,7 +30,7 @@ import io.lanyin.player.ui.design.Marquee
 import io.lanyin.player.ui.design.Sticker
 import io.lanyin.player.ui.design.retroShadow
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -139,28 +139,34 @@ fun PlayerScreen(
     val scope = rememberCoroutineScope()
     val view = LocalView.current
 
-    // 0 = resting, 1 = fully pulled away; driven by drag-down and predictive back.
-    var dismiss by remember { mutableFloatStateOf(0f) }
+    // How far the player has been pulled down by a finger, in pixels, and how far the predictive
+    // back gesture has gone (0 to 1). The page follows the finger one to one.
+    var pulled by remember { mutableFloatStateOf(0f) }
+    var back by remember { mutableFloatStateOf(0f) }
+    val screenPx = with(androidx.compose.ui.platform.LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
     PredictiveBackHandler { progress ->
         try {
-            progress.collect { dismiss = it.progress * 0.5f }
+            progress.collect { back = it.progress }
             onCollapse()
         } catch (e: CancellationException) {
-            scope.launch { animate(dismiss, 0f, animationSpec = style.motion.spec()) { v, _ -> dismiss = v } }
+            scope.launch { animate(back, 0f, animationSpec = style.motion.spec()) { v, _ -> back = v } }
             throw e
         }
     }
-    val dismissDrag = Modifier.pointerInput(Unit) {
-        detectVerticalDragGestures(
-            onDragEnd = {
-                if (dismiss > 0.22f) onCollapse()
-                else scope.launch { animate(dismiss, 0f, animationSpec = style.motion.spec()) { v, _ -> dismiss = v } }
-            },
-        ) { change, dy ->
-            change.consume()
-            dismiss = (dismiss + dy / (size.height * 1.2f)).coerceIn(0f, 1f)
-        }
-    }
+    // Pull down anywhere it's offered (the top bar, the artwork): a flick, or a pull past a fifth
+    // of the screen, closes the player; anything less springs back.
+    val dragState = androidx.compose.foundation.gestures.rememberDraggableState { dy -> pulled = (pulled + dy).coerceAtLeast(0f) }
+    val dismissDrag = Modifier.draggable(
+        dragState,
+        androidx.compose.foundation.gestures.Orientation.Vertical,
+        onDragStopped = { velocity ->
+            if (pulled > screenPx * 0.2f || velocity > 1_400f && pulled > 24f) {
+                onCollapse()
+            } else {
+                animate(pulled, 0f, initialVelocity = velocity, animationSpec = style.motion.spec()) { v, _ -> pulled = v }
+            }
+        },
+    )
 
     // Landscape is a stage: hide system bars and keep the screen on.
     DisposableEffect(landscape) {
@@ -189,13 +195,15 @@ fun PlayerScreen(
                 .fillMaxSize()
                 .sharedPlayer("player-container", container = true)
                 .graphicsLayer {
-                    val p = dismiss
-                    val s = 1f - 0.1f * p
+                    // Pulled: it follows the finger, giving a little in size and rounding off as a
+                    // card would. Predictive back: it shrinks back towards where it came from.
+                    val p = (pulled / size.height).coerceIn(0f, 1f)
+                    val s = 1f - 0.08f * p - 0.1f * back
                     scaleX = s
                     scaleY = s
-                    translationY = p * 96.dp.toPx()
-                    shape = RoundedCornerShape(36.dp * p)
-                    clip = p > 0f
+                    translationY = pulled + back * 48.dp.toPx()
+                    shape = RoundedCornerShape((32.dp * (p * 6f + back).coerceAtMost(1f)))
+                    clip = p > 0f || back > 0f
                 }
                 .background(c.bg),
         ) {
