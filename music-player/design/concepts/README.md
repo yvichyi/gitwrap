@@ -5,7 +5,7 @@
 | 主题 | 概念 | 画法 |
 | --- | --- | --- |
 | 霓 | 夜行：坐在车里，雨夜高架。上面一条横向挡风玻璃（天际线、路灯、前车尾灯、湿路面倒影、雨珠、后视镜、香片、黑猫），下面是车内：中控屏就是页面，卡带收音机的液晶显示正在放的歌，六个预置键在首页是导航、在播放页是走带键，抬头显示投路线和歌词 | 像素画 130×282，27 色调色板，`pxdrive.py` |
-| 机 | 组合音响：收音头（荧光屏、七段数码管、长刻度盘、预置键）、五碟换碟机（推荐歌单就是五张碟）、功放（一对 VU 表，输入选择旋钮的挡位是首页/搜索/我的）；播放页是卡座，两个卷盘的带量随进度变化，琴键式走带键 | 矢量（HTML/SVG），`hifi.html` |
+| 机 | 胡桃木柜里的香槟银组合音响：收音头（荧光屏、七段数码管、灯照刻度盘、预置键）、五碟换碟机（推荐歌单就是五张碟）、功放（一对暖光 VU 表，输入选择旋钮的挡位是首页/搜索/我的）、卡座迷你播放条；播放页是卡座：暖灯照着的磁带，卷盘带量随进度变化，机械计数器、荧光电平表、点阵歌词、灯照磁带刻度（进度条）、琴键式走带键 | 2.5D 材质渲染：高度场加材质（拉丝铝、钻石切边倒角、滚花和车削旋钮、内六角螺丝、钮子开关、胡桃木、玻璃、荧光屏辉光），软阴影和环境光遮蔽，`hirender.py`、`hikit.py`、`hihome.py`、`hiplay.py`、`hiland.py` |
 | 游 | 整屏 1-bit 游戏（不画掌机）：首页是世界地图，各入口是关卡，对话框、道具栏、歌单是存档；播放页是横版关卡，小猫跑到终点旗时歌放完，月亮是抖动成 1-bit 的封面 | 像素画 195×422 放大 2 倍，两色，`pxgame2.py` |
 | 酸 | 传单墙：每日推荐是主传单（阵容表、撕纸条入口），旁边贴着复印的歌单传单；播放页是这首歌的大海报 | 矢量 + 复印网点，`acid3.html`、`halftone.py` |
 | 暮 | 孔版工作台：切割垫上用胶带贴着三色孔版画，分色稿、色票扇入口、铅笔批注；播放页封面印成落日随进度沉到山后，放大镜看网点，钢尺是进度，印章是按键 | 三色孔版模拟，`covers3.py`、`separations.py`、`dusk3.html` |
@@ -16,7 +16,7 @@
 
 1. 字体：`python3 -I fetch_fonts.py fonts` 取西文字体，`python3 -I fetch_cjk.py fonts *.html` 按页面用到的字取思源黑体/宋体子集。
 2. 封面：`node render.js` 渲染 `covers.glsl` 的五种封面（`uMode` 0–4），`python3 -I covers3.py covers` 生成孔版封面和赛博城市图；`pxcovers.py`、`halftone.py`、`separations.py` 生成像素封面、复印网点和分色稿。
-3. 像素画：`python3 -I pxdrive.py . home|play`、`pxland.py .`（霓的横屏）、`pxgame2.py . home|play|land`。
-4. 截图：`NODE_PATH=$(npm root -g) node shoot.js $PWD nightpx cam hifi game4 acid3 dusk3`，横屏 `node shoot_land.js $PWD`。
+3. 像素画：`python3 -I pxdrive.py . home|play`、`pxland.py .`（霓的横屏）、`pxgame2.py . home|play|land`。机的三个屏幕：`python3 -I hihome.py`、`hiplay.py`、`hiland.py`（3 倍分辨率，每张约一分钟）。
+4. 截图：`NODE_PATH=$(npm root -g) node shoot.js $PWD nightpx game4 acid3 dusk3`，机的样稿用两倍像素 `DSF=2 … node shoot.js $PWD hifi`，横屏 `node shoot_land.js $PWD`。
 
 页面里的路径按生成时的临时目录写的（`../concept/…`），在别处重跑要相应改一下。

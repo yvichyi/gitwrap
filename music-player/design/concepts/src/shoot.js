@@ -3,7 +3,7 @@ const dir = process.argv[2];
 const ids = process.argv.slice(3);
 (async () => {
   const b = await chromium.launch();
-  const pg = await b.newPage({ viewport: { width: 1360, height: 1000 }, deviceScaleFactor: 1 });
+  const pg = await b.newPage({ viewport: { width: 1360, height: 1000 }, deviceScaleFactor: +(process.env.DSF || 1) });
   for (const id of ids) {
     await pg.goto('file://' + dir + '/' + id + '.html');
     await pg.evaluate(() => document.fonts.ready);

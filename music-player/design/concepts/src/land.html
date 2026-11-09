@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="fonts/cjk.css">
 <link rel="stylesheet" href="fonts/longcang_local.css">
 <link rel="stylesheet" href="../concept/base.css">
-<link rel="stylesheet" href="hifi.css">
+<script src="hist.js"></script>
 <style>
 @font-face { font-family: "Fusion Pixel"; src: url("file:///home/user/gitwrap/music-player/app/src/main/res/font/fusion_pixel.ttf"); }
 @font-face { font-family: "Archivo Black"; src: url("file:///home/user/gitwrap/music-player/app/src/main/res/font/archivo_black.ttf"); }
@@ -27,7 +27,6 @@ body { background: #141416; }
 </head>
 <body>
 <script src="../concept/icons.js"></script>
-<script src="hifi_helpers.js"></script>
 <svg width="0" height="0" style="position:absolute">
   <symbol id="smiley" viewBox="0 0 84 96"><path d="M42 2a40 40 0 1 1 -0.1 0z" fill="#d6ff1e"/><path d="M28 76 q0 14 6 14 q4 0 4 -12z M58 78 q0 10 4 10 q3 0 3 -11z" fill="#d6ff1e"/><ellipse cx="29" cy="34" rx="5" ry="9" fill="#0b0b0b"/><ellipse cx="55" cy="34" rx="5" ry="9" fill="#0b0b0b"/><path d="M18 50 q24 30 48 0" fill="none" stroke="#0b0b0b" stroke-width="5" stroke-linecap="round"/></symbol>
   <symbol id="reg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M12 0v24M0 12h24" stroke="currentColor" stroke-width="1.3"/></symbol>
@@ -50,28 +49,48 @@ body { background: #141416; }
   </div>
 </section>
 
-<!-- 机 -->
-<section class="lb" id="l_device"><div class="t"><b>机</b><span>CASSETTE DECK</span><p>卡座本来就是横的：左边舱门里的磁带在转，右边荧光屏上是电平表和歌词，下面是琴键式走带键。</p></div>
-  <div class="land hf" style="background:#0d0c0b">
-    <div class="alu" id="ldeck" style="left:10px;right:10px;top:10px;bottom:10px;border-radius:30px">
-      <span class="brand" style="position:absolute;left:34px;top:20px">LANYIN</span><span class="model" style="position:absolute;left:102px;top:23px">TC-18 · STEREO CASSETTE DECK</span>
-      <div id="ldoor" style="position:absolute;left:30px;top:40px;width:380px;height:244px;border-radius:6px;background:linear-gradient(#26282b,#141517);box-shadow:inset 0 2px 8px #000, 0 0 0 1px #6f7276, 0 1px 0 1px #f2f3f5"></div>
-      <div style="position:absolute;left:30px;top:296px;font:600 15px 'Noto Sans SC';color:#1d1e20">雨停以后 <span style="font:500 11px 'Noto Sans SC';color:#55585c">北岸乐队 · 夜航</span></div>
-      <div style="position:absolute;left:30px;top:322px;width:380px;height:24px" id="lruler"></div>
-      <div class="glass" style="left:430px;top:40px;width:364px;height:120px">
-        <div id="lmeters" style="position:absolute;left:10px;right:10px;top:10px"></div>
-        <div class="px v" style="position:absolute;left:10px;top:70px">♪ 只剩你的歌还亮着</div>
-        <div class="px" style="position:absolute;left:10px;top:92px;color:#2fb79b">NEXT ▸ 雨落在霓虹的背面</div>
-        <div class="px v" style="position:absolute;right:10px;top:70px">PLAY ▶</div>
+<!-- 影 -->
+<section class="lb" id="l_film"><div class="t"><b>影</b><span>ON SET</span><p>横屏左边是监视器和片名，右边是这一场的剧本页，当前的台词（歌词）用荧光笔划着。</p></div>
+  <div class="land cm" style="background:#0a0a0b;color:#f2f2f0;font-family:Barlow,'Noto Sans SC'">
+    <div class="z" style="left:28px;top:22px;width:500px;height:281px;overflow:hidden;background:#000">
+      <div style="position:absolute;inset:-30px;background:url(covers/c5.png) center/cover;filter:blur(22px) brightness(.45)"></div>
+      <div style="position:absolute;left:50%;top:0;bottom:0;aspect-ratio:1;transform:translateX(-50%);background:url(covers/c5.png) center/cover;box-shadow:0 0 40px rgba(0,0,0,.6)"></div>
+      <div style="position:absolute;inset:0;background:radial-gradient(130% 100% at 50% 50%, transparent 55%, rgba(0,0,0,.5))"></div>
+      <div style="position:absolute;left:12px;top:12px;width:12px;height:12px;border-left:1px solid rgba(255,255,255,.7);border-top:1px solid rgba(255,255,255,.7)"></div><div style="position:absolute;right:12px;top:12px;width:12px;height:12px;border-right:1px solid rgba(255,255,255,.7);border-top:1px solid rgba(255,255,255,.7)"></div>
+      <div style="position:absolute;left:12px;bottom:12px;width:12px;height:12px;border-left:1px solid rgba(255,255,255,.7);border-bottom:1px solid rgba(255,255,255,.7)"></div><div style="position:absolute;right:12px;bottom:12px;width:12px;height:12px;border-right:1px solid rgba(255,255,255,.7);border-bottom:1px solid rgba(255,255,255,.7)"></div>
+      <div style="position:absolute;left:30px;top:14px;font:600 8px Barlow;letter-spacing:.16em;color:rgba(255,255,255,.75)">A001_C003</div>
+      <div style="position:absolute;right:30px;top:12px;font:500 11px 'Barlow Condensed';letter-spacing:.06em;color:#ff453a"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ff453a;margin-right:5px;vertical-align:1px"></span>00:00:58:12</div>
+    </div>
+    <div class="z" style="left:28px;top:312px;width:500px">
+      <div style="height:8px" id="ltl"></div>
+      <div class="row" style="justify-content:space-between;align-items:center;margin-top:12px">
+        <div><span style="font:700 18px 'Noto Serif SC'">雨停以后</span> <span style="font:500 8px Barlow;letter-spacing:.16em;color:#8b8b90;margin-left:8px">北岸乐队 · SCENE 03 / 30</span></div>
+        <div class="row" style="gap:18px;align-items:center"><span style="font:500 8px Barlow;letter-spacing:.16em">◀ 第 2 场</span><div style="width:40px;height:40px;border-radius:50%;background:#f2f2f0;display:grid;place-items:center;color:#0a0a0b"><svg class="i" style="width:18px;height:18px"><use href="#pause"/></svg></div><span style="font:500 8px Barlow;letter-spacing:.16em">第 4 场 ▶</span></div>
       </div>
-      <span class="eng" style="position:absolute;left:432px;top:178px">COUNTER</span>
-      <div style="position:absolute;left:432px;top:190px;width:70px;height:20px;border-radius:2px;background:#0d0d0e;box-shadow:inset 0 2px 3px #000, 0 0 0 1px #6f7276;display:flex;gap:2px;padding:2px" id="lcounter"></div>
-      <div class="knob" style="left:640px;top:170px;width:46px;height:46px"><i style="transform:rotate(-30deg)"></i></div><span class="eng" style="position:absolute;left:636px;top:222px">REC LEVEL</span>
-      <div class="knob" style="left:720px;top:170px;width:46px;height:46px"><i style="transform:rotate(50deg)"></i></div><span class="eng" style="position:absolute;left:722px;top:222px">OUTPUT</span>
-      <span class="eng" style="position:absolute;left:520px;top:182px">CrO2 <span class="led g"></span> NR B <span class="led a"></span></span>
-      <div id="lkeys"></div>
+    </div>
+    <div class="z script" style="left:548px;top:16px;width:272px;height:358px">
+      <i class="hole" style="top:60px"></i><i class="hole" style="top:175px"></i><i class="hole" style="top:290px"></i>
+      <i class="brad" style="top:56px"></i><i class="brad" style="top:286px"></i>
+      <div class="cp" style="position:absolute;right:18px;top:12px;font-size:11px">3.</div>
+      <div class="cp" style="position:absolute;left:38px;right:16px;top:32px;font-weight:700;font-size:11.5px">3&nbsp;&nbsp;外景. 雨后的街道 — 夜</div>
+      <div class="sc" style="position:absolute;left:38px;right:22px;top:54px;font-size:11.5px;line-height:1.7">街灯一盏一盏亮起。积水里倒着前车红色的尾灯。</div>
+      <div class="sc" style="position:absolute;left:0;right:0;top:104px;text-align:center;font-size:11.5px;letter-spacing:.12em">北岸乐队</div>
+      <div class="sc" style="position:absolute;left:0;right:0;top:122px;text-align:center;font-size:11px;color:#6a655c">（轻声，接着唱）</div>
+      <div class="sc" style="position:absolute;left:62px;right:40px;top:146px;font-size:13px;line-height:2.05">
+        <div style="color:#8f897d">城市的灯一盏盏熄灭</div>
+        <div style="position:relative;display:inline-block"><span class="hl"></span><span style="position:relative">只剩你的歌还亮着</span></div>
+        <div>雨落在霓虹的背面</div>
+        <div style="color:#a8a296">我们在节拍之间相遇</div>
+      </div>
+      <div class="hand" style="position:absolute;right:8px;top:250px;font-size:14px;color:#55524c;transform:rotate(-6deg)">慢一点 <span style="border:1.5px solid #6d6a62;border-radius:50%;padding:1px 6px">0:58</span></div>
+      <div class="cp" style="position:absolute;right:22px;top:322px;font-size:11px;font-weight:700">切至：</div>
     </div>
   </div>
+</section>
+
+<!-- 机 -->
+<section class="lb" id="l_device"><div class="t"><b>机</b><span>CASSETTE DECK</span><p>卡座本来就是横的：左边烟色舱门里一盘磁带被暖灯照着，卷盘的带量跟着进度走；右边一对 VU 表、荧光屏上的点阵歌词和频谱，下面是灯照的磁带刻度（进度条）和琴键式走带键。整块面板按真实材质渲染。</p></div>
+  <div class="land" style="background:#0d0c0b"><img src="hi_land.png" style="width:844px;height:390px;display:block" alt=""></div>
 </section>
 
 <!-- 游 -->
@@ -148,26 +167,20 @@ body { background: #141416; }
 const $ = id => document.getElementById(id);
 // 霓
 $('nprog').innerHTML = Array.from({ length: 26 }, (_, i) => `<i style="width:3px;height:6px;background:${i < 7 ? '#e89a3e' : i === 7 ? '#d8e4ee' : '#20283a'}"></i>`).join('');
-// 机
-$('ldoor').innerHTML = `<div style="position:absolute;left:20px;top:14px">${cassette(340, 216, .26, '<text x="20" y="40" font-family="Long Cang" font-size="15" fill="#1f2a5a">雨停以后 · 北岸乐队</text>')}</div><div style="position:absolute;inset:0;border-radius:6px;background:linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,0) 35%), rgba(30,22,16,.25)"></div>`;
-$('lcounter').innerHTML = ['0', '0', '5', '8'].map(d => `<span style="flex:1;background:linear-gradient(#2b2c2e,#f2f2ee 22%,#ffffff 50%,#f2f2ee 78%,#2b2c2e);color:#111;font:700 13px/16px 'JetBrains Mono';text-align:center;border-radius:1px">${d}</span>`).join('');
+// 影
+$('camL').innerHTML = [['FPS', '24.00'], ['SHUTTER', '180°'], ['ISO', '800'], ['WB', '3200K'], ['ND', '0.6'], ['LENS', 'T1.8 35'], ['LUT', '709']].map(([l, v]) => `<div><div style="font:500 8px Barlow;letter-spacing:.16em;color:#8b8b90">${l}</div><div style="font:500 16px 'Barlow Condensed';margin-top:3px">${v}</div></div>`).join('');
 (function () {
-  let h = '';
-  [['L', 30], ['R', 26]].forEach(([ch, lit], r) => {
-    h += `<div style="display:flex;align-items:center;gap:6px;margin-top:${r ? 6 : 0}px"><span class="px v" style="width:10px">${ch}</span><div style="display:flex;gap:2px;flex:1">`;
-    for (let i = 0; i < 40; i++) { const red = i >= 32, on = i < lit || i === 34 - r * 2; h += `<i style="flex:1;height:7px;background:${on ? (red ? '#ff6b4a' : '#67f5d6') : (red ? '#2a1410' : '#10261f')};${on ? `box-shadow:0 0 3px ${red ? '#ff6b4a' : '#67f5d6'}` : ''}"></i>`; }
-    h += `</div></div>`;
-  });
-  $('lmeters').innerHTML = h;
-  const keys = [['rec', 'REC'], ['rew', 'REW'], ['play', 'PLAY'], ['ff', 'F.FWD'], ['stop', 'STOP'], ['pause', 'PAUSE']];
-  let k = '';
-  keys.forEach(([n, t], i) => { const x = 432 + i * 61; k += `<div class="pk${n === 'play' ? ' down' : ''}" style="left:${x}px;top:250px;width:54px;height:58px"><svg viewBox="0 0 20 20">${ICON[n]}</svg></div><span class="eng" style="position:absolute;left:${x}px;top:318px;width:54px;text-align:center">${t}</span>`; });
-  $('ldeck').insertAdjacentHTML('beforeend', k);
-  let s = ''; const w = 380;
-  for (let i = 0; i <= 224; i += 2) { const x = i / 224 * w; s += `<line x1="${x}" y1="${i % 60 === 0 ? 4 : i % 10 === 0 ? 10 : 14}" x2="${x}" y2="18" stroke="#2a2c30" stroke-width="${i % 60 === 0 ? 1.2 : .6}"/>`; if (i % 60 === 0) s += `<text x="${x + 2}" y="9" font-family="Inter" font-weight="600" font-size="7" fill="#2a2c30">${i / 60}</text>`; }
-  s += `<rect x="0" y="17" width="${w * .26}" height="3" fill="#e8412c"/>`;
-  $('lruler').innerHTML = `<svg viewBox="0 0 ${w} 24" style="width:100%;height:100%">${s}</svg>`;
-  [[6, 6], [796, 6, 120], [6, 342, 60], [796, 342]].forEach(([x, y, r]) => $('ldeck').insertAdjacentHTML('beforeend', `<span class="screw" style="left:${x + 12}px;top:${y}px;--r:${r || 35}deg"></span>`));
+  const H = HIST.c5, w = 110, h = 44;
+  const path = (arr) => 'M0 ' + h + ' ' + arr.map((v, i) => `L${(i / (arr.length - 1) * w).toFixed(1)} ${(h - v * h).toFixed(1)}`).join(' ') + ` L${w} ${h} Z`;
+  const cols = ['#ff5b5b', '#5bff7a', '#5b9bff'];
+  let s = H.rgb.map((a, i) => `<path d="${path(a)}" fill="${cols[i]}" opacity=".28"/>`).join('') + `<path d="${path(H.l)}" fill="rgba(255,255,255,.35)" stroke="#fff" stroke-width=".6"/>`;
+  if (document.getElementById('hg2')) $('hg2').innerHTML = `<svg viewBox="0 0 ${w} ${h}" style="width:${w}px;height:${h}px;display:block;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25)">${s}</svg>`;
+  if (document.getElementById('ltl')) { const w = 500; let q = `<line x1="0" y1="4" x2="${w}" y2="4" stroke="#3a3a3f" stroke-width="2"/><line x1="0" y1="4" x2="${w * .26}" y2="4" stroke="#f2f2f0" stroke-width="2"/>`; [.09, .31, .52, .66, .88].forEach(f => q += `<line x1="${f * w}" y1="0" x2="${f * w}" y2="8" stroke="#8b8b90"/>`); q += `<rect x="${w * .26 - 1}" y="0" width="2" height="8" fill="#ff3b30"/>`; document.getElementById('ltl').innerHTML = `<svg viewBox="0 0 ${w} 8" style="width:100%;height:8px">${q}</svg>`; }
+  if (!document.getElementById('tl2')) return;
+  const W2 = 572; let t = `<line x1="0" y1="6" x2="${W2}" y2="6" stroke="#3a3a3f" stroke-width="2"/><line x1="0" y1="6" x2="${W2 * .26}" y2="6" stroke="#f2f2f0" stroke-width="2"/>`;
+  [.09, .31, .52, .66, .88].forEach(f => t += `<line x1="${f * W2}" y1="2" x2="${f * W2}" y2="10" stroke="#8b8b90"/>`);
+  t += `<rect x="${W2 * .26 - 1}" y="0" width="2" height="12" fill="#ff3b30"/>`;
+  $('tl2').innerHTML = `<svg viewBox="0 0 ${W2} 12" style="width:100%;height:12px">${t}</svg>`;
 })();
 // 酸
 (function () {
