@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../concept/fonts/local.css">
+<link rel="stylesheet" href="fonts/cjk.css">
+<link rel="stylesheet" href="../concept/base.css">
+<style>
+@font-face { font-family: "Archivo Black"; src: url("file:///home/user/gitwrap/music-player/app/src/main/res/font/archivo_black.ttf"); }
+/* 酸 · 传单墙：浆糊贴上去的锐舞传单，复印的网点、撕口、胶带、订书钉和贴纸 */
+.ac { --lime: #d6ff1e; --ink: #0b0b0b; --paper: #ecebe2; --mute: #8d8d86; color: var(--ink); font-family: "Inter", "Noto Sans SC", sans-serif;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .48  0 0 0 .35 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>"),
+    linear-gradient(#262624, #1a1a19); }
+.ac .z { position: absolute; }
+.ac .mono { font-family: "JetBrains Mono", "Noto Sans SC", monospace; }
+.ac .ab { font-family: "Archivo Black", "Noto Sans SC", sans-serif; }
+.ac .ub { font-family: "Unbounded", "Noto Sans SC", sans-serif; font-weight: 900; }
+.ac .torn { position: absolute; }
+/* 浆糊皱纹：几道很淡的斜向明暗 */
+.ac .paste::after { content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply;
+  background: linear-gradient(97deg, transparent 18%, rgba(0,0,0,.10) 19%, transparent 22%, transparent 61%, rgba(0,0,0,.08) 62%, transparent 66%),
+              linear-gradient(8deg, transparent 40%, rgba(0,0,0,.07) 41%, transparent 45%),
+              url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.6'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -4 1.02'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>"); }
+.ac .tape { position: absolute; width: 64px; height: 18px; background: rgba(236,226,190,.62); box-shadow: 0 1px 2px rgba(0,0,0,.25); z-index: 6;
+  clip-path: polygon(0 10%, 6% 0, 12% 12%, 18% 2%, 82% 0, 88% 10%, 94% 0, 100% 8%, 100% 92%, 94% 100%, 88% 90%, 82% 100%, 18% 98%, 12% 88%, 6% 100%, 0 90%); }
+.ac .staple { position: absolute; width: 14px; height: 3px; background: linear-gradient(#e5e7ea, #8d9196); border-radius: 1px; box-shadow: 0 1px 1px rgba(0,0,0,.5); z-index: 6; }
+.ac .sticker { position: absolute; z-index: 7; filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
+.ac .tab { position: absolute; bottom: 0; width: 30px; height: 74px; background: var(--paper); writing-mode: vertical-rl; font: 700 10px/30px "Noto Sans SC"; letter-spacing: .1em; text-align: center; padding-top: 6px; border-left: 1px dashed #9a9a92; }
+.ac .tab b { font: 500 7px "JetBrains Mono"; letter-spacing: .1em; color: #5a5a54; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="smiley" viewBox="0 0 84 96">
+    <path d="M42 2a40 40 0 1 1 -0.1 0z" fill="#d6ff1e"/><path d="M28 76 q0 14 6 14 q4 0 4 -12z M58 78 q0 10 4 10 q3 0 3 -11z" fill="#d6ff1e"/>
+    <ellipse cx="29" cy="34" rx="5" ry="9" fill="#0b0b0b"/><ellipse cx="55" cy="34" rx="5" ry="9" fill="#0b0b0b"/>
+    <path d="M18 50 q24 30 48 0" fill="none" stroke="#0b0b0b" stroke-width="5" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="reg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M12 0v24M0 12h24" stroke="currentColor" stroke-width="1.3"/></symbol>
+</svg>
+<script>
+// A torn-paper outline: straight-ish sides with small random bites, rougher where the paper was ripped.
+function torn(w, h, seed, rough = [3, 3, 3, 3]) {
+  let s = seed; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const pts = [];
+  const edge = (x0, y0, x1, y1, a, nx, ny) => { const n = Math.max(6, Math.round(Math.hypot(x1 - x0, y1 - y0) / 7)); for (let i = 0; i < n; i++) { const t = i / n; const j = (r() - .3) * a; pts.push(`${(x0 + (x1 - x0) * t + nx * j).toFixed(1)}px ${(y0 + (y1 - y0) * t + ny * j).toFixed(1)}px`); } };
+  edge(0, 0, w, 0, rough[0], 0, 1); edge(w, 0, w, h, rough[1], -1, 0); edge(w, h, 0, h, rough[2], 0, -1); edge(0, h, 0, 0, rough[3], 1, 0);
+  return `polygon(${pts.join(',')})`;
+}
+function barcode(n, seed, h, color) {
+  let s = seed, x = 0, out = ''; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < n; i++) { const w = 1 + Math.floor(r() * 3); if (i % 2 == 0) out += `<rect x="${x}" y="0" width="${w}" height="${h}" fill="${color}"/>`; x += w; }
+  return `<svg viewBox="0 0 ${x} ${h}" style="width:${x}px;height:${h}px;display:block">${out}</svg>`;
+}
+</script>
+
+<section class="board" id="acid">
+  <div class="intro">
+    <div class="mark">酸</div>
+    <div class="name">Flyer wall · 传单墙</div>
+    <p>首页是一面水泥墙，上面一层层浆糊贴着锐舞传单，底下还露着被撕掉的旧海报。今晚的主传单就是每日推荐：荧光青柠底，超大的 30，像阵容表一样列出今晚的歌，场地写着「你的耳机」，开门 21:00 到天亮；传单底下那排可以撕走的小纸条就是私人 FM、排行榜、最近、下载，有一张已经被人撕掉了。旁边用胶带和订书钉贴着几张黑白复印的歌单传单。</p>
+    <p>播放页是这首歌自己的那张大海报：复印网点印的唱片在转，BPM、调性、时长印成信息表，下面是接下来的歌单；当前歌词是一条斜贴的青柠色胶带。到处是笑脸贴纸、套准十字、条形码、撕口、胶带和订书钉。</p>
+    <div class="swatches"><i style="background:#1a1a19"></i><i style="background:#d6ff1e"></i><i style="background:#0b0b0b"></i><i style="background:#ecebe2"></i><i style="background:#8d8d86"></i></div>
+    <div class="type">海报字：Archivo Black / Unbounded Black · 标注：JetBrains Mono · 中文：思源黑体 Black · 封面：复印网点</div>
+  </div>
+
+  <!-- 首页：传单墙 -->
+  <div class="phone ac" id="wall">
+    <div class="status" style="color:#ecebe2"><span>21:06</span><span class="sys"><s></s><b></b></span></div>
+    <!-- 底层：撕剩的旧海报 -->
+    <div class="torn paste" data-t="5" style="left:-10px;top:40px;width:180px;height:150px;background:#3b3b38;transform:rotate(-3deg)"><div class="ab" style="font-size:70px;line-height:.8;color:#2c2c2a;padding:8px">ACID<br>RAVE</div></div>
+    <div class="torn paste" data-t="6" style="left:210px;top:30px;width:200px;height:120px;background:#bdbcb2;transform:rotate(2deg)"><div class="ab" style="font-size:44px;line-height:.9;color:#8f8e86;padding:10px">澜音<br>SOUND</div></div>
+    <div class="torn paste" data-t="7" style="left:260px;top:600px;width:160px;height:120px;background:#3b3b38;transform:rotate(4deg)"><div class="ab" style="font-size:40px;color:#2c2c2a;padding:8px">0303</div></div>
+    <!-- 主传单：每日推荐 -->
+    <div class="torn paste" data-t="11" data-r="3,2,8,2" style="left:18px;top:60px;width:250px;height:470px;background:var(--lime);transform:rotate(-2deg);box-shadow:0 6px 14px rgba(0,0,0,.5);z-index:3">
+      <div class="mono" style="position:absolute;left:14px;top:14px;font-size:8.5px;letter-spacing:.16em">LANYIN SOUND SYSTEM PRESENTS</div>
+      <svg style="position:absolute;right:10px;top:10px;width:16px;height:16px"><use href="#reg"/></svg>
+      <div class="ub" style="position:absolute;left:10px;top:30px;font-size:118px;line-height:1;letter-spacing:-.06em;color:transparent;-webkit-text-stroke:2px var(--ink)">30</div>
+      <div class="ab" style="position:absolute;left:12px;top:150px;font-size:34px;line-height:.95">DAILY<br>MIX</div>
+      <div style="position:absolute;left:132px;top:150px;font:900 26px/1.05 'Noto Sans SC'">每日<br>推荐</div>
+      <div class="mono" style="position:absolute;left:12px;top:228px;right:12px;font-size:9px;letter-spacing:.08em;border-top:2px solid var(--ink);padding-top:6px;display:flex;justify-content:space-between"><span>SUN 08.11.2026</span><span>DOORS 21:00 — LATE</span></div>
+      <div style="position:absolute;left:12px;top:252px;right:12px;font:700 11.5px/1.62 'Noto Sans SC'">
+        <div class="mono" style="font-size:8px;letter-spacing:.2em;font-weight:500">LINE-UP · 阵容</div>
+        <div>01 潮水退去以后 <span class="mono" style="font-size:9px;font-weight:400">/ 澜音</span></div>
+        <div>02 海边的风 <span class="mono" style="font-size:9px;font-weight:400">/ 林间</span></div>
+        <div>03 夜航船 <span class="mono" style="font-size:9px;font-weight:400">/ 北岸乐队</span></div>
+        <div>04 月光下的鲸 <span class="mono" style="font-size:9px;font-weight:400">/ 潮汐里的鲸</span></div>
+        <div style="opacity:.6">+ 26 MORE · 1:52:10</div>
+      </div>
+      <div class="mono" style="position:absolute;left:12px;top:368px;font-size:8.5px;letter-spacing:.08em;line-height:1.5">VENUE: 你的耳机<br>FREE ENTRY · NO PHOTOS</div>
+      <div style="position:absolute;right:12px;top:366px" id="bc1"></div>
+      <!-- 撕纸条 -->
+      <div class="tab" style="left:10px">私人FM<b> FM</b></div>
+      <div class="tab" style="left:42px">排行榜<b> TOP</b></div>
+      <div class="tab" style="left:74px;opacity:0"></div>
+      <div class="tab" style="left:106px">最近<b> LOG</b></div>
+      <div class="tab" style="left:138px">下载<b> DL</b></div>
+      <div class="tab" style="left:170px">我喜欢<b> 128</b></div>
+      <div style="position:absolute;left:74px;bottom:0;width:30px;height:6px;background:var(--paper);clip-path:polygon(0 0,20% 70%,40% 10%,60% 80%,80% 20%,100% 60%,100% 100%,0 100%)"></div>
+    </div>
+    <div class="staple" style="left:120px;top:58px;transform:rotate(-2deg)"></div><div class="staple" style="left:226px;top:520px;transform:rotate(80deg)"></div>
+    <div class="tape" style="left:216px;top:52px;transform:rotate(38deg)"></div>
+    <!-- 播放键贴纸 -->
+    <div class="sticker" style="left:196px;top:300px;width:86px;height:86px;border-radius:50%;background:var(--ink);display:grid;place-items:center;transform:rotate(-12deg);z-index:8">
+      <svg width="34" height="34" viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" fill="#d6ff1e"/></svg>
+      <svg viewBox="0 0 100 100" style="position:absolute;inset:0"><defs><path id="pr" d="M50,50 m-38,0 a38,38 0 1,1 76,0 a38,38 0 1,1 -76,0"/></defs><text font-family="Unbounded" font-weight="800" font-size="8.5" fill="#d6ff1e" letter-spacing="1.6"><textPath href="#pr">PLAY ✳ PLAY ✳ PLAY ✳ PLAY ✳ PLAY ✳</textPath></text></svg>
+    </div>
+    <!-- 歌单传单：黑白复印 -->
+    <div class="torn paste" data-t="21" style="left:270px;top:130px;width:110px;height:160px;background:var(--paper);transform:rotate(5deg);box-shadow:0 4px 10px rgba(0,0,0,.5);z-index:4">
+      <div style="position:absolute;left:8px;top:8px;width:94px;height:94px;background:url(covers/htp1.png) center/cover"></div>
+      <div class="ab" style="position:absolute;left:8px;top:108px;font-size:15px;line-height:1">深海</div>
+      <div class="mono" style="position:absolute;left:8px;top:128px;font-size:8px;letter-spacing:.1em">32 TRK · VOL.02</div>
+      <div style="position:absolute;right:8px;bottom:8px" id="bc2"></div>
+    </div>
+    <div class="tape" style="left:296px;top:122px;width:52px;transform:rotate(-6deg)"></div>
+    <div class="torn paste" data-t="23" style="left:282px;top:300px;width:100px;height:150px;background:var(--ink);transform:rotate(-4deg);box-shadow:0 4px 10px rgba(0,0,0,.5);z-index:4">
+      <div style="position:absolute;left:8px;top:8px;width:84px;height:84px;background:url(covers/htl3.png) center/cover"></div>
+      <div class="ab" style="position:absolute;left:8px;top:100px;font-size:14px;line-height:1;color:var(--lime)">夜路</div>
+      <div class="mono" style="position:absolute;left:8px;top:120px;font-size:8px;letter-spacing:.1em;color:var(--paper)">27 TRK · VOL.03</div>
+    </div>
+    <div class="staple" style="left:320px;top:302px;transform:rotate(-4deg)"></div>
+    <div class="torn paste" data-t="29" style="left:278px;top:458px;width:104px;height:122px;background:var(--paper);transform:rotate(3deg);box-shadow:0 4px 10px rgba(0,0,0,.5);z-index:4">
+      <div style="position:absolute;left:8px;top:8px;width:88px;height:70px;background:url(covers/htp4.png) center/cover"></div>
+      <div class="ab" style="position:absolute;left:8px;top:84px;font-size:14px;line-height:1">灯塔</div>
+      <div class="mono" style="position:absolute;left:8px;top:102px;font-size:8px;letter-spacing:.1em">19 TRK · VOL.04</div>
+    </div>
+    <div class="tape" style="left:300px;top:450px;width:50px;transform:rotate(-30deg)"></div>
+    <!-- 贴纸 -->
+    <svg class="sticker" style="left:304px;top:572px;width:70px;height:80px;transform:rotate(-16deg)"><use href="#smiley"/></svg>
+    <div class="sticker" style="left:150px;top:548px;padding:5px 9px;background:var(--paper);font:700 9px 'JetBrains Mono';letter-spacing:.14em;transform:rotate(6deg)">NO PHOTOS ✳ 不许拍照</div>
+    <div class="sticker ub" style="left:10px;top:572px;padding:6px 10px;background:var(--ink);color:var(--lime);font-size:11px;letter-spacing:.06em;transform:rotate(-3deg);border:2px solid var(--lime)">303 ✳ ACID</div>
+    <!-- 正在播放：一条喷漆模板字 -->
+    <div class="z" style="left:16px;right:16px;top:640px;height:62px;background:var(--ink);transform:rotate(-1deg);display:flex;align-items:center;gap:12px;padding:0 10px;box-shadow:0 4px 10px rgba(0,0,0,.5);z-index:5">
+      <div style="width:44px;height:44px;border-radius:50%;background:url(covers/htl5.png) center/cover;box-shadow:0 0 0 2px var(--lime)"></div>
+      <div style="flex:1;min-width:0"><div style="font:900 15px 'Noto Sans SC';color:var(--paper)">夜航船</div><div class="mono" style="font-size:9px;color:var(--mute);letter-spacing:.1em">NOW PLAYING · 北岸乐队 · 00:58</div></div>
+      <div style="width:42px;height:42px;border-radius:50%;background:var(--lime);display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="#0b0b0b"/><rect x="14" y="5" width="4" height="14" fill="#0b0b0b"/></svg></div>
+    </div>
+    <!-- 标签栏：一张贴纸板 -->
+    <div class="z" style="left:16px;right:16px;bottom:20px;height:64px;background:var(--paper);border-radius:8px;display:flex;justify-content:space-around;align-items:center;box-shadow:0 4px 10px rgba(0,0,0,.5);z-index:5">
+      <div style="padding:8px 16px;border-radius:20px;background:var(--lime);font:900 13px 'Noto Sans SC';box-shadow:inset 0 0 0 2px var(--ink)">首页</div>
+      <div style="padding:8px 16px;border-radius:20px;font:900 13px 'Noto Sans SC';box-shadow:inset 0 0 0 2px var(--ink);border:1px dashed #9a9a92">搜索</div>
+      <div style="padding:8px 16px;border-radius:20px;font:900 13px 'Noto Sans SC';box-shadow:inset 0 0 0 2px var(--ink);border:1px dashed #9a9a92">我的</div>
+    </div>
+  </div>
+
+  <!-- 播放页：这首歌的海报 -->
+  <div class="phone ac" id="poster">
+    <div class="status" style="color:#ecebe2"><span>21:06</span><span class="sys"><s></s><b></b></span></div>
+    <div class="torn paste" data-t="41" data-r="4,3,4,3" style="left:10px;top:44px;width:370px;height:790px;background:var(--ink);transform:rotate(-.6deg);box-shadow:0 8px 20px rgba(0,0,0,.6)">
+      <div class="mono" style="position:absolute;left:16px;top:16px;right:16px;font-size:8.5px;letter-spacing:.16em;color:var(--lime);display:flex;justify-content:space-between"><span>LANYIN SOUND SYSTEM PRESENTS</span><span>03 / 30</span></div>
+      <svg style="position:absolute;left:8px;top:8px;width:14px;height:14px;color:var(--lime)"><use href="#reg"/></svg><svg style="position:absolute;right:8px;top:8px;width:14px;height:14px;color:var(--lime)"><use href="#reg"/></svg>
+      <div style="position:absolute;left:14px;top:34px;font:900 92px/1 'Noto Sans SC';letter-spacing:-.04em;color:var(--lime);transform:scaleY(1.12);transform-origin:top left">夜航船</div>
+      <div class="ab" style="position:absolute;left:16px;top:142px;font-size:16px;color:var(--paper);letter-spacing:.02em">LIVE: 北岸乐队 <span class="mono" style="font-size:9px;color:var(--mute)">— 《夜航》 2026</span></div>
+      <!-- 唱片 -->
+      <div style="position:absolute;left:14px;top:182px;width:272px;height:272px;transform-origin:0 0">
+        <div style="position:absolute;inset:0;border-radius:50%;background:repeating-radial-gradient(circle, #141414 0 1px, #0b0b0b 1px 3px);box-shadow:0 0 0 2px var(--lime)"></div>
+        <div style="position:absolute;inset:56px;border-radius:50%;background:url(covers/htl5.png) center/cover;box-shadow:0 0 0 2px var(--ink), 0 0 0 4px var(--lime)"></div>
+        <div style="position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 2px var(--lime)"></div>
+        <svg viewBox="0 0 300 300" style="position:absolute;inset:0;width:100%;height:100%"><defs><path id="ring2" d="M150,150 m-122,0 a122,122 0 1,1 244,0 a122,122 0 1,1 -244,0"/></defs><text font-family="Unbounded" font-weight="800" font-size="13" fill="#d6ff1e" letter-spacing="3"><textPath href="#ring2">北岸乐队 ✳ NIGHT FERRY ✳ SIDE A ✳ 33⅓ RPM ✳ LANYIN ✳ 128 BPM ✳</textPath></text></svg>
+      </div>
+      <svg class="sticker" style="left:262px;top:388px;width:78px;height:90px;transform:rotate(14deg)"><use href="#smiley"/></svg>
+      <!-- 信息表 -->
+      <div class="mono" style="position:absolute;left:296px;top:186px;width:62px;font-size:8.5px;line-height:1.55;color:var(--paper);letter-spacing:.06em">
+        <div style="color:var(--mute)">BPM</div><div class="ub" style="font-size:22px;line-height:1;color:var(--lime)">128</div>
+        <div style="color:var(--mute);margin-top:6px">KEY</div><div class="ub" style="font-size:16px;line-height:1">Am</div>
+        <div style="color:var(--mute);margin-top:6px">TIME</div><div class="ub" style="font-size:16px;line-height:1">3:44</div>
+      </div>
+      <!-- 歌词胶带 -->
+      <div class="ab" style="position:absolute;left:-8px;right:-8px;top:500px;height:40px;background:var(--lime);transform:rotate(-3deg);display:flex;align-items:center;padding-left:24px;font:900 19px 'Noto Sans SC';box-shadow:0 3px 6px rgba(0,0,0,.4)">跟着节拍 向海里开 ✳</div>
+      <div style="position:absolute;left:16px;top:552px;font:700 13px 'Noto Sans SC';color:#5f5f5a">别回头 天就要亮了</div>
+      <!-- 进度：刻度尺 -->
+      <div style="position:absolute;left:16px;right:16px;top:590px;height:22px" id="ruler"></div>
+      <div class="mono" style="position:absolute;left:16px;right:16px;top:616px;display:flex;justify-content:space-between;font-size:9.5px;color:var(--paper)"><span>00:58</span><span style="color:var(--mute)">SIDE A · TRACK 03</span><span>03:44</span></div>
+      <!-- 控制 -->
+      <div style="position:absolute;left:16px;right:16px;top:646px;display:flex;justify-content:space-between;align-items:center">
+        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M5 11V9a3 3 0 0 1 3-3h11l-3-3M19 13v2a3 3 0 0 1-3 3H5l3 3" fill="none" stroke="#ecebe2" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg width="30" height="30" viewBox="0 0 24 24"><path d="M18 6v12l-8.5-6z" fill="#ecebe2"/><path d="M6 6v12" stroke="#ecebe2" stroke-width="2"/></svg>
+        <div style="width:74px;height:74px;border-radius:50%;background:var(--lime);display:grid;place-items:center;box-shadow:0 0 0 3px var(--ink), 0 0 0 5px var(--lime)"><svg width="30" height="30" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="#0b0b0b"/><rect x="14" y="5" width="4" height="14" fill="#0b0b0b"/></svg></div>
+        <svg width="30" height="30" viewBox="0 0 24 24"><path d="M6 6v12l8.5-6z" fill="#ecebe2"/><path d="M18 6v12" stroke="#ecebe2" stroke-width="2"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 6h13M4 11h13M4 16h8" stroke="#ecebe2" stroke-width="1.8" stroke-linecap="round"/><path d="M16 14.5v6l4.5-3z" fill="#ecebe2"/></svg>
+      </div>
+      <!-- 接下来：一张贴上去的小纸条 -->
+      <div class="torn" data-t="47" style="left:16px;top:736px;width:230px;height:46px;background:var(--paper);transform:rotate(1.5deg);padding:7px 10px">
+        <div class="mono" style="font-size:8px;letter-spacing:.16em">NEXT · 接下来</div>
+        <div style="font:700 11px/1.5 'Noto Sans SC'">04 月光下的鲸 · 05 海边的风 · 06 雨停</div>
+      </div>
+      <div style="position:absolute;right:16px;top:740px" id="bc3"></div>
+      <div class="mono" style="position:absolute;right:16px;top:770px;font-size:7.5px;letter-spacing:.14em;color:var(--mute)">LY-018-03</div>
+    </div>
+    <div class="tape" style="left:150px;top:34px;width:80px"></div>
+    <div class="staple" style="left:20px;top:820px;transform:rotate(20deg)"></div>
+  </div>
+</section>
+<script>
+document.querySelectorAll('.torn').forEach(el => {
+  const r = (el.dataset.r || '3,3,3,3').split(',').map(Number);
+  el.style.clipPath = torn(parseFloat(el.style.width), parseFloat(el.style.height), +(el.dataset.t || 7), r);
+});
+document.getElementById('bc1').innerHTML = barcode(40, 11, 26, '#0b0b0b');
+document.getElementById('bc2').innerHTML = barcode(24, 3, 14, '#0b0b0b');
+document.getElementById('bc3').innerHTML = barcode(36, 5, 24, '#ecebe2');
+(function ruler() {
+  let s = ''; const w = 338;
+  for (let i = 0; i <= 224; i += 4) { const x = i / 224 * w; s += `<line x1="${x}" y1="${i % 60 === 0 ? 2 : i % 20 === 0 ? 8 : 12}" x2="${x}" y2="18" stroke="#ecebe2" stroke-width="${i % 60 === 0 ? 1.4 : .7}"/>`; }
+  s += `<rect x="0" y="16" width="${w * .26}" height="4" fill="#d6ff1e"/><text x="${w * .26 - 8}" y="14" font-size="16" fill="#d6ff1e">✳</text>`;
+  document.getElementById('ruler').innerHTML = `<svg viewBox="0 0 ${w} 22" style="width:100%;height:100%;overflow:visible">${s}</svg>`;
+})();
+</script>
+</body>
+</html>

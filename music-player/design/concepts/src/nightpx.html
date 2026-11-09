@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../concept/fonts/local.css">
+<link rel="stylesheet" href="../concept/base.css">
+<style>
+@font-face { font-family: "Fusion Pixel"; src: url("file:///home/user/gitwrap/music-player/app/src/main/res/font/fusion_pixel.ttf"); }
+/* 霓 · 夜行（像素）：整屏是一张 130×282 的像素画，按 3 倍放大；界面文字是 12/24 号像素字 */
+.np { --k0: #05060a; --k1: #0a0d14; --k2: #10141e; --k3: #171d2b; --k4: #20283a; --k5: #2b354b; --k7: #4f5d78; --k8: #6d7e9a; --k9: #9fb2c8; --wh: #d8e4ee;
+  --a2: #80461f; --a3: #b8682a; --a4: #e89a3e; --a5: #ffc874; --r2: #d0302c; --t0: #0c2e33; --t1: #16595a; --t2: #2a9a8e; --t3: #6fe0c8;
+  font-family: "Fusion Pixel", monospace; font-size: 12px; line-height: 12px; color: var(--wh); background: var(--k0); -webkit-font-smoothing: none; }
+.np .art { position: absolute; left: 0; top: 0; width: 390px; height: 846px; background-size: 390px 846px; image-rendering: pixelated; }
+.np .status { position: absolute; left: 0; right: 0; top: 0; z-index: 5; font-family: "Fusion Pixel"; font-size: 12px; color: var(--k9); padding: 0 26px; height: 24px; }
+.np .z { position: absolute; z-index: 4; }
+.np .big { font-size: 24px; line-height: 24px; }
+.np .mute { color: var(--k8); } .np .amb { color: var(--a4); } .np .teal { color: var(--t3); }
+.np .ol { text-shadow: 3px 0 var(--k0), -3px 0 var(--k0), 0 3px var(--k0), 0 -3px var(--k0), 3px 3px var(--k0), -3px -3px var(--k0), 3px -3px var(--k0), -3px 3px var(--k0); }
+.np .ol1 { text-shadow: 1px 0 var(--k0), -1px 0 var(--k0), 0 1px var(--k0), 0 -1px var(--k0), 1px 1px var(--k0), -1px -1px var(--k0), 1px -1px var(--k0), -1px 1px var(--k0); }
+/* 像素面板：3px 边，3px 切角 */
+.np .pnl { position: absolute; background: var(--k2); clip-path: polygon(3px 0, calc(100% - 3px) 0, calc(100% - 3px) 3px, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0 calc(100% - 3px), 0 3px, 3px 3px); box-shadow: inset 0 0 0 3px var(--k4); }
+.np .pnl.on { box-shadow: inset 0 0 0 3px var(--a3); }
+.np .btn { position: absolute; background: var(--a4); color: var(--k0); clip-path: polygon(3px 0, calc(100% - 3px) 0, calc(100% - 3px) 3px, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0 calc(100% - 3px), 0 3px, 3px 3px); box-shadow: inset 0 -3px 0 var(--a2), inset 0 3px 0 var(--a5); display: flex; align-items: center; justify-content: center; gap: 6px; }
+.np .cov { position: absolute; background-size: cover; image-rendering: pixelated; box-shadow: 0 0 0 3px var(--k0), 0 0 0 6px var(--k4); }
+.np .dash3 { position: absolute; height: 3px; background: repeating-linear-gradient(90deg, var(--k4) 0 3px, transparent 3px 6px); }
+.np .blocks { position: absolute; display: flex; gap: 3px; } .np .blocks i { width: 3px; height: 6px; background: var(--k4); } .np .blocks i.f { background: var(--a4); } .np .blocks i.h { background: var(--wh); }
+.np .lcd { position: absolute; left: 111px; top: 639px; width: 168px; height: 36px; color: var(--t3); padding: 3px 6px; overflow: hidden; }
+.np .preset { position: absolute; top: 711px; width: 42px; text-align: center; color: var(--k9); }
+.np .preset.on { color: var(--a5); }
+.np .knl { position: absolute; top: 681px; color: var(--k7); }
+.np .pxi { position: absolute; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<script>
+// Pixel icons from little maps; '#' takes the given colour.
+const ICON = {
+  heart: ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'],
+  chart: ['......#', '...#..#', '...#..#', '#..#..#', '#..#..#', '#######'],
+  clock: ['.#####.', '#..#..#', '#..#..#', '#..##.#', '#.....#', '.#####.'],
+  radio: ['#......', '.#.....', '..#####', '.#....#', '.#.##.#', '.#####.'],
+  dl: ['...#...', '...#...', '.#####.', '..###..', '...#...', '#######'],
+  play: ['#....', '###..', '#####', '###..', '#....'],
+  pause: ['##.##', '##.##', '##.##', '##.##', '##.##'],
+  prev: ['#...#', '#..##', '#.###', '#..##', '#...#'],
+  next: ['#...#', '##..#', '###.#', '##..#', '#...#'],
+  rep: ['.####.', '#....#', '#.....', '.....#', '#....#', '.####.'],
+  list: ['#####.', '......', '#####.', '......', '###.#.', '...###'],
+  up: ['...#...', '..###..', '.#####.', '...#...', '...#...', '...#...'],
+};
+function icon(name, col, scale = 3) {
+  const m = ICON[name]; let s = '';
+  m.forEach((r, y) => [...r].forEach((c, x) => { if (c === '#') s += `<rect x="${x}" y="${y}" width="1" height="1" fill="${col}"/>`; }));
+  return `<svg width="${m[0].length * scale}" height="${m.length * scale}" viewBox="0 0 ${m[0].length} ${m.length}" shape-rendering="crispEdges" style="display:block">${s}</svg>`;
+}
+function blocks(n, filled) { return Array.from({ length: n }, (_, i) => `<i class="${i < filled ? 'f' : i === filled ? 'h' : ''}"></i>`).join(''); }
+</script>
+
+<section class="board" id="neon">
+  <div class="intro">
+    <div class="mark">霓</div>
+    <div class="name">Night drive · 夜行（像素）</div>
+    <p>整屏是一张像素画：坐在车里，下雨的深夜开在高架上。上面横着一条宽宽的挡风玻璃，远处是雾里的城市天际线，塔楼顶上亮着红灯，一块竖着的青色霓虹招牌；路灯一盏盏往远处排，前车刹车灯和路灯在湿路面上拖出一截截倒影。玻璃上挂着雨珠，后视镜里有跟在后面的车灯，镜子下挂着一棵小松树香片，遮阳板里夹着一张照片，仪表台上蹲着一只看路的黑猫。</p>
+    <p>下面是车里：中控屏就是 App 的页面，复古卡带收音机的液晶显示正在放的歌，六个预置键在首页是导航（首页、搜索、我的、FM、喜欢、最近），在播放页变成上一首、暂停、下一首。旁边有出风口、双闪键、档把，杯架里一杯凉掉的咖啡还在冒一点热气。抬头显示把路线和歌词投在玻璃上。</p>
+    <p>在 App 里这张画会动：雨在下，雨刮隔一会儿扫一次，路灯从两边往后退，招牌偶尔闪一下，咖啡的热气在飘。</p>
+    <div class="swatches"><i style="background:#0a0d14"></i><i style="background:#20283a"></i><i style="background:#4f5d78"></i><i style="background:#e89a3e"></i><i style="background:#ffc874"></i><i style="background:#d0302c"></i><i style="background:#2a9a8e"></i></div>
+    <div class="type">27 色固定调色板 · 4×4 有序抖动 · 画面 130×282 像素放大 3 倍 · 文字：缝合像素字体 12/24 号</div>
+  </div>
+
+  <!-- 首页 -->
+  <div class="phone np">
+    <div class="art" style="background-image:url(px_home.png)"></div>
+    <div class="status row" style="justify-content:space-between;align-items:center"><span class="ol1">23:18</span><span class="ol1">☂ 14° ▮▮▮</span></div>
+    <!-- 抬头显示 -->
+    <div class="z ol" style="left:66px;top:168px;color:var(--wh)"><div class="row" style="gap:6px;align-items:center"><span id="hudUp"></span><span>每日推荐 · 3.2 KM</span></div></div>
+    <div class="z ol" style="right:66px;top:168px;color:var(--wh)">01:10 到达</div>
+    <!-- 中控屏 -->
+    <div class="z" style="left:45px;top:297px;width:300px">
+      <div class="row" style="justify-content:space-between"><span><span class="amb">■</span> 媒体 · 网易云音乐</span><span class="mute">23:18</span></div>
+    </div>
+    <div class="dash3" style="left:45px;top:315px;width:300px"></div>
+    <div class="cov" style="left:48px;top:330px;width:96px;height:96px;background-image:url(covers/p3.png)"></div>
+    <div class="z" style="left:159px;top:330px;width:186px">
+      <div class="amb">今晚的路线 ▸ DAILY</div>
+      <div class="big" style="margin-top:9px">每日推荐</div>
+      <div class="mute" style="margin-top:6px">30 首 · 1 小时 52 分</div>
+    </div>
+    <div class="btn" style="left:159px;top:400px;width:84px;height:27px"><span id="bplay"></span>出发</div>
+    <div class="pnl" style="left:45px;top:441px;width:72px;height:66px"></div><div class="pnl on" style="left:120px;top:441px;width:72px;height:66px"></div><div class="pnl" style="left:195px;top:441px;width:72px;height:66px"></div><div class="pnl" style="left:270px;top:441px;width:72px;height:66px"></div>
+    <div class="pxi" id="i1" style="left:57px;top:453px"></div><div class="z" style="left:57px;top:483px">我喜欢</div><div class="z mute" style="left:96px;top:453px">128</div>
+    <div class="pxi" id="i2" style="left:132px;top:453px"></div><div class="z amb" style="left:132px;top:483px">私人FM</div><div class="z teal" style="left:162px;top:453px">ON</div>
+    <div class="pxi" id="i3" style="left:207px;top:453px"></div><div class="z" style="left:207px;top:483px">排行榜</div>
+    <div class="pxi" id="i4" style="left:282px;top:453px"></div><div class="z" style="left:282px;top:483px">最近</div>
+    <div class="z mute" style="left:45px;top:519px">推荐歌单 ▸▸</div>
+    <div class="cov" style="left:48px;top:537px;width:57px;height:57px;background-image:url(covers/p1.png)"></div>
+    <div class="cov" style="left:123px;top:537px;width:57px;height:57px;background-image:url(covers/p0.png)"></div>
+    <div class="cov" style="left:198px;top:537px;width:57px;height:57px;background-image:url(covers/p5.png)"></div>
+    <div class="cov" style="left:273px;top:537px;width:57px;height:57px;background-image:url(covers/p4.png)"></div>
+    <!-- 收音机液晶 -->
+    <div class="lcd"><div>♪ 月光下的鲸 · 潮汐</div><div style="margin-top:6px;color:var(--t2)">FM 107.7 ▸ 01:12/4:05</div></div>
+    <div class="knl" style="left:63px">VOL</div><div class="knl" style="left:303px">TUNE</div>
+    <div class="preset on" style="left:51px">首页</div><div class="preset" style="left:99px">搜索</div><div class="preset" style="left:147px">我的</div>
+    <div class="preset" style="left:195px">FM</div><div class="preset" style="left:243px">喜欢</div><div class="preset" style="left:291px">最近</div>
+  </div>
+
+  <!-- 播放页 -->
+  <div class="phone np">
+    <div class="art" style="background-image:url(px_play.png)"></div>
+    <div class="status row" style="justify-content:space-between;align-items:center"><span class="ol1">23:18</span><span class="ol1">☂ 14° ▮▮▮</span></div>
+    <div class="z ol" style="left:0;right:0;top:150px;text-align:center"><div class="big" style="color:var(--wh)">只剩你的歌还亮着</div><div style="margin-top:6px;color:var(--k9)">雨落在霓虹的背面</div></div>
+    <div class="z" style="left:45px;top:297px;width:300px"><div class="row" style="justify-content:space-between"><span><span class="amb">■</span> 正在播放 · 03/30</span><span class="mute">FLAC 44.1K</span></div></div>
+    <div class="dash3" style="left:45px;top:315px;width:300px"></div>
+    <div class="cov" style="left:48px;top:330px;width:120px;height:120px;background-image:url(covers/p1.png)"></div>
+    <div class="z" style="left:183px;top:330px;width:162px">
+      <div class="big">月光下的鲸</div>
+      <div style="margin-top:9px">潮汐里的鲸</div>
+      <div class="mute" style="margin-top:6px">《深海》· 2026</div>
+      <div class="amb row" style="margin-top:12px;gap:6px;align-items:center"><span id="lk"></span>已喜欢</div>
+      <div class="row" id="spec" style="margin-top:12px;height:30px;gap:3px;align-items:flex-end"></div>
+    </div>
+    <div class="blocks" style="left:48px;top:465px" id="prog"></div>
+    <div class="z row" style="left:48px;top:477px;width:297px;justify-content:space-between"><span class="amb">01:12</span><span class="mute">-02:53</span></div>
+    <div class="dash3" style="left:45px;top:498px;width:300px"></div>
+    <div class="z mute" style="left:48px;top:510px">接下来 ▸▸</div>
+    <div class="z" style="left:48px;top:528px;width:297px">
+      <div class="row" style="justify-content:space-between"><span>04 海边的风 <span class="mute">林间</span></span><span class="mute">3:44</span></div>
+      <div class="row" style="justify-content:space-between;margin-top:9px"><span>05 夜航船 <span class="mute">北岸乐队</span></span><span class="mute">3:51</span></div>
+      <div class="row" style="justify-content:space-between;margin-top:9px"><span class="mute">06 雨停以后 · 北岸乐队</span><span class="mute">4:12</span></div>
+    </div>
+    <div class="lcd"><div>♪ 03/30 ▸ 01:12</div><div style="margin-top:6px;color:var(--t2)">TAPE A · DOLBY B</div></div>
+    <div class="knl" style="left:63px">VOL</div><div class="knl" style="left:303px">TUNE</div>
+    <div class="preset" style="left:51px">◀◀</div><div class="preset" style="left:99px">▶‖</div><div class="preset" style="left:147px">▶▶</div>
+    <div class="preset on" style="left:195px">循环</div><div class="preset" style="left:243px">喜欢</div><div class="preset" style="left:291px">列表</div>
+  </div>
+</section>
+<script>
+const $ = id => document.getElementById(id);
+$('hudUp').innerHTML = icon('up', '#d8e4ee', 2);
+$('bplay').innerHTML = icon('play', '#05060a', 3);
+$('i1').innerHTML = icon('heart', '#d0302c'); $('i2').innerHTML = icon('radio', '#e89a3e'); $('i3').innerHTML = icon('chart', '#9fb2c8'); $('i4').innerHTML = icon('clock', '#9fb2c8');
+$('lk').innerHTML = icon('heart', '#e89a3e', 2);
+$('spec').innerHTML = [4, 7, 9, 6, 8, 10, 7, 5, 6, 8, 5, 3, 4, 6, 4, 2, 3, 2].map((v, i) => `<i style="width:6px;height:${v * 3}px;background:${i < 6 ? '#e89a3e' : '#4f5d78'}"></i>`).join('');
+$('prog').innerHTML = blocks(50, 13);
+</script>
+</body>
+</html>

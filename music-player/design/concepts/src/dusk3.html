@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../concept/fonts/local.css">
+<link rel="stylesheet" href="fonts/cjk.css">
+<link rel="stylesheet" href="fonts/longcang_local.css">
+<link rel="stylesheet" href="../concept/base.css">
+<style>
+/* 暮 · 孔版工作台：绿色切割垫上摊着刚印好的三色孔版画 */
+.dk { --paper: #f2ebdd; --pink: #ff48b0; --yellow: #ffb511; --blue: #3255a4; --violet: #321871; --mat: #2e5a47; --mat2: #27503f; --line: rgba(220,240,225,.20); --line2: rgba(220,240,225,.08);
+  color: var(--blue); font-family: "Noto Sans SC", sans-serif;
+  background:
+    linear-gradient(var(--line) 1px, transparent 1px) 0 0/39px 39px,
+    linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0/39px 39px,
+    linear-gradient(var(--line2) 1px, transparent 1px) 0 0/7.8px 7.8px,
+    linear-gradient(90deg, var(--line2) 1px, transparent 1px) 0 0/7.8px 7.8px,
+    repeating-linear-gradient(45deg, transparent 0 54px, rgba(220,240,225,.06) 54px 55px),
+    radial-gradient(120% 80% at 30% 20%, #34654f, var(--mat2)); }
+.dk::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 30; mix-blend-mode: multiply; opacity: .35;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .45  0 0 0 .5 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>"); }
+.dk .z { position: absolute; }
+.dk .matnum { position: absolute; font: 600 7px "Inter"; color: rgba(220,240,225,.5); }
+.dk .sheet { position: absolute; background: var(--paper); box-shadow: 0 1px 1px rgba(0,0,0,.25), 0 8px 18px rgba(0,0,0,.35);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/><feColorMatrix values='0 0 0 0 .55  0 0 0 0 .5  0 0 0 0 .42  0 0 0 .22 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>"); }
+.dk .tape { position: absolute; width: 58px; height: 20px; background: rgba(232,220,182,.78); z-index: 8; box-shadow: 0 1px 2px rgba(0,0,0,.2);
+  clip-path: polygon(0 12%, 7% 0, 13% 14%, 20% 2%, 80% 0, 87% 12%, 93% 0, 100% 10%, 100% 90%, 93% 100%, 87% 88%, 80% 100%, 20% 98%, 13% 86%, 7% 100%, 0 88%); }
+.dk .hand { font-family: "Long Cang", cursive; color: #4a4a52; }
+.dk .crop { position: absolute; width: 12px; height: 12px; border-color: #222; border-style: solid; border-width: 0; opacity: .7; }
+.dk .zs { font-family: "Noto Serif SC", serif; font-weight: 900; }
+.dk .fr { font-family: "Fraunces", serif; }
+.dk .it { font-family: "Fraunces", serif; font-style: italic; font-weight: 600; }
+.dk .mis { position: relative; color: var(--blue); mix-blend-mode: multiply; }
+.dk .mis::before { content: attr(data-t); position: absolute; left: 2px; top: 1.5px; color: var(--pink); mix-blend-mode: multiply; z-index: -1; white-space: nowrap; }
+.dk .reg { position: absolute; width: 14px; height: 14px; }
+/* 色票扇 */
+.dk .fan { position: absolute; width: 74px; height: 150px; transform-origin: 37px 140px; border-radius: 6px; padding: 8px 8px 0; font: 700 12px "Noto Sans SC"; box-shadow: 0 3px 8px rgba(0,0,0,.3); }
+.dk .fan small { display: block; margin-top: 3px; font: 600 7.5px "Fraunces"; letter-spacing: .1em; }
+.dk .fan .chip { width: 58px; height: 64px; margin-top: 8px; border-radius: 2px; }
+.dk .rivet { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #9aa0a6 60%, #5d6268); box-shadow: 0 1px 2px rgba(0,0,0,.5); z-index: 9; }
+/* 铅笔 */
+.dk .pencil { position: absolute; height: 12px; z-index: 9; filter: drop-shadow(0 3px 2px rgba(0,0,0,.35)); }
+/* 印章按钮 */
+.dk .stamp { position: absolute; border-radius: 50%; display: grid; place-items: center; mix-blend-mode: multiply; }
+/* 放大镜 */
+.dk .loupe { position: absolute; border-radius: 50%; overflow: hidden; z-index: 9; box-shadow: 0 0 0 7px #2a2a2c, 0 0 0 9px #8d9196, 0 10px 20px rgba(0,0,0,.45); }
+.dk .loupe::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.35), rgba(255,255,255,0) 35%), radial-gradient(circle, transparent 60%, rgba(0,0,0,.25)); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="regmark" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M12 0v24M0 12h24" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></symbol>
+  <symbol id="pencil" viewBox="0 0 220 12">
+    <path d="M0 6 L20 1 L20 11 Z" fill="#e8c9a0"/><path d="M0 6 L7 4.2 L7 7.8 Z" fill="#3a3a3a"/>
+    <rect x="20" y="1" width="170" height="10" fill="#2f5d4a"/><rect x="20" y="1" width="170" height="3.3" fill="#3d7560"/><rect x="20" y="7.7" width="170" height="3.3" fill="#244a3a"/>
+    <text x="40" y="8.6" font-family="Inter" font-weight="700" font-size="5.5" fill="#e3c26a" letter-spacing="1">LANYIN · 2B · RISO DRAW</text>
+    <rect x="190" y="1" width="14" height="10" fill="#c9cdd1"/><rect x="192" y="1" width="1.5" height="10" fill="#9aa0a6"/><rect x="196" y="1" width="1.5" height="10" fill="#9aa0a6"/><rect x="200" y="1" width="1.5" height="10" fill="#9aa0a6"/>
+    <rect x="204" y="1" width="16" height="10" rx="2" fill="#e88a9a"/>
+  </symbol>
+</svg>
+<script>
+function ticks(id, w, cm, label) {
+  let s = '';
+  const px = w / cm;
+  for (let i = 0; i <= cm * 10; i++) { const x = i * px / 10; const h = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5; s += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="#2b2d30" stroke-width="${i % 10 === 0 ? 1 : .6}"/>`; if (i % 10 === 0 && i) s += `<text x="${x}" y="22" font-family="Inter" font-weight="600" font-size="7.5" text-anchor="middle" fill="#2b2d30">${label ? label(i / 10) : i / 10}</text>`; }
+  document.getElementById(id).innerHTML = `<svg viewBox="0 0 ${w} 28" style="width:${w}px;height:28px;display:block">${s}</svg>`;
+}
+</script>
+<section class="board" id="dusk">
+  <div class="intro">
+    <div class="mark">暮</div>
+    <div class="name">Riso studio · 孔版工作台</div>
+    <p>整个 App 是一张印刷工作台：绿色的切割垫铺满屏幕，上面有厘米格、毫米格和 45° 线。今天傍晚印好的三色孔版画用美纹纸胶带贴在垫子上，四角有裁切线，白边上有铅笔写的编号、签名和「套准偏了一点」这样的小批注。</p>
+    <p>旁边放着这张画的三张分色稿（粉、黄、蓝各一张），入口是一把用铆钉串起来的油墨色票扇，推荐歌单是几张叠着的小样张，一支写着 2B 的铅笔斜放在上面。播放页上，正在放的歌就是这张画，封面印成落日，随进度沉到山后；放大镜压在画上，能看见三色网点；进度是一把钢尺，铅笔在当前时间上划了一道；控制键是盖在纸上的印章。</p>
+    <div class="swatches"><i style="background:#2e5a47"></i><i style="background:#f2ebdd"></i><i style="background:#ff48b0"></i><i style="background:#ffb511"></i><i style="background:#3255a4"></i><i style="background:#321871"></i></div>
+    <div class="type">标题：思源宋体 Black · 西文：Fraunces · 铅笔字：龙藏体 · 油墨叠加用正片叠底</div>
+  </div>
+
+  <!-- 首页 -->
+  <div class="phone dk">
+    <div class="status" style="color:#e7efe8"><span>17:42</span><span class="sys"><s></s><b></b></span></div>
+    <span class="matnum" style="left:36px;top:38px">1</span><span class="matnum" style="left:75px;top:38px">2</span><span class="matnum" style="left:114px;top:38px">3</span><span class="matnum" style="left:153px;top:38px">4</span><span class="matnum" style="left:192px;top:38px">5</span><span class="matnum" style="left:231px;top:38px">6</span><span class="matnum" style="left:270px;top:38px">7</span><span class="matnum" style="left:309px;top:38px">8</span><span class="matnum" style="left:348px;top:38px">9</span>
+    <!-- 主画 -->
+    <div class="sheet" style="left:18px;top:58px;width:330px;height:372px;transform:rotate(-1.2deg);z-index:2">
+      <div style="position:absolute;left:18px;top:18px;width:294px;height:288px;background:url(covers/riso_poster.jpg) center 35%/cover"></div>
+      <span class="crop" style="left:4px;top:18px;border-top-width:1px"></span><span class="crop" style="left:18px;top:4px;border-left-width:1px"></span>
+      <span class="crop" style="right:4px;top:18px;border-top-width:1px"></span><span class="crop" style="right:18px;top:4px;border-right-width:1px"></span>
+      <span class="crop" style="left:4px;top:306px;border-top-width:1px"></span><span class="crop" style="right:4px;top:306px;border-top-width:1px"></span>
+      <div class="zs mis" data-t="傍晚好" style="position:absolute;left:32px;top:30px;font-size:52px;line-height:1.05;letter-spacing:.04em">傍晚好</div>
+      <div class="it" style="position:absolute;left:34px;top:94px;font-size:13px;color:var(--blue);mix-blend-mode:multiply">日落 <b class="fr" style="font-weight:900">17:06</b> · 天黑前还有 24 分钟</div>
+      <div style="position:absolute;left:34px;top:270px;color:var(--paper);font:900 10px 'Fraunces';letter-spacing:.3em">SUNSET No.18</div>
+      <div class="hand" style="position:absolute;left:20px;top:316px;font-size:17px">暮 · 第 18 号</div>
+      <div class="hand" style="position:absolute;left:150px;top:318px;font-size:14px">三色孔版</div>
+      <div class="hand" style="position:absolute;right:22px;top:314px;font-size:18px">12/50</div>
+      <div class="hand" style="position:absolute;right:30px;top:338px;font-size:13px;color:#9a5a6a;transform:rotate(-4deg)">套准偏了一点 ↗</div>
+      <svg class="reg" style="left:50%;top:342px;margin-left:-7px;color:#555"><use href="#regmark"/></svg>
+    </div>
+    <div class="tape" style="left:4px;top:52px;transform:rotate(-38deg)"></div><div class="tape" style="left:296px;top:46px;transform:rotate(32deg)"></div>
+    <!-- 分色稿 -->
+    <div class="z" style="left:236px;top:440px;width:140px;z-index:3">
+      <div class="hand" style="font-size:14px;color:#dfeee4">分色 ↓</div>
+      <div style="position:relative;height:96px;margin-top:2px">
+        <div class="sheet" style="left:0;top:8px;width:60px;height:60px;transform:rotate(-8deg);background:url(covers/sep_pink.jpg) center/cover"></div>
+        <div class="sheet" style="left:34px;top:4px;width:60px;height:60px;transform:rotate(3deg);background:url(covers/sep_yellow.jpg) center/cover"></div>
+        <div class="sheet" style="left:70px;top:14px;width:60px;height:60px;transform:rotate(9deg);background:url(covers/sep_blue.jpg) center/cover"></div>
+      </div>
+    </div>
+    <!-- 每日推荐：一张小样 + 印章 -->
+    <div class="sheet" style="left:18px;top:446px;width:206px;height:94px;transform:rotate(1deg);z-index:3">
+      <div style="position:absolute;left:12px;top:10px;font:900 9px 'Fraunces';letter-spacing:.26em;color:var(--pink);mix-blend-mode:multiply">TODAY'S PRINT</div>
+      <div class="zs mis" data-t="每日推荐" style="position:absolute;left:12px;top:24px;font-size:26px">每日推荐</div>
+      <div style="position:absolute;left:12px;top:62px;font-size:11.5px;opacity:.85">30 首 · 从《海边的风》开始</div>
+      <div class="stamp" style="right:12px;top:16px;width:58px;height:58px;background:var(--pink)"><div style="position:absolute;inset:0;border-radius:50%;background:var(--yellow);mix-blend-mode:multiply;transform:translate(-3px,2px)"></div><svg viewBox="0 0 24 24" style="width:26px;height:26px;position:relative;mix-blend-mode:multiply"><path d="M8 5.5v13l10.5-6.5z" fill="#3255a4"/></svg></div>
+    </div>
+    <!-- 色票扇：四个入口 -->
+    <div class="z" style="left:30px;top:556px;width:200px;height:170px;z-index:4">
+      <div class="fan" style="left:20px;top:0;background:var(--paper);transform:rotate(-24deg)">最近<small>OVERPRINT</small><div class="chip" style="background:var(--violet)"></div></div>
+      <div class="fan" style="left:20px;top:0;background:var(--paper);transform:rotate(-8deg)">排行榜<small>MED. BLUE</small><div class="chip" style="background:var(--blue)"></div></div>
+      <div class="fan" style="left:20px;top:0;background:var(--paper);transform:rotate(8deg)">我喜欢<small>SUNFLOWER</small><div class="chip" style="background:var(--yellow)"></div></div>
+      <div class="fan" style="left:20px;top:0;background:var(--paper);transform:rotate(24deg)">私人 FM<small>FL. PINK</small><div class="chip" style="background:var(--pink)"></div></div>
+      <span class="rivet" style="left:51px;top:134px"></span>
+    </div>
+    <!-- 歌单小样 -->
+    <div class="z" style="left:226px;top:560px;width:150px;height:150px;z-index:4">
+      <div class="sheet" style="left:8px;top:14px;width:104px;height:120px;transform:rotate(-6deg)"><div style="position:absolute;left:7px;top:7px;width:90px;height:90px;background:url(covers/riso_tree.jpg) center/cover"></div></div>
+      <div class="sheet" style="left:30px;top:6px;width:104px;height:124px;transform:rotate(5deg)"><div style="position:absolute;left:7px;top:7px;width:90px;height:90px;background:url(covers/riso_peaks.jpg) center/cover"></div><div style="position:absolute;left:8px;top:101px;font:700 12px 'Noto Serif SC'">傍晚散步的歌</div></div>
+      <div class="hand" style="position:absolute;left:46px;top:136px;font-size:13px;color:#dfeee4">推荐歌单 · 6 张</div>
+    </div>
+    <svg class="pencil" style="left:120px;top:690px;width:250px;transform:rotate(-16deg)"><use href="#pencil"/></svg>
+    <!-- 迷你播放：一条纸 -->
+    <div class="sheet" style="left:14px;right:14px;top:726px;height:54px;z-index:6;display:flex;align-items:center;gap:12px;padding:0 12px">
+      <div style="width:36px;height:36px;border-radius:50%;background:url(covers/riso_forest.jpg) center/cover"></div>
+      <div style="flex:1"><div style="font:700 13.5px 'Noto Serif SC'">海边的风</div><div class="it" style="font-size:11.5px;opacity:.8">林间 / 小舟 · 0:58</div></div>
+      <svg viewBox="0 0 24 24" style="width:24px;height:24px"><rect x="6.5" y="5" width="4" height="14" fill="#3255a4"/><rect x="13.5" y="5" width="4" height="14" fill="#3255a4"/></svg>
+      <div style="position:absolute;left:12px;right:12px;bottom:6px;height:1.5px;background:rgba(50,85,164,.35)"><i style="position:absolute;left:0;top:0;bottom:0;width:26%;background:var(--pink)"></i></div>
+    </div>
+    <!-- 标签栏：三个盖在垫子上的印 -->
+    <div class="z" style="left:0;right:0;bottom:14px;display:flex;justify-content:space-around;z-index:6">
+      <div style="width:70px;height:40px;border-radius:50%;border:2.5px solid #ffd2e6;color:#ffd2e6;display:grid;place-items:center;font:900 14px 'Noto Serif SC';transform:rotate(-6deg);background:rgba(255,72,176,.25)">首页</div>
+      <div style="width:70px;height:40px;border-radius:50%;border:2px dashed rgba(231,239,232,.55);color:#e7efe8;display:grid;place-items:center;font:700 14px 'Noto Serif SC'">搜索</div>
+      <div style="width:70px;height:40px;border-radius:50%;border:2px dashed rgba(231,239,232,.55);color:#e7efe8;display:grid;place-items:center;font:700 14px 'Noto Serif SC'">我的</div>
+    </div>
+  </div>
+
+  <!-- 播放页 -->
+  <div class="phone dk">
+    <div class="status" style="color:#e7efe8"><span>17:42</span><span class="sys"><s></s><b></b></span></div>
+    <div class="z row" style="left:18px;right:18px;top:44px;justify-content:space-between;color:#e7efe8;z-index:5"><svg viewBox="0 0 24 24" style="width:22px;height:22px"><path d="M6 9l6 6 6-6" fill="none" stroke="#e7efe8" stroke-width="1.8" stroke-linecap="round"/></svg><span class="it" style="font-size:13px">傍晚散步的歌 · 03 / 30</span><svg viewBox="0 0 24 24" style="width:22px;height:22px"><circle cx="5" cy="12" r="1.5" fill="#e7efe8"/><circle cx="12" cy="12" r="1.5" fill="#e7efe8"/><circle cx="19" cy="12" r="1.5" fill="#e7efe8"/></svg></div>
+    <div class="sheet" style="left:16px;top:76px;width:358px;height:396px;transform:rotate(.8deg);z-index:2">
+      <div style="position:absolute;left:14px;top:14px;width:330px;height:330px;overflow:hidden;background:url(covers/riso_sky.jpg) center/cover">
+        <div style="position:absolute;left:78px;top:92px;width:172px;height:172px;border-radius:50%;background:url(covers/sun_forest.jpg) center/cover"></div>
+        <div style="position:absolute;inset:0;background:url(covers/riso_ridges.png) center/cover"></div>
+        <svg viewBox="0 0 330 330" style="position:absolute;inset:0;mix-blend-mode:multiply"><path d="M22 56 Q 165 6 310 244" fill="none" stroke="#3255a4" stroke-width="1.4" stroke-dasharray="2 5"/><circle cx="22" cy="56" r="3" fill="#3255a4"/><circle cx="310" cy="244" r="3" fill="#ff48b0"/></svg>
+        <div class="it" style="position:absolute;left:12px;top:34px;font-size:11px;color:var(--blue);mix-blend-mode:multiply">0:00</div>
+        <div class="it" style="position:absolute;right:10px;top:222px;font-size:11px;color:var(--blue);mix-blend-mode:multiply">3:44 · 日落</div>
+      </div>
+      <span class="crop" style="left:2px;top:14px;border-top-width:1px"></span><span class="crop" style="left:14px;top:2px;border-left-width:1px"></span>
+      <span class="crop" style="right:2px;top:14px;border-top-width:1px"></span><span class="crop" style="right:14px;top:2px;border-right-width:1px"></span>
+      <div class="hand" style="position:absolute;left:16px;top:350px;font-size:17px">海边的风 · 第 3 号</div>
+      <div class="hand" style="position:absolute;right:18px;top:350px;font-size:17px">3/30</div>
+      <div class="hand" style="position:absolute;left:150px;top:372px;font-size:12.5px;color:#9a5a6a;transform:rotate(-3deg)">粉再深些 →</div>
+    </div>
+    <div class="tape" style="left:150px;top:68px;width:70px;transform:rotate(-3deg)"></div>
+    <div class="tape" style="left:330px;top:440px;width:50px;transform:rotate(-50deg)"></div>
+    <!-- 放大镜：看得见网点 -->
+    <div class="loupe" style="left:262px;top:300px;width:96px;height:96px"><div style="position:absolute;left:-470px;top:-500px;width:990px;height:990px;background:url(covers/riso_sky.jpg) center/cover"></div><div style="position:absolute;left:-200px;top:-180px;width:516px;height:516px;border-radius:50%;background:url(covers/sun_forest.jpg) center/cover"></div></div>
+    <!-- 标题条 -->
+    <div class="sheet" style="left:18px;top:488px;width:300px;height:118px;transform:rotate(-1deg);z-index:3;padding:12px 16px">
+      <div class="zs mis" data-t="海边的风" style="font-size:30px;line-height:1.1;letter-spacing:.03em">海边的风</div>
+      <div class="it" style="font-size:13px;margin-top:2px">林间 / 小舟 — 《夜航》</div>
+      <div style="margin-top:8px;font:900 15px 'Noto Serif SC'"><span class="mis" data-t="让歌词一行一行亮起">让歌词一行一行亮起</span></div>
+      <div style="margin-top:2px;font:500 12px 'Noto Serif SC';opacity:.45">唱片在掌心慢慢转动</div>
+    </div>
+    <svg class="pencil" style="left:200px;top:560px;width:220px;transform:rotate(-24deg)"><use href="#pencil"/></svg>
+    <!-- 钢尺：进度 -->
+    <div class="z" style="left:10px;right:10px;top:630px;height:44px;border-radius:2px;background:linear-gradient(180deg,#e9ecef,#c3c8cd 45%,#dfe3e7 55%,#b3b8be);box-shadow:0 4px 8px rgba(0,0,0,.4), inset 0 1px 0 #fff;z-index:5;transform:rotate(-.5deg)">
+      <div id="ruler" style="position:absolute;left:10px;top:0"></div>
+      <div style="position:absolute;right:10px;bottom:4px;font:700 7px 'Inter';letter-spacing:.2em;color:#4a4e53">STAINLESS · 30 CM</div>
+      <div style="position:absolute;left:calc(10px + 26% * .9);top:-6px;width:2px;height:30px;background:#5a5a62;transform:rotate(8deg);opacity:.85"></div>
+      <div class="hand" style="position:absolute;left:calc(14px + 26% * .9);top:22px;font-size:13px;color:#4a4a52">0:58</div>
+      <div class="hand" style="position:absolute;right:16px;top:22px;font-size:13px;color:#4a4a52;opacity:.0">3:44</div>
+    </div>
+    <!-- 印章控制 -->
+    <div class="z" style="left:16px;right:16px;top:700px;height:100px;z-index:4" id="stamps">
+      <div class="stamp" style="left:4px;top:30px;width:42px;height:42px;border:2.5px solid #ffd2e6;mix-blend-mode:normal"><svg viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M5 11V9a3 3 0 0 1 3-3h11l-3-3M19 13v2a3 3 0 0 1-3 3H5l3 3" fill="none" stroke="#ffd2e6" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <div class="stamp" style="left:70px;top:22px;width:56px;height:56px;border:3px solid #e7efe8;mix-blend-mode:normal"><svg viewBox="0 0 24 24" style="width:24px;height:24px"><path d="M18 6v12l-8.5-6z" fill="#e7efe8"/><path d="M6 6v12" stroke="#e7efe8" stroke-width="2"/></svg></div>
+      <div class="stamp" style="left:142px;top:6px;width:86px;height:86px;background:var(--pink);mix-blend-mode:normal;box-shadow:0 0 0 4px rgba(255,72,176,.25)"><div style="position:absolute;inset:8px;border-radius:50%;border:2px solid var(--blue);transform:translate(2px,-1px)"></div><svg viewBox="0 0 24 24" style="width:32px;height:32px"><rect x="6.5" y="5" width="4" height="14" fill="#3255a4"/><rect x="13.5" y="5" width="4" height="14" fill="#3255a4"/></svg></div>
+      <div class="stamp" style="left:244px;top:22px;width:56px;height:56px;border:3px solid #e7efe8;mix-blend-mode:normal"><svg viewBox="0 0 24 24" style="width:24px;height:24px"><path d="M6 6v12l8.5-6z" fill="#e7efe8"/><path d="M18 6v12" stroke="#e7efe8" stroke-width="2"/></svg></div>
+      <div class="stamp" style="left:316px;top:30px;width:42px;height:42px;border:2.5px solid #ffd2e6;mix-blend-mode:normal"><svg viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M4 6h13M4 11h13M4 16h8" stroke="#ffd2e6" stroke-width="2" stroke-linecap="round"/><path d="M16 14.5v6l4.5-3z" fill="#ffd2e6"/></svg></div>
+    </div>
+    <div class="z row" style="left:18px;right:18px;bottom:20px;justify-content:space-between;font:600 8px 'Fraunces';letter-spacing:.16em;color:#cfe3d6;z-index:5"><span style="display:flex;gap:0"><i style="width:9px;height:9px;background:#ff48b0"></i><i style="width:9px;height:9px;background:#ffb511"></i><i style="width:9px;height:9px;background:#3255a4"></i><i style="width:9px;height:9px;background:#321871"></i></span><span>FL.PINK · SUNFLOWER · MED.BLUE</span><svg style="width:12px;height:12px;color:#cfe3d6"><use href="#regmark"/></svg></div>
+  </div>
+</section>
+<script>ticks('ruler', 330, 22, n => n % 2 ? '' : n);</script>
+</body>
+</html>

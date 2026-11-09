@@ -1,0 +1,32 @@
+
+@font-face { font-family: "DM Serif Display"; src: url("file:///home/user/gitwrap/music-player/app/src/main/res/font/dm_serif_display.ttf"); }
+@font-face { font-family: "DM Serif Display"; font-style: italic; src: url("file:///home/user/gitwrap/music-player/app/src/main/res/font/dm_serif_display_italic.ttf"); }
+@font-face { font-family: "Fusion Pixel"; src: url("file:///home/user/gitwrap/music-player/app/src/main/res/font/fusion_pixel.ttf"); }
+@font-face { font-family: "Tilt Neon"; src: url("file:///home/user/gitwrap/music-player/app/src/main/res/font/tilt_neon.ttf"); }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #141416; font-family: "Inter", "Noto Sans SC", sans-serif; color: #111; -webkit-font-smoothing: antialiased; }
+.board { display: flex; gap: 56px; padding: 56px 64px 64px; align-items: flex-start; background: #17171a; }
+.board + .board { border-top: 1px solid #26262a; }
+.intro { width: 300px; color: #e9e7e2; padding-top: 24px; }
+.intro .mark { font-family: "Noto Serif SC", serif; font-size: 64px; font-weight: 600; line-height: 1; }
+.intro .name { margin-top: 18px; font-size: 13px; letter-spacing: .28em; text-transform: uppercase; color: #8d8a84; }
+.intro p { margin-top: 18px; font-size: 15px; line-height: 1.75; color: #c9c6bf; }
+.intro .swatches { display: flex; gap: 8px; margin-top: 22px; }
+.intro .swatches i { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #ffffff22; }
+.intro .type { margin-top: 18px; font-size: 12px; color: #8d8a84; line-height: 1.8; }
+
+.phone { width: 390px; height: 844px; border-radius: 48px; overflow: hidden; position: relative; flex: none;
+  box-shadow: 0 0 0 10px #050506, 0 0 0 11px #2a2a2e, 0 40px 80px rgba(0,0,0,.55); }
+.status { height: 46px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px 0 32px; font: 600 15px/1 "Inter"; position: relative; z-index: 5; }
+.status .sys { display: flex; gap: 6px; align-items: center; }
+.status .sys b { display: inline-block; width: 24px; height: 11px; border-radius: 3px; border: 1.5px solid currentColor; position: relative; }
+.status .sys b::after { content: ""; position: absolute; inset: 1.5px 5px 1.5px 1.5px; background: currentColor; border-radius: 1px; }
+.status .sys s { display: inline-block; width: 16px; height: 10px; background: currentColor; clip-path: polygon(0 100%, 100% 0, 100% 100%); text-decoration: none; }
+svg.i { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.cover { background-size: cover; background-position: center; flex: none; }
+.row { display: flex; align-items: center; }
+.grow { flex: 1; min-width: 0; }
+.clip { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.hscroll { display: flex; gap: 14px; overflow: hidden; }
+
