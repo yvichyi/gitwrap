@@ -149,7 +149,7 @@ fun CommentsPage(
 
 /**
  * One comment, set as the theme sets things: a note in the margin (墨), a tile on the wall (霓),
- * a postcard (暮), a boxed block with its number (格), a line of a screenplay (影), a grey tile
+ * a postcard (暮), a boxed block with its number (格), a grey tile
  * (点), a line in the device's log (机), a letter to the editor (报), a game's dialogue window
  * (游), a bubble of coloured gel (酸).
  */
@@ -159,8 +159,8 @@ private fun CommentRow(comment: Comment, now: Long, index: Int, onLike: () -> Un
     val c = style.colors
     val kind = style.backdrop
     // Letters, screenplay lines and log lines go without a face.
-    val face = kind != BackdropKind.Film && kind != BackdropKind.Paper && kind != BackdropKind.Device
-    val framed = kind != BackdropKind.Ink && kind != BackdropKind.Film && kind != BackdropKind.Paper
+    val face = kind != BackdropKind.Paper && kind != BackdropKind.Device
+    val framed = kind != BackdropKind.Ink && kind != BackdropKind.Paper
     // On 酸's coloured plastic grey won't read; white does.
     val quiet = if (kind == BackdropKind.Acid) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f) else c.muted
     Column(
@@ -195,7 +195,7 @@ private fun CommentRow(comment: Comment, now: Long, index: Int, onLike: () -> Un
                     comment.content,
                     style = if (kind == BackdropKind.Dusk) style.type.body.copy(fontFamily = style.display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic) else style.type.body,
                     // A screenplay's dialogue sits in from the margin.
-                    modifier = Modifier.padding(top = 6.dp, start = if (kind == BackdropKind.Film) 24.dp else 0.dp),
+                    modifier = Modifier.padding(top = 6.dp),
                 )
                 comment.replyTo?.let { quoted ->
                     Text(

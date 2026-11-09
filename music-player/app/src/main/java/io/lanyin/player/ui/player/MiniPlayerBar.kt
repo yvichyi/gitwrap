@@ -133,8 +133,6 @@ private fun MiniPlayButton(state: PlayerState) {
     val style = Lanyin.style
     val c = style.colors
     val morph by animateFloatAsState(if (state.isPlaying) 1f else 0f, style.bouncy.spec(), label = "miniMorph")
-    // Only 影's reel turns; the others are still between frames of the position.
-    val clock = if (style.backdrop == BackdropKind.Film) rememberFrameClock(state.isPlaying) else null
     Box(
         Modifier
             .size(48.dp)
@@ -144,7 +142,7 @@ private fun MiniPlayButton(state: PlayerState) {
     ) {
         Canvas(Modifier.size(36.dp)) {
             val f = (state.positionMs.toFloat() / state.durationMs).let { if (it.isFinite()) it.coerceIn(0f, 1f) else 0f }
-            drawMiniProgress(style, f, clock?.floatValue ?: 0f)
+            drawMiniProgress(style, f, 0f)
         }
         Canvas(Modifier.size(13.dp)) { drawPlayPauseGlyph(morph, c.content) }
     }
@@ -154,7 +152,7 @@ private fun MiniPlayButton(state: PlayerState) {
  * How far the song has got, round the mini player's play button. 墨: an ensō drawn with the
  * brush, thick where it starts and drying out. 霓: a lit tube bent round a cold glass ring. 暮:
  * an arc in the sunset's colours with the sun at its head. 格: a square key with a bar filling
- * along its foot. 影: a take-up reel, the tape wound onto it growing as it turns. 点: a ring of
+ * along its foot. 点: a ring of
  * dots lighting one by one, the red one at the head. 机: a knob's scale of ticks. 报: a pie,
  * printed. 游: a pixel frame and a row of blocks. 酸: a ring of lime gel with its gloss.
  */
@@ -203,17 +201,6 @@ internal fun DrawScope.drawMiniProgress(style: LanyinStyle, f: Float, t: Float) 
             )
             val a = (-90f + 360f * f) * PI.toFloat() / 180f
             drawCircle(c.accent, 3.dp.toPx(), center + Offset(cos(a) * (r - inset), sin(a) * (r - inset)))
-        }
-        BackdropKind.Film -> {
-            // The take-up reel: the tape wound on grows with the song; the reel turns as it plays.
-            drawCircle(c.content.copy(alpha = 0.3f), r - 1.dp.toPx(), style = Stroke(1.2.dp.toPx()))
-            drawCircle(c.content.copy(alpha = 0.16f), (r * 0.42f) + (r * 0.5f) * f)
-            rotate(t * 90f, center) {
-                for (k in 0 until 3) {
-                    val a = (k * 120f) * PI.toFloat() / 180f
-                    drawCircle(c.bg.copy(alpha = 0.9f), r * 0.13f, center + Offset(cos(a) * r * 0.62f, sin(a) * r * 0.62f))
-                }
-            }
         }
         BackdropKind.Dot -> {
             val n = 24

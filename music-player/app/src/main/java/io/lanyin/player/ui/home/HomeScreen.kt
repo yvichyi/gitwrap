@@ -146,7 +146,6 @@ fun HomeScreen(
             BackdropKind.Ink -> InkHome(model)
             BackdropKind.Dot -> DotHome(model)
             BackdropKind.Device -> DeviceHome(model)
-            BackdropKind.Film -> FilmHome(model)
             BackdropKind.Grid -> GridHome(model)
             BackdropKind.Paper -> PaperHome(model)
             BackdropKind.Game -> GameHome(model)

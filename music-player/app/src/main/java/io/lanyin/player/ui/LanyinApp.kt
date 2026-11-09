@@ -410,8 +410,6 @@ private fun NoticeBanner(notice: String?, onDismiss: () -> Unit, floating: Boole
         val plain = style.dock == DockKind.Docked && !floating
         val c = style.colors
         val container = when (style.backdrop) {
-            // 影: a subtitle, white on a dark band.
-            BackdropKind.Film -> Modifier.background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.72f), RoundedCornerShape(4.dp))
             // 游: a game's message window.
             BackdropKind.Game -> Modifier.gameWindow(c.surface, c.content)
             // 酸: a capsule of grape gel.
@@ -419,7 +417,7 @@ private fun NoticeBanner(notice: String?, onDismiss: () -> Unit, floating: Boole
             else -> if (plain) Modifier else Modifier.background(c.bg, style.chipShape).themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome)
         }
         val ink = when (style.backdrop) {
-            BackdropKind.Film, BackdropKind.Acid -> androidx.compose.ui.graphics.Color.White
+            BackdropKind.Acid -> androidx.compose.ui.graphics.Color.White
             else -> c.content
         }
         Row(
@@ -431,7 +429,7 @@ private fun NoticeBanner(notice: String?, onDismiss: () -> Unit, floating: Boole
                 .pressable(onClick = onDismiss)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = if (style.backdrop == BackdropKind.Film) Arrangement.Center else Arrangement.Start,
+            horizontalArrangement = Arrangement.Start,
         ) {
             NoticeLead()
             Text(shown, style = style.type.caption, color = ink, maxLines = 2)
@@ -442,7 +440,7 @@ private fun NoticeBanner(notice: String?, onDismiss: () -> Unit, floating: Boole
 /**
  * What a notice starts with, in the theme's hand: a seal for 墨, a lit dot for 霓, a stamp for
  * 暮, a yellow tag for 格, the red dot for 点, a printed label for 机, 「快讯」 for 报, a cursor
- * for 游, a sparkle for 酸. 影's subtitle needs none.
+ * for 游, a sparkle for 酸.
  */
 @Composable
 private fun NoticeLead() {
@@ -467,7 +465,6 @@ private fun NoticeLead() {
         BackdropKind.Acid -> androidx.compose.foundation.Canvas(gap.size(12.dp)) {
             drawPath(io.lanyin.player.ui.design.starPath(androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f), size.minDimension / 2f, size.minDimension * 0.14f, 4), androidx.compose.ui.graphics.Color.White)
         }
-        BackdropKind.Film -> Unit
     }
 }
 
@@ -481,16 +478,6 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
             .fillMaxWidth()
             .height(if (docked) 52.dp else 60.dp)
             .then(if (docked) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome))
-            // 影's bar is a strip of film: sprocket holes along its top edge.
-            .then(if (style.edge == EdgeKind.Film) Modifier.drawBehind {
-                val hole = androidx.compose.ui.geometry.Size(5.dp.toPx(), 3.dp.toPx())
-                val pitch = 11.dp.toPx()
-                var x = (size.width % pitch) / 2f
-                while (x + hole.width <= size.width) {
-                    drawRoundRect(c.content.copy(alpha = 0.09f), androidx.compose.ui.geometry.Offset(x, 3.dp.toPx()), hole, androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()))
-                    x += pitch
-                }
-            } else Modifier),
     ) {
         val itemWidth = maxWidth / tabs.size
         val x by animateDpAsState(itemWidth * selected, style.bouncy.spec(Dp.VisibilityThreshold), label = "tabIndicator")
@@ -505,20 +492,6 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                         val y = size.height - 3.dp.toPx()
                         drawRect(androidx.compose.ui.graphics.Brush.radialGradient(listOf(c.accent.copy(alpha = 0.22f), androidx.compose.ui.graphics.Color.Transparent), androidx.compose.ui.geometry.Offset(size.width / 2f, y), size.width * 0.5f))
                         drawTubeLine(androidx.compose.ui.geometry.Offset(size.width * 0.38f, y), androidx.compose.ui.geometry.Offset(size.width * 0.62f, y), c.accent, 2.5.dp.toPx())
-                    }
-                    // 影: the current tab is an exposed frame between two frame lines, marked in the
-                    // orange of the date stamp.
-                    EdgeKind.Film -> Modifier.drawBehind {
-                        drawRect(c.accent.copy(alpha = 0.07f))
-                        val line = c.content.copy(alpha = 0.16f)
-                        drawLine(line, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(0f, size.height), 1.dp.toPx())
-                        drawLine(line, androidx.compose.ui.geometry.Offset(size.width, 0f), androidx.compose.ui.geometry.Offset(size.width, size.height), 1.dp.toPx())
-                        drawLine(
-                            io.lanyin.player.ui.theme.FilmStamp,
-                            androidx.compose.ui.geometry.Offset(size.width * 0.4f, size.height - 1.dp.toPx()),
-                            androidx.compose.ui.geometry.Offset(size.width * 0.6f, size.height - 1.dp.toPx()),
-                            2.dp.toPx(), androidx.compose.ui.graphics.StrokeCap.Round,
-                        )
                     }
                     // 酸: the current tab is a lime gel capsule, glossed across the top.
                     EdgeKind.Chrome -> Modifier

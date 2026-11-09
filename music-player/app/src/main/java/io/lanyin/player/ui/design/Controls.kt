@@ -84,7 +84,7 @@ import io.lanyin.player.ui.theme.LanyinStyle
 /**
  * Play/pause whose glyph morphs between the triangle and the two bars. With a [feed] it also
  * answers the music while playing: an ink ring leaves 墨's button on each beat, 暮's glows with
- * the level, 霓's tube flares, 格's block kicks, 影's iris opens to the light, a ring of lights
+ * the level, 霓's tube flares, 格's block kicks, a ring of lights
  * round 点's disc fills with the level, 机's key glows, 报's block slips off its red plate, 游's A
  * button is pressed on the beat and a starburst flashes out round 酸's disc.
  */
@@ -146,7 +146,7 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
         else -> CircleShape
     }
     val glyphColor = when (style.button) {
-        ButtonKind.Outline, ButtonKind.Aperture -> c.content
+        ButtonKind.Outline -> c.content
         ButtonKind.NeonRing -> c.accent
         else -> c.onAccent
     }
@@ -164,7 +164,6 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
             .clip(shape)
             .background(c.accent)
             .border(style.strokeWidth, c.outline, shape)
-        ButtonKind.Aperture -> Modifier.drawBehind { drawAperture(morph, beat(), style) }
         // 点: a plain white disc, the glyph cut out of it in black.
         ButtonKind.Disc -> Modifier.clip(shape).background(c.content)
         // 机: the orange key.
@@ -192,7 +191,6 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
     ) {
         val glyph = when (style.button) {
             ButtonKind.Outline -> 0.32f
-            ButtonKind.Aperture -> 0.3f
             ButtonKind.Disc, ButtonKind.Key, ButtonKind.Stamp, ButtonKind.Pad, ButtonKind.Burst -> 0.34f
             else -> 0.42f
         }
@@ -296,7 +294,7 @@ fun LikeButton(liked: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifi
 /**
  * What a like sets off round the heart, [b] of the way through (0..1), in the theme's hand. 墨: a
  * seal pressed and lifting. 霓: a ring of tube flickering on and dying. 暮: a postmark struck.
- * 格: a comic burst of heavy strokes. 影: a flash. 点: dots flying out. 机: a ring of LEDs lit in
+ * 格: a comic burst of heavy strokes. 点: dots flying out. 机: a ring of LEDs lit in
  * turn. 报: a circle in red pen. 游: pixels thrown up. 酸: sparkles. Elsewhere, a ring.
  */
 internal fun DrawScope.drawLikeBurst(style: LanyinStyle, b: Float) {
@@ -324,7 +322,6 @@ internal fun DrawScope.drawLikeBurst(style: LanyinStyle, b: Float) {
             val to = from + r * 0.3f * fade
             drawLine(c.outline, center + Offset(cos(a) * from, sin(a) * from), center + Offset(cos(a) * to, sin(a) * to), 2.5.dp.toPx())
         }
-        BackdropKind.Film -> drawCircle(Color.White.copy(alpha = 0.7f * fade * fade), r * (0.6f + 0.4f * b), center)
         BackdropKind.Dot -> for (k in 0 until 8) {
             val a = k * PI.toFloat() / 4f
             val d = r * (0.45f + 0.5f * b)
@@ -429,7 +426,6 @@ fun SeekBar(
                 SeekKind.Pill -> drawPillTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
                 SeekKind.Tube -> drawTubeTrack(f, c.accent)
                 SeekKind.Block -> drawBlockTrack(f, c.accent, c.outline, c.surface)
-                SeekKind.Film -> drawFilmTrack(f, style)
                 SeekKind.Dots -> drawDotsTrack(f, dragging, style)
                 SeekKind.Fader -> drawFaderTrack(f, dragging, style)
                 SeekKind.Ruler -> drawRulerTrack(f, dragging, style)
@@ -781,7 +777,7 @@ fun SectionTitle(title: String, modifier: Modifier = Modifier, trailing: String?
 
 /**
  * Page title in the theme's display face, with what the theme sets under or beside it: a dot rule
- * (点), a model plate (机), sprocket holes (影), a double rule (报), a hard shadow (游) or chrome
+ * (点), a model plate (机), a double rule (报), a hard shadow (游) or chrome
  * and a spark (酸).
  */
 @Composable

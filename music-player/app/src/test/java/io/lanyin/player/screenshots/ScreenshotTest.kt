@@ -630,12 +630,6 @@ class ScreenshotTest {
     @Test fun port_dusk_dark_vinyl() = capture("port_dusk_dark_vinyl", AppTheme.DUSK, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
     @Test fun port_neon_vinyl() = capture("port_neon_vinyl", AppTheme.NEON, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }
 
-    // M7: 影's player.
-    @Test fun new_film_cover() = capture("new_film_cover", AppTheme.FILM, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
-    @Test fun new_film_cassette() = capture("new_film_cassette", AppTheme.FILM, ThemeMode.DARK) { Player(PlayerSkin.CASSETTE) }
-    @Config(qualifiers = LANDSCAPE)
-    @Test fun new_film_land() = capture("new_film_land", AppTheme.FILM, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
-
     // M8: 点 and 机, the two themes that replaced 流 and 律.
     @Test fun dot_cover() = capture("m8_dot_cover", AppTheme.DOT, ThemeMode.DARK) { Player(PlayerSkin.COVER) }
     @Test fun dot_vinyl() = capture("m8_dot_vinyl", AppTheme.DOT, ThemeMode.DARK) { Player(PlayerSkin.VINYL) }

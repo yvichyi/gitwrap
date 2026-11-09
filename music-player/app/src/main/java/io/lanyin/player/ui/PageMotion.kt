@@ -31,7 +31,7 @@ private val Standard = CubicBezierEasing(0.2f, 0f, 0f, 1f)
  * frame however much it suits the theme, so the theme shows in the direction, distance and pace
  * instead. 墨: the page settles in as ink soaks in, rising a hair. 霓: it switches on, bright at
  * once and steadying. 暮: set down from a little below, like a postcard. 格: pushed in hard from
- * the side. 影: the next frame pulled up through the gate. 点: a quick fade. 机: the screen
+ * the side. 点: a quick fade. 机: the screen
  * switching over. 报: the page turned. 游: slid in like the next screen of a level. 酸: popped in
  * with a little bounce.
  */
@@ -53,12 +53,6 @@ internal fun pageMotion(backdrop: BackdropKind): PageMotion = when (backdrop) {
     BackdropKind.Grid -> PageMotion(
         slideInHorizontally(tween(340, easing = Settle)) { it }, slideOutHorizontally(tween(340, easing = Settle)) { -it / 3 },
         slideInHorizontally(tween(340, easing = Settle)) { -it / 3 }, slideOutHorizontally(tween(300, easing = Standard)) { it },
-    )
-    BackdropKind.Film -> PageMotion(
-        slideInVertically(tween(420, easing = Settle)) { it / 3 } + fadeIn(tween(240, easing = Standard)),
-        slideOutVertically(tween(300, easing = Leave)) { -it / 5 } + fadeOut(tween(200, easing = Leave)),
-        slideInVertically(tween(420, easing = Settle)) { -it / 3 } + fadeIn(tween(240, easing = Standard)),
-        slideOutVertically(tween(300, easing = Leave)) { it / 5 } + fadeOut(tween(200, easing = Leave)),
     )
     BackdropKind.Dot -> PageMotion(
         fadeIn(tween(200, easing = Standard)), fadeOut(tween(110, easing = Leave)),
@@ -89,7 +83,7 @@ internal class TabMotion(val enter: EnterTransition, val exit: ExitTransition)
  * Each theme's way between its tabs, which sit side by side rather than one above another, so the
  * pages move the way the tabs lie: [dir] 1 to a tab on the right, -1 to the left. 墨: a soft fade
  * with a drift, as ink spreads. 霓: the next sign lit. 暮: the next postcard slid along the
- * rack. 格: a hard push. 影: the camera panning. 点: a blink. 机: changing channel. 报: the page
+ * rack. 格: a hard push. 点: a blink. 机: changing channel. 报: the page
  * turned. 游: scrolled to the next screen. 酸: popped across with a bounce.
  */
 internal fun tabMotion(backdrop: BackdropKind, dir: Int, reduced: Boolean): TabMotion {
@@ -112,10 +106,6 @@ internal fun tabMotion(backdrop: BackdropKind, dir: Int, reduced: Boolean): TabM
         BackdropKind.Grid -> TabMotion(
             slideInHorizontally(tween(320, easing = Settle)) { d * it },
             slideOutHorizontally(tween(320, easing = Settle)) { -d * it },
-        )
-        BackdropKind.Film -> TabMotion(
-            slideInHorizontally(tween(420, easing = Settle)) { d * it },
-            slideOutHorizontally(tween(420, easing = Settle)) { -d * it },
         )
         BackdropKind.Dot -> TabMotion(fadeIn(tween(160, easing = Standard)), fadeOut(tween(90, easing = Leave)))
         BackdropKind.Device -> TabMotion(

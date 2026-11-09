@@ -43,7 +43,7 @@ import io.lanyin.player.ui.theme.SpaceMonoFamily
 /** The space inside a comment's frame. */
 internal fun commentInset(kind: BackdropKind): PaddingValues = when (kind) {
     BackdropKind.Ink -> PaddingValues(start = 16.dp, top = 12.dp, bottom = 12.dp)
-    BackdropKind.Film, BackdropKind.Paper -> PaddingValues(vertical = 14.dp)
+    BackdropKind.Paper -> PaddingValues(vertical = 14.dp)
     else -> PaddingValues(14.dp)
 }
 
@@ -63,7 +63,6 @@ internal fun Modifier.commentFrame(index: Int): Modifier {
             .shadow(3.dp, RoundedCornerShape(4.dp))
             .background(if (style.dark) Color(0xFF2A2F48) else Color(0xFFFFFCF6), RoundedCornerShape(4.dp))
         BackdropKind.Grid -> retroShadow(RectangleShape, c.outline, 4.dp).background(c.surface).border(2.dp, c.outline)
-        BackdropKind.Film -> this
         BackdropKind.Dot -> background(c.surfaceAlt, RoundedCornerShape(18.dp))
         // A line in the device's log, on its recessed panel.
         BackdropKind.Device -> background(c.bgDeep, RoundedCornerShape(10.dp)).drawBehind {
@@ -97,7 +96,6 @@ internal fun CommentByline(comment: Comment, now: Long, index: Int, modifier: Mo
                 Text(name, style = nameStyle.copy(fontWeight = FontWeight.Black), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             // A screenplay: the speaker's name in capitals over the line.
-            BackdropKind.Film -> Text(name.uppercase(), style = mono.copy(letterSpacing = 0.12.em), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
             BackdropKind.Device -> Text("> $name", style = mono, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
             BackdropKind.Paper -> Text("来信｜$name", style = nameStyle.copy(fontFamily = style.display, fontWeight = FontWeight.Black), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
             BackdropKind.Game -> Text("$name：", style = nameStyle, color = c.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -106,7 +104,6 @@ internal fun CommentByline(comment: Comment, now: Long, index: Int, modifier: Mo
         }
         Text(
             when (style.backdrop) {
-                BackdropKind.Film -> "（$whenWhere）"
                 BackdropKind.Device -> "[$whenWhere]"
                 else -> whenWhere
             },

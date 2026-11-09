@@ -128,7 +128,6 @@ private fun LanyinStyle.markCount(): Int = when (backdrop) {
     BackdropKind.Neon -> 72
     BackdropKind.Dusk -> 44
     BackdropKind.Grid -> 56
-    BackdropKind.Film -> 90
     BackdropKind.Dot -> 72
     BackdropKind.Device -> 60
     BackdropKind.Paper -> 64
@@ -138,8 +137,8 @@ private fun LanyinStyle.markCount(): Int = when (backdrop) {
 
 /**
  * A spectrum that grows out of the artwork's edge, drawn in the theme's own hand: hairline dial
- * ticks for 墨, glowing bars for 霓, soft rays for 暮, square bars for 格, a light meter's scale
- * for 影, a ring of LEDs for 点, a level meter for 机, a printed bar chart for 报, stepped pixel bars
+ * ticks for 墨, glowing bars for 霓, soft rays for 暮, square bars for 格,
+ * a ring of LEDs for 点, a level meter for 机, a printed bar chart for 报, stepped pixel bars
  * for 游 and lime and pink rays for 酸. Mirrored left and right with the bass at
  * the top. Redraws every frame without
  * recomposing, from [feed]: what is being heard; while paused it settles into a quiet resting ring.
@@ -283,16 +282,6 @@ private fun DrawScope.drawSpectrum(
                 val len = 2.dp.toPx() + v * reach
                 val color = if (v > 0.68f) c.accent else c.content.copy(alpha = 0.45f + 0.45f * v)
                 drawLine(color.copy(alpha = color.alpha * alpha), Offset(px(i, 0f), py(i, 0f)), Offset(px(i, len), py(i, len)), width)
-            }
-        }
-        // 影: a light meter's scale, ticks in the film's orange, every fifth longer.
-        BackdropKind.Film -> {
-            val stroke = 1.2.dp.toPx()
-            for (i in 0 until n) {
-                val v = level(i)
-                val major = i % 5 == 0
-                val len = (if (major) 5.dp.toPx() else 2.5.dp.toPx()) + v * reach
-                drawLine(lerp(c.content, c.accent, 0.4f + 0.6f * v).copy(alpha = alpha * ((if (major) 0.5f else 0.28f) + 0.5f * v)), Offset(px(i, 0f), py(i, 0f)), Offset(px(i, len), py(i, len)), stroke)
             }
         }
         // Soft rounded rays, rose at the root warming to terracotta as they reach.

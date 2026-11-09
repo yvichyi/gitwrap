@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.em
 import io.lanyin.player.ui.player.PlayerState
 import io.lanyin.player.ui.theme.BackdropKind
 import io.lanyin.player.ui.theme.DotoFamily
-import io.lanyin.player.ui.theme.FilmStamp
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.SpaceMonoFamily
 import java.time.LocalDateTime
@@ -202,7 +201,7 @@ private fun DrawScope.translateHeart(topLeft: Offset, area: Size, color: Color) 
 
 /**
  * The mark before a section's title, in the theme's hand: dot-matrix figures for 点, a printed
- * label for 机, a frame number for 影, a menu cursor for 游 and a gel bead for 酸. Null for
+ * label for 机, a menu cursor for 游 and a gel bead for 酸. Null for
  * themes without one.
  */
 @Composable
@@ -220,9 +219,6 @@ internal fun SectionMark(index: Int?) {
                 color = c.bg,
                 modifier = Modifier.padding(end = 10.dp).background(c.content, RoundedCornerShape(3.dp)).padding(horizontal = 5.dp, vertical = 1.dp),
             )
-        }
-        BackdropKind.Film -> if (index != null) {
-            Text("▸ %02dA".format(index), style = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = fixed(11f), letterSpacing = 0.1.em), color = FilmStamp, modifier = Modifier.padding(end = 10.dp))
         }
         BackdropKind.Game -> Canvas(Modifier.padding(end = 8.dp).size(width = 9.dp, height = 12.dp)) { drawMenuCursor(c.accent) }
         // 暮: a stamp, each section in the next of the set.
@@ -262,21 +258,13 @@ internal fun PaperKicker(index: Int) {
     )
 }
 
-/** What goes under a page's title: a dot rule in 点, sprocket holes in 影, a double rule in 报. */
+/** What goes under a page's title: a dot rule in 点, a double rule in 报. */
 @Composable
 internal fun PageTitleRule(modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
     when (style.backdrop) {
         BackdropKind.Dot -> DotRule(modifier.padding(top = 10.dp))
-        BackdropKind.Film -> Canvas(modifier.padding(top = 10.dp).fillMaxWidth().height(6.dp)) {
-            val hole = Size(7.dp.toPx(), 5.dp.toPx())
-            var x = 0f
-            while (x < size.width - hole.width) {
-                drawRoundRect(c.content.copy(alpha = 0.22f), Offset(x, 0f), hole, CornerRadius(1.5f.dp.toPx()))
-                x += 14.dp.toPx()
-            }
-        }
         BackdropKind.Paper -> DoubleRule(modifier.padding(top = 8.dp))
         // 暮: a short run of airmail stripes.
         BackdropKind.Dusk -> Canvas(modifier.padding(top = 8.dp).size(54.dp, 5.dp)) { drawAirmailStripes(7.dp.toPx()) }

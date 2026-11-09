@@ -10,7 +10,7 @@ import io.lanyin.player.ui.theme.Lanyin
 
 /**
  * The feel of a press in each theme: the faintest tick for 墨, 暮, 点 and 报; a key's tap for 霓;
- * a solid click for 格; a shutter for 影; the clack of a real key for 机 and 游; a springy
+ * a solid click for 格; the clack of a real key for 机 and 游; a springy
  * confirm for 酸. The system's own haptics setting still decides whether anything is felt.
  */
 internal fun hapticFor(kind: BackdropKind): Int = when (kind) {
@@ -18,7 +18,6 @@ internal fun hapticFor(kind: BackdropKind): Int = when (kind) {
     BackdropKind.Dot -> HapticFeedbackConstants.TEXT_HANDLE_MOVE
     BackdropKind.Neon -> HapticFeedbackConstants.KEYBOARD_TAP
     BackdropKind.Grid -> HapticFeedbackConstants.CONTEXT_CLICK
-    BackdropKind.Film -> HapticFeedbackConstants.KEYBOARD_PRESS
     BackdropKind.Device, BackdropKind.Game -> HapticFeedbackConstants.VIRTUAL_KEY
     BackdropKind.Acid -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.CONTEXT_CLICK
 }

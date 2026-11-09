@@ -67,7 +67,6 @@ internal fun PortraitStage(stage: StageContext, onShowLyrics: () -> Unit) {
         BackdropKind.Ink -> InkPortrait(stage, onShowLyrics)
         BackdropKind.Dot -> DotPortrait(stage, onShowLyrics)
         BackdropKind.Device -> DevicePortrait(stage, onShowLyrics)
-        BackdropKind.Film -> FilmPortrait(stage, onShowLyrics)
         BackdropKind.Grid -> GridPortrait(stage, onShowLyrics)
         BackdropKind.Paper -> PaperPortrait(stage, onShowLyrics)
         BackdropKind.Acid -> AcidPortrait(stage, onShowLyrics)
@@ -180,15 +179,6 @@ private fun DeckStrip(state: PlayerState, modifier: Modifier) {
             TapeCounter(seconds, Modifier.padding(top = 3.dp))
         }
         PositionKnob(state, Modifier.size(52.dp))
-    }
-}
-
-/** 影: the film running down through the gate with the artwork in it, and the screen with the subtitle below. */
-@Composable
-private fun FilmPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
-    Column(Modifier.fillMaxSize()) {
-        FilmGate(stage, Modifier.weight(1f).fillMaxWidth(), onClick = onShowLyrics)
-        CinemaScreen(stage, Modifier.fillMaxWidth().height(176.dp).padding(top = 12.dp).enter(stage.entrance, 2).opensLyrics(onShowLyrics))
     }
 }
 

@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import io.lanyin.player.ui.theme.BackdropKind
-import io.lanyin.player.ui.theme.FilmStamp
 import io.lanyin.player.ui.theme.GridYellow
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.LanyinStyle
@@ -52,7 +51,7 @@ private fun fixed(size: Float): TextUnit = with(LocalDensity.current) { size.dp.
 /**
  * The mark over a placeholder's words, in the theme's medium. Loading moves: an ink drop spreading
  * (墨), a tube lighting round (霓), the sun bobbing on the horizon (暮), a yellow block stepping
- * along (格), a countdown leader (影), a dot running round (点), an LED meter sweeping (机), lines
+ * along (格), a dot running round (点), an LED meter sweeping (机), lines
  * being printed (报), NOW LOADING (游), a disc spinning (酸). Failed is the theme's way of saying
  * so: a broken circle, a CLOSED sign, a returned stamp, a struck box, NO SIGNAL, a dot-matrix !,
  * ERR on the display, 停刊, GAME OVER, a cracked bead. Empty keeps the theme's quiet motif.
@@ -126,19 +125,6 @@ internal fun DrawScope.drawLoading(style: LanyinStyle, t: Float) {
                 drawRect(if (k == step) GridYellow else c.surface, tl, Size(box, box))
                 drawRect(c.outline, tl, Size(box, box), style = Stroke(stroke))
             }
-        }
-        BackdropKind.Film -> {
-            // The countdown leader: rings, a cross, the sweep, and the number.
-            val r = w * 0.42f
-            drawCircle(Color(0xFF2A2622), r, mid)
-            val sweep = (t % 1f) * 360f
-            drawArc(Color(0xFF4A433C), -90f, sweep, true, mid - Offset(r, r), Size(r * 2, r * 2))
-            drawCircle(Color(0xFFEDE6DA).copy(alpha = 0.8f), r * 0.82f, mid, style = Stroke(1.dp.toPx()))
-            drawCircle(Color(0xFFEDE6DA).copy(alpha = 0.8f), r * 0.62f, mid, style = Stroke(1.dp.toPx()))
-            drawLine(Color(0xFFEDE6DA).copy(alpha = 0.6f), Offset(mid.x - r, mid.y), Offset(mid.x + r, mid.y), 1.dp.toPx())
-            drawLine(Color(0xFFEDE6DA).copy(alpha = 0.6f), Offset(mid.x, mid.y - r), Offset(mid.x, mid.y + r), 1.dp.toPx())
-            val n = 3 - (floor(t).toInt() % 3)
-            drawLeaderNumber(n, mid, r * 0.42f)
         }
         BackdropKind.Dot -> {
             // Twelve dots in a ring; the red one runs round, those behind it fading.
@@ -250,15 +236,6 @@ private fun FailedMark(style: LanyinStyle, modifier: Modifier) {
             drawLine(c.surface, Offset(size.width * 0.28f, size.height * 0.28f), Offset(size.width * 0.72f, size.height * 0.72f), 4.dp.toPx())
             drawLine(c.surface, Offset(size.width * 0.72f, size.height * 0.28f), Offset(size.width * 0.28f, size.height * 0.72f), 4.dp.toPx())
         }
-        BackdropKind.Film -> Box(modifier.size(84.dp, 52.dp), contentAlignment = Alignment.Center) {
-            // The colour bars of a test card, NO SIGNAL across them.
-            Canvas(Modifier.matchParentSize()) {
-                val bars = listOf(0xFFC0C0C0, 0xFFC0C000, 0xFF00C0C0, 0xFF00C000, 0xFFC000C0, 0xFFC00000, 0xFF0000C0)
-                val bw = size.width / bars.size
-                bars.forEachIndexed { i, v -> drawRect(Color(v).copy(alpha = 0.75f), Offset(i * bw, 0f), Size(bw + 1f, size.height)) }
-            }
-            Text("NO SIGNAL", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(10f)), color = Color.White, modifier = Modifier.background(Color.Black.copy(alpha = 0.75f)).padding(horizontal = 4.dp))
-        }
         BackdropKind.Dot -> Canvas(modifier.size(40.dp, 56.dp)) {
             // ! in the matrix's dots, the point in red.
             val pitch = size.width / 5f
@@ -296,7 +273,7 @@ internal fun statusKindOf(text: String, hasAction: Boolean): StatusKind = when {
 /**
  * The foot of a list once everything is there, in the theme's hand: 「— 终 —」 and the seal (墨),
  * LAST CALL in a dim tube (霓), the signature on a postcard (暮), a black bar with the count (格),
- * THE END (影), a dotted line run out to the red dot (点), ■ STOP on the display (机), （本版完）
+ * a dotted line run out to the red dot (点), ■ STOP on the display (机), （本版完）
  * (报), - THE END - (游), a chrome sparkle (酸). [count] is how many there were.
  */
 @Composable
@@ -320,10 +297,6 @@ fun ListEnd(count: Int, modifier: Modifier = Modifier) {
                 "END · ${"%02d".format(count)} ITEMS", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(11f), letterSpacing = 0.1.em),
                 color = c.surface, modifier = Modifier.background(c.outline).padding(horizontal = 10.dp, vertical = 3.dp),
             )
-            BackdropKind.Film -> androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("THE END", style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Serif, fontSize = fixed(18f), letterSpacing = 0.3.em), color = Color(0xFFEDE6DA).copy(alpha = 0.85f))
-                Text("REEL 1 · $count SHOTS", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9f)), color = FilmStamp, modifier = Modifier.padding(top = 2.dp))
-            }
             BackdropKind.Dot -> Canvas(Modifier.size(160.dp, 10.dp)) {
                 val pitch = 7.dp.toPx()
                 var x = pitch / 2f

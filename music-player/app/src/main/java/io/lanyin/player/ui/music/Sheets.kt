@@ -188,7 +188,7 @@ fun SheetLayer(state: SheetState, content: @Composable (Sheet) -> Unit) {
 
 /**
  * The handle a sheet is pulled by, in the theme's hand: a stroke of the brush (墨), a short lit
- * tube (霓), airmail stripes (暮), a black bar (格), sprocket holes (影), a row of dots (点), the
+ * tube (霓), airmail stripes (暮), a black bar (格), a row of dots (点), the
  * ridges of a grip (机), a perforation to tear along (报), pixels (游), a capsule of gel (酸).
  */
 @Composable
@@ -203,7 +203,6 @@ private fun SheetGrip(modifier: Modifier) {
             BackdropKind.Neon -> drawTubeLine(mid - androidx.compose.ui.geometry.Offset(18.dp.toPx(), 0f), mid + androidx.compose.ui.geometry.Offset(18.dp.toPx(), 0f), c.accent, 2.5.dp.toPx())
             BackdropKind.Dusk -> inset(size.width / 2f - 26.dp.toPx(), 1.5.dp.toPx()) { drawAirmailStripes(6.dp.toPx()) }
             BackdropKind.Grid -> drawRect(c.outline, mid - androidx.compose.ui.geometry.Offset(22.dp.toPx(), 3.dp.toPx()), androidx.compose.ui.geometry.Size(44.dp.toPx(), 6.dp.toPx()))
-            BackdropKind.Film -> for (k in -2..2) drawRoundRect(faint, mid + androidx.compose.ui.geometry.Offset(k * 11.dp.toPx() - 3.dp.toPx(), -2.dp.toPx()), androidx.compose.ui.geometry.Size(6.dp.toPx(), 4.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()))
             BackdropKind.Dot -> for (k in -3..3) drawCircle(if (k == 0) c.accentAlt else faint, 2.dp.toPx(), mid + androidx.compose.ui.geometry.Offset(k * 7.dp.toPx(), 0f))
             BackdropKind.Device -> for (k in -1..1) drawLine(faint, mid + androidx.compose.ui.geometry.Offset(-16.dp.toPx(), k * 2.5.dp.toPx()), mid + androidx.compose.ui.geometry.Offset(16.dp.toPx(), k * 2.5.dp.toPx()), 1.dp.toPx())
             BackdropKind.Paper -> drawLine(c.content.copy(alpha = 0.4f), androidx.compose.ui.geometry.Offset(0f, mid.y), androidx.compose.ui.geometry.Offset(size.width, mid.y), 1.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())))
@@ -321,7 +320,7 @@ fun TrackActionsSheet(
     }
     Hairline(Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
     Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 6.dp)) {
-        // Numbered for the themes that number their menus (墨, 报, 影).
+        // Numbered for the themes that number their menus (墨, 报).
         var n = 0
         ActionRow(if (liked) LineIcon.HeartFilled else LineIcon.Heart, if (liked) "从「我喜欢的音乐」移除" else "收藏到「我喜欢的音乐」", onToggleLike, ++n, tint = if (liked) c.like else c.content)
         ActionRow(LineIcon.Plus, "添加到歌单", onAddToPlaylist, ++n)
@@ -354,7 +353,7 @@ fun TrackActionsSheet(
 /**
  * One action in a ⋯ menu, in the theme's form: a line of a table of contents with its leader
  * and number (墨), a tube between rows (霓), a stop on the itinerary under an airmail edge (暮), a
- * boxed button with a hard shadow (格), a shot on the list (影), dots between rows (点), a key
+ * boxed button with a hard shadow (格), dots between rows (点), a key
  * (机), an index entry with its page (报), a menu item with the ▶ on the first (游), a candy
  * capsule (酸). [index] counts from 1.
  */
@@ -386,7 +385,6 @@ private fun ActionRow(icon: LineIcon, label: String, onClick: () -> Unit, index:
             verticalAlignment = Alignment.CenterVertically,
         ) {
             when (kind) {
-                BackdropKind.Film -> Text("SC.%02d".format(index), style = style.type.caption.copy(fontFamily = io.lanyin.player.ui.theme.SpaceMonoFamily, fontWeight = FontWeight.Bold), color = io.lanyin.player.ui.theme.FilmStamp, modifier = Modifier.width(48.dp))
                 BackdropKind.Game -> Text(if (index == 1) "▶" else "", style = style.type.body.copy(fontFamily = style.display), color = c.content, modifier = Modifier.width(20.dp))
                 else -> Unit
             }

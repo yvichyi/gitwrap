@@ -65,7 +65,6 @@ import io.lanyin.player.ui.design.screenStyle
 import io.lanyin.player.ui.design.starPath
 import io.lanyin.player.ui.player.SungText
 import io.lanyin.player.ui.theme.BackdropKind
-import io.lanyin.player.ui.theme.FilmStamp
 import io.lanyin.player.ui.theme.GridYellow
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.SpaceMonoFamily
@@ -88,7 +87,7 @@ private fun fixed(size: Float): TextUnit = with(LocalDensity.current) { size.dp.
  * The line floating over other apps. By default (轻) only the words, see [LightLyric]; on a
  * [card], in the theme's medium: a strip of rice paper with its seal
  * (墨), a neon sign on a dark wall (霓), a postcard's back (暮), a boxed label with the highlighter
- * (格), a subtitle in the letterbox (影), the LED pill (点), the device's screen (机), a strip of
+ * (格), the LED pill (点), the device's screen (机), a strip of
  * newsprint underlined in red (报), a dialogue window typing it out (游), a candy-plastic sticker
  * in chrome (酸). [progress] (0..1 through the line) is read at draw time.
  */
@@ -105,7 +104,6 @@ fun DesktopLyric(line: DesktopLine, progress: () -> Float, size: Int, modifier: 
         BackdropKind.Neon -> NeonStrip(line, sung, type, modifier)
         BackdropKind.Dusk -> DuskStrip(line, sung, type, modifier)
         BackdropKind.Grid -> GridStrip(line, sung, type, modifier)
-        BackdropKind.Film -> FilmStrip(line, sung, type, modifier)
         BackdropKind.Dot -> DotStrip(line, sung, type, modifier)
         BackdropKind.Device -> DeviceStrip(line, sung, type, modifier)
         BackdropKind.Paper -> PaperStrip(line, sung, type, modifier)
@@ -135,8 +133,6 @@ private fun lightLook(): LightLook {
         }
         // 格: heavy, the highlighter yellow a character at a time.
         BackdropKind.Grid -> LightLook(null, FontWeight.Black, false, 0.85f, true) { drawText(it, color = GridYellow) }
-        // 影: a subtitle, cream as it's said.
-        BackdropKind.Film -> LightLook(null, FontWeight.Normal, false, 0.6f, false) { drawText(it, color = Color(0xFFFFE9B0)) }
         // 点: white LEDs lighting.
         BackdropKind.Dot -> LightLook(null, FontWeight.Bold, false, 0.45f, false) { drawText(it, color = Color.White) }
         // 机: the display's orange.
@@ -319,25 +315,6 @@ private fun GridStrip(line: DesktopLine, sung: () -> Float, type: TextUnit, modi
                 maxLines = 1,
             )
             Second(line.second, TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(10f)), c.muted)
-        }
-    }
-}
-
-/** 影: the subtitle, centred in a letterbox band, with the frame's edge code at its side. */
-@Composable
-private fun FilmStrip(line: DesktopLine, sung: () -> Float, type: TextUnit, modifier: Modifier) {
-    Box(modifier.background(Color.Black.copy(alpha = 0.58f)).padding(horizontal = 12.dp, vertical = 10.dp)) {
-        Text(
-            "▸12A", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9f)), color = FilmStamp,
-            modifier = Modifier.align(Alignment.TopStart),
-        )
-        Column(Modifier.fillMaxWidth().padding(horizontal = 30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            SungText(
-                line.text,
-                TextStyle(fontSize = type, textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.55f), shadow = Shadow(Color.Black, Offset(0f, 1f), 4f)),
-                sung, paintSung = { drawText(it, color = Color(0xFFFFF4D6)) }, maxLines = 1,
-            )
-            Second(line.second, TextStyle(fontSize = fixed(11f)), Color.White.copy(alpha = 0.78f), TextAlign.Center)
         }
     }
 }

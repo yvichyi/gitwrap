@@ -31,7 +31,7 @@ import kotlin.math.sin
  * The theme's backdrop. [live] animates it (the player); pages use a still, quieter version.
  * [playing] raises its energy: a faster grid, a livelier sun. With a [feed] the player's backdrop
  * also listens: 墨 blooms ink on the beat, 暮's sun swells with the bass while clouds drift and
- * the glints on the sea shimmer, 霓's horizon becomes a skyline of the spectrum, 影's light leaks flare and
+ * the glints on the sea shimmer, 霓's horizon becomes a skyline of the spectrum and
  * 点's grid lights up in rings.
  */
 @Composable
@@ -58,7 +58,7 @@ fun Backdrop(
     // Paused, the scene settles and then holds still: no drawing while nothing is playing.
     val settling by remember { androidx.compose.runtime.derivedStateOf { energy > 0.01f } }
     val clock = rememberFrameClock(animated && (playing || settling))
-    val measurer = if (style.backdrop == BackdropKind.Grid || style.backdrop == BackdropKind.Film) androidx.compose.ui.text.rememberTextMeasurer() else null
+    val measurer = if (style.backdrop == BackdropKind.Grid) androidx.compose.ui.text.rememberTextMeasurer() else null
     val hour by rememberHour()
     val audio = remember { BackdropAudio() }
     // A layer of its own, so redrawing the backdrop doesn't re-record what sits on it.
@@ -107,7 +107,6 @@ internal fun DrawScope.drawBackdropFrame(
             drawGridPaper(style, page, measurer, trackNumber)
             if (!page && wide && trackNumber != null) drawGridPoster(style, t, heard)
         }
-        BackdropKind.Film -> drawFilm(style, t, e, page, heard, if (page) null else measurer, trackNumber)
         BackdropKind.Dot -> drawDotField(style, t, page, heard)
         BackdropKind.Device -> drawDeviceCase(style, page)
         BackdropKind.Paper -> drawNewsprint(style, page)

@@ -71,7 +71,6 @@ import io.lanyin.player.ui.design.starPath
 import io.lanyin.player.ui.theme.ArchivoBlackFamily
 import io.lanyin.player.ui.theme.BackdropKind
 import io.lanyin.player.ui.theme.DotoFamily
-import io.lanyin.player.ui.theme.FilmStamp
 import io.lanyin.player.ui.theme.GridYellow
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.PostcardSerifFamily
@@ -100,8 +99,8 @@ private fun fixed(size: Float): TextUnit = with(LocalDensity.current) { size.dp.
 
 /**
  * A line of lyric as a picture to share, in the theme's own medium: a calligraphy sheet with its
- * seal (墨), a neon sign on the wall (霓), a postcard (暮), a Swiss poster (格), a film frame with
- * its subtitle (影), the dot-matrix screen (点), the device's screen (机), a newspaper clipping
+ * seal (墨), a neon sign on the wall (霓), a postcard (暮), a Swiss poster (格),
+ * the dot-matrix screen (点), the device's screen (机), a newspaper clipping
  * (报), a game's dialogue (游), a candy-plastic sticker (酸). Each stands on its theme's page.
  */
 @Composable
@@ -117,7 +116,6 @@ fun LyricCard(lyric: CardLyric, modifier: Modifier = Modifier) {
             BackdropKind.Neon -> NeonCard(lyric)
             BackdropKind.Dusk -> DuskCard(lyric)
             BackdropKind.Grid -> GridCard(lyric)
-            BackdropKind.Film -> FilmCard(lyric)
             BackdropKind.Dot -> DotCard(lyric)
             BackdropKind.Device -> DeviceCard(lyric)
             BackdropKind.Paper -> PaperCard(lyric)
@@ -242,42 +240,6 @@ private fun GridCard(lyric: CardLyric) {
                 Text(lyric.title, style = TextStyle(fontWeight = FontWeight.Black, fontSize = fixed(13f)), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Text(lyric.artist.uppercase(), style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(10f)), color = c.content, maxLines = 1)
             }
-        }
-    }
-}
-
-/** 影: a frame of film with its sprockets and edge code, the picture in it and the line as its subtitle. */
-@Composable
-private fun FilmCard(lyric: CardLyric) {
-    val stock = Color(0xFF141210)
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 26.dp), verticalArrangement = Arrangement.Center) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .background(stock, RoundedCornerShape(2.dp))
-                .drawBehind {
-                    val hole = Size(8.dp.toPx(), 5.dp.toPx())
-                    var x = 5.dp.toPx()
-                    while (x + hole.width < size.width) {
-                        for (y in listOf(4.dp.toPx(), size.height - 4.dp.toPx() - hole.height)) drawRoundRect(Color(0xFFEDE6DA).copy(alpha = 0.85f), Offset(x, y), hole, CornerRadius(1.dp.toPx()))
-                        x += 14.dp.toPx()
-                    }
-                }
-                .padding(horizontal = 8.dp, vertical = 16.dp),
-        ) {
-            Box(Modifier.fillMaxWidth().aspectRatio(1.33f)) {
-                CoverImage(lyric.coverUrl, lyric.coverSeed, 320.dp, Modifier.fillMaxSize())
-                // The subtitle, over the foot of the picture.
-                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)))).padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(lyric.line, style = TextStyle(fontSize = fixed(16f), lineHeight = fixed(22f), textAlign = TextAlign.Center, shadow = Shadow(Color.Black, Offset(0f, 1f), 4f)), color = Color(0xFFFFF4D6))
-                    lyric.translation?.let { Text(it, style = TextStyle(fontSize = fixed(11f), lineHeight = fixed(15f), textAlign = TextAlign.Center), color = Color.White.copy(alpha = 0.8f)) }
-                }
-            }
-        }
-        Row(Modifier.padding(top = 8.dp)) {
-            Text("▸ 12A  LANYIN 400", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(10f), letterSpacing = 0.1.em), color = FilmStamp)
-            Spacer(Modifier.weight(1f))
-            Text("《${lyric.title}》", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = fixed(11f)), color = Color(0xFFEDE6DA), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

@@ -382,7 +382,6 @@ private fun LandscapePlayer(
                 val stage = StageContext(state, skin, spin, chromeVisible, scrubMs, lyricScale, dismissDrag, entrance)
                 when (Lanyin.style.backdrop) {
                     BackdropKind.Device -> DeviceStage(stage)
-                    BackdropKind.Film -> CinemaStage(stage)
                     BackdropKind.Dot -> GlyphStage(stage)
                     BackdropKind.Acid -> MediaPlayerStage(stage)
                     BackdropKind.Paper -> BroadsheetStage(stage)

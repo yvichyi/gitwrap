@@ -185,3 +185,11 @@ fun PlayerFrameDriver(state: PlayerState) {
 
 /** Why a track shows no lyrics: it's an instrumental, NetEase has none, or they didn't load. */
 enum class LyricsGap { Instrumental, Missing, Failed }
+
+/** What to show in place of lyrics when there are none (or they haven't come yet). */
+internal fun emptyLyricsNote(state: PlayerState): String = when {
+    state.lyricsLoading -> "· · ·"
+    state.lyricsGap == LyricsGap.Instrumental -> "纯音乐，请欣赏"
+    state.lyricsGap == LyricsGap.Missing -> "暂无歌词"
+    else -> "歌词没能加载"
+}

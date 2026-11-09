@@ -42,17 +42,17 @@ data class LanyinColors(
 
 /**
  * How cards, the mini player and the tab bar are drawn: hairlines (墨), soft shadows (暮), neon
- * (霓), hard shadows (格), a print's thin rim (影), flat grey tiles on black (点), the recessed
+ * (霓), hard shadows (格), flat grey tiles on black (点), the recessed
  * panels of a machine's case (机), a newspaper's column rules (报), little LCD screens in their
  * bezels (游) and chrome rims (酸).
  */
-enum class EdgeKind { Hairline, Soft, Glow, Brutal, Film, Dot, Panel, Rule, Bezel, Chrome }
+enum class EdgeKind { Hairline, Soft, Glow, Brutal, Dot, Panel, Rule, Bezel, Chrome }
 
-enum class BackdropKind { Ink, Neon, Dusk, Grid, Film, Dot, Device, Paper, Game, Acid }
+enum class BackdropKind { Ink, Neon, Dusk, Grid, Dot, Device, Paper, Game, Acid }
 
-enum class SeekKind { Hairline, Pill, Tube, Block, Film, Dots, Fader, Ruler, Blocks, Stripe }
+enum class SeekKind { Hairline, Pill, Tube, Block, Dots, Fader, Ruler, Blocks, Stripe }
 
-enum class ButtonKind { Outline, Blob, NeonRing, Brutal, Aperture, Disc, Key, Stamp, Pad, Burst }
+enum class ButtonKind { Outline, Blob, NeonRing, Brutal, Disc, Key, Stamp, Pad, Burst }
 
 enum class NavKind { Pill, Text }
 
@@ -86,7 +86,7 @@ data class LyricStyle(
     val serif: Boolean,
     /** Lyric size relative to the setting. */
     val sizeScale: Float = 1f,
-    /** The sung part in the text colour rather than the accent (影's subtitles, 点's white). */
+    /** The sung part in the text colour rather than the accent (点's white). */
     val inkSweep: Boolean = false,
     val weight: FontWeight = FontWeight.Bold,
     /** A highlighter stroke under the sung part (报's red pen). */
@@ -243,21 +243,6 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             motion = Motion(0.85f, 800f), bouncy = Motion(0.6f, 700f), pressScale = 0.97f,
             iconStroke = 1.9f,
         )
-        // 影: a roll of film in a dark room. Warm black, grain that never sits still, light
-        // leaking in at the edges, sprocket holes, an aperture for a play button and the orange
-        // date stamp of a point-and-shoot; lyrics as subtitles.
-        AppTheme.FILM -> LanyinStyle(
-            theme = theme, dark = true,
-            colors = film,
-            display = FontFamily.Serif, displayWeight = FontWeight.Medium, displayTracking = 0.02.em,
-            body = FontFamily.SansSerif, numeric = FontFamily.Monospace,
-            cardShape = RoundedCornerShape(6.dp), chipShape = RoundedCornerShape(4.dp), artShape = RoundedCornerShape(2.dp),
-            edge = EdgeKind.Film, backdrop = BackdropKind.Film, seek = SeekKind.Film,
-            button = ButtonKind.Aperture, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = true, activeScale = 1.04f, inactiveAlpha = 0.3f, blurStep = 0.5.dp, staggerMs = 30, glow = false, serif = true, inkSweep = true, weight = FontWeight.Medium),
-            motion = Motion(0.92f, 480f), bouncy = Motion(0.7f, 420f), pressScale = 0.95f,
-            iconStroke = 1.6f, dock = DockKind.Docked,
-        )
         // 报: a broadsheet. Newsprint and ink with one red, everything set in serif, headlines
         // heavy; columns ruled off rather than boxed, photos printed in halftone, a ruler for the
         // progress, a block of ink for the play key printed a hair off its red plate, and the
@@ -367,17 +352,6 @@ private val deviceDark = LanyinColors(
     content = Color(0xFFECEAE4), muted = Color(0xFF9C9990), accent = Color(0xFFEA581C), accentAlt = Color(0xFF6A9BE8),
     onAccent = Color(0xFFFFFFFF), outline = Color(0x2EECEAE4), like = Color(0xFFEA581C), vinyl = Color(0xFF121214),
 )
-// A darkroom: near-black with only a breath of warmth (not brown), greys with a little
-// warmth in them, the paper white of a print, burnt orange and a red light leak.
-private val film = LanyinColors(
-    bg = Color(0xFF0E0D0C), bgDeep = Color(0xFF191512), surface = Color(0xFF1A1817), surfaceAlt = Color(0xFF24211F),
-    content = Color(0xFFF2EBDF), muted = Color(0xFFA0988C), accent = Color(0xFFE8743B), accentAlt = Color(0xFFD9484A),
-    onAccent = Color(0xFF1A0F08), outline = Color(0x24F2EBDF), like = Color(0xFFE5484D), vinyl = Color(0xFF0B0A09),
-)
-
-/** 影's date stamp: the orange of a point-and-shoot's printed date. */
-val FilmStamp = Color(0xFFFF8A1F)
-
 // Newsprint, ink and the red of a sub-editor's pen.
 private val paper = LanyinColors(
     bg = Color(0xFFF1ECE1), bgDeep = Color(0xFFE6DFD0), surface = Color(0xFFF6F2E9), surfaceAlt = Color(0xFFEAE4D7),

@@ -158,7 +158,6 @@ fun Modifier.themedSurface(
         // In the dark a shadow barely shows; a faint rim keeps the card's edge.
         EdgeKind.Soft -> if (style.dark) m.border(1.dp, c.content.copy(alpha = 0.07f), shape) else m
         // A print's thin rim.
-        EdgeKind.Film -> m.border(1.dp, c.content.copy(alpha = if (flat) 0.08f else 0.14f), shape)
         // Grey tiles on black need no edge; bars over the content get a faint one.
         EdgeKind.Dot -> if (tone == SurfaceTone.Chrome) m.border(1.dp, c.content.copy(alpha = 0.1f), shape) else m
         EdgeKind.Panel -> if (key) m else m.border(1.dp, c.outline, shape)

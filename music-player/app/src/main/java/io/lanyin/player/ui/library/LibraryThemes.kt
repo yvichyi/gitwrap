@@ -65,7 +65,6 @@ import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.theme.ArchivoBlackFamily
 import io.lanyin.player.ui.theme.BackdropKind
 import io.lanyin.player.ui.theme.DotoFamily
-import io.lanyin.player.ui.theme.FilmStamp
 import io.lanyin.player.ui.theme.GridYellow
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.PixelFamily
@@ -88,8 +87,8 @@ private fun vipName(vipType: Int) = when (vipType) {
 /**
  * The listener's card at the top of 我的, in the theme's medium: a subscriber's card for 报, a
  * character's status window for 游, a readout on 机's screen, a block with a big initial for 格,
- * a holographic member card for 酸, a name with a seal for 墨, a sign with the name for 霓, a cast
- * card for 影, a passport's photo page for 暮; a plain card elsewhere.
+ * a holographic member card for 酸, a name with a seal for 墨, a sign with the name for 霓,
+ * a passport's photo page for 暮; a plain card elsewhere.
  */
 @Composable
 internal fun ThemedProfile(account: AccountState, onLogin: () -> Unit, modifier: Modifier) {
@@ -102,7 +101,6 @@ internal fun ThemedProfile(account: AccountState, onLogin: () -> Unit, modifier:
         BackdropKind.Acid -> MemberCard(profile, onLogin, modifier)
         BackdropKind.Ink -> SealedName(profile, onLogin, modifier)
         BackdropKind.Neon -> NameSign(profile, onLogin, modifier)
-        BackdropKind.Film -> CastCard(profile, onLogin, modifier)
         BackdropKind.Dusk -> PassportPage(profile, onLogin, modifier)
         else -> Profile(account, onLogin, modifier)
     }
@@ -475,33 +473,6 @@ private fun DirectoryBoard(entries: List<Entry>, modifier: Modifier) {
     }
 }
 
-@Composable
-private fun CastCard(profile: UserProfile?, onLogin: () -> Unit, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val line = c.content.copy(alpha = 0.45f)
-    val label = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = fixed(9f), letterSpacing = 0.14.em)
-    Row(modifier.fillMaxWidth().border(1.dp, line).height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.padding(12.dp).size(56.dp).border(1.dp, line), contentAlignment = Alignment.Center) {
-            if (profile != null) Avatar(profile.avatarUrl, profile.nickname, 56.dp, shape = androidx.compose.ui.graphics.RectangleShape)
-            else ThemedIcon(LineIcon.User, null, tint = c.muted, size = 24.dp)
-        }
-        Box(Modifier.width(1.dp).fillMaxHeight().background(line))
-        Column(Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Text("CAST", style = label, color = c.muted)
-            Text(profile?.nickname ?: "待定", style = style.type.title, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("ROLE", style = label, color = c.muted, modifier = Modifier.padding(top = 4.dp))
-            Text(
-                if (profile != null) vipName(profile.vipType)?.let { "$it 听众" } ?: "听众" else "扫码登录后入组",
-                style = style.type.caption, color = FilmStamp,
-            )
-        }
-        if (profile == null) {
-            ThemedButton("登录", onLogin, Modifier.padding(end = 12.dp))
-        }
-    }
-}
-
 /**
  * The entries of 我的 (liked, recent, ranking, downloads, cloud), in the theme's medium: tiles for
  * the themes built of blocks and keys, a table of contents or an index for the ones built of type,
@@ -560,9 +531,6 @@ internal fun ThemedEntries(entries: List<Entry>, modifier: Modifier) {
         BackdropKind.Paper -> Column(modifier) {
             DoubleRule()
             EntryLines(entries, Modifier, leader = true) { _ -> Box(Modifier.padding(end = 10.dp).size(6.dp).background(c.content)) }
-        }
-        BackdropKind.Film -> EntryLines(entries, modifier, leader = false) { i ->
-            Text("▸ %02dA".format(i + 1), style = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = fixed(10f), letterSpacing = 0.1.em), color = FilmStamp, modifier = Modifier.width(52.dp))
         }
         BackdropKind.Neon -> DirectoryBoard(entries, modifier)
     }

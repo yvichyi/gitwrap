@@ -10,8 +10,6 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import io.lanyin.player.ui.design.DeviceScreen
-import io.lanyin.player.ui.design.drawDateStamp
-import io.lanyin.player.ui.design.dateStampWidth
 import io.lanyin.player.ui.design.drawStamp
 import io.lanyin.player.ui.theme.PostcardSerifFamily
 import androidx.compose.foundation.layout.Column
@@ -74,7 +72,6 @@ import io.lanyin.player.ui.design.retroShadow
 import io.lanyin.player.ui.theme.ArchivoBlackFamily
 import io.lanyin.player.ui.theme.BackdropKind
 import io.lanyin.player.ui.theme.DotoFamily
-import io.lanyin.player.ui.theme.FilmStamp
 import io.lanyin.player.ui.theme.GridYellow
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.SpaceMonoFamily
@@ -83,8 +80,8 @@ import kotlin.math.sin
 /*
  * The head of a song list in each theme's own medium, so a playlist, an album, an artist or
  * today's picks open the way the theme's other pages do: a hanging scroll for 墨, a sign in a
- * tube frame for 霓, a print with its postmark for 暮, a poster block for 格, a frame of film for
- * 影, an LED panel for 点, a screen in its case for 机, the paper's lead story for 报, a game's
+ * tube frame for 霓, a print with its postmark for 暮, a poster block for 格,
+ * an LED panel for 点, a screen in its case for 机, the paper's lead story for 报, a game's
  * window for 游, a CD in its jewel case for 酸.
  */
 
@@ -100,7 +97,6 @@ internal fun ListHero(title: String, subtitle: String?, header: ListHeader, modi
         BackdropKind.Neon -> NeonHero(title, subtitle, header, modifier)
         BackdropKind.Dusk -> DuskHero(title, subtitle, header, modifier)
         BackdropKind.Grid -> GridHero(title, subtitle, header, modifier)
-        BackdropKind.Film -> FilmHero(title, subtitle, header, modifier)
         BackdropKind.Dot -> DotHero(title, subtitle, header, modifier)
         BackdropKind.Device -> DeviceHero(title, subtitle, header, modifier)
         BackdropKind.Paper -> PaperHero(title, subtitle, header, modifier)
@@ -309,41 +305,6 @@ private fun GridHero(title: String, subtitle: String?, header: ListHeader, modif
         )
         if (subtitle != null) {
             Text(subtitle, style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-        }
-    }
-}
-
-/**
- * 影: the list opens like a film. The picture in a wide frame, letterboxed, the lens's falloff at
- * its edges and the camera's orange date stamp in its corner, the slate's scene and take in the
- * bar above; then the title as a title card, centred and spaced, the credits under it.
- */
-@Composable
-private fun FilmHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val stamp = remember { java.time.LocalDate.now().let { "'%02d %d %02d".format(it.year % 100, it.monthValue, it.dayOfMonth) } }
-    val mono = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9f), letterSpacing = 0.14.em)
-    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1.78f).clip(RoundedCornerShape(2.dp)).background(Color.Black)) {
-            HeroFill(header, Modifier.fillMaxSize())
-            Canvas(Modifier.matchParentSize()) {
-                drawRect(Brush.radialGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.62f)), Offset(size.width / 2f, size.height / 2f), size.width * 0.72f))
-                val bar = size.height * 0.11f
-                drawRect(Color.Black, size = Size(size.width, bar))
-                drawRect(Color.Black, Offset(0f, size.height - bar), Size(size.width, bar))
-                val h = 11.dp.toPx()
-                drawDateStamp(stamp, Offset(size.width - dateStampWidth(stamp, h) - 14.dp.toPx(), size.height - bar - h - 10.dp.toPx()), h)
-            }
-            Text("SCENE 01 · TAKE 01", style = mono, color = Color.White.copy(alpha = 0.72f), modifier = Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 5.dp))
-            Text("● REC", style = mono, color = Color(0xFFE5483B), modifier = Modifier.align(Alignment.TopEnd).padding(end = 12.dp, top = 5.dp))
-        }
-        Text(
-            title, style = style.type.display.copy(fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = 0.08.em, textAlign = TextAlign.Center),
-            color = c.content, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 18.dp),
-        )
-        if (subtitle != null) {
-            Text(subtitle, style = style.type.caption.copy(letterSpacing = 0.1.em, textAlign = TextAlign.Center), color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }
@@ -567,7 +528,7 @@ private fun DrawScope.drawDisc(hole: Color) {
 }
 
 /**
- * A row's number in the theme's hand: Chinese numerals for 墨, frame numbers for 影, zero-padded
+ * A row's number in the theme's hand: Chinese numerals for 墨, zero-padded
  * where figures are machine-set. [strong] sets it in the accent, for the head of a chart.
  */
 @Composable
@@ -578,7 +539,6 @@ internal fun RowNumber(number: Int, strong: Boolean = false) {
     val tint = if (strong) c.accent else c.muted
     when (style.backdrop) {
         BackdropKind.Ink -> Text(if (number < 100) io.lanyin.player.ui.home.chineseNumber(number) else "$number", style = base, color = tint, maxLines = 1)
-        BackdropKind.Film -> Text("%02dA".format(number), style = base.copy(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(10.5f)), color = FilmStamp.copy(alpha = if (strong) 1f else 0.85f), maxLines = 1)
         BackdropKind.Dusk -> Text("$number", style = base.copy(fontStyle = FontStyle.Italic, fontSize = fixed(15f)), color = tint, maxLines = 1)
         BackdropKind.Grid, BackdropKind.Device, BackdropKind.Dot, BackdropKind.Acid -> Text("%02d".format(number), style = base.copy(fontWeight = FontWeight.Bold), color = tint, maxLines = 1)
         else -> Text("$number", style = if (strong) base.copy(fontWeight = FontWeight.Bold) else base, color = tint, maxLines = 1)

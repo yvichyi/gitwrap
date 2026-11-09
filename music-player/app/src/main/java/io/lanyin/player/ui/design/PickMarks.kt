@@ -26,7 +26,7 @@ import kotlin.math.floor
 /**
  * A moment of acknowledgement behind a row the moment it starts playing, in the theme's hand: an
  * ink wash spreading (墨), the row's edge lighting like a tube (霓), the sunset passing over it
- * (暮), the highlighter swiping across (格), the flash of a cut (影), red dots running along (点),
+ * (暮), the highlighter swiping across (格), red dots running along (点),
  * an LED bar filling (机), the red pen underlining it (报), three blinks (游), a lime sweep with a
  * sparkle (酸). Only when it changes to playing, not for the row already playing when the list
  * opens; nothing with motion reduced.
@@ -71,7 +71,6 @@ private fun DrawScope.drawPicked(style: LanyinStyle, p: Float) {
             drawRect(Brush.horizontalGradient(listOf(Color.Transparent, Color(0xFFFFB27A).copy(alpha = 0.35f * fade), Color(0xFFE88BA0).copy(alpha = 0.25f * fade), Color.Transparent), x - w * 0.4f, x + w * 0.2f))
         }
         BackdropKind.Grid -> drawRect(GridYellow.copy(alpha = 0.85f * fade), size = Size(w * grow, h))
-        BackdropKind.Film -> drawRect(Color.White.copy(alpha = 0.32f * fade * fade))
         BackdropKind.Dot -> {
             val pitch = 7.dp.toPx()
             val n = (w / pitch).toInt()
