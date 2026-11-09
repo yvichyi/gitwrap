@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/local.css">
+<link rel="stylesheet" href="../concept/fonts/local.css">
+<link rel="stylesheet" href="fonts/cjk.css">
+<link rel="stylesheet" href="fonts/longcang_local.css">
+<link rel="stylesheet" href="../concept/base.css">
+<link rel="stylesheet" href="hifi.css">
+<script src="hist.js"></script>
+<style>
+@font-face { font-family: "Fusion Pixel"; src: url("file:///home/user/gitwrap/music-player/app/src/main/res/font/fusion_pixel.ttf"); }
+@font-face { font-family: "Archivo Black"; src: url("file:///home/user/gitwrap/music-player/app/src/main/res/font/archivo_black.ttf"); }
+body { background: #141416; }
+.lb { padding: 40px 56px; background: #17171a; display: flex; gap: 40px; align-items: center; }
+.lb .t { width: 150px; color: #e9e7e2; }
+.lb .t b { display: block; font: 600 54px/1 "Noto Serif SC", serif; }
+.lb .t span { display: block; margin-top: 12px; font: 500 11px "Inter", "Noto Sans SC"; letter-spacing: .2em; color: #8d8a84; }
+.lb .t p { margin-top: 12px; font: 13px/1.7 "Noto Sans SC"; color: #b9b6af; }
+.land { width: 844px; height: 390px; border-radius: 46px; overflow: hidden; position: relative; flex: none; box-shadow: 0 0 0 10px #050506, 0 0 0 11px #2a2a2e, 0 30px 60px rgba(0,0,0,.5); }
+.z { position: absolute; }
+.px { font-family: "Fusion Pixel", monospace; font-size: 12px; line-height: 12px; -webkit-font-smoothing: none; }
+.px24 { font-family: "Fusion Pixel", monospace; font-size: 24px; line-height: 24px; -webkit-font-smoothing: none; }
+.ol { text-shadow: 3px 0 #05060a, -3px 0 #05060a, 0 3px #05060a, 0 -3px #05060a, 3px 3px #05060a, -3px -3px #05060a, 3px -3px #05060a, -3px 3px #05060a; }
+.art { position: absolute; left: 0; top: 0; image-rendering: pixelated; background-size: 100% 100%; }
+</style>
+</head>
+<body>
+<script src="../concept/icons.js"></script>
+<script src="hifi_helpers.js"></script>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="smiley" viewBox="0 0 84 96"><path d="M42 2a40 40 0 1 1 -0.1 0z" fill="#d6ff1e"/><path d="M28 76 q0 14 6 14 q4 0 4 -12z M58 78 q0 10 4 10 q3 0 3 -11z" fill="#d6ff1e"/><ellipse cx="29" cy="34" rx="5" ry="9" fill="#0b0b0b"/><ellipse cx="55" cy="34" rx="5" ry="9" fill="#0b0b0b"/><path d="M18 50 q24 30 48 0" fill="none" stroke="#0b0b0b" stroke-width="5" stroke-linecap="round"/></symbol>
+  <symbol id="reg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M12 0v24M0 12h24" stroke="currentColor" stroke-width="1.3"/></symbol>
+  <symbol id="pencil" viewBox="0 0 220 12"><path d="M0 6 L20 1 L20 11 Z" fill="#e8c9a0"/><path d="M0 6 L7 4.2 L7 7.8 Z" fill="#3a3a3a"/><rect x="20" y="1" width="170" height="10" fill="#2f5d4a"/><rect x="20" y="1" width="170" height="3.3" fill="#3d7560"/><rect x="20" y="7.7" width="170" height="3.3" fill="#244a3a"/><text x="40" y="8.6" font-family="Inter" font-weight="700" font-size="5.5" fill="#e3c26a" letter-spacing="1">LANYIN · 2B · RISO DRAW</text><rect x="190" y="1" width="14" height="10" fill="#c9cdd1"/><rect x="204" y="1" width="16" height="10" rx="2" fill="#e88a9a"/></symbol>
+</svg>
+
+<!-- 霓 -->
+<section class="lb" id="l_neon"><div class="t"><b>霓</b><span>NIGHT DRIVE</span><p>横过来就是真正的挡风玻璃。仪表盘左边是歌曲进度，右边是音量；中控屏放封面，收音机预置键是走带键。</p></div>
+  <div class="land" style="background:#05060a">
+    <div class="art" style="width:846px;height:390px;background-image:url(px_land.png)"></div>
+    <div class="z px ol" style="left:150px;top:24px;color:#9fb2c8">♪ 03/30 · 月光下的鲸</div>
+    <div class="z px ol" style="right:150px;top:24px;color:#9fb2c8">下一首 2:53 ▸ 海边的风</div>
+    <div class="z ol" style="left:0;right:0;top:186px;text-align:center"><div class="px24" style="color:#d8e4ee">只剩你的歌还亮着</div><div class="px" style="margin-top:6px;color:#9fb2c8">雨落在霓虹的背面</div></div>
+    <div class="z px" style="left:84px;top:358px;color:#e89a3e">1:12</div><div class="z px" style="left:228px;top:358px;color:#e89a3e">VOL 62</div>
+    <div class="z" style="left:348px;top:280px;width:72px;height:72px;background:url(covers/p1.png) center/cover;image-rendering:pixelated;box-shadow:0 0 0 3px #05060a, 0 0 0 6px #20283a"></div>
+    <div class="z" style="left:432px;top:282px;width:160px;color:#d8e4ee"><div class="px24">月光下的鲸</div><div class="px" style="margin-top:9px;color:#6d7e9a">潮汐里的鲸 · 深海</div>
+      <div style="display:flex;gap:3px;margin-top:12px" id="nprog"></div><div class="px" style="margin-top:6px;display:flex;justify-content:space-between"><span style="color:#e89a3e">01:12</span><span style="color:#6d7e9a">-02:53</span></div></div>
+    <div class="z px" style="left:648px;top:288px;color:#6fe0c8">♪ 03 ▸ 01:12</div><div class="z px" style="left:648px;top:300px;color:#2a9a8e">TAPE A · ST</div>
+    <div class="z px" style="left:630px;top:344px;width:200px;display:flex;color:#9fb2c8"><span style="width:33px;text-align:center">◀◀</span><span style="width:33px;text-align:center;color:#ffc874">▶‖</span><span style="width:33px;text-align:center">▶▶</span><span style="width:33px;text-align:center">循环</span><span style="width:33px;text-align:center">喜欢</span><span style="width:33px;text-align:center">列表</span></div>
+  </div>
+</section>
+
+<!-- 影 -->
+<section class="lb" id="l_film"><div class="t"><b>影</b><span>CINE CAMERA</span><p>横屏是摄影机监视器本来的样子：左边一列拍摄参数，中间取景器，右边录制时码、录制键和前后两条素材。</p></div>
+  <div class="land cm" style="background:#0a0a0b;color:#f2f2f0;font-family:Barlow,'Noto Sans SC'">
+    <div class="z" style="left:0;top:0;bottom:0;width:112px;border-right:1px solid #222226;padding:26px 0 0 24px;display:flex;flex-direction:column;gap:14px" id="camL"></div>
+    <div class="z" style="left:112px;top:0;bottom:0;width:612px;overflow:hidden;background:#000">
+      <div style="position:absolute;inset:-30px;background:url(covers/c5.png) center/cover;filter:blur(20px) brightness(.5)"></div>
+      <div style="position:absolute;left:50%;top:0;bottom:0;aspect-ratio:1;transform:translateX(-50%);background:url(covers/c5.png) center/cover;filter:contrast(1.08)"></div>
+      <div style="position:absolute;inset:0;background:radial-gradient(120% 100% at 50% 50%, transparent 60%, rgba(0,0,0,.45))"></div>
+      <i style="position:absolute;left:33.3%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.18)"></i><i style="position:absolute;left:66.6%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.18)"></i>
+      <i style="position:absolute;top:33.3%;left:0;right:0;height:1px;background:rgba(255,255,255,.18)"></i><i style="position:absolute;top:66.6%;left:0;right:0;height:1px;background:rgba(255,255,255,.18)"></i>
+      <div style="position:absolute;left:14px;top:14px;width:16px;height:16px;border-left:2px solid #fff;border-top:2px solid #fff"></div><div style="position:absolute;right:14px;top:14px;width:16px;height:16px;border-right:2px solid #fff;border-top:2px solid #fff"></div>
+      <div style="position:absolute;left:14px;bottom:14px;width:16px;height:16px;border-left:2px solid #fff;border-bottom:2px solid #fff"></div><div style="position:absolute;right:14px;bottom:14px;width:16px;height:16px;border-right:2px solid #fff;border-bottom:2px solid #fff"></div>
+      <div style="position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px"><i style="position:absolute;left:9.5px;top:0;width:1px;height:20px;background:#fff"></i><i style="position:absolute;top:9.5px;left:0;height:1px;width:20px;background:#fff"></i></div>
+      <div style="position:absolute;left:330px;top:150px;width:70px;height:52px;border:2px solid #30d158"></div>
+      <div style="position:absolute;left:38px;top:20px;font:600 9px Barlow;letter-spacing:.14em">A001_C003_1108 · 雨停以后 — 北岸乐队</div>
+      <div style="position:absolute;left:20px;bottom:44px" id="hg2"></div>
+      <div style="position:absolute;right:20px;top:24px;height:160px;display:flex;gap:3px"><div style="width:5px;background:linear-gradient(0deg,#1a3b22 0 70%,#3b3410 70% 88%,#3b1513 88%);position:relative"><i style="position:absolute;left:0;right:0;bottom:0;height:76%;background:linear-gradient(0deg,#30d158 0,#30d158 70%,#ffd60a 70%,#ffd60a 88%,#ff3b30 88%)"></i></div><div style="width:5px;background:linear-gradient(0deg,#1a3b22 0 70%,#3b3410 70% 88%,#3b1513 88%);position:relative"><i style="position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(0deg,#30d158 0,#30d158 70%,#ffd60a 70%,#ffd60a 88%,#ff3b30 88%)"></i></div></div>
+      <div style="position:absolute;left:0;right:0;bottom:40px;text-align:center"><span style="background:rgba(0,0,0,.72);padding:3px 8px;font:500 16px/1.6 'Noto Sans SC'">只剩你的歌还亮着</span></div>
+      <div style="position:absolute;left:20px;right:20px;bottom:14px;height:12px" id="tl2"></div>
+    </div>
+    <div class="z" style="right:0;top:0;bottom:0;width:120px;border-left:1px solid #222226;display:flex;flex-direction:column;align-items:center;padding-top:22px;gap:12px">
+      <span style="display:inline-flex;align-items:center;gap:5px;height:18px;padding:0 7px;border-radius:3px;background:#ff3b30;font:600 10px Barlow;letter-spacing:.1em"><i style="width:6px;height:6px;border-radius:50%;background:#fff"></i>REC</span>
+      <div style="font:500 17px 'Barlow Condensed';color:#ff3b30;letter-spacing:.04em">00:00:58:12</div>
+      <div style="width:44px;height:26px;background:url(covers/c3.png) center/cover;border-radius:2px;opacity:.8"></div>
+      <div style="width:66px;height:66px;border-radius:50%;box-shadow:0 0 0 3px #f2f2f0;display:grid;place-items:center"><i style="width:26px;height:26px;border-radius:4px;background:#ff3b30"></i></div>
+      <div style="width:44px;height:26px;background:url(covers/c1.png) center/cover;border-radius:2px;opacity:.8"></div>
+      <div style="font:500 8px Barlow;letter-spacing:.16em;color:#8b8b90">C002 · C004</div>
+    </div>
+  </div>
+</section>
+
+<!-- 机 -->
+<section class="lb" id="l_device"><div class="t"><b>机</b><span>CASSETTE DECK</span><p>卡座本来就是横的：左边舱门里的磁带在转，右边荧光屏上是电平表和歌词，下面是琴键式走带键。</p></div>
+  <div class="land hf" style="background:#0d0c0b">
+    <div class="alu" id="ldeck" style="left:10px;right:10px;top:10px;bottom:10px;border-radius:30px">
+      <span class="brand" style="position:absolute;left:34px;top:20px">LANYIN</span><span class="model" style="position:absolute;left:102px;top:23px">TC-18 · STEREO CASSETTE DECK</span>
+      <div id="ldoor" style="position:absolute;left:30px;top:40px;width:380px;height:244px;border-radius:6px;background:linear-gradient(#26282b,#141517);box-shadow:inset 0 2px 8px #000, 0 0 0 1px #6f7276, 0 1px 0 1px #f2f3f5"></div>
+      <div style="position:absolute;left:30px;top:296px;font:600 15px 'Noto Sans SC';color:#1d1e20">雨停以后 <span style="font:500 11px 'Noto Sans SC';color:#55585c">北岸乐队 · 夜航</span></div>
+      <div style="position:absolute;left:30px;top:322px;width:380px;height:24px" id="lruler"></div>
+      <div class="glass" style="left:430px;top:40px;width:364px;height:120px">
+        <div id="lmeters" style="position:absolute;left:10px;right:10px;top:10px"></div>
+        <div class="px v" style="position:absolute;left:10px;top:70px">♪ 只剩你的歌还亮着</div>
+        <div class="px" style="position:absolute;left:10px;top:92px;color:#2fb79b">NEXT ▸ 雨落在霓虹的背面</div>
+        <div class="px v" style="position:absolute;right:10px;top:70px">PLAY ▶</div>
+      </div>
+      <span class="eng" style="position:absolute;left:432px;top:178px">COUNTER</span>
+      <div style="position:absolute;left:432px;top:190px;width:70px;height:20px;border-radius:2px;background:#0d0d0e;box-shadow:inset 0 2px 3px #000, 0 0 0 1px #6f7276;display:flex;gap:2px;padding:2px" id="lcounter"></div>
+      <div class="knob" style="left:640px;top:170px;width:46px;height:46px"><i style="transform:rotate(-30deg)"></i></div><span class="eng" style="position:absolute;left:636px;top:222px">REC LEVEL</span>
+      <div class="knob" style="left:720px;top:170px;width:46px;height:46px"><i style="transform:rotate(50deg)"></i></div><span class="eng" style="position:absolute;left:722px;top:222px">OUTPUT</span>
+      <span class="eng" style="position:absolute;left:520px;top:182px">CrO2 <span class="led g"></span> NR B <span class="led a"></span></span>
+      <div id="lkeys"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 游 -->
+<section class="lb" id="l_game"><div class="t"><b>游</b><span>1-BIT STAGE</span><p>横屏把关卡拉宽：小猫在更长的路上跑，月亮是封面，歌词在对话框里，右下是三个按钮。</p></div>
+  <div class="land" style="background:#e8e5d8"><div class="art" style="width:844px;height:390px;background-image:url(g2_land.png)"></div></div>
+</section>
+
+<!-- 酸 -->
+<section class="lb" id="l_acid"><div class="t"><b>酸</b><span>FLYER · WIDE</span><p>横过来是一张宽幅海报：左边唱片，右边巨大的歌名和信息表，歌词胶带斜着横贯过去。</p></div>
+  <div class="land" style="background:#1a1a19">
+    <div class="z" id="lposter" style="left:12px;top:10px;width:820px;height:370px;background:#0b0b0b">
+      <div style="position:absolute;left:30px;top:26px;width:310px;height:310px">
+        <div style="position:absolute;inset:0;border-radius:50%;background:repeating-radial-gradient(circle,#141414 0 1px,#0b0b0b 1px 3px);box-shadow:0 0 0 2px #d6ff1e"></div>
+        <div style="position:absolute;inset:66px;border-radius:50%;background:url(covers/htl5.png) center/cover;box-shadow:0 0 0 2px #0b0b0b,0 0 0 4px #d6ff1e"></div>
+        <div style="position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#0b0b0b;box-shadow:0 0 0 2px #d6ff1e"></div>
+        <svg viewBox="0 0 300 300" style="position:absolute;inset:0;width:100%;height:100%"><defs><path id="lr" d="M150,150 m-122,0 a122,122 0 1,1 244,0 a122,122 0 1,1 -244,0"/></defs><text font-family="Unbounded" font-weight="800" font-size="13" fill="#d6ff1e" letter-spacing="3"><textPath href="#lr">北岸乐队 ✳ NIGHT FERRY ✳ SIDE A ✳ 33⅓ RPM ✳ LANYIN ✳ 128 BPM ✳</textPath></text></svg>
+      </div>
+      <svg style="position:absolute;left:262px;top:236px;width:76px;height:88px;transform:rotate(14deg)"><use href="#smiley"/></svg>
+      <div style="position:absolute;left:372px;top:20px;right:24px;display:flex;justify-content:space-between;font:500 8.5px 'JetBrains Mono';letter-spacing:.16em;color:#d6ff1e"><span>LANYIN SOUND SYSTEM PRESENTS</span><span>03 / 30</span></div>
+      <div style="position:absolute;left:366px;top:36px;font:900 96px/1 'Noto Sans SC';letter-spacing:-.04em;color:#d6ff1e">夜航船</div>
+      <div style="position:absolute;left:372px;top:142px;font:16px 'Archivo Black','Noto Sans SC';color:#ecebe2">LIVE: 北岸乐队 <span style="font:500 9px 'JetBrains Mono';color:#8d8d86">— 《夜航》 2026</span></div>
+      <div style="position:absolute;left:372px;top:172px;display:flex;gap:26px;font:500 8.5px 'JetBrains Mono';color:#8d8d86;letter-spacing:.1em">
+        <div>BPM<div style="font:900 22px Unbounded;color:#d6ff1e;letter-spacing:0">128</div></div><div>KEY<div style="font:900 22px Unbounded;color:#ecebe2;letter-spacing:0">Am</div></div><div>TIME<div style="font:900 22px Unbounded;color:#ecebe2;letter-spacing:0">3:44</div></div><div>SIDE<div style="font:900 22px Unbounded;color:#ecebe2;letter-spacing:0">A</div></div>
+      </div>
+      <div style="position:absolute;left:330px;right:-20px;top:232px;height:38px;background:#d6ff1e;transform:rotate(-3deg);display:flex;align-items:center;padding-left:30px;font:900 19px 'Noto Sans SC';color:#0b0b0b">跟着节拍 向海里开 ✳</div>
+      <div style="position:absolute;left:372px;top:286px;width:420px;height:20px" id="aruler"></div>
+      <div style="position:absolute;left:372px;top:316px;width:420px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font:500 10px 'JetBrains Mono';color:#ecebe2">00:58</span>
+        <svg width="26" height="26" viewBox="0 0 24 24"><path d="M18 6v12l-8.5-6z" fill="#ecebe2"/><path d="M6 6v12" stroke="#ecebe2" stroke-width="2"/></svg>
+        <div style="width:52px;height:52px;border-radius:50%;background:#d6ff1e;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="#0b0b0b"/><rect x="14" y="5" width="4" height="14" fill="#0b0b0b"/></svg></div>
+        <svg width="26" height="26" viewBox="0 0 24 24"><path d="M6 6v12l8.5-6z" fill="#ecebe2"/><path d="M18 6v12" stroke="#ecebe2" stroke-width="2"/></svg>
+        <span style="font:500 10px 'JetBrains Mono';color:#8d8d86">03:44</span>
+      </div>
+      <svg style="position:absolute;left:10px;top:10px;width:14px;height:14px;color:#d6ff1e"><use href="#reg"/></svg><svg style="position:absolute;right:10px;bottom:10px;width:14px;height:14px;color:#d6ff1e"><use href="#reg"/></svg>
+    </div>
+    <div class="z" style="left:380px;top:2px;width:80px;height:18px;background:rgba(236,226,190,.62)"></div>
+  </div>
+</section>
+
+<!-- 暮 -->
+<section class="lb" id="l_dusk"><div class="t"><b>暮</b><span>RISO · WIDE</span><p>横屏把那张画铺宽：落日（封面）在更宽的天空里往山后沉，右边是歌名纸条、钢尺进度和印章按键。</p></div>
+  <div class="land dk" style="color:#3255a4;font-family:'Noto Sans SC'">
+    <div class="z sheet" style="left:22px;top:20px;width:500px;height:348px;transform:rotate(-.8deg)">
+      <div style="position:absolute;left:14px;top:14px;width:472px;height:288px;overflow:hidden;background:url(covers/riso_sky.jpg) center 70%/cover">
+        <div style="position:absolute;left:150px;top:22px;width:150px;height:150px;border-radius:50%;background:url(covers/sun_forest.jpg) center/cover"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:520px;background:url(covers/riso_ridges.png) center bottom/100% auto no-repeat"></div>
+        <svg viewBox="0 0 472 288" style="position:absolute;inset:0;mix-blend-mode:multiply"><path d="M30 60 Q 236 0 440 220" fill="none" stroke="#3255a4" stroke-width="1.4" stroke-dasharray="2 5"/><circle cx="30" cy="60" r="3" fill="#3255a4"/><circle cx="440" cy="220" r="3" fill="#ff48b0"/></svg>
+      </div>
+      <div class="hand" style="position:absolute;left:16px;top:310px;font-size:17px">海边的风 · 第 3 号</div>
+      <div class="hand" style="position:absolute;right:18px;top:310px;font-size:17px">3/30</div>
+    </div>
+    <div class="z tape" style="left:230px;top:12px;width:70px;transform:rotate(-3deg)"></div>
+    <div class="z loupe" style="left:400px;top:210px;width:84px;height:84px"><div style="position:absolute;left:-470px;top:-500px;width:990px;height:990px;background:url(covers/riso_sky.jpg) center/cover"></div></div>
+    <div class="z sheet" style="left:548px;top:28px;width:270px;height:132px;transform:rotate(1.2deg);padding:12px 16px">
+      <div class="zs mis" data-t="海边的风" style="font-size:28px;line-height:1.1">海边的风</div>
+      <div class="it" style="font-size:13px;margin-top:2px">林间 / 小舟 — 《夜航》</div>
+      <div style="margin-top:8px;font:900 15px 'Noto Serif SC'"><span class="mis" data-t="让歌词一行一行亮起">让歌词一行一行亮起</span></div>
+      <div style="margin-top:2px;font:500 12px 'Noto Serif SC';opacity:.45">唱片在掌心慢慢转动</div>
+    </div>
+    <div class="z" style="left:540px;top:184px;width:290px;height:40px;border-radius:2px;background:linear-gradient(180deg,#e9ecef,#c3c8cd 45%,#dfe3e7 55%,#b3b8be);box-shadow:0 4px 8px rgba(0,0,0,.4), inset 0 1px 0 #fff;transform:rotate(-.6deg)">
+      <div id="druler" style="position:absolute;left:8px;top:0"></div>
+      <div style="position:absolute;left:calc(8px + 26% * .95);top:-6px;width:2px;height:28px;background:#5a5a62;transform:rotate(8deg)"></div>
+      <div class="hand" style="position:absolute;left:calc(12px + 26% * .95);top:20px;font-size:12px;color:#4a4a52">0:58</div>
+    </div>
+    <div class="z" style="left:560px;top:250px;width:260px;height:100px">
+      <div style="position:absolute;left:0;top:26px;width:50px;height:50px;border-radius:50%;border:3px solid #e7efe8;display:grid;place-items:center"><svg viewBox="0 0 24 24" style="width:22px;height:22px"><path d="M18 6v12l-8.5-6z" fill="#e7efe8"/><path d="M6 6v12" stroke="#e7efe8" stroke-width="2"/></svg></div>
+      <div style="position:absolute;left:82px;top:8px;width:84px;height:84px;border-radius:50%;background:#ff48b0;display:grid;place-items:center;box-shadow:0 0 0 4px rgba(255,72,176,.25)"><div style="position:absolute;inset:8px;border-radius:50%;border:2px solid #3255a4;transform:translate(2px,-1px)"></div><svg viewBox="0 0 24 24" style="width:30px;height:30px"><rect x="6.5" y="5" width="4" height="14" fill="#3255a4"/><rect x="13.5" y="5" width="4" height="14" fill="#3255a4"/></svg></div>
+      <div style="position:absolute;left:198px;top:26px;width:50px;height:50px;border-radius:50%;border:3px solid #e7efe8;display:grid;place-items:center"><svg viewBox="0 0 24 24" style="width:22px;height:22px"><path d="M6 6v12l8.5-6z" fill="#e7efe8"/><path d="M18 6v12" stroke="#e7efe8" stroke-width="2"/></svg></div>
+    </div>
+    <svg class="z" style="left:600px;top:352px;width:230px;height:12px;transform:rotate(-6deg)"><use href="#pencil"/></svg>
+  </div>
+</section>
+<script>
+const $ = id => document.getElementById(id);
+// 霓
+$('nprog').innerHTML = Array.from({ length: 26 }, (_, i) => `<i style="width:3px;height:6px;background:${i < 7 ? '#e89a3e' : i === 7 ? '#d8e4ee' : '#20283a'}"></i>`).join('');
+// 影
+$('camL').innerHTML = [['FPS', '24.00'], ['SHUTTER', '180°'], ['ISO', '800'], ['WB', '3200K'], ['ND', '0.6'], ['LENS', 'T1.8 35'], ['LUT', '709']].map(([l, v]) => `<div><div style="font:500 8px Barlow;letter-spacing:.16em;color:#8b8b90">${l}</div><div style="font:500 16px 'Barlow Condensed';margin-top:3px">${v}</div></div>`).join('');
+(function () {
+  const H = HIST.c5, w = 110, h = 44;
+  const path = (arr) => 'M0 ' + h + ' ' + arr.map((v, i) => `L${(i / (arr.length - 1) * w).toFixed(1)} ${(h - v * h).toFixed(1)}`).join(' ') + ` L${w} ${h} Z`;
+  const cols = ['#ff5b5b', '#5bff7a', '#5b9bff'];
+  let s = H.rgb.map((a, i) => `<path d="${path(a)}" fill="${cols[i]}" opacity=".28"/>`).join('') + `<path d="${path(H.l)}" fill="rgba(255,255,255,.35)" stroke="#fff" stroke-width=".6"/>`;
+  $('hg2').innerHTML = `<svg viewBox="0 0 ${w} ${h}" style="width:${w}px;height:${h}px;display:block;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25)">${s}</svg>`;
+  const W2 = 572; let t = `<line x1="0" y1="6" x2="${W2}" y2="6" stroke="#3a3a3f" stroke-width="2"/><line x1="0" y1="6" x2="${W2 * .26}" y2="6" stroke="#f2f2f0" stroke-width="2"/>`;
+  [.09, .31, .52, .66, .88].forEach(f => t += `<line x1="${f * W2}" y1="2" x2="${f * W2}" y2="10" stroke="#8b8b90"/>`);
+  t += `<rect x="${W2 * .26 - 1}" y="0" width="2" height="12" fill="#ff3b30"/>`;
+  $('tl2').innerHTML = `<svg viewBox="0 0 ${W2} 12" style="width:100%;height:12px">${t}</svg>`;
+})();
+// 机
+$('ldoor').innerHTML = `<div style="position:absolute;left:20px;top:14px">${cassette(340, 216, .26, '<text x="20" y="40" font-family="Long Cang" font-size="15" fill="#1f2a5a">雨停以后 · 北岸乐队</text>')}</div><div style="position:absolute;inset:0;border-radius:6px;background:linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,0) 35%), rgba(30,22,16,.25)"></div>`;
+$('lcounter').innerHTML = ['0', '0', '5', '8'].map(d => `<span style="flex:1;background:linear-gradient(#2b2c2e,#f2f2ee 22%,#ffffff 50%,#f2f2ee 78%,#2b2c2e);color:#111;font:700 13px/16px 'JetBrains Mono';text-align:center;border-radius:1px">${d}</span>`).join('');
+(function () {
+  let h = '';
+  [['L', 30], ['R', 26]].forEach(([ch, lit], r) => {
+    h += `<div style="display:flex;align-items:center;gap:6px;margin-top:${r ? 6 : 0}px"><span class="px v" style="width:10px">${ch}</span><div style="display:flex;gap:2px;flex:1">`;
+    for (let i = 0; i < 40; i++) { const red = i >= 32, on = i < lit || i === 34 - r * 2; h += `<i style="flex:1;height:7px;background:${on ? (red ? '#ff6b4a' : '#67f5d6') : (red ? '#2a1410' : '#10261f')};${on ? `box-shadow:0 0 3px ${red ? '#ff6b4a' : '#67f5d6'}` : ''}"></i>`; }
+    h += `</div></div>`;
+  });
+  $('lmeters').innerHTML = h;
+  const keys = [['rec', 'REC'], ['rew', 'REW'], ['play', 'PLAY'], ['ff', 'F.FWD'], ['stop', 'STOP'], ['pause', 'PAUSE']];
+  let k = '';
+  keys.forEach(([n, t], i) => { const x = 432 + i * 61; k += `<div class="pk${n === 'play' ? ' down' : ''}" style="left:${x}px;top:250px;width:54px;height:58px"><svg viewBox="0 0 20 20">${ICON[n]}</svg></div><span class="eng" style="position:absolute;left:${x}px;top:318px;width:54px;text-align:center">${t}</span>`; });
+  $('ldeck').insertAdjacentHTML('beforeend', k);
+  let s = ''; const w = 380;
+  for (let i = 0; i <= 224; i += 2) { const x = i / 224 * w; s += `<line x1="${x}" y1="${i % 60 === 0 ? 4 : i % 10 === 0 ? 10 : 14}" x2="${x}" y2="18" stroke="#2a2c30" stroke-width="${i % 60 === 0 ? 1.2 : .6}"/>`; if (i % 60 === 0) s += `<text x="${x + 2}" y="9" font-family="Inter" font-weight="600" font-size="7" fill="#2a2c30">${i / 60}</text>`; }
+  s += `<rect x="0" y="17" width="${w * .26}" height="3" fill="#e8412c"/>`;
+  $('lruler').innerHTML = `<svg viewBox="0 0 ${w} 24" style="width:100%;height:100%">${s}</svg>`;
+  [[6, 6], [796, 6, 120], [6, 342, 60], [796, 342]].forEach(([x, y, r]) => $('ldeck').insertAdjacentHTML('beforeend', `<span class="screw" style="left:${x + 12}px;top:${y}px;--r:${r || 35}deg"></span>`));
+})();
+// 酸
+(function () {
+  let s = ''; const w = 420;
+  for (let i = 0; i <= 224; i += 4) { const x = i / 224 * w; s += `<line x1="${x}" y1="${i % 60 === 0 ? 2 : i % 20 === 0 ? 8 : 12}" x2="${x}" y2="18" stroke="#ecebe2" stroke-width="${i % 60 === 0 ? 1.4 : .7}"/>`; }
+  s += `<rect x="0" y="16" width="${w * .26}" height="4" fill="#d6ff1e"/><text x="${w * .26 - 8}" y="14" font-size="16" fill="#d6ff1e">✳</text>`;
+  $('aruler').innerHTML = `<svg viewBox="0 0 ${w} 22" style="width:100%;height:100%;overflow:visible">${s}</svg>`;
+  let sd = 41; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647; const pts = [];
+  const edge = (x0, y0, x1, y1, a, nx, ny) => { const n = Math.round(Math.hypot(x1 - x0, y1 - y0) / 7); for (let i = 0; i < n; i++) { const t = i / n, j = (r() - .3) * a; pts.push(`${(x0 + (x1 - x0) * t + nx * j).toFixed(1)}px ${(y0 + (y1 - y0) * t + ny * j).toFixed(1)}px`); } };
+  edge(0, 0, 820, 0, 4, 0, 1); edge(820, 0, 820, 370, 3, -1, 0); edge(820, 370, 0, 370, 4, 0, -1); edge(0, 370, 0, 0, 3, 1, 0);
+  $('lposter').style.clipPath = `polygon(${pts.join(',')})`;
+})();
+// 暮
+(function () {
+  let s = ''; const px = 270 / 18;
+  for (let i = 0; i <= 180; i++) { const x = i * px / 10; const h = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5; s += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="#2b2d30" stroke-width="${i % 10 === 0 ? 1 : .6}"/>`; if (i % 20 === 0 && i) s += `<text x="${x}" y="22" font-family="Inter" font-weight="600" font-size="7.5" text-anchor="middle" fill="#2b2d30">${i / 10}</text>`; }
+  $('druler').innerHTML = `<svg viewBox="0 0 274 28" style="width:274px;height:28px;display:block">${s}</svg>`;
+})();
+</script>
+</body>
+</html>

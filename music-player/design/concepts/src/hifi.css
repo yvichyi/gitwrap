@@ -1,0 +1,91 @@
+
+@font-face { font-family: "Fusion Pixel"; src: url("file:///home/user/gitwrap/music-player/app/src/main/res/font/fusion_pixel.ttf"); }
+/* 机 · 组合音响：银色拉丝铝面板、黑玻璃荧光显示屏、指针表、旋钮和琴键 */
+.hf { --vfd: #67f5d6; --vfd2: #2fb79b; --off: #10261f; --eng: #44474b; --red: #e8412c; --amber: #ffb03a;
+  background: #0d0c0b; color: #222; font-family: "Inter", "Noto Sans SC", sans-serif; }
+/* 柜子：胡桃木侧板和顶板 */
+.hf .wood { position: absolute; background:
+    repeating-linear-gradient(92deg, rgba(0,0,0,.18) 0 1px, transparent 1px 5px, rgba(255,210,160,.05) 5px 6px, transparent 6px 11px),
+    repeating-linear-gradient(88deg, rgba(0,0,0,.12) 0 2px, transparent 2px 17px),
+    linear-gradient(90deg, #3a2213, #5a351c 40%, #47291a 70%, #3a2213); }
+.hf .shelf { position: absolute; left: 12px; right: 12px; height: 8px; background: linear-gradient(#050505, #1a1612); }
+/* 拉丝铝：细横纹 + 一道斜高光 + 上亮下暗的倒角 */
+.hf .alu { position: absolute; left: 12px; right: 12px; border-radius: 3px;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='120'><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='.002 .9' numOctaves='2' seed='4'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 -.12'/></filter><rect width='400' height='120' filter='url(%23b)'/></svg>"),
+    linear-gradient(100deg, rgba(255,255,255,0) 20%, rgba(255,255,255,.28) 42%, rgba(255,255,255,0) 62%),
+    linear-gradient(180deg, #dfe0e2, #c6c8cb 55%, #b9bcbf);
+  box-shadow: inset 0 1px 0 #fbfcfd, inset 0 -2px 0 #8a8d91, inset 1px 0 0 #eceef0, inset -1px 0 0 #9fa2a6, 0 3px 6px rgba(0,0,0,.7); }
+.hf .ear { position: absolute; top: 0; bottom: 0; width: 8px; background: linear-gradient(90deg, #a9acb0, #d4d6d9, #a9acb0); }
+.hf .screw { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fafbfc, #a2a5a9 60%, #6d7074); box-shadow: 0 1px 1px rgba(0,0,0,.45), inset 0 0 0 .5px #6d7074; }
+.hf .screw::after { content: ""; position: absolute; left: 1px; right: 1px; top: 4px; height: 1px; background: #55585c; transform: rotate(var(--r, 35deg)); }
+.hf .eng { font: 600 7px/1 "Inter"; letter-spacing: .16em; color: var(--eng); text-transform: uppercase; white-space: nowrap; }
+.hf .brand { font: 800 italic 13px/1 "Inter"; letter-spacing: .04em; color: #1a1b1d; }
+.hf .model { font: 500 7.5px/1 "Inter"; letter-spacing: .2em; color: #55585c; }
+/* 黑玻璃显示窗 */
+.hf .glass { position: absolute; background: #050706; border-radius: 3px; overflow: hidden;
+  box-shadow: inset 0 2px 6px #000, inset 0 0 0 1px #000, 0 0 0 1px #75787c, 0 1px 0 1px #f2f3f5; }
+.hf .glass::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(168deg, rgba(255,255,255,.11), rgba(255,255,255,0) 38%), repeating-linear-gradient(0deg, rgba(0,0,0,.25) 0 1px, transparent 1px 3px); }
+.hf .v { color: var(--vfd); text-shadow: 0 0 4px rgba(103,245,214,.75), 0 0 1px var(--vfd); }
+.hf .voff { color: var(--off); }
+.hf .px { font-family: "Fusion Pixel", monospace; font-size: 12px; line-height: 12px; -webkit-font-smoothing: none; }
+.hf .led { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #3a1410; box-shadow: inset 0 1px 1px rgba(0,0,0,.6); }
+.hf .led.r { background: #ff4a32; box-shadow: 0 0 5px #ff4a32, 0 0 1px #fff inset; }
+.hf .led.g { background: #6dff8a; box-shadow: 0 0 5px #4cff70; }
+.hf .led.a { background: var(--amber); box-shadow: 0 0 5px var(--amber); }
+/* 方形按键 */
+.hf .key { position: absolute; border-radius: 2px; background: linear-gradient(#eceef0, #c8cacd); box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 #9a9da1, 0 0 0 1px #6f7276, 0 2px 2px rgba(0,0,0,.35); }
+.hf .key.dark { background: linear-gradient(#3b3d40, #1f2022); box-shadow: inset 0 1px 0 #5a5d61, inset 0 -2px 0 #0b0b0c, 0 0 0 1px #0a0a0a, 0 2px 2px rgba(0,0,0,.4); }
+.hf .key.down { transform: translateY(2px); box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 #9a9da1, 0 0 0 1px #6f7276; }
+/* 旋钮：滚花外圈 + 车削纹的金属顶 */
+.hf .knob { position: absolute; border-radius: 50%; background: repeating-conic-gradient(#2b2c2e 0 4deg, #55585c 4deg 8deg); box-shadow: 0 0 0 1px #111, 0 4px 6px rgba(0,0,0,.55); }
+.hf .knob::before { content: ""; position: absolute; inset: 14%; border-radius: 50%;
+  background: repeating-radial-gradient(circle, rgba(255,255,255,.10) 0 1px, rgba(0,0,0,.05) 1px 2px), conic-gradient(from 20deg, #e9eaec, #9fa2a6 22%, #f4f5f6 48%, #9a9da1 74%, #e9eaec);
+  box-shadow: inset 0 1px 1px #fff, inset 0 -1px 2px rgba(0,0,0,.35), 0 0 0 1px #77797d; }
+.hf .knob i { position: absolute; left: 50%; top: 18%; width: 3px; height: 16%; margin-left: -1.5px; border-radius: 2px; background: #1b1c1e; z-index: 2; transform-origin: 50% 200%; }
+.hf .knob.ctr i { transform-origin: 50% 0; }
+/* 琴键式走带键 */
+.hf .pk { position: absolute; width: 48px; height: 62px; border-radius: 2px 2px 7px 7px; background: linear-gradient(#f0f1f3, #c9cbce 80%, #b5b8bb);
+  box-shadow: inset 0 1px 0 #fff, inset 0 -4px 0 #9a9da1, 0 0 0 1px #6f7276, 0 4px 0 #2a2b2d, 0 6px 8px rgba(0,0,0,.45); display: grid; place-items: center; }
+.hf .pk.down { transform: translateY(4px); box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 #9a9da1, 0 0 0 1px #6f7276, 0 1px 0 #2a2b2d; }
+.hf .pk svg { width: 20px; height: 20px; }
+
+
+/* 暮 · 孔版工作台：绿色切割垫上摊着刚印好的三色孔版画 */
+.dk { --paper: #f2ebdd; --pink: #ff48b0; --yellow: #ffb511; --blue: #3255a4; --violet: #321871; --mat: #2e5a47; --mat2: #27503f; --line: rgba(220,240,225,.20); --line2: rgba(220,240,225,.08);
+  color: var(--blue); font-family: "Noto Sans SC", sans-serif;
+  background:
+    linear-gradient(var(--line) 1px, transparent 1px) 0 0/39px 39px,
+    linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0/39px 39px,
+    linear-gradient(var(--line2) 1px, transparent 1px) 0 0/7.8px 7.8px,
+    linear-gradient(90deg, var(--line2) 1px, transparent 1px) 0 0/7.8px 7.8px,
+    repeating-linear-gradient(45deg, transparent 0 54px, rgba(220,240,225,.06) 54px 55px),
+    radial-gradient(120% 80% at 30% 20%, #34654f, var(--mat2)); }
+.dk::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 30; mix-blend-mode: multiply; opacity: .35;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .45  0 0 0 .5 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>"); }
+.dk .z { position: absolute; }
+.dk .matnum { position: absolute; font: 600 7px "Inter"; color: rgba(220,240,225,.5); }
+.dk .sheet { position: absolute; background: var(--paper); box-shadow: 0 1px 1px rgba(0,0,0,.25), 0 8px 18px rgba(0,0,0,.35);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/><feColorMatrix values='0 0 0 0 .55  0 0 0 0 .5  0 0 0 0 .42  0 0 0 .22 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>"); }
+.dk .tape { position: absolute; width: 58px; height: 20px; background: rgba(232,220,182,.78); z-index: 8; box-shadow: 0 1px 2px rgba(0,0,0,.2);
+  clip-path: polygon(0 12%, 7% 0, 13% 14%, 20% 2%, 80% 0, 87% 12%, 93% 0, 100% 10%, 100% 90%, 93% 100%, 87% 88%, 80% 100%, 20% 98%, 13% 86%, 7% 100%, 0 88%); }
+.dk .hand { font-family: "Long Cang", cursive; color: #4a4a52; }
+.dk .crop { position: absolute; width: 12px; height: 12px; border-color: #222; border-style: solid; border-width: 0; opacity: .7; }
+.dk .zs { font-family: "Noto Serif SC", serif; font-weight: 900; }
+.dk .fr { font-family: "Fraunces", serif; }
+.dk .it { font-family: "Fraunces", serif; font-style: italic; font-weight: 600; }
+.dk .mis { position: relative; color: var(--blue); mix-blend-mode: multiply; }
+.dk .mis::before { content: attr(data-t); position: absolute; left: 2px; top: 1.5px; color: var(--pink); mix-blend-mode: multiply; z-index: -1; white-space: nowrap; }
+.dk .reg { position: absolute; width: 14px; height: 14px; }
+/* 色票扇 */
+.dk .fan { position: absolute; width: 74px; height: 150px; transform-origin: 37px 140px; border-radius: 6px; padding: 8px 8px 0; font: 700 12px "Noto Sans SC"; box-shadow: 0 3px 8px rgba(0,0,0,.3); }
+.dk .fan small { display: block; margin-top: 3px; font: 600 7.5px "Fraunces"; letter-spacing: .1em; }
+.dk .fan .chip { width: 58px; height: 64px; margin-top: 8px; border-radius: 2px; }
+.dk .rivet { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #9aa0a6 60%, #5d6268); box-shadow: 0 1px 2px rgba(0,0,0,.5); z-index: 9; }
+/* 铅笔 */
+.dk .pencil { position: absolute; height: 12px; z-index: 9; filter: drop-shadow(0 3px 2px rgba(0,0,0,.35)); }
+/* 印章按钮 */
+.dk .stamp { position: absolute; border-radius: 50%; display: grid; place-items: center; mix-blend-mode: multiply; }
+/* 放大镜 */
+.dk .loupe { position: absolute; border-radius: 50%; overflow: hidden; z-index: 9; box-shadow: 0 0 0 7px #2a2a2c, 0 0 0 9px #8d9196, 0 10px 20px rgba(0,0,0,.45); }
+.dk .loupe::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.35), rgba(255,255,255,0) 35%), radial-gradient(circle, transparent 60%, rgba(0,0,0,.25)); }
