@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
@@ -50,6 +51,8 @@ import io.lanyin.player.ui.design.drawPlayPauseGlyph
 import io.lanyin.player.ui.design.keyColors
 import io.lanyin.player.ui.design.drawPixelButton
 import io.lanyin.player.ui.design.drawSprite
+import io.lanyin.player.ui.design.drawFlyer
+import io.lanyin.player.ui.design.drawLimeDisc
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.sharedPlayer
 import io.lanyin.player.ui.theme.radioLcdStyle
@@ -126,6 +129,11 @@ fun MiniPlayer(
             Spacer(Modifier.width(10.dp))
             Canvas(Modifier.size(30.dp)) { drawRadioKnob(30f) }
         }
+        return
+    }
+    // 酸: a strip of black flyer pasted along the foot of the wall.
+    if (style.backdrop == BackdropKind.Acid && !onPaper) {
+        FlyerStrip(state, onExpand, modifier)
         return
     }
     // 游: a strip of the game: the cover in one bit, the song, two pixel keys.
@@ -471,3 +479,54 @@ private fun BitMiniKey(glyph: List<String>, label: String, on: Boolean, onClick:
         drawSprite(glyph, ((size.width - w * p) / 2f / p).toInt() * p, ((size.height - 2 * p - h * p) / 2f / p).toInt() * p, p, if (on) c.bg else c.content)
     }
 }
+
+/**
+ * 酸's mini player: a strip of black flyer, the cover photocopied in lime on a disc, the song in
+ * heavy type, NOW PLAYING with the act and the time in mono, and the lime play disc.
+ */
+@Composable
+private fun FlyerStrip(state: PlayerState, onExpand: () -> Unit, modifier: Modifier) {
+    val seconds by remember(state) { androidx.compose.runtime.derivedStateOf { (state.positionMs / 1000).toInt() } }
+    val acid = io.lanyin.player.ui.design.Acid
+    Row(
+        modifier
+            .fillMaxWidth()
+            .height(66.dp)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .testTag("miniPlayer")
+            .sharedPlayer("player-container", container = true)
+            .drawBehind { drawFlyerStrip() }
+            .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onExpand)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape).sharedPlayer("artwork", zIndex = 1f)) {
+            io.lanyin.player.ui.design.PhotocopyCover(state.coverUrl, state.coverSeed, Modifier.fillMaxSize(), ink = acid.Lime, paper = acid.Black, lines = 18f, positive = true)
+        }
+        Spacer(Modifier.width(10.dp))
+        SwipeToSkip(state, Modifier.weight(1f)) {
+            Column(Modifier.fillMaxWidth()) {
+                Text(state.title, style = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.Black, fontSize = fixedSp(16f)), color = acid.Paper, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true))
+                Text(
+                    "NOW PLAYING · ${state.artist} · ${io.lanyin.player.ui.design.formatTime(seconds * 1000L)}",
+                    style = androidx.compose.ui.text.TextStyle(fontFamily = io.lanyin.player.ui.theme.SpaceMonoFamily, fontSize = fixedSp(9f)), color = acid.Grey, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        val style = Lanyin.style
+        Box(
+            Modifier
+                .size(44.dp)
+                .pressable(label = if (state.isPlaying) "暂停" else "播放", onClick = state::togglePlay)
+                .drawBehind { drawLimeDisc(style, 0f) },
+            contentAlignment = Alignment.Center,
+        ) {
+            val morph by animateFloatAsState(if (state.isPlaying) 1f else 0f, label = "flyerMorph")
+            Canvas(Modifier.size(14.dp)) { drawPlayPauseGlyph(morph, acid.Black) }
+        }
+    }
+}
+
+/** The strip's black stock, its ends torn and a shadow on the wall. */
+private fun DrawScope.drawFlyerStrip() = drawFlyer(io.lanyin.player.ui.design.Acid.Black, seed = 12, torn = true)

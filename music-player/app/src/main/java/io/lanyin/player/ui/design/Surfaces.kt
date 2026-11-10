@@ -118,7 +118,8 @@ fun Modifier.themedSurface(
         // 霓: an amber key, its top row lit and its lip shaded.
         tone == SurfaceTone.Accent && style.edge == EdgeKind.Glow -> m.drawBehind { drawPixelKey(c.accent, pressed = press > 0.5f) }
         // 酸: lime gel, lighter at the top, with the gloss across it.
-        tone == SurfaceTone.Accent && style.edge == EdgeKind.Chrome -> m.background(Brush.verticalGradient(listOf(Color(0xFFE2FF6B), c.accent, Color(0xFF8FC400)))).drawBehind { drawGloss(0.45f) }
+        // 酸: a lime flyer.
+        tone == SurfaceTone.Accent && style.edge == EdgeKind.Chrome -> m.background(c.accent).drawBehind { drawGloss(0.3f) }
         tone == SurfaceTone.Accent -> m.background(style.accentBrush())
         style.edge == EdgeKind.Hairline -> m.background(c.bg)
         // A panel of the screen: the row along its top a shade lighter, amber light on it while pressed.
@@ -141,10 +142,12 @@ fun Modifier.themedSurface(
                 drawRect(c.content.copy(alpha = 0.8f), size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
             }
         }
-        // 酸: dark plastic, the light catching its top.
-        style.edge == EdgeKind.Chrome -> m.background(
-            if (flat) Brush.verticalGradient(listOf(c.surfaceAlt, c.surfaceAlt)) else Brush.verticalGradient(listOf(c.surfaceAlt, c.surface)),
-        ).drawBehind { if (!flat) drawGloss(0.06f) }
+        // 酸: a flyer of black stock pasted to the wall, toner specks on it; a scrap of tape on cards.
+        style.edge == EdgeKind.Chrome -> m.background(if (flat) c.surfaceAlt else c.surface).drawBehind {
+            drawGloss(0.3f)
+            if (tone == SurfaceTone.Card) drawTapeStrip(androidx.compose.ui.geometry.Offset(14.dp.toPx(), 4.dp.toPx()), 28.dp.toPx(), 10.dp.toPx(), -32f, seed = size.width.toInt())
+            if (press > 0f) drawRect(c.accent.copy(alpha = 0.1f * press))
+        }
         // 游: a game window, its double border with notched corners; a secondary one with a single line.
         style.edge == EdgeKind.Bezel -> m.drawBehind {
             if (flat) {
@@ -171,10 +174,9 @@ fun Modifier.themedSurface(
         EdgeKind.Rule -> m
         // The window draws its own border.
         EdgeKind.Bezel -> m
-        // 酸: a soft chrome rim on cards, polished chrome round bars and sheets; gel and flat have none.
+        // 酸: the paper's faint edge where it lifts off the wall; flat and lime have none.
         EdgeKind.Chrome -> when (tone) {
-            SurfaceTone.Card -> m.border(1.dp, ChromeSoftBrush, shape)
-            SurfaceTone.Chrome -> m.border(1.5.dp, ChromeBrush, shape)
+            SurfaceTone.Card, SurfaceTone.Chrome -> m.border(1.dp, ChromeSoftBrush, shape)
             SurfaceTone.Flat, SurfaceTone.Accent -> m
         }
     }

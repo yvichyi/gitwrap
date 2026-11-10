@@ -150,22 +150,10 @@ private fun DotPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
     }
 }
 
-/** 酸: the media player's chrome window stood upright: the disc before its visualiser, the LCD, the lyrics, the equaliser. */
+/** 酸: the song's own poster, pasted on the wall. */
 @Composable
 private fun AcidPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
-    val state = stage.state
-    Column(Modifier.fillMaxSize().padding(top = 4.dp).enter(stage.entrance, 1).mediaWindow()) {
-        MediaTitleBar()
-        Box(Modifier.weight(1f).fillMaxWidth().padding(10.dp)) {
-            Visualizer(state, Modifier.matchParentSize())
-            StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), halo = false, heightFraction = 0.74f, onClick = onShowLyrics)
-        }
-        Column(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp)) {
-            MediaLcd(state)
-            LyricsWindow(stage, onShowLyrics, Modifier.fillMaxWidth().padding(top = 4.dp).height(96.dp))
-            GraphicEq(state, Modifier.fillMaxWidth().padding(top = 6.dp).height(26.dp))
-        }
-    }
+    PosterPortraitStage(stage, onShowLyrics)
 }
 
 /**

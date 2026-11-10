@@ -1,103 +1,121 @@
 package io.lanyin.player.ui.design
 
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import io.lanyin.player.ui.theme.LanyinStyle
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.sin
+import kotlin.math.sqrt
 
-/** Polished chrome, top to bottom: bright, a dark band at the horizon line, bright again. */
-val ChromeStops = arrayOf(
-    0f to Color(0xFFFFFFFF), 0.3f to Color(0xFFD9D9D9), 0.48f to Color(0xFF6B6B6B),
-    0.52f to Color(0xFFF4F4F4), 0.75f to Color(0xFF9A9A9A), 1f to Color(0xFFE8E8E8),
-)
-
-/** [ChromeStops] as a brush across whatever it fills. */
-val ChromeBrush: Brush = Brush.verticalGradient(*ChromeStops)
-
-/** [ChromeStops] dimmed, for a rim that shouldn't shout: on cards. */
-val ChromeSoftBrush: Brush = Brush.verticalGradient(*ChromeStops.map { (at, color) -> at to color.copy(alpha = 0.42f) }.toTypedArray())
-
-/** The colours iMacs came in, for 酸's see-through plastic: Bondi blue, tangerine, grape, strawberry, blueberry. */
-object Flavor {
-    val Bondi = Color(0xFF00A9C9)
-    val Tangerine = Color(0xFFFF8A1F)
-    val Grape = Color(0xFF8B5CF6)
-    val Strawberry = Color(0xFFFF4F7B)
-    val Blueberry = Color(0xFF3B82F6)
-    val all = listOf(Bondi, Tangerine, Grape, Strawberry, Blueberry)
+/**
+ * 酸 is a wall of rave flyers: wheat-pasted on concrete, layer over layer, the old ones torn.
+ * Its colours are the flyers': acid lime, photocopy black, the white of copier paper and the
+ * grey of the wall.
+ */
+object Acid {
+    val Lime = Color(0xFFD4FF26)
+    val Black = Color(0xFF141413)
+    val Charcoal = Color(0xFF1E1E1C)
+    val Paper = Color(0xFFEFEDE6)
+    val Grey = Color(0xFF8C8B86)
+    val Concrete = Color(0xFF3A3A38)
+    /** Masking tape, a little see-through. */
+    val Tape = Color(0xCCD9D1B8)
 }
 
-/** The sheen across the top of glossy plastic, as on an Aqua button: white fading down over its upper half. */
+/** Kept for the places that set type in "chrome": on the wall, that's the lime. */
+val ChromeStops = arrayOf(0f to Acid.Lime, 1f to Acid.Lime)
+
+/** Lime, as a brush: what was chrome lettering is now the flyers' acid green. */
+val ChromeBrush: Brush = SolidColor(Acid.Lime)
+
+/** A rim that shouldn't shout: the paper's white, faint. */
+val ChromeSoftBrush: Brush = SolidColor(Acid.Paper.copy(alpha = 0.22f))
+
+/** The paper stocks on the wall. The dark ones carry white type; lime and white carry black. */
+object Flavor {
+    val Bondi = Acid.Lime
+    val Tangerine = Acid.Paper
+    val Grape = Acid.Black
+    val Strawberry = Acid.Lime
+    val Blueberry = Acid.Charcoal
+    /** Dark stocks only, for the flyers that hold the page's own white text. */
+    val all = listOf(Acid.Black, Acid.Charcoal, Color(0xFF191918), Acid.Charcoal, Acid.Black)
+}
+
+/** Photocopies have no gloss: a few specks of toner instead. */
 fun DrawScope.drawGloss(strength: Float = 0.38f) {
-    val inset = minOf(size.width, size.height) * 0.07f
-    val h = size.height * 0.46f - inset
-    if (h <= 0f) return
-    drawRoundRect(
-        Brush.verticalGradient(listOf(Color.White.copy(alpha = strength), Color.White.copy(alpha = strength * 0.08f)), startY = inset, endY = inset + h),
-        Offset(inset, inset), Size(size.width - inset * 2, h), CornerRadius(minOf(h, size.width * 0.5f)),
-    )
+    val n = (size.width * size.height / (900f * density * density)).toInt().coerceIn(0, 60)
+    for (k in 0 until n) {
+        val p = Offset(size.width * hash01(k, 301), size.height * hash01(k, 302))
+        drawCircle(Color.Black.copy(alpha = 0.08f * strength / 0.38f), (0.4f + hash01(k, 303)) * density, p)
+    }
 }
 
 /**
- * iMac-era see-through plastic: [tint] over the dark, the light coming through brighter at its
- * foot, a gloss across its top (over what it holds when [glossOver], as on a gel button, or
- * behind it) and, with [rim], a chrome edge.
+ * A flyer of [tint] stock, cut to [shape]: flat paper with toner specks and, with [rim], the
+ * faint light edge where it lifts from the wall. ([glossOver] is kept for its callers.)
  */
-fun Modifier.candyPlastic(tint: Color, shape: Shape, rim: Boolean = true, glossOver: Boolean = false): Modifier = this
+fun Modifier.candyPlastic(tint: Color, shape: Shape, rim: Boolean = true, @Suppress("UNUSED_PARAMETER") glossOver: Boolean = false): Modifier = this
     .clip(shape)
-    .drawBehind {
-        drawRect(Brush.verticalGradient(listOf(tint.copy(alpha = 0.66f), tint.copy(alpha = 0.36f))))
-        drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.18f), Color.Transparent), Offset(size.width / 2f, size.height * 1.05f), size.maxDimension * 0.6f))
-        if (!glossOver) drawGloss(0.3f)
-    }
-    .then(if (glossOver) Modifier.drawWithContent { drawContent(); drawGloss() } else Modifier)
-    .then(if (rim) Modifier.border(1.5.dp, ChromeBrush, shape) else Modifier)
+    .background(tint)
+    .drawBehind { drawGloss(0.3f) }
+    .then(if (rim) Modifier.border(1.dp, Acid.Paper.copy(alpha = 0.16f), shape) else Modifier)
 
-/** A small bead of [tint] gel filling the canvas: a darker foot, a white catchlight near its top. */
+/** A round sticker of [tint]: dark ones get a lime ring and a dot, light ones a black ring. */
 fun DrawScope.drawGelBead(tint: Color) {
     val r = size.minDimension / 2f
     val c = Offset(size.width / 2f, size.height / 2f)
-    drawCircle(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.lerp(tint, Color.White, 0.35f), tint, androidx.compose.ui.graphics.lerp(tint, Color.Black, 0.3f)), c.y - r, c.y + r), r, c)
-    drawOval(Color.White.copy(alpha = 0.7f), Offset(c.x - r * 0.55f, c.y - r * 0.82f), Size(r * 1.1f, r * 0.7f))
+    val dark = tint.luminance() < 0.3f
+    drawCircle(Color.Black.copy(alpha = 0.35f), r, c + Offset(0f, 1f * density))
+    drawCircle(tint, r, c)
+    drawCircle(if (dark) Acid.Lime else Acid.Black, r * 0.86f, c, style = Stroke(r * 0.16f))
+    drawCircle(if (dark) Acid.Lime else Acid.Black, r * 0.22f, c)
 }
 
-/** A round gel button in [tint] plastic, its icon white under the gloss. */
+/** A round sticker button of [tint], its icon in ink or paper to suit. */
 @Composable
 fun GelButton(icon: LineIcon, tint: Color, contentDescription: String?, onClick: () -> Unit, modifier: Modifier = Modifier, size: Dp = 56.dp) {
+    val dark = tint.luminance() < 0.3f
     Box(
         modifier
             .size(size)
-            .shadow(8.dp, CircleShape, ambientColor = tint, spotColor = tint)
-            .candyPlastic(tint, CircleShape, glossOver = true)
+            .drawBehind {
+                drawCircle(Color.Black.copy(alpha = 0.4f), this.size.minDimension / 2f, center + Offset(0f, 2.dp.toPx()))
+                drawCircle(tint)
+                drawCircle(if (dark) Acid.Lime else Acid.Black, this.size.minDimension / 2f - 1.5.dp.toPx(), style = Stroke(1.5.dp.toPx()))
+            }
             .pressable(label = contentDescription, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        ThemedIcon(icon, null, tint = Color.White, size = size * 0.42f)
+        ThemedIcon(icon, null, tint = if (dark) Acid.Paper else Acid.Black, size = size * 0.42f)
     }
 }
 
@@ -112,214 +130,302 @@ internal fun starPath(center: Offset, outer: Float, inner: Float, points: Int, t
     close()
 }
 
+/** The rave asterisk: six strokes from a point, [r] long. */
+internal fun DrawScope.drawAsterisk(center: Offset, r: Float, color: Color, width: Float = r * 0.32f) {
+    for (k in 0 until 3) {
+        val a = k * PI.toFloat() / 3f + PI.toFloat() / 2f
+        val d = Offset(cos(a) * r, sin(a) * r)
+        drawLine(color, center - d, center + d, width)
+    }
+}
+
+/** A crosshair registration mark of [r] at [center]. */
+internal fun DrawScope.drawCrosshair(center: Offset, r: Float, color: Color) {
+    val w = 1.2f * density
+    drawCircle(color, r * 0.6f, center, style = Stroke(w))
+    drawLine(color, center - Offset(r, 0f), center + Offset(r, 0f), w)
+    drawLine(color, center - Offset(0f, r), center + Offset(0f, r), w)
+}
+
+/** A strip of masking tape [w] by [h] centred at [at], turned [deg] degrees, its ends torn. */
+internal fun DrawScope.drawTapeStrip(at: Offset, w: Float, h: Float, deg: Float, color: Color = Acid.Tape, seed: Int = 0) {
+    rotate(deg, at) {
+        val left = at.x - w / 2f
+        val top = at.y - h / 2f
+        val path = Path().apply {
+            moveTo(left, top)
+            lineTo(left + w, top)
+            // Torn ends: a zigzag down each.
+            val teeth = 5
+            for (k in 1..teeth) lineTo(left + w - (if (k % 2 == 1) 2.5f else 0f) * density * (0.6f + hash01(seed + k, 5)), top + h * k / teeth)
+            lineTo(left, top + h)
+            for (k in teeth - 1 downTo 0) lineTo(left + (if (k % 2 == 1) 2.5f else 0f) * density * (0.6f + hash01(seed + k, 6)), top + h * k / teeth)
+            close()
+        }
+        drawPath(path, Color.Black.copy(alpha = 0.18f))
+        drawPath(path, color)
+        drawLine(Color.White.copy(alpha = 0.18f), Offset(left, top + 1f), Offset(left + w, top + 1f), 1f * density)
+    }
+}
+
+/** A staple at [at], [len] long, turned [deg] degrees: a silver bar with its shadow. */
+internal fun DrawScope.drawStaple(at: Offset, len: Float, deg: Float) {
+    rotate(deg, at) {
+        drawLine(Color.Black.copy(alpha = 0.45f), at + Offset(-len / 2f, 1.2f * density), at + Offset(len / 2f, 1.2f * density), 1.6f * density)
+        drawLine(Color(0xFFC9CAC8), at + Offset(-len / 2f, 0f), at + Offset(len / 2f, 0f), 1.4f * density)
+        drawLine(Color.White.copy(alpha = 0.6f), at + Offset(-len / 2f, -0.4f * density), at + Offset(len / 4f, -0.4f * density), 0.6f * density)
+    }
+}
+
 /**
- * 酸: Y2K after dark. A deep grape glass like a CRT's, a holographic light leak across the top,
- * a few white sparkles that flash in turn on the beats. Behind the player, glossy bubbles of
- * coloured plastic adrift (rising slowly, faster with the music, a little fuller on the beat) and
- * a faint grid to the horizon; behind the pages, only two soft pools of light, so nothing drifts
- * over the words.
+ * Paper torn along the bottom edge of [size]: the outline of a sheet whose foot is ragged.
+ * [depth] is how deep the tears go.
  */
-internal fun DrawScope.drawAcidNight(style: LanyinStyle, t: Float, e: Float, page: Boolean, audio: BackdropAudio?) {
-    val c = style.colors
+internal fun tornPath(size: Size, depth: Float, seed: Int, top: Boolean = false): Path = Path().apply {
+    val step = depth * 1.6f
+    val n = (size.width / step).toInt().coerceAtLeast(2)
+    if (top) {
+        moveTo(0f, depth * hash01(seed, 1))
+        for (k in 1..n) lineTo(size.width * k / n, depth * hash01(seed + k, 1))
+    } else {
+        moveTo(0f, 0f)
+        lineTo(size.width, 0f)
+    }
+    lineTo(size.width, size.height - depth * hash01(seed + n + 1, 2))
+    for (k in n - 1 downTo 0) lineTo(size.width * k / n, size.height - depth * hash01(seed + k, 2))
+    close()
+}
+
+/**
+ * A flyer filling [size]: [stock] paper with its ragged foot, a soft shadow on the wall, toner
+ * specks; a staple at the top for a [stapled] one.
+ */
+internal fun DrawScope.drawFlyer(stock: Color, seed: Int, torn: Boolean = true, stapled: Boolean = false) {
+    val path = if (torn) tornPath(size, 5f * density, seed) else Path().apply { addRect(androidx.compose.ui.geometry.Rect(Offset.Zero, size)) }
+    translate(2f * density, 3f * density) { drawPath(path, Color.Black.copy(alpha = 0.35f)) }
+    drawPath(path, stock)
+    // Creases from the paste brush, faint.
+    val crease = if (stock.luminance() > 0.4f) Color.Black.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.03f)
+    for (k in 0 until 2) {
+        val y = size.height * (0.25f + 0.45f * hash01(seed + k, 9))
+        drawLine(crease, Offset(0f, y), Offset(size.width, y + size.height * 0.04f * (hash01(seed + k, 10) - 0.5f)), 2f * density)
+    }
+    drawGloss(0.3f)
+    if (stapled) drawStaple(Offset(size.width / 2f, 6f * density), 10f * density, -8f + 16f * hash01(seed, 11))
+}
+
+/**
+ * 酸: the wall. Grey concrete with its pores and stains; behind the pages, the ghosts of torn
+ * posters: big type half-scraped off, scraps of white paper with their paste marks. Nothing
+ * moves; the wall is a wall.
+ */
+internal fun DrawScope.drawAcidNight(style: LanyinStyle, @Suppress("UNUSED_PARAMETER") t: Float, @Suppress("UNUSED_PARAMETER") e: Float, page: Boolean, @Suppress("UNUSED_PARAMETER") audio: BackdropAudio?) {
     val w = size.width
     val h = size.height
-    drawRect(Brush.verticalGradient(listOf(c.bg, c.bgDeep, c.bg)))
-    // The holographic leak: a soft band of rainbow light across the top.
-    drawRect(
-        Brush.linearGradient(
-            listOf(Color.Transparent, Flavor.Bondi.copy(alpha = 0.16f), Flavor.Grape.copy(alpha = 0.18f), Flavor.Strawberry.copy(alpha = 0.14f), Color.Transparent),
-            Offset(0f, 0f), Offset(w, h * 0.35f),
-        ),
-        size = Size(w, h * 0.45f),
-    )
-    if (!page) {
-        // A faint grid to the horizon, rolling half a line a beat.
-        val horizon = h * 0.7f
-        val vanish = Offset(w / 2f, horizon)
-        val line = Color.White.copy(alpha = 0.07f)
-        for (k in -10..10) drawLine(line, vanish, Offset(w / 2f + k * w * 0.64f, h * 1.6f), density)
-        val roll = (audio?.let { it.beatClock * 0.5f } ?: (t * (0.25f + 0.35f * e))) % 1f
-        for (k in 0 until 12) {
-            val z = (k + 1f - roll) / 12f
-            val y = horizon + (h - horizon) * z * z
-            drawLine(line.copy(alpha = line.alpha * (0.3f + 0.7f * z)), Offset(0f, y), Offset(w, y), density)
+    drawRect(style.colors.bg)
+    drawRect(concreteBrush, alpha = 0.55f)
+    // Damp at the foot and a lighter wash where the streetlight falls.
+    drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.22f)), startY = h * 0.6f, endY = h))
+    drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent), Offset(w * 0.3f, h * 0.15f), w * 0.9f), w * 0.9f, Offset(w * 0.3f, h * 0.15f))
+    // Scraps of old posters, torn.
+    for (k in 0 until 5) {
+        val x = w * hash01(k, 401)
+        val y = h * hash01(k, 402)
+        val sw = w * (0.18f + 0.25f * hash01(k, 403))
+        val sh = sw * (0.4f + 0.6f * hash01(k, 404))
+        rotate(-6f + 12f * hash01(k, 405), Offset(x, y)) {
+            translate(x - sw / 2f, y - sh / 2f) {
+                val scrap = tornPath(Size(sw, sh), 7f * density, k * 13, top = true)
+                drawPath(scrap, (if (k % 3 == 0) Acid.Lime else Acid.Paper).copy(alpha = if (page) 0.07f else 0.1f))
+            }
         }
-        drawRect(Brush.verticalGradient(listOf(c.bg, Color.Transparent), startY = horizon - 2f, endY = horizon + (h - horizon) * 0.3f), Offset(0f, horizon - 2f), Size(w, (h - horizon) * 0.3f + 2f))
     }
-    if (page) {
-        // Behind the pages no bubbles drift over the words: two soft pools of coloured light
-        // instead, grape up on the left and Bondi blue low on the right, as a backlit case glows.
-        drawCircle(Brush.radialGradient(listOf(Flavor.Grape.copy(alpha = 0.2f), Color.Transparent), Offset(w * 0.05f, h * 0.18f), w * 0.75f), w * 0.75f, Offset(w * 0.05f, h * 0.18f))
-        drawCircle(Brush.radialGradient(listOf(Flavor.Bondi.copy(alpha = 0.12f), Color.Transparent), Offset(w * 1.0f, h * 0.82f), w * 0.8f), w * 0.8f, Offset(w * 1.0f, h * 0.82f))
-    }
-    // Bubbles of plastic, rising behind the player.
-    val swell = 1f + 0.08f * (audio?.pulse(t, 0.45f) ?: 0f)
-    val rise = audio?.travel(1, 0.02f + 0.06f * audio.level) ?: 0f
-    for (k in 0 until (if (page) 0 else 7)) {
-        val r = minOf(w, h) * (0.05f + 0.09f * hash01(k, 91)) * swell
-        val y = ((hash01(k, 92) - rise * (0.6f + 0.8f * hash01(k, 93))) % 1f + 1f) % 1f
-        val p = Offset(w * hash01(k, 94), -r + (h + 2 * r) * y)
-        drawBubble(p, r, Flavor.all[k % Flavor.all.size], if (page) 0.5f else 0.75f)
-    }
-    // Sparkles.
-    val treble = audio?.treble ?: 0f
-    for (k in 0 until 6) {
-        val p = Offset(w * hash01(k, 71), h * (0.05f + 0.6f * hash01(k, 72)))
-        val twinkle = if (audio != null) {
-            val beat = kotlin.math.floor(audio.beatClock)
-            val since = audio.beatClock - beat
-            if ((beat.toInt() + k) % 3 == 0) (1f - since) * (1f - since) else 0.12f
-        } else {
-            0.5f + 0.5f * sin(t * (1.6f + hash01(k, 73)) + k * 2f)
+    // Ghost type: what's left of last month's headliner.
+    if (page) return
+    val big = w * 0.36f
+    for ((k, word) in listOf("ACID", "303").withIndex()) {
+        val y = h * (0.12f + 0.5f * k)
+        for ((i, _) in word.withIndex()) {
+            val x = w * (0.05f + 0.24f * i)
+            drawRect(Color.Black.copy(alpha = 0.08f), Offset(x, y), Size(big * 0.5f, big * 0.62f))
         }
-        val r = density * (5f + 7f * hash01(k, 74)) * (0.6f + 0.4f * twinkle + 0.5f * treble)
-        drawPath(starPath(p, r, r * 0.22f, 4), Color.White.copy(alpha = (if (page) 0.22f else 0.4f) * (0.4f + 0.6f * twinkle)))
     }
 }
 
-/** A glossy bubble of [tint] plastic: see-through, a rim of colour, a highlight up on its left. */
+/** A tile of concrete, made once: grey noise, the odd pore, larger blotches of damp. */
+private val concreteTile: ImageBitmap by lazy {
+    val n = 256
+    val rnd = java.util.Random(23)
+    val px = IntArray(n * n)
+    val blot = FloatArray(n * n)
+    // Soft blotches.
+    repeat(18) {
+        val cx = rnd.nextInt(n)
+        val cy = rnd.nextInt(n)
+        val r = 10 + rnd.nextInt(40)
+        val s = (rnd.nextFloat() - 0.5f) * 0.5f
+        for (y in -r..r) for (x in -r..r) {
+            val d = hypot(x.toFloat(), y.toFloat()) / r
+            if (d < 1f) {
+                val i = ((cy + y).mod(n)) * n + (cx + x).mod(n)
+                blot[i] += s * (1f - d * d)
+            }
+        }
+    }
+    for (i in 0 until n * n) {
+        var v = 128 + (rnd.nextGaussian() * 18).toInt() + (blot[i] * 60).toInt()
+        if (rnd.nextFloat() < 0.004f) v -= 70
+        v = v.coerceIn(0, 255)
+        px[i] = (0xff shl 24) or (v shl 16) or (v shl 8) or v
+    }
+    android.graphics.Bitmap.createBitmap(px, n, n, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
+}
+
+private val concreteBrush: Brush by lazy {
+    androidx.compose.ui.graphics.ShaderBrush(androidx.compose.ui.graphics.ImageShader(concreteTile, androidx.compose.ui.graphics.TileMode.Repeated, androidx.compose.ui.graphics.TileMode.Repeated))
+}
+
+/** Kept for the old player windows: a speck of toner where a bubble used to rise. */
 internal fun DrawScope.drawBubble(center: Offset, r: Float, tint: Color, alpha: Float) {
-    drawCircle(Brush.radialGradient(listOf(tint.copy(alpha = 0.05f * alpha), tint.copy(alpha = 0.35f * alpha)), center, r), r, center)
-    drawCircle(tint.copy(alpha = 0.55f * alpha), r, center, style = Stroke(1.2f * density))
-    drawOval(
-        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.55f * alpha), Color.Transparent), startY = center.y - r * 0.8f, endY = center.y - r * 0.1f),
-        Offset(center.x - r * 0.6f, center.y - r * 0.78f), Size(r * 0.9f, r * 0.55f),
-    )
+    drawCircle(tint.copy(alpha = 0.3f * alpha), r * 0.2f, center)
 }
 
 /**
- * 酸's progress, as a progress bar of the turn of the century: a dark capsule set into the
- * surface with a chrome rim, the part played a lime gel with white stripes rolling along it as the
- * music plays and a gloss over it, and a chrome bead where it is.
+ * 酸's progress: a ruler printed on the flyer. Ticks along it (every fourth longer, every
+ * sixteenth longest), the part played filled lime under them, and a lime asterisk where the
+ * song is; it grows while dragged.
  */
-internal fun DrawScope.drawStripeTrack(f: Float, phase: Float, dragging: Float, style: LanyinStyle) {
+internal fun DrawScope.drawStripeTrack(f: Float, @Suppress("UNUSED_PARAMETER") phase: Float, dragging: Float, style: LanyinStyle) {
     val c = style.colors
-    val h = (12f + 3f * dragging) * density
-    val top = (size.height - h) / 2f
+    val base = size.height / 2f + 7f * density
     val x = size.width * f
-    val radius = CornerRadius(h / 2f)
-    drawRoundRect(Color.Black.copy(alpha = 0.55f), Offset(0f, top), Size(size.width, h), radius)
-    drawRoundRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent), startY = top, endY = top + h * 0.5f), Offset(0f, top), Size(size.width, h), radius)
-    drawRoundRect(ChromeBrush, Offset(0f, top), Size(size.width, h), radius, style = Stroke(1f * density), alpha = 0.6f)
-    val inset = 2f * density
-    val fill = Path().apply { addRoundRect(RoundRect(inset, top + inset, (x - inset).coerceAtLeast(inset + 1f), top + h - inset, CornerRadius((h - inset * 2) / 2f))) }
-    clipPath(fill) {
-        drawRect(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.lerp(c.accent, Color.White, 0.35f), c.accent, androidx.compose.ui.graphics.lerp(c.accent, Color.Black, 0.15f)), startY = top, endY = top + h))
-        val pitch = 10f * density
-        var sx = -h + (phase * density * 12f) % pitch - pitch
-        while (sx < x + h) {
-            drawLine(Color.White.copy(alpha = 0.28f), Offset(sx, top + h), Offset(sx + h, top), 3.5f * density)
-            sx += pitch
-        }
-        drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.45f), Color.Transparent), startY = top, endY = top + h * 0.5f), Offset(0f, top), Size(x, h * 0.5f))
+    drawRect(Acid.Lime, Offset(0f, base - 3f * density), Size(x, 3f * density))
+    drawLine(c.content.copy(alpha = 0.7f), Offset(0f, base), Offset(size.width, base), 1f * density)
+    val pitch = 4f * density
+    var i = 0
+    var tx = 0f
+    while (tx <= size.width + 0.5f) {
+        val len = when {
+            i % 16 == 0 -> 14f
+            i % 4 == 0 -> 9f
+            else -> 5f
+        } * density
+        val played = tx <= x
+        drawLine(if (played) Acid.Lime else c.content.copy(alpha = 0.55f), Offset(tx, base), Offset(tx, base - len), 1f * density)
+        tx += pitch
+        i++
     }
-    val bead = 8f * density
-    drawCircle(Color.Black.copy(alpha = 0.35f), bead, Offset(x, size.height / 2f + 1.5f * density))
-    drawCircle(Brush.verticalGradient(*ChromeStops, startY = size.height / 2f - bead, endY = size.height / 2f + bead), bead, Offset(x, size.height / 2f))
+    drawAsterisk(Offset(x, base - 12f * density), (6f + 2f * dragging) * density, Acid.Lime, 2.2f * density)
 }
 
-/** 酸's play key: a disc of lime gel in a chrome bezel, glossed, glowing a little. */
-internal fun DrawScope.drawLimeDisc(style: LanyinStyle, glow: Float) {
-    val c = style.colors
+/** 酸's play key: a lime disc in a black ring inside a lime one, as stickered on the poster. */
+internal fun DrawScope.drawLimeDisc(@Suppress("UNUSED_PARAMETER") style: LanyinStyle, glow: Float) {
     val r = size.minDimension / 2f
-    val halo = r * (1.35f + 0.2f * glow)
-    drawCircle(Brush.radialGradient(listOf(c.accent.copy(alpha = 0.16f + 0.2f * glow), Color.Transparent), center, halo), halo)
-    // Lime gel in a chrome bezel, a gloss across its upper half.
-    drawCircle(ChromeBrush, r + 1f * density)
-    val face = r - 2.5f * density
-    drawCircle(Brush.verticalGradient(listOf(Color(0xFFE6FF7A), c.accent, Color(0xFF86B800)), center.y - face, center.y + face), face)
-    drawOval(
-        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.04f)), center.y - face * 0.92f, center.y - face * 0.05f),
-        Offset(center.x - face * 0.68f, center.y - face * 0.92f), Size(face * 1.36f, face * 0.87f),
-    )
+    drawCircle(Acid.Lime, r * (1f + 0.03f * glow), style = Stroke(2.5f * density))
+    drawCircle(Acid.Black, r - 2.5f * density)
+    drawCircle(Acid.Lime, r - 6f * density)
 }
 
-/** A white starburst flashing out round 酸's disc on the beat. */
-internal fun DrawScope.drawBeatBurst(style: LanyinStyle, beat: Float, turn: Float) {
+/** Lime asterisks flashing out round 酸's disc on the beat. */
+internal fun DrawScope.drawBeatBurst(@Suppress("UNUSED_PARAMETER") style: LanyinStyle, beat: Float, turn: Float) {
     if (beat <= 0f) return
     val r = size.minDimension / 2f
-    val out = r * (1.35f + 0.45f * (1f - beat))
-    drawPath(starPath(center, out, out * 0.78f, 16, turn), Color.White.copy(alpha = beat * 0.7f), style = Stroke(1.5f * density))
+    val out = r * (1.25f + 0.35f * (1f - beat))
+    for (k in 0 until 6) {
+        val a = turn + k * PI.toFloat() / 3f
+        drawAsterisk(center + Offset(cos(a) * out, sin(a) * out), 3.5f * density, Acid.Lime.copy(alpha = beat), 1.4f * density)
+    }
 }
 
 /**
- * 酸's generated sleeves: a holographic disc, chrome blobs in sparkles, a glossy heart of
- * strawberry plastic, and a chrome sun over a checkerboard of grape and Bondi blue.
+ * 酸's generated sleeves, photocopied: a full moon over black water, a crowd under strobes, a
+ * lighthouse throwing its beam, a road at night; each printed in a coarse halftone, black on
+ * copier paper.
  */
 internal fun DrawScope.acidCover(style: LanyinStyle, seed: Int) {
-    val c = style.colors
-    val w = size.width
-    val h = size.height
-    drawRect(c.bgDeep)
-    val turn = hash01(seed, 1) * 360f
-    when (seed % 4) {
-        0 -> {
-            val r = w * 0.4f
-            drawCircle(
-                Brush.sweepGradient(listOf(c.accentAlt, Color(0xFF7B2CFF), Color(0xFF00E5FF), c.accent, c.accentAlt), center),
-                r,
-            )
-            drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.7f), Color.Transparent), center - Offset(r * 0.3f, r * 0.35f), r * 0.6f), r)
-            drawCircle(c.bgDeep, r * 0.16f)
-            drawCircle(Color.White.copy(alpha = 0.5f), r * 0.16f, style = Stroke(w * 0.01f))
+    drawRect(Acid.Paper)
+    val k = seed % 4
+    val turn = hash01(seed, 1)
+    drawHalftone(style.copy(dark = false), lines = 34f, ink = Acid.Black) { u, v -> acidScene(k, turn, u, v) }
+}
+
+/** How light each of the four photocopied scenes is at ([u], [v]). */
+internal fun acidScene(kind: Int, turn: Float, u: Float, v: Float): Float = when (kind) {
+    0 -> {
+        // A moon over the sea, its path on the water.
+        val moon = hypot(u - 0.62f + turn * 0.1f, v - 0.3f)
+        when {
+            moon < 0.14f -> 0.95f
+            v < 0.58f -> 0.15f + 0.25f * (1f - moon).coerceAtLeast(0f) * 0.5f
+            else -> if (abs(u - 0.62f + turn * 0.1f) < 0.06f + (v - 0.58f) * 0.4f) 0.75f - (v - 0.58f) else 0.1f
         }
-        1 -> {
-            for (k in 0 until 4) {
-                val p = Offset(w * (0.35f + 0.3f * hash01(seed * 5 + k, 2)), h * (0.35f + 0.3f * hash01(seed * 5 + k, 3)))
-                val r = w * (0.14f + 0.08f * hash01(seed * 5 + k, 4))
-                drawCircle(Brush.verticalGradient(*ChromeStops, startY = p.y - r, endY = p.y + r), r, p)
-            }
-            for (k in 0 until 5) {
-                val p = Offset(w * hash01(seed * 9 + k, 5), h * hash01(seed * 9 + k, 6))
-                drawPath(starPath(p, w * 0.05f, w * 0.012f, 4), if (k % 2 == 0) c.accent else Color.White)
-            }
+    }
+    1 -> {
+        // A crowd under the strobes: beams from the top, heads at the foot.
+        val beam = (0..2).maxOf { b ->
+            val bx = 0.2f + 0.3f * b + 0.1f * turn
+            (1f - abs(u - bx - (v - 0.1f) * (b - 1) * 0.35f) * 6f).coerceIn(0f, 1f) * (1f - v * 0.6f)
         }
-        2 -> {
-            // A heart of strawberry plastic, glossy, with sparkles.
-            val heart = Path().apply {
-                val s0 = w * 0.62f
-                val cx = w / 2f
-                val cy = h * 0.5f
-                moveTo(cx, cy + 0.36f * s0)
-                cubicTo(cx - 0.1f * s0, cy + 0.26f * s0, cx - 0.46f * s0, cy + 0.06f * s0, cx - 0.44f * s0, cy - 0.14f * s0)
-                cubicTo(cx - 0.42f * s0, cy - 0.38f * s0, cx - 0.12f * s0, cy - 0.42f * s0, cx, cy - 0.2f * s0)
-                cubicTo(cx + 0.12f * s0, cy - 0.42f * s0, cx + 0.42f * s0, cy - 0.38f * s0, cx + 0.44f * s0, cy - 0.14f * s0)
-                cubicTo(cx + 0.46f * s0, cy + 0.06f * s0, cx + 0.1f * s0, cy + 0.26f * s0, cx, cy + 0.36f * s0)
-            }
-            drawPath(heart, Brush.verticalGradient(listOf(androidx.compose.ui.graphics.lerp(Flavor.Strawberry, Color.White, 0.25f), Flavor.Strawberry, androidx.compose.ui.graphics.lerp(Flavor.Strawberry, Color.Black, 0.3f))))
-            clipPath(heart) { drawOval(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.6f), Color.Transparent), startY = h * 0.3f, endY = h * 0.48f), Offset(w * 0.28f, h * 0.3f), Size(w * 0.44f, h * 0.18f)) }
-            drawPath(heart, ChromeBrush, style = Stroke(w * 0.012f))
-            for (k in 0 until 3) {
-                val p = Offset(w * (0.18f + 0.64f * hash01(seed * 3 + k, 7)), h * (0.12f + 0.2f * k))
-                drawPath(starPath(p, w * 0.045f, w * 0.011f, 4), Color.White)
-            }
+        val heads = v > 0.78f - 0.05f * sin(u * 40f)
+        if (heads) 0.05f else 0.12f + 0.8f * beam
+    }
+    2 -> {
+        // A lighthouse on a rock, its beam across the dark.
+        val tower = abs(u - 0.3f) < 0.04f + (v - 0.4f) * 0.05f && v in 0.4f..0.8f
+        val rock = v > 0.8f - 0.06f * sin(u * 9f)
+        val beam = (1f - abs((v - 0.42f) - (u - 0.3f) * 0.25f) * 8f).coerceIn(0f, 1f) * (if (u > 0.3f) 1f else 0f)
+        when {
+            tower -> if ((v * 20).toInt() % 3 == 0) 0.2f else 0.85f
+            rock -> 0.05f
+            else -> 0.1f + 0.85f * beam
         }
-        else -> {
-            val horizon = h * 0.55f
-            val sunR = w * 0.26f
-            val sun = Offset(w / 2f, horizon)
-            clipPath(Path().apply { addRect(androidx.compose.ui.geometry.Rect(0f, 0f, w, horizon)) }) {
-                drawCircle(Brush.verticalGradient(*ChromeStops, startY = horizon - sunR, endY = horizon), sunR, sun)
-                for (k in 0 until 4) drawRect(c.bgDeep, Offset(0f, horizon - sunR * (0.12f + k * 0.16f)), Size(w, sunR * 0.05f * (k + 1)))
-            }
-            val rows = 6
-            for (r in 0 until rows) {
-                val y0 = horizon + (h - horizon) * (r / rows.toFloat()).let { it * it }
-                val y1 = horizon + (h - horizon) * ((r + 1) / rows.toFloat()).let { it * it }
-                for (k in -6..6) {
-                    if ((k + r) % 2 != 0) continue
-                    val x0 = w / 2f + k * w * 0.12f * (0.3f + (y0 - horizon) / (h - horizon) * 2f)
-                    val x1 = w / 2f + (k + 1) * w * 0.12f * (0.3f + (y0 - horizon) / (h - horizon) * 2f)
-                    drawRect(if (r % 2 == 0) Flavor.Grape else Flavor.Bondi, Offset(minOf(x0, x1), y0), Size(abs(x1 - x0), y1 - y0))
-                }
-            }
+    }
+    else -> {
+        // A road at night: streetlights to a vanishing point.
+        val road = abs(u - 0.5f) < (v - 0.45f) * 0.9f && v > 0.45f
+        val lights = (0 until 5).maxOf { l ->
+            val ly = 0.45f + l * l * 0.025f
+            val lx = 0.5f + (0.08f + l * 0.09f) * (if (l % 2 == 0) 1 else -1)
+            (1f - hypot(u - lx, v - ly) * (18f - l * 2f)).coerceIn(0f, 1f)
+        }
+        when {
+            road -> 0.3f + 0.3f * ((v * 30).toInt() % 2)
+            else -> 0.08f + 0.9f * lights
         }
     }
 }
 
-/** 酸's motif: a starburst with a sparkle beside it. */
-internal fun DrawScope.acidMotif(color: Color, accent: Color) {
-    val r = size.minDimension * 0.3f
-    drawPath(starPath(center, r, r * 0.72f, 14), color, style = Stroke(2f * density))
-    drawPath(starPath(center + Offset(r * 1.05f, -r * 0.85f), r * 0.32f, r * 0.08f, 4), accent)
+/** 酸's motif: the acid smiley, its grin dripping. */
+internal fun DrawScope.acidMotif(@Suppress("UNUSED_PARAMETER") color: Color, @Suppress("UNUSED_PARAMETER") accent: Color) {
+    val r = size.minDimension * 0.34f
+    drawSmiley(center, r, Acid.Lime, Acid.Black)
+}
+
+/** The smiley sticker: a [face] disc with [ink] eyes and grin, a drip off its chin. */
+internal fun DrawScope.drawSmiley(center: Offset, r: Float, face: Color, ink: Color, turn: Float = -12f) {
+    rotate(turn, center) {
+        drawCircle(Color.Black.copy(alpha = 0.35f), r, center + Offset(0f, r * 0.06f))
+        drawCircle(face, r, center)
+        drawCircle(face, r * 0.18f, center + Offset(r * 0.35f, r * 1.0f))
+        drawRect(face, center + Offset(r * 0.27f, r * 0.75f), Size(r * 0.16f, r * 0.3f))
+        drawOval(ink, center + Offset(-r * 0.42f, -r * 0.5f), Size(r * 0.22f, r * 0.42f))
+        drawOval(ink, center + Offset(r * 0.2f, -r * 0.5f), Size(r * 0.22f, r * 0.42f))
+        val grin = Path().apply {
+            moveTo(center.x - r * 0.62f, center.y + r * 0.08f)
+            quadraticTo(center.x, center.y + r * 0.95f, center.x + r * 0.62f, center.y + r * 0.08f)
+        }
+        drawPath(grin, ink, style = Stroke(r * 0.12f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+    }
+}
+
+/** A barcode [size], its bars from [seed]. */
+internal fun DrawScope.drawBarcode(color: Color, seed: Int) {
+    var x = 0f
+    var k = 0
+    while (x < size.width) {
+        val w = (1f + 2.2f * hash01(seed + k, 31)) * density
+        if (k % 2 == 0) drawRect(color, Offset(x, 0f), Size(w, size.height))
+        x += w + (0.8f + 1.4f * hash01(seed + k, 32)) * density
+        k++
+    }
 }

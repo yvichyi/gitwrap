@@ -1,6 +1,9 @@
 package io.lanyin.player.ui.share
 
 import io.lanyin.player.ui.design.drawUnitPlate
+import io.lanyin.player.ui.design.drawSmiley
+import io.lanyin.player.ui.design.drawTapeStrip
+import io.lanyin.player.ui.design.drawFlyer
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -361,33 +364,31 @@ private fun GameCard(lyric: CardLyric) {
 /** 酸: a sticker of grape plastic, the line in chrome on it, the disc peeking out and sparkles round it. */
 @Composable
 private fun AcidCard(lyric: CardLyric) {
-    val c = Lanyin.colors
-    Box(Modifier.fillMaxSize().padding(24.dp)) {
-        Canvas(Modifier.align(Alignment.TopEnd).offset(x = 30.dp, y = (-10).dp).size(150.dp)) {
-            val r = size.minDimension / 2f
-            drawCircle(Color(0xFFD7D9E0), r)
-            drawCircle(Brush.sweepGradient(listOf(Color(0x00FFFFFF), Color(0x88FF4F7B), Color(0x888B5CF6), Color(0x8800A9C9), Color(0x88C6FF00), Color(0x00FFFFFF)), center), r)
-            drawCircle(ChromeBrush, r - 1.dp.toPx(), style = Stroke(2.dp.toPx()))
-            drawCircle(c.bg, r * 0.12f)
-        }
-        CoverImage(lyric.coverUrl, lyric.coverSeed, 140.dp, Modifier.size(130.dp).clip(RoundedCornerShape(10.dp)).border(2.dp, ChromeBrush, RoundedCornerShape(10.dp)))
+    val acid = io.lanyin.player.ui.design.Acid
+    // A flyer pasted on the wall: the cover photocopied on it, the line on a strip of lime tape,
+    // who and what in mono, a smiley stuck on.
+    Box(Modifier.fillMaxSize().padding(22.dp)) {
         Column(
             Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .graphicsLayer { rotationZ = -2f }
-                .candyPlastic(Flavor.Grape, RoundedCornerShape(26.dp))
-                .padding(20.dp),
+                .fillMaxSize()
+                .graphicsLayer { rotationZ = -1.5f }
+                .drawBehind { drawFlyer(acid.Black, seed = 9, torn = true) }
+                .padding(16.dp),
         ) {
-            Text(lyric.line, style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixed(24f), lineHeight = fixed(32f), brush = ChromeBrush))
-            lyric.translation?.let { Text(it, style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(11f), lineHeight = fixed(16f)), color = Color.White.copy(alpha = 0.85f), modifier = Modifier.padding(top = 6.dp)) }
-            Text("✦ ${lyric.title} — ${lyric.artist}", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(10f)), color = c.accent, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 12.dp))
-        }
-        Canvas(Modifier.fillMaxSize()) {
-            for ((fx, fy, s) in listOf(Triple(0.1f, 0.42f, 9f), Triple(0.6f, 0.36f, 6f), Triple(0.88f, 0.5f, 11f))) {
-                val p = Offset(size.width * fx, size.height * fy)
-                drawPath(starPath(p, s * density, s * density * 0.22f, 4), Color.White.copy(alpha = 0.8f))
+            Text("LANYIN SOUND SYSTEM PRESENTS", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(8f)), color = acid.Paper)
+            Box(Modifier.padding(top = 10.dp).size(150.dp)) {
+                io.lanyin.player.ui.design.PhotocopyCover(lyric.coverUrl, lyric.coverSeed, Modifier.fillMaxSize(), ink = acid.Lime, paper = acid.Black, lines = 34f, positive = true)
             }
+            Spacer(Modifier.weight(1f))
+            Box(Modifier.fillMaxWidth().graphicsLayer { rotationZ = -2f }.background(acid.Lime).padding(horizontal = 12.dp, vertical = 10.dp)) {
+                Text(lyric.line, style = TextStyle(fontWeight = FontWeight.Black, fontSize = fixed(22f), lineHeight = fixed(28f)), color = acid.Black)
+            }
+            lyric.translation?.let { Text(it, style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(10.5f), lineHeight = fixed(15f)), color = acid.Paper.copy(alpha = 0.8f), modifier = Modifier.padding(top = 10.dp)) }
+            Text("LIVE: ${lyric.title} — ${lyric.artist}", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(10f)), color = acid.Lime, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
         }
+        Canvas(Modifier.align(Alignment.TopEnd).size(84.dp)) {
+            drawSmiley(center, size.minDimension * 0.42f, acid.Lime, acid.Black)
+        }
+        Canvas(Modifier.align(Alignment.TopCenter).size(96.dp, 18.dp)) { drawTapeStrip(center, size.width * 0.8f, size.height, -3f, seed = 2) }
     }
 }

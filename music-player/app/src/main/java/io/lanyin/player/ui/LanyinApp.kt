@@ -497,6 +497,8 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
             .height(if (docked) 52.dp else 60.dp)
             // 游: the game's menu is a bar of ink, its words in paper.
             .then(if (style.edge == EdgeKind.Bezel) Modifier.background(c.content) else Modifier)
+            // 酸: a strip of copier paper.
+            .then(if (style.edge == EdgeKind.Chrome) Modifier.background(io.lanyin.player.ui.design.Acid.Paper) else Modifier)
             .then(if (docked) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome))
     ) {
         val itemWidth = maxWidth / tabs.size
@@ -513,16 +515,26 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                         drawRect(androidx.compose.ui.graphics.Brush.radialGradient(listOf(c.accent.copy(alpha = 0.22f), androidx.compose.ui.graphics.Color.Transparent), androidx.compose.ui.geometry.Offset(size.width / 2f, y), size.width * 0.5f))
                         drawTubeLine(androidx.compose.ui.geometry.Offset(size.width * 0.38f, y), androidx.compose.ui.geometry.Offset(size.width * 0.62f, y), c.accent, 2.5.dp.toPx())
                     }
-                    // 酸: the current tab is a lime gel capsule, glossed across the top.
+                    // 酸: pills drawn round every tab below, the current one filled lime.
                     EdgeKind.Chrome -> Modifier
-                        .clip(shape)
-                        .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFFE2FF6B), c.accent, androidx.compose.ui.graphics.Color(0xFF8FC400))))
-                        .drawBehind { drawGloss(0.5f) }
                     // 机: the source keys draw themselves, below.
                     EdgeKind.Panel -> Modifier
                     else -> Modifier.clip(shape).background(c.accent.copy(alpha = if (style.dark) 0.22f else 0.14f))
                 }
-                if (style.edge == EdgeKind.Panel) {
+                if (style.edge == EdgeKind.Chrome) {
+                    // 酸: a strip of copier paper with a pill drawn round each tab, the current one lime.
+                    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                        val w = size.width / tabs.size
+                        val ph = 30.dp.toPx()
+                        val pw = minOf(w - 24.dp.toPx(), 76.dp.toPx())
+                        for (i in tabs.indices) {
+                            val tl = androidx.compose.ui.geometry.Offset(i * w + (w - pw) / 2f, (size.height - ph) / 2f)
+                            val r = androidx.compose.ui.geometry.CornerRadius(ph / 2f)
+                            if (i == selected) drawRoundRect(io.lanyin.player.ui.design.Acid.Lime, tl, androidx.compose.ui.geometry.Size(pw, ph), r)
+                            drawRoundRect(io.lanyin.player.ui.design.Acid.Black, tl, androidx.compose.ui.geometry.Size(pw, ph), r, style = androidx.compose.ui.graphics.drawscope.Stroke(1.8.dp.toPx()))
+                        }
+                    }
+                } else if (style.edge == EdgeKind.Panel) {
                     // 机: the amplifier's source keys, the one selected held down with its light on.
                     androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
                         val w = size.width / tabs.size
@@ -609,6 +621,7 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                 val bump by animateFloatAsState(if (active) 1f else 0f, style.bouncy.spec(), label = "tabBump")
                 val tint = when {
                     style.edge == EdgeKind.Bezel -> c.bg
+                    style.edge == EdgeKind.Chrome -> io.lanyin.player.ui.design.Acid.Black
                     !active -> c.muted
                     style.edge == EdgeKind.Brutal -> c.content
                     style.edge == EdgeKind.Chrome -> c.onAccent
@@ -624,7 +637,7 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    if (style.nav == NavKind.Pill) {
+                    if (style.nav == NavKind.Pill && style.edge != EdgeKind.Chrome) {
                         ThemedIcon(
                             tab.icon, contentDescription = null, tint = tint, size = 22.dp,
                             modifier = Modifier.graphicsLayer {
@@ -638,10 +651,12 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                         tab.label,
                         style = if (style.nav == NavKind.Text) {
                             style.type.body.copy(fontFamily = style.display, fontSize = 16.sp, letterSpacing = 0.12.em)
+                        } else if (style.edge == EdgeKind.Chrome) {
+                            androidx.compose.ui.text.TextStyle(fontSize = 14.sp)
                         } else {
                             MaterialTheme.typography.labelSmall
                         },
-                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+                        fontWeight = if (style.edge == EdgeKind.Chrome) FontWeight.Black else if (active) FontWeight.SemiBold else FontWeight.Normal,
                         color = tint,
                     )
                 }

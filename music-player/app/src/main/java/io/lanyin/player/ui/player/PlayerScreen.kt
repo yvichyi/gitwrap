@@ -287,8 +287,8 @@ private fun PortraitPlayer(
             }
         }
         // 暮's slip and 霓's console panel carry the title on their stages.
-        // 机's display carries it on the deck.
-        if (style.backdrop != BackdropKind.Dusk && style.backdrop != BackdropKind.Neon && style.backdrop != BackdropKind.Device || lyricsOnly) TrackTitle(state, Modifier.padding(top = 14.dp).enter(entrance, 3))
+        // 机's display carries it on the deck, 酸's poster in lime.
+        if (style.backdrop != BackdropKind.Dusk && style.backdrop != BackdropKind.Neon && style.backdrop != BackdropKind.Device && style.backdrop != BackdropKind.Acid || lyricsOnly) TrackTitle(state, Modifier.padding(top = 14.dp).enter(entrance, 3))
         SeekBar(
             state::positionMs, state.durationMs, state.isPlaying, state::seekTo,
             Modifier.padding(top = 10.dp).enter(entrance, 4),
@@ -385,7 +385,7 @@ private fun LandscapePlayer(
                 when (Lanyin.style.backdrop) {
                     BackdropKind.Device -> DeviceStage(stage)
                     BackdropKind.Dot -> GlyphStage(stage)
-                    BackdropKind.Acid -> MediaPlayerStage(stage)
+                    BackdropKind.Acid -> PosterWideStage(stage)
                     BackdropKind.Paper -> BroadsheetStage(stage)
                     BackdropKind.Ink -> ScrollStage(stage)
                     BackdropKind.Grid -> PosterStage(stage)

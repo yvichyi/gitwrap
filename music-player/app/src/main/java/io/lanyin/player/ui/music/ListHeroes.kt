@@ -10,6 +10,10 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import io.lanyin.player.ui.design.DeviceScreen
+import io.lanyin.player.ui.design.drawSmiley
+import io.lanyin.player.ui.design.drawTapeStrip
+import io.lanyin.player.ui.design.drawBarcode
+import io.lanyin.player.ui.design.drawFlyer
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -461,58 +465,47 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPointer(at: Off
  */
 @Composable
 private fun AcidHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
+    val c = Lanyin.colors
+    val acid = io.lanyin.player.ui.design.Acid
+    // A flyer for the list: the cover photocopied on copier paper and taped up, the name in lime
+    // beneath, a smiley stuck on its corner.
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(272.dp, 210.dp).lightSpill(c.accent, reach = 0.8f, strength = 0.14f)) {
-            Canvas(Modifier.align(Alignment.CenterEnd).size(184.dp)) { drawDisc(c.bg) }
-            Box(
+        Box(Modifier.size(236.dp, 232.dp)) {
+            Column(
                 Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 6.dp)
-                    .size(190.dp)
-                    .graphicsLayer { rotationZ = -4f }
-                    .drawBehind { drawRoundRect(Color.Black.copy(alpha = 0.35f), Offset(4.dp.toPx(), 7.dp.toPx()), size, CornerRadius(8.dp.toPx())) }
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(3.dp, ChromeBrush, RoundedCornerShape(8.dp))
-                    .drawWithContent {
-                        drawContent()
-                        drawGloss(0.3f)
-                        // The hinge: a clear strip down the left edge.
-                        drawRect(Color.White.copy(alpha = 0.16f), size = Size(12.dp.toPx(), size.height))
-                        drawLine(Color.White.copy(alpha = 0.45f), Offset(12.dp.toPx(), 0f), Offset(12.dp.toPx(), size.height), 1.dp.toPx())
-                    },
-            ) { HeroArt(header, 190.dp) }
-            Box(Modifier.align(Alignment.TopEnd).offset(x = (-34).dp, y = 2.dp).size(58.dp).graphicsLayer { rotationZ = 12f }, contentAlignment = Alignment.Center) {
-                Canvas(Modifier.matchParentSize()) {
-                    val center = Offset(size.width / 2f, size.height / 2f)
-                    val r = size.minDimension / 2f
-                    drawPath(io.lanyin.player.ui.design.starPath(center + Offset(2.dp.toPx(), 2.dp.toPx()), r, r * 0.68f, 16), Color.Black.copy(alpha = 0.4f))
-                    drawPath(io.lanyin.player.ui.design.starPath(center, r, r * 0.68f, 16), Brush.verticalGradient(listOf(Color(0xFFE6FF7A), c.accent, Color(0xFF8BC400)), 0f, size.height))
-                    drawPath(io.lanyin.player.ui.design.starPath(center, r, r * 0.68f, 16), ChromeBrush, style = Stroke(1.dp.toPx()))
+                    .align(Alignment.Center)
+                    .size(204.dp, 220.dp)
+                    .graphicsLayer { rotationZ = -2.5f }
+                    .drawBehind { drawFlyer(io.lanyin.player.ui.design.Acid.Paper, seed = 21, torn = true) }
+                    .padding(8.dp),
+            ) {
+                Box(Modifier.fillMaxWidth().weight(1f)) {
+                    if (header is ListHeader.Cover) {
+                        io.lanyin.player.ui.design.PhotocopyCover(header.url, header.seed, Modifier.fillMaxSize(), lines = 40f)
+                    } else {
+                        HeroArt(header, 188.dp)
+                    }
                 }
-                Text("NEW!", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixed(12f)), color = Color(0xFF1A0A2E))
+                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("PLAYLIST · VOL.01", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9f)), color = acid.Black, modifier = Modifier.weight(1f))
+                    Canvas(Modifier.size(36.dp, 12.dp)) { drawBarcode(acid.Black, 5) }
+                }
+            }
+            Canvas(Modifier.align(Alignment.TopCenter).size(90.dp, 18.dp)) {
+                drawTapeStrip(center, size.width * 0.8f, size.height, 2f, seed = 3)
+            }
+            Canvas(Modifier.align(Alignment.BottomEnd).size(62.dp)) {
+                drawSmiley(center, size.minDimension * 0.42f, io.lanyin.player.ui.design.Acid.Lime, io.lanyin.player.ui.design.Acid.Black)
             }
         }
         Text(
-            title, style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = 28.sp, lineHeight = 33.sp, brush = ChromeBrush, textAlign = TextAlign.Center),
-            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp),
+            title, style = TextStyle(fontWeight = FontWeight.Black, fontSize = 28.sp, lineHeight = 33.sp, textAlign = TextAlign.Center),
+            color = acid.Lime, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp),
         )
         if (subtitle != null) {
-            Text(subtitle, style = style.type.caption.copy(textAlign = TextAlign.Center), color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+            Text(subtitle, style = Lanyin.style.type.caption.copy(textAlign = TextAlign.Center), color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
         }
     }
-}
-
-/** A compact disc: rainbow on its data side, a chrome rim, the clear hub and its hole. */
-private fun DrawScope.drawDisc(hole: Color) {
-    val r = size.minDimension / 2f
-    val center = Offset(size.width / 2f, size.height / 2f)
-    drawCircle(Color(0xFFD7D9E0), r, center)
-    drawCircle(Brush.sweepGradient(listOf(Color(0x00FFFFFF), Color(0x88FF4F7B), Color(0x888B5CF6), Color(0x8800A9C9), Color(0x88C6FF00), Color(0x00FFFFFF), Color(0x55FFFFFF), Color(0x00FFFFFF)), center), r, center)
-    drawCircle(ChromeBrush, r - 1.dp.toPx(), center, style = Stroke(1.5.dp.toPx()))
-    drawCircle(Color.White.copy(alpha = 0.5f), r * 0.3f, center, style = Stroke(1.dp.toPx()))
-    drawCircle(hole, r * 0.12f, center)
 }
 
 /**

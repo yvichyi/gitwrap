@@ -1,8 +1,11 @@
 package io.lanyin.player.ui.home
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,45 +14,44 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import io.lanyin.player.core.model.Playlist
 import io.lanyin.player.core.model.Song
 import io.lanyin.player.ui.components.pagePadding
-import io.lanyin.player.ui.design.ChromeBrush
-import io.lanyin.player.ui.design.CoverArt
-import io.lanyin.player.ui.design.Flavor
-import io.lanyin.player.ui.design.GelButton
-import io.lanyin.player.ui.design.LineIcon
-import io.lanyin.player.ui.design.SectionTitle
-import io.lanyin.player.ui.design.ThemedIcon
-import io.lanyin.player.ui.design.candyPlastic
-import io.lanyin.player.ui.design.drawPlayPauseGlyph
+import io.lanyin.player.ui.design.Acid
+import io.lanyin.player.ui.design.PhotocopyCover
+import io.lanyin.player.ui.design.PlaySticker
+import io.lanyin.player.ui.design.drawAsterisk
+import io.lanyin.player.ui.design.drawBarcode
+import io.lanyin.player.ui.design.drawCrosshair
+import io.lanyin.player.ui.design.drawFlyer
+import io.lanyin.player.ui.design.drawPerforation
+import io.lanyin.player.ui.design.drawSmiley
+import io.lanyin.player.ui.design.drawTapeStrip
+import io.lanyin.player.ui.design.formatTime
 import io.lanyin.player.ui.design.pressable
-import io.lanyin.player.ui.design.starPath
 import io.lanyin.player.ui.theme.ArchivoBlackFamily
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.SpaceMonoFamily
@@ -57,37 +59,34 @@ import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
 
 /**
- * 酸: the home page as the millennium's gadgets. The name in huge chrome; today's picks and FM
- * each in a see-through plastic case, Bondi blue and tangerine, set down at angles, one starburst
- * stuck on; your own music as round gel buttons; the recommended playlists as CDs; the first
- * chart's top three with chrome numerals and the other charts as gel capsules. Lime is kept for
- * what to press and what's playing.
+ * 酸: the home page is a wall of rave flyers on grey concrete. Tonight's headliner is today's
+ * picks: a lime flyer with the count huge in outline, DAILY MIX, the line-up, the doors and the
+ * venue (your headphones), a PLAY sticker slapped on it and, along its foot, tear-off tabs that
+ * are the ways in. Beside it, photocopied flyers for the recommended playlists, taped up; a
+ * smiley and a 303 sticker. Further down, the charts on a black flyer and the rest of the night's
+ * line-up.
  */
 @Composable
 internal fun AcidHome(model: HomeModel) {
-    val style = Lanyin.style
-    val m = style.margin
-    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
-        item { Wordmark(model, Modifier.padding(horizontal = m)) }
-        item { Cases(model, Modifier.padding(start = m, end = m, top = 14.dp)) }
-        item { GelDoors(model, Modifier.padding(start = m, end = m, top = 10.dp)) }
-        if (!model.signedIn) item { ConnectLine(model.login, Modifier.padding(start = m, end = m, top = 18.dp)) }
-        item {
-            Column(Modifier.padding(top = 30.dp)) {
-                SectionTitle("推荐歌单", Modifier.padding(horizontal = m), index = 1, trailing = model.recommendedNote)
-                Discs(model, PaddingValues(start = m, end = m, top = 14.dp))
-            }
-        }
-        item {
-            Column(Modifier.padding(start = m, end = m, top = 30.dp)) {
-                SectionTitle("TOP 3 · ${model.charts.firstOrNull().nameOr(0)}", index = 2, trailing = "全部 ✦")
-                TopThree(model, Modifier.padding(top = 12.dp))
+    val m = 14.dp
+    val lists = model.recommended.slots(6)
+    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding(extraTop = 6.dp)) {
+        item { Header(model, Modifier.padding(horizontal = m)) }
+        item { Wall(model, lists.take(3), Modifier.padding(start = m - 4.dp, end = m - 4.dp, top = 10.dp)) }
+        if (!model.signedIn) item { MembersOnly(model.login, Modifier.padding(start = m, end = m, top = 14.dp)) }
+        item { ChartFlyer(model, Modifier.padding(start = m, end = m, top = 18.dp)) }
+        if (lists.size > 3) item {
+            LazyRow(contentPadding = PaddingValues(start = m, end = m, top = 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val more = lists.drop(3)
+                items(more.size) { i -> Photocopy(more[i], i + 3, Modifier.width(132.dp), tilt = if (i % 2 == 0) 1.5f else -1.5f) { more[i]?.let(model.openPlaylist) } }
             }
         }
         model.picks?.let { picks ->
-            item { SectionTitle(picks.title, Modifier.padding(start = m, end = m, top = 30.dp), index = 3, trailing = picks.note) }
-            items(picks.songs.size) { i ->
-                StarRow(picks.songs[i], picks.songs[i].id == model.player.playingSongId, { model.playPick(i) }, Modifier.padding(horizontal = m))
+            if (picks.songs.size > 4) {
+                item { LineUpHead(picks.title, picks.songs.size, Modifier.padding(start = m, end = m, top = 22.dp)) }
+                items(picks.songs.size) { i ->
+                    LineUpRow(i, picks.songs[i], picks.songs[i].id == model.player.playingSongId, { model.playPick(i) }, Modifier.padding(horizontal = m))
+                }
             }
         }
     }
@@ -95,231 +94,318 @@ internal fun AcidHome(model: HomeModel) {
 
 private val mono = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold)
 
-/** 「LANYIN」 in huge chrome with the greeting and date under it. */
+/** Who's putting it on, and two stickers for the settings and the account. */
 @Composable
-private fun Wordmark(model: HomeModel, modifier: Modifier) {
+private fun Header(model: HomeModel, modifier: Modifier) {
     val c = Lanyin.colors
-    val now = model.now
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(
-                "LANYIN",
-                style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(54f), lineHeight = fixedSp(56f), letterSpacing = (-0.03).em, brush = ChromeBrush),
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(greeting(now.hour), style = Lanyin.style.type.title.copy(fontWeight = FontWeight.Bold), color = c.content)
-                Text(
-                    "  ✦  %02d.%02d %s".format(now.monthValue, now.dayOfMonth, now.dayOfWeek.getDisplayName(JavaTextStyle.SHORT, Locale.ENGLISH).uppercase()),
-                    style = mono.copy(fontSize = fixedSp(12f)),
-                    color = c.muted,
-                    maxLines = 1,
-                )
-            }
+            Text("LANYIN SOUND SYSTEM", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(20f), letterSpacing = (-0.01).em), color = c.content, maxLines = 1)
+            Text("${greeting(model.now.hour)} ✱ WALL Nº%02d".format(model.now.dayOfMonth), style = mono.copy(fontSize = fixedSp(10f)), color = c.muted, maxLines = 1)
         }
-        HeaderActions(model.account, model.openSettings, model.openAccount)
+        Sticker("SET", "设置", model.openSettings)
+        Spacer(Modifier.width(8.dp))
+        Sticker(if (model.signedIn) "ME" else "IN", if (model.signedIn) "我的账号" else "登录", model.openAccount)
     }
 }
 
-/** Today's picks and FM, each in a see-through plastic case, set down at angles; one starburst stuck over a corner. */
+/** A round sticker with a word on it, a tap does [onClick]. */
 @Composable
-private fun Cases(model: HomeModel, modifier: Modifier) {
-    Box(modifier.fillMaxWidth().height(300.dp)) {
-        PlasticCase(
-            "每日推荐", model.dailyNote, Flavor.Bondi, model.openDaily, model.playDaily,
-            Modifier.fillMaxWidth(0.57f).align(Alignment.TopStart).padding(top = 10.dp).graphicsLayer { rotationZ = -3f },
-        ) {
-            DailyArt(model.pickSongs)
-            Box(Modifier.padding(10.dp)) { DayMark(model.now) }
-        }
-        PlasticCase(
-            "私人 FM", model.fmNote, Flavor.Tangerine, model.playFm, model.playFm,
-            Modifier.fillMaxWidth(0.46f).align(Alignment.TopEnd).padding(top = 44.dp).graphicsLayer { rotationZ = 4f },
-        ) {
-            CoverArt(77, Modifier.fillMaxSize())
-            Box(Modifier.padding(10.dp)) { ThemedIcon(LineIcon.Radio, null, tint = Color.White, size = 24.dp) }
-        }
-        Starburst(model.now.dayOfMonth, Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = 2.dp))
+private fun Sticker(word: String, label: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(40.dp)
+            .graphicsLayer { rotationZ = -8f }
+            .drawBehind {
+                drawCircle(Color.Black.copy(alpha = 0.35f), size.minDimension / 2f, center + Offset(0f, 2.dp.toPx()))
+                drawCircle(Acid.Paper)
+                drawCircle(Acid.Black, size.minDimension / 2f - 2.dp.toPx(), style = Stroke(1.5.dp.toPx()))
+            }
+            .pressable(label = label, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(word, style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(13f)), color = Acid.Black)
     }
 }
 
 /**
- * Something in a case of [tint] plastic, as a Discman or an iMac came: the art seen through a
- * window in the shell, the title on the plastic under it, a lime gel button to play.
+ * The wall itself: the headliner flyer on the left, three photocopies down the right, the stickers
+ * and a strip of tape over the lot.
  */
 @Composable
-private fun PlasticCase(
-    title: String,
-    note: String,
-    tint: Color,
-    onClick: () -> Unit,
-    onPlay: () -> Unit,
-    modifier: Modifier,
-    art: @Composable () -> Unit,
-) {
-    val shape = RoundedCornerShape(26.dp)
-    Column(
-        modifier
-            .shadow(14.dp, shape, ambientColor = tint, spotColor = tint)
-            .candyPlastic(tint, shape)
-            .pressable(onClick = onClick)
-            .padding(8.dp),
-    ) {
+private fun Wall(model: HomeModel, lists: List<Playlist?>, modifier: Modifier) {
+    Box(modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth()) {
+            Headliner(model, Modifier.weight(0.63f).padding(top = 4.dp).graphicsLayer { rotationZ = -1.2f })
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(0.37f).padding(top = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                lists.forEachIndexed { i, p ->
+                    Photocopy(p, i, Modifier.fillMaxWidth(), tilt = listOf(2f, -2.5f, 1.5f)[i]) { p?.let(model.openPlaylist) }
+                }
+                Canvas(Modifier.fillMaxWidth().height(70.dp)) {
+                    drawSmiley(Offset(size.width * 0.55f, size.height * 0.5f), size.height * 0.4f, Acid.Lime, Acid.Black)
+                }
+            }
+        }
+        // The 303 sticker, half on the headliner.
         Box(
             Modifier
+                .align(Alignment.BottomStart)
+                .offset(x = 6.dp, y = 14.dp)
+                .graphicsLayer { rotationZ = -4f }
+                .background(Acid.Black)
+                .border(2.dp, Acid.Lime)
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+        ) {
+            Text("303 ✱ ACID", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(13f)), color = Acid.Lime)
+        }
+    }
+}
+
+/**
+ * Tonight's headliner, today's picks: the lime flyer. The count of songs huge in outline, DAILY
+ * MIX 每日推荐, the date and doors, the line-up (the first four), how many more and how long,
+ * the venue, a barcode, the PLAY sticker, and the tear-off tabs for the other ways in.
+ */
+@Composable
+private fun Headliner(model: HomeModel, modifier: Modifier) {
+    val ink = Acid.Black
+    val songs = model.pickSongs
+    val now = model.now
+    val small = mono.copy(fontSize = fixedSp(8f), letterSpacing = 0.06.em)
+    val outline = with(androidx.compose.ui.platform.LocalDensity.current) { 2.5.dp.toPx() }
+    Box(modifier) {
+        Column(
+            Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(19.dp)),
-        ) { art() }
-        Row(Modifier.fillMaxWidth().padding(start = 6.dp, top = 8.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(title, style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = cappedSp(16f), lineHeight = cappedSp(20f)), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(note, style = Lanyin.style.type.caption.copy(fontSize = cappedSp(11.5f), lineHeight = cappedSp(16f)), color = Color.White.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                .drawBehind { drawFlyer(Acid.Lime, seed = 7, torn = true) }
+                .pressable(label = "每日推荐", onClick = model.openDaily)
+                .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 0.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("LANYIN SOUND SYSTEM PRESENTS", style = small, color = ink, maxLines = 1, modifier = Modifier.weight(1f))
+                Canvas(Modifier.size(12.dp)) { drawCrosshair(center, size.minDimension / 2f, ink) }
             }
-            GelPlay(onPlay)
-        }
-    }
-}
-
-/** A lime gel button to play, the glyph dark under the gloss. */
-@Composable
-private fun GelPlay(onClick: () -> Unit) {
-    val ink = Lanyin.colors.onAccent
-    Box(
-        Modifier
-            .size(36.dp)
-            .shadow(6.dp, CircleShape, ambientColor = Lanyin.colors.accent, spotColor = Lanyin.colors.accent)
-            .candyPlastic(Color(0xFFB8F000), CircleShape, rim = false, glossOver = true)
-            .pressable(label = "播放", onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Canvas(Modifier.size(12.dp)) { drawPlayPauseGlyph(0f, ink) }
-    }
-}
-
-/** The one sticker: a strawberry starburst, 「HOT」 and the day. */
-@Composable
-private fun Starburst(day: Int, modifier: Modifier) {
-    Box(modifier.size(62.dp).graphicsLayer { rotationZ = -12f }, contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(62.dp)) {
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val r = size.minDimension / 2f
-            drawPath(starPath(center + Offset(2.dp.toPx(), 2.dp.toPx()), r, r * 0.68f, 16), Color.Black.copy(alpha = 0.4f))
-            drawPath(starPath(center, r, r * 0.68f, 16), Brush.verticalGradient(listOf(Color(0xFFFF8FAF), Flavor.Strawberry, Color(0xFFD62F5B)), 0f, size.height))
-            drawPath(starPath(center, r, r * 0.68f, 16), ChromeBrush, style = Stroke(1.dp.toPx()))
-        }
-        Text("HOT\n#$day", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(12f), lineHeight = fixedSp(13f), textAlign = TextAlign.Center), color = Color.White)
-    }
-}
-
-/** Your own music as a row of round gel buttons, a flavour each, named under them. */
-@Composable
-private fun GelDoors(model: HomeModel, modifier: Modifier) {
-    val c = Lanyin.colors
-    val doors = model.doors.drop(2)
-    val flavors = listOf(Flavor.Strawberry, Flavor.Grape, Flavor.Blueberry, Flavor.Bondi)
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        doors.forEachIndexed { i, door ->
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                GelButton(door.icon, flavors[i % flavors.size], door.label, door.onClick, size = 58.dp)
-                Text(door.label, style = Lanyin.style.type.caption.copy(fontWeight = FontWeight.Bold), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
-                Text(door.code, style = mono.copy(fontSize = fixedSp(9f), letterSpacing = 0.1.em), color = c.muted, maxLines = 1)
+            Text(
+                if (songs.isEmpty()) "00" else "%02d".format(songs.size.coerceAtMost(99)),
+                style = TextStyle(
+                    fontFamily = ArchivoBlackFamily, fontSize = fixedSp(104f), lineHeight = fixedSp(104f), letterSpacing = (-0.04).em,
+                    drawStyle = Stroke(outline),
+                ),
+                color = ink, maxLines = 1,
+            )
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text("DAILY\nMIX", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(26f), lineHeight = fixedSp(26f)), color = ink)
+                Spacer(Modifier.width(10.dp))
+                Text("每日\n推荐", style = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black, fontSize = fixedSp(22f), lineHeight = fixedSp(24f)), color = ink)
             }
+            Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(2.dp).background(ink))
+            Row(Modifier.padding(top = 5.dp)) {
+                Text(
+                    "%s %02d.%02d.%d".format(now.dayOfWeek.getDisplayName(JavaTextStyle.SHORT, Locale.ENGLISH).uppercase(), now.monthValue, now.dayOfMonth, now.year),
+                    style = small, color = ink, modifier = Modifier.weight(1f), maxLines = 1,
+                )
+                Text("DOORS 21:00 — LATE", style = small, color = ink, maxLines = 1)
+            }
+            Text("LINE-UP · 阵容", style = small, color = ink, modifier = Modifier.padding(top = 6.dp))
+            if (songs.isEmpty()) {
+                Text(model.dailyNote, style = TextStyle(fontWeight = FontWeight.Black, fontSize = fixedSp(13f)), color = ink, modifier = Modifier.padding(top = 2.dp))
+            }
+            songs.take(4).forEachIndexed { i, s ->
+                Text(
+                    "%02d %s / %s".format(i + 1, s.name, s.artistLine),
+                    style = TextStyle(fontWeight = FontWeight.Black, fontSize = fixedSp(12.5f), lineHeight = fixedSp(17f)), color = ink,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (songs.size > 4) {
+                Text("+ ${songs.size - 4} MORE · ${hms(songs.sumOf { it.durationMs })}", style = small.copy(fontSize = fixedSp(9f)), color = ink, modifier = Modifier.padding(top = 2.dp))
+            }
+            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.Bottom) {
+                Column(Modifier.weight(1f)) {
+                    Text("VENUE: 你的耳机", style = small, color = ink, maxLines = 1)
+                    Text("FREE ENTRY · NO PHOTOS", style = small, color = ink, maxLines = 1)
+                }
+                Canvas(Modifier.size(56.dp, 20.dp)) { drawBarcode(ink, 41) }
+            }
+            TearTabs(model, Modifier.padding(top = 8.dp).fillMaxWidth().height(66.dp))
         }
+        PlaySticker(model.playDaily, Modifier.align(Alignment.TopEnd).offset(x = 18.dp, y = 132.dp), size = 72.dp, label = "播放每日推荐")
     }
 }
 
-/** The recommended playlists as CDs: the cover on a disc with a chrome rim, a rainbow sheen and the hole. */
+/** h:mm:ss for a night's length. */
+private fun hms(ms: Long): String {
+    val s = ms / 1000
+    return "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60)
+}
+
+/**
+ * The tear-off tabs along the foot of the headliner, each a way in, its name running down it;
+ * one already torn off.
+ */
 @Composable
-private fun Discs(model: HomeModel, padding: PaddingValues) {
-    val style = Lanyin.style
-    val c = style.colors
-    val lists = model.recommended.slots(6)
-    LazyRow(contentPadding = padding, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        items(lists.size) { i ->
-            val p = lists[i]
-            Column(Modifier.width(132.dp).pressable(onClick = { if (p != null) model.openPlaylist(p) }), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
-                    ShelfCover(p, i, Modifier.size(132.dp).clip(CircleShape))
-                    Canvas(Modifier.size(132.dp)) {
-                        val r = size.minDimension / 2f
-                        val center = Offset(r, r)
-                        // The disc's rainbow where the light catches the data side.
-                        drawCircle(
-                            Brush.sweepGradient(listOf(Color(0x00FFFFFF), Color(0x33FF4F7B), Color(0x338B5CF6), Color(0x3300A9C9), Color(0x00FFFFFF), Color(0x26FFFFFF), Color(0x00FFFFFF)), center),
-                            r, center,
-                        )
-                        drawCircle(ChromeBrush, r - 1.dp.toPx(), center, style = Stroke(2.dp.toPx()))
-                        drawCircle(Color.White.copy(alpha = 0.55f), r * 0.24f, center, style = Stroke(1.dp.toPx()))
-                        drawCircle(c.bg, r * 0.12f, center)
-                        drawCircle(ChromeBrush, r * 0.12f, center, style = Stroke(1.5.dp.toPx()))
+private fun TearTabs(model: HomeModel, modifier: Modifier) {
+    val ink = Acid.Black
+    val doors = model.doors
+    // FM, the charts, (one torn away), recent, downloads, liked.
+    val order = listOf(1, 3, -1, 4, 5, 2)
+    Row(modifier.drawBehind { drawPerforation(ink) }) {
+        order.forEachIndexed { k, d ->
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxSize()
+                    .drawBehind { if (k > 0) drawLine(ink, Offset(0f, 0f), Offset(0f, size.height), 1f * density) }
+                    .then(if (d >= 0) Modifier.pressable(label = doors[d].label, onClick = doors[d].onClick) else Modifier)
+                    .padding(top = 6.dp),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                if (d >= 0) {
+                    Text(
+                        doors[d].label.replace(" ", "").toCharArray().joinToString("\n"),
+                        style = TextStyle(fontWeight = FontWeight.Black, fontSize = fixedSp(10f), lineHeight = fixedSp(11.5f)), color = ink,
+                    )
+                } else {
+                    // Torn off: a ragged stub, and the wall showing where the tab was.
+                    val wall = Lanyin.colors.bg
+                    Canvas(Modifier.fillMaxSize()) {
+                        val gap = androidx.compose.ui.graphics.Path().apply {
+                            moveTo(0f, size.height)
+                            for (j in 0..6) lineTo(size.width * j / 6f, (if (j % 2 == 0) 6 else 10).dp.toPx())
+                            lineTo(size.width, size.height)
+                            close()
+                        }
+                        drawPath(gap, wall)
                     }
                 }
-                Text(p?.name ?: "BLANK CD", style = style.type.caption, color = c.content, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
             }
         }
     }
 }
 
-/** The first chart's top three with big chrome numerals; the other charts as gel capsules under them. */
+/**
+ * A photocopied flyer for a playlist: copier paper taped to the wall, the cover in coarse
+ * halftone, its name and track count, a volume number and a scrap of barcode.
+ */
 @Composable
-private fun TopThree(model: HomeModel, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
+private fun Photocopy(p: Playlist?, slot: Int, modifier: Modifier, tilt: Float, onClick: () -> Unit) {
+    val ink = Acid.Black
+    Box(modifier.graphicsLayer { rotationZ = tilt }) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .drawBehind { drawFlyer(Acid.Paper, seed = 30 + slot, torn = slot % 2 == 1) }
+                .pressable(label = p?.name ?: "推荐歌单", onClick = onClick)
+                .padding(6.dp),
+        ) {
+            Box(Modifier.fillMaxWidth().aspectRatio(1.15f).background(Acid.Black)) {
+                PhotocopyCover(p?.coverUrl, p?.let { (it.id % 97).toInt() } ?: (10 + slot), Modifier.fillMaxSize(), lines = 30f)
+            }
+            Text(p?.name ?: "· · ·", style = TextStyle(fontWeight = FontWeight.Black, fontSize = fixedSp(13f), lineHeight = fixedSp(16f)), color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 5.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("%d TRK · VOL.%02d".format(p?.trackCount ?: 0, slot + 2), style = mono.copy(fontSize = fixedSp(8f)), color = ink, maxLines = 1, modifier = Modifier.weight(1f))
+                Canvas(Modifier.size(24.dp, 10.dp)) { drawBarcode(ink, 70 + slot) }
+            }
+        }
+        Canvas(Modifier.fillMaxWidth().height(12.dp).offset(y = (-5).dp)) {
+            drawTapeStrip(Offset(size.width / 2f, size.height / 2f), size.width * 0.42f, 12.dp.toPx(), -3f + slot * 2.5f, seed = slot)
+        }
+    }
+}
+
+/** Not signed in: a strip of copier paper, MEMBERS ONLY, and a way in. */
+@Composable
+private fun MembersOnly(onLogin: () -> Unit, modifier: Modifier) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .graphicsLayer { rotationZ = 0.8f }
+            .drawBehind { drawFlyer(Acid.Paper, seed = 90, torn = false) }
+            .pressable(label = "登录", onClick = onLogin)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("MEMBERS ONLY", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(15f)), color = Acid.Black)
+        Text("  登录网易云，拿到你的入场章", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = fixedSp(12.5f)), color = Acid.Black, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Canvas(Modifier.size(16.dp)) { drawAsterisk(center, size.minDimension / 2f, Acid.Black) }
+    }
+}
+
+/** The charts on a black flyer: TOP 4, each with its number in lime and the song at its top. */
+@Composable
+private fun ChartFlyer(model: HomeModel, modifier: Modifier) {
     val charts = model.charts.slots(4)
-    val first = charts.firstOrNull()
-    Column(modifier) {
-        for (i in 0 until 3) {
-            val song = first?.top?.getOrNull(i)
-            val playing = song != null && song.id == model.player.playingSongId
+    Column(
+        modifier
+            .fillMaxWidth()
+            .graphicsLayer { rotationZ = -0.6f }
+            .drawBehind { drawFlyer(Acid.Black, seed = 55, torn = true, stapled = true) }
+            .padding(start = 14.dp, end = 14.dp, top = 16.dp, bottom = 16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("TOP 4", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(34f), lineHeight = fixedSp(36f)), color = Acid.Lime)
+            Text("  排行榜 · CHARTS", style = mono.copy(fontSize = fixedSp(10f)), color = Acid.Paper, modifier = Modifier.weight(1f).padding(bottom = 6.dp))
+            Text(
+                "ALL ✱", style = mono.copy(fontSize = fixedSp(10f)), color = Acid.Lime,
+                modifier = Modifier.pressable(label = "全部排行榜", onClick = model.openCharts).padding(6.dp),
+            )
+        }
+        charts.forEachIndexed { i, chart ->
             Row(
-                Modifier.fillMaxWidth().pressable(onClick = { if (first != null) model.openPlaylist(first.playlist) else model.openCharts() }).padding(vertical = 4.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 46.dp)
+                    .pressable(label = chart.nameOr(i)) { if (chart != null) model.openPlaylist(chart.playlist) else model.openCharts() }
+                    .padding(vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("${i + 1}", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(46f), lineHeight = fixedSp(50f), brush = ChromeBrush), modifier = Modifier.width(46.dp))
+                Text("%02d".format(i + 1), style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(24f)), color = Acid.Lime, modifier = Modifier.width(44.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(song?.name ?: "✦ ✦ ✦", style = style.type.title.copy(fontWeight = FontWeight.Bold), color = if (playing) c.accent else c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(song?.artistLine ?: "", style = mono.copy(fontSize = fixedSp(11f), fontWeight = FontWeight.Normal), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(chart.nameOr(i), style = TextStyle(fontWeight = FontWeight.Black, fontSize = fixedSp(15f)), color = Acid.Paper, maxLines = 1)
+                    val top: Song? = chart?.top?.firstOrNull()
+                    Text(if (top != null) "${top.name} / ${top.artistLine}" else "LOADING…", style = mono.copy(fontSize = fixedSp(10f), fontWeight = FontWeight.Normal), color = Lanyin.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
-        Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val flavors = listOf(Flavor.Grape, Flavor.Bondi, Flavor.Strawberry)
-            charts.drop(1).forEachIndexed { k, chart ->
-                GelCapsule(chart.nameOr(k + 1), flavors[k % flavors.size], { if (chart != null) model.openPlaylist(chart.playlist) else model.openCharts() })
-            }
-        }
     }
 }
 
-/** A word on a capsule of [tint] gel. */
+/** The rest of the night's line-up: a strip of tape with its title, then each act. */
 @Composable
-private fun GelCapsule(text: String, tint: Color, onClick: () -> Unit, height: Dp = 34.dp) {
-    val shape = RoundedCornerShape(50)
-    Box(
-        Modifier
-            .height(height)
-            .candyPlastic(tint, shape, glossOver = true)
-            .pressable(onClick = onClick)
-            .padding(horizontal = 14.dp),
-        contentAlignment = Alignment.Center,
+private fun LineUpHead(title: String, count: Int, modifier: Modifier) {
+    Row(
+        modifier
+            .graphicsLayer { rotationZ = -1.5f }
+            .background(Acid.Lime)
+            .padding(horizontal = 12.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text, style = Lanyin.style.type.caption.copy(fontWeight = FontWeight.Bold), color = Color.White, maxLines = 1)
+        Text("FULL LINE-UP", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(15f)), color = Acid.Black)
+        Text("  $title · $count", style = TextStyle(fontWeight = FontWeight.Black, fontSize = fixedSp(12f)), color = Acid.Black)
     }
 }
 
-/** A song with a white sparkle before it; the one playing in lime. */
+/** One act: its slot number, name and artist, its length; the one playing in lime with an asterisk. */
 @Composable
-private fun StarRow(song: Song, playing: Boolean, onClick: () -> Unit, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    Row(modifier.fillMaxWidth().pressable(onClick = onClick).padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-        Canvas(Modifier.size(16.dp)) {
-            drawPath(starPath(Offset(size.width / 2f, size.height / 2f), size.minDimension / 2f, size.minDimension * 0.14f, 4), if (playing) c.accent else Color.White.copy(alpha = 0.7f))
+private fun LineUpRow(index: Int, song: Song, playing: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val c = Lanyin.colors
+    Row(
+        modifier
+            .fillMaxWidth()
+            .pressable(label = song.name, onClick = onClick)
+            .padding(vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (playing) {
+            Canvas(Modifier.width(34.dp).height(14.dp)) { drawAsterisk(Offset(7.dp.toPx(), center.y), 6.dp.toPx(), Acid.Lime) }
+        } else {
+            Text("%02d".format(index + 1), style = mono.copy(fontSize = fixedSp(12f)), color = c.muted, modifier = Modifier.width(34.dp))
         }
-        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(song.name, style = style.type.body.copy(fontWeight = FontWeight.Bold), color = if (playing) c.accent else c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(song.artistLine, style = mono.copy(fontSize = fixedSp(11f), fontWeight = FontWeight.Normal), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(song.name, style = TextStyle(fontWeight = FontWeight.Black, fontSize = fixedSp(15f)), color = if (playing) Acid.Lime else c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(song.artistLine, style = mono.copy(fontSize = fixedSp(10f), fontWeight = FontWeight.Normal), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        Text(formatTime(song.durationMs), style = mono.copy(fontSize = fixedSp(11f)), color = c.muted, modifier = Modifier.padding(start = 8.dp))
     }
 }

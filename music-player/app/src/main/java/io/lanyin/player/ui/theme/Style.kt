@@ -283,20 +283,21 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             motion = Motion(1f, 1400f), bouncy = Motion(0.75f, 1100f), pressScale = 0.94f,
             iconStroke = 2.2f, dock = DockKind.Docked,
         )
-        // 酸: the millennium in candy plastic and chrome. A grape night, translucent shells in
-        // Bondi blue and tangerine with a gloss across the top, chrome rims and a chrome wordmark;
-        // lime kept for the one thing that matters on a screen: what's playing, what to press.
+        // 酸: a wall of rave flyers. Wheat-pasted on grey concrete, layer over layer, old ones torn;
+        // flyers of black stock and copier paper, the headline flyer in acid lime; covers
+        // photocopied in coarse halftone; tape, staples, smiley stickers and barcodes. Headlines in
+        // Archivo Black, small print in mono; the player is the song's own poster.
         AppTheme.ACID -> LanyinStyle(
             theme = theme, dark = true,
             colors = acid,
             display = ArchivoBlackFamily, displayWeight = FontWeight.Black, displayTracking = (-0.01).em,
             body = FontFamily.SansSerif, numeric = SpaceMonoFamily,
-            cardShape = RoundedCornerShape(24.dp), chipShape = CircleShape, artShape = RoundedCornerShape(20.dp),
+            cardShape = RectangleShape, chipShape = CircleShape, artShape = RectangleShape,
             edge = EdgeKind.Chrome, backdrop = BackdropKind.Acid, seek = SeekKind.Stripe,
             button = ButtonKind.Burst, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = false, activeScale = 1.06f, inactiveAlpha = 0.3f, blurStep = 0.4.dp, staggerMs = 30, glow = true, serif = false, weight = FontWeight.Black),
-            motion = Motion(0.72f, 700f), bouncy = Motion(0.45f, 600f), pressScale = 0.92f,
-            iconStroke = 2f,
+            lyric = LyricStyle(centered = false, activeScale = 1.06f, inactiveAlpha = 0.32f, blurStep = 0.dp, staggerMs = 30, glow = false, serif = false, weight = FontWeight.Black),
+            motion = Motion(0.72f, 700f), bouncy = Motion(0.45f, 600f), pressScale = 0.95f,
+            iconStroke = 2.2f, dock = DockKind.Docked,
         )
         AppTheme.GRID -> LanyinStyle(
             theme = theme, dark = false,
@@ -374,11 +375,11 @@ private val game = LanyinColors(
     content = Color(0xFF1C1B18), muted = Color(0xFF524F47), accent = Color(0xFF1C1B18), accentAlt = Color(0xFF1C1B18),
     onAccent = Color(0xFFE8E5D8), outline = Color(0xFF1C1B18), like = Color(0xFF1C1B18), vinyl = Color(0xFF1C1B18),
 )
-// Black, white, a lime that glows and a hot pink.
+// Concrete grey, black stock, copier white and acid lime.
 private val acid = LanyinColors(
-    bg = Color(0xFF0E0B1A), bgDeep = Color(0xFF1B1430), surface = Color(0xFF1C1830), surfaceAlt = Color(0xFF262040),
-    content = Color(0xFFFFFFFF), muted = Color(0xFFA9A3C0), accent = Color(0xFFC6FF00), accentAlt = Color(0xFFFF3EA5),
-    onAccent = Color(0xFF0E0B1A), outline = Color(0x33FFFFFF), like = Color(0xFFFF3EA5), vinyl = Color(0xFF07060D),
+    bg = Color(0xFF3A3A38), bgDeep = Color(0xFF2F2F2D), surface = Color(0xFF141413), surfaceAlt = Color(0xFF1E1E1C),
+    content = Color(0xFFEFEDE6), muted = Color(0xFFB3B1A9), accent = Color(0xFFD4FF26), accentAlt = Color(0xFFEFEDE6),
+    onAccent = Color(0xFF111110), outline = Color(0x33EFEDE6), like = Color(0xFFD4FF26), vinyl = Color(0xFF0B0B0A),
 )
 
 /** Fusion Pixel (SIL OFL), 游's face for everything, Chinese included. One weight, so bold stays crisp rather than smeared. */

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -253,19 +254,29 @@ private fun InitialBlock(profile: UserProfile?, onLogin: () -> Unit, modifier: M
 private fun MemberCard(profile: UserProfile?, onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    val shape = RoundedCornerShape(20.dp)
+    // A members' pass on black stock, a lime stub along its edge with ADMIT ONE and a barcode.
     Box(
         modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(c.surface)
-            // Holographic foil: the flavours run together across the card, the gloss over its top.
-            .background(Brush.linearGradient(listOf(Flavor.Grape.copy(alpha = 0.42f), Flavor.Bondi.copy(alpha = 0.3f), Flavor.Strawberry.copy(alpha = 0.3f), Flavor.Grape.copy(alpha = 0.32f))))
-            .drawBehind { drawGloss(0.14f) }
-            .border(1.5.dp, ChromeBrush, shape)
+            .drawBehind {
+                drawRect(Color.Black.copy(alpha = 0.35f), androidx.compose.ui.geometry.Offset(2.dp.toPx(), 3.dp.toPx()), size)
+                drawRect(io.lanyin.player.ui.design.Acid.Black)
+                drawGloss(0.3f)
+                val stub = 34.dp.toPx()
+                drawRect(io.lanyin.player.ui.design.Acid.Lime, androidx.compose.ui.geometry.Offset(size.width - stub, 0f), androidx.compose.ui.geometry.Size(stub, size.height))
+                var y = 0f
+                while (y < size.height) {
+                    drawCircle(io.lanyin.player.ui.design.Acid.Black, 1.5.dp.toPx(), androidx.compose.ui.geometry.Offset(size.width - stub, y))
+                    y += 6.dp.toPx()
+                }
+            }
             .then(if (profile == null) Modifier.pressable(onClick = onLogin) else Modifier)
-            .padding(18.dp),
+            .padding(start = 18.dp, top = 18.dp, bottom = 18.dp, end = 48.dp),
     ) {
+        Text(
+            "ADMIT ONE", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixed(10f)), color = io.lanyin.player.ui.design.Acid.Black,
+            modifier = Modifier.align(Alignment.CenterEnd).offset(x = 40.dp).graphicsLayer { rotationZ = 90f },
+        )
         Column {
             Text("LANYIN MEMBER", style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixed(18f), brush = ChromeBrush, letterSpacing = 0.02.em))
             Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -290,8 +301,7 @@ private fun MemberCard(profile: UserProfile?, onLogin: () -> Unit, modifier: Mod
                         color = c.onAccent,
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .background(Brush.verticalGradient(listOf(Color(0xFFE2FF6B), c.accent, Color(0xFF8FC400))))
-                            .drawBehind { drawGloss(0.45f) }
+                            .background(c.accent)
                             .pressable(onClick = onLogin)
                             .padding(horizontal = 18.dp, vertical = 8.dp),
                     )

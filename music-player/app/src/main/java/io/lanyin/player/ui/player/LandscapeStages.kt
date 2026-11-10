@@ -282,38 +282,25 @@ internal fun MediaPlayerStage(stage: StageContext) {
     }
 }
 
-/** 酸's window: a shell of see-through Bondi plastic, dark enough inside to read by, in a chrome frame. */
-internal fun Modifier.mediaWindow(): Modifier {
-    val shape = RoundedCornerShape(22.dp)
-    return clip(shape)
-        .background(Brush.verticalGradient(listOf(Color(0xFF0D2A3A), Color(0xFF0A1220), Color(0xFF0B1B2A))))
-        .drawBehind {
-            // The light coming through the plastic at its foot.
-            drawRect(Brush.radialGradient(listOf(Flavor.Bondi.copy(alpha = 0.22f), Color.Transparent), Offset(size.width / 2f, size.height * 1.1f), size.maxDimension * 0.55f))
-        }
-        .border(2.dp, ChromeBrush, shape)
-}
+/** 酸's window: a sheet of black flyer stock with the paper's faint edge. */
+internal fun Modifier.mediaWindow(): Modifier = this
+    .background(io.lanyin.player.ui.design.Acid.Black)
+    .drawBehind { drawGloss(0.3f) }
+    .border(1.dp, io.lanyin.player.ui.design.Acid.Paper.copy(alpha = 0.16f))
 
-/** The chrome window's title bar: traffic-light buttons, the window's [title], the window controls. */
+/** The window's head: a strip of lime with its [title] and three asterisks, as a flyer heads a listing. */
 @Composable
-internal fun MediaTitleBar(title: String = "LANYIN MEDIA PLAYER 2000") {
-    val c = Lanyin.colors
+internal fun MediaTitleBar(title: String = "LANYIN SOUND SYSTEM") {
     Row(
         Modifier
             .fillMaxWidth()
-            .height(26.dp)
-            .background(Brush.verticalGradient(listOf(Color(0xFF5ED6EC), Flavor.Bondi, Color(0xFF00708A))))
-            .drawBehind { drawGloss(0.5f) }
-            .padding(horizontal = 12.dp),
+            .height(24.dp)
+            .background(io.lanyin.player.ui.design.Acid.Lime)
+            .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        for (dot in listOf(Flavor.Strawberry, Flavor.Tangerine, c.accent)) {
-            Canvas(Modifier.padding(end = 6.dp).size(10.dp)) { drawGelBead(dot) }
-        }
-        Spacer(Modifier.weight(1f))
-        Text(title, style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(10f), letterSpacing = 0.08.em, shadow = androidx.compose.ui.graphics.Shadow(Color(0x99003040), Offset(0f, 1f), 2f)), color = Color.White, maxLines = 1)
-        Spacer(Modifier.weight(1f))
-        Text("_ □ ×", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixedSp(11f)), color = Color.White.copy(alpha = 0.7f))
+        Text(title, style = TextStyle(fontFamily = ArchivoBlackFamily, fontSize = fixedSp(11f), letterSpacing = 0.04.em), color = io.lanyin.player.ui.design.Acid.Black, maxLines = 1, modifier = Modifier.weight(1f))
+        Text("✱ ✱ ✱", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixedSp(11f)), color = io.lanyin.player.ui.design.Acid.Black)
     }
 }
 
