@@ -23,19 +23,25 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * 报: newsprint. The paper's own faint dot screen and fibres; on the player, the fold across the
- * middle where the broadsheet was creased in half, a shadow above it and a lighter edge below.
+ * 报: newsprint. Groundwood fibres, flecks and the mottling of cheap pulp (a tile made once in
+ * code), the paper's own faint dot screen, its edges yellowed with age; on the player, the other
+ * side of the sheet showing through backwards, and the fold across the middle where the
+ * broadsheet was creased in half, a shadow above it and a lighter edge below.
  */
 internal fun DrawScope.drawNewsprint(style: LanyinStyle, page: Boolean) {
     val c = style.colors
     val w = size.width
     val h = size.height
     drawRect(c.bg)
-    drawRect(ShaderBrush(ImageShader(newsprintTile(density), TileMode.Repeated, TileMode.Repeated)), alpha = if (style.dark) 0.05f else 0.07f)
-    drawRect(grainBrush, alpha = if (style.dark) 0.05f else 0.06f)
-    // A crease that stays put while a page scrolls under it would read as a glitch, and in
-    // landscape it would run through the middle of the lyrics.
-    if (page || w > h) return
+    drawRect(newsprintBrush(), alpha = if (style.dark) 0.45f else 0.8f, blendMode = androidx.compose.ui.graphics.BlendMode.Overlay)
+    drawRect(ShaderBrush(ImageShader(newsprintTile(density), TileMode.Repeated, TileMode.Repeated)), alpha = if (style.dark) 0.04f else 0.05f)
+    drawRect(grainBrush, alpha = if (style.dark) 0.04f else 0.05f)
+    drawAgedEdges(style)
+    // A ghost or a crease that stays put while a page scrolls under it would read as a glitch,
+    // and in landscape the crease would run through the middle of the lyrics.
+    if (page) return
+    drawShowThrough(style)
+    if (w > h) return
     val fold = h * 0.5f
     val band = 22f * density
     drawRect(

@@ -1,5 +1,6 @@
 package io.lanyin.player.ui.player
 
+import io.lanyin.player.ui.design.letterpress
 import androidx.compose.animation.AnimatedContent
 import io.lanyin.player.ui.design.pressable
 import androidx.compose.ui.graphics.graphicsLayer
@@ -195,11 +196,12 @@ internal fun BroadsheetStage(stage: StageContext) {
     val c = style.colors
     val state = stage.state
     Column(Modifier.fillMaxSize()) {
-        DoubleRule(Modifier.padding(bottom = 10.dp))
+        DoubleRule(Modifier.padding(bottom = 3.dp))
+        io.lanyin.player.ui.design.PressMarks(Modifier.padding(bottom = 6.dp))
         Row(Modifier.weight(1f).fillMaxWidth()) {
-            Column(Modifier.weight(0.36f).fillMaxHeight()) {
+            Column(Modifier.weight(0.4f).fillMaxHeight()) {
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), heightFraction = 0.95f)
+                    PressPhotoStage(stage, Modifier.fillMaxSize(), onClick = null)
                     PaperPauseStamp(state, Modifier.align(Alignment.Center))
                 }
                 Text(
@@ -211,7 +213,7 @@ internal fun BroadsheetStage(stage: StageContext) {
                 )
             }
             Box(Modifier.padding(horizontal = 16.dp).width(1.dp).fillMaxHeight().background(c.outline))
-            Column(Modifier.weight(0.64f).fillMaxHeight()) {
+            Column(Modifier.weight(0.6f).fillMaxHeight()) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     val bpm = rememberBpm(state)
                     Text("澜音日报 · 号外 · 第 %d 版".format(state.trackNumber) + (bpm?.let { " · 节拍每分 $it" } ?: ""), style = style.type.caption.copy(fontWeight = FontWeight.Bold), color = c.accent, maxLines = 1)
@@ -220,7 +222,10 @@ internal fun BroadsheetStage(stage: StageContext) {
                     Text("%02d:%02d 付印".format(now.hour, now.minute), style = style.type.caption.copy(fontStyle = FontStyle.Italic), color = c.muted, maxLines = 1)
                 }
                 TrackSwitch(state) { track ->
-                    Text(track.title, style = style.type.display.copy(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        track.title, style = style.type.display.copy(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Black).let { it.copy(shadow = androidx.compose.ui.graphics.Shadow(c.content.copy(alpha = 0.4f), androidx.compose.ui.geometry.Offset.Zero, 1.6f)) },
+                        color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.letterpress(),
+                    )
                 }
                 Text("本报讯　${state.artist}${if (state.track.album.isNotEmpty()) " · 《${state.track.album}》" else ""}", style = style.type.caption.copy(fontStyle = FontStyle.Italic), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Box(Modifier.padding(vertical = 6.dp).fillMaxWidth().height(0.75.dp).background(c.content))

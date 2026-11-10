@@ -1,5 +1,7 @@
 package io.lanyin.player.ui.share
 
+import io.lanyin.player.ui.design.inked
+import io.lanyin.player.ui.design.letterpress
 import io.lanyin.player.ui.design.drawUnitPlate
 import io.lanyin.player.ui.design.drawSmiley
 import io.lanyin.player.ui.design.drawTapeStrip
@@ -351,23 +353,39 @@ private fun DeviceCard(lyric: CardLyric) {
     }
 }
 
-/** 报: a clipping from the paper. The masthead, the line as the headline, the byline, the picture in halftone. */
+/**
+ * 报: a clipping from the paper, clipped to the page: the masthead small, the line as the
+ * headline pressed by letterpress, its translation the standfirst, the byline, the picture in
+ * halftone with its caption; registration marks and the control strip at the head of the page.
+ */
 @Composable
 private fun PaperCard(lyric: CardLyric) {
     val style = Lanyin.style
     val c = style.colors
-    Column(Modifier.fillMaxSize().padding(22.dp)) {
-        Text("澜音日报", style = TextStyle(fontFamily = style.display, fontWeight = FontWeight.Black, fontSize = fixed(22f), textAlign = TextAlign.Center), color = c.content, modifier = Modifier.fillMaxWidth())
-        DoubleRule(Modifier.padding(top = 4.dp))
-        Text("歌词版 · 今日一句", style = TextStyle(fontFamily = style.display, fontWeight = FontWeight.Bold, fontSize = fixed(10f)), color = c.accent, modifier = Modifier.padding(top = 10.dp))
-        Text(lyric.line, style = TextStyle(fontFamily = style.display, fontWeight = FontWeight.Black, fontSize = fixed(26f), lineHeight = fixed(33f)), color = c.content, modifier = Modifier.padding(top = 2.dp))
-        lyric.translation?.let { Text(it, style = TextStyle(fontFamily = style.display, fontStyle = FontStyle.Italic, fontSize = fixed(12f), lineHeight = fixed(17f)), color = c.muted, modifier = Modifier.padding(top = 4.dp)) }
-        Text("本报讯　《${lyric.title}》 ${lyric.artist}", style = TextStyle(fontFamily = style.display, fontStyle = FontStyle.Italic, fontSize = fixed(10f)), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-        Spacer(Modifier.weight(1f))
-        Box(Modifier.fillMaxWidth().aspectRatio(2f).border(1.dp, c.content)) {
-            HalftoneCover(lyric.coverUrl, lyric.coverSeed, Modifier.fillMaxSize())
+    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 16.dp)) {
+        io.lanyin.player.ui.design.PressMarks()
+        Spacer(Modifier.height(14.dp))
+        io.lanyin.player.ui.design.NewsClipping(Modifier.fillMaxWidth().weight(1f), tilt = -1.2f, seed = lyric.coverSeed) {
+            Column(Modifier.fillMaxSize()) {
+                Text("澜音日报", style = TextStyle(fontFamily = style.display, fontWeight = FontWeight.Black, fontSize = fixed(20f), textAlign = TextAlign.Center), color = c.content, modifier = Modifier.fillMaxWidth().letterpress())
+                DoubleRule(Modifier.padding(top = 3.dp))
+                Text("歌词版 · 今日一句", style = TextStyle(fontFamily = style.display, fontWeight = FontWeight.Bold, fontSize = fixed(10f)), color = c.accent, modifier = Modifier.padding(top = 8.dp))
+                Text(
+                    lyric.line, style = TextStyle(fontFamily = style.display, fontWeight = FontWeight.Black, fontSize = fixed(25f), lineHeight = fixed(32f)).inked(c.content),
+                    color = c.content, modifier = Modifier.padding(top = 2.dp).letterpress(),
+                )
+                lyric.translation?.let { Text(it, style = TextStyle(fontFamily = style.display, fontStyle = FontStyle.Italic, fontSize = fixed(12f), lineHeight = fixed(17f)), color = c.muted, modifier = Modifier.padding(top = 4.dp)) }
+                Text("本报讯　《${lyric.title}》 ${lyric.artist}", style = TextStyle(fontFamily = style.display, fontStyle = FontStyle.Italic, fontSize = fixed(10f)), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+                Spacer(Modifier.weight(1f))
+                Box(Modifier.fillMaxWidth().aspectRatio(2f).border(0.75.dp, c.content)) {
+                    HalftoneCover(lyric.coverUrl, lyric.coverSeed, Modifier.fillMaxSize())
+                }
+                Row(Modifier.padding(top = 3.dp)) {
+                    Text("图：《${lyric.album.ifEmpty { lyric.title }}》", style = TextStyle(fontFamily = style.display, fontStyle = FontStyle.Italic, fontSize = fixed(9f)), color = c.muted, modifier = Modifier.weight(1f), maxLines = 1)
+                    Text("澜音 · LANYIN", style = TextStyle(fontSize = fixed(8f), letterSpacing = 0.2.em), color = c.muted)
+                }
+            }
         }
-        Text("图：《${lyric.album.ifEmpty { lyric.title }}》", style = TextStyle(fontFamily = style.display, fontStyle = FontStyle.Italic, fontSize = fixed(9f)), color = c.muted, modifier = Modifier.padding(top = 3.dp))
     }
 }
 

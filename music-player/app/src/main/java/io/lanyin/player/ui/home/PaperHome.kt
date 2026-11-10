@@ -1,5 +1,10 @@
 package io.lanyin.player.ui.home
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxHeight
+import io.lanyin.player.ui.design.drawBarcode
+import io.lanyin.player.ui.design.letterpress
+import io.lanyin.player.ui.design.inked
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -41,11 +46,12 @@ private val Fitting = listOf("单曲循环", "听一张新专辑", "戴好耳机
 private val Avoid = listOf("切歌太快", "只听前奏", "外放", "开得太响", "错过副歌", "熬夜听歌", "跳过尾奏")
 
 /**
- * 报: the home page as a front page. Under the masthead the lead story is today's picks, with a
- * big halftone photograph and the day's running order beside it; then a column of briefs (what's
- * playing, the other ways in) next to the almanac's 宜 and 忌; the charts set as tables in two
- * columns; the recommended playlists as a page of captioned photographs; and the picks as a
- * numbered list. Signing in is advertised in a boxed notice, as a paper takes subscriptions.
+ * 报: the home page as a front page. Under the masthead the lead story is today's picks, its
+ * headline pressed by letterpress, a big halftone photograph and the day's running order beside
+ * it; then the classifieds (the other ways in as small boxed ads, what's playing as a stop-press
+ * line, the almanac's 宜 and 忌 in the last box); the charts set as tables in two columns; the
+ * recommended playlists as a page of captioned photographs; the picks as a numbered list; and the
+ * colophon at the foot. Signing in is advertised in a boxed notice, as a paper takes subscriptions.
  */
 @Composable
 internal fun PaperHome(model: HomeModel) {
@@ -55,7 +61,7 @@ internal fun PaperHome(model: HomeModel) {
         item { Header(model.now, model.account, model.openSettings, model.openAccount, Modifier.padding(horizontal = m)) }
         item { LeadStory(model, Modifier.padding(start = m, end = m, top = 16.dp)) }
         if (!model.signedIn) item { SubscribeNotice(model.login, Modifier.padding(start = m, end = m, top = 22.dp)) }
-        item { Briefs(model, Modifier.padding(start = m, end = m, top = 24.dp)) }
+        item { Classifieds(model, Modifier.padding(start = m, end = m, top = 24.dp)) }
         item {
             Column(Modifier.padding(start = m, end = m, top = 30.dp)) {
                 SectionTitle("排行榜", index = 2, trailing = "每日更新")
@@ -74,6 +80,7 @@ internal fun PaperHome(model: HomeModel) {
                 NumberedSong(i, picks.songs[i], picks.songs[i].id == model.player.playingSongId, { model.playPick(i) }, Modifier.padding(horizontal = m))
             }
         }
+        item { Colophon(model, Modifier.padding(start = m, end = m, top = 26.dp)) }
     }
 }
 
@@ -87,9 +94,9 @@ private fun LeadStory(model: HomeModel, modifier: Modifier) {
         Text("头版 · 每日推荐", style = style.type.caption.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.16.em), color = c.accent)
         Text(
             if (model.signedIn) "今天的 ${songs.size.coerceAtLeast(1)} 首歌已经送达" else "每日推荐：每天清晨六点送达",
-            style = style.type.display.copy(fontSize = 26.sp, lineHeight = 33.sp, fontWeight = FontWeight.Black, letterSpacing = 0.01.em),
+            style = style.type.display.copy(fontSize = 26.sp, lineHeight = 33.sp, fontWeight = FontWeight.Black, letterSpacing = 0.01.em).inked(c.content),
             color = c.content,
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = 4.dp).letterpress(),
         )
         Text(
             if (model.signedIn) "本报讯　按你最近常听的挑选，从《${songs.firstOrNull()?.name ?: "第一首"}》开始。" else "本报讯　扫码登录网易云音乐，每天按你的口味挑一份歌单。今天先看看大家在听什么。",
@@ -174,68 +181,99 @@ private fun SubscribeNotice(onLogin: () -> Unit, modifier: Modifier) {
     }
 }
 
-/** A column of briefs (what's playing, the other ways in) beside the almanac's box. */
+/** What each way in advertises under, and the number to ring. */
+private val AdHeads = listOf("电台" to "FM 0101", "寻物" to "♥ 5201", "行情" to "TOP 0100", "旧闻" to "☎ 0423", "存货" to "↓ 0808")
+
+/**
+ * The classifieds: what's playing as a stop-press line across the top, then the other ways in as
+ * small boxed ads two to a row (a heading in a black bar, the name in heavy type, the note, a
+ * number to ring), and in the last box the almanac's 宜 and 忌.
+ */
 @Composable
-private fun Briefs(model: HomeModel, modifier: Modifier) {
+private fun Classifieds(model: HomeModel, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
     val player = model.player
     val day = model.now.dayOfYear + model.now.year
     Column(modifier) {
         DoubleRule()
-        Row(Modifier.padding(top = 8.dp).height(IntrinsicSize.Min)) {
-            Column(Modifier.weight(1f)) {
-                Text("简讯", style = style.type.title.copy(fontWeight = FontWeight.Black), color = c.content)
-                if (!player.isEmpty) {
-                    Brief("正在播放", "《${player.title}》${player.artist}", model.openPlayer, lead = true)
-                }
-                model.doors.drop(1).forEach { door -> Brief(door.label, door.note, door.onClick) }
-            }
-            VRule(Modifier.padding(horizontal = 12.dp))
-            Column(Modifier.width(104.dp)) {
-                Text("今日宜忌", style = style.type.title.copy(fontWeight = FontWeight.Black), color = c.content)
-                Spacer(Modifier.height(6.dp))
-                Almanac("宜", Fitting[day % Fitting.size], lucky = true)
-                Spacer(Modifier.height(6.dp))
-                Almanac("忌", Avoid[(day * 3) % Avoid.size], lucky = false)
-                Spacer(Modifier.weight(1f))
+        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.Bottom) {
+            Text("分类广告", style = style.type.title.copy(fontWeight = FontWeight.Black).inked(c.content), color = c.content, modifier = Modifier.letterpress())
+            Spacer(Modifier.weight(1f))
+            Text("刊登热线　澜音广告部", style = style.type.caption.copy(fontStyle = FontStyle.Italic, fontSize = 11.sp), color = c.muted, maxLines = 1)
+        }
+        if (!player.isEmpty) {
+            Row(Modifier.padding(top = 8.dp).fillMaxWidth().pressable(onClick = model.openPlayer), verticalAlignment = Alignment.CenterVertically) {
+                Text("号外", style = style.type.caption.copy(fontWeight = FontWeight.Black), color = c.onAccent, modifier = Modifier.background(c.accent).padding(horizontal = 5.dp, vertical = 1.dp))
                 Text(
-                    "每日一换，\n仅供一笑。",
-                    style = style.type.caption.copy(fontStyle = FontStyle.Italic, fontSize = 11.sp, lineHeight = 15.sp),
-                    color = c.muted,
-                    modifier = Modifier.padding(top = 8.dp),
+                    "　《${player.title}》${player.artist}　正在播放",
+                    style = style.type.caption.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold), color = c.content,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                 )
+                Text("›", style = style.type.caption, color = c.muted)
+            }
+        }
+        val doors = model.doors.drop(1)
+        val cells = doors.size + 1
+        Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (row in 0 until (cells + 1) / 2) {
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (k in 0..1) {
+                        val i = row * 2 + k
+                        val cell = Modifier.weight(1f).fillMaxHeight().border(0.75.dp, c.content)
+                        when {
+                            i < doors.size -> {
+                                val door = doors[i]
+                                val (head, phone) = AdHeads[i % AdHeads.size]
+                                Column(cell.pressable(label = door.label, onClick = door.onClick).padding(bottom = 6.dp)) {
+                                    Text(
+                                        "【$head】", style = style.type.caption.copy(fontWeight = FontWeight.Black, fontSize = 11.sp),
+                                        color = c.bg, maxLines = 1, modifier = Modifier.fillMaxWidth().background(c.content).padding(horizontal = 6.dp, vertical = 1.dp),
+                                    )
+                                    Text(door.label, style = style.type.title.copy(fontSize = 15.sp, lineHeight = 19.sp, fontWeight = FontWeight.Black), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 4.dp))
+                                    Text(door.note, style = style.type.caption.copy(fontSize = 11.sp, lineHeight = 14.sp), color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 6.dp))
+                                    Spacer(Modifier.weight(1f))
+                                    Text("电话　$phone", style = style.type.caption.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold), color = if (i == 0) c.accent else c.content, maxLines = 1, modifier = Modifier.padding(start = 6.dp, top = 4.dp))
+                                }
+                            }
+                            i == doors.size -> Column(cell.padding(6.dp)) {
+                                Text("今日宜忌", style = style.type.caption.copy(fontWeight = FontWeight.Black, fontSize = 12.sp), color = c.content)
+                                Spacer(Modifier.height(4.dp))
+                                Almanac("宜", Fitting[day % Fitting.size], lucky = true)
+                                Spacer(Modifier.height(4.dp))
+                                Almanac("忌", Avoid[(day * 3) % Avoid.size], lucky = false)
+                                Text("每日一换，仅供一笑。", style = style.type.caption.copy(fontStyle = FontStyle.Italic, fontSize = 10.sp), color = c.muted, modifier = Modifier.padding(top = 4.dp))
+                            }
+                            else -> Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
             }
         }
     }
 }
 
+/**
+ * The colophon at the foot of the page, as every paper prints it: where it's published, the
+ * postcode, the printer, the price and the issue's barcode.
+ */
 @Composable
-private fun Brief(label: String, note: String, onClick: () -> Unit, lead: Boolean = false) {
+private fun Colophon(model: HomeModel, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).pressable(onClick = onClick).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.padding(end = 8.dp).width(5.dp).height(5.dp).background(if (lead) c.accent else c.content))
-        Text(
-            buildBrief(label, note),
-            style = style.type.caption.copy(fontSize = 13.sp),
-            color = c.content,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        Text("›", style = style.type.caption, color = c.muted)
+    Column(modifier.fillMaxWidth()) {
+        DoubleRule()
+        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("本报地址：你的耳机里　邮编 000000", style = style.type.caption.copy(fontSize = 10.sp), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("印刷：澜音印刷厂　本期 8 版　每份 0.00 元", style = style.type.caption.copy(fontSize = 10.sp), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("第 ${model.now.dayOfYear} 期　欢迎投稿，欢迎订阅", style = style.type.caption.copy(fontSize = 10.sp), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            androidx.compose.foundation.Canvas(Modifier.padding(start = 10.dp).size(64.dp, 26.dp)) {
+                drawBarcode(c.content, model.now.dayOfYear + model.now.year)
+            }
+        }
     }
-}
-
-@Composable
-private fun buildBrief(label: String, note: String) = androidx.compose.ui.text.buildAnnotatedString {
-    pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold))
-    append(label)
-    pop()
-    pushStyle(androidx.compose.ui.text.SpanStyle(color = Lanyin.colors.muted))
-    append("　$note")
-    pop()
 }
 
 @Composable

@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import io.lanyin.player.ui.design.DeviceScreen
 import io.lanyin.player.ui.design.DoubleRule
+import io.lanyin.player.ui.design.letterpress
 import io.lanyin.player.ui.design.GameScreen
 import io.lanyin.player.ui.design.PlayPauseButton
 import io.lanyin.player.ui.design.SeekBar
@@ -157,10 +159,12 @@ private fun AcidPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
 }
 
 /**
- * 报: the front page. The line being sung is the lead story's headline (its translation the
- * standfirst), changing as the song goes; the photograph (the artwork) across the page with its
- * caption; the lines to come set beneath in two columns as the rest of the story; the ticker
- * along the foot.
+ * 报: the front page. The line being sung is the lead story's headline, set in heavy type and
+ * printed as it's sung: the words still to come a pale first impression, the sung ones in full
+ * ink, pitted where the ink didn't take (its translation the standfirst). Registration marks and
+ * the press's control strip at the head of the sheet; the photograph is a press photo of the
+ * turntable from above, in halftone; the lines to come set beneath in two columns as the rest of
+ * the story; the ticker along the foot.
  */
 @Composable
 private fun PaperPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
@@ -180,7 +184,8 @@ private fun PaperPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
             val now by rememberMinuteClock()
             Text("%02d:%02d 付印".format(now.hour, now.minute), style = style.type.caption.copy(fontStyle = FontStyle.Italic), color = c.muted, maxLines = 1)
         }
-        DoubleRule(Modifier.padding(top = 4.dp, bottom = 8.dp))
+        DoubleRule(Modifier.padding(top = 4.dp, bottom = 3.dp))
+        io.lanyin.player.ui.design.PressMarks(Modifier.padding(bottom = 6.dp))
         val headline = lyricTextStyle(LyricSize.BASE_SP * 1.3f, stage.lyricScale).let {
             it.copy(fontFamily = style.display, fontWeight = FontWeight.Black, lineHeight = it.fontSize * 1.22f)
         }
@@ -193,10 +198,22 @@ private fun PaperPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
         ) { i ->
             val line = lines.getOrNull(i)
             Column {
-                Text(
-                    line?.text?.takeIf { it.isNotBlank() } ?: if (lines.isEmpty()) emptyLyricsNote(state) else "（间奏）",
-                    style = headline, color = c.content, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                )
+                val text = line?.text?.takeIf { it.isNotBlank() }
+                if (text != null) {
+                    // Printed as it's sung: a pale first impression, then the full ink.
+                    SungText(
+                        text, headline.copy(color = c.content.copy(alpha = 0.26f)),
+                        progress = { if (i == state.currentLyricIndex) state.lineProgress() else if (i < state.currentLyricIndex) 1f else 0f },
+                        paintSung = { drawText(it, color = c.content) },
+                        maxLines = 2,
+                        modifier = Modifier.letterpress(),
+                    )
+                } else {
+                    Text(
+                        if (lines.isEmpty()) emptyLyricsNote(state) else "（间奏）",
+                        style = headline, color = c.content, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.letterpress(),
+                    )
+                }
                 line?.translation?.let {
                     Text(it, style = style.type.caption.copy(fontStyle = FontStyle.Italic), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
@@ -207,15 +224,18 @@ private fun PaperPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
             style = style.type.caption.copy(fontStyle = FontStyle.Italic), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
         Box(Modifier.padding(vertical = 6.dp).fillMaxWidth().height(0.75.dp).background(c.content))
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), heightFraction = 0.96f, onClick = onShowLyrics)
+        Box(Modifier.weight(1f).fillMaxWidth().enter(stage.entrance, 1)) {
+            PressPhotoStage(stage, Modifier.fillMaxSize(), onClick = onShowLyrics)
             PaperPauseStamp(state, Modifier.align(Alignment.Center))
         }
-        Text(
-            "图：《${state.title}》　${state.artist}",
-            style = style.type.caption.copy(fontStyle = FontStyle.Italic, fontSize = fixedSp(11f)), color = c.muted,
-            maxLines = 1, overflow = TextOverflow.Ellipsis,
-        )
+        Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "图：《${state.title}》　${state.artist}",
+                style = style.type.caption.copy(fontStyle = FontStyle.Italic, fontSize = fixedSp(11f)), color = c.muted,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+            )
+            Text("本报记者 摄", style = style.type.caption.copy(fontSize = fixedSp(10f)), color = c.muted, maxLines = 1)
+        }
         // The story continues: the lines still to come, in two columns under a rule.
         Box(Modifier.padding(top = 6.dp, bottom = 6.dp).fillMaxWidth().height(0.75.dp).background(c.content))
         Row(Modifier.fillMaxWidth().height(62.dp).clipToBounds().opensLyrics(onShowLyrics)) {

@@ -1,5 +1,6 @@
 package io.lanyin.player.ui.music
 
+import io.lanyin.player.ui.design.letterpress
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -389,18 +390,32 @@ private fun DeviceHero(title: String, subtitle: String?, header: ListHeader, mod
 private fun PaperHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    Column(modifier.fillMaxWidth()) {
-        DoubleRule()
-        Text("歌单 · 澜音日报", style = style.type.caption.copy(fontWeight = FontWeight.Bold), color = c.accent, modifier = Modifier.padding(top = 8.dp))
-        Text(title, style = style.type.display.copy(fontWeight = FontWeight.Black), color = c.content, maxLines = 3, overflow = TextOverflow.Ellipsis)
-        if (subtitle != null) Text("本报讯　$subtitle", style = style.type.caption.copy(fontStyle = FontStyle.Italic), color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
-        if (header is ListHeader.Cover) {
-            Box(Modifier.padding(top = 12.dp).fillMaxWidth().aspectRatio(2.1f).border(1.dp, c.content)) {
-                HalftoneCover(header.url, header.seed, Modifier.fillMaxSize())
+    // Cut out of the paper and clipped to the page: the kicker and page, the headline pressed by
+    // letterpress, the byline, the photograph in halftone with its caption.
+    io.lanyin.player.ui.design.NewsClipping(modifier.fillMaxWidth().padding(top = 6.dp), tilt = -0.6f, seed = title.hashCode()) {
+        Column(Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("歌单 · 澜音日报", style = style.type.caption.copy(fontWeight = FontWeight.Bold), color = c.accent, modifier = Modifier.weight(1f))
+                Text("剪报", style = style.type.caption.copy(fontStyle = FontStyle.Italic), color = c.muted)
             }
-            Text("图：《$title》", style = style.type.caption.copy(fontStyle = FontStyle.Italic), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
-        } else {
-            Box(Modifier.padding(top = 12.dp)) { HeroArt(header, 88.dp) }
+            DoubleRule(Modifier.padding(top = 4.dp))
+            Text(
+                title, style = style.type.display.copy(fontWeight = FontWeight.Black, shadow = androidx.compose.ui.graphics.Shadow(c.content.copy(alpha = 0.4f), Offset.Zero, 1.6f)),
+                color = c.content, maxLines = 3, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 6.dp).letterpress(),
+            )
+            if (subtitle != null) Text("本报讯　$subtitle", style = style.type.caption.copy(fontStyle = FontStyle.Italic), color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+            if (header is ListHeader.Cover) {
+                Box(Modifier.padding(top = 10.dp).fillMaxWidth().aspectRatio(2.1f).border(0.75.dp, c.content)) {
+                    HalftoneCover(header.url, header.seed, Modifier.fillMaxSize())
+                }
+                Row(Modifier.padding(top = 4.dp)) {
+                    Text("图：《$title》", style = style.type.caption.copy(fontStyle = FontStyle.Italic), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Text("本报记者 摄", style = style.type.caption.copy(fontSize = 10.sp), color = c.muted, maxLines = 1)
+                }
+            } else {
+                Box(Modifier.padding(top = 10.dp)) { HeroArt(header, 88.dp) }
+            }
         }
     }
 }

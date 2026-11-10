@@ -1,5 +1,6 @@
 package io.lanyin.player.ui.desktop
 
+import io.lanyin.player.ui.design.newsprintBrush
 import io.lanyin.player.ui.design.drawUnitPlate
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -393,6 +394,8 @@ private fun PaperStrip(line: DesktopLine, sung: () -> Float, type: TextUnit, mod
             .drawBehind {
                 drawRect(Color.Black.copy(alpha = 0.12f), Offset(0f, 2.dp.toPx()), size)
                 drawRect(c.bg)
+                // The newsprint's fibres.
+                drawRect(newsprintBrush(), alpha = if (style.dark) 0.45f else 0.8f, blendMode = androidx.compose.ui.graphics.BlendMode.Overlay)
             }
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {

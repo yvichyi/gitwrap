@@ -1,5 +1,10 @@
 package io.lanyin.player.ui.home
 
+import androidx.compose.ui.text.TextStyle
+import io.lanyin.player.ui.design.letterpress
+import io.lanyin.player.ui.design.inked
+import io.lanyin.player.ui.design.drawBarcode
+import io.lanyin.player.ui.design.drawWeather
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -413,13 +418,24 @@ internal fun Header(now: LocalDateTime, account: AccountState, onOpenSettings: (
 }
 
 /**
- * 报's front page: the paper's name across the top in heavy type, the edition and the actions
- * above it, a rule, and the dateline with the issue number under it.
+ * 报's front page: the edition and the actions along the top; the paper's name across the middle
+ * in heavy type pressed by letterpress, between its two ears (报眼) — the weather on the left,
+ * the issue, the number of pages and the price over a barcode on the right; a double rule, and
+ * the dateline with the issue number under it.
  */
 @Composable
 internal fun Masthead(now: LocalDateTime, weekday: String, account: AccountState, onOpenSettings: () -> Unit, onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
+    // The masthead is a logo: it keeps its size whatever the font scale.
+    val px = androidx.compose.ui.platform.LocalDensity.current
+    fun fixed(dp: Float) = with(px) { dp.dp.toSp() }
+    val weather = when (now.hour) {
+        in 5..7 -> "晨雾"
+        in 8..16 -> "晴"
+        in 17..18 -> "晚霞"
+        else -> "月夜"
+    }
     Column(modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -429,13 +445,39 @@ internal fun Masthead(now: LocalDateTime, weekday: String, account: AccountState
             )
             HeaderActions(account, onOpenSettings, onLogin)
         }
-        Text(
-            "澜音日报",
-            style = style.type.display.copy(fontSize = 42.sp, lineHeight = 50.sp, fontWeight = FontWeight.Black, letterSpacing = 0.18.em, textAlign = TextAlign.Center),
-            color = c.content,
-            maxLines = 1,
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-        )
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            // The left ear: today's weather, as the paper prints it.
+            Column(
+                Modifier.width(66.dp).border(0.75.dp, c.content).padding(horizontal = 5.dp, vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("今日天气", style = TextStyle(fontFamily = style.display, fontWeight = FontWeight.Bold, fontSize = fixed(9f)), color = c.content, maxLines = 1)
+                androidx.compose.foundation.Canvas(Modifier.padding(vertical = 2.dp).size(30.dp, 22.dp)) {
+                    drawWeather(now.hour, c.content, c.accent, c.bg)
+                }
+                Text("$weather · 宜听歌", style = TextStyle(fontFamily = style.display, fontSize = fixed(8.5f)), color = c.muted, maxLines = 1)
+            }
+            Text(
+                "澜音日报",
+                style = style.type.display.copy(fontSize = fixed(38f), lineHeight = fixed(46f), fontWeight = FontWeight.Black, letterSpacing = 0.06.em, textAlign = TextAlign.Center)
+                    .inked(c.content),
+                color = c.content,
+                maxLines = 1,
+                modifier = Modifier.weight(1f).letterpress(),
+            )
+            // The right ear: the issue, the pages, the price, the barcode.
+            Column(
+                Modifier.width(66.dp).border(0.75.dp, c.content).padding(horizontal = 5.dp, vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("第${now.dayOfYear}期", style = TextStyle(fontFamily = style.display, fontWeight = FontWeight.Bold, fontSize = fixed(9f)), color = c.content, maxLines = 1)
+                Text("今日 8 版", style = TextStyle(fontFamily = style.display, fontSize = fixed(8.5f)), color = c.muted, maxLines = 1)
+                androidx.compose.foundation.Canvas(Modifier.padding(top = 2.dp).size(48.dp, 14.dp)) {
+                    drawBarcode(c.content, now.dayOfYear + now.year)
+                }
+                Text("定价 0.00 元", style = TextStyle(fontFamily = style.display, fontSize = fixed(8f)), color = c.muted, maxLines = 1)
+            }
+        }
         DoubleRule(Modifier.padding(top = 6.dp))
         Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("${now.year}年${now.monthValue}月${now.dayOfMonth}日　$weekday", style = style.type.caption, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
