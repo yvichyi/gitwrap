@@ -131,47 +131,10 @@ private fun NeonPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
     NeonPortraitStage(stage, onShowLyrics)
 }
 
-/** 机: the screen with the artwork and a few lines, and the panel under it: VU meters, counter and knob. */
+/** 机: the cassette deck: the tape behind its door, the counter, the fluorescent display. */
 @Composable
 private fun DevicePortrait(stage: StageContext, onShowLyrics: () -> Unit) {
-    val state = stage.state
-    Column(Modifier.fillMaxSize()) {
-        DeviceScreen(Modifier.weight(1f).fillMaxWidth().padding(top = 2.dp).enter(stage.entrance, 1)) {
-            ScreenHeader(state, meter = false)
-            StageArtwork(stage, Modifier.weight(1f).fillMaxWidth().then(stage.dismissDrag), heightFraction = 0.96f, onClick = onShowLyrics, ripples = true)
-            LyricsWindow(stage, onShowLyrics, Modifier.fillMaxWidth().height(96.dp))
-        }
-        DeckStrip(state, Modifier.fillMaxWidth().padding(top = 12.dp).height(78.dp).enter(stage.entrance, 2))
-    }
-}
-
-/** 机's panel along the foot of the screen: the low and high VU meters, the tape counter and the position knob. */
-@Composable
-private fun DeckStrip(state: PlayerState, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val screen = remember(style) { style.screenStyle() }
-    val mono = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, letterSpacing = 0.1.em)
-    // The counter turns by the second; reading the position itself would recompose the panel every frame.
-    val seconds by remember(state) { derivedStateOf { (state.positionMs / 1000).toInt() } }
-    Row(
-        modifier.themedSurface().padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        for ((name, bands) in listOf("LOW" to (0 until 10), "HIGH" to (14 until 30))) {
-            Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).background(screen.colors.bg), contentAlignment = Alignment.Center) {
-                CompositionLocalProvider(LocalLanyinStyle provides screen) {
-                    VuMeter(state.audioFeed, state.isPlaying, Modifier.padding(horizontal = 4.dp, vertical = 3.dp).fillMaxSize(), bands = bands, label = name)
-                }
-            }
-        }
-        Column {
-            Text(rememberBpm(state)?.let { "BPM $it" } ?: "COUNTER", style = mono.copy(fontSize = fixedSp(8f)), color = c.accent, maxLines = 1)
-            TapeCounter(seconds, Modifier.padding(top = 3.dp))
-        }
-        PositionKnob(state, Modifier.size(52.dp))
-    }
+    DeckPortraitStage(stage, onShowLyrics)
 }
 
 /** 点: the record inside its Glyph lights, and the line being sung on the dot-matrix display. */

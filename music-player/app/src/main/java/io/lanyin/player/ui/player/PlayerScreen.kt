@@ -287,7 +287,8 @@ private fun PortraitPlayer(
             }
         }
         // 暮's slip and 霓's console panel carry the title on their stages.
-        if (style.backdrop != BackdropKind.Dusk && style.backdrop != BackdropKind.Neon || lyricsOnly) TrackTitle(state, Modifier.padding(top = 14.dp).enter(entrance, 3))
+        // 机's display carries it on the deck.
+        if (style.backdrop != BackdropKind.Dusk && style.backdrop != BackdropKind.Neon && style.backdrop != BackdropKind.Device || lyricsOnly) TrackTitle(state, Modifier.padding(top = 14.dp).enter(entrance, 3))
         SeekBar(
             state::positionMs, state.durationMs, state.isPlaying, state::seekTo,
             Modifier.padding(top = 10.dp).enter(entrance, 4),
@@ -771,7 +772,10 @@ internal fun PlayerTopBar(state: PlayerState, onCollapse: () -> Unit, modifier: 
                         Text("NOW PLAYING", style = style.type.label.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold, fontSize = 13.sp), color = c.content, maxLines = 1)
                     }
                     // 机: the maker's name and model, as printed on the case.
-                    BackdropKind.Device -> Text("LANYIN · L-01", style = style.type.label.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold), color = c.content, maxLines = 1)
+                    BackdropKind.Device -> Row(verticalAlignment = Alignment.CenterVertically) {
+                        io.lanyin.player.ui.design.Wordmark(c.content, 14f)
+                        Text("  TC-18 · CASSETTE DECK", style = io.lanyin.player.ui.design.engraved(7.5f), color = c.muted, maxLines = 1)
+                    }
                     // 报: the masthead.
                     BackdropKind.Paper -> Text("澜音日报", style = style.type.title.copy(fontFamily = style.display, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 0.16.em), color = c.content, maxLines = 1)
                     // 游: the console's name, in the navy of its lettering.
@@ -904,6 +908,12 @@ internal fun UtilityRow(
 internal fun TransportControls(state: PlayerState, playSize: Dp, modifier: Modifier = Modifier) {
     val style = Lanyin.style
     val c = style.colors
+    // 机: the deck's piano keys.
+    if (style.backdrop == BackdropKind.Device) {
+        val compact = playSize < 60.dp
+        DeckKeys(state, modifier.then(if (compact) Modifier.height(44.dp) else Modifier), compact = compact)
+        return
+    }
     // 机's transport is a row of keys, 游's the console's dark D-pad keys.
     val keys = style.button == ButtonKind.Key || style.button == ButtonKind.Pad
     val cap = when (style.button) {

@@ -1,5 +1,6 @@
 package io.lanyin.player.ui.desktop
 
+import io.lanyin.player.ui.design.drawUnitPlate
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -134,8 +135,11 @@ private fun lightLook(): LightLook {
         BackdropKind.Grid -> LightLook(null, FontWeight.Black, false, 0.85f, true) { drawText(it, color = GridYellow) }
         // 点: white LEDs lighting.
         BackdropKind.Dot -> LightLook(null, FontWeight.Bold, false, 0.45f, false) { drawText(it, color = Color.White) }
-        // 机: the display's orange.
-        BackdropKind.Device -> LightLook(null, FontWeight.Bold, false, 0.85f, false) { drawText(it, color = c.accent) }
+        // 机: the fluorescent display's phosphor, glowing.
+        BackdropKind.Device -> LightLook(io.lanyin.player.ui.theme.PixelFamily, FontWeight.Normal, false, 0.8f, false) {
+            drawText(it, color = io.lanyin.player.ui.design.Hifi.Vfd, shadow = Shadow(io.lanyin.player.ui.design.Hifi.Vfd, Offset.Zero, 14f))
+            drawText(it, color = lerp(io.lanyin.player.ui.design.Hifi.Vfd, Color.White, 0.3f))
+        }
         // 报: the masthead's face, the red pen.
         BackdropKind.Paper -> LightLook(style.display, FontWeight.Black, false, 0.85f, false) { drawText(it, color = Color(0xFFE8443A)) }
         // 游: pixels, typed out in the screen's brightest green.
@@ -342,25 +346,25 @@ private fun DotStrip(line: DesktopLine, sung: () -> Float, type: TextUnit, modif
     }
 }
 
-/** 机: the device's screen in its bezel, the line as a readout. */
+/** 机: a strip of brushed plate with the fluorescent display set in it, the line lighting as it's sung. */
 @Composable
 private fun DeviceStrip(line: DesktopLine, sung: () -> Float, type: TextUnit, modifier: Modifier) {
     val style = Lanyin.style
     val screen = style.screenStyle().colors
     Row(
         modifier
-            .background(style.colors.bgDeep, RoundedCornerShape(14.dp))
-            .padding(6.dp)
-            .background(screen.bg, RoundedCornerShape(9.dp))
+            .drawBehind { drawUnitPlate(style, screws = false) }
+            .padding(horizontal = 8.dp, vertical = 7.dp)
+            .background(io.lanyin.player.ui.design.Hifi.Glass, RoundedCornerShape(2.dp))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("▶", style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(10f)), color = screen.accent)
+        Text("▶", style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(10f)), color = io.lanyin.player.ui.design.Hifi.Amber)
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             SungText(
-                line.text, TextStyle(fontWeight = FontWeight.Bold, fontSize = type, color = screen.muted.copy(alpha = 0.55f)), sung,
-                paintSung = { drawText(it, color = screen.content) }, maxLines = 1,
+                line.text, TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = type, color = screen.content.copy(alpha = 0.22f)), sung,
+                paintSung = { drawText(it, color = screen.content, shadow = Shadow(screen.content, Offset.Zero, 10f)) }, maxLines = 1,
             )
             Second(line.second, TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(10f)), screen.muted)
         }

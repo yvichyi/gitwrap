@@ -24,6 +24,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
@@ -50,29 +52,100 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
+/** 机's walnut, rendered with the concept's material renderer; set when the theme first draws. */
+internal object HifiTextures {
+    var walnut: ImageBitmap? = null
+}
+
 /**
- * 机: the case. Warm grey plastic, lit a little from above, with the fine texture moulded
- * plastic has; on the player two screws hold the bottom corners down.
+ * A strip of brushed aluminium, made once: rows of fine streaks, each a little lighter or darker,
+ * long along the brushing. Tiled across a panel it reads as the hairline finish.
+ */
+internal val brushedTile: ImageBitmap by lazy {
+    val w = 512
+    val h = 128
+    val rnd = java.util.Random(11)
+    val rowShade = FloatArray(h) { rnd.nextGaussian().toFloat() }
+    val pixels = IntArray(w * h)
+    for (y in 0 until h) {
+        var v = 0f
+        for (x in 0 until w) {
+            // Streaks run along the row: noise smoothed heavily in x, fresh per row.
+            v = v * 0.96f + rnd.nextGaussian().toFloat() * 0.2f
+            val l = (128 + (rowShade[y] * 0.55f + v) * 26f).toInt().coerceIn(0, 255)
+            pixels[y * w + x] = (0xff shl 24) or (l shl 16) or (l shl 8) or l
+        }
+    }
+    android.graphics.Bitmap.createBitmap(pixels, w, h, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
+}
+
+internal val brushedBrush: Brush by lazy {
+    androidx.compose.ui.graphics.ShaderBrush(androidx.compose.ui.graphics.ImageShader(brushedTile, androidx.compose.ui.graphics.TileMode.Repeated, androidx.compose.ui.graphics.TileMode.Repeated))
+}
+
+/**
+ * Brushed aluminium over [size]: the finish's colour lighter at the top, the hairline streaks, and
+ * the soft vertical band a studio light leaves across a brushed panel.
+ */
+internal fun DrawScope.drawBrushedMetal(base: Color, dark: Boolean, band: Float = 0.3f) {
+    drawRect(Brush.verticalGradient(listOf(lerp(base, Color.White, if (dark) 0.05f else 0.18f), base, lerp(base, Color.Black, if (dark) 0.2f else 0.08f))))
+    drawRect(brushedBrush, alpha = if (dark) 0.12f else 0.2f, blendMode = androidx.compose.ui.graphics.BlendMode.Overlay)
+    drawRect(Brush.horizontalGradient(
+        0f to Color.Transparent, (band - 0.14f).coerceAtLeast(0f) to Color.Transparent,
+        band to Color.White.copy(alpha = if (dark) 0.06f else 0.2f),
+        (band + 0.16f).coerceAtMost(1f) to Color.Transparent, 1f to Color.Transparent,
+    ))
+}
+
+/**
+ * 机: the faceplate the pages are on, in its walnut cabinet. Brushed aluminium (champagne, or
+ * black anodised at night) between two walnut cheeks, a dark gap and a bright chamfer where the
+ * plate meets the wood.
  */
 internal fun DrawScope.drawDeviceCase(style: LanyinStyle, page: Boolean) {
     val c = style.colors
     val w = size.width
     val h = size.height
-    drawRect(Brush.verticalGradient(listOf(lerp(c.bg, Color.White, if (style.dark) 0.03f else 0.16f), c.bg, c.bgDeep)))
-    drawRect(grainBrush, alpha = if (style.dark) 0.06f else 0.05f)
+    drawBrushedMetal(c.bg, style.dark)
+    val cheek = 9.dp.toPx()
+    val wood = HifiTextures.walnut
+    for (x0 in floatArrayOf(0f, w - cheek)) {
+        if (wood != null) {
+            var y = 0f
+            val tile = wood.height * (cheek / wood.width.toFloat()).coerceAtLeast(0.01f) * 3f
+            while (y < h) {
+                drawImage(wood, srcOffset = androidx.compose.ui.unit.IntOffset.Zero, srcSize = androidx.compose.ui.unit.IntSize(wood.width / 3, wood.height), dstOffset = androidx.compose.ui.unit.IntOffset(x0.toInt(), y.toInt()), dstSize = androidx.compose.ui.unit.IntSize(cheek.toInt() + 1, tile.toInt() + 1))
+                y += tile
+            }
+        } else {
+            drawRect(Color(0xFF3A2416), Offset(x0, 0f), Size(cheek, h))
+        }
+    }
+    // Where plate meets wood: a dark gap, then the plate's bright chamfer.
+    drawRect(Color.Black.copy(alpha = 0.55f), Offset(cheek, 0f), Size(1.dp.toPx(), h))
+    drawRect(Color.White.copy(alpha = if (style.dark) 0.12f else 0.55f), Offset(cheek + 1.dp.toPx(), 0f), Size(1.dp.toPx(), h))
+    drawRect(Color.Black.copy(alpha = 0.55f), Offset(w - cheek - 1.dp.toPx(), 0f), Size(1.dp.toPx(), h))
+    drawRect(Color.Black.copy(alpha = 0.18f), Offset(w - cheek - 2.dp.toPx(), 0f), Size(1.dp.toPx(), h))
     if (page) return
-    val inset = 11.dp.toPx()
+    val inset = 11.dp.toPx() + cheek
     drawScrew(style, Offset(inset, h - inset), 20f)
     drawScrew(style, Offset(w - inset, h - inset), -35f)
 }
 
-private fun DrawScope.drawScrew(style: LanyinStyle, at: Offset, slot: Float) {
-    val c = style.colors
+/** A hex-socket screw: a domed head catching the light from the top left, the socket dark. */
+internal fun DrawScope.drawScrew(style: LanyinStyle, at: Offset, slot: Float) {
     val r = 3.5.dp.toPx()
-    drawCircle(Color.White.copy(alpha = if (style.dark) 0.05f else 0.5f), r, at + Offset(0f, 0.8f * density))
-    drawCircle(lerp(c.bgDeep, Color.Black, 0.08f), r, at)
-    drawCircle(Brush.radialGradient(listOf(Color.Black.copy(alpha = 0.25f), Color.Transparent), at, r), r, at)
-    rotate(slot, at) { drawLine(Color.Black.copy(alpha = 0.35f), at - Offset(r * 0.7f, 0f), at + Offset(r * 0.7f, 0f), 1.dp.toPx()) }
+    drawCircle(Color.Black.copy(alpha = 0.5f), r + 0.8.dp.toPx(), at)
+    drawCircle(Brush.radialGradient(listOf(Color(0xFFE9EAEC), Color(0xFF8B8F94), Color(0xFF55585C)), at - Offset(r * 0.35f, r * 0.4f), r * 1.4f), r, at)
+    val hex = Path().apply {
+        for (k in 0 until 6) {
+            val a = (slot + k * 60f) * PI.toFloat() / 180f
+            val p = at + Offset(cos(a) * r * 0.42f, sin(a) * r * 0.42f)
+            if (k == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+        }
+        close()
+    }
+    drawPath(hex, Color(0xFF1C1D1F))
 }
 
 /** A key's face from top to bottom, the lip it sits on and its rim. */
@@ -81,9 +154,9 @@ internal class KeyColors(val top: Color, val bottom: Color, val lip: Color, val 
 internal fun LanyinStyle.keyColors(accent: Boolean = false): KeyColors {
     val c = colors
     return when {
-        accent -> KeyColors(lerp(c.accent, Color.White, 0.16f), c.accent, lerp(c.accent, Color.Black, 0.28f), lerp(c.accent, Color.Black, 0.12f))
-        dark -> KeyColors(Color(0xFF46474C), Color(0xFF38393E), Color(0xFF1B1C1F), Color(0xFF4F5055))
-        else -> KeyColors(Color(0xFFF9F7F2), Color(0xFFE8E5DD), Color(0xFFC6C2B8), Color(0xFFD3CFC6))
+        accent -> KeyColors(lerp(c.accent, Color.White, 0.16f), c.accent, lerp(c.accent, Color.Black, 0.45f), lerp(c.accent, Color.Black, 0.3f))
+        dark -> KeyColors(Color(0xFF3C3D41), Color(0xFF26272A), Color(0xFF0B0B0C), Color(0xFF55565B))
+        else -> KeyColors(Color(0xFFE6E1D5), Color(0xFFC3BCAD), Color(0xFF6E685D), Color(0xFF8F887B))
     }
 }
 
@@ -105,6 +178,8 @@ internal fun DrawScope.drawKeycap(shape: Shape, keys: KeyColors, press: Float = 
     translate(0f, keyTravel.toPx()) { drawOutline(outline, keys.lip) }
     translate(0f, travel) {
         drawOutline(outline, Brush.verticalGradient(listOf(keys.top, keys.bottom)))
+        // The aluminium's hairline brushing, and its diamond-cut edge.
+        drawOutline(outline, brushedBrush, alpha = 0.16f, blendMode = androidx.compose.ui.graphics.BlendMode.Overlay)
         drawOutline(outline, keys.rim, style = Stroke(1.dp.toPx()))
         // Light catching the top edge, fading down the sides.
         drawOutline(
@@ -124,50 +199,51 @@ fun Modifier.keycap(shape: Shape, style: LanyinStyle, accent: Boolean = false, p
 }
 
 /**
- * 机's progress: a fader. A recessed groove, the part played filled in ink, and a ribbed cap
- * that slides along it, its grip line orange while held.
+ * 机's progress: the tape scale of the cassette deck. A strip of black glass lit from below by
+ * two warm lamps, minute and quarter ticks along it, the part played lit amber, and the red
+ * pointer where the tape is; it brightens while dragged.
  */
 internal fun DrawScope.drawFaderTrack(f: Float, dragging: Float, style: LanyinStyle) {
-    val c = style.colors
-    val cy = size.height / 2f
-    val x = size.width * f
-    val groove = 6.dp.toPx()
-    val top = cy - groove / 2f
-    val round = CornerRadius(groove / 2f)
-    drawRoundRect(if (style.dark) Color.Black.copy(alpha = 0.5f) else Color(0xFFCAC6BD), Offset(0f, top), Size(size.width, groove), round)
-    drawRoundRect(Color.Black.copy(alpha = 0.16f), Offset(0f, top), Size(size.width, groove * 0.45f), round)
-    if (x > 0f) drawRoundRect(c.content, Offset(0f, top + 1.dp.toPx()), Size(x, groove - 2.dp.toPx()), round)
-    // Scale marks under the groove at each quarter.
-    for (k in 0..4) {
-        val tx = size.width * k / 4f
-        drawLine(c.muted.copy(alpha = 0.6f), Offset(tx, cy + groove), Offset(tx, cy + groove + 3.dp.toPx()), 1.dp.toPx())
+    val h = 18.dp.toPx()
+    val top = (size.height - h) / 2f
+    val w = size.width
+    val x = w * f
+    val round = CornerRadius(2.dp.toPx())
+    // The bezel: dark above, bright below.
+    drawRoundRect(Color.Black.copy(alpha = 0.6f), Offset(-1.dp.toPx(), top - 1.dp.toPx()), Size(w + 2.dp.toPx(), h + 1.dp.toPx()), round)
+    drawRoundRect(Color.White.copy(alpha = if (style.dark) 0.12f else 0.6f), Offset(-1.dp.toPx(), top + h - 0.5.dp.toPx()), Size(w + 2.dp.toPx(), 1.dp.toPx()), round)
+    drawRoundRect(Color(0xFF120E0A), Offset(0f, top), Size(w, h), round)
+    for (lx in floatArrayOf(w * 0.22f, w * 0.78f)) {
+        drawRect(Brush.radialGradient(listOf(Color(0xFFFFB45A).copy(alpha = 0.22f + 0.1f * dragging), Color.Transparent), Offset(lx, top + h * 1.1f), w * 0.35f), Offset(0f, top), Size(w, h))
     }
-    val knob = Size(22.dp.toPx(), 28.dp.toPx())
-    val keys = style.keyColors()
-    translate(x - knob.width / 2f, cy - knob.height / 2f - 1.dp.toPx()) {
-        val corner = CornerRadius(5.dp.toPx())
-        drawRoundRect(Color.Black.copy(alpha = 0.2f), Offset(0f, 2.5.dp.toPx()), knob, corner)
-        drawRoundRect(Brush.verticalGradient(listOf(keys.top, keys.bottom), 0f, knob.height), Offset.Zero, knob, corner)
-        drawRoundRect(keys.rim, Offset.Zero, knob, corner, style = Stroke(1.dp.toPx()))
-        for (k in -1..1) {
-            val y = knob.height / 2f + k * 4.dp.toPx()
-            drawLine(
-                if (k == 0) lerp(c.content, c.accent, dragging) else c.content.copy(alpha = 0.25f),
-                Offset(knob.width * 0.25f, y), Offset(knob.width * 0.75f, y),
-                (if (k == 0) 2f else 1f) * density,
-            )
-        }
+    val lamp = Color(0xFFFFDDA8)
+    for (k in 0..40) {
+        val tx = w * k / 40f
+        val big = k % 8 == 0
+        drawLine(lamp.copy(alpha = if (big) 0.9f else 0.55f), Offset(tx, top + h - 2.dp.toPx()), Offset(tx, top + h - (if (big) 9 else if (k % 2 == 0) 6 else 4).dp.toPx()), (if (big) 1.2f else 0.7f) * density)
     }
+    if (x > 0f) drawRect(Color(0xFFFF8A3D).copy(alpha = 0.9f), Offset(0f, top + h - 2.5.dp.toPx()), Size(x, 1.5.dp.toPx()))
+    drawRect(Color(0xFFFF3B22), Offset(x - 1.dp.toPx(), top + 1.5.dp.toPx()), Size(2.dp.toPx(), h - 3.dp.toPx()))
+    drawRect(Brush.radialGradient(listOf(Color(0xFFFF3B22).copy(alpha = 0.45f), Color.Transparent), Offset(x, top + h / 2f), 10.dp.toPx()), Offset(x - 10.dp.toPx(), top), Size(20.dp.toPx(), h))
+    // The glass's reflection along its top.
+    drawRect(Color.White.copy(alpha = 0.05f), Offset(0f, top), Size(w, h * 0.35f))
 }
 
-/** The colours inside 机's screen: black glass lit in warm white, the case's accents kept. */
+/**
+ * The colours inside 机's screen: a vacuum fluorescent display behind black glass, its segments
+ * cyan, unlit ones a faint ghost; amber for what's marked.
+ */
 fun LanyinStyle.screenStyle(): LanyinStyle = copy(
     dark = true,
+    display = io.lanyin.player.ui.theme.PixelFamily,
+    displayWeight = FontWeight.Normal,
+    body = io.lanyin.player.ui.theme.PixelFamily,
     colors = colors.copy(
-        bg = Color(0xFF121311), bgDeep = Color(0xFF0B0C0B), surface = Color(0xFF1B1D1A), surfaceAlt = Color(0xFF232521),
-        content = Color(0xFFF1EFE6), muted = Color(0xFF80847A), onAccent = Color.White,
-        outline = Color(0x26F1EFE6), vinyl = Color(0xFF0B0C0B),
+        bg = Color(0xFF050807), bgDeep = Color(0xFF030504), surface = Color(0xFF0A100E), surfaceAlt = Color(0xFF0E1613),
+        content = Color(0xFF6DF5D6), muted = Color(0xFF2E8C79), accent = Color(0xFFFFB03A), accentAlt = Color(0xFF6DF5D6), onAccent = Color(0xFF1A1006),
+        outline = Color(0x336DF5D6), vinyl = Color(0xFF030504), like = Color(0xFFFF5A45),
     ),
+    lyric = lyric.copy(glow = true),
 )
 
 /**
@@ -179,11 +255,13 @@ fun LanyinStyle.screenStyle(): LanyinStyle = copy(
 fun DeviceScreen(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val style = Lanyin.style
     val screen = remember(style) { style.screenStyle() }
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RoundedCornerShape(4.dp)
     Column(
         modifier
             .drawBehind {
-                drawRoundRect(Color.White.copy(alpha = if (style.dark) 0.06f else 0.75f), Offset(0f, 1.5.dp.toPx()), size, CornerRadius(22.dp.toPx()))
+                // The polished bezel: dark above where the plate shades it, bright below.
+                drawRoundRect(Color.Black.copy(alpha = 0.55f), Offset(-1.5.dp.toPx(), -1.5.dp.toPx()), Size(size.width + 3.dp.toPx(), size.height + 1.5.dp.toPx()), CornerRadius(5.dp.toPx()))
+                drawRoundRect(Color.White.copy(alpha = if (style.dark) 0.14f else 0.8f), Offset(-1.dp.toPx(), 1.5.dp.toPx()), Size(size.width + 2.dp.toPx(), size.height), CornerRadius(5.dp.toPx()))
             }
             .clip(shape)
             .background(screen.colors.bg)
@@ -193,10 +271,17 @@ fun DeviceScreen(modifier: Modifier = Modifier, content: @Composable ColumnScope
                 val sheen = Path().apply {
                     moveTo(size.width * 0.55f, 0f); lineTo(size.width * 0.78f, 0f); lineTo(size.width * 0.48f, size.height); lineTo(size.width * 0.25f, size.height); close()
                 }
+                val mesh = 2.dp.toPx()
                 onDrawWithContent {
                     drawContent()
+                    // The fine grid in front of the phosphor, then the glass.
+                    var gx = 0f
+                    while (gx < size.width) {
+                        drawRect(Color.Black.copy(alpha = 0.18f), Offset(gx, 0f), Size(0.6f * density, size.height))
+                        gx += mesh
+                    }
                     drawRect(shade)
-                    drawPath(sheen, Color.White.copy(alpha = 0.025f))
+                    drawPath(sheen, Color.White.copy(alpha = 0.04f))
                 }
             }
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -319,17 +404,4 @@ internal fun DrawScope.deviceCover(style: LanyinStyle, seed: Int) {
         }
     }
     drawRect(grainBrush, alpha = 0.08f)
-}
-
-/** 机's motif: a knob with its pointer and a scale of dots round it. */
-internal fun DrawScope.deviceMotif(color: Color, accent: Color) {
-    val r = size.minDimension * 0.28f
-    val c = center
-    drawCircle(color, r, c, style = Stroke(r * 0.12f))
-    val a = (-50f) / 180f * PI.toFloat()
-    drawLine(accent, c, Offset(c.x + cos(a) * r * 0.8f, c.y + sin(a) * r * 0.8f), r * 0.14f, StrokeCap.Round)
-    for (k in 0..10) {
-        val u = (135f + k * 27f) / 180f * PI.toFloat()
-        drawCircle(color.copy(alpha = if (k < 6) 1f else 0.35f), r * 0.05f, Offset(c.x + cos(u) * r * 1.35f, c.y + sin(u) * r * 1.35f))
-    }
 }

@@ -283,6 +283,15 @@ private fun DrawScope.duskCover(style: LanyinStyle, seed: Int) {
 @Composable
 fun ThemeMotif(color: Color, modifier: Modifier = Modifier) {
     val style = Lanyin.style
+    // 机: a real knob, turned up a little, with its scale.
+    if (style.theme == AppTheme.DEVICE) {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier, contentAlignment = androidx.compose.ui.Alignment.Center) {
+            val d = minOf(maxWidth, maxHeight)
+            Canvas(Modifier.matchParentSize()) { drawKnobScale(color, minOf(size.width, size.height) * 0.46f, count = 11, lit = 4) }
+            HifiKnob(d * 0.72f, -60f)
+        }
+        return
+    }
     Canvas(modifier) {
         val w = size.width
         val h = size.height
@@ -299,7 +308,8 @@ fun ThemeMotif(color: Color, modifier: Modifier = Modifier) {
                 drawArc(color.copy(alpha = 1f - i * 0.2f), 180f, 180f, false, Offset(center.x - rr, h * 0.75f - rr), Size(rr * 2, rr * 2), style = Stroke(r * 0.12f))
             }
             AppTheme.DOT -> dotMotif(color, style.colors.accentAlt)
-            AppTheme.DEVICE -> deviceMotif(color, style.colors.accent)
+            // 机's knob is a component of its own, above.
+            AppTheme.DEVICE -> Unit
             AppTheme.PAPER -> paperMotif(color, style.colors.accent)
             AppTheme.GAME -> gameMotif(color)
             AppTheme.ACID -> acidMotif(color, style.colors.accent)

@@ -365,7 +365,14 @@ private fun ThemeThumbnail() {
         Column(Modifier.fillMaxSize().padding(10.dp)) {
             Text(greeting(java.time.LocalTime.now().hour), style = style.type.display.copy(fontSize = 16.sp, lineHeight = 20.sp), color = c.content)
             Spacer(Modifier.height(12.dp))
-            CoverArt(3, Modifier.size(54.dp).clip(style.artShape))
+            if (style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Device) {
+                // 机: the tuner's display, on 107.7.
+                Box(Modifier.fillMaxWidth().height(54.dp).background(io.lanyin.player.ui.design.Hifi.Glass, RoundedCornerShape(2.dp)), contentAlignment = Alignment.Center) {
+                    io.lanyin.player.ui.design.SevenSeg("107.7", 26.dp)
+                }
+            } else {
+                CoverArt(3, Modifier.size(54.dp).clip(style.artShape))
+            }
             Spacer(Modifier.height(10.dp))
             Text(
                 "潮水退去以后",

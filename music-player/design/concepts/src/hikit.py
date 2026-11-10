@@ -179,6 +179,8 @@ def knob(p, cx, cy, r, face, angle=-40., finish="alu", height=None, mark="line",
     p.paint(ring, alb=ALU_HI if finish == "alu" else (.7, .7, .7), rough=.06, aniso=0., panelk=0., metal=1., smod=1.)
     # Pointer.
     a = math.radians(angle - 90)
+    if mark == "none":
+        return base + height + 2.2
     if mark == "line":
         x0, y0 = cx_ + math.cos(a) * r_ * rc * .42, cy_ + math.sin(a) * r_ * rc * .42
         x1, y1 = cx_ + math.cos(a) * r_ * rc * .86, cy_ + math.sin(a) * r_ * rc * .86

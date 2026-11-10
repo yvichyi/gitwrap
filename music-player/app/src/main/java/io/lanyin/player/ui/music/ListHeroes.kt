@@ -327,38 +327,42 @@ private fun DotHero(title: String, subtitle: String?, header: ListHeader, modifi
  */
 @Composable
 private fun DeviceHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
-    val mono = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9.5f), letterSpacing = 0.12.em)
-    DeviceScreen(modifier.fillMaxWidth()) {
-        val style = Lanyin.style
-        val c = style.colors
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("TRACK LIST", style = mono, color = c.muted)
-            Spacer(Modifier.weight(1f))
-            Box(Modifier.size(6.dp).background(c.accent, CircleShape))
-            Spacer(Modifier.width(6.dp))
-            Text("READY", style = mono, color = c.content)
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.Bottom) {
-            HeroArt(header, 132.dp, Modifier.clip(RoundedCornerShape(8.dp)))
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = style.type.title.copy(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold), color = c.content, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                if (subtitle != null) {
-                    Text(subtitle, style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-                }
+    val c = Lanyin.colors
+    val vfd = io.lanyin.player.ui.design.Hifi.Vfd
+    val glow = androidx.compose.ui.graphics.Shadow(vfd.copy(alpha = 0.6f), Offset.Zero, 9f)
+    io.lanyin.player.ui.design.HifiUnit(
+        "CD-1 · COMPACT DISC PLAYER",
+        modifier.fillMaxWidth(),
+        trailing = { io.lanyin.player.ui.design.Led(io.lanyin.player.ui.design.Hifi.Red, on = true) },
+    ) {
+        Row(Modifier.padding(top = 10.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // The tray, open, with the disc in it.
+            Box(
+                Modifier
+                    .size(128.dp)
+                    .background(Color(0xFF1C1A19), RoundedCornerShape(3.dp))
+                    .padding(6.dp),
+            ) {
+                io.lanyin.player.ui.design.CompactDisc(Modifier.fillMaxSize()) { HeroArt(header, 116.dp, Modifier) }
             }
-        }
-        Canvas(Modifier.fillMaxWidth().padding(top = 14.dp).height(5.dp)) {
-            val n = 32
-            val gap = 2.dp.toPx()
-            val w = (size.width - gap * (n - 1)) / n
-            for (i in 0 until n) {
-                val color = when {
-                    i < 7 -> c.content.copy(alpha = 0.85f)
-                    i < 9 -> c.accent
-                    else -> c.content.copy(alpha = 0.1f)
+            Spacer(Modifier.width(12.dp))
+            Column(
+                Modifier
+                    .weight(1f)
+                    .height(128.dp)
+                    .background(io.lanyin.player.ui.design.Hifi.Glass, RoundedCornerShape(3.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("DISC", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(8f)), color = vfd)
+                    Spacer(Modifier.weight(1f))
+                    Text("READY", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(8f)), color = io.lanyin.player.ui.design.Hifi.Amber)
                 }
-                drawRoundRect(color, Offset(i * (w + gap), 0f), Size(w, size.height), CornerRadius(1.dp.toPx()))
+                Spacer(Modifier.weight(1f))
+                Text(title, style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(18f), lineHeight = fixed(22f), shadow = glow), color = vfd, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (subtitle != null) {
+                    Text(subtitle, style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(10.5f), lineHeight = fixed(14f)), color = vfd.copy(alpha = 0.6f), maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                }
             }
         }
     }

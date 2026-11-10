@@ -84,6 +84,8 @@ fun Backdrop(
     val measurer = if (style.backdrop == BackdropKind.Grid || style.backdrop == BackdropKind.Dusk) androidx.compose.ui.text.rememberTextMeasurer() else null
     val hour by rememberHour()
     val audio = remember { BackdropAudio() }
+    // 机's walnut cheeks: the rendered grain, loaded before the case first draws.
+    if (style.backdrop == BackdropKind.Device) rememberWalnut()
     // A layer of its own, so redrawing the backdrop doesn't re-record what sits on it.
     Canvas(modifier.graphicsLayer()) {
         val t = if (animated) clock.floatValue else 0f

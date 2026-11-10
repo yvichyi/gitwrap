@@ -1,5 +1,6 @@
 package io.lanyin.player.ui.share
 
+import io.lanyin.player.ui.design.drawUnitPlate
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -273,35 +274,50 @@ private fun DotCard(lyric: CardLyric) {
     }
 }
 
-/** 机: the device's screen, the line on it as a readout, a printed label above and the model plate below. */
+/**
+ * 机: a cassette's J-card. The red band with the side and the tape, the song written on the
+ * spine by hand, and inside the line in a fluorescent display, set in the deck's brushed plate.
+ */
 @Composable
 private fun DeviceCard(lyric: CardLyric) {
     val style = Lanyin.style
     val c = style.colors
-    val screen = style.screenStyle().colors
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
-        Text(
-            "LYRIC · L-01", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9f), letterSpacing = 0.1.em), color = c.bg,
-            modifier = Modifier.background(c.content, RoundedCornerShape(3.dp)).padding(horizontal = 5.dp, vertical = 1.dp),
-        )
+    val vfd = io.lanyin.player.ui.design.Hifi.Vfd
+    val glow = androidx.compose.ui.graphics.Shadow(vfd.copy(alpha = 0.6f), androidx.compose.ui.geometry.Offset.Zero, 10f)
+    Column(
+        Modifier
+            .fillMaxSize()
+            .drawBehind { drawUnitPlate(style) }
+            .padding(horizontal = 22.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            io.lanyin.player.ui.design.Wordmark(c.content, 15f)
+            Text("  TC-18 · LYRIC", style = io.lanyin.player.ui.design.engraved(8f), color = c.muted, maxLines = 1)
+        }
         Column(
             Modifier
                 .padding(top = 12.dp)
                 .fillMaxWidth()
-                .background(c.bgDeep, RoundedCornerShape(16.dp))
-                .padding(8.dp)
-                .background(screen.bg, RoundedCornerShape(10.dp))
-                .padding(18.dp),
+                .background(io.lanyin.player.ui.design.Hifi.Glass, RoundedCornerShape(3.dp))
+                .padding(16.dp),
         ) {
-            Text("▶ ${lyric.title.uppercase()}", style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(10f)), color = screen.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(lyric.line, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = fixed(22f), lineHeight = fixed(30f)), color = screen.content, modifier = Modifier.padding(top = 14.dp))
-            lyric.translation?.let { Text(it, style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(10f), lineHeight = fixed(15f)), color = screen.muted, modifier = Modifier.padding(top = 8.dp)) }
-            Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(lyric.artist, style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(10f)), color = screen.muted, maxLines = 1, modifier = Modifier.weight(1f))
-                Box(Modifier.size(8.dp).background(screen.accent, CircleShape))
-            }
+            Text("▶ ${lyric.title}", style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(11f), shadow = glow), color = vfd.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(lyric.line, style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(22f), lineHeight = fixed(30f), shadow = glow), color = vfd, modifier = Modifier.padding(top = 12.dp))
+            lyric.translation?.let { Text(it, style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(11f), lineHeight = fixed(15f)), color = vfd.copy(alpha = 0.55f), modifier = Modifier.padding(top = 8.dp)) }
         }
-        Text("LANYIN  L-01", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9f), letterSpacing = 0.12.em), color = c.muted, modifier = Modifier.padding(top = 10.dp).align(Alignment.End))
+        // The J-card's spine: the band, and the song by hand.
+        Row(
+            Modifier.padding(top = 14.dp).fillMaxWidth().background(io.lanyin.player.ui.design.Hifi.Label).padding(end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(" A ", style = TextStyle(fontSize = fixed(14f), fontWeight = FontWeight.Black), color = Color.White, modifier = Modifier.background(io.lanyin.player.ui.design.Hifi.LabelBand).padding(horizontal = 6.dp, vertical = 4.dp))
+            Text(
+                lyric.title, style = TextStyle(fontFamily = io.lanyin.player.ui.theme.LongCangFamily, fontSize = fixed(18f)), color = io.lanyin.player.ui.design.Hifi.LabelInk,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 10.dp),
+            )
+            Text(lyric.artist, style = TextStyle(fontFamily = io.lanyin.player.ui.theme.LongCangFamily, fontSize = fixed(13f)), color = io.lanyin.player.ui.design.Hifi.LabelInk.copy(alpha = 0.75f), maxLines = 1)
+        }
     }
 }
 

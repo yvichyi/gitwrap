@@ -1,5 +1,7 @@
 package io.lanyin.player.ui.player
 
+import io.lanyin.player.ui.design.drawKeycap
+import io.lanyin.player.ui.design.drawGlassStrip
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -45,6 +47,7 @@ import io.lanyin.player.ui.design.IconAction
 import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.SurfaceTone
 import io.lanyin.player.ui.design.drawPlayPauseGlyph
+import io.lanyin.player.ui.design.keyColors
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.sharedPlayer
 import io.lanyin.player.ui.theme.radioLcdStyle
@@ -121,6 +124,11 @@ fun MiniPlayer(
             Spacer(Modifier.width(10.dp))
             Canvas(Modifier.size(30.dp)) { drawRadioKnob(30f) }
         }
+        return
+    }
+    // 机: the cassette deck's strip: the tape in its window, the display, the counter and two keys.
+    if (style.backdrop == BackdropKind.Device && !onPaper) {
+        DeckStrip(state, onExpand, modifier)
         return
     }
     CompositionLocalProvider(LocalContentColor provides c.content) {
@@ -315,4 +323,81 @@ private fun DrawScope.drawRadioKnob(angle: Float) {
     drawRect(Color(0xFF6D7E9A), c + Offset(-px * 1.5f, -px * 2f), Size(px, px))
     val a = (angle - 90f) * PI.toFloat() / 180f
     for (k in 1..2) drawRect(Color(0xFFE89A3E), c + Offset(cos(a) * px * k * 1.2f - px / 2f, sin(a) * px * k * 1.2f - px / 2f), Size(px, px))
+}
+
+/**
+ * 机's mini player: the deck's strip along the foot of the stack. The cassette turning in its
+ * smoked window, the display with the song and singer, the counter, and keys to pause and skip.
+ */
+@Composable
+private fun DeckStrip(state: PlayerState, onExpand: () -> Unit, modifier: Modifier) {
+    val style = Lanyin.style
+    val c = style.colors
+    val seconds by remember(state) { androidx.compose.runtime.derivedStateOf { (state.positionMs / 1000).toInt() } }
+    Row(
+        modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .testTag("miniPlayer")
+            .sharedPlayer("player-container", container = true)
+            .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onExpand)
+            .padding(horizontal = style.margin - 6.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .width(74.dp)
+                .fillMaxHeight()
+                .drawBehind { drawGlassStrip(lamps = 0.3f) }
+                .padding(horizontal = 5.dp, vertical = 4.dp),
+        ) {
+            io.lanyin.player.ui.design.Cassette(state.title, state.artist, { (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) }, state.isPlaying, Modifier.fillMaxSize().sharedPlayer("artwork", zIndex = 1f))
+        }
+        Spacer(Modifier.width(8.dp))
+        Row(
+            Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .drawBehind { drawGlassStrip(lamps = 0f) }
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val vfd = androidx.compose.ui.text.TextStyle(
+                fontFamily = io.lanyin.player.ui.theme.PixelFamily, color = io.lanyin.player.ui.design.Hifi.Vfd,
+                shadow = androidx.compose.ui.graphics.Shadow(io.lanyin.player.ui.design.Hifi.Vfd.copy(alpha = 0.6f), Offset.Zero, 8f),
+            )
+            SwipeToSkip(state, Modifier.weight(1f)) {
+                Column(Modifier.fillMaxWidth()) {
+                    Text(state.title, style = vfd.copy(fontSize = fixedSp(14f)), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true))
+                    Text("${state.artist} · A面", style = vfd.copy(fontSize = fixedSp(10.5f), color = io.lanyin.player.ui.design.Hifi.Vfd.copy(alpha = 0.7f)), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                io.lanyin.player.ui.design.SevenSeg("%04d".format(seconds % 10000), 16.dp)
+                Text(if (state.isPlaying) "PLAY ▶" else "PAUSE ❚❚", style = androidx.compose.ui.text.TextStyle(fontFamily = io.lanyin.player.ui.theme.SpaceMonoFamily, fontSize = fixedSp(7f), fontWeight = FontWeight.Bold), color = io.lanyin.player.ui.design.Hifi.Vfd, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        DeckKey(if (state.isPlaying) "暂停" else "播放", state::togglePlay) {
+            val morph = if (state.isPlaying) 1f else 0f
+            Canvas(Modifier.size(12.dp)) { drawPlayPauseGlyph(morph, c.content) }
+        }
+        Spacer(Modifier.width(5.dp))
+        DeckKey("下一首", state::skipNext) {
+            io.lanyin.player.ui.design.ThemedIcon(LineIcon.Next, null, tint = c.content, size = 16.dp)
+        }
+    }
+}
+
+/** A square aluminium key on the deck's strip. */
+@Composable
+private fun DeckKey(label: String, onClick: () -> Unit, glyph: @Composable () -> Unit) {
+    val style = Lanyin.style
+    Box(
+        Modifier
+            .size(36.dp, 40.dp)
+            .pressable(label = label, onClick = onClick)
+            .drawBehind { drawKeycap(androidx.compose.foundation.shape.RoundedCornerShape(3.dp), style.keyColors()) },
+        contentAlignment = Alignment.Center,
+    ) { glyph() }
 }

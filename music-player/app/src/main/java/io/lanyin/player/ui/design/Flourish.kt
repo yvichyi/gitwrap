@@ -276,12 +276,11 @@ internal fun PageTitleRule(modifier: Modifier = Modifier) {
 @Composable
 internal fun ModelPlate(modifier: Modifier = Modifier) {
     val c = Lanyin.colors
-    Text(
-        "LANYIN LY-01",
-        style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(9f), letterSpacing = 0.1.em),
-        color = c.muted,
-        modifier = modifier.border(1.dp, c.muted.copy(alpha = 0.6f), RoundedCornerShape(3.dp)).padding(horizontal = 6.dp, vertical = 2.dp),
-    )
+    androidx.compose.foundation.layout.Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Led(Hifi.Red, on = true)
+        androidx.compose.foundation.layout.Spacer(Modifier.size(6.dp))
+        Wordmark(c.content, 13f)
+    }
 }
 
 /** 游's titles cast a hard magenta shadow, as a game's logo does. */

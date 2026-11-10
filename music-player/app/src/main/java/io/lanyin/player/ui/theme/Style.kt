@@ -232,21 +232,21 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             motion = Motion(0.9f, 700f), bouncy = Motion(0.7f, 600f), pressScale = 0.95f,
             iconStroke = 1.5f, dock = DockKind.Docked,
         )
-        // 机: a piece of hardware, after Teenage Engineering and Braun. Warm grey plastic, a screen
-        // set into the case that holds the artwork and the lyrics, keys that sink when pressed, an
-        // orange play key, a fader for the progress and a VU needle that swings with the music;
-        // labels in a typewriter mono.
+        // 机: a hi-fi stack in a walnut cabinet. Champagne-silver brushed aluminium (by night the
+        // black anodised finish), engraved in near black; displays are black glass with a cyan
+        // fluorescent screen behind; knobs are machined, keys are aluminium, meters lamp-lit, the
+        // progress a lamp-lit tape scale. REC red (by night the screen's cyan) for what to press.
         AppTheme.DEVICE -> LanyinStyle(
             theme = theme, dark = isDark,
             colors = if (isDark) deviceDark else deviceLight,
-            display = FontFamily.SansSerif, displayWeight = FontWeight.Black, displayTracking = (-0.01).em,
+            display = FontFamily.SansSerif, displayWeight = FontWeight.Black, displayTracking = 0.01.em,
             body = FontFamily.SansSerif, numeric = SpaceMonoFamily,
-            cardShape = RoundedCornerShape(18.dp), chipShape = RoundedCornerShape(10.dp), artShape = RoundedCornerShape(8.dp),
+            cardShape = RoundedCornerShape(4.dp), chipShape = RoundedCornerShape(4.dp), artShape = RoundedCornerShape(2.dp),
             edge = EdgeKind.Panel, backdrop = BackdropKind.Device, seek = SeekKind.Fader,
             button = ButtonKind.Key, nav = NavKind.Pill,
             lyric = LyricStyle(centered = false, activeScale = 1.04f, inactiveAlpha = 0.34f, blurStep = 0.dp, staggerMs = 20, glow = false, serif = false, weight = FontWeight.Bold),
             motion = Motion(0.85f, 800f), bouncy = Motion(0.6f, 700f), pressScale = 0.97f,
-            iconStroke = 1.9f,
+            iconStroke = 1.8f, dock = DockKind.Docked,
         )
         // 报: a broadsheet. Newsprint and ink with one red, everything set in serif, headlines
         // heavy; columns ruled off rather than boxed, photos printed in halftone, a ruler for the
@@ -344,18 +344,17 @@ private val dot = LanyinColors(
     content = Color(0xFFF5F5F5), muted = Color(0xFF8C8C8C), accent = Color(0xFFF5F5F5), accentAlt = Color(0xFFD71921),
     onAccent = Color(0xFF000000), outline = Color(0x29FFFFFF), like = Color(0xFFD71921), vinyl = Color(0xFF0A0A0A),
 )
-// Warm grey case, near-black print, the orange of a play key (deep enough to read as text on the
-// grey) and a blue for the second colour.
+// Champagne-silver aluminium, engraved near black; recessed panels a shade darker; REC red.
 private val deviceLight = LanyinColors(
-    bg = Color(0xFFE4E1D9), bgDeep = Color(0xFFD8D4CB), surface = Color(0xFFEFECE5), surfaceAlt = Color(0xFFE9E6DF),
-    content = Color(0xFF1A1A1A), muted = Color(0xFF5F5B53), accent = Color(0xFFE04A12), accentAlt = Color(0xFF2B6CB0),
-    onAccent = Color(0xFFFFFFFF), outline = Color(0x261A1A1A), like = Color(0xFFE04A12), vinyl = Color(0xFF1A1A1A),
+    bg = Color(0xFFCFC8BA), bgDeep = Color(0xFFBDB6A7), surface = Color(0xFFBFB8A9), surfaceAlt = Color(0xFFC7C0B1),
+    content = Color(0xFF151413), muted = Color(0xFF4C473F), accent = Color(0xFFA3221A), accentAlt = Color(0xFF0E6B5E),
+    onAccent = Color(0xFFFFFFFF), outline = Color(0x33151413), like = Color(0xFFA3221A), vinyl = Color(0xFF151413),
 )
-// …and the graphite edition.
+// …and the black anodised edition: warm white engraving, the screen's cyan to press.
 private val deviceDark = LanyinColors(
-    bg = Color(0xFF2A2B2E), bgDeep = Color(0xFF202124), surface = Color(0xFF34353A), surfaceAlt = Color(0xFF303135),
-    content = Color(0xFFECEAE4), muted = Color(0xFF9C9990), accent = Color(0xFFEA581C), accentAlt = Color(0xFF6A9BE8),
-    onAccent = Color(0xFFFFFFFF), outline = Color(0x2EECEAE4), like = Color(0xFFEA581C), vinyl = Color(0xFF121214),
+    bg = Color(0xFF1B1C1E), bgDeep = Color(0xFF121314), surface = Color(0xFF141516), surfaceAlt = Color(0xFF222326),
+    content = Color(0xFFECEAE4), muted = Color(0xFF9C9A92), accent = Color(0xFF5FEFCF), accentAlt = Color(0xFFFFB03A),
+    onAccent = Color(0xFF06231D), outline = Color(0x2EECEAE4), like = Color(0xFFFF5A45), vinyl = Color(0xFF0B0B0C),
 )
 // Newsprint, ink and the red of a sub-editor's pen.
 private val paper = LanyinColors(

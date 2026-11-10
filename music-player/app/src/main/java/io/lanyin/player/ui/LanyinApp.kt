@@ -1,5 +1,9 @@
 package io.lanyin.player.ui
 
+import androidx.compose.ui.graphics.drawscope.inset
+import io.lanyin.player.ui.design.drawLed
+import io.lanyin.player.ui.design.drawKeycap
+import io.lanyin.player.ui.design.drawUnitPlate
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -73,6 +77,7 @@ import io.lanyin.player.ui.design.LocalSharedPlayerScope
 import io.lanyin.player.ui.design.SharedPlayerScope
 import io.lanyin.player.ui.design.SurfaceTone
 import io.lanyin.player.ui.design.pressable
+import io.lanyin.player.ui.design.keyColors
 import io.lanyin.player.ui.design.retroShadow
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.home.HomeScreen
@@ -359,7 +364,16 @@ fun LanyinApp(
                                 // A plain bar on the page colour, ruled off with hairlines.
                                 // 暮: the darker edge of the mat.
                                 // 霓: the car radio's grey body.
-                                Column(Modifier.background(when (Lanyin.style.edge) { EdgeKind.Soft -> Lanyin.colors.bgDeep; EdgeKind.Glow -> Color(0xFF20283A); else -> Lanyin.colors.bg }).navigationBarsPadding()) {
+                                // 机: a brushed plate along the foot of the stack.
+                                val chromeStyle = Lanyin.style
+                                Column(
+                                    Modifier
+                                        .then(
+                                            if (chromeStyle.edge == EdgeKind.Panel) Modifier.drawBehind { drawUnitPlate(chromeStyle, screws = false) }
+                                            else Modifier.background(when (chromeStyle.edge) { EdgeKind.Soft -> Lanyin.colors.bgDeep; EdgeKind.Glow -> Color(0xFF20283A); else -> Lanyin.colors.bg }),
+                                        )
+                                        .navigationBarsPadding(),
+                                ) {
                                     NoticeBanner(notice, onDismiss)
                                     Hairline()
                                     if (showMini) MiniPlayer(player, settings.playerSkin, spin, onExpand = { expanded = true })
@@ -502,13 +516,24 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                         .clip(shape)
                         .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFFE2FF6B), c.accent, androidx.compose.ui.graphics.Color(0xFF8FC400))))
                         .drawBehind { drawGloss(0.5f) }
-                    // 机: the current tab is a key held down, sunk into the bar.
-                    EdgeKind.Panel -> Modifier.clip(shape).background(c.bgDeep).drawBehind {
-                        drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color.Black.copy(alpha = if (style.dark) 0.3f else 0.12f), androidx.compose.ui.graphics.Color.Transparent), endY = 6.dp.toPx()))
-                    }
+                    // 机: the source keys draw themselves, below.
+                    EdgeKind.Panel -> Modifier
                     else -> Modifier.clip(shape).background(c.accent.copy(alpha = if (style.dark) 0.22f else 0.14f))
                 }
-                Box(
+                if (style.edge == EdgeKind.Panel) {
+                    // 机: the amplifier's source keys, the one selected held down with its light on.
+                    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                        val w = size.width / tabs.size
+                        for (i in tabs.indices) {
+                            val down = i == selected
+                            inset(i * w + 8.dp.toPx(), 5.dp.toPx(), size.width - (i + 1) * w + 8.dp.toPx(), 9.dp.toPx()) {
+                                drawKeycap(RoundedCornerShape(4.dp), style.keyColors(), press = if (down) 1f else 0f)
+                                val lift = if (down) io.lanyin.player.ui.design.keyTravel.toPx() else 0f
+                                drawLed(androidx.compose.ui.geometry.Offset(9.dp.toPx(), 8.dp.toPx() + lift), c.accent, on = down, r = 2.dp.toPx())
+                            }
+                        }
+                    }
+                } else Box(
                     Modifier
                         .offset(x = x)
                         .width(itemWidth)
@@ -591,7 +616,8 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .pressable { onSelect(i) },
+                        .pressable { onSelect(i) }
+                        .then(if (style.edge == EdgeKind.Panel && active) Modifier.offset(y = io.lanyin.player.ui.design.keyTravel - 1.dp) else Modifier),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {

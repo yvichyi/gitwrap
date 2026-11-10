@@ -135,12 +135,12 @@ internal fun DrawScope.drawLoading(style: LanyinStyle, t: Float) {
             // An LED bar meter in its well; the lit stretch sweeps up and back like a level.
             val n = 10
             val well = Rect(Offset(w * 0.08f, h * 0.38f), Size(w * 0.84f, h * 0.24f))
-            drawRoundRect(Color(0xFF1C1C1F), well.topLeft, well.size, androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()))
+            drawRoundRect(Hifi.Glass, well.topLeft, well.size, androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
             val lit = ((sin(t * 3f) + 1f) / 2f) * n
             val seg = (well.width - 6.dp.toPx()) / n
             for (k in 0 until n) {
                 val on = k < lit
-                val color = if (k >= n - 2) c.accent else Color(0xFFB8E986)
+                val color = if (k >= n - 2) Hifi.Amber else Hifi.Vfd
                 drawRect(if (on) color else color.copy(alpha = 0.16f), Offset(well.left + 3.dp.toPx() + k * seg, well.top + 3.dp.toPx()), Size(seg - 2.dp.toPx(), well.height - 6.dp.toPx()))
             }
         }
@@ -239,8 +239,8 @@ private fun FailedMark(style: LanyinStyle, modifier: Modifier) {
             for (row in 0 until 5) drawCircle(c.content, pitch * 0.38f, Offset(size.width / 2f, pitch * (row + 0.5f)))
             drawCircle(c.accentAlt, pitch * 0.42f, Offset(size.width / 2f, pitch * 6.5f))
         }
-        BackdropKind.Device -> Box(modifier.background(c.bgDeep, RoundedCornerShape(8.dp)).padding(horizontal = 12.dp, vertical = 6.dp)) {
-            Text("ERR · 404", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(14f), letterSpacing = 0.1.em), color = c.accent)
+        BackdropKind.Device -> Box(modifier.background(Hifi.Glass, RoundedCornerShape(3.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
+            SevenSeg("Err 404", 22.dp, Hifi.Amber)
         }
         BackdropKind.Paper -> Box(modifier.rotate(-4f).border(2.dp, c.accent).padding(horizontal = 12.dp, vertical = 3.dp)) {
             Text("停 刊", style = TextStyle(fontFamily = style.display, fontWeight = FontWeight.Black, fontSize = fixed(20f)), color = c.accent)
@@ -302,7 +302,7 @@ fun ListEnd(count: Int, modifier: Modifier = Modifier) {
             }
             BackdropKind.Device -> Text(
                 "■ STOP · ${"%02d".format(count)} TRK", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(11f), letterSpacing = 0.1.em),
-                color = c.accent, modifier = Modifier.background(Color(0xFF1C1C1F), RoundedCornerShape(6.dp)).padding(horizontal = 10.dp, vertical = 4.dp),
+                color = Hifi.Vfd, modifier = Modifier.background(Hifi.Glass, RoundedCornerShape(3.dp)).padding(horizontal = 10.dp, vertical = 4.dp),
             )
             BackdropKind.Paper -> Text("（本版完）", style = TextStyle(fontFamily = style.display, fontSize = fixed(13f), letterSpacing = 0.1.em), color = c.muted)
             BackdropKind.Game -> Text("- THE END -", style = TextStyle(fontFamily = style.display, fontSize = fixed(13f)), color = c.content)
