@@ -1,5 +1,6 @@
 package io.lanyin.player.ui.player
 
+import io.lanyin.player.ui.theme.PlayerSkin
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -60,13 +61,17 @@ internal fun ConcertPosterStage(stage: StageContext, modifier: Modifier, onClick
         }
         SwipeToSkip(state, Modifier.fillMaxSize().then(tap).then(stage.dismissDrag)) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                // A record's label in the rings' middle; or, with the square cover chosen, the
+                // photograph square and larger, laid over the rings as a poster's picture is.
+                val square = stage.skin == PlayerSkin.COVER
+                val shape = if (square) androidx.compose.ui.graphics.RectangleShape else CircleShape
                 SwissPhoto(
                     state.coverUrl, state.coverSeed,
                     Modifier
-                        .size(side * 0.31f)
+                        .size(side * if (square) 0.5f else 0.31f)
                         .sharedPlayer("artwork", zIndex = 1f)
-                        .clip(CircleShape)
-                        .border(2.5.dp, c.outline, CircleShape)
+                        .clip(shape)
+                        .border(2.5.dp, c.outline, shape)
                         .semantics { contentDescription = "海报：${state.title}" },
                 )
             }

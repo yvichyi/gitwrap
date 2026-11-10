@@ -1,5 +1,7 @@
 package io.lanyin.player.ui.player
 
+import io.lanyin.player.ui.theme.PlayerSkin
+import androidx.compose.foundation.border
 import android.graphics.Bitmap
 import android.graphics.Paint
 import android.graphics.Typeface
@@ -61,16 +63,24 @@ internal fun GlyphStage(stage: StageContext) {
                 Modifier.fillMaxSize(),
                 coilRadius = record * 1.16f / minOf(maxWidth, maxHeight),
                 coil = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
+                // The coil is for a record; a square cover sits on the bare board.
+                showCoil = stage.skin == PlayerSkin.VINYL,
             ) {
                 GlyphLights(stage.state, Modifier.matchParentSize())
                 StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), heightFraction = 0.72f)
-                GlyphTempo(stage.state, Modifier.align(androidx.compose.ui.Alignment.BottomEnd).padding(end = 26.dp, bottom = 18.dp))
+                GlyphTempo(stage.state, Modifier.align(androidx.compose.ui.Alignment.BottomEnd).padding(end = 26.dp, bottom = 18.dp).tempoWindow())
             }
         }
         Spacer(Modifier.width(30.dp))
         DotMatrixLyrics(stage, Modifier.weight(0.58f).fillMaxHeight().enter(stage.entrance, 1))
     }
 }
+
+/** A little dark window on the clear back for the tempo, so it reads over the board. */
+internal fun Modifier.tempoWindow(): Modifier = this
+    .background(androidx.compose.ui.graphics.Color(0xEE050506), androidx.compose.foundation.shape.RoundedCornerShape(5.dp))
+    .border(0.5.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = 0.14f), androidx.compose.foundation.shape.RoundedCornerShape(5.dp))
+    .padding(horizontal = 6.dp, vertical = 1.dp)
 
 /** The tempo in dots, 「96 BPM」, or 「PAUSED」 while stopped. */
 @Composable

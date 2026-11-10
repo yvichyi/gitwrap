@@ -1,5 +1,9 @@
 package io.lanyin.player.ui.player
 
+import io.lanyin.player.ui.theme.PlayerSkin
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -36,6 +40,10 @@ import io.lanyin.player.ui.design.sharedPlayer
  */
 @Composable
 internal fun InkstoneStage(stage: StageContext, modifier: Modifier, onClick: (() -> Unit)?) {
+    if (stage.skin == PlayerSkin.COVER) {
+        InkLeafCover(stage, modifier, onClick)
+        return
+    }
     val state = stage.state
     val down by animateFloatAsState(if (state.isPlaying) 1f else 0f, tween(700), label = "brush")
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
@@ -67,6 +75,40 @@ internal fun InkstoneStage(stage: StageContext, modifier: Modifier, onClick: (()
             drawBrushRest(pivot + Offset(r * 0.02f, r * 0.08f), r * 0.32f)
             // Rests pointing down the side when lifted; swings in so its tip sits in the ink.
             drawBrushArm(pivot, r * 1.35f, -12f + 42f * down)
+        }
+    }
+}
+
+/**
+ * 墨 with the square cover chosen: the cover painted in ink on a leaf of xuan, mounted in silk,
+ * the collector's seal in its corner. Swipe it to change song; tap for the lyrics.
+ */
+@Composable
+private fun InkLeafCover(stage: StageContext, modifier: Modifier, onClick: (() -> Unit)?) {
+    val style = io.lanyin.player.ui.theme.Lanyin.style
+    val state = stage.state
+    val silk = if (style.dark) io.lanyin.player.ui.design.InkDesk.SilkNight else io.lanyin.player.ui.design.InkDesk.Silk
+    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+        val d = minOf(maxWidth, maxHeight) * 0.84f
+        val tap = if (onClick != null) Modifier.clickable(remember { MutableInteractionSource() }, indication = null, onClick = onClick) else Modifier
+        SwipeToSkip(state, Modifier.fillMaxSize().then(tap).then(stage.dismissDrag)) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier
+                        .size(d)
+                        .sharedPlayer("artwork", zIndex = 1f)
+                        .semantics { contentDescription = "封面：${state.title}" }
+                        .drawBehind {
+                            drawRect(Color.Black.copy(alpha = 0.1f), Offset(3.dp.toPx(), 4.dp.toPx()), size)
+                            drawRect(silk)
+                        }
+                        .padding(d * 0.05f)
+                        .drawBehind { io.lanyin.player.ui.design.drawXuanPage(this, style) },
+                ) {
+                    InkWashCover(state.coverUrl, state.coverSeed, Modifier.fillMaxSize().padding(d * 0.03f))
+                    io.lanyin.player.ui.design.InkSeal("藏", 20.dp, Modifier.align(Alignment.BottomEnd).padding(6.dp))
+                }
+            }
         }
     }
 }

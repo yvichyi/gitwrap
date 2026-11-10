@@ -56,11 +56,11 @@ object Gadget {
  * as a fraction of the box's smaller side. [content] goes on top: the lights, the record.
  */
 @Composable
-fun ClearBack(modifier: Modifier = Modifier, coil: Offset = Offset(0.5f, 0.48f), coilRadius: Float = 0.42f, content: @Composable BoxScope.() -> Unit) {
+fun ClearBack(modifier: Modifier = Modifier, coil: Offset = Offset(0.5f, 0.48f), coilRadius: Float = 0.42f, showCoil: Boolean = true, content: @Composable BoxScope.() -> Unit) {
     val measurer = rememberTextMeasurer()
     Box(
         modifier.drawWithCache {
-            val picture = boardPicture(this, measurer, coil, coilRadius)
+            val picture = boardPicture(this, measurer, coil, coilRadius, showCoil)
             onDrawBehind { drawImage(picture) }
         },
     ) {
@@ -85,18 +85,18 @@ fun ClearBack(modifier: Modifier = Modifier, coil: Offset = Offset(0.5f, 0.48f),
     }
 }
 
-private fun boardPicture(scope: CacheDrawScope, measurer: TextMeasurer, coil: Offset, coilRadius: Float): ImageBitmap {
+private fun boardPicture(scope: CacheDrawScope, measurer: TextMeasurer, coil: Offset, coilRadius: Float, showCoil: Boolean): ImageBitmap {
     val w = scope.size.width
     val h = scope.size.height
     val image = ImageBitmap(w.toInt().coerceAtLeast(1), h.toInt().coerceAtLeast(1))
     CanvasDrawScope().draw(scope, scope.layoutDirection, androidx.compose.ui.graphics.Canvas(image), scope.size) {
-        drawBoard(measurer, Offset(w * coil.x, h * coil.y), minOf(w, h) * coilRadius)
+        drawBoard(measurer, Offset(w * coil.x, h * coil.y), minOf(w, h) * coilRadius, showCoil)
     }
     return image
 }
 
 /** Draws the device's inside and its clear back, for the whole draw area. */
-private fun DrawScope.drawBoard(measurer: TextMeasurer, coilAt: Offset, coilR: Float) {
+private fun DrawScope.drawBoard(measurer: TextMeasurer, coilAt: Offset, coilR: Float, showCoil: Boolean) {
     val w = size.width
     val h = size.height
     val d = density
@@ -142,19 +142,21 @@ private fun DrawScope.drawBoard(measurer: TextMeasurer, coilAt: Offset, coilR: F
         val bx = inset + 18f * d + k * 4f * d
         trace(listOf(Offset(bx, h * 0.12f), Offset(bx, h * 0.6f), Offset(bx + 30f * d, h * 0.6f + 30f * d)), 0.9f * d)
     }
-    // The charging coil under the record: enamelled wire wound round and round, in silver-grey,
-    // a lit band across it where the acrylic catches the light.
-    for (k in 0 until 22) {
-        val r = coilR * (0.62f + 0.018f * k)
-        drawCircle(Gadget.Wire.copy(alpha = 0.32f + 0.18f * (k % 2)), r, coilAt, style = Stroke(1.6f * d))
+    if (showCoil) {
+        // The charging coil under the record: enamelled wire wound round and round, in silver-grey,
+        // a lit band across it where the acrylic catches the light.
+        for (k in 0 until 22) {
+            val r = coilR * (0.62f + 0.018f * k)
+            drawCircle(Gadget.Wire.copy(alpha = 0.32f + 0.18f * (k % 2)), r, coilAt, style = Stroke(1.6f * d))
+        }
+        drawCircle(
+            Brush.sweepGradient(0f to Color.Transparent, 0.08f to Color.White.copy(alpha = 0.18f), 0.16f to Color.Transparent, 0.58f to Color.Transparent, 0.66f to Color.White.copy(alpha = 0.1f), 0.74f to Color.Transparent, 1f to Color.Transparent, center = coilAt),
+            coilR * 0.81f, coilAt, style = Stroke(coilR * 0.4f),
+        )
+        drawCircle(Color.Black.copy(alpha = 0.35f), coilR * 0.6f, coilAt)
+        // The coil's leads.
+        trace(listOf(coilAt + Offset(coilR * 1.0f, 0f), coilAt + Offset(coilR * 1.1f, coilR * 0.1f), coilAt + Offset(coilR * 1.1f, coilR * 0.6f)), 2f * d)
     }
-    drawCircle(
-        Brush.sweepGradient(0f to Color.Transparent, 0.08f to Color.White.copy(alpha = 0.18f), 0.16f to Color.Transparent, 0.58f to Color.Transparent, 0.66f to Color.White.copy(alpha = 0.1f), 0.74f to Color.Transparent, 1f to Color.Transparent, center = coilAt),
-        coilR * 0.81f, coilAt, style = Stroke(coilR * 0.4f),
-    )
-    drawCircle(Color.Black.copy(alpha = 0.35f), coilR * 0.6f, coilAt)
-    // The coil's leads.
-    trace(listOf(coilAt + Offset(coilR * 1.0f, 0f), coilAt + Offset(coilR * 1.1f, coilR * 0.1f), coilAt + Offset(coilR * 1.1f, coilR * 0.6f)), 2f * d)
     // Chips: black packages with pins along their sides and their markings in white.
     val small = TextStyle(fontFamily = SpaceMonoFamily, fontSize = (7f / fontScale).sp, color = Gadget.Silk.copy(alpha = 0.75f))
     val chipMark = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = (7.5f / fontScale).sp, color = Gadget.Silk.copy(alpha = 0.6f))
@@ -172,9 +174,9 @@ private fun DrawScope.drawBoard(measurer: TextMeasurer, coilAt: Offset, coilR: F
         drawCircle(Color.White.copy(alpha = 0.2f), 1.2f * d, at + Offset(3.5f * d, 3.5f * d))
         drawText(measurer, mark, at + Offset(5f * d, ch / 2f - 5f * d), chipMark)
     }
-    chip(Offset(w * 0.62f, h * 0.06f), w * 0.2f, h * 0.06f, "LY8250")
-    chip(Offset(w * 0.12f, h * 0.075f), w * 0.14f, h * 0.045f, "DAC32")
-    chip(Offset(w * 0.62f, h * 0.88f), w * 0.1f, h * 0.035f, "RF", pins = false)
+    chip(Offset(w * 0.62f, inset + 16f * d), w * 0.2f, h * 0.06f, "LY8250")
+    chip(Offset(w * 0.12f, inset + 24f * d), w * 0.14f, h * 0.045f, "DAC32")
+    chip(Offset(w * 0.34f, inset + 24f * d), w * 0.1f, h * 0.035f, "RF", pins = false)
     // Little passives scattered: capacitors in tan, resistors in black with their ends.
     for (k in 0 until 40) {
         val px = inset + 8f * d + rnd.nextFloat() * (board.width - 16f * d)
@@ -207,19 +209,28 @@ private fun DrawScope.drawBoard(measurer: TextMeasurer, coilAt: Offset, coilR: F
     drawPath(ribbon, Gadget.Flex.copy(alpha = 0.5f), style = Stroke(3.5f * d, join = StrokeJoin.Round))
     drawPath(ribbon, Color(0xFF4A4D53).copy(alpha = 0.7f), style = Stroke(1f * d, join = StrokeJoin.Round))
     drawRect(Gadget.Chip, Offset(w * 0.56f, h * 0.7f - 7f * d), Size(8f * d, 14f * d))
-    // The battery along the foot, under its label.
-    val batTop = h * 0.78f
-    val bat = Offset(inset + 26f * d, batTop)
-    val batSize = Size(w * 0.5f, h * 0.16f)
-    drawRoundRect(Color(0xFF26282D), bat, batSize, CornerRadius(6f * d))
-    drawRoundRect(Gadget.Silk.copy(alpha = 0.9f), bat + Offset(6f * d, 6f * d), Size(batSize.width - 12f * d, batSize.height - 12f * d), CornerRadius(3f * d))
-    val label = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = (8f / fontScale).sp, color = Color(0xFF111214))
+    // The battery in the lower corner, under its label: as wide as it can be without the record
+    // (whose edge is the coil's less its margin) covering it.
+    val record = coilR / 1.16f
+    val batH = if (h > w * 1.05f) 44f * d else 34f * d
+    val bat = Offset(inset + 20f * d, h - inset - 12f * d - batH)
+    fun clear(bw: Float) = listOf(Offset(bat.x + bw, bat.y), Offset(bat.x + bw * 0.6f, bat.y), Offset(bat.x + bw, bat.y + batH * 0.5f))
+        .all { (it - coilAt).getDistance() > record + 6f * d }
+    var batW = minOf(w * 0.5f, 172f * d)
+    while (batW > 80f * d && !clear(batW)) batW -= 4f * d
+    val batSize = Size(batW, batH)
+    val pad = if (batH > 40f * d) 6f * d else 4f * d
+    drawRoundRect(Color(0xFF26282D), bat, batSize, CornerRadius(5f * d))
+    drawRoundRect(Gadget.Silk.copy(alpha = 0.9f), bat + Offset(pad, pad), Size(batSize.width - pad * 2, batSize.height - pad * 2), CornerRadius(3f * d))
+    val wide = batW > 150f * d
+    val label = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = ((if (wide) 8f else 7f) / fontScale).sp, color = Color(0xFF111214))
     val fine = TextStyle(fontFamily = SpaceMonoFamily, fontSize = (6.5f / fontScale).sp, color = Color(0xFF111214).copy(alpha = 0.75f))
-    drawText(measurer, "LI-ION  4500mAh", bat + Offset(12f * d, 10f * d), label)
-    drawText(measurer, "3.87V · LANYIN · DO NOT PUNCTURE", bat + Offset(12f * d, 24f * d), fine)
-    // A row of dots on the label: the maker's mark.
-    for (k in 0 until 8) drawCircle(Color(0xFF111214), 1.4f * d, bat + Offset(batSize.width - 20f * d - k * 5f * d, batSize.height - 14f * d))
-    drawCircle(Color(0xFFD71921), 1.6f * d, bat + Offset(batSize.width - 20f * d + 5f * d, batSize.height - 14f * d))
+    drawText(measurer, if (wide) "LI-ION  4500mAh" else "LI-ION 4500", bat + Offset(pad + 5f * d, pad + 2f * d), label)
+    if (batH > 40f * d) drawText(measurer, if (wide) "3.87V · LANYIN · DO NOT PUNCTURE" else "3.87V · LANYIN", bat + Offset(pad + 5f * d, pad + 15f * d), fine)
+    // A row of dots on the label: the maker's mark, one of them red.
+    val dots = if (wide) 8 else 5
+    for (k in 0 until dots) drawCircle(Color(0xFF111214), 1.3f * d, bat + Offset(batSize.width - pad - 8f * d - k * 4.5f * d, batSize.height - pad - 5f * d))
+    drawCircle(Color(0xFFD71921), 1.5f * d, bat + Offset(batSize.width - pad - 8f * d + 4.5f * d, batSize.height - pad - 5f * d))
     // The screws: in the four corners of the board and one at the head.
     val screws = listOf(
         Offset(inset + 12f * d, inset + 12f * d), Offset(w - inset - 12f * d, inset + 12f * d),

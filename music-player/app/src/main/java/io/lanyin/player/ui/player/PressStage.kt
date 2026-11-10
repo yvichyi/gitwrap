@@ -1,5 +1,6 @@
 package io.lanyin.player.ui.player
 
+import io.lanyin.player.ui.theme.PlayerSkin
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -72,6 +73,22 @@ internal fun PressPhotoStage(stage: StageContext, modifier: Modifier, onClick: (
     val c = style.colors
     val state = stage.state
     val on by animateFloatAsState(if (state.isPlaying) 1f else 0f, tween(900), label = "arm")
+    if (stage.skin == PlayerSkin.COVER) {
+        // The square cover chosen: the cover itself is the photograph, in halftone.
+        BoxWithConstraints(modifier.clipToBounds().border(0.75.dp, c.content.copy(alpha = 0.6f)), contentAlignment = Alignment.Center) {
+            val side = minOf(maxWidth, maxHeight)
+            val tap = if (onClick != null) Modifier.clickable(remember { MutableInteractionSource() }, indication = null, onClick = onClick) else Modifier
+            SwipeToSkip(state, Modifier.fillMaxSize().then(tap).then(stage.dismissDrag)) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    io.lanyin.player.ui.design.HalftoneCover(
+                        state.coverUrl, state.coverSeed,
+                        Modifier.size(side).sharedPlayer("artwork", zIndex = 1f).semantics { contentDescription = "封面：${state.title}" },
+                    )
+                }
+            }
+        }
+        return
+    }
     BoxWithConstraints(modifier.clipToBounds().border(0.75.dp, c.content.copy(alpha = 0.6f))) {
         val wPx = constraints.maxWidth.toFloat()
         val hPx = constraints.maxHeight.toFloat()

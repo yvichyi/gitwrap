@@ -1,5 +1,6 @@
 package io.lanyin.player.ui.player
 
+import io.lanyin.player.ui.theme.PlayerSkin
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -150,10 +151,12 @@ private fun DotPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
                 Modifier.fillMaxSize(),
                 coilRadius = record * 1.16f / minOf(maxWidth, maxHeight),
                 coil = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
+                // The coil is for a record; a square cover sits on the bare board.
+                showCoil = stage.skin == PlayerSkin.VINYL,
             ) {
                 GlyphLights(stage.state, Modifier.matchParentSize())
                 StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), heightFraction = 0.72f, onClick = onShowLyrics)
-                GlyphTempo(stage.state, Modifier.align(Alignment.BottomEnd).padding(end = 30.dp, bottom = 22.dp))
+                GlyphTempo(stage.state, Modifier.align(Alignment.BottomEnd).padding(end = 30.dp, bottom = 22.dp).tempoWindow())
             }
         }
         DotMatrixLyrics(stage, Modifier.fillMaxWidth().height(184.dp).padding(top = 8.dp).enter(stage.entrance, 2).opensLyrics(onShowLyrics))
