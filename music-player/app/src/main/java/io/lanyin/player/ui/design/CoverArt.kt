@@ -143,91 +143,71 @@ internal fun brushStrokePath(start: Offset, length: Float, thickness: Float): Pa
 }
 
 /**
- * 霓's covers: a neon sign on a dark brick wall, its light spilling over the bricks round it.
- * Four signs, so a row of covers isn't one picture repeated: a heart, a note over a wave, the
- * moon and stars, a record.
+ * 霓's sleeves are pixel art in the night's palette, on a 24-cell grid: a moon over the sea, the
+ * city in the rain with its windows lit, the expressway's lamps running away to a point, a teal
+ * sign on a wet wall.
  */
 private fun DrawScope.neonCover(style: LanyinStyle, seed: Int) {
-    val c = style.colors
-    val w = size.width
-    val h = size.height
-    drawRect(lerp(c.surface, Color.Black, 0.3f))
-    val course = h / 9f
-    val brick = w / 3.5f
-    val mortar = Color.White.copy(alpha = 0.035f)
-    for (row in 0..9) {
-        val y = row * course
-        drawLine(mortar, Offset(0f, y), Offset(w, y), w * 0.004f)
-        var x = if (row % 2 == 0) 0f else brick / 2f
-        while (x < w) {
-            drawLine(mortar, Offset(x, y), Offset(x, y + course), w * 0.004f)
-            x += brick
-        }
+    val n = 24
+    val cell = size.minDimension / n
+    fun px(x: Int, y: Int, c: Int) {
+        if (x in 0 until n && y in 0 until n) drawRect(Color(c), Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
     }
-    val pink = c.accent
-    val cyan = c.accentAlt
-    val amber = Color(0xFFFFC46B)
-    val tube = w * 0.026f
-    val cx = w * (0.47f + 0.06f * hash01(seed, 1))
-    val cy = h * (0.47f + 0.05f * hash01(seed, 2))
-    val s = w * 0.62f
-    fun spill(color: Color) = drawRect(Brush.radialGradient(listOf(color.copy(alpha = 0.28f), Color.Transparent), Offset(cx, cy), w * 0.62f))
-    when (seed % 4) {
+    fun row(y0: Int, y1: Int, c: Int) {
+        for (y in y0..y1) for (x in 0 until n) px(x, y, c)
+    }
+    val j = seed * 7919
+    row(0, 23, Drive.K1)
+    when (seed.mod(4)) {
         0 -> {
-            spill(pink)
-            drawTube(
-                Path().apply {
-                    moveTo(cx, cy + 0.36f * s)
-                    cubicTo(cx - 0.1f * s, cy + 0.26f * s, cx - 0.46f * s, cy + 0.06f * s, cx - 0.44f * s, cy - 0.14f * s)
-                    cubicTo(cx - 0.42f * s, cy - 0.38f * s, cx - 0.12f * s, cy - 0.42f * s, cx, cy - 0.2f * s)
-                    cubicTo(cx + 0.12f * s, cy - 0.42f * s, cx + 0.42f * s, cy - 0.38f * s, cx + 0.44f * s, cy - 0.14f * s)
-                    cubicTo(cx + 0.46f * s, cy + 0.06f * s, cx + 0.1f * s, cy + 0.26f * s, cx, cy + 0.36f * s)
-                },
-                pink, tube,
-            )
-            for (k in 0..2) {
-                val at = Offset(w * (0.18f + 0.64f * hash01(seed + k, 5)), h * (0.14f + 0.72f * hash01(seed + k, 6)))
-                if ((at - Offset(cx, cy)).getDistance() > s * 0.42f) drawTube(starPath(at, w * 0.05f, w * 0.012f, 4), cyan, tube * 0.6f)
-            }
+            // A moon over the sea, its road of light on the water.
+            row(0, 4, Drive.K2); row(5, 9, Drive.K3); row(10, 13, Drive.K4)
+            val mx = 14 + (j % 5)
+            for (y in 3..9) for (x in mx - 3..mx + 3) if ((x - mx) * (x - mx) + (y - 6) * (y - 6) <= 10) px(x, y, if (x > mx + 1 || y > 8) Drive.K9 else Drive.WH)
+            px(mx - 1, 5, Drive.K8); px(mx + 1, 7, Drive.K8)
+            row(14, 23, Drive.K1)
+            for (y in 15..23 step 2) for (x in mx - 2 + (y - 15) / 4..mx + 2 - (y - 15) / 4) px(x, y, if (y < 19) Drive.K9 else Drive.K7)
+            for (x in 0 until n) if (x % 3 == 0) px(x, 14, Drive.K5)
         }
         1 -> {
-            spill(cyan)
-            // An eighth note, and a pink wave under it.
-            val head = Offset(cx - 0.1f * s, cy + 0.2f * s)
-            rotate(-22f, head) { drawTube(Path().apply { addOval(Rect(head.x - 0.15f * s, head.y - 0.1f * s, head.x + 0.15f * s, head.y + 0.1f * s)) }, cyan, tube) }
-            val stemX = head.x + 0.14f * s
-            drawTubeLine(Offset(stemX, head.y - 0.03f * s), Offset(stemX, cy - 0.38f * s), cyan, tube)
-            drawTube(Path().apply { moveTo(stemX, cy - 0.38f * s); cubicTo(stemX + 0.06f * s, cy - 0.2f * s, stemX + 0.3f * s, cy - 0.22f * s, stemX + 0.24f * s, cy - 0.02f * s) }, cyan, tube)
-            drawTube(
-                Path().apply {
-                    moveTo(w * 0.16f, h * 0.84f)
-                    var x = w * 0.16f
-                    while (x < w * 0.84f) {
-                        x += w * 0.01f
-                        lineTo(x, h * 0.84f + h * 0.025f * sin((x / w) * 6f * PI.toFloat()))
-                    }
-                },
-                pink, tube * 0.7f,
-            )
+            // The city in the rain, windows lit, a red light on the tallest tower.
+            row(0, 6, Drive.K2); row(7, 11, Drive.K3); row(12, 15, Drive.A0)
+            var x = 0
+            var k = 0
+            while (x < n) {
+                val w = 3 + (j + k * 13) % 3
+                val top = 6 + (j + k * 7) % 8
+                for (y in top..23) for (xx in x until x + w) px(xx, y, if (xx == x) Drive.K3 else Drive.K1)
+                for (y in top + 2..21 step 2) for (xx in x + 1 until x + w - 1 step 2) if ((xx * 7 + y * 3 + k) % 5 < 2) px(xx, y, if ((xx + y) % 3 == 0) Drive.A4 else Drive.A3)
+                if (k == 1) { px(x + w / 2, top - 1, Drive.K1); px(x + w / 2, top - 2, Drive.R3) }
+                x += w + 1
+                k++
+            }
+            for (r in 0 until 14) px((j / 3 + r * 7) % n, (r * 5) % 14, Drive.K6)
         }
         2 -> {
-            spill(amber)
-            // A crescent moon, and stars in cyan.
-            val moon = Path().apply { addOval(Rect(Offset(cx, cy), s * 0.32f)) }
-            val bite = Path().apply { addOval(Rect(Offset(cx + s * 0.16f, cy - s * 0.1f), s * 0.28f)) }
-            drawTube(Path.combine(androidx.compose.ui.graphics.PathOperation.Difference, moon, bite), amber, tube)
-            for (k in 0..2) {
-                val at = Offset(cx + s * (0.28f + 0.12f * k), cy - s * (0.3f - 0.22f * k))
-                drawTube(starPath(at, w * (0.05f - 0.01f * k), w * 0.012f, 4), cyan, tube * 0.6f)
+            // The expressway at night: lamps running away to a point, tail lights ahead.
+            row(0, 9, Drive.K2); row(10, 11, Drive.A1)
+            for (y in 12..23) {
+                val half = (y - 11) * 1.0f
+                for (x in (12 - half).toInt()..(12 + half).toInt()) px(x, y, Drive.K1)
+            }
+            for (y in 13..23 step 3) px(12, y, Drive.K6)
+            for ((i, d) in listOf(2, 4, 7, 11).withIndex()) {
+                px(12 - d - 1, 11 - d / 2, Drive.A5); px(12 - d - 2, 11 - d / 2, Drive.A3)
+                px(12 + d + 1, 11 - d / 2, Drive.A5); px(12 + d + 2, 11 - d / 2, Drive.A3)
+                if (i < 2) px(12 + (if (i == 0) -1 else 1), 13 + i * 2, Drive.R3)
             }
         }
         else -> {
-            spill(pink)
-            // A record: the disc in cyan, its label in pink, the arm across it.
-            drawTube(Path().apply { addOval(Rect(Offset(cx, cy), s * 0.34f)) }, cyan, tube)
-            drawTube(Path().apply { addOval(Rect(Offset(cx, cy), s * 0.11f)) }, pink, tube)
-            drawCircle(neonCore(pink), tube * 0.7f, Offset(cx, cy))
-            drawTube(Path().apply { moveTo(cx + s * 0.44f, cy - s * 0.42f); lineTo(cx + s * 0.4f, cy + s * 0.02f); lineTo(cx + s * 0.22f, cy + s * 0.16f) }, cyan, tube * 0.8f)
+            // A teal sign on a wet wall: a note in stepped light, its glow checkered at the edge.
+            for (y in 0 until n) for (x in 0 until n) px(x, y, if ((x + y) % 2 == 0) Drive.K2 else Drive.K1)
+            val note = listOf("....######", "....#....#", "....#....#", "....#....#", "..###..###", ".####.####", "..##...##.")
+            val ox = 7
+            val oy = 8
+            for (y in oy - 2..oy + note.size + 1) for (x in ox - 2..ox + 11) if ((x + y) % 2 == 0) px(x, y, Drive.T0)
+            for ((dy, line) in note.withIndex()) for ((dx, ch) in line.withIndex()) if (ch == '#') px(ox + dx, oy + dy, if (dy == 0) Drive.T3 else Drive.T2)
+            for (y in 19..23) for (x in 0 until n) if ((x * 3 + y) % 7 == 0) px(x, y, Drive.T1)
         }
     }
 }

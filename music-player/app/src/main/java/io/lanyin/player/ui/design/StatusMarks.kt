@@ -83,17 +83,19 @@ internal fun DrawScope.drawLoading(style: LanyinStyle, t: Float) {
             drawCircle(c.content.copy(alpha = 0.7f * (1f - p)), w * (0.1f + 0.24f * p), mid, style = Stroke(1.6.dp.toPx() * (1.5f - p)))
             drawCircle(c.content.copy(alpha = 0.85f), w * 0.08f * (1f - 0.4f * p), mid)
         }
+        // 霓: the radio seeking: a block of amber running along a row of dark ones.
         BackdropKind.Neon -> {
-            // Eight short tubes in a ring, lit one after another, the newest brightest.
-            val head = (t * 8f) % 8f
-            for (k in 0 until 8) {
-                val a = -PI / 2 + k * PI / 4
-                val age = ((head - k) + 8f) % 8f
-                val on = (1f - age / 4f).coerceIn(0.12f, 1f)
-                val s = Offset(mid.x + cos(a).toFloat() * w * 0.22f, mid.y + sin(a).toFloat() * h * 0.22f)
-                val e = Offset(mid.x + cos(a).toFloat() * w * 0.38f, mid.y + sin(a).toFloat() * h * 0.38f)
-                drawLine(c.accent.copy(alpha = on * 0.35f), s, e, 7.dp.toPx(), StrokeCap.Round)
-                drawLine(lerp(c.accent, Color.White, 0.4f * on).copy(alpha = on), s, e, 2.5.dp.toPx(), StrokeCap.Round)
+            val px = 3.dp.toPx()
+            val n = 9
+            val head = ((t * 10f) % (n * 2 - 2)).toInt().let { if (it >= n) 2 * n - 2 - it else it }
+            val x0 = mid.x - n * px
+            for (i in 0 until n) {
+                val col = when {
+                    i == head -> Color(0xFFFFC874)
+                    kotlin.math.abs(i - head) == 1 -> c.accent
+                    else -> c.outline
+                }
+                drawRect(col, Offset(x0 + i * 2 * px, mid.y - px), Size(px, px * 2))
             }
         }
         // 暮: the three inks going round as the drums turn, overprinting where they cross.
@@ -217,7 +219,8 @@ private fun FailedMark(style: LanyinStyle, modifier: Modifier) {
             drawArc(c.content.copy(alpha = 0.7f), 120f, 250f, false, Offset(size.width * 0.12f, size.height * 0.12f), Size(size.width * 0.76f, size.height * 0.76f), style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
             drawCircle(c.accentAlt, 3.dp.toPx(), Offset(size.width * 0.78f, size.height * 0.3f))
         }
-        BackdropKind.Neon -> NeonText("CLOSED", TextStyle(fontFamily = TiltNeonFamily, fontSize = fixed(22f), letterSpacing = 0.1.em), c.accentAlt.copy(alpha = 0.6f), modifier, ignite = false)
+        // 霓: the radio's LCD with nothing to tune to.
+        BackdropKind.Neon -> Text("NO SIGNAL", style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(16f), letterSpacing = 0.1.em), color = Color(0xFF6FE0C8), modifier = modifier.background(Color(0xFF0C2E33)).padding(horizontal = 10.dp, vertical = 4.dp))
         // 暮: a spoilt sheet, stamped as such.
         BackdropKind.Dusk -> Box(modifier.rotate(-8f).border(2.dp, io.lanyin.player.ui.design.Riso.Pink, RoundedCornerShape(3.dp)).padding(horizontal = 10.dp, vertical = 4.dp)) {
             Text("MISPRINT · 废版", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(10f), letterSpacing = 0.08.em), color = io.lanyin.player.ui.design.Riso.Pink)
@@ -282,7 +285,7 @@ fun ListEnd(count: Int, modifier: Modifier = Modifier) {
                     Text("澜", style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Serif, fontSize = fixed(9f)), color = c.bg)
                 }
             }
-            BackdropKind.Neon -> NeonText("LAST CALL", TextStyle(fontFamily = TiltNeonFamily, fontSize = fixed(15f), letterSpacing = 0.12.em), c.accent.copy(alpha = 0.55f), ignite = false)
+            BackdropKind.Neon -> Text("— 已到达终点 · $count 首 —", style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(13f)), color = c.muted)
             BackdropKind.Dusk -> Text("— 这一版印完了 · 共 $count 首 —", style = io.lanyin.player.ui.design.pencilStyle(fixed(16f), c.muted))
             BackdropKind.Grid -> Text(
                 "END · ${"%02d".format(count)} ITEMS", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(11f), letterSpacing = 0.1.em),

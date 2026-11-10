@@ -1,275 +1,227 @@
 package io.lanyin.player.ui.home
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import io.lanyin.player.core.model.Song
+import io.lanyin.player.data.library.ChartPreview
 import io.lanyin.player.ui.components.pagePadding
-import io.lanyin.player.ui.design.BoxSign
-import io.lanyin.player.ui.design.CoverArt
-import io.lanyin.player.ui.design.HangingSign
-import io.lanyin.player.ui.design.NeonText
-import io.lanyin.player.ui.design.SectionTitle
+import io.lanyin.player.ui.design.LineIcon
+import io.lanyin.player.ui.design.NightWindshield
+import io.lanyin.player.ui.design.PixelCover
 import io.lanyin.player.ui.design.SurfaceTone
 import io.lanyin.player.ui.design.ThemedIcon
-import io.lanyin.player.ui.design.drawTubeLine
-import io.lanyin.player.ui.design.neonCore
 import io.lanyin.player.ui.design.pressable
-import io.lanyin.player.ui.design.rememberNow
 import io.lanyin.player.ui.design.themedSurface
-import io.lanyin.player.ui.music.PlaylistTile
 import io.lanyin.player.ui.theme.Lanyin
-import io.lanyin.player.ui.theme.TiltNeonFamily
-import java.time.format.TextStyle as JavaTextStyle
-import java.util.Locale
-import io.lanyin.player.ui.design.lightSpill
-
-/** A third colour of tube for 霓, beside the pink and the cyan: amber. */
-private val Amber = Color(0xFFFFC46B)
+import io.lanyin.player.ui.theme.PixelFamily
 
 /**
- * 霓: the home page as a street at night. Up top the app's own sign, LANYIN bent in pink tube with
- * an OPEN sign in cyan beside it, the greeting under it; today's picks and FM as two lit box
- * signs; your own music as small neon pictograms on the wall; the recommended playlists as
- * posters, each under its number in tube; the charts as signs hung down the side of a building,
- * switching on one after another, the top song under each; today's songs numbered in tube, the
- * one playing lit.
+ * 霓: the home page is the drive home. Up top the windscreen on a rainy night on the expressway,
+ * the head-up display projecting tonight's route (today's picks: how many, and when you'll be
+ * there); below it the console's screen: tonight's route with its picture and a key to set off,
+ * the radio's keys for your own music (FM lit while it's on), the recommended playlists as
+ * pictures, the charts, and today's songs.
  */
 @Composable
 internal fun NeonHome(model: HomeModel) {
-    val style = Lanyin.style
-    val c = style.colors
-    val m = style.margin
-    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
-        item { StreetHeader(model, Modifier.padding(horizontal = m)) }
+    val m = Lanyin.style.margin
+    val padding = pagePadding()
+    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = padding.calculateBottomPadding())) {
+        item { Windscreen(model) }
+        item { ConsoleHeader(model, Modifier.padding(start = m, end = m, top = 14.dp)) }
+        if (!model.signedIn) item { ConnectLine(model.login, Modifier.padding(start = m, end = m, top = 12.dp)) }
+        item { Route(model, Modifier.padding(start = m, end = m, top = 12.dp)) }
+        item { Keys(model, Modifier.padding(start = m, end = m, top = 12.dp)) }
         item {
-            Row(Modifier.padding(start = m, end = m, top = 22.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Lightbox(
-                    "每日推荐", model.dailyNote, c.accent, model.openDaily, model.playDaily, Modifier.weight(1f),
-                    art = { DailyArt(model.pickSongs) },
-                    mark = { DayMark(model.now) },
-                )
-                Lightbox(
-                    "私人 FM", model.fmNote, c.accentAlt, model.playFm, model.playFm, Modifier.weight(1f),
-                    art = { CoverArt(77, Modifier.fillMaxSize()) },
-                    mark = { BoxSign("ON AIR", c.accentAlt, Modifier.align(Alignment.TopStart).padding(8.dp), size = 10f, delayMillis = 300) },
-                )
+            Column(Modifier.padding(top = 22.dp)) {
+                ConsoleHeading("推荐歌单", model.recommendedNote, Modifier.padding(horizontal = m))
+                val lists = model.recommended.slots(6).take(8)
+                LazyRow(contentPadding = PaddingValues(start = m, end = m, top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(lists.size) { i ->
+                        val p = lists[i]
+                        Column(
+                            Modifier
+                                .width(92.dp)
+                                .themedSurface(tone = SurfaceTone.Flat, onClick = { if (p != null) model.openPlaylist(p) })
+                                .padding(6.dp),
+                        ) {
+                            PixelCover(p?.coverUrl, p?.let { (it.id % 97).toInt() } ?: (10 + i), Modifier.fillMaxWidth().height(80.dp))
+                            Text(p?.name ?: "· · ·", style = Lanyin.type.caption.copy(fontSize = fixedSp(11f), lineHeight = fixedSp(14f)), color = Lanyin.colors.content, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+                        }
+                    }
+                }
             }
         }
-        item { Pictograms(model, Modifier.padding(start = m, end = m, top = 18.dp)) }
-        if (!model.signedIn) item { ConnectLine(model.login, Modifier.padding(start = m, end = m, top = 18.dp)) }
         item {
-            Column(Modifier.padding(top = 30.dp)) {
-                SectionTitle("推荐歌单", Modifier.padding(horizontal = m), trailing = model.recommendedNote)
-                Posters(model, PaddingValues(start = m, end = m, top = 12.dp))
-            }
-        }
-        item {
-            Column(Modifier.padding(start = m, end = m, top = 30.dp)) {
-                SectionTitle("排行榜", trailing = "全部 ›")
-                HangingCharts(model, Modifier.padding(top = 14.dp))
+            Column(Modifier.padding(start = m, end = m, top = 22.dp)) {
+                ConsoleHeading("排行榜", "全部", onTrailing = model.openCharts)
+                val charts = model.charts.slots(4)
+                Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    charts.forEachIndexed { i, chart -> ChartRow(chart, i, { if (chart != null) model.openPlaylist(chart.playlist) else model.openCharts() }) }
+                }
             }
         }
         model.picks?.let { picks ->
-            item { SectionTitle(picks.title, Modifier.padding(start = m, end = m, top = 30.dp), trailing = picks.note) }
+            item { ConsoleHeading(picks.title, picks.note, Modifier.padding(start = m, end = m, top = 22.dp)) }
             items(picks.songs.size) { i ->
-                TubeRow(i, picks.songs[i], picks.songs[i].id == model.player.playingSongId, { model.playPick(i) }, Modifier.padding(horizontal = m))
+                val song = picks.songs[i]
+                PickRow(song, playing = song.id == model.player.playingSongId, onClick = { model.playPick(i) }, modifier = Modifier.padding(start = m, end = m - 10.dp, top = if (i == 0) 8.dp else 0.dp))
             }
         }
     }
 }
 
-/** The app's sign, LANYIN in pink tube with OPEN lit in cyan beside it, and the greeting under them. */
+/** How the head-up display sets its words: white light on the glass, a soft halo. */
 @Composable
-private fun StreetHeader(model: HomeModel, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val now by rememberNow()
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                NeonText("LANYIN", TextStyle(fontFamily = TiltNeonFamily, fontSize = fixedSp(38f), letterSpacing = 2.sp), c.accent)
-                Spacer(Modifier.width(12.dp))
-                BoxSign("OPEN", c.accentAlt, size = 11f, delayMillis = 450)
+private fun hud(size: Float) = TextStyle(fontFamily = PixelFamily, fontSize = fixedSp(size), lineHeight = fixedSp(size * 1.3f), color = Color(0xFFD8E4EE), shadow = Shadow(Color(0xFF6FE0C8).copy(alpha = 0.6f), Offset.Zero, 8f))
+
+/** The windscreen, under the status bar, with tonight's route projected on it. */
+@Composable
+private fun Windscreen(model: HomeModel) {
+    val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val songs = model.pickSongs
+    val minutes = songs.sumOf { it.durationMs } / 60_000
+    val arrive = if (songs.isEmpty()) "--:--" else "%02d:%02d".format(minutes / 60, minutes % 60)
+    NightWindshield(Modifier.fillMaxWidth().height(top + 250.dp).pressable(label = "每日推荐", onClick = model.openDaily), seed = 7) {
+        Box(Modifier.fillMaxSize().padding(top = top)) {
+            Row(Modifier.align(Alignment.TopEnd).padding(end = 12.dp, top = 2.dp)) {
+                HeaderActions(model.account, model.openSettings, model.openAccount)
             }
-            Text(greeting(now.hour), style = style.type.title, color = c.content, modifier = Modifier.padding(top = 4.dp))
-            Text(
-                "${now.monthValue}月${now.dayOfMonth}日 · ${now.dayOfWeek.getDisplayName(JavaTextStyle.FULL, Locale.CHINA)}",
-                style = style.type.caption, color = c.muted,
-            )
+            // The route, projected low on the glass.
+            Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 54.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("↑ 每日推荐", style = hud(13f))
+                Text("  ·  ${if (songs.isEmpty()) "今晚" else "${songs.size} 首"}", style = hud(11f))
+                Spacer(Modifier.width(18.dp))
+                Text("$arrive 到达", style = hud(11f).copy(color = Color(0xFFFFC874)))
+            }
         }
-        HeaderActions(model.account, model.openSettings, model.openAccount)
+    }
+}
+
+/** The screen's status line: what it's showing, and the time. */
+@Composable
+private fun ConsoleHeader(model: HomeModel, modifier: Modifier) {
+    val c = Lanyin.colors
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(9.dp).background(c.accent))
+        Text("  媒体 · 网易云音乐", style = Lanyin.type.caption.copy(fontSize = fixedSp(12f)), color = c.content, modifier = Modifier.weight(1f))
+        Text("%02d:%02d".format(model.now.hour, model.now.minute), style = Lanyin.type.caption.copy(fontSize = fixedSp(12f)), color = c.muted)
+    }
+}
+
+/** A heading on the screen, two little arrows after it. */
+@Composable
+private fun ConsoleHeading(text: String, trailing: String?, modifier: Modifier = Modifier, onTrailing: (() -> Unit)? = null) {
+    val c = Lanyin.colors
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("$text ▸▸", style = Lanyin.type.title.copy(fontSize = fixedSp(15f)), color = c.content)
+        Spacer(Modifier.weight(1f))
+        if (trailing != null) Text(trailing, style = Lanyin.type.caption.copy(fontSize = fixedSp(11f)), color = if (onTrailing != null) c.accent else c.muted, modifier = if (onTrailing != null) Modifier.pressable(onClick = onTrailing) else Modifier)
+    }
+}
+
+/** Tonight's route: today's picks with their picture, how long they run, and the key to set off. */
+@Composable
+private fun Route(model: HomeModel, modifier: Modifier) {
+    val c = Lanyin.colors
+    val songs = model.pickSongs
+    val minutes = songs.sumOf { it.durationMs } / 60_000
+    Row(modifier.fillMaxWidth().themedSurface(onClick = model.openDaily).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        val first = songs.firstOrNull()
+        PixelCover(first?.album?.coverUrl, first?.let { (it.id % 97).toInt() } ?: 3, Modifier.size(104.dp).border(3.dp, Color(0xFF05060A)))
+        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+            Text("今晚的路线 ▸ DAILY", style = Lanyin.type.caption.copy(fontSize = fixedSp(11f)), color = c.accent)
+            Text("每日推荐", style = Lanyin.type.display.copy(fontSize = fixedSp(24f), lineHeight = fixedSp(30f)), color = c.content, modifier = Modifier.padding(top = 2.dp))
+            Text(
+                if (songs.isEmpty()) model.dailyNote else "${songs.size} 首 · ${minutes / 60} 小时 ${minutes % 60} 分",
+                style = Lanyin.type.caption.copy(fontSize = fixedSp(11f)), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                Modifier
+                    .padding(top = 8.dp)
+                    .themedSurface(shape = CutCornerShape(3.dp), tone = SurfaceTone.Accent, onClick = model.playDaily)
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Canvas(Modifier.size(9.dp, 12.dp)) {
+                    drawRect(c.onAccent, size = Size(2.dp.toPx(), size.height))
+                    drawRect(c.onAccent, Offset(2.dp.toPx(), 0f), Size(size.width - 2.dp.toPx(), size.height * 0.55f))
+                }
+                Text("  出发", style = Lanyin.type.body.copy(fontSize = fixedSp(13f)), color = c.onAccent)
+            }
+        }
     }
 }
 
 /**
- * A lit box sign: a tube of [color] along its top, the picture inside, the name glowing under it,
- * and the sign's light falling over the top of the box.
+ * The radio's keys for your own music: FM, liked, charts, recent, downloads; FM's key lit with
+ * ON beside its picture while it plays.
  */
 @Composable
-private fun Lightbox(
-    title: String,
-    note: String,
-    color: Color,
-    onOpen: () -> Unit,
-    onPlay: () -> Unit,
-    modifier: Modifier,
-    art: @Composable () -> Unit,
-    mark: @Composable BoxScope.() -> Unit,
-) {
+private fun Keys(model: HomeModel, modifier: Modifier) {
     val c = Lanyin.colors
-    Column(
-        modifier
-            .themedSurface(onClick = onOpen)
-            .drawBehind { drawRect(Brush.verticalGradient(listOf(color.copy(alpha = 0.16f), Color.Transparent), endY = size.height * 0.5f)) },
-    ) {
-        Canvas(Modifier.fillMaxWidth().height(14.dp)) {
-            drawTubeLine(Offset(16.dp.toPx(), 7.dp.toPx()), Offset(size.width - 16.dp.toPx(), 7.dp.toPx()), color, 2.dp.toPx())
-        }
-        Box(Modifier.padding(horizontal = 10.dp).fillMaxWidth().aspectRatio(1.1f).clip(RoundedCornerShape(10.dp))) {
-            art()
-            mark()
-        }
-        Row(Modifier.padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                NeonText(title, Lanyin.style.type.title.copy(fontSize = 17.sp), color, delayMillis = 200)
-                Text(note, style = Lanyin.style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            TilePlay(onPlay)
-        }
-    }
-}
-
-/** Your own music as small neon pictograms on the wall, each in its own colour of tube. */
-@Composable
-private fun Pictograms(model: HomeModel, modifier: Modifier) {
-    val c = Lanyin.colors
-    val tubes = listOf(c.accent, c.accentAlt, Amber, lerp(c.accent, c.accentAlt, 0.5f))
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        model.doors.drop(2).forEachIndexed { i, door ->
-            val tube = tubes[i % tubes.size]
-            // No tile behind it: a little sign fixed straight to the bricks, its light on the wall
-            // round it, the pictogram and its name both bent in the same tube.
+    val doors = model.doors.drop(1)
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        doors.forEachIndexed { i, door ->
+            val lit = i == 0
             Column(
                 Modifier
                     .weight(1f)
-                    .heightIn(min = 76.dp)
-                    .lightSpill(tube, reach = 0.75f, strength = 0.16f)
-                    .pressable(onClick = door.onClick)
-                    .padding(vertical = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                    .themedSurface(tone = SurfaceTone.Flat, onClick = door.onClick)
+                    .then(if (lit) Modifier.border(2.dp, c.accent, CutCornerShape(3.dp)) else Modifier)
+                    .padding(horizontal = 6.dp, vertical = 8.dp),
             ) {
-                Box(
-                    Modifier.size(44.dp).drawBehind {
-                        drawCircle(Brush.radialGradient(listOf(tube.copy(alpha = 0.36f), Color.Transparent)), size.minDimension * 0.7f)
-                    },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    ThemedIcon(door.icon, null, tint = neonCore(tube), size = 26.dp)
+                Row(verticalAlignment = Alignment.Top) {
+                    ThemedIcon(door.icon, null, tint = if (door.icon == LineIcon.Heart) c.like else if (lit) c.accent else c.content, size = 20.dp)
+                    Spacer(Modifier.weight(1f))
+                    if (lit) Text("ON", style = Lanyin.type.caption.copy(fontSize = fixedSp(9f)), color = c.accentAlt)
                 }
-                io.lanyin.player.ui.design.NeonText(
-                    door.label, Lanyin.style.type.caption.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold), tube,
-                    Modifier.padding(top = 6.dp), ignite = false,
-                )
+                Text(door.label, style = Lanyin.type.caption.copy(fontSize = fixedSp(11f)), color = if (lit) c.accent else c.content, maxLines = 1, overflow = TextOverflow.Clip, modifier = Modifier.padding(top = 8.dp))
             }
         }
     }
 }
 
-/** The recommended playlists as posters along the wall, each under its number in cyan tube. */
+/** A chart on the screen: its number, name, and the song at the top of it, with that song's picture. */
 @Composable
-private fun Posters(model: HomeModel, padding: PaddingValues) {
+private fun ChartRow(chart: ChartPreview?, slot: Int, onClick: () -> Unit) {
     val c = Lanyin.colors
-    val lists = model.recommended.slots(6)
-    LazyRow(contentPadding = padding, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        items(lists.size) { i ->
-            val p = lists[i]
-            Column(Modifier.width(132.dp)) {
-                NeonText(
-                    "%02d".format(i + 1), TextStyle(fontFamily = TiltNeonFamily, fontSize = fixedSp(20f)), c.accentAlt,
-                    Modifier.padding(start = 2.dp, bottom = 4.dp), delayMillis = 120 * i,
-                )
-                if (p != null) PlaylistTile(p, { model.openPlaylist(p) }, Modifier.fillMaxWidth())
-                else ShelfCover(null, i, Modifier.size(132.dp))
-            }
-        }
-    }
-}
-
-/**
- * The charts as signs hung down the side of a building, each its own colour, switching on one
- * after another; under each, the song at the top of it.
- */
-@Composable
-private fun HangingCharts(model: HomeModel, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val tubes = listOf(c.accent, c.accentAlt, Amber, lerp(c.accent, c.accentAlt, 0.5f))
-    val charts = model.charts.slots(4)
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        charts.forEachIndexed { i, chart ->
-            Column(
-                Modifier.weight(1f).pressable(onClick = { if (chart != null) model.openPlaylist(chart.playlist) else model.openCharts() }),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                HangingSign(chart.nameOr(i).removeSuffix("（官方）"), tubes[i % tubes.size], Modifier.fillMaxWidth(), letterSize = 21f, delayMillis = 200 + 180 * i)
-                Text(
-                    chart?.top?.firstOrNull()?.name ?: "· · ·",
-                    style = style.type.caption.copy(textAlign = TextAlign.Center),
-                    color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-        }
-    }
-}
-
-/** A song under its number in tube: lit pink for the one playing, cold glass for the rest. */
-@Composable
-private fun TubeRow(index: Int, song: Song, playing: Boolean, onClick: () -> Unit, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val number = TextStyle(fontFamily = TiltNeonFamily, fontSize = fixedSp(22f))
-    Row(modifier.fillMaxWidth().pressable(onClick = onClick).padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(44.dp)) {
-            if (playing) NeonText("%02d".format(index + 1), number, c.accent, ignite = false)
-            else Text("%02d".format(index + 1), style = number, color = c.content.copy(alpha = 0.28f))
-        }
+    val top = chart?.top?.firstOrNull()
+    Row(Modifier.fillMaxWidth().themedSurface(tone = SurfaceTone.Flat, onClick = onClick).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("%02d".format(slot + 1), style = Lanyin.type.title.copy(fontSize = fixedSp(18f)), color = c.accent, modifier = Modifier.width(34.dp))
         Column(Modifier.weight(1f)) {
-            Text(song.name, style = style.type.body, color = if (playing) neonCore(c.accent) else c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(song.artistLine, style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(chart.nameOr(slot), style = Lanyin.type.body.copy(fontSize = fixedSp(14f)), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(top?.let { "▸ ${it.name} · ${it.artistLine}" } ?: "· · ·", style = Lanyin.type.caption.copy(fontSize = fixedSp(11f)), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        PixelCover(chart?.playlist?.coverUrl, 20 + slot, Modifier.size(40.dp).drawBehind { drawRect(Color(0xFF05060A), Offset(-2.dp.toPx(), -2.dp.toPx()), Size(size.width + 4.dp.toPx(), size.height + 4.dp.toPx())) }, cells = 20)
     }
 }

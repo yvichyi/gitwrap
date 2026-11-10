@@ -122,7 +122,7 @@ private fun lightLook(): LightLook {
         // 墨: a brush face, the sung words in the seal's vermilion.
         BackdropKind.Ink -> LightLook(FontFamily.Serif, FontWeight.Normal, false, 0.85f, false) { drawText(it, color = Color(0xFFE5533D)) }
         // 霓: the tube lights as it's sung.
-        BackdropKind.Neon -> LightLook(null, FontWeight.Bold, false, 0.8f, false) {
+        BackdropKind.Neon -> LightLook(io.lanyin.player.ui.theme.PixelFamily, FontWeight.Normal, false, 0.8f, false) {
             drawText(it, color = c.accent, shadow = Shadow(c.accent, Offset.Zero, 16f))
             drawText(it, color = lerp(c.accent, Color.White, 0.4f))
         }
@@ -224,31 +224,27 @@ private fun InkStrip(line: DesktopLine, sung: () -> Float, type: TextUnit, modif
     }
 }
 
-/** 霓: a sign on a dark wall; the unlit glass shows the words, and the tube lights as they're sung. */
+/** 霓: the car radio's LCD, teal on dark teal glass in pixels, the line lit up brighter as it's sung. */
 @Composable
 private fun NeonStrip(line: DesktopLine, sung: () -> Float, type: TextUnit, modifier: Modifier) {
-    val c = Lanyin.colors
+    val lcd = Color(0xFF6FE0C8)
     Row(
         modifier
-            .background(Color(0xFF0B0A12).copy(alpha = 0.66f), RoundedCornerShape(20.dp))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .background(Color(0xFF05060A))
+            .padding(3.dp)
+            .background(Color(0xFF0C2E33))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Canvas(Modifier.size(10.dp)) {
-            drawCircle(c.accentAlt.copy(alpha = 0.35f), size.minDimension)
-            drawCircle(c.accentAlt, size.minDimension / 2.6f)
-        }
-        Spacer(Modifier.width(12.dp))
+        Text("♪", style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(14f)), color = lcd)
+        Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             SungText(
-                line.text, TextStyle(fontWeight = FontWeight.Bold, fontSize = type, color = c.accent.copy(alpha = 0.3f)), sung,
-                paintSung = {
-                    drawText(it, color = c.accent, shadow = Shadow(c.accent, Offset.Zero, 18f))
-                    drawText(it, color = lerp(c.accent, Color.White, 0.45f))
-                },
+                line.text, TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = type, color = Color(0xFF2A9A8E)), sung,
+                paintSung = { drawText(it, color = Color(0xFFB8FFEC), shadow = Shadow(lcd, Offset.Zero, 10f)) },
                 maxLines = 1,
             )
-            Second(line.second, TextStyle(fontSize = fixed(11f)), Color.White.copy(alpha = 0.7f))
+            Second(line.second, TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(11f)), Color(0xFF2A9A8E))
         }
     }
 }

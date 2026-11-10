@@ -387,39 +387,29 @@ private fun SealedName(profile: UserProfile?, onLogin: () -> Unit, modifier: Mod
 }
 
 /**
- * 霓: your name in lights, as a shop puts up its sign: the nickname in pink tube over a dark board,
- * the avatar in a ring of cyan, OPEN beside it. Signed out, the sign is there but switched off.
+ * 霓: the driver's panel on the console: the avatar in the screen's bezel, the name in the pixel
+ * face, and the account's state the way the car shows a phone it's paired with.
  */
 @Composable
 private fun NameSign(profile: UserProfile?, onLogin: () -> Unit, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    Row(
-        modifier
-            .fillMaxWidth()
-            .themedSurface()
-            .drawBehind { drawRect(Brush.radialGradient(listOf(c.accent.copy(alpha = if (profile != null) 0.18f else 0.05f), Color.Transparent), Offset(size.width * 0.35f, 0f), size.width * 0.7f)) }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier.size(56.dp).drawBehind {
-                drawTube(Path().apply { addOval(androidx.compose.ui.geometry.Rect(Offset(size.width / 2f, size.height / 2f), size.minDimension / 2f - 3.dp.toPx())) }, c.accentAlt, 2.dp.toPx(), if (profile != null) 1f else 0f)
-            },
-            contentAlignment = Alignment.Center,
-        ) {
-            if (profile != null) Avatar(profile.avatarUrl, profile.nickname, 44.dp)
-            else ThemedIcon(LineIcon.User, null, tint = c.muted, size = 22.dp)
+    Row(modifier.fillMaxWidth().themedSurface().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(58.dp).background(Color(0xFF05060A)).padding(3.dp), contentAlignment = Alignment.Center) {
+            if (profile != null) Avatar(profile.avatarUrl, profile.nickname, 52.dp, shape = androidx.compose.ui.graphics.RectangleShape)
+            else ThemedIcon(LineIcon.User, null, tint = c.muted, size = 24.dp)
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            NeonText(profile?.nickname ?: "未登录", style.type.title.copy(fontSize = 20.sp), c.accent, lit = if (profile != null) 1f else 0f)
+            Text("驾驶员 · DRIVER", style = style.type.caption.copy(fontSize = fixed(11f)), color = c.accent)
+            Text(profile?.nickname ?: "未连接", style = style.type.title.copy(fontSize = 20.sp), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                if (profile != null) (vipName(profile.vipType) ?: "网易云音乐") + " · 营业中" else "招牌还没亮 · 扫码登录",
+                if (profile != null) "已连接 · " + (vipName(profile.vipType) ?: "网易云音乐") else "扫码连上网易云音乐",
                 style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
-        if (profile != null) BoxSign("OPEN", c.accentAlt, size = 10f, delayMillis = 300) else ThemedButton("登录", onLogin)
+        if (profile != null) Text("ON", style = style.type.caption.copy(fontSize = fixed(11f)), color = c.accentAlt, modifier = Modifier.background(Color(0xFF0C2E33)).padding(horizontal = 6.dp, vertical = 2.dp))
+        else ThemedButton("登录", onLogin)
     }
 }
 
@@ -433,8 +423,8 @@ private fun DirectoryBoard(entries: List<Entry>, modifier: Modifier) {
     val c = style.colors
     Column(modifier.fillMaxWidth().themedSurface().padding(horizontal = 16.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("澜音大厦 · 楼层指南", style = style.type.label, color = c.muted, modifier = Modifier.weight(1f))
-            Text("DIRECTORY", style = TextStyle(fontFamily = TiltNeonFamily, fontSize = fixed(11f), letterSpacing = 1.sp), color = c.muted)
+            Text("车载菜单 · 我的音乐", style = style.type.label, color = c.muted, modifier = Modifier.weight(1f))
+            Text("MENU", style = style.type.caption.copy(fontSize = fixed(11f)), color = c.muted)
         }
         entries.forEachIndexed { i, e ->
             Box(Modifier.padding(vertical = 6.dp).fillMaxWidth().height(1.dp).background(c.content.copy(alpha = 0.08f)))
@@ -442,7 +432,7 @@ private fun DirectoryBoard(entries: List<Entry>, modifier: Modifier) {
                 Modifier.fillMaxWidth().heightIn(min = 46.dp).then(e.onClick?.let { Modifier.pressable(onClick = it) } ?: Modifier),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                NeonText("${i + 1}F", TextStyle(fontFamily = TiltNeonFamily, fontSize = fixed(20f)), c.accentAlt, Modifier.width(46.dp), delayMillis = 120 * i)
+                Text("%02d".format(i + 1), style = style.type.title.copy(fontSize = fixed(18f)), color = c.accent, modifier = Modifier.width(40.dp))
                 ThemedIcon(e.icon, null, tint = c.muted, size = 18.dp, modifier = Modifier.padding(end = 10.dp))
                 Text(e.title, style = style.type.body, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Text(e.detail, style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp))

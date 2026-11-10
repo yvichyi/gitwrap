@@ -19,7 +19,7 @@ enum class AppTheme(
     GAME("you", "游", "像素掌机，四色绿屏", lightOnly = true),
     ACID("suan", "酸", "糖果塑料，铬金 Y2K", darkOnly = true),
     DUSK("mu", "暮", "孔版工作台，三色油墨"),
-    NEON("ni", "霓", "雨后夜街，霓虹招牌", darkOnly = true);
+    NEON("ni", "霓", "雨夜开车，像素画", darkOnly = true);
 
     companion object {
         /** 墨 is the flagship: the most restrained theme sets the bar for the rest. */

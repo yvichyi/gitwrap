@@ -155,19 +155,44 @@ private fun InkCard(lyric: CardLyric) {
     }
 }
 
-/** 霓: the line lit as a sign on the wall, an ON AIR box over it and the song in a small sign beneath. */
+/**
+ * 霓: the line on the windscreen. The rainy expressway at night in pixels with the line thrown
+ * on the glass by the head-up display, and under it the console's panel: the song, its cover,
+ * the time.
+ */
 @Composable
 private fun NeonCard(lyric: CardLyric) {
     val style = Lanyin.style
     val c = style.colors
-    Column(Modifier.fillMaxSize().padding(26.dp), verticalArrangement = Arrangement.Center) {
-        BoxSign("ON AIR", c.accentAlt, ignite = false)
-        Spacer(Modifier.height(22.dp))
-        NeonText(lyric.line, TextStyle(fontWeight = FontWeight.Bold, fontSize = fixed(28f), lineHeight = fixed(40f)), c.accent, ignite = false, maxLines = 5)
-        lyric.translation?.let { Text(it, style = TextStyle(fontSize = fixed(13f), lineHeight = fixed(19f)), color = c.content.copy(alpha = 0.75f), modifier = Modifier.padding(top = 12.dp)) }
-        Spacer(Modifier.height(26.dp))
-        Text(lyric.title, style = TextStyle(fontFamily = TiltNeonFamily, fontSize = fixed(15f)), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(lyric.artist, style = TextStyle(fontSize = fixed(11f)), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    Column(Modifier.fillMaxSize()) {
+        io.lanyin.player.ui.design.NightWindshield(Modifier.fillMaxWidth().weight(1.25f), seed = lyric.coverSeed, running = false) {
+            Column(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(bottom = 36.dp)
+                    .background(androidx.compose.ui.graphics.Brush.horizontalGradient(0f to Color.Transparent, 0.12f to Color(0xCC05060A), 0.88f to Color(0xCC05060A), 1f to Color.Transparent))
+                    .padding(vertical = 10.dp, horizontal = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    lyric.line, style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(22f), lineHeight = fixed(30f), textAlign = TextAlign.Center, shadow = Shadow(Color(0xFF6FE0C8).copy(alpha = 0.7f), Offset.Zero, 12f)),
+                    color = Color(0xFFD8E4EE), maxLines = 3,
+                )
+                lyric.translation?.let { Text(it, style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(12f), textAlign = TextAlign.Center), color = Color(0xFF9FB2C8), modifier = Modifier.padding(top = 4.dp)) }
+            }
+        }
+        Row(Modifier.fillMaxWidth().weight(0.55f).background(c.bg).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(84.dp).background(Color(0xFF05060A)).padding(3.dp)) {
+                io.lanyin.player.ui.design.PixelCover(lyric.coverUrl, lyric.coverSeed, Modifier.fillMaxSize(), cells = 36)
+            }
+            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                Text("正在播放 ▸▸", style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(11f)), color = c.accent)
+                Text(lyric.title, style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(20f)), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${lyric.artist} · 《${lyric.album}》", style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(11f)), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("LANYIN · 夜行", style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(10f)), color = c.accentAlt, modifier = Modifier.padding(top = 8.dp))
+            }
+        }
     }
 }
 

@@ -128,11 +128,7 @@ private fun DuskPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
 /** 霓: ON AIR and the tempo up top, the record, and the neon sign lighting the words beneath. */
 @Composable
 private fun NeonPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
-    Column(Modifier.fillMaxSize()) {
-        Box(Modifier.enter(stage.entrance, 1)) { SignHead(stage.state) }
-        StageArtwork(stage, Modifier.weight(1f).fillMaxWidth().then(stage.dismissDrag), heightFraction = 0.94f, onClick = onShowLyrics, ripples = true)
-        NeonSign(stage, Modifier.fillMaxWidth().height(184.dp).padding(top = 14.dp).enter(stage.entrance, 2).opensLyrics(onShowLyrics))
-    }
+    NeonPortraitStage(stage, onShowLyrics)
 }
 
 /** 机: the screen with the artwork and a few lines, and the panel under it: VU meters, counter and knob. */

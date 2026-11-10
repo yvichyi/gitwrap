@@ -61,10 +61,11 @@ private fun DrawScope.drawPicked(style: LanyinStyle, p: Float) {
             Brush.horizontalGradient(listOf(c.content.copy(alpha = 0.16f * fade), c.content.copy(alpha = 0.06f * fade), Color.Transparent), 0f, w * grow + 1f),
             size = Size(w * grow, h),
         )
+        // 霓: the row lit amber on the screen, a block running across it.
         BackdropKind.Neon -> {
-            val r = CornerRadius(10.dp.toPx())
-            drawRoundRect(c.accent.copy(alpha = 0.18f * fade), size = size, cornerRadius = r, style = Stroke(8.dp.toPx()))
-            drawRoundRect(c.accent.copy(alpha = 0.9f * fade), size = size, cornerRadius = r, style = Stroke(1.5.dp.toPx()))
+            drawRect(c.accent.copy(alpha = 0.14f * fade))
+            val px = 3.dp.toPx()
+            drawRect(c.accent.copy(alpha = fade), Offset((w - px * 4) * p, h - px), Size(px * 4, px))
         }
         BackdropKind.Dusk -> {
             val x = (w * 1.4f) * p - w * 0.4f

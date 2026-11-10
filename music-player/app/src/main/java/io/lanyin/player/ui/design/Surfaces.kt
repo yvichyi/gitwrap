@@ -86,8 +86,10 @@ fun Modifier.themedSurface(
             translate(0f, 3.dp.toPx()) { drawOutline(outline, androidx.compose.ui.graphics.lerp(c.accent, Color.Black, 0.35f)) }
         }
         flat -> this
-        // 霓: a sign's tube round what you can press; everything else matte, standing off the wall on a dark shadow.
-        style.edge == EdgeKind.Glow -> if (tone == SurfaceTone.Accent) neonGlow(shape, c.accent, 0.9f) else shadow(if (tone == SurfaceTone.Card) 10.dp else 6.dp, shape)
+        // 霓: panels of the console's screen, a hard pixel shadow under them; keys are the radio's.
+        style.edge == EdgeKind.Glow -> if (tone == SurfaceTone.Accent) this else drawBehind {
+            if (tone != SurfaceTone.Flat) drawRect(Color(0xFF05060A), androidx.compose.ui.geometry.Offset(0f, 3.dp.toPx()), size)
+        }
         // 暮: an offcut of darker board laid on the mat, its shadow falling away from the lamp.
         style.edge == EdgeKind.Soft -> shadow(
             elevation = if (tone == SurfaceTone.Card) 6.dp else 10.dp, shape = shape,
@@ -115,15 +117,16 @@ fun Modifier.themedSurface(
     m = m.clip(shape)
     // 3. Fill.
     m = when {
-        tone == SurfaceTone.Accent && style.edge == EdgeKind.Glow -> m.background(c.accent.copy(alpha = 0.12f))
+        // 霓: an amber key, its top row lit and its lip shaded.
+        tone == SurfaceTone.Accent && style.edge == EdgeKind.Glow -> m.drawBehind { drawPixelKey(c.accent, pressed = press > 0.5f) }
         // 酸: lime gel, lighter at the top, with the gloss across it.
         tone == SurfaceTone.Accent && style.edge == EdgeKind.Chrome -> m.background(Brush.verticalGradient(listOf(Color(0xFFE2FF6B), c.accent, Color(0xFF8FC400)))).drawBehind { drawGloss(0.45f) }
         tone == SurfaceTone.Accent -> m.background(style.accentBrush())
         style.edge == EdgeKind.Hairline -> m.background(c.bg)
-        // Matte, a little light catching its top edge, and the light of a sign falling on it while it's pressed.
+        // A panel of the screen: the row along its top a shade lighter, amber light on it while pressed.
         style.edge == EdgeKind.Glow -> m.background(if (flat) c.surfaceAlt else c.surface).drawBehind {
-            drawRect(Color.White.copy(alpha = 0.05f), size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
-            if (press > 0f) drawRect(c.accent.copy(alpha = 0.10f * press))
+            drawRect(c.outline, size = androidx.compose.ui.geometry.Size(size.width, 3.dp.toPx()))
+            if (press > 0f) drawRect(c.accent.copy(alpha = 0.12f * press))
         }
         // The cap was drawn behind, face and all.
         key -> m
@@ -151,7 +154,7 @@ fun Modifier.themedSurface(
     // 4. Edge.
     m = when (style.edge) {
         EdgeKind.Hairline -> m.border(1.dp, if (tone == SurfaceTone.Accent) c.content else c.outline, shape)
-        EdgeKind.Glow -> if (tone == SurfaceTone.Accent) m.border(1.5.dp, neonCore(c.accent), shape) else m
+        EdgeKind.Glow -> if (tone == SurfaceTone.Accent) m else m.border(1.5.dp, c.outline, shape)
         EdgeKind.Brutal -> m.border(style.strokeWidth, c.outline, shape)
         // The board's cut edge catching the lamp.
         EdgeKind.Soft -> if (tone == SurfaceTone.Accent) m else m.border(1.dp, c.content.copy(alpha = if (style.dark) 0.08f else 0.12f), shape)

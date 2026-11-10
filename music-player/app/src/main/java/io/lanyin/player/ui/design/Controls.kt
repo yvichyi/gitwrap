@@ -127,11 +127,35 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
                 drawCircle(c.accent.copy(alpha = 0.3f * l), r * (1.12f + 0.25f * l), style = Stroke(2.dp.toPx()))
                 if (b > 0f) drawCircle(c.accent.copy(alpha = 0.35f * b * b), r * (1.1f + (1f - b) * 0.45f), style = Stroke(1.2.dp.toPx()))
             }
+            // 霓: the key's light spilling round it in stepped pixel rings, the outer one checkered.
             ButtonKind.NeonRing -> {
                 val b = beat()
                 val l = level()
-                for ((w, a) in listOf(22.dp to 0.06f, 14.dp to 0.1f, 8.dp to 0.18f)) {
-                    drawCircle(c.accent.copy(alpha = a * (0.6f * l + 1.2f * b)), r, style = Stroke(w.toPx()))
+                val px = 3.dp.toPx()
+                val glow = (0.5f * l + 0.9f * b).coerceAtMost(1f)
+                if (glow > 0.02f) for (ring in 1..3) {
+                    val inset = -ring * px
+                    val a = glow * (0.5f - ring * 0.13f)
+                    val w = this.size.width - 2 * inset
+                    val h = this.size.height - 2 * inset
+                    var x = inset
+                    var k = 0
+                    while (x < inset + w) {
+                        if (ring < 3 || k % 2 == 0) {
+                            drawRect(c.accent.copy(alpha = a), Offset(x, inset), Size(px, px))
+                            drawRect(c.accent.copy(alpha = a), Offset(x, inset + h - px), Size(px, px))
+                        }
+                        x += px; k++
+                    }
+                    var y = inset + px
+                    k = 0
+                    while (y < inset + h - px) {
+                        if (ring < 3 || k % 2 == 0) {
+                            drawRect(c.accent.copy(alpha = a), Offset(inset, y), Size(px, px))
+                            drawRect(c.accent.copy(alpha = a), Offset(inset + w - px, y), Size(px, px))
+                        }
+                        y += px; k++
+                    }
                 }
             }
             ButtonKind.Disc -> drawDiscLights(style, level(), beat())
@@ -146,21 +170,20 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
     }
     val shape = when (style.button) {
         ButtonKind.Blob -> CircleShape
+        ButtonKind.NeonRing -> androidx.compose.foundation.shape.CutCornerShape(6.dp)
         ButtonKind.Brutal, ButtonKind.Stamp -> RectangleShape
         else -> CircleShape
     }
     val glyphColor = when (style.button) {
         ButtonKind.Outline -> c.content
-        ButtonKind.NeonRing -> c.accent
         else -> c.onAccent
     }
     val container = when (style.button) {
         ButtonKind.Outline -> Modifier.border(1.5.dp, c.content, shape)
         // 暮: a rubber stamp, struck in pink, the blue ring of its second drum a hair off.
         ButtonKind.Blob -> Modifier.drawBehind { drawRisoStamp(c.accent) }
-        ButtonKind.NeonRing -> Modifier
-            .neonGlow(shape, c.accent)
-            .border(2.dp, c.accent, shape)
+        // 霓: an amber key on the radio, lit from inside.
+        ButtonKind.NeonRing -> Modifier.drawBehind { drawPixelKey(c.accent, lit = true) }
         ButtonKind.Brutal -> Modifier
             .retroShadow(shape, c.outline, 5.dp)
             .clip(shape)
@@ -427,7 +450,7 @@ fun SeekBar(
             when (style.seek) {
                 SeekKind.Hairline -> drawHairlineTrack(f, c.content)
                 SeekKind.Pill -> drawSteelRule(f, dragging, style, ruleMeasurer)
-                SeekKind.Tube -> drawTubeTrack(f, c.accent)
+                SeekKind.Tube -> drawPixelBar(f, dragging, style)
                 SeekKind.Block -> drawBlockTrack(f, c.accent, c.outline, c.surface)
                 SeekKind.Dots -> drawDotsTrack(f, dragging, style)
                 SeekKind.Fader -> drawFaderTrack(f, dragging, style)
@@ -485,6 +508,47 @@ private fun DrawScope.drawHairlineTrack(f: Float, ink: Color) {
     drawLine(ink.copy(alpha = 0.2f), Offset(0f, cy), Offset(size.width, cy), 1.dp.toPx())
     drawLine(ink, Offset(0f, cy), Offset(x, cy), 1.5.dp.toPx())
     drawCircle(ink, 3.5.dp.toPx(), Offset(x, cy))
+}
+
+/**
+ * 霓's key: a block of [face] with its corners stepped off, a lighter row along the top, the
+ * shaded lip along the bottom and a dark rim, as the radio's buttons are drawn.
+ */
+internal fun DrawScope.drawPixelKey(face: Color, lit: Boolean = false, pressed: Boolean = false) {
+    val px = 3.dp.toPx()
+    val w = size.width
+    val h = size.height
+    val rim = Color(0xFF05060A)
+    val lip = if (pressed) px * 0.5f else px * 1.5f
+    // Rim, stepped at the corners.
+    drawRect(rim, Offset(px, 0f), Size(w - 2 * px, h))
+    drawRect(rim, Offset(0f, px), Size(w, h - 2 * px))
+    // Lip (darker), then face, then the top light.
+    val shade = lerp(face, Color.Black, 0.45f)
+    drawRect(shade, Offset(px, px), Size(w - 2 * px, h - 2 * px))
+    drawRect(face, Offset(px, px), Size(w - 2 * px, h - 2 * px - lip))
+    drawRect(lerp(face, Color.White, if (lit) 0.45f else 0.25f), Offset(px * 2, px), Size(w - 4 * px, px))
+}
+
+/** 霓: the position as a row of amber pixel segments, the one playing now the brightest. */
+private fun DrawScope.drawPixelBar(f: Float, dragging: Float, style: io.lanyin.player.ui.theme.LanyinStyle) {
+    val c = style.colors
+    val px = 3.dp.toPx()
+    val seg = px
+    val gap = px
+    val hgt = px * (2f + dragging)
+    val y = (size.height - hgt) / 2f
+    val n = ((size.width + gap) / (seg + gap)).toInt()
+    val head = (f * (n - 1)).toInt()
+    for (i in 0 until n) {
+        val x = i * (seg + gap)
+        val color = when {
+            i == head -> Color(0xFFFFF0C8)
+            i < head -> c.accent
+            else -> c.outline
+        }
+        drawRect(color, Offset(x, if (i == head) y - px else y), Size(seg, if (i == head) hgt + 2 * px else hgt))
+    }
 }
 
 /** 暮's stamp: an ink disc, unevenly inked, with a blue ring printed a hair out of register. */
@@ -561,17 +625,6 @@ private fun DrawScope.drawSteelRule(f: Float, dragging: Float, style: io.lanyin.
     drawLine(c.accent, Offset(x - lean, top - 6.dp.toPx()), Offset(x + lean, bottom - 2.dp.toPx()), (2.2f + 1.4f * dragging).dp.toPx(), StrokeCap.Round)
 }
 
-/** 霓: a glass tube along the track, cold ahead of the head and lit behind it, the head a bright knot. */
-private fun DrawScope.drawTubeTrack(f: Float, lit: Color) {
-    val y = size.height / 2f
-    val w = 3.dp.toPx()
-    val x = (size.width * f).coerceIn(0f, size.width)
-    drawGlass(Path().apply { moveTo(x, y); lineTo(size.width, y) }, w)
-    if (x > 0f) drawTubeLine(Offset(0f, y), Offset(x, y), lit, w)
-    drawCircle(lit.copy(alpha = 0.22f), w * 3.4f, Offset(x, y))
-    drawCircle(neonCore(lit), w * 1.4f, Offset(x, y))
-}
-
 /** 格: a thick ruled bar with a hard shadow, ruler ticks and a square yellow handle. */
 private fun DrawScope.drawBlockTrack(f: Float, fill: Color, ink: Color, paper: Color) {
     val h = 14.dp.toPx()
@@ -602,7 +655,7 @@ fun ThemedChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: M
     val c = style.colors
     val shape = style.chipShape
     val fill by animateFloatAsState(if (selected) 1f else 0f, style.motion.spec(), label = "chip")
-    val onFill = if (style.button == ButtonKind.NeonRing) c.accent else c.onAccent
+    val onFill = c.onAccent
     if (style.button == ButtonKind.Brutal) {
         Box(
             modifier
@@ -621,7 +674,7 @@ fun ThemedChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: M
         modifier
             .pressable(onClick = onClick)
             .clip(shape)
-            .background(c.accent.copy(alpha = fill * (if (style.button == ButtonKind.NeonRing) 0.16f else 1f)))
+            .background(c.accent.copy(alpha = fill))
             .border(1.dp, if (selected) c.accent else c.outline, shape)
             .padding(horizontal = 16.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
@@ -717,7 +770,6 @@ fun ThemedButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
             style = style.type.body.copy(fontWeight = FontWeight.Medium),
             color = when {
                 hairline -> c.content
-                style.button == ButtonKind.NeonRing -> c.accent
                 else -> c.onAccent
             },
         )

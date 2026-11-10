@@ -4,6 +4,12 @@ import android.graphics.Bitmap
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -46,10 +52,27 @@ fun Backdrop(
 ) {
     val style = Lanyin.style
     val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    // 霓's player: the windscreen across the top, down to the bottom of the head-up display's
+    // strip, over the dashboard; the car moves while the music plays and stops when it pauses.
+    if (style.backdrop == BackdropKind.Neon && live) {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
+            Canvas(Modifier.matchParentSize()) { drawDashboard() }
+            // In portrait the glass starts under the top bar (which sits on the roof lining).
+            val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            val from = if (landscape) 56.dp else top + 52.dp
+            val glass = if (landscape) maxHeight - 56.dp - 186.dp else io.lanyin.player.ui.player.NeonHudHeight + 10.dp
+            Canvas(Modifier.fillMaxWidth().height(from)) { drawRect(Color(0xFF10141E)); drawRect(Color(0xFF2B354B), Offset(0f, size.height - 3.dp.toPx()), Size(size.width, 3.dp.toPx())) }
+            NightWindshield(
+                Modifier.padding(top = from).fillMaxWidth().height(glass.coerceAtLeast(120.dp)),
+                seed = 7 + (trackNumber ?: 0), speed = if (playing) 1f else 0f,
+            )
+        }
+        return
+    }
     // Paper, a case and a grid never move: no clock for them (格's poster does, in landscape,
     // while the music plays). 点's dots only move with the music.
     val animated = live && when (style.backdrop) {
-        BackdropKind.Device, BackdropKind.Paper, BackdropKind.Game, BackdropKind.Dusk -> false
+        BackdropKind.Device, BackdropKind.Paper, BackdropKind.Game, BackdropKind.Dusk, BackdropKind.Neon -> false
         BackdropKind.Grid -> playing && landscape
         BackdropKind.Dot -> playing
         else -> true
@@ -93,7 +116,7 @@ internal fun DrawScope.drawBackdropFrame(
             drawInk(style, t, page, heard, hour)
             if (!page && wide) drawInkWildlife(style, t, heard)
         }
-        BackdropKind.Neon -> if (page) drawNightWall(style) else drawNightStreet(style, t, heard, hour)
+        BackdropKind.Neon -> drawDashboard()
         BackdropKind.Dusk -> drawCuttingMat(style, hour, measurer)
         BackdropKind.Grid -> {
             drawGridPaper(style, page, measurer, trackNumber)

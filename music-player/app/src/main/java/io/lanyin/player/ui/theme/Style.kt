@@ -179,17 +179,21 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             motion = Motion(1f, 700f), bouncy = Motion(0.9f, 600f), pressScale = 0.98f,
             iconStroke = 1.3f, dock = DockKind.Docked, margin = 24.dp, quietSections = true,
         )
+        // 霓: a night drive, in pixel art. You're in the car on the expressway in the rain; the
+        // pages are the centre console's screen, set in a pixel face on the night's blue-black,
+        // sodium amber for what to press, the teal of a sign beside it, brake-light red for a
+        // heart; the radio's LCD is the mini player and its preset keys are the tabs.
         AppTheme.NEON -> LanyinStyle(
             theme = theme, dark = true,
             colors = neon,
-            display = FontFamily.SansSerif, displayWeight = FontWeight.Bold, displayTracking = 0.02.em,
-            body = FontFamily.SansSerif, numeric = TiltNeonFamily,
-            cardShape = RoundedCornerShape(16.dp), chipShape = CircleShape, artShape = RoundedCornerShape(12.dp),
+            display = PixelFamily, displayWeight = FontWeight.Normal, displayTracking = 0.02.em,
+            body = PixelFamily, numeric = PixelFamily,
+            cardShape = CutCornerShape(3.dp), chipShape = CutCornerShape(3.dp), artShape = RectangleShape,
             edge = EdgeKind.Glow, backdrop = BackdropKind.Neon, seek = SeekKind.Tube,
-            button = ButtonKind.NeonRing, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = false, activeScale = 1.1f, inactiveAlpha = 0.35f, blurStep = 0.6.dp, staggerMs = 18, glow = true, serif = false),
-            motion = Motion(0.85f, 1100f), bouncy = Motion(0.55f, 900f), pressScale = 0.95f,
-            iconStroke = 1.6f,
+            button = ButtonKind.NeonRing, nav = NavKind.Text,
+            lyric = LyricStyle(centered = true, activeScale = 1.06f, inactiveAlpha = 0.4f, blurStep = 0.dp, staggerMs = 0, glow = true, serif = false, weight = FontWeight.Normal),
+            motion = Motion(1f, 1100f), bouncy = Motion(0.75f, 900f), pressScale = 0.95f,
+            iconStroke = 2f, dock = DockKind.Docked,
         )
         // 暮: a riso print studio at dusk. A green cutting mat with its centimetre grid under the
         // whole app (by night a black one under the lamp); prints in three inks (fluorescent pink,
@@ -319,12 +323,12 @@ private val inkDark = LanyinColors(
     content = Color(0xFFECEAE4), muted = Color(0xFF8E8B82), accent = Color(0xFFECEAE4), accentAlt = Color(0xFFD4493F),
     onAccent = Color(0xFF0B0B0B), outline = Color(0x3DECEAE4), like = Color(0xFFD4493F), vinyl = Color(0xFF1C1C1C),
 )
-// A street at night after rain: walls near black with a violet cast, matte, and the only colour
-// the light of the signs, a hot pink tube and an ice cyan one.
+// 霓's palette, from the pixel art: the night's blue-black, the white of a headlight for text, the
+// sodium lamps' amber to press, a sign's teal, brake-light red.
 private val neon = LanyinColors(
-    bg = Color(0xFF0D0B12), bgDeep = Color(0xFF1B1526), surface = Color(0xFF17141E), surfaceAlt = Color(0xFF201B29),
-    content = Color(0xFFF3EEF7), muted = Color(0xFF968CA6), accent = Color(0xFFFF4D9A), accentAlt = Color(0xFF3DE3FF),
-    onAccent = Color(0xFF1A0610), outline = Color(0x1FFFFFFF), like = Color(0xFFFF4D9A), vinyl = Color(0xFF08070B),
+    bg = Color(0xFF0A0D14), bgDeep = Color(0xFF05060A), surface = Color(0xFF10141E), surfaceAlt = Color(0xFF171D2B),
+    content = Color(0xFFD8E4EE), muted = Color(0xFF9FB2C8), accent = Color(0xFFE89A3E), accentAlt = Color(0xFF6FE0C8),
+    onAccent = Color(0xFF1A1210), outline = Color(0xFF2B354B), like = Color(0xFFFF6A4A), vinyl = Color(0xFF05060A),
 )
 // Paper is a warm off-white and the sky a dusty peach, so mustard stays an accent rather than
 // the colour of the whole page.
@@ -454,6 +458,11 @@ private val duskPaper = LanyinColors(
 )
 private val duskPaperNight = duskPaper.copy(
     bg = Color(0xFFDDD3C1), bgDeep = Color(0xFFD2C7B3), surface = Color(0xFFE3DACA), surfaceAlt = Color(0xFFD5CAB6),
+)
+
+/** 霓's radio LCD: teal segments on the dark teal glass, amber for what's pressed. */
+fun LanyinStyle.radioLcdStyle(): LanyinStyle = copy(
+    colors = colors.copy(bg = Color(0xFF0C2E33), surface = Color(0xFF0C2E33), surfaceAlt = Color(0xFF103A40), content = Color(0xFF6FE0C8), muted = Color(0xFF2A9A8E), outline = Color(0xFF16595A)),
 )
 
 /**

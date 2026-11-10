@@ -56,8 +56,9 @@ internal fun Modifier.commentFrame(index: Int): Modifier {
     return when (style.backdrop) {
         // A note in the margin: a fine rule down its left.
         BackdropKind.Ink -> drawBehind { drawRect(c.content.copy(alpha = 0.22f), Offset(0f, 12.dp.toPx()), Size(1.dp.toPx(), size.height - 24.dp.toPx())) }
-        BackdropKind.Neon -> background(c.surface, RoundedCornerShape(14.dp)).drawBehind {
-            drawRect(Color.White.copy(alpha = 0.05f), Offset(14.dp.toPx(), 0f), Size(size.width - 28.dp.toPx(), 1.dp.toPx()))
+        // 霓: a panel of the console's screen, its top row a shade lighter.
+        BackdropKind.Neon -> background(c.surface, androidx.compose.foundation.shape.CutCornerShape(3.dp)).drawBehind {
+            drawRect(c.outline, Offset(3.dp.toPx(), 0f), Size(size.width - 6.dp.toPx(), 3.dp.toPx()))
         }
         // A postcard, set down a little crooked.
         BackdropKind.Dusk -> graphicsLayer { rotationZ = if (index % 2 == 0) -0.4f else 0.4f }
@@ -88,7 +89,7 @@ internal fun CommentByline(comment: Comment, now: Long, index: Int, modifier: Mo
     Column(modifier) {
         when (style.backdrop) {
             BackdropKind.Neon -> Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.padding(end = 6.dp).size(6.dp).background(neonCore(c.accent), CircleShape))
+                Box(Modifier.padding(end = 6.dp).size(6.dp).background(c.accent))
                 Text(name, style = nameStyle, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             // 暮: signed in pencil.

@@ -41,6 +41,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import io.lanyin.player.ui.design.drawGloss
@@ -356,7 +358,8 @@ fun LanyinApp(
                             if (Lanyin.style.dock == DockKind.Docked) {
                                 // A plain bar on the page colour, ruled off with hairlines.
                                 // 暮: the darker edge of the mat.
-                                Column(Modifier.background(if (Lanyin.style.edge == EdgeKind.Soft) Lanyin.colors.bgDeep else Lanyin.colors.bg).navigationBarsPadding()) {
+                                // 霓: the car radio's grey body.
+                                Column(Modifier.background(when (Lanyin.style.edge) { EdgeKind.Soft -> Lanyin.colors.bgDeep; EdgeKind.Glow -> Color(0xFF20283A); else -> Lanyin.colors.bg }).navigationBarsPadding()) {
                                     NoticeBanner(notice, onDismiss)
                                     Hairline()
                                     if (showMini) MiniPlayer(player, settings.playerSkin, spin, onExpand = { expanded = true })
@@ -515,6 +518,21 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                 )
             }
             NavKind.Text -> when (style.edge) {
+                // 霓: the radio's preset keys, a little amber light on the one pressed.
+                EdgeKind.Glow -> {
+                    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                        val w = size.width / tabs.size
+                        for (i in tabs.indices) {
+                            translate(i * w + 4.dp.toPx(), 5.dp.toPx()) {
+                                drawPixelKeyArea(androidx.compose.ui.geometry.Size(w - 8.dp.toPx(), size.height - 10.dp.toPx()), i == selected)
+                            }
+                        }
+                    }
+                    androidx.compose.foundation.Canvas(Modifier.offset(x = x).width(itemWidth).fillMaxHeight()) {
+                        val px = 3.dp.toPx()
+                        drawRect(Color(0xFFFFC874), androidx.compose.ui.geometry.Offset(size.width / 2f - px, 8.dp.toPx()), androidx.compose.ui.geometry.Size(px * 2, px))
+                    }
+                }
                 // 暮: a pencil loop round the current tab, the others ringed faintly in dashes.
                 EdgeKind.Soft -> {
                     androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
@@ -601,6 +619,18 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
             }
         }
     }
+}
+
+/** A radio key [area] big at the canvas origin, sunk a little while it's [down]. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPixelKeyArea(area: androidx.compose.ui.geometry.Size, down: Boolean) {
+    val px = 3.dp.toPx()
+    val rim = Color(0xFF05060A)
+    drawRect(rim, androidx.compose.ui.geometry.Offset(px, 0f), androidx.compose.ui.geometry.Size(area.width - 2 * px, area.height))
+    drawRect(rim, androidx.compose.ui.geometry.Offset(0f, px), androidx.compose.ui.geometry.Size(area.width, area.height - 2 * px))
+    drawRect(Color(0xFF171D2B), androidx.compose.ui.geometry.Offset(px, px), androidx.compose.ui.geometry.Size(area.width - 2 * px, area.height - 2 * px))
+    val lip = if (down) px * 0.5f else px * 1.5f
+    drawRect(if (down) Color(0xFF20283A) else Color(0xFF2B354B), androidx.compose.ui.geometry.Offset(px, px), androidx.compose.ui.geometry.Size(area.width - 2 * px, area.height - 2 * px - lip))
+    drawRect(Color(0xFF4F5D78), androidx.compose.ui.geometry.Offset(px * 2, px), androidx.compose.ui.geometry.Size(area.width - 4 * px, px))
 }
 
 /** The page as the person would name it, for the diagnostics. */

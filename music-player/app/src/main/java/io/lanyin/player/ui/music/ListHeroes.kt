@@ -71,6 +71,7 @@ import io.lanyin.player.ui.theme.BackdropKind
 import io.lanyin.player.ui.theme.DotoFamily
 import io.lanyin.player.ui.theme.GridYellow
 import io.lanyin.player.ui.theme.Lanyin
+import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.theme.SpaceMonoFamily
 import kotlin.math.sin
 
@@ -184,32 +185,38 @@ private fun Roller(width: Dp) {
 }
 
 /**
- * 霓: the list as the sign over a door. The art large in a rounded tube frame, its light thrown
- * on the bricks round it, and the title lit underneath in the pink tube, centred like a sign.
+ * 霓: the list on the console's screen: its cover in pixels in the screen's black bezel, the
+ * title set in the pixel face under it, a status line above (what kind of list, how it's
+ * marked) and the note under the title.
  */
 @Composable
 private fun NeonHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
     val style = Lanyin.style
     val c = style.colors
-    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            Modifier
-                .lightSpill(c.accentAlt, reach = 1f, strength = 0.24f)
-                .drawWithContent {
-                    drawContent()
-                    val inset = 4.dp.toPx()
-                    drawTubeFrame(Offset(inset, inset), Size(size.width - inset * 2, size.height - inset * 2), 24.dp.toPx(), c.accentAlt, 2.5.dp.toPx())
-                }
-                .padding(16.dp),
-        ) {
-            HeroArt(header, 196.dp, Modifier.clip(RoundedCornerShape(14.dp)))
+    Column(modifier.fillMaxWidth().themedSurface().padding(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(8.dp).background(c.accent))
+            Text("  歌单 · PLAYLIST", style = style.type.caption.copy(fontSize = fixed(11f)), color = c.content, modifier = Modifier.weight(1f))
+            Text("▸▸", style = style.type.caption.copy(fontSize = fixed(11f)), color = c.accentAlt)
         }
-        NeonText(
-            title, style.type.display.copy(fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold), c.accent,
-            Modifier.padding(top = 14.dp), maxLines = 2, textAlign = TextAlign.Center,
-        )
-        if (subtitle != null) {
-            Text(subtitle, style = style.type.caption.copy(textAlign = TextAlign.Center), color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.Bottom) {
+            Box(Modifier.size(150.dp).background(Color(0xFF05060A)).padding(3.dp)) {
+                when (header) {
+                    is ListHeader.Cover -> io.lanyin.player.ui.design.PixelCover(header.url, header.seed, Modifier.fillMaxSize(), cells = 44)
+                    is ListHeader.Day -> {
+                        io.lanyin.player.ui.design.PixelCover(null, header.day, Modifier.fillMaxSize(), cells = 44)
+                        Text("${header.day}", style = style.type.display.copy(fontSize = fixed(44f), lineHeight = fixed(46f)), color = c.accent, modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp))
+                    }
+                    is ListHeader.Glyph -> {
+                        io.lanyin.player.ui.design.PixelCover(null, 3, Modifier.fillMaxSize(), cells = 44)
+                        io.lanyin.player.ui.design.ThemedIcon(header.icon, null, tint = c.accent, size = 40.dp, modifier = Modifier.align(Alignment.Center))
+                    }
+                }
+            }
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(title, style = style.type.display.copy(fontSize = 24.sp, lineHeight = 30.sp), color = c.content, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                if (subtitle != null) Text(subtitle, style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+            }
         }
     }
 }
@@ -544,7 +551,7 @@ internal fun DrawScope.drawPlayingBars(t: Float, playing: Boolean, backdrop: Bac
                 val n = (h * 4f).toInt().coerceIn(1, 4)
                 for (k in 0 until n) drawRect(color, Offset(x - w / 2f, size.height - (k + 1) * w * 1.2f + w * 0.2f), Size(w, w))
             }
-            BackdropKind.Neon -> drawTubeLine(Offset(x, size.height), Offset(x, size.height * (1f - h)), color, w * 0.6f)
+            BackdropKind.Neon -> drawRect(color, Offset(x - w * 0.4f, size.height * (1f - h)), Size(w * 0.8f, size.height * h))
             else -> drawLine(color, Offset(x, size.height), Offset(x, size.height * (1f - h)), w, StrokeCap.Round)
         }
     }

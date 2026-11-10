@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -46,6 +47,7 @@ import io.lanyin.player.ui.design.SurfaceTone
 import io.lanyin.player.ui.design.drawPlayPauseGlyph
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.sharedPlayer
+import io.lanyin.player.ui.theme.radioLcdStyle
 import io.lanyin.player.ui.design.themedSurface
 import io.lanyin.player.ui.theme.DockKind
 import io.lanyin.player.ui.theme.Lanyin
@@ -87,6 +89,37 @@ fun MiniPlayer(
                 tapes = listOf(io.lanyin.player.ui.design.TapeAt.Left, io.lanyin.player.ui.design.TapeAt.Right),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
             ) { MiniPlayer(state, skin, spin, onExpand, Modifier.fillMaxSize(), onPaper = true) }
+        }
+        return
+    }
+    // 霓: the car radio's LCD, between its VOL and TUNE knobs.
+    if (style.edge == io.lanyin.player.ui.theme.EdgeKind.Glow && !onPaper) {
+        val lcd = androidx.compose.runtime.remember(style) { style.radioLcdStyle() }
+        Row(modifier.fillMaxWidth().height(60.dp).padding(horizontal = style.margin - 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Canvas(Modifier.size(30.dp)) { drawRadioKnob(-40f) }
+            Spacer(Modifier.width(10.dp))
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .drawBehind {
+                        val px = 3.dp.toPx()
+                        drawRect(Color(0xFF05060A))
+                        drawRect(lcd.colors.bg, Offset(px, px), Size(size.width - 2 * px, size.height - 2 * px))
+                        var y = px * 2
+                        while (y < size.height - px) {
+                            drawRect(Color.Black.copy(alpha = 0.12f), Offset(px, y), Size(size.width - 2 * px, px * 0.4f))
+                            y += px
+                        }
+                    }
+                    .padding(3.dp),
+            ) {
+                CompositionLocalProvider(io.lanyin.player.ui.theme.LocalLanyinStyle provides lcd, LocalContentColor provides lcd.colors.content) {
+                    MiniPlayer(state, skin, spin, onExpand, Modifier.fillMaxSize(), onPaper = true)
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            Canvas(Modifier.size(30.dp)) { drawRadioKnob(30f) }
         }
         return
     }
@@ -265,4 +298,21 @@ internal fun DrawScope.drawMiniProgress(style: LanyinStyle, f: Float, t: Float) 
             drawArc(Color.White.copy(alpha = 0.6f), -90f, 360f * f, false, Offset(inset, inset), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke * 0.25f, cap = StrokeCap.Round))
         }
     }
+}
+
+/** 霓's radio knob in pixels: a dark ring of grip, a lighter cap, an amber line for where it's turned. */
+private fun DrawScope.drawRadioKnob(angle: Float) {
+    val px = 3.dp.toPx()
+    val r = size.minDimension / 2f
+    val c = Offset(size.width / 2f, size.height / 2f)
+    drawCircle(Color(0xFF05060A), r, c)
+    drawCircle(Color(0xFF2B354B), r - px, c)
+    for (k in 0 until 12) {
+        val a = k * PI.toFloat() / 6f
+        drawRect(Color(0xFF171D2B), c + Offset(cos(a) * (r - px * 1.5f) - px / 2f, sin(a) * (r - px * 1.5f) - px / 2f), Size(px, px))
+    }
+    drawCircle(Color(0xFF3A4660), r - px * 2.5f, c)
+    drawRect(Color(0xFF6D7E9A), c + Offset(-px * 1.5f, -px * 2f), Size(px, px))
+    val a = (angle - 90f) * PI.toFloat() / 180f
+    for (k in 1..2) drawRect(Color(0xFFE89A3E), c + Offset(cos(a) * px * k * 1.2f - px / 2f, sin(a) * px * k * 1.2f - px / 2f), Size(px, px))
 }

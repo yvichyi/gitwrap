@@ -200,7 +200,7 @@ private fun SheetGrip(modifier: Modifier) {
         val faint = c.content.copy(alpha = 0.22f)
         when (style.backdrop) {
             BackdropKind.Ink -> drawPath(io.lanyin.player.ui.design.brushStrokePath(androidx.compose.ui.geometry.Offset(mid.x - 24.dp.toPx(), mid.y), 48.dp.toPx(), 4.dp.toPx()), c.content.copy(alpha = 0.45f))
-            BackdropKind.Neon -> drawTubeLine(mid - androidx.compose.ui.geometry.Offset(18.dp.toPx(), 0f), mid + androidx.compose.ui.geometry.Offset(18.dp.toPx(), 0f), c.accent, 2.5.dp.toPx())
+            BackdropKind.Neon -> drawRect(c.accent, mid - androidx.compose.ui.geometry.Offset(18.dp.toPx(), 1.5.dp.toPx()), androidx.compose.ui.geometry.Size(36.dp.toPx(), 3.dp.toPx()))
             BackdropKind.Dusk -> inset(size.width / 2f - 26.dp.toPx(), 0f) { drawInkBar(5.dp.toPx()) }
             BackdropKind.Grid -> drawRect(c.outline, mid - androidx.compose.ui.geometry.Offset(22.dp.toPx(), 3.dp.toPx()), androidx.compose.ui.geometry.Size(44.dp.toPx(), 6.dp.toPx()))
             BackdropKind.Dot -> for (k in -3..3) drawCircle(if (k == 0) c.accentAlt else faint, 2.dp.toPx(), mid + androidx.compose.ui.geometry.Offset(k * 7.dp.toPx(), 0f))
@@ -419,7 +419,11 @@ private fun ActionRow(icon: LineIcon, label: String, onClick: () -> Unit, index:
         // What lies between rows.
         when (kind) {
             BackdropKind.Neon -> androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(3.dp)) {
-                drawTubeLine(androidx.compose.ui.geometry.Offset(0f, size.height / 2f), androidx.compose.ui.geometry.Offset(size.width, size.height / 2f), c.accent.copy(alpha = 0.5f), 1.2.dp.toPx(), lit = 0.35f)
+                var x = 0f
+                while (x < size.width) {
+                    drawRect(c.outline, androidx.compose.ui.geometry.Offset(x, 0f), androidx.compose.ui.geometry.Size(3.dp.toPx(), 3.dp.toPx()))
+                    x += 6.dp.toPx()
+                }
             }
             BackdropKind.Dot -> io.lanyin.player.ui.design.DotRule(Modifier.padding(horizontal = 20.dp))
             BackdropKind.Dusk -> androidx.compose.foundation.Canvas(Modifier.padding(start = 58.dp, end = 20.dp).fillMaxWidth().height(3.dp)) { drawInkBar(3.dp.toPx(), 0.45f) }
