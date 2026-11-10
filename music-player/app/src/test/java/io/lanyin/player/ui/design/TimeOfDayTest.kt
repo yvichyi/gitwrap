@@ -34,16 +34,17 @@ class TimeOfDayTest {
     }
 
     @Test
-    fun `暮's sky changes with the hour by day and stays the blue hour by night`() {
+    fun `暮's desk lamp comes up as the evening draws in`() {
         val noon = draw(AppTheme.DUSK, false, 12f)
         val evening = draw(AppTheme.DUSK, false, 18.5f)
         draw(AppTheme.DUSK, false, 6.5f)
         draw(AppTheme.DUSK, false, 22f)
-        // The top of the sky: blue at noon, warmer in the evening.
-        assertNotEquals(noon.getPixel(270, 20), evening.getPixel(270, 20))
+        // Up to the left, under the lamp: warmer in the evening than at noon, and warmer again at night.
+        fun red(b: Bitmap) = android.graphics.Color.red(b.getPixel(110, 61))
+        assert(red(evening) > red(noon)) { "no lamp in the evening" }
         val darkNoon = draw(AppTheme.DUSK, true, 12f)
         val darkNight = draw(AppTheme.DUSK, true, 22f)
-        assertEquals(darkNoon.getPixel(270, 20), darkNight.getPixel(270, 20))
+        assert(red(darkNight) > red(darkNoon)) { "no lamp at night" }
     }
 
     @Test

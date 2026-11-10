@@ -41,7 +41,7 @@ data class LanyinColors(
 )
 
 /**
- * How cards, the mini player and the tab bar are drawn: hairlines (墨), soft shadows (暮), neon
+ * How cards, the mini player and the tab bar are drawn: hairlines (墨), sheets on the cutting mat (暮), neon
  * (霓), hard shadows (格), flat grey tiles on black (点), the recessed
  * panels of a machine's case (机), a newspaper's column rules (报), little LCD screens in their
  * bezels (游) and chrome rims (酸).
@@ -191,21 +191,22 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             motion = Motion(0.85f, 1100f), bouncy = Motion(0.55f, 900f), pressScale = 0.95f,
             iconStroke = 1.6f,
         )
-        // 暮: a postcard from the coast. Cream paper with a grain to it (by night the blue hour,
-        // deep blue going violet), a real sky running from blue to peach over the sea, a crisp sun;
-        // headings in serif, dates and figures in a postcard's display serif, stamps and postmarks
-        // to mark sections, photos with white borders, airmail red and blue.
+        // 暮: a riso print studio at dusk. A green cutting mat with its centimetre grid under the
+        // whole app (by night a black one under the lamp); prints in three inks (fluorescent pink,
+        // sunflower, medium blue) taped to it, a hair out of register; pencil notes in a hand;
+        // a steel rule for the progress and rubber stamps to press. Paper is a style of its own
+        // inside the sheets, see [paperStyle].
         AppTheme.DUSK -> LanyinStyle(
             theme = theme, dark = isDark,
-            colors = if (isDark) duskDark else duskLight,
-            display = FontFamily.Serif, displayWeight = FontWeight.SemiBold, displayTracking = 0.01.em,
+            colors = if (isDark) duskNight else duskMat,
+            display = FontFamily.Serif, displayWeight = FontWeight.Black, displayTracking = 0.02.em,
             body = FontFamily.SansSerif, numeric = PostcardSerifFamily,
-            cardShape = RoundedCornerShape(12.dp), chipShape = CircleShape, artShape = RoundedCornerShape(4.dp),
+            cardShape = RoundedCornerShape(3.dp), chipShape = RoundedCornerShape(50), artShape = RectangleShape,
             edge = EdgeKind.Soft, backdrop = BackdropKind.Dusk, seek = SeekKind.Pill,
-            button = ButtonKind.Blob, nav = NavKind.Pill,
-            lyric = LyricStyle(centered = true, activeScale = 1.08f, inactiveAlpha = 0.4f, blurStep = 0.4.dp, staggerMs = 40, glow = false, serif = true, weight = FontWeight.SemiBold),
-            motion = Motion(0.85f, 380f), bouncy = Motion(0.6f, 340f), pressScale = 0.96f,
-            iconStroke = 1.8f,
+            button = ButtonKind.Blob, nav = NavKind.Text,
+            lyric = LyricStyle(centered = true, activeScale = 1.08f, inactiveAlpha = 0.42f, blurStep = 0.dp, staggerMs = 30, glow = false, serif = true, weight = FontWeight.Bold),
+            motion = Motion(0.85f, 420f), bouncy = Motion(0.62f, 380f), pressScale = 0.97f,
+            iconStroke = 1.7f, dock = DockKind.Docked,
         )
         // 格: Swiss grid meets brutalism. Paper, ink, three primaries; heavy grotesk headlines,
         // monospaced labels, square corners, thick rules and hard shadows that you press into.
@@ -431,15 +432,39 @@ val GameLcd = listOf(Color(0xFF9BBC0F), Color(0xFF8BAC0F), Color(0xFF306230), Co
 /** 格's third primary, for stickers and highlights. */
 val GridYellow = Color(0xFFFACC15)
 
-// Evening light on warm paper: terracotta into rose, a brown that is almost black.
-private val duskLight = LanyinColors(
-    bg = Color(0xFFF6EFE5), bgDeep = Color(0xFFF1DCC6), surface = Color(0xFFFFFBF5), surfaceAlt = Color(0xFFF0E6D8),
-    content = Color(0xFF2A221E), muted = Color(0xFF74665E), accent = Color(0xFFCF5634), accentAlt = Color(0xFFC24E63),
-    onAccent = Color(0xFFFFF8F1), outline = Color(0x1F2A221E), like = Color(0xFFC9403A), vinyl = Color(0xFF221A17),
+// 暮's cutting mat, green, its grid in a pale line; the print's pink for what to press and the
+// sunflower yellow beside it. Glyphs on the pink are in the violet of pink over blue.
+private val duskMat = LanyinColors(
+    bg = Color(0xFF2B5745), bgDeep = Color(0xFF244C3C), surface = Color(0xFF244B3B), surfaceAlt = Color(0xFF285140),
+    content = Color(0xFFF6F1E6), muted = Color(0xFFBFD0C4), accent = Color(0xFFFF6EC0), accentAlt = Color(0xFFFFB511),
+    onAccent = Color(0xFF241848), outline = Color(0x3DF6F1E6), like = Color(0xFFFF6EC0), vinyl = Color(0xFF1D1B22),
 )
-// …and once the sun is down: the blue hour, deep blue going violet, the lamps coming on amber.
-private val duskDark = LanyinColors(
-    bg = Color(0xFF121629), bgDeep = Color(0xFF2B2647), surface = Color(0xFF1B2036), surfaceAlt = Color(0xFF242A42),
-    content = Color(0xFFF2EAE0), muted = Color(0xFFA29EB4), accent = Color(0xFFF29C6B), accentAlt = Color(0xFFD9738E),
-    onAccent = Color(0xFF1A1320), outline = Color(0x26F2EAE0), like = Color(0xFFF06A5A), vinyl = Color(0xFF0B0D17),
+// …and by night the black mat under the lamp.
+private val duskNight = LanyinColors(
+    bg = Color(0xFF171C1A), bgDeep = Color(0xFF101412), surface = Color(0xFF1F2522), surfaceAlt = Color(0xFF232A26),
+    content = Color(0xFFEDE6D8), muted = Color(0xFFA3AEA7), accent = Color(0xFFFF6EC0), accentAlt = Color(0xFFFFB511),
+    onAccent = Color(0xFF241848), outline = Color(0x3DEDE6D8), like = Color(0xFFFF6EC0), vinyl = Color(0xFF0E100F),
+)
+// The paper the prints are on: printing in the near-black of the three inks over each other, a
+// deeper pink to press, the blue beside it. A little dimmer under the lamp at night.
+private val duskPaper = LanyinColors(
+    bg = Color(0xFFF2EBDD), bgDeep = Color(0xFFE8DECB), surface = Color(0xFFF7F2E7), surfaceAlt = Color(0xFFEAE2D2),
+    content = Color(0xFF2A2550), muted = Color(0xFF5A5263), accent = Color(0xFFCC2E83), accentAlt = Color(0xFF3255A4),
+    onAccent = Color(0xFFFFF8F0), outline = Color(0x332A2550), like = Color(0xFFCC2E83), vinyl = Color(0xFF2A2550),
+)
+private val duskPaperNight = duskPaper.copy(
+    bg = Color(0xFFDDD3C1), bgDeep = Color(0xFFD2C7B3), surface = Color(0xFFE3DACA), surfaceAlt = Color(0xFFD5CAB6),
+)
+
+/**
+ * 暮's paper, for what sits on a print or a sheet taped to the mat: the same theme with the
+ * paper's colours (ink on cream rather than cream on the mat).
+ */
+fun LanyinStyle.paperStyle(): LanyinStyle = copy(colors = if (dark) duskPaperNight else duskPaper, dark = false)
+
+/** Long Cang (SIL OFL), 暮's pencil: notes, numbers and the song's name written on a print's margin. */
+val LongCangFamily = FontFamily(
+    Font(R.font.long_cang, FontWeight.Normal),
+    Font(R.font.long_cang, FontWeight.Medium),
+    Font(R.font.long_cang, FontWeight.Bold),
 )

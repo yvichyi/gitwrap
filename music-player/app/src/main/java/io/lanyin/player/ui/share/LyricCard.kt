@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import io.lanyin.player.ui.design.drawCuttingMat
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -48,7 +49,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import io.lanyin.player.ui.design.Airmail
 import io.lanyin.player.ui.design.BoxSign
 import io.lanyin.player.ui.design.ChromeBrush
 import io.lanyin.player.ui.design.CoverImage
@@ -58,12 +58,9 @@ import io.lanyin.player.ui.design.DoubleRule
 import io.lanyin.player.ui.design.Flavor
 import io.lanyin.player.ui.design.HalftoneCover
 import io.lanyin.player.ui.design.NeonText
-import io.lanyin.player.ui.design.Postmark
 import io.lanyin.player.ui.design.brushStrokePath
 import io.lanyin.player.ui.design.candyPlastic
-import io.lanyin.player.ui.design.drawAirmailBorder
 import io.lanyin.player.ui.design.drawBackdropFrame
-import io.lanyin.player.ui.design.drawStamp
 import io.lanyin.player.ui.design.gameWindow
 import io.lanyin.player.ui.design.ledScreen
 import io.lanyin.player.ui.design.screenStyle
@@ -73,7 +70,6 @@ import io.lanyin.player.ui.theme.BackdropKind
 import io.lanyin.player.ui.theme.DotoFamily
 import io.lanyin.player.ui.theme.GridYellow
 import io.lanyin.player.ui.theme.Lanyin
-import io.lanyin.player.ui.theme.PostcardSerifFamily
 import io.lanyin.player.ui.theme.SpaceMonoFamily
 import io.lanyin.player.ui.theme.TiltNeonFamily
 
@@ -175,45 +171,35 @@ private fun NeonCard(lyric: CardLyric) {
     }
 }
 
-/** 暮: a postcard. The picture above with 「Greetings from」, the back below: the line written by hand, the address lines, a stamp and its postmark. */
+/**
+ * 暮: a print on the cutting mat. The cover screened in the three inks, the line overprinted
+ * large on the margin with its translation under it, the song signed in pencil, crop marks, a
+ * strip of tape and the studio's stamp.
+ */
 @Composable
 private fun DuskCard(lyric: CardLyric) {
     val style = Lanyin.style
-    val c = style.colors
-    val paper = if (style.dark) Color(0xFF2A2F48) else Color(0xFFFFFCF6)
-    val pen = if (style.dark) c.content else Color(0xFF3B2A24)
-    Box(
-        Modifier
-            .fillMaxSize()
-            .padding(18.dp)
-            .drawBehind {
-                drawRoundRect(Color.Black.copy(alpha = if (style.dark) 0.35f else 0.12f), Offset(2.dp.toPx(), 5.dp.toPx()), size, CornerRadius(4.dp.toPx()))
-                drawRoundRect(paper, cornerRadius = CornerRadius(4.dp.toPx()))
-                drawAirmailBorder(6.dp.toPx(), 4.dp.toPx())
-            }
-            .padding(14.dp),
-    ) {
-        Column {
-            Box(Modifier.fillMaxWidth().aspectRatio(1.6f).clip(RoundedCornerShape(2.dp))) {
-                CoverImage(lyric.coverUrl, lyric.coverSeed, 320.dp, Modifier.fillMaxSize())
-                Text("Greetings from", style = TextStyle(fontFamily = PostcardSerifFamily, fontStyle = FontStyle.Italic, fontSize = fixed(16f), shadow = Shadow(Color.Black.copy(alpha = 0.45f), Offset(0f, 1f), 6f)), color = Color.White, modifier = Modifier.padding(10.dp))
-            }
-            Row(Modifier.padding(top = 12.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Text(lyric.line, style = TextStyle(fontFamily = style.display, fontStyle = FontStyle.Italic, fontSize = fixed(17f), lineHeight = fixed(25f)), color = pen)
-                    lyric.translation?.let { Text(it, style = TextStyle(fontFamily = PostcardSerifFamily, fontStyle = FontStyle.Italic, fontSize = fixed(12f), lineHeight = fixed(16f)), color = pen.copy(alpha = 0.65f), modifier = Modifier.padding(top = 6.dp)) }
-                    Text("—《${lyric.title}》${lyric.artist}", style = TextStyle(fontFamily = style.display, fontStyle = FontStyle.Italic, fontSize = fixed(11f)), color = pen.copy(alpha = 0.6f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
+    Box(Modifier.fillMaxSize().drawBehind { drawCuttingMat(style, 18.5f, null) }.padding(22.dp)) {
+        io.lanyin.player.ui.design.PrintFrame(
+            Modifier.fillMaxWidth().align(Alignment.Center),
+            tilt = -1.2f,
+            margin = 14.dp,
+            picture = { io.lanyin.player.ui.design.RisoCover(lyric.coverUrl, lyric.coverSeed, Modifier.fillMaxWidth().aspectRatio(1.3f)) },
+            caption = {
+                Column(Modifier.padding(top = 4.dp)) {
+                    io.lanyin.player.ui.design.Overprint(lyric.line, TextStyle(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Black, fontSize = fixed(21f), lineHeight = fixed(28f)), maxLines = 3)
+                    lyric.translation?.let { Text(it, style = TextStyle(fontFamily = FontFamily.Serif, fontStyle = FontStyle.Italic, fontSize = fixed(12f), lineHeight = fixed(16f)), color = io.lanyin.player.ui.design.Riso.Blue, modifier = Modifier.padding(top = 6.dp)) }
+                    Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.Bottom) {
+                        io.lanyin.player.ui.design.PencilNote("《${lyric.title}》${lyric.artist}", size = fixed(16f), modifier = Modifier.weight(1f))
+                        io.lanyin.player.ui.design.PencilNote("1/1", size = fixed(16f))
+                    }
                 }
-                // The address side: lines to write on.
-                Canvas(Modifier.padding(start = 12.dp, top = 30.dp).size(80.dp, 60.dp)) {
-                    for (k in 0..2) drawLine(pen.copy(alpha = 0.25f), Offset(0f, k * size.height / 3f + size.height / 3f), Offset(size.width, k * size.height / 3f + size.height / 3f), 1.dp.toPx())
-                }
-            }
-        }
-        Canvas(Modifier.align(Alignment.TopEnd).offset(x = (-8).dp, y = 8.dp).size(36.dp, 44.dp).graphicsLayer { rotationZ = 4f }) {
-            drawStamp(Rect(Offset(2.dp.toPx(), 2.dp.toPx()), Size(size.width - 4.dp.toPx(), size.height - 4.dp.toPx())), Airmail.Red, paper, Color.Transparent)
-        }
-        Postmark("澜音", "♪", "LANYIN", Color.White.copy(alpha = 0.85f), Modifier.align(Alignment.TopEnd).offset(x = (-26).dp, y = 26.dp), diameter = 46.dp, angle = -12f)
+            },
+        )
+        io.lanyin.player.ui.design.InkStamp(
+            "澜音", "♪", "RISO", io.lanyin.player.ui.design.Riso.Pink.copy(alpha = 0.8f),
+            Modifier.align(Alignment.TopEnd).offset(x = (-8).dp, y = 20.dp), diameter = 50.dp, angle = 12f,
+        )
     }
 }
 

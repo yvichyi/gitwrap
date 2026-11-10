@@ -49,7 +49,7 @@ fun Backdrop(
     // Paper, a case and a grid never move: no clock for them (格's poster does, in landscape,
     // while the music plays). 点's dots only move with the music.
     val animated = live && when (style.backdrop) {
-        BackdropKind.Device, BackdropKind.Paper, BackdropKind.Game -> false
+        BackdropKind.Device, BackdropKind.Paper, BackdropKind.Game, BackdropKind.Dusk -> false
         BackdropKind.Grid -> playing && landscape
         BackdropKind.Dot -> playing
         else -> true
@@ -58,7 +58,7 @@ fun Backdrop(
     // Paused, the scene settles and then holds still: no drawing while nothing is playing.
     val settling by remember { androidx.compose.runtime.derivedStateOf { energy > 0.01f } }
     val clock = rememberFrameClock(animated && (playing || settling))
-    val measurer = if (style.backdrop == BackdropKind.Grid) androidx.compose.ui.text.rememberTextMeasurer() else null
+    val measurer = if (style.backdrop == BackdropKind.Grid || style.backdrop == BackdropKind.Dusk) androidx.compose.ui.text.rememberTextMeasurer() else null
     val hour by rememberHour()
     val audio = remember { BackdropAudio() }
     // A layer of its own, so redrawing the backdrop doesn't re-record what sits on it.
@@ -94,15 +94,7 @@ internal fun DrawScope.drawBackdropFrame(
             if (!page && wide) drawInkWildlife(style, t, heard)
         }
         BackdropKind.Neon -> if (page) drawNightWall(style) else drawNightStreet(style, t, heard, hour)
-        BackdropKind.Dusk -> if (page) {
-            drawDuskPaper(style)
-        } else {
-            // Portrait: the sea under the photo, the sun behind its edge. Landscape: the sea
-            // under the stage, the sun at the far end.
-            val horizon = if (wide) 0.84f else 0.5f
-            drawDuskSky(style, t, e, heard, progress, horizon, sunAt = if (wide) 0.9f else 0.86f, sunSize = if (wide) 0.2f else 0.15f, hour = hour)
-            drawDuskEvening(style, t, heard, size.height * horizon)
-        }
+        BackdropKind.Dusk -> drawCuttingMat(style, hour, measurer)
         BackdropKind.Grid -> {
             drawGridPaper(style, page, measurer, trackNumber)
             if (!page && wide && trackNumber != null) drawGridPoster(style, t, heard)

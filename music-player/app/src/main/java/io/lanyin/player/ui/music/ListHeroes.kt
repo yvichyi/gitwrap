@@ -10,8 +10,6 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import io.lanyin.player.ui.design.DeviceScreen
-import io.lanyin.player.ui.design.drawStamp
-import io.lanyin.player.ui.theme.PostcardSerifFamily
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,6 +44,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,7 +52,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import io.lanyin.player.ui.design.Airmail
 import io.lanyin.player.ui.design.ChromeBrush
 import io.lanyin.player.ui.design.CoverImage
 import io.lanyin.player.ui.design.DitheredCover
@@ -61,7 +59,6 @@ import io.lanyin.player.ui.design.DotRule
 import io.lanyin.player.ui.design.DoubleRule
 import io.lanyin.player.ui.design.HalftoneCover
 import io.lanyin.player.ui.design.NeonText
-import io.lanyin.player.ui.design.Postmark
 import io.lanyin.player.ui.design.drawGloss
 import io.lanyin.player.ui.design.drawTubeFrame
 import io.lanyin.player.ui.design.drawTubeLine
@@ -218,65 +215,48 @@ private fun NeonHero(title: String, subtitle: String?, header: ListHeader, modif
 }
 
 /**
- * 暮: the list as a postcard sent home. The art fills the card under its white border, 「Greetings
- * from」 in the corner and the title set big over the foot of the picture; a stamp at the top
- * right with the postmark struck half over it.
+ * 暮: the list as a print taped to the mat: its cover screened in the three inks (or, with no
+ * cover of its own, a sleeve with the day or the list's mark printed over it), the title
+ * overprinted on the margin and the note under it in pencil, the studio's stamp in the corner.
  */
 @Composable
 private fun DuskHero(title: String, subtitle: String?, header: ListHeader, modifier: Modifier) {
-    val style = Lanyin.style
-    val paper = if (style.dark) Color(0xFF2A2F48) else Color(0xFFFFFCF6)
-    val shade = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.45f), Offset(0f, 1f), 8f)
     Box(modifier.fillMaxWidth()) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp)
-                .graphicsLayer { rotationZ = -1.2f }
-                .drawBehind {
-                    drawRoundRect(Color.Black.copy(alpha = if (style.dark) 0.35f else 0.1f), Offset(2.dp.toPx(), 5.dp.toPx()), size, CornerRadius(4.dp.toPx()))
-                    drawRoundRect(paper, cornerRadius = CornerRadius(4.dp.toPx()))
-                }
-                .padding(9.dp),
-        ) {
-            Box(Modifier.fillMaxWidth().aspectRatio(1.4f).clip(style.artShape)) {
-                when (header) {
-                    is ListHeader.Cover -> HeroFill(header, Modifier.fillMaxSize())
-                    // No picture of its own: a view from the trip, and the day or the list's mark
-                    // printed in the corner the way a card's caption is.
-                    else -> {
-                        io.lanyin.player.ui.design.CoverArt(if (header is ListHeader.Day) header.day else 5, Modifier.fillMaxSize())
-                        Column(Modifier.align(Alignment.TopEnd).padding(top = 86.dp, end = 16.dp), horizontalAlignment = Alignment.End) {
-                            when (header) {
-                                is ListHeader.Day -> {
-                                    Text("${header.day}", style = style.type.display.copy(fontSize = 52.sp, lineHeight = 54.sp, shadow = shade), color = Color.White)
-                                    Text(header.caption, style = style.type.caption.copy(shadow = shade), color = Color.White.copy(alpha = 0.9f))
+        io.lanyin.player.ui.design.PrintFrame(
+            Modifier.fillMaxWidth().padding(top = 6.dp),
+            tilt = -0.9f,
+            margin = 11.dp,
+            picture = {
+                Box(Modifier.fillMaxWidth().aspectRatio(1.45f)) {
+                    when (header) {
+                        is ListHeader.Cover -> io.lanyin.player.ui.design.RisoCover(header.url, header.seed, Modifier.fillMaxSize())
+                        else -> {
+                            io.lanyin.player.ui.design.RisoCover(null, if (header is ListHeader.Day) header.day else 5, Modifier.fillMaxSize())
+                            Column(Modifier.align(Alignment.BottomEnd).padding(14.dp), horizontalAlignment = Alignment.End) {
+                                when (header) {
+                                    is ListHeader.Day -> {
+                                        io.lanyin.player.ui.design.Overprint("${header.day}", TextStyle(fontFamily = io.lanyin.player.ui.theme.PostcardSerifFamily, fontSize = 58.sp, lineHeight = 60.sp), under = io.lanyin.player.ui.design.Riso.Yellow, over = io.lanyin.player.ui.design.Riso.Blue)
+                                        Text(header.caption, style = Lanyin.type.caption.copy(fontWeight = FontWeight.Bold), color = io.lanyin.player.ui.design.Riso.Blue)
+                                    }
+                                    is ListHeader.Glyph -> io.lanyin.player.ui.design.ThemedIcon(header.icon, null, tint = io.lanyin.player.ui.design.Riso.Blue, size = 44.dp)
+                                    else -> Unit
                                 }
-                                is ListHeader.Glyph -> io.lanyin.player.ui.design.ThemedIcon(header.icon, null, tint = Color.White, size = 44.dp)
-                                else -> Unit
                             }
                         }
                     }
                 }
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.3f), 0.3f to Color.Transparent, 0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.62f))))
-                Text(
-                    "Greetings from",
-                    style = TextStyle(fontFamily = PostcardSerifFamily, fontStyle = FontStyle.Italic, fontSize = fixed(17f), shadow = shade),
-                    color = Color.White, modifier = Modifier.padding(14.dp),
-                )
-                Column(Modifier.align(Alignment.BottomStart).padding(14.dp)) {
-                    Text(title, style = style.type.display.copy(fontSize = 30.sp, lineHeight = 36.sp, shadow = shade), color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    if (subtitle != null) {
-                        Text(subtitle, style = style.type.caption.copy(shadow = shade), color = Color.White.copy(alpha = 0.88f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
+            },
+            caption = {
+                Column(Modifier.padding(top = 2.dp, end = 52.dp)) {
+                    io.lanyin.player.ui.design.Overprint(title, TextStyle(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Black, fontSize = 26.sp, lineHeight = 32.sp), maxLines = 2)
+                    if (subtitle != null) io.lanyin.player.ui.design.PencilNote(subtitle, size = 16.sp, modifier = Modifier.padding(top = 2.dp))
                 }
-            }
-        }
-        // The stamp in the corner, and the postmark struck over its edge.
-        Canvas(Modifier.align(Alignment.TopEnd).offset(x = (-14).dp, y = 16.dp).size(34.dp, 40.dp).graphicsLayer { rotationZ = 5f }) {
-            drawStamp(androidx.compose.ui.geometry.Rect(Offset(2.dp.toPx(), 2.dp.toPx()), Size(size.width - 4.dp.toPx(), size.height - 4.dp.toPx())), Airmail.Red, paper, Color.Transparent)
-        }
-        Postmark("澜音", "♪", "LIST", Color.White.copy(alpha = 0.85f), Modifier.align(Alignment.TopEnd).offset(x = (-30).dp, y = 34.dp), diameter = 44.dp, waves = false, angle = -14f)
+            },
+        )
+        io.lanyin.player.ui.design.InkStamp(
+            "歌单", "♪", "LANYIN", io.lanyin.player.ui.design.Riso.Pink.copy(alpha = 0.8f),
+            Modifier.align(Alignment.BottomEnd).offset(x = (-12).dp, y = (-10).dp), diameter = 50.dp, angle = -14f,
+        )
     }
 }
 

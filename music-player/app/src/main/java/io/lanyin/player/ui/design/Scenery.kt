@@ -74,39 +74,6 @@ internal fun DrawScope.drawInkWildlife(style: LanyinStyle, t: Float, audio: Back
     }
 }
 
-/** 暮, over the song: gulls gliding across the sky, and the swell rolling in below the horizon. */
-internal fun DrawScope.drawDuskEvening(style: LanyinStyle, t: Float, audio: BackdropAudio?, horizon: Float) {
-    val c = style.colors
-    val w = size.width
-    // Gulls, gliding with an occasional beat of the wings.
-    val travel = audio?.travel(3, 20f) ?: (t * 20f)
-    for (k in 0 until 3) {
-        val x = ((travel * density * (0.8f + 0.25f * k) + k * w * 0.4f) % (w * 1.3f)) - w * 0.15f
-        val y = horizon * (0.22f + 0.12f * k) + 6f * density * sin(t * 0.7f + k * 2f)
-        val s = (7f - k) * density
-        val flap = 0.35f + 0.65f * wingBeat(audio, t, k + 7).coerceAtLeast(0f)
-        val gull = Path().apply {
-            moveTo(x - s, y - s * 0.3f * flap)
-            quadraticTo(x - s * 0.5f, y - s * 0.75f * flap, x, y)
-            quadraticTo(x + s * 0.5f, y - s * 0.75f * flap, x + s, y - s * 0.3f * flap)
-        }
-        drawPath(gull, (if (style.dark) Color(0xFF0B0E20) else c.content).copy(alpha = if (style.dark) 0.7f else 0.42f), style = Stroke(1.5f * density, cap = StrokeCap.Round))
-    }
-    // The swell: long low waves rolling in below the horizon.
-    for (k in 0 until 4) {
-        val y0 = horizon + (8f + k * 9f) * density
-        val wave = Path()
-        var x = 0f
-        val shift = t * (18f + 6f * k) * density
-        wave.moveTo(0f, y0)
-        while (x <= w) {
-            wave.lineTo(x, y0 + 2f * density * sin((x + shift) / (34f * density) + k))
-            x += 8f * density
-        }
-        drawPath(wave, c.content.copy(alpha = 0.07f - k * 0.012f), style = Stroke(1.2f * density))
-    }
-}
-
 /**
  * 格's poster in landscape, moving: the red disc swelling on the beat, the blue bar sliding along
  * the grid with the bar, a yellow square turning a quarter every four beats.

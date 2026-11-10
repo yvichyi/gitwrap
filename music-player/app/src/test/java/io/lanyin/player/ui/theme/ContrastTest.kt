@@ -28,6 +28,8 @@ class ContrastTest {
                 }
                 // …and so is 游's LCD.
                 if (style.backdrop == BackdropKind.Game) block("${theme.label} LCD", style.lcdStyle().colors)
+                // 暮 prints on paper taped to the mat: ink on cream inside the sheets.
+                if (style.backdrop == BackdropKind.Dusk) block("${theme.label}/${if (style.dark) "dark" else "light"} paper", style.paperStyle().colors)
             }
         }
     }

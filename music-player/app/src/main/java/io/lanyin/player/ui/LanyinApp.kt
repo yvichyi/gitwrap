@@ -355,7 +355,8 @@ fun LanyinApp(
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                             if (Lanyin.style.dock == DockKind.Docked) {
                                 // A plain bar on the page colour, ruled off with hairlines.
-                                Column(Modifier.background(Lanyin.colors.bg).navigationBarsPadding()) {
+                                // 暮: the darker edge of the mat.
+                                Column(Modifier.background(if (Lanyin.style.edge == EdgeKind.Soft) Lanyin.colors.bgDeep else Lanyin.colors.bg).navigationBarsPadding()) {
                                     NoticeBanner(notice, onDismiss)
                                     Hairline()
                                     if (showMini) MiniPlayer(player, settings.playerSkin, spin, onExpand = { expanded = true })
@@ -456,7 +457,7 @@ private fun NoticeLead() {
             drawCircle(c.accent.copy(alpha = 0.3f), size.minDimension / 2f)
             drawCircle(io.lanyin.player.ui.design.neonCore(c.accent), size.minDimension / 4f)
         }
-        BackdropKind.Dusk -> Box(gap) { io.lanyin.player.ui.design.StampMark(1) }
+        BackdropKind.Dusk -> Box(gap) { io.lanyin.player.ui.design.InkMark(1) }
         BackdropKind.Grid -> Text("NOTE", style = mono, color = c.content, modifier = gap.background(io.lanyin.player.ui.theme.GridYellow).border(2.dp, c.outline).padding(horizontal = 4.dp))
         BackdropKind.Dot -> Box(gap.size(7.dp).background(c.accentAlt, CircleShape))
         BackdropKind.Device -> Text("MSG", style = mono, color = c.bg, modifier = gap.background(c.content, RoundedCornerShape(3.dp)).padding(horizontal = 4.dp))
@@ -514,6 +515,23 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                 )
             }
             NavKind.Text -> when (style.edge) {
+                // 暮: a pencil loop round the current tab, the others ringed faintly in dashes.
+                EdgeKind.Soft -> {
+                    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                        val w = size.width / tabs.size
+                        for (i in tabs.indices) {
+                            val rect = androidx.compose.ui.geometry.Rect(i * w + w * 0.2f, size.height * 0.2f, (i + 1) * w - w * 0.2f, size.height * 0.8f)
+                            drawOval(c.content.copy(alpha = 0.22f), rect.topLeft, rect.size, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))
+                        }
+                    }
+                    androidx.compose.foundation.Canvas(Modifier.offset(x = x).width(itemWidth).fillMaxHeight()) {
+                        val rect = androidx.compose.ui.geometry.Rect(size.width * 0.17f, size.height * 0.17f, size.width * 0.83f, size.height * 0.83f)
+                        drawOval(c.accent.copy(alpha = 0.18f), rect.topLeft, rect.size)
+                        drawOval(c.accent, rect.topLeft, rect.size, style = androidx.compose.ui.graphics.drawscope.Stroke(1.8.dp.toPx()))
+                        // The loop goes round a second time, a little off.
+                        drawOval(c.accent.copy(alpha = 0.7f), rect.topLeft + androidx.compose.ui.geometry.Offset(2.dp.toPx(), -1.5.dp.toPx()), androidx.compose.ui.geometry.Size(rect.width - 3.dp.toPx(), rect.height + 1.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+                    }
+                }
                 // 报: the current section underlined in red pen.
                 EdgeKind.Rule -> Box(
                     Modifier

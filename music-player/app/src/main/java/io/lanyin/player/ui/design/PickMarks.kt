@@ -68,7 +68,8 @@ private fun DrawScope.drawPicked(style: LanyinStyle, p: Float) {
         }
         BackdropKind.Dusk -> {
             val x = (w * 1.4f) * p - w * 0.4f
-            drawRect(Brush.horizontalGradient(listOf(Color.Transparent, Color(0xFFFFB27A).copy(alpha = 0.35f * fade), Color(0xFFE88BA0).copy(alpha = 0.25f * fade), Color.Transparent), x - w * 0.4f, x + w * 0.2f))
+            // 暮: a pass of pink ink across the row, as off the drum.
+            drawRect(Brush.horizontalGradient(listOf(Color.Transparent, io.lanyin.player.ui.design.Riso.Pink.copy(alpha = 0.28f * fade), io.lanyin.player.ui.design.Riso.Yellow.copy(alpha = 0.2f * fade), Color.Transparent), x - w * 0.4f, x + w * 0.2f))
         }
         BackdropKind.Grid -> drawRect(GridYellow.copy(alpha = 0.85f * fade), size = Size(w * grow, h))
         BackdropKind.Dot -> {

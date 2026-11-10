@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.em
 import io.lanyin.player.core.model.Comment
 import io.lanyin.player.ui.design.Flavor
@@ -90,7 +91,8 @@ internal fun CommentByline(comment: Comment, now: Long, index: Int, modifier: Mo
                 Box(Modifier.padding(end = 6.dp).size(6.dp).background(neonCore(c.accent), CircleShape))
                 Text(name, style = nameStyle, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            BackdropKind.Dusk -> Text("From: $name", style = nameStyle.copy(fontFamily = style.display, fontStyle = FontStyle.Italic), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // 暮: signed in pencil.
+            BackdropKind.Dusk -> Text(name, style = io.lanyin.player.ui.design.pencilStyle(17.sp, c.content), maxLines = 1, overflow = TextOverflow.Ellipsis)
             BackdropKind.Grid -> Row(verticalAlignment = Alignment.CenterVertically) {
                 IndexTag(index + 1, Modifier.padding(end = 8.dp))
                 Text(name, style = nameStyle.copy(fontWeight = FontWeight.Black), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)

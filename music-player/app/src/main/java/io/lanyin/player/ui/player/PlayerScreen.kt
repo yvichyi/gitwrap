@@ -286,7 +286,8 @@ private fun PortraitPlayer(
                 PortraitStage(stage, onShowLyrics = { showLyrics = true })
             }
         }
-        TrackTitle(state, Modifier.padding(top = 14.dp).enter(entrance, 3))
+        // 暮's slip on its stage carries the title.
+        if (style.backdrop != BackdropKind.Dusk || lyricsOnly) TrackTitle(state, Modifier.padding(top = 14.dp).enter(entrance, 3))
         SeekBar(
             state::positionMs, state.durationMs, state.isPlaying, state::seekTo,
             Modifier.padding(top = 10.dp).enter(entrance, 4),
@@ -387,7 +388,7 @@ private fun LandscapePlayer(
                     BackdropKind.Paper -> BroadsheetStage(stage)
                     BackdropKind.Ink -> ScrollStage(stage)
                     BackdropKind.Grid -> PosterStage(stage)
-                    BackdropKind.Dusk -> PostcardStage(stage)
+                    BackdropKind.Dusk -> RisoWideStage(stage)
                     BackdropKind.Neon -> SignStage(stage)
                     BackdropKind.Game -> Unit
                 }

@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -119,9 +120,12 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
                 val b = beat()
                 if (b > 0f) drawCircle(c.content.copy(alpha = 0.35f * b * b), r + (1f - b) * 14.dp.toPx(), style = Stroke(1.dp.toPx()))
             }
+            // 暮: the stamp's ink spreading in rings on the paper with the music.
             ButtonKind.Blob -> {
                 val l = level()
-                drawCircle(Brush.radialGradient(listOf(c.accent.copy(alpha = 0.32f * l + 0.12f * beat()), Color.Transparent), radius = r * (1.25f + 0.5f * l)), r * (1.25f + 0.5f * l))
+                val b = beat()
+                drawCircle(c.accent.copy(alpha = 0.3f * l), r * (1.12f + 0.25f * l), style = Stroke(2.dp.toPx()))
+                if (b > 0f) drawCircle(c.accent.copy(alpha = 0.35f * b * b), r * (1.1f + (1f - b) * 0.45f), style = Stroke(1.2.dp.toPx()))
             }
             ButtonKind.NeonRing -> {
                 val b = beat()
@@ -152,10 +156,8 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
     }
     val container = when (style.button) {
         ButtonKind.Outline -> Modifier.border(1.5.dp, c.content, shape)
-        ButtonKind.Blob -> Modifier
-            .shadow(size * 0.22f, shape, ambientColor = c.accent, spotColor = c.accent)
-            .clip(shape)
-            .background(Brush.linearGradient(listOf(c.accent, c.accentAlt)))
+        // 暮: a rubber stamp, struck in pink, the blue ring of its second drum a hair off.
+        ButtonKind.Blob -> Modifier.drawBehind { drawRisoStamp(c.accent) }
         ButtonKind.NeonRing -> Modifier
             .neonGlow(shape, c.accent)
             .border(2.dp, c.accent, shape)
@@ -392,10 +394,11 @@ fun SeekBar(
         dragFraction = f
         onScrub?.invoke(f?.let { (it * durationMs).toLong() })
     }
+    val ruleMeasurer = if (style.seek == SeekKind.Pill) androidx.compose.ui.text.rememberTextMeasurer() else null
     val track = @Composable { trackModifier: Modifier ->
         Canvas(
             trackModifier
-                .height(32.dp)
+                .height(if (style.seek == SeekKind.Pill) 40.dp else 32.dp)
                 // Readable and adjustable with TalkBack.
                 .semantics {
                     contentDescription = "播放进度"
@@ -423,7 +426,7 @@ fun SeekBar(
             val f = dragFraction ?: (position().toFloat() / durationMs).coerceIn(0f, 1f)
             when (style.seek) {
                 SeekKind.Hairline -> drawHairlineTrack(f, c.content)
-                SeekKind.Pill -> drawPillTrack(f, c.accent, c.accentAlt, c.content.copy(alpha = 0.12f))
+                SeekKind.Pill -> drawSteelRule(f, dragging, style, ruleMeasurer)
                 SeekKind.Tube -> drawTubeTrack(f, c.accent)
                 SeekKind.Block -> drawBlockTrack(f, c.accent, c.outline, c.surface)
                 SeekKind.Dots -> drawDotsTrack(f, dragging, style)
@@ -468,6 +471,9 @@ private fun TimeLabel(ms: Long, style: TextStyle) {
                 .background(s.colors.outline)
                 .padding(horizontal = 6.dp, vertical = 2.dp),
         )
+    } else if (s.seek == SeekKind.Pill) {
+        // 暮: written on the mat in white pencil.
+        Text(formatTime(ms), style = pencilStyle(16.sp, s.colors.content.copy(alpha = 0.85f)))
     } else {
         Text(formatTime(ms), style = style)
     }
@@ -481,15 +487,78 @@ private fun DrawScope.drawHairlineTrack(f: Float, ink: Color) {
     drawCircle(ink, 3.5.dp.toPx(), Offset(x, cy))
 }
 
-private fun DrawScope.drawPillTrack(f: Float, a: Color, b: Color, rest: Color) {
-    val h = 6.dp.toPx()
-    val top = (size.height - h) / 2f
-    val x = size.width * f
-    drawRoundRect(rest, Offset(0f, top), Size(size.width, h), CornerRadius(h / 2))
-    drawRoundRect(Brush.horizontalGradient(listOf(a, b), 0f, size.width), Offset(0f, top), Size(x.coerceAtLeast(h), h), CornerRadius(h / 2))
-    drawCircle(Color.Black.copy(alpha = 0.12f), 10.dp.toPx(), Offset(x, size.height / 2f + 1.5.dp.toPx()))
-    drawCircle(Color.White, 9.dp.toPx(), Offset(x, size.height / 2f))
-    drawCircle(a, 9.dp.toPx(), Offset(x, size.height / 2f), style = Stroke(2.5.dp.toPx()))
+/** 暮's stamp: an ink disc, unevenly inked, with a blue ring printed a hair out of register. */
+internal fun DrawScope.drawRisoStamp(ink: Color, ring: Color = Riso.Blue) {
+    val r = size.minDimension / 2f
+    val c = Offset(size.width / 2f, size.height / 2f)
+    drawCircle(Color.Black.copy(alpha = 0.18f), r, c + Offset(0.8.dp.toPx(), 1.6.dp.toPx()))
+    drawCircle(ink, r, c)
+    drawCircle(grainBrush, r, c, alpha = 0.22f, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply)
+    drawCircle(ring.copy(alpha = 0.9f), r * 0.8f, c + Offset(1.4.dp.toPx(), 1.dp.toPx()), style = Stroke(2.2.dp.toPx()), blendMode = androidx.compose.ui.graphics.BlendMode.Multiply)
+}
+
+/**
+ * 暮: a thirty-centimetre steel rule laid on the mat, millimetres along its top edge and the
+ * figures under them; what's been heard is a line drawn along its edge in white pencil, and
+ * where the song is now, a pink stroke across the rule.
+ */
+private fun DrawScope.drawSteelRule(f: Float, dragging: Float, style: io.lanyin.player.ui.theme.LanyinStyle, measurer: androidx.compose.ui.text.TextMeasurer?) {
+    val c = style.colors
+    val top = 9.dp.toPx()
+    val bottom = size.height - 5.dp.toPx()
+    val inset = 2.dp.toPx()
+    val left = inset
+    val right = size.width - inset
+    val x = left + (right - left) * f
+    // Its shadow on the mat, then the brushed steel, a light along its top edge and a dark bevel below.
+    drawRect(Color.Black.copy(alpha = 0.32f), Offset(left + 1.5.dp.toPx(), top + 3.dp.toPx()), Size(right - left, bottom - top))
+    drawRect(Brush.verticalGradient(listOf(Color(0xFFEDEFF1), Color(0xFFC9CDD2), Color(0xFFDDE0E3), Color(0xFFB8BCC2)), top, bottom), Offset(left, top), Size(right - left, bottom - top))
+    var sx = left
+    var k = 0
+    while (sx < right) {
+        drawLine(Color.White.copy(alpha = if (k % 3 == 0) 0.18f else 0.08f), Offset(sx, top + 2.dp.toPx() + (k % 5)), Offset(sx + 40.dp.toPx(), top + 2.dp.toPx() + (k % 5)), 0.6.dp.toPx())
+        sx += 23.dp.toPx()
+        k++
+    }
+    drawLine(Color.White.copy(alpha = 0.9f), Offset(left, top), Offset(right, top), 0.8.dp.toPx())
+    drawLine(Color(0xFF7D828A), Offset(left, bottom), Offset(right, bottom), 1.dp.toPx())
+    // Millimetres: a 30 cm rule's worth, longer at half and whole centimetres.
+    val ink = Color(0xFF2B2D30)
+    val mm = 300
+    for (i in 0..mm step 2) {
+        val tx = left + (right - left) * i / mm
+        val len = when {
+            i % 10 == 0 -> 7.dp.toPx()
+            i % 5 == 0 -> 5.dp.toPx()
+            else -> 3.dp.toPx()
+        }
+        drawLine(ink.copy(alpha = 0.85f), Offset(tx, top), Offset(tx, top + len), if (i % 10 == 0) 0.8.dp.toPx() else 0.5.dp.toPx())
+    }
+    if (measurer != null) {
+        val label = androidx.compose.ui.text.TextStyle(fontSize = 6.5.sp, fontWeight = FontWeight.SemiBold, color = ink)
+        for (cm in 2..28 step 2) {
+            val tx = left + (right - left) * cm / 30f
+            val m = measurer.measure("$cm", label)
+            drawText(m, topLeft = Offset(tx - m.size.width / 2f, top + 7.5.dp.toPx()))
+        }
+        val tag = measurer.measure("STAINLESS · 30 CM", androidx.compose.ui.text.TextStyle(fontSize = 5.5.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.14.em, color = ink.copy(alpha = 0.7f)))
+        drawText(tag, topLeft = Offset(right - tag.size.width - 6.dp.toPx(), bottom - tag.size.height - 1.dp.toPx()))
+    }
+    // White pencil along the edge for what's been heard, a little uneven.
+    if (x > left) {
+        val path = Path().apply {
+            moveTo(left, top - 3.dp.toPx())
+            var px = left
+            while (px < x) {
+                px = minOf(px + 6.dp.toPx(), x)
+                lineTo(px, top - 3.dp.toPx() + kotlin.math.sin(px * 0.21f) * 0.5.dp.toPx())
+            }
+        }
+        drawPath(path, c.content.copy(alpha = 0.8f), style = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round))
+    }
+    // The pink stroke across the rule where the song is.
+    val lean = 2.dp.toPx()
+    drawLine(c.accent, Offset(x - lean, top - 6.dp.toPx()), Offset(x + lean, bottom - 2.dp.toPx()), (2.2f + 1.4f * dragging).dp.toPx(), StrokeCap.Round)
 }
 
 /** 霓: a glass tube along the track, cold ahead of the head and lit behind it, the head a bright knot. */

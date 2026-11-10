@@ -13,6 +13,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -72,19 +74,35 @@ fun MiniPlayer(
     spin: SpinState,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier,
+    onPaper: Boolean = false,
 ) {
     val style = Lanyin.style
     val c = style.colors
     val docked = style.dock == DockKind.Docked
+    // 暮: a strip of paper taped across the edge of the mat.
+    if (style.edge == io.lanyin.player.ui.theme.EdgeKind.Soft && !onPaper) {
+        Box(modifier.fillMaxWidth().height(60.dp).padding(horizontal = style.margin - 6.dp, vertical = 7.dp)) {
+            io.lanyin.player.ui.design.RisoSheet(
+                Modifier.fillMaxSize(), tilt = -0.4f,
+                tapes = listOf(io.lanyin.player.ui.design.TapeAt.Left, io.lanyin.player.ui.design.TapeAt.Right),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+            ) { MiniPlayer(state, skin, spin, onExpand, Modifier.fillMaxSize(), onPaper = true) }
+        }
+        return
+    }
     CompositionLocalProvider(LocalContentColor provides c.content) {
         Row(
             modifier
                 .fillMaxWidth()
-                .height(if (docked) 60.dp else 64.dp)
+                .then(if (onPaper) Modifier.fillMaxHeight() else Modifier.height(if (docked) 60.dp else 64.dp))
                 .testTag("miniPlayer")
                 .sharedPlayer("player-container", container = true)
                 .then(
-                    if (docked) {
+                    if (onPaper) {
+                        Modifier
+                            .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onExpand)
+                            .padding(start = 8.dp, end = 0.dp)
+                    } else if (docked) {
                         Modifier
                             .background(c.bg)
                             .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onExpand)
@@ -97,7 +115,7 @@ fun MiniPlayer(
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MiniArtwork(skin, spin, state.coverSeed, Modifier.size(if (docked) 40.dp else 44.dp).sharedPlayer("artwork", zIndex = 1f), state.coverUrl)
+            MiniArtwork(skin, spin, state.coverSeed, Modifier.size(if (onPaper) 34.dp else if (docked) 40.dp else 44.dp).sharedPlayer("artwork", zIndex = 1f), state.coverUrl)
             Spacer(Modifier.width(12.dp))
             // Swipe the titles sideways to change track, as on the full player's artwork.
             SwipeToSkip(state, Modifier.weight(1f)) { Column(Modifier.fillMaxWidth()) {
@@ -191,16 +209,15 @@ internal fun DrawScope.drawMiniProgress(style: LanyinStyle, f: Float, t: Float) 
             drawGlass(Path().apply { addOval(rect) }, 2.dp.toPx())
             if (f > 0f) drawTube(Path().apply { addArc(rect, -90f, 360f * f) }, c.accent, 2.dp.toPx())
         }
+        // 暮: a pencil circle round the button, gone over in pink as the song goes.
         BackdropKind.Dusk -> {
-            val stroke = 2.5.dp.toPx()
+            val stroke = 2.dp.toPx()
             val inset = stroke / 2 + 2.dp.toPx()
-            drawCircle(c.content.copy(alpha = 0.12f), r - inset, style = Stroke(stroke))
+            drawCircle(c.content.copy(alpha = 0.18f), r - inset, style = Stroke(1.dp.toPx()))
             drawArc(
-                Brush.sweepGradient(listOf(c.accentAlt, c.accent, c.accentAlt), center), -90f, 360f * f, false,
+                c.accent, -90f, 360f * f, false,
                 Offset(inset, inset), Size(size.width - inset * 2, size.height - inset * 2), style = Stroke(stroke, cap = StrokeCap.Round),
             )
-            val a = (-90f + 360f * f) * PI.toFloat() / 180f
-            drawCircle(c.accent, 3.dp.toPx(), center + Offset(cos(a) * (r - inset), sin(a) * (r - inset)))
         }
         BackdropKind.Dot -> {
             val n = 24

@@ -42,6 +42,8 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
+import io.lanyin.player.ui.design.drawPaper
+import io.lanyin.player.ui.design.drawRegMark
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -49,7 +51,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import io.lanyin.player.ui.design.Airmail
 import io.lanyin.player.ui.design.ChromeBrush
 import io.lanyin.player.ui.design.DoubleRule
 import io.lanyin.player.ui.design.Flavor
@@ -57,8 +58,6 @@ import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.ThemedIcon
 import io.lanyin.player.ui.design.brushStrokePath
 import io.lanyin.player.ui.design.candyPlastic
-import io.lanyin.player.ui.design.drawAirmailBorder
-import io.lanyin.player.ui.design.drawStamp
 import io.lanyin.player.ui.design.gameWindow
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.screenStyle
@@ -254,34 +253,27 @@ private fun NeonStrip(line: DesktopLine, sung: () -> Float, type: TextUnit, modi
     }
 }
 
-/** 暮: the back of a postcard, airmail edged, the line in a hand that takes the sunset's colours as it's written, a stamp in the corner. */
+/** 暮: a strip of paper torn from a sheet, the line inked in pink as it's sung over the pencil, a registration mark at its end. */
 @Composable
 private fun DuskStrip(line: DesktopLine, sung: () -> Float, type: TextUnit, modifier: Modifier) {
-    val style = Lanyin.style
-    val paper = if (style.dark) Color(0xFF2A2F48) else Color(0xFFFFFCF6)
-    val pen = if (style.dark) style.colors.content else Color(0xFF3B2A24)
-    val sunset = if (style.dark) Brush.horizontalGradient(listOf(Color(0xFFFFC08A), Color(0xFFFF8FA3))) else Brush.horizontalGradient(listOf(Color(0xFFE07A50), Color(0xFFC2577A)))
+    val paper = io.lanyin.player.ui.design.Riso.Paper
+    val pen = io.lanyin.player.ui.design.Riso.Graphite
+    val ink = Brush.horizontalGradient(listOf(io.lanyin.player.ui.design.Riso.Pink, Color(0xFFE0379B)))
     Row(
         modifier
-            .drawBehind {
-                drawRoundRect(Color.Black.copy(alpha = 0.18f), Offset(1.dp.toPx(), 3.dp.toPx()), size, CornerRadius(4.dp.toPx()))
-                drawRoundRect(paper, cornerRadius = CornerRadius(4.dp.toPx()))
-                drawAirmailBorder(4.dp.toPx(), 4.dp.toPx())
-            }
+            .drawBehind { drawPaper(paper, false) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             SungText(
-                line.text, TextStyle(fontFamily = style.display, fontStyle = FontStyle.Italic, fontSize = type, color = pen.copy(alpha = 0.32f)), sung,
-                paintSung = { drawText(it, brush = sunset, alpha = 1f) }, maxLines = 1,
+                line.text, TextStyle(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Black, fontSize = type, color = pen.copy(alpha = 0.4f)), sung,
+                paintSung = { drawText(it, brush = ink, alpha = 1f) }, maxLines = 1,
             )
-            Second(line.second, TextStyle(fontFamily = style.display, fontStyle = FontStyle.Italic, fontSize = fixed(11f)), pen.copy(alpha = 0.6f))
+            Second(line.second, TextStyle(fontFamily = io.lanyin.player.ui.theme.LongCangFamily, fontSize = fixed(13f)), pen.copy(alpha = 0.75f))
         }
         Spacer(Modifier.width(10.dp))
-        Canvas(Modifier.size(20.dp, 25.dp)) {
-            drawStamp(Rect(Offset.Zero, size), Airmail.Red, paper, Color.Transparent)
-        }
+        Canvas(Modifier.size(18.dp)) { drawRegMark(Offset(size.width / 2f, size.height / 2f), size.minDimension / 2f, pen) }
     }
 }
 

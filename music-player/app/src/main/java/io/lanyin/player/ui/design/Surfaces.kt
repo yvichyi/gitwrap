@@ -44,7 +44,6 @@ enum class SurfaceTone {
 
 /** The theme's "accent fill": a gradient where the theme likes gradients, flat elsewhere. */
 fun LanyinStyle.accentBrush(): Brush = when (edge) {
-    EdgeKind.Soft -> Brush.linearGradient(listOf(colors.accent, colors.accentAlt))
     else -> Brush.linearGradient(listOf(colors.accent, colors.accent))
 }
 
@@ -89,11 +88,10 @@ fun Modifier.themedSurface(
         flat -> this
         // 霓: a sign's tube round what you can press; everything else matte, standing off the wall on a dark shadow.
         style.edge == EdgeKind.Glow -> if (tone == SurfaceTone.Accent) neonGlow(shape, c.accent, 0.9f) else shadow(if (tone == SurfaceTone.Card) 10.dp else 6.dp, shape)
-        // 暮: lifted off the paper on a soft, warm shadow (a faint glow of the sun at night).
+        // 暮: an offcut of darker board laid on the mat, its shadow falling away from the lamp.
         style.edge == EdgeKind.Soft -> shadow(
-            elevation = if (tone == SurfaceTone.Card) 8.dp else 14.dp, shape = shape,
-            ambientColor = (if (style.dark) c.accent else c.content).copy(alpha = if (style.dark) 0.18f else 0.10f),
-            spotColor = (if (style.dark) c.accent else c.content).copy(alpha = if (style.dark) 0.22f else 0.16f),
+            elevation = if (tone == SurfaceTone.Card) 6.dp else 10.dp, shape = shape,
+            ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.45f),
         )
         else -> this
     }
@@ -155,8 +153,8 @@ fun Modifier.themedSurface(
         EdgeKind.Hairline -> m.border(1.dp, if (tone == SurfaceTone.Accent) c.content else c.outline, shape)
         EdgeKind.Glow -> if (tone == SurfaceTone.Accent) m.border(1.5.dp, neonCore(c.accent), shape) else m
         EdgeKind.Brutal -> m.border(style.strokeWidth, c.outline, shape)
-        // In the dark a shadow barely shows; a faint rim keeps the card's edge.
-        EdgeKind.Soft -> if (style.dark) m.border(1.dp, c.content.copy(alpha = 0.07f), shape) else m
+        // The board's cut edge catching the lamp.
+        EdgeKind.Soft -> if (tone == SurfaceTone.Accent) m else m.border(1.dp, c.content.copy(alpha = if (style.dark) 0.08f else 0.12f), shape)
         // A print's thin rim.
         // Grey tiles on black need no edge; bars over the content get a faint one.
         EdgeKind.Dot -> if (tone == SurfaceTone.Chrome) m.border(1.dp, c.content.copy(alpha = 0.1f), shape) else m

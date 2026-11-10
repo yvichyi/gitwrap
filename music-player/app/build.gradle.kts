@@ -96,6 +96,8 @@ tasks.withType<Test>().configureEach {
     outputs.cacheIf { false }
     // Backdrops follow the local time; screenshots are taken at a fixed one, in the evening.
     systemProperty("lanyin.fixedHour", "18.5")
+    // 暮's prints are made off the main thread in the app; the tests make them in place.
+    systemProperty("lanyin.syncPrints", "true")
 }
 
 kotlin {

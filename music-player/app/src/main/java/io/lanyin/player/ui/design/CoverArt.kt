@@ -232,10 +232,71 @@ private fun DrawScope.neonCover(style: LanyinStyle, seed: Int) {
     }
 }
 
-/** 暮's sleeves are travel photos; see [duskPhoto]. Dimmed a little at night so they don't glare on the dark page. */
+/**
+ * 暮's sleeves are riso prints: a few flat shapes in the three inks on cream, overprinting where
+ * they cross (a sun over the sea, hills under a moon, three circles, arches), with the ink's
+ * grain. Under the prints proper they're separated and screened like any cover.
+ */
 private fun DrawScope.duskCover(style: LanyinStyle, seed: Int) {
-    duskPhoto(seed)
-    if (style.dark) drawRect(Color.Black.copy(alpha = 0.12f))
+    val w = size.width
+    val h = size.height
+    val m = androidx.compose.ui.graphics.BlendMode.Multiply
+    val j = (seed * 37 % 100) / 100f
+    drawRect(Riso.Paper)
+    when (seed.mod(4)) {
+        0 -> {
+            // A sun going into the sea, its road in yellow stripes.
+            drawRect(Riso.Pink.copy(alpha = 0.72f), size = Size(w, h * 0.62f), blendMode = m)
+            drawCircle(Riso.Yellow, w * (0.2f + 0.06f * j), Offset(w * (0.42f + 0.2f * j), h * 0.56f), blendMode = m)
+            drawRect(Riso.Blue, Offset(0f, h * 0.62f), Size(w, h * 0.38f), blendMode = m)
+            for (k in 0 until 5) {
+                val y = h * (0.66f + k * 0.065f)
+                val half = w * (0.16f - k * 0.02f)
+                drawRect(Riso.Yellow, Offset(w * (0.42f + 0.2f * j) - half, y), Size(half * 2, h * 0.022f), blendMode = m)
+            }
+        }
+        1 -> {
+            // Hills under a moon.
+            drawRect(Riso.Blue.copy(alpha = 0.6f), size = Size(w, h * 0.7f), blendMode = m)
+            drawCircle(Riso.Yellow, w * 0.11f, Offset(w * (0.62f + 0.15f * j), h * 0.26f), blendMode = m)
+            val far = Path().apply {
+                moveTo(0f, h * 0.62f)
+                cubicTo(w * 0.3f, h * (0.4f + 0.1f * j), w * 0.55f, h * 0.7f, w, h * 0.5f)
+                lineTo(w, h); lineTo(0f, h); close()
+            }
+            drawPath(far, Riso.Pink.copy(alpha = 0.85f), blendMode = m)
+            val near = Path().apply {
+                moveTo(0f, h * 0.8f)
+                cubicTo(w * 0.35f, h * 0.66f, w * 0.7f, h * 0.9f, w, h * 0.74f)
+                lineTo(w, h); lineTo(0f, h); close()
+            }
+            drawPath(near, Riso.Blue, blendMode = m)
+        }
+        2 -> {
+            // Three circles, one per drum.
+            val r = w * 0.27f
+            drawCircle(Riso.Pink, r, Offset(w * 0.38f, h * (0.4f + 0.06f * j)), blendMode = m)
+            drawCircle(Riso.Yellow, r, Offset(w * 0.62f, h * 0.42f), blendMode = m)
+            drawCircle(Riso.Blue.copy(alpha = 0.9f), r, Offset(w * 0.5f, h * 0.62f), blendMode = m)
+        }
+        else -> {
+            // Arches, nested, offset a little drum to drum.
+            for (k in 0 until 4) {
+                val ink = Riso.Inks[(k + seed).mod(3)]
+                val inset = w * (0.08f + k * 0.1f)
+                val top = h * (0.18f + k * 0.1f)
+                drawPath(Path().apply {
+                    moveTo(inset, h)
+                    lineTo(inset, top + (w / 2f - inset))
+                    arcTo(androidx.compose.ui.geometry.Rect(inset, top, w - inset, top + (w - 2 * inset)), 180f, 180f, false)
+                    lineTo(w - inset, h)
+                    close()
+                }, ink.copy(alpha = 0.85f), blendMode = m)
+            }
+        }
+    }
+    drawRect(grainBrush, alpha = 0.14f, blendMode = m)
+    if (style.dark) drawRect(Color.Black.copy(alpha = 0.08f))
 }
 
 /** The theme's signature shape as a one-colour line drawing, for empty states. */

@@ -96,20 +96,13 @@ internal fun DrawScope.drawLoading(style: LanyinStyle, t: Float) {
                 drawLine(lerp(c.accent, Color.White, 0.4f * on).copy(alpha = on), s, e, 2.5.dp.toPx(), StrokeCap.Round)
             }
         }
+        // 暮: the three inks going round as the drums turn, overprinting where they cross.
         BackdropKind.Dusk -> {
-            // The sun bobbing on the horizon, its reflection under it.
-            val y = h * 0.56f
-            val bob = sin(t * 2.2f) * h * 0.08f
-            val sun = Offset(mid.x, y - h * 0.08f + bob)
-            // Only what's above the sea shows.
-            clipRect(bottom = y) {
-                drawCircle(Brush.verticalGradient(listOf(Color(0xFFFFC08A), Color(0xFFE07A50)), sun.y - w * 0.16f, sun.y + w * 0.16f), w * 0.16f, sun)
-            }
-            drawLine(c.content.copy(alpha = 0.5f), Offset(w * 0.12f, y), Offset(w * 0.88f, y), 1.dp.toPx())
-            for (k in 0 until 3) {
-                val ry = y + (k + 1) * h * 0.07f
-                val half = w * (0.12f - k * 0.03f) * (1f - bob / h)
-                drawLine(Color(0xFFE07A50).copy(alpha = 0.6f - k * 0.15f), Offset(mid.x - half, ry), Offset(mid.x + half, ry), 1.5.dp.toPx(), StrokeCap.Round)
+            val r = minOf(w, h) * 0.17f
+            for ((n, ink) in io.lanyin.player.ui.design.Riso.Inks.withIndex()) {
+                val a = t * 2.4f + n * 2.094f
+                val p = Offset(mid.x + cos(a).toFloat() * r * 0.7f, mid.y + sin(a).toFloat() * r * 0.7f)
+                drawCircle(ink.copy(alpha = 0.9f), r, p, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply)
             }
         }
         BackdropKind.Grid -> {
@@ -225,8 +218,9 @@ private fun FailedMark(style: LanyinStyle, modifier: Modifier) {
             drawCircle(c.accentAlt, 3.dp.toPx(), Offset(size.width * 0.78f, size.height * 0.3f))
         }
         BackdropKind.Neon -> NeonText("CLOSED", TextStyle(fontFamily = TiltNeonFamily, fontSize = fixed(22f), letterSpacing = 0.1.em), c.accentAlt.copy(alpha = 0.6f), modifier, ignite = false)
-        BackdropKind.Dusk -> Box(modifier.rotate(-8f).border(2.dp, io.lanyin.player.ui.design.Airmail.Red, RoundedCornerShape(4.dp)).padding(horizontal = 10.dp, vertical = 4.dp)) {
-            Text("RETURN TO SENDER", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(10f), letterSpacing = 0.08.em), color = io.lanyin.player.ui.design.Airmail.Red)
+        // 暮: a spoilt sheet, stamped as such.
+        BackdropKind.Dusk -> Box(modifier.rotate(-8f).border(2.dp, io.lanyin.player.ui.design.Riso.Pink, RoundedCornerShape(3.dp)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+            Text("MISPRINT · 废版", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(10f), letterSpacing = 0.08.em), color = io.lanyin.player.ui.design.Riso.Pink)
         }
         BackdropKind.Grid -> Canvas(modifier.size(48.dp)) {
             val stroke = 2.5.dp.toPx()
@@ -289,10 +283,7 @@ fun ListEnd(count: Int, modifier: Modifier = Modifier) {
                 }
             }
             BackdropKind.Neon -> NeonText("LAST CALL", TextStyle(fontFamily = TiltNeonFamily, fontSize = fixed(15f), letterSpacing = 0.12.em), c.accent.copy(alpha = 0.55f), ignite = false)
-            BackdropKind.Dusk -> Text(
-                "— wish you were here · $count 首 —",
-                style = TextStyle(fontFamily = style.display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = fixed(13f)), color = c.muted,
-            )
+            BackdropKind.Dusk -> Text("— 这一版印完了 · 共 $count 首 —", style = io.lanyin.player.ui.design.pencilStyle(fixed(16f), c.muted))
             BackdropKind.Grid -> Text(
                 "END · ${"%02d".format(count)} ITEMS", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(11f), letterSpacing = 0.1.em),
                 color = c.surface, modifier = Modifier.background(c.outline).padding(horizontal = 10.dp, vertical = 3.dp),

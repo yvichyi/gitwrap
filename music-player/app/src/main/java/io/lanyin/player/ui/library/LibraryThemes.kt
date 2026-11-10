@@ -305,78 +305,57 @@ private fun MemberCard(profile: UserProfile?, onLogin: () -> Unit, modifier: Mod
 }
 
 /**
- * 暮: the photo page of a passport. Fine wavy lines printed across the paper, the photo, the
- * holder's name and number, an entry stamp struck over the corner (once signed in), and the
- * machine-readable line along the foot.
+ * 暮: the printer's card, taped to the mat: the name overprinted, the edition number and the
+ * membership written in, the name signed in pencil underneath, and the studio's rubber stamp
+ * struck over the corner once signed in.
  */
 @Composable
 private fun PassportPage(profile: UserProfile?, onLogin: () -> Unit, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val paper = if (style.dark) Color(0xFF232944) else Color(0xFFFBF5EA)
-    val guilloche = (if (style.dark) Color(0xFF7FA6D6) else io.lanyin.player.ui.design.Airmail.Blue).copy(alpha = 0.09f)
-    val field = TextStyle(fontWeight = FontWeight.Medium, fontSize = fixed(8.5f), letterSpacing = 0.14.em)
-    val name = profile?.nickname ?: "GUEST"
-    val shape = RoundedCornerShape(12.dp)
-    Box(
-        modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(paper)
-            .drawBehind {
-                // The guilloche: fine waves across the page.
-                for (k in 0 until 14) {
-                    val path = Path()
-                    val y0 = size.height * (k + 0.5f) / 14f
-                    var x = 0f
-                    path.moveTo(0f, y0)
-                    while (x <= size.width) {
-                        path.lineTo(x, y0 + 5.dp.toPx() * kotlin.math.sin(x / 18.dp.toPx() + k * 0.7f))
-                        x += 3.dp.toPx()
-                    }
-                    drawPath(path, guilloche, style = androidx.compose.ui.graphics.drawscope.Stroke(0.8.dp.toPx()))
-                }
-            }
-            .then(if (profile == null) Modifier.pressable(onClick = onLogin) else Modifier)
-            .padding(16.dp),
+    val name = profile?.nickname ?: "访客"
+    io.lanyin.player.ui.design.RisoSheet(
+        modifier.fillMaxWidth(), tilt = -0.6f,
+        tapes = listOf(io.lanyin.player.ui.design.TapeAt.TopLeft, io.lanyin.player.ui.design.TapeAt.TopRight),
+        onClick = if (profile == null) onLogin else null, label = if (profile == null) "登录" else null,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
     ) {
-        Column {
-            Text("PASSPORT · 澜音护照", style = field, color = c.muted)
-            Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(58.dp, 70.dp).clip(RoundedCornerShape(3.dp)).background(c.surfaceAlt), contentAlignment = Alignment.Center) {
-                    if (profile != null) Avatar(profile.avatarUrl, profile.nickname, 70.dp, shape = androidx.compose.ui.graphics.RectangleShape)
-                    else ThemedIcon(LineIcon.User, null, tint = c.muted, size = 26.dp)
-                }
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("姓名 / NAME", style = field, color = c.muted)
-                    Text(name, style = style.type.title, color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Column {
-                            Text("编号 / NO.", style = field, color = c.muted)
-                            Text(if (profile != null) "LY%06d".format(profile.userId % 1_000_000) else "——", style = TextStyle(fontFamily = style.numeric, fontSize = fixed(14f)), color = c.content)
-                        }
-                        Column {
-                            Text("签注 / VISA", style = field, color = c.muted)
-                            Text(profile?.let { vipName(it.vipType) } ?: "未登录", style = style.type.caption, color = c.content, maxLines = 1)
+        val style = Lanyin.style
+        val c = style.colors
+        val field = TextStyle(fontWeight = FontWeight.Bold, fontSize = fixed(8.5f), letterSpacing = 0.16.em)
+        Box(Modifier.fillMaxWidth()) {
+            Column {
+                Text("PRINTER · 印刷人", style = field, color = c.accent)
+                Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(58.dp, 70.dp).background(c.surfaceAlt), contentAlignment = Alignment.Center) {
+                        if (profile != null) Avatar(profile.avatarUrl, profile.nickname, 70.dp, shape = androidx.compose.ui.graphics.RectangleShape)
+                        else ThemedIcon(LineIcon.User, null, tint = c.muted, size = 26.dp)
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        io.lanyin.player.ui.design.Overprint(name, TextStyle(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Black, fontSize = fixed(22f), lineHeight = fixed(28f)))
+                        Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            Column {
+                                Text("版号 / NO.", style = field, color = c.muted)
+                                Text(if (profile != null) "LY%06d".format(profile.userId % 1_000_000) else "——", style = TextStyle(fontFamily = style.numeric, fontSize = fixed(14f)), color = c.content)
+                            }
+                            Column {
+                                Text("会员 / MEMBER", style = field, color = c.muted)
+                                Text(profile?.let { vipName(it.vipType) } ?: "未登录", style = style.type.caption, color = c.content, maxLines = 1)
+                            }
                         }
                     }
+                    if (profile == null) ThemedButton("登录", onLogin)
                 }
-                if (profile == null) ThemedButton("登录", onLogin)
+                Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.Bottom) {
+                    io.lanyin.player.ui.design.PencilNote(if (profile != null) name else "签名处", size = fixed(20f), modifier = Modifier.weight(1f))
+                    io.lanyin.player.ui.design.PencilNote("暮 · 三色孔版", size = fixed(14f))
+                }
+                Canvas(Modifier.padding(top = 2.dp).fillMaxWidth().height(1.dp)) { drawLine(io.lanyin.player.ui.design.Riso.Graphite.copy(alpha = 0.5f), androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(size.width * 0.6f, 0f), 0.8.dp.toPx()) }
             }
-            // The machine-readable zone.
-            Text(
-                "P<LANYIN<<" + name.filter { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' }.uppercase().ifEmpty { "LISTENER" }.take(12).padEnd(12, '<') + "<<<<<<<<",
-                style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = fixed(10.5f), letterSpacing = 0.12.em),
-                color = c.content.copy(alpha = 0.55f), maxLines = 1, overflow = TextOverflow.Clip,
-                modifier = Modifier.padding(top = 12.dp),
+            if (profile != null) io.lanyin.player.ui.design.InkStamp(
+                "会员", "暮", "LANYIN", io.lanyin.player.ui.design.Riso.Pink.copy(alpha = 0.75f),
+                Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-8).dp), diameter = 54.dp, angle = 14f,
             )
         }
-        // The entry stamp, struck over the top corner once you've signed in.
-        if (profile != null) io.lanyin.player.ui.design.Postmark(
-            "入境", "澜音", "ARRIVAL", (if (style.dark) c.accent else io.lanyin.player.ui.design.Airmail.Red).copy(alpha = 0.6f),
-            Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-6).dp), diameter = 54.dp, waves = false, angle = 14f,
-        )
     }
 }
 
@@ -522,9 +501,9 @@ internal fun ThemedEntries(entries: List<Entry>, modifier: Modifier) {
         }
         // 酸: the playlist window of a media player of the time.
         BackdropKind.Acid -> PlaylistWindow(entries, modifier)
-        // 暮: luggage tags, each with its band of colour.
+        // 暮: ink swatches torn from the swatch book.
         BackdropKind.Dusk -> EntryTiles(entries, modifier) { i, e, m ->
-            io.lanyin.player.ui.design.LuggageTag(e.icon, e.title, e.detail, io.lanyin.player.ui.design.StampInks[i % 4], e.onClick, m, tilt = if (i % 2 == 0) -0.6f else 0.6f)
+            io.lanyin.player.ui.design.SwatchChip(e.icon, e.title, e.detail, io.lanyin.player.ui.design.Riso.Swatches[i % 6], e.onClick, m, tilt = if (i % 2 == 0) -0.6f else 0.6f)
         }
         BackdropKind.Game -> MenuWindow(entries, modifier)
         BackdropKind.Ink -> EntryLines(entries, modifier, leader = true) { i -> Text(io.lanyin.player.ui.home.chineseNumber(i + 1), style = style.type.body.copy(fontFamily = style.display), color = c.muted, modifier = Modifier.width(30.dp)) }

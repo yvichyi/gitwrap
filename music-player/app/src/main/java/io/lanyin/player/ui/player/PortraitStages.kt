@@ -119,14 +119,10 @@ private fun GridPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
     }
 }
 
-/** 暮: the countdown to sunset, the polaroid hung below it, and the line on the horizon with its reflection. */
+/** 暮: the song as a print taped to the mat, its sun setting over the song, and the slip with its name. */
 @Composable
 private fun DuskPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
-    Column(Modifier.fillMaxSize()) {
-        Box(Modifier.enter(stage.entrance, 1)) { Sunset(stage.state) }
-        Polaroid(stage, Modifier.weight(1f).fillMaxWidth(), onClick = onShowLyrics)
-        HorizonLyrics(stage, Modifier.fillMaxWidth().height(176.dp).enter(stage.entrance, 2).opensLyrics(onShowLyrics))
-    }
+    RisoPortraitStage(stage, onShowLyrics)
 }
 
 /** 霓: ON AIR and the tempo up top, the record, and the neon sign lighting the words beneath. */
