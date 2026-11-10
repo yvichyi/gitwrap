@@ -54,10 +54,18 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun GlyphStage(stage: StageContext) {
     Row(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(0.42f).fillMaxHeight()) {
-            GlyphLights(stage.state, Modifier.matchParentSize())
-            StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), heightFraction = 0.72f)
-            GlyphTempo(stage.state, Modifier.align(androidx.compose.ui.Alignment.BottomStart).padding(4.dp))
+        // The device's clear back: the board, the coil under the record, the light strips.
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(0.42f).fillMaxHeight().padding(vertical = 4.dp)) {
+            val record = minOf(maxWidth - 40.dp, maxHeight * 0.72f) / 2
+            io.lanyin.player.ui.design.ClearBack(
+                Modifier.fillMaxSize(),
+                coilRadius = record * 1.16f / minOf(maxWidth, maxHeight),
+                coil = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
+            ) {
+                GlyphLights(stage.state, Modifier.matchParentSize())
+                StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), heightFraction = 0.72f)
+                GlyphTempo(stage.state, Modifier.align(androidx.compose.ui.Alignment.BottomEnd).padding(end = 26.dp, bottom = 18.dp))
+            }
         }
         Spacer(Modifier.width(30.dp))
         DotMatrixLyrics(stage, Modifier.weight(0.58f).fillMaxHeight().enter(stage.entrance, 1))

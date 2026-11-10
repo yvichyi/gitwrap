@@ -143,10 +143,18 @@ private fun DevicePortrait(stage: StageContext, onShowLyrics: () -> Unit) {
 @Composable
 private fun DotPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            GlyphLights(stage.state, Modifier.matchParentSize())
-            StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), heightFraction = 0.72f, onClick = onShowLyrics)
-            GlyphTempo(stage.state, Modifier.align(Alignment.BottomStart).padding(4.dp))
+        // The device's clear back: the board, the coil under the record, the light strips.
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().enter(stage.entrance, 1)) {
+            val record = minOf(maxWidth - 40.dp, maxHeight * 0.72f) / 2
+            io.lanyin.player.ui.design.ClearBack(
+                Modifier.fillMaxSize(),
+                coilRadius = record * 1.16f / minOf(maxWidth, maxHeight),
+                coil = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
+            ) {
+                GlyphLights(stage.state, Modifier.matchParentSize())
+                StageArtwork(stage, Modifier.fillMaxSize().then(stage.dismissDrag), heightFraction = 0.72f, onClick = onShowLyrics)
+                GlyphTempo(stage.state, Modifier.align(Alignment.BottomEnd).padding(end = 30.dp, bottom = 22.dp))
+            }
         }
         DotMatrixLyrics(stage, Modifier.fillMaxWidth().height(184.dp).padding(top = 8.dp).enter(stage.entrance, 2).opensLyrics(onShowLyrics))
     }
