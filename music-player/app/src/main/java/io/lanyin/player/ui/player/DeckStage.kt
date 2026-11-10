@@ -107,12 +107,13 @@ private fun CassetteWell(stage: StageContext, modifier: Modifier, onShowLyrics: 
     BoxWithConstraints(
         modifier
             .drawBehind { drawWell() }
-            .then(if (onShowLyrics != null) Modifier.clickable(remember { MutableInteractionSource() }, indication = null, onClick = onShowLyrics) else Modifier)
             .then(stage.dismissDrag),
         contentAlignment = Alignment.Center,
     ) {
         val w = minOf(maxWidth * 0.9f, (maxHeight - 24.dp) * (100f / 64f))
-        SwipeToSkip(state, Modifier.fillMaxSize()) {
+        // The tap goes on the swiped box itself, so the two stay one target.
+        val tap = if (onShowLyrics != null) Modifier.clickable(remember { MutableInteractionSource() }, indication = null, onClick = onShowLyrics) else Modifier
+        SwipeToSkip(state, Modifier.fillMaxSize().then(tap)) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Cassette(
                     state.title, state.artist,
