@@ -1,9 +1,11 @@
 package io.lanyin.player.ui.player
 
+import io.lanyin.player.ui.design.drawInkstone
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -253,6 +255,16 @@ fun Cassette(spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier) {
 @Composable
 fun MiniArtwork(skin: PlayerSkin, spin: SpinState, coverSeed: Int, modifier: Modifier = Modifier, coverUrl: String? = null) {
     val style = Lanyin.style
+    // 墨: the inkstone, small, the cover shining in its well.
+    if (style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Ink) {
+        Box(modifier, contentAlignment = Alignment.Center) {
+            Canvas(Modifier.matchParentSize()) { drawInkstone(spin.angle) }
+            Box(Modifier.fillMaxSize(0.7f).clip(CircleShape).graphicsLayer { rotationZ = spin.angle }) {
+                io.lanyin.player.ui.design.InkWashCover(coverUrl, coverSeed, Modifier.fillMaxSize(), ink = Color(0xFFE9E4D8), light = true)
+            }
+        }
+        return
+    }
     if (skin == PlayerSkin.VINYL) {
         val cover = rememberCoverPainter(coverUrl, 160)
         Canvas(modifier) {

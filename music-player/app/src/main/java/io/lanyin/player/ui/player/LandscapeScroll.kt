@@ -64,7 +64,7 @@ import kotlin.math.floor
 internal fun ScrollStage(stage: StageContext) {
     val state = stage.state
     Row(Modifier.fillMaxSize()) {
-        StageArtwork(stage, Modifier.weight(0.36f).fillMaxHeight().then(stage.dismissDrag))
+        InkstoneStage(stage, Modifier.weight(0.36f).fillMaxHeight(), onClick = null)
         Spacer(Modifier.width(20.dp))
         Column(Modifier.weight(0.64f).fillMaxHeight().enter(stage.entrance, 1)) {
             ScrollSheet(stage, Modifier.weight(1f).fillMaxWidth())

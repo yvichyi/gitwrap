@@ -29,6 +29,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
@@ -197,22 +198,33 @@ private fun ColumnScope.Second(text: String?, style: TextStyle, color: Color, al
     )
 }
 
-/** 墨: rice paper, the seal at its head, ink filling the grey characters and a dry stroke of the brush following under them. */
+/**
+ * 墨: a handscroll (手卷) unrolled across the screen: xuan in a silk mount between two wooden
+ * rollers, the seal at its head, ink filling the grey characters and a dry stroke of the brush
+ * following under them.
+ */
 @Composable
 private fun InkStrip(line: DesktopLine, sung: () -> Float, type: TextUnit, modifier: Modifier) {
-    val c = Lanyin.colors
+    val style = Lanyin.style
+    val c = style.colors
+    val silk = if (style.dark) io.lanyin.player.ui.design.InkDesk.SilkNight else io.lanyin.player.ui.design.InkDesk.Silk
     Row(
         modifier
             .drawBehind {
-                drawRoundRect(Color.Black.copy(alpha = 0.14f), Offset(0f, 2.dp.toPx()), size, CornerRadius(3.dp.toPx()))
-                drawRoundRect(c.bg.copy(alpha = 0.95f), cornerRadius = CornerRadius(3.dp.toPx()))
+                val rod = 7.dp.toPx()
+                drawRect(Color.Black.copy(alpha = 0.18f), Offset(0f, 2.dp.toPx()), size)
+                drawRect(silk, Offset(rod * 0.6f, 0f), Size(size.width - rod * 1.2f, size.height))
+                val inset = 4.dp.toPx()
+                clipRect(rod + inset, inset, size.width - rod - inset, size.height - inset) { io.lanyin.player.ui.design.drawXuanPage(this, style) }
+                // The two rollers, the scroll's ends.
+                for (x in floatArrayOf(0f, size.width - rod)) {
+                    drawRect(Brush.horizontalGradient(listOf(io.lanyin.player.ui.design.InkDesk.Wood, Color(0xFF7A5236), io.lanyin.player.ui.design.InkDesk.Wood), x, x + rod), Offset(x, -2.dp.toPx()), Size(rod, size.height + 4.dp.toPx()))
+                }
             }
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(22.dp).background(c.accentAlt, RoundedCornerShape(2.dp)), contentAlignment = Alignment.Center) {
-            Text("澜", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = fixed(12f)), color = c.bg)
-        }
+        io.lanyin.player.ui.design.InkSeal("澜音", 24.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             SungText(

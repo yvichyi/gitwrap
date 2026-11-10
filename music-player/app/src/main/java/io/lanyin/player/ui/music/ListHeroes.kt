@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import io.lanyin.player.ui.design.DeviceScreen
+import io.lanyin.player.ui.design.drawSealStone
 import io.lanyin.player.ui.design.drawSmiley
 import io.lanyin.player.ui.design.drawTapeStrip
 import io.lanyin.player.ui.design.drawBarcode
@@ -155,17 +156,40 @@ private fun InkHero(title: String, subtitle: String?, header: ListHeader, modifi
     val style = Lanyin.style
     val c = style.colors
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Roller(220.dp)
-        Box(Modifier.background(lerp(c.bg, c.content, if (style.dark) 0.08f else 0.05f)).padding(horizontal = 16.dp, vertical = 18.dp)) {
-            HeroArt(header, 172.dp)
-            Box(
-                Modifier.align(Alignment.BottomEnd).offset(x = 10.dp, y = 12.dp).size(22.dp).background(c.accentAlt, RoundedCornerShape(2.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("藏", style = TextStyle(fontFamily = style.display, fontSize = fixed(13f), lineHeight = fixed(14f)), color = c.bg)
+        io.lanyin.player.ui.design.HangingScroll(Modifier.width(232.dp)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(0.86f)) {
+                when (header) {
+                    // The cover painted in ink on the scroll.
+                    is ListHeader.Cover -> io.lanyin.player.ui.design.InkWashCover(
+                        header.url, header.seed,
+                        Modifier.fillMaxSize().padding(14.dp).then(if (header.round) Modifier.clip(CircleShape) else Modifier),
+                    )
+                    // The day's picks: a landscape, the date inscribed down its edge.
+                    is ListHeader.Day -> {
+                        io.lanyin.player.ui.design.ShanShui(Modifier.fillMaxSize(), hour = if (style.dark) 21f else 10f, seed = header.day)
+                        Column(Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            for (ch in "${io.lanyin.player.ui.home.chineseNumber(header.day)}日") {
+                                Text("$ch", style = TextStyle(fontFamily = style.display, fontSize = fixed(20f), lineHeight = fixed(23f)), color = c.content)
+                            }
+                        }
+                    }
+                    // A list with no cover of its own: its mark cut in a seal, how full under it.
+                    is ListHeader.Glyph -> Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                        val seal = io.lanyin.player.ui.design.sealColor()
+                        Box(Modifier.size(92.dp).drawBehind { drawSealStone(seal, c.bg, carved = true, seed = 5) }, contentAlignment = Alignment.Center) {
+                            io.lanyin.player.ui.design.ThemedIcon(header.icon, null, tint = c.bg, size = 44.dp)
+                        }
+                        header.fill?.let { f ->
+                            Canvas(Modifier.padding(top = 12.dp).size(92.dp, 6.dp)) {
+                                drawLine(c.content.copy(alpha = 0.15f), Offset(0f, size.height / 2f), Offset(size.width, size.height / 2f), 1.dp.toPx())
+                                drawLine(c.content, Offset(0f, size.height / 2f), Offset(size.width * f.coerceIn(0.02f, 1f), size.height / 2f), 3.dp.toPx(), StrokeCap.Round)
+                            }
+                        }
+                    }
+                }
+                io.lanyin.player.ui.design.InkSeal("藏", 20.dp, Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 8.dp))
             }
         }
-        Roller(220.dp)
         Text(
             title, style = style.type.display.copy(fontSize = 26.sp, lineHeight = 34.sp, letterSpacing = 0.12.em, textAlign = TextAlign.Center),
             color = c.content, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 20.dp),
@@ -173,18 +197,6 @@ private fun InkHero(title: String, subtitle: String?, header: ListHeader, modifi
         if (subtitle != null) {
             Text(subtitle, style = style.type.caption.copy(textAlign = TextAlign.Center), color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
         }
-    }
-}
-
-/** A scroll's roller: a dark rod with knobbed ends. */
-@Composable
-private fun Roller(width: Dp) {
-    val c = Lanyin.colors
-    Canvas(Modifier.size(width, 7.dp)) {
-        val y = size.height / 2f
-        drawLine(c.content.copy(alpha = 0.75f), Offset(5.dp.toPx(), y), Offset(size.width - 5.dp.toPx(), y), 4.dp.toPx(), StrokeCap.Round)
-        drawCircle(c.content.copy(alpha = 0.85f), 3.2.dp.toPx(), Offset(3.2.dp.toPx(), y))
-        drawCircle(c.content.copy(alpha = 0.85f), 3.2.dp.toPx(), Offset(size.width - 3.2.dp.toPx(), y))
     }
 }
 

@@ -116,9 +116,13 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
         if (!listening) return@drawBehind
         val r = this.size.minDimension / 2f
         when (style.button) {
+            // 墨: on the beat the seal's ink seems to spread, a faint square ring widening on the paper.
             ButtonKind.Outline -> {
                 val b = beat()
-                if (b > 0f) drawCircle(c.content.copy(alpha = 0.35f * b * b), r + (1f - b) * 14.dp.toPx(), style = Stroke(1.dp.toPx()))
+                if (b > 0f) {
+                    val grow = (1f - b) * 12.dp.toPx()
+                    drawRect(c.accentAlt.copy(alpha = 0.3f * b * b), Offset(-grow, -grow), Size(this.size.width + 2 * grow, this.size.height + 2 * grow), style = Stroke(1.dp.toPx()))
+                }
             }
             // 暮: the stamp's ink spreading in rings on the paper with the music.
             ButtonKind.Blob -> {
@@ -171,15 +175,16 @@ fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, size: Dp, modifier: M
     val shape = when (style.button) {
         ButtonKind.Blob -> CircleShape
         ButtonKind.NeonRing -> androidx.compose.foundation.shape.CutCornerShape(6.dp)
-        ButtonKind.Brutal, ButtonKind.Stamp -> RectangleShape
+        ButtonKind.Brutal, ButtonKind.Stamp, ButtonKind.Outline -> RectangleShape
         else -> CircleShape
     }
     val glyphColor = when (style.button) {
-        ButtonKind.Outline -> c.content
+        ButtonKind.Outline -> c.bg
         else -> c.onAccent
     }
     val container = when (style.button) {
-        ButtonKind.Outline -> Modifier.border(1.5.dp, c.content, shape)
+        // 墨: a seal in cinnabar, the glyph cut out of it.
+        ButtonKind.Outline -> Modifier.drawBehind { drawSealStone(c.accentAlt, c.bg, carved = true, seed = 11) }
         // 暮: a rubber stamp, struck in pink, the blue ring of its second drum a hair off.
         ButtonKind.Blob -> Modifier.drawBehind { drawRisoStamp(c.accent) }
         // 霓: an amber key on the radio, lit from inside.
@@ -448,7 +453,7 @@ fun SeekBar(
         ) {
             val f = dragFraction ?: (position().toFloat() / durationMs).coerceIn(0f, 1f)
             when (style.seek) {
-                SeekKind.Hairline -> drawHairlineTrack(f, c.content)
+                SeekKind.Hairline -> drawHairlineTrack(f, c.content, c.accentAlt)
                 SeekKind.Pill -> drawSteelRule(f, dragging, style, ruleMeasurer)
                 SeekKind.Tube -> drawPixelBar(f, dragging, style)
                 SeekKind.Block -> drawBlockTrack(f, c.accent, c.outline, c.surface)
@@ -502,12 +507,41 @@ private fun TimeLabel(ms: Long, style: TextStyle) {
     }
 }
 
-private fun DrawScope.drawHairlineTrack(f: Float, ink: Color) {
+/**
+ * 墨's progress: a stroke of the brush. What's been played is one stroke in ink, heaviest where
+ * the brush went down and thinning along, breaking into the dry streaks of 飞白 towards its end;
+ * what's to come a faint guide line; and where the song is, a small cinnabar seal.
+ */
+private fun DrawScope.drawHairlineTrack(f: Float, ink: Color, seal: Color = Color(0xFFB0302A)) {
     val cy = size.height / 2f
     val x = size.width * f
-    drawLine(ink.copy(alpha = 0.2f), Offset(0f, cy), Offset(size.width, cy), 1.dp.toPx())
-    drawLine(ink, Offset(0f, cy), Offset(x, cy), 1.5.dp.toPx())
-    drawCircle(ink, 3.5.dp.toPx(), Offset(x, cy))
+    drawLine(ink.copy(alpha = 0.16f), Offset(x, cy), Offset(size.width, cy), 1.dp.toPx())
+    if (x > 1f) {
+        // The body of the stroke: a tapering band.
+        val head = 3.6.dp.toPx()
+        val tail = 1.6.dp.toPx()
+        val body = Path().apply {
+            moveTo(0f, cy - head / 2f)
+            quadraticTo(x * 0.5f, cy - (head + tail) / 4f - 0.4.dp.toPx(), x, cy - tail / 2f)
+            lineTo(x, cy + tail / 2f)
+            quadraticTo(x * 0.5f, cy + (head + tail) / 4f, 0f, cy + head / 2f)
+            close()
+        }
+        drawPath(body, ink.copy(alpha = 0.88f))
+        // 飞白: in the last stretch the hairs part and the paper shows between them.
+        val dry = (x * 0.35f).coerceAtMost(60.dp.toPx())
+        for (k in 0 until 4) {
+            val y = cy + (k - 1.5f) * 0.9.dp.toPx()
+            val start = x - dry * (0.4f + 0.15f * k)
+            drawLine(Color.White.copy(alpha = 0f), Offset(start, y), Offset(x, y), 0.5.dp.toPx())
+            drawLine(ink.copy(alpha = 0.5f), Offset(start + dry * 0.1f * k, y + 0.3.dp.toPx() * k), Offset(x + 3.dp.toPx() * (k % 2), y), 0.6.dp.toPx())
+        }
+        // The brush going down: a little pool of ink at the start.
+        drawCircle(ink.copy(alpha = 0.9f), head * 0.62f, Offset(head * 0.4f, cy))
+    }
+    val s = 8.dp.toPx()
+    drawRect(seal, Offset(x - s / 2f, cy - s / 2f), Size(s, s))
+    drawRect(Color.White.copy(alpha = 0.35f), Offset(x - s * 0.18f, cy - s * 0.18f), Size(s * 0.36f, s * 0.36f), style = Stroke(0.8.dp.toPx()))
 }
 
 /**

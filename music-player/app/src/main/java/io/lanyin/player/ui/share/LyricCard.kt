@@ -62,7 +62,6 @@ import io.lanyin.player.ui.design.DoubleRule
 import io.lanyin.player.ui.design.Flavor
 import io.lanyin.player.ui.design.HalftoneCover
 import io.lanyin.player.ui.design.NeonText
-import io.lanyin.player.ui.design.brushStrokePath
 import io.lanyin.player.ui.design.candyPlastic
 import io.lanyin.player.ui.design.drawBackdropFrame
 import io.lanyin.player.ui.design.gameWindow
@@ -134,27 +133,55 @@ private fun BoxScope.Credit(color: Color, modifier: Modifier = Modifier) {
     )
 }
 
-/** 墨: the line written large on rice paper, a dry stroke of the brush under it, the song set down the side, and the seal. */
+/**
+ * 墨: a leaf of an album (册页). A landscape in ink on the xuan, mounted in silk; the line written
+ * on it as a painter's inscription is, top to bottom and right to left in the sky above the hills,
+ * the song and singer in a smaller column after it and the seals under; a leisure seal in the
+ * corner. The translation, if there is one, on the silk below.
+ */
 @Composable
 private fun InkCard(lyric: CardLyric) {
     val style = Lanyin.style
     val c = style.colors
-    Box(Modifier.fillMaxSize().padding(28.dp)) {
-        Column(Modifier.align(Alignment.CenterStart).padding(end = 44.dp)) {
-            Text(lyric.line, style = TextStyle(fontFamily = FontFamily.Serif, fontSize = fixed(26f), lineHeight = fixed(40f), letterSpacing = 0.08.em), color = c.content)
-            Canvas(Modifier.padding(top = 14.dp).size(140.dp, 10.dp)) {
-                drawPath(brushStrokePath(Offset(0f, size.height / 2f), size.width, size.height * 0.7f), c.content.copy(alpha = 0.7f))
+    val silk = if (style.dark) io.lanyin.player.ui.design.InkDesk.SilkNight else io.lanyin.player.ui.design.InkDesk.Silk
+    // The line in columns, punctuation dropped as a calligrapher drops it.
+    val chars = lyric.line.filter { !it.isWhitespace() && it !in "，。、！？,.!?;；:：" }.take(28)
+    // Short lines in columns of five, to stay in the sky above the hills.
+    val columns = chars.chunked(if (chars.length <= 10) 5 else 7)
+    Column(Modifier.fillMaxSize().background(silk).padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 10.dp)) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                // 隔水: the thin band of paler silk round the painting.
+                .border(3.dp, lerp(silk, c.bg, 0.55f))
+                .padding(3.dp)
+                .drawBehind { io.lanyin.player.ui.design.drawXuanPage(this, style) },
+        ) {
+            io.lanyin.player.ui.design.ShanShui(Modifier.fillMaxSize(), hour = if (style.dark) 21f else 15f, seed = lyric.coverSeed % 13 + 2)
+            Row(Modifier.align(Alignment.TopEnd).padding(top = 18.dp, end = 16.dp), verticalAlignment = Alignment.Top) {
+                // The song and singer, then the seals, in the last (leftmost) column.
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(end = 8.dp, top = 26.dp)) {
+                    for (ch in "《${lyric.title.take(8)}》") Text("$ch", style = TextStyle(fontFamily = style.display, fontSize = fixed(11f), lineHeight = fixed(13f)), color = c.content.copy(alpha = 0.8f))
+                    for (ch in lyric.artist.take(5)) Text("$ch", style = TextStyle(fontFamily = style.display, fontSize = fixed(10f), lineHeight = fixed(12f)), color = c.muted)
+                    io.lanyin.player.ui.design.InkSeal("澜音", 22.dp, Modifier.padding(top = 6.dp))
+                    io.lanyin.player.ui.design.InkSeal("听", 16.dp, Modifier.padding(top = 4.dp), carved = false)
+                }
+                for (col in columns.reversed()) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(start = 4.dp)) {
+                        for (ch in col) Text("$ch", style = TextStyle(fontFamily = style.display, fontSize = fixed(23f), lineHeight = fixed(27f)), color = c.content)
+                    }
+                }
             }
-            lyric.translation?.let { Text(it, style = TextStyle(fontFamily = FontFamily.Serif, fontStyle = FontStyle.Italic, fontSize = fixed(12f), lineHeight = fixed(18f)), color = c.muted, modifier = Modifier.padding(top = 10.dp)) }
+            // A leisure seal (闲章) in the lower corner.
+            io.lanyin.player.ui.design.InkSeal("清音", 26.dp, Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 12.dp).graphicsLayer { rotationZ = -3f }, carved = false)
         }
-        // The inscription down the right edge, and the seal under it.
-        Column(Modifier.align(Alignment.TopEnd), horizontalAlignment = Alignment.CenterHorizontally) {
-            for (ch in "《${lyric.title}》".take(12)) Text(ch.toString(), style = TextStyle(fontFamily = FontFamily.Serif, fontSize = fixed(13f), lineHeight = fixed(16f)), color = c.content)
-            Spacer(Modifier.height(6.dp))
-            for (ch in lyric.artist.take(6)) Text(ch.toString(), style = TextStyle(fontFamily = FontFamily.Serif, fontSize = fixed(11f), lineHeight = fixed(14f)), color = c.muted)
-            Box(Modifier.padding(top = 10.dp).size(30.dp).background(c.accentAlt, RoundedCornerShape(3.dp)), contentAlignment = Alignment.Center) {
-                Text("澜音", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = fixed(10f), lineHeight = fixed(11f), textAlign = TextAlign.Center), color = c.bg)
-            }
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                lyric.translation ?: lyric.album, style = TextStyle(fontFamily = FontFamily.Serif, fontStyle = FontStyle.Italic, fontSize = fixed(11f), lineHeight = fixed(14f)),
+                color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+            )
+            Text("澜音 · LANYIN", style = TextStyle(fontSize = fixed(9f), letterSpacing = 0.2.em), color = c.muted)
         }
     }
 }

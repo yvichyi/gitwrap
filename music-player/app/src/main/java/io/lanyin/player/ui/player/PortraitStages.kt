@@ -96,11 +96,11 @@ private fun LyricsWindow(stage: StageContext, onShowLyrics: () -> Unit, modifier
     )
 }
 
-/** 墨: the record above a scroll of the lyrics written down in columns, the title inscribed beside them. */
+/** 墨: the inkstone turning above a scroll of the lyrics written down in columns, the title inscribed beside them. */
 @Composable
 private fun InkPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        StageArtwork(stage, Modifier.weight(1f).fillMaxWidth().then(stage.dismissDrag), heightFraction = 0.94f, onClick = onShowLyrics, ripples = true)
+        InkstoneStage(stage, Modifier.weight(1f).fillMaxWidth().enter(stage.entrance, 1), onClick = onShowLyrics)
         ScrollSheet(
             stage,
             Modifier.fillMaxWidth().height(206.dp).padding(top = 10.dp).enter(stage.entrance, 2),

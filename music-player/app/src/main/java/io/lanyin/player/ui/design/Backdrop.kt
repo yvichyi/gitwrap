@@ -242,7 +242,8 @@ private fun DrawScope.drawInk(style: LanyinStyle, t: Float, page: Boolean, audio
     val c = style.colors
     val w = size.width
     val h = size.height
-    drawRect(c.bg)
+    // Xuan paper, its fibres and mottling.
+    drawXuan(style)
     val swell = 1f + 0.03f * sin(t * 0.4f) + 0.08f * (audio?.bass ?: 0f)
     glowBlob(c.content.copy(alpha = if (style.dark) 0.05f else 0.045f), Offset(w * 0.85f, h * 0.12f), w * 0.8f * swell)
     // At night a moon, painted as ink paintings paint it: the wash goes round it and the paper is left.
