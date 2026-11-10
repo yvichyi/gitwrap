@@ -1,5 +1,7 @@
 package io.lanyin.player.ui.player
 
+import androidx.compose.ui.graphics.drawscope.scale
+import io.lanyin.player.ui.design.drawConcertPoster
 import io.lanyin.player.ui.design.drawInkstone
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
@@ -262,6 +264,17 @@ fun MiniArtwork(skin: PlayerSkin, spin: SpinState, coverSeed: Int, modifier: Mod
             Box(Modifier.fillMaxSize(0.7f).clip(CircleShape).graphicsLayer { rotationZ = spin.angle }) {
                 io.lanyin.player.ui.design.InkWashCover(coverUrl, coverSeed, Modifier.fillMaxSize(), ink = Color(0xFFE9E4D8), light = true)
             }
+        }
+        return
+    }
+    // 格: the poster's rings, small and turning, the cover in the middle in black and white.
+    if (style.backdrop == io.lanyin.player.ui.theme.BackdropKind.Grid && skin == PlayerSkin.VINYL) {
+        Box(modifier, contentAlignment = Alignment.Center) {
+            Canvas(Modifier.matchParentSize().clip(CircleShape)) {
+                drawCircle(style.colors.bg)
+                scale(1.18f) { drawConcertPoster(style, coverSeed, spin.angle, 0f, 0f, 0f, null, construction = false) }
+            }
+            io.lanyin.player.ui.design.SwissPhoto(coverUrl, coverSeed, Modifier.fillMaxSize(0.36f).clip(CircleShape))
         }
         return
     }

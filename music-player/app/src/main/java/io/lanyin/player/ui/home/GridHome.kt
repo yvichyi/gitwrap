@@ -125,6 +125,12 @@ private fun Poster(model: HomeModel, modifier: Modifier) {
             Text("№ %d.%02d.%02d".format(now.year, now.monthValue, now.dayOfMonth), style = mono.copy(fontSize = 12.sp), color = c.content, modifier = Modifier.weight(1f))
             Text("LANYIN / 澜音", style = mono.copy(fontSize = 12.sp), color = c.content)
         }
+        // The studio's spec for the page, as a designer pencils it in the margin.
+        Text(
+            "GRID 12 COL · BASELINE 48 · SANS BLACK 104/96 · RED 032 / REFLEX BLUE / YELLOW 012",
+            style = mono.copy(fontSize = 9.sp, fontWeight = FontWeight.Normal), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 2.dp),
+        )
     }
 }
 
@@ -140,34 +146,33 @@ private fun Blocks(model: HomeModel, modifier: Modifier) {
                 art = { DailyArt(model.pickSongs) }, mark = { DayMark(model.now) }, ratio = 0.7f,
             )
             Column(Modifier.weight(0.42f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                ColorBlock(doors[1], 2, c.accentAlt, Color.White, Modifier.weight(1f).fillMaxWidth())
-                ColorBlock(doors[2], 3, GridYellow, c.content, Modifier.weight(1f).fillMaxWidth())
+                Swatch(doors[1], 2, c.accentAlt, Color.White, "REFLEX BLUE", Modifier.weight(1f).fillMaxWidth())
+                Swatch(doors[2], 3, GridYellow, c.content, "YELLOW 012", Modifier.weight(1f).fillMaxWidth())
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            ColorBlock(doors[3], 4, c.accent, Color.White, Modifier.weight(1f).aspectRatio(1f))
-            ColorBlock(doors[4], 5, c.surface, c.content, Modifier.weight(1f).aspectRatio(1f))
-            ColorBlock(doors[5], 6, c.content, c.bg, Modifier.weight(1f).aspectRatio(1f))
+            Swatch(doors[3], 4, c.accent, Color.White, "RED 032", Modifier.weight(1f).aspectRatio(0.82f))
+            Swatch(doors[4], 5, c.surface, c.content, "WARM GRAY 1", Modifier.weight(1f).aspectRatio(0.82f))
+            Swatch(doors[5], 6, c.content, c.bg, "BLACK 6", Modifier.weight(1f).aspectRatio(0.82f))
         }
     }
 }
 
-/** A block of flat colour: icon, number, and the name set heavy at its foot. */
+/**
+ * A way in as a chip torn from the swatch book: the field of colour with the icon and the number,
+ * the white label under it with the name set heavy and the ink's name and number in mono.
+ */
 @Composable
-private fun ColorBlock(door: Door, number: Int, fill: Color, ink: Color, modifier: Modifier) {
-    val style = Lanyin.style
-    Box(modifier.themedSurface(onClick = door.onClick).background(fill).padding(10.dp)) {
-        ThemedIcon(door.icon, null, tint = ink, size = 22.dp, modifier = Modifier.align(Alignment.TopStart))
-        Text("%02d".format(number), style = mono.copy(fontSize = fixedSp(11f)), color = ink, modifier = Modifier.align(Alignment.TopEnd))
-        Text(
-            door.label,
-            style = style.type.title.copy(fontWeight = FontWeight.Black, fontSize = cappedSp(17f, maxScale = 1.08f), lineHeight = cappedSp(20f, maxScale = 1.08f)),
-            color = ink,
-            maxLines = 1,
-            softWrap = false,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.BottomStart),
-        )
+private fun Swatch(door: Door, number: Int, fill: Color, ink: Color, inkName: String, modifier: Modifier) {
+    io.lanyin.player.ui.design.SwatchChip(
+        fill, ink, "$inkName · %02d".format(number), door.label,
+        modifier.themedSurface(onClick = door.onClick),
+    ) { tint ->
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            ThemedIcon(door.icon, null, tint = tint, size = 20.dp)
+            Spacer(Modifier.weight(1f))
+            Text("%02d".format(number), style = mono.copy(fontSize = fixedSp(11f)), color = tint)
+        }
     }
 }
 

@@ -174,6 +174,9 @@ internal fun DrawScope.drawGridPaper(style: LanyinStyle, page: Boolean, measurer
             drawLine(ink, Offset(x0, y0), Offset(x0, y0 + dy * mark), 1.dp.toPx())
         }
     }
+    // Registration targets at the head and foot of the sheet, between the crop marks.
+    drawRegistration(Offset(w / 2f, inset + 4.dp.toPx()), 4.dp.toPx(), ink)
+    drawRegistration(Offset(w / 2f, h - inset - 4.dp.toPx()), 4.dp.toPx(), ink)
     if (page || measurer == null || trackNumber == null) return
 
     val landscape = w > h

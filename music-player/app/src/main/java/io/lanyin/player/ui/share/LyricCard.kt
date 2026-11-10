@@ -1,5 +1,6 @@
 package io.lanyin.player.ui.share
 
+import io.lanyin.player.ui.design.drawConcertPoster
 import io.lanyin.player.ui.design.inked
 import io.lanyin.player.ui.design.letterpress
 import io.lanyin.player.ui.design.drawUnitPlate
@@ -266,18 +267,19 @@ private fun DuskCard(lyric: CardLyric) {
 private fun GridCard(lyric: CardLyric) {
     val style = Lanyin.style
     val c = style.colors
+    val measurer = rememberTextMeasurer()
     Box(Modifier.fillMaxSize().padding(24.dp)) {
-        Canvas(Modifier.align(Alignment.TopEnd).size(84.dp)) {
-            drawCircle(c.outline, size.minDimension / 2f, center + Offset(4.dp.toPx(), 4.dp.toPx()))
-            drawCircle(c.accent, size.minDimension / 2f)
-            drawCircle(c.outline, size.minDimension / 2f, style = Stroke(2.5.dp.toPx()))
+        // The song's concert poster across the top, its cover in the middle, the construction on.
+        Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().height(216.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) { drawConcertPoster(style, lyric.coverSeed, 0f, 0.35f, 0f, 0.6f, measurer) }
+            io.lanyin.player.ui.design.SwissPhoto(lyric.coverUrl, lyric.coverSeed, Modifier.size(66.dp).clip(CircleShape).border(2.5.dp, c.outline, CircleShape))
         }
         Column(Modifier.align(Alignment.BottomStart).fillMaxWidth()) {
             Text(
                 "LYRIC NO.01", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(10f), letterSpacing = 0.1.em), color = c.content,
                 modifier = Modifier.background(GridYellow).border(2.dp, c.outline).padding(horizontal = 6.dp, vertical = 1.dp),
             )
-            Text(lyric.line, style = TextStyle(fontWeight = FontWeight.Black, fontSize = fixed(32f), lineHeight = fixed(38f), letterSpacing = (-0.02).em), color = c.content, modifier = Modifier.padding(top = 12.dp))
+            Text(lyric.line, style = TextStyle(fontWeight = FontWeight.Black, fontSize = fixed(28f), lineHeight = fixed(33f), letterSpacing = (-0.02).em), color = c.content, maxLines = 3, modifier = Modifier.padding(top = 10.dp))
             lyric.translation?.let { Text(it, style = TextStyle(fontFamily = SpaceMonoFamily, fontSize = fixed(11f), lineHeight = fixed(16f)), color = c.muted, modifier = Modifier.padding(top = 8.dp)) }
             Box(Modifier.padding(top = 18.dp).fillMaxWidth().height(4.dp).background(c.outline))
             Row(Modifier.padding(top = 8.dp)) {

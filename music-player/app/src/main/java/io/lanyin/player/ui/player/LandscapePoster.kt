@@ -47,7 +47,7 @@ import io.lanyin.player.ui.theme.SpaceMonoFamily
 import kotlin.math.floor
 
 /**
- * 格: the stage as a Swiss poster. The artwork on the left; on the right a head in mono (the
+ * 格: the stage as a Swiss poster. The song's concert poster of turning rings on the left; on the right a head in mono (the
  * track's number in a black block, the line's number, the tempo on a yellow label) over a heavy
  * rule, and the line being sung set big and black, filled a character at a time as it is sung,
  * with a red bar under it running to the end of the line. A new line doesn't fade in: a red block
@@ -58,7 +58,7 @@ import kotlin.math.floor
 internal fun PosterStage(stage: StageContext) {
     val state = stage.state
     Row(Modifier.fillMaxSize()) {
-        StageArtwork(stage, Modifier.weight(0.36f).fillMaxHeight().then(stage.dismissDrag))
+        ConcertPosterStage(stage, Modifier.weight(0.36f).fillMaxHeight(), onClick = null)
         Spacer(Modifier.width(22.dp))
         Column(Modifier.weight(0.64f).fillMaxHeight().enter(stage.entrance, 1)) {
             Column(Modifier.weight(1f).fillMaxWidth(0.72f)) {

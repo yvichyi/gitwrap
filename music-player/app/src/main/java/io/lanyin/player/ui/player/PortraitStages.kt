@@ -111,12 +111,12 @@ private fun InkPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
     }
 }
 
-/** 格: the poster's head over the record, and the line being sung set big beneath it. */
+/** 格: the poster's head over the song's concert poster, and the line being sung set big beneath it. */
 @Composable
 private fun GridPortrait(stage: StageContext, onShowLyrics: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.enter(stage.entrance, 1)) { PosterHead(stage) }
-        StageArtwork(stage, Modifier.weight(1f).fillMaxWidth().then(stage.dismissDrag), heightFraction = 0.94f, onClick = onShowLyrics, ripples = true)
+        ConcertPosterStage(stage, Modifier.weight(1f).fillMaxWidth().padding(vertical = 6.dp), onClick = onShowLyrics)
         PosterLine(stage, Modifier.fillMaxWidth().height(186.dp).enter(stage.entrance, 2).opensLyrics(onShowLyrics))
     }
 }

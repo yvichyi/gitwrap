@@ -1,5 +1,7 @@
 package io.lanyin.player.ui.music
 
+import androidx.compose.ui.draw.clipToBounds
+import io.lanyin.player.ui.design.drawConcertPoster
 import io.lanyin.player.ui.design.letterpress
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -295,8 +297,20 @@ private fun GridHero(title: String, subtitle: String?, header: ListHeader, modif
     val c = style.colors
     Column(modifier.fillMaxWidth()) {
         Box(Modifier.padding(end = 8.dp, bottom = 8.dp)) {
-            Box(Modifier.fillMaxWidth().aspectRatio(1.6f).retroShadow(RectangleShape, c.outline, 8.dp).border(3.dp, c.outline)) {
-                HeroFill(header, Modifier.fillMaxSize().padding(3.dp))
+            // The list's own concert poster: its rings and shapes, its art in the middle as a hard
+            // black-and-white photograph, with the construction left on.
+            val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+            Box(Modifier.fillMaxWidth().aspectRatio(1.6f).retroShadow(RectangleShape, c.outline, 8.dp).background(c.bg).border(3.dp, c.outline), contentAlignment = Alignment.Center) {
+                Canvas(Modifier.fillMaxSize().padding(3.dp).clipToBounds()) {
+                    drawConcertPoster(style, title.hashCode() and 0xFFFF, 0f, 0.3f, 0f, 0.5f, measurer)
+                }
+                BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    val d = minOf(maxWidth, maxHeight) * 0.31f
+                    when (header) {
+                        is ListHeader.Cover -> io.lanyin.player.ui.design.SwissPhoto(header.url, header.seed, Modifier.size(d).clip(CircleShape).border(2.5.dp, c.outline, CircleShape))
+                        else -> Box(Modifier.size(d).clip(CircleShape).background(c.surface).border(2.5.dp, c.outline, CircleShape), contentAlignment = Alignment.Center) { HeaderArt(header, d * 0.8f) }
+                    }
+                }
             }
             Text(
                 "LIST", style = TextStyle(fontFamily = SpaceMonoFamily, fontWeight = FontWeight.Bold, fontSize = fixed(11f), letterSpacing = 0.14.em), color = c.content,
