@@ -495,6 +495,8 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
         Modifier
             .fillMaxWidth()
             .height(if (docked) 52.dp else 60.dp)
+            // 游: the game's menu is a bar of ink, its words in paper.
+            .then(if (style.edge == EdgeKind.Bezel) Modifier.background(c.content) else Modifier)
             .then(if (docked) Modifier else Modifier.themedSurface(shape = style.chipShape, tone = SurfaceTone.Chrome))
     ) {
         val itemWidth = maxWidth / tabs.size
@@ -590,7 +592,7 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                         .align(Alignment.CenterStart)
                         .offset(x = x + itemWidth / 2 - 31.dp)
                         .size(8.dp, 10.dp),
-                ) { drawMenuCursor(c.accent) }
+                ) { drawMenuCursor(c.bg) }
                 else -> Box(
                     Modifier
                         .align(Alignment.BottomStart)
@@ -606,6 +608,7 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                 val active = i == selected
                 val bump by animateFloatAsState(if (active) 1f else 0f, style.bouncy.spec(), label = "tabBump")
                 val tint = when {
+                    style.edge == EdgeKind.Bezel -> c.bg
                     !active -> c.muted
                     style.edge == EdgeKind.Brutal -> c.content
                     style.edge == EdgeKind.Chrome -> c.onAccent

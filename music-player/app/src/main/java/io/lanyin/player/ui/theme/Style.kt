@@ -267,16 +267,16 @@ fun lanyinStyle(theme: AppTheme, dark: Boolean): LanyinStyle {
             motion = Motion(0.95f, 650f), bouncy = Motion(0.8f, 550f), pressScale = 0.97f,
             iconStroke = 1.6f, dock = DockKind.Docked, margin = 22.dp, quietSections = false,
         )
-        // 游: a pocket games console. The pages are its menus, on the grey case: cards are little
-        // LCD screens in dark bezels and everything is set in a pixel face; the player is the whole
-        // console, its screen showing the cover dithered into four greens, a D-pad for skipping and
-        // a magenta A button to play.
+        // 游: a game in one bit, full screen, no console round it. Ink and paper and nothing between,
+        // greys by dithering; every word in a pixel face. Cards are game windows with a double
+        // border; the home page is a world map whose places are levels, the player a side-scrolling
+        // stage where the cat runs to the flag as the song plays, the moon the cover in one bit.
         AppTheme.GAME -> LanyinStyle(
             theme = theme, dark = false,
             colors = game,
             display = PixelFamily, displayWeight = FontWeight.Normal, displayTracking = 0.02.em,
             body = PixelFamily, numeric = PixelFamily,
-            cardShape = CutCornerShape(6.dp), chipShape = CutCornerShape(4.dp), artShape = RectangleShape,
+            cardShape = RectangleShape, chipShape = RectangleShape, artShape = RectangleShape,
             edge = EdgeKind.Bezel, backdrop = BackdropKind.Game, seek = SeekKind.Blocks,
             button = ButtonKind.Pad, nav = NavKind.Text,
             lyric = LyricStyle(centered = false, activeScale = 1f, inactiveAlpha = 0.5f, blurStep = 0.dp, staggerMs = 0, glow = false, serif = false, weight = FontWeight.Normal),
@@ -368,12 +368,11 @@ private val paperNight = LanyinColors(
     content = Color(0xFFE9E3D6), muted = Color(0xFFA39C8E), accent = Color(0xFFF0555A), accentAlt = Color(0xFF8FB0E0),
     onAccent = Color(0xFF171614), outline = Color(0x40E9E3D6), like = Color(0xFFF0555A), vinyl = Color(0xFF0E0D0C),
 )
-// A grey console: its case, the green of its screen for cards, near-black green print, the
-// magenta of the A and B buttons and the navy of the lettering.
+// Ink and paper: one bit. The muted grey is for small print only.
 private val game = LanyinColors(
-    bg = Color(0xFFD6D3CA), bgDeep = Color(0xFFC8C4BA), surface = Color(0xFFA9C06C), surfaceAlt = Color(0xFF9BB45E),
-    content = Color(0xFF10260F), muted = Color(0xFF3B5230), accent = Color(0xFF9A2257), accentAlt = Color(0xFF2F3A8F),
-    onAccent = Color(0xFFF4F0E8), outline = Color(0x5910260F), like = Color(0xFF9A2257), vinyl = Color(0xFF2D2C33),
+    bg = Color(0xFFE8E5D8), bgDeep = Color(0xFFE8E5D8), surface = Color(0xFFE8E5D8), surfaceAlt = Color(0xFFE8E5D8),
+    content = Color(0xFF1C1B18), muted = Color(0xFF524F47), accent = Color(0xFF1C1B18), accentAlt = Color(0xFF1C1B18),
+    onAccent = Color(0xFFE8E5D8), outline = Color(0xFF1C1B18), like = Color(0xFF1C1B18), vinyl = Color(0xFF1C1B18),
 )
 // Black, white, a lime that glows and a hot pink.
 private val acid = LanyinColors(
@@ -430,7 +429,7 @@ val SpaceMonoFamily = FontFamily(
 )
 
 /** 游's screen: the four greens of the original LCD, lightest to darkest. */
-val GameLcd = listOf(Color(0xFF9BBC0F), Color(0xFF8BAC0F), Color(0xFF306230), Color(0xFF082808))
+val GameLcd = listOf(Color(0xFFE8E5D8), Color(0xFFE8E5D8), Color(0xFF1C1B18), Color(0xFF1C1B18))
 
 /** 格's third primary, for stickers and highlights. */
 val GridYellow = Color(0xFFFACC15)

@@ -238,7 +238,7 @@ internal fun SectionLeader(modifier: Modifier) {
     val c = style.colors
     when (style.backdrop) {
         BackdropKind.Dot -> Canvas(modifier.height(4.dp)) { drawDotLeader(c.content.copy(alpha = 0.3f), square = false) }
-        BackdropKind.Game -> Canvas(modifier.height(4.dp)) { drawDotLeader(c.content.copy(alpha = 0.4f), square = true) }
+        BackdropKind.Game -> Canvas(modifier.height(4.dp)) { drawDotLeader(c.content, square = true) }
         else -> Spacer(modifier)
     }
 }

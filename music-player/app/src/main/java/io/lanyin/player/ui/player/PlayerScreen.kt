@@ -251,7 +251,7 @@ private fun PortraitPlayer(
     val stage = StageContext(state, skin, spin, chromeVisible = false, scrubMs, lyricScale, dismissDrag, entrance)
     val toggleLyrics = if (skin == PlayerSkin.LYRICS) null else ({ showLyrics = !showLyrics })
     if (style.backdrop == BackdropKind.Game) {
-        ConsolePortrait(stage, lyricsOnly, toggleLyrics, onCollapse, onRotate, onScrub = { scrubMs = it })
+        BitPortrait(stage, lyricsOnly, toggleLyrics, onCollapse, onRotate, onScrub = { scrubMs = it })
         return
     }
     Column(
@@ -350,9 +350,9 @@ private fun LandscapePlayer(
     onRotate: () -> Unit,
     lyricScale: Float,
 ) {
-    // 游 turns the whole screen into the console, its buttons doing the transport.
+    // 游: the level, wide.
     if (Lanyin.style.backdrop == BackdropKind.Game) {
-        ConsoleLandscape(state, skin, spin, chromeVisible, onToggleChrome, dismissDrag, onCollapse, onRotate, lyricScale)
+        BitLandscape(state, chromeVisible, onToggleChrome, dismissDrag, onCollapse, onRotate, lyricScale, skin, spin)
         return
     }
     val entrance = rememberEntrance(Unit)
@@ -779,7 +779,8 @@ internal fun PlayerTopBar(state: PlayerState, onCollapse: () -> Unit, modifier: 
                     // 报: the masthead.
                     BackdropKind.Paper -> Text("澜音日报", style = style.type.title.copy(fontFamily = style.display, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 0.16.em), color = c.content, maxLines = 1)
                     // 游: the console's name, in the navy of its lettering.
-                    BackdropKind.Game -> Text("LANYIN POCKET", style = style.type.label.copy(fontSize = 13.sp, letterSpacing = 1.sp), color = c.accentAlt, maxLines = 1)
+                    // 游: the game's title, in the tiny face.
+                    BackdropKind.Game -> io.lanyin.player.ui.design.TinyText("LANYIN QUEST", c.content)
                     // 酸: a track number between stars.
                     BackdropKind.Acid -> Text("✦ TRACK %02d ✦".format(state.trackNumber), style = style.type.label.copy(fontFamily = style.numeric, fontWeight = FontWeight.Bold, brush = io.lanyin.player.ui.design.ChromeBrush), maxLines = 1)
                     else -> Text("正在播放", style = style.type.label, color = c.muted, maxLines = 1)

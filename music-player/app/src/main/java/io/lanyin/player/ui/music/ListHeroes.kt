@@ -403,58 +403,55 @@ private fun GameHero(title: String, subtitle: String?, header: ListHeader, modif
         Cartridge(header, Modifier.width(164.dp))
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text("★ NEW GAME", style = pixel.copy(fontSize = fixed(10f)), color = c.accent)
+            io.lanyin.player.ui.design.TinyText("NEW GAME", c.content)
             Text(title, style = pixel.copy(fontSize = 24.sp, lineHeight = 29.sp), color = c.content, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
             if (subtitle != null) {
                 Text(subtitle, style = style.type.caption, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
             }
-            Text("PRESS Ⓐ TO PLAY", style = pixel.copy(fontSize = fixed(10f)), color = c.accentAlt, modifier = Modifier.padding(top = 10.dp))
+            io.lanyin.player.ui.design.TinyText("PRESS START", c.content, Modifier.padding(top = 10.dp))
         }
     }
 }
 
-/** A cartridge: grey plastic with a clipped corner, grip ridges, a moulded arrow and the label. */
+/**
+ * A cartridge in one bit: an ink outline round paper, the corner clipped in steps, grip ridges
+ * across the top, the arrow at its foot and the label with the cover dithered on it.
+ */
 @Composable
 private fun Cartridge(header: ListHeader, modifier: Modifier) {
     val c = Lanyin.colors
-    val body = Color(0xFF8F8D99)
     Box(
         modifier
             .aspectRatio(0.86f)
             .drawBehind {
+                val p = io.lanyin.player.ui.design.BitPx.toPx()
                 val w = size.width
                 val h = size.height
-                val clip = w * 0.12f
-                val r = 6.dp.toPx()
-                val shell = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(0f, 0f); lineTo(w - clip, 0f); lineTo(w, clip); lineTo(w, h - r)
-                    quadraticTo(w, h, w - r, h); lineTo(r, h); quadraticTo(0f, h, 0f, h - r); close()
-                }
-                translate(3.dp.toPx(), 4.dp.toPx()) { drawPath(shell, Color.Black.copy(alpha = 0.22f)) }
-                drawPath(shell, Brush.verticalGradient(listOf(lerp(body, Color.White, 0.16f), body, lerp(body, Color.Black, 0.12f))))
-                // The grip: ridges across the top.
-                for (k in 0 until 4) {
-                    val y = h * 0.035f + k * 3.dp.toPx()
-                    drawLine(Color.Black.copy(alpha = 0.2f), Offset(w * 0.1f, y), Offset(w * 0.72f, y), 1.dp.toPx())
-                    drawLine(Color.White.copy(alpha = 0.22f), Offset(w * 0.1f, y + 1.dp.toPx()), Offset(w * 0.72f, y + 1.dp.toPx()), 1.dp.toPx())
-                }
-                // The arrow moulded in at the foot.
-                val tip = Offset(w / 2f, h - 5.dp.toPx())
-                val arrow = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(tip.x, tip.y); lineTo(tip.x - 7.dp.toPx(), tip.y - 7.dp.toPx()); lineTo(tip.x + 7.dp.toPx(), tip.y - 7.dp.toPx()); close()
-                }
-                drawPath(arrow, Color.Black.copy(alpha = 0.22f))
+                // A hard shadow a pixel step down, the body and its outline; the corner clipped in steps.
+                drawRect(c.content, Offset(2 * p, 2 * p), size)
+                drawRect(c.content)
+                drawRect(c.bg, Offset(p, p), Size(w - 2 * p, h - 2 * p))
+                for (k in 0 until 6) drawRect(c.bg, Offset(w - (6 - k) * p * 2, 0f), Size((6 - k) * p * 2 + 2 * p, (k + 1) * p * 2))
+                for (k in 0 until 6) drawRect(c.content, Offset(w - (6 - k) * p * 2 - p, k * p * 2), Size(p, p * 2))
+                // The grip.
+                for (k in 0 until 4) drawRect(c.content, Offset(w * 0.1f, 4 * p + k * 3 * p), Size(w * 0.6f, p))
+                // The arrow at the foot.
+                val (aw, ah) = io.lanyin.player.ui.design.spriteSize(io.lanyin.player.ui.design.Sprites.Pointer)
+                drawPointer(Offset((w - aw * p * 2) / 2f, h - 4 * p - ah * p * 2), p * 2, c.content)
             }
-            .padding(start = 13.dp, end = 13.dp, top = 22.dp, bottom = 18.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 22.dp, bottom = 20.dp),
     ) {
-        Column(Modifier.fillMaxSize().clip(RoundedCornerShape(3.dp)).background(Color(0xFFEFEDE6)).padding(5.dp)) {
-            Box(Modifier.fillMaxWidth().weight(1f).border(1.5.dp, c.content)) { HeroFill(header, Modifier.fillMaxSize()) }
-            Text(
-                "LANYIN", style = TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily, fontSize = fixed(8f), letterSpacing = 0.1.em),
-                color = c.accentAlt, modifier = Modifier.padding(top = 3.dp),
-            )
+        Column(Modifier.fillMaxSize().border(2.dp, c.content).padding(4.dp)) {
+            Box(Modifier.fillMaxWidth().weight(1f).border(2.dp, c.content).padding(2.dp)) { HeroFill(header, Modifier.fillMaxSize()) }
+            io.lanyin.player.ui.design.TinyText("LANYIN", c.content, Modifier.padding(top = 4.dp))
         }
     }
+}
+
+/** The pointer sprite at [at], [px] a pixel. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPointer(at: Offset, px: Float, color: Color) {
+    val rows = listOf("#####", ".###.", "..#..")
+    for ((j, row) in rows.withIndex()) for ((i, ch) in row.withIndex()) if (ch == '#') drawRect(color, Offset(at.x + i * px, at.y + j * px), Size(px, px))
 }
 
 /**

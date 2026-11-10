@@ -81,10 +81,8 @@ fun Modifier.themedSurface(
     var m = when {
         hardShadow > 0.dp -> retroShadow(shape, c.outline, hardShadow)
         key -> keycap(shape, style, accent = tone == SurfaceTone.Accent) { press }
-        button -> drawBehind {
-            val outline = shape.createOutline(size, layoutDirection, this)
-            translate(0f, 3.dp.toPx()) { drawOutline(outline, androidx.compose.ui.graphics.lerp(c.accent, Color.Black, 0.35f)) }
-        }
+        // 游: the key's shadow, a pixel below it.
+        button -> drawBehind { drawRect(c.content, androidx.compose.ui.geometry.Offset(0f, BitPx.toPx()), size) }
         flat -> this
         // 霓: panels of the console's screen, a hard pixel shadow under them; keys are the radio's.
         style.edge == EdgeKind.Glow -> if (tone == SurfaceTone.Accent) this else drawBehind {
@@ -106,7 +104,7 @@ fun Modifier.themedSurface(
             // The cap is drawn behind; the content rides down with its face.
             translationY = keyTravel.toPx() * press
         } else if (button) {
-            translationY = 3.dp.toPx() * press
+            translationY = BitPx.toPx() * press
         } else {
             val s = 1f - (1f - minOf(style.pressScale, 0.97f)) * press
             scaleX = s
@@ -147,8 +145,16 @@ fun Modifier.themedSurface(
         style.edge == EdgeKind.Chrome -> m.background(
             if (flat) Brush.verticalGradient(listOf(c.surfaceAlt, c.surfaceAlt)) else Brush.verticalGradient(listOf(c.surfaceAlt, c.surface)),
         ).drawBehind { if (!flat) drawGloss(0.06f) }
-        // 游: a little LCD, a shade darker when it's secondary.
-        style.edge == EdgeKind.Bezel -> m.background(if (flat) c.surfaceAlt else c.surface)
+        // 游: a game window, its double border with notched corners; a secondary one with a single line.
+        style.edge == EdgeKind.Bezel -> m.drawBehind {
+            if (flat) {
+                drawRect(c.bg)
+                drawRect(c.content, style = androidx.compose.ui.graphics.drawscope.Stroke(BitPx.toPx() * 2f))
+            } else {
+                drawGameFrame(c.content, c.bg)
+            }
+            if (press > 0f) drawRect(c.content.copy(alpha = 0.12f * press))
+        }
         else -> m.background(c.surface)
     }
     // 4. Edge.
@@ -163,8 +169,8 @@ fun Modifier.themedSurface(
         EdgeKind.Dot -> if (tone == SurfaceTone.Chrome) m.border(1.dp, c.content.copy(alpha = 0.1f), shape) else m
         EdgeKind.Panel -> if (key) m else m.border(1.dp, c.outline, shape)
         EdgeKind.Rule -> m
-        // The screen's dark bezel; buttons have none.
-        EdgeKind.Bezel -> if (button) m else m.border(if (flat) 2.dp else 3.dp, GameBezel, shape)
+        // The window draws its own border.
+        EdgeKind.Bezel -> m
         // 酸: a soft chrome rim on cards, polished chrome round bars and sheets; gel and flat have none.
         EdgeKind.Chrome -> when (tone) {
             SurfaceTone.Card -> m.border(1.dp, ChromeSoftBrush, shape)

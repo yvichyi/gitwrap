@@ -84,7 +84,7 @@ private fun DrawScope.drawPicked(style: LanyinStyle, p: Float) {
             drawRect(c.accent.copy(alpha = fade), Offset(0f, h - bar), Size(w * grow, bar))
         }
         BackdropKind.Paper -> drawLine(c.accent.copy(alpha = 0.4f + 0.6f * fade), Offset(0f, h - 3.dp.toPx()), Offset(w * grow, h - 3.dp.toPx()), 1.8.dp.toPx())
-        BackdropKind.Game -> if (floor(p * 6f).toInt() % 2 == 0) drawRect(c.content.copy(alpha = 0.18f))
+        BackdropKind.Game -> if (floor(p * 6f).toInt() % 2 == 0) ditherRect(Offset.Zero, size, 0.25f, BitPx.toPx(), c.content)
         BackdropKind.Acid -> {
             val x = w * grow
             drawRect(Brush.horizontalGradient(listOf(Color.Transparent, c.accent.copy(alpha = 0.3f * fade)), x - w * 0.5f, x), Offset(0f, 0f), Size(x, h))

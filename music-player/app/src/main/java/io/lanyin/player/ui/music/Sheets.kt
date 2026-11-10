@@ -206,7 +206,7 @@ private fun SheetGrip(modifier: Modifier) {
             BackdropKind.Dot -> for (k in -3..3) drawCircle(if (k == 0) c.accentAlt else faint, 2.dp.toPx(), mid + androidx.compose.ui.geometry.Offset(k * 7.dp.toPx(), 0f))
             BackdropKind.Device -> for (k in -1..1) drawLine(faint, mid + androidx.compose.ui.geometry.Offset(-16.dp.toPx(), k * 2.5.dp.toPx()), mid + androidx.compose.ui.geometry.Offset(16.dp.toPx(), k * 2.5.dp.toPx()), 1.dp.toPx())
             BackdropKind.Paper -> drawLine(c.content.copy(alpha = 0.4f), androidx.compose.ui.geometry.Offset(0f, mid.y), androidx.compose.ui.geometry.Offset(size.width, mid.y), 1.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())))
-            BackdropKind.Game -> for (k in -1..1) drawRect(c.content.copy(alpha = 0.5f), mid + androidx.compose.ui.geometry.Offset(k * 8.dp.toPx() - 2.5.dp.toPx(), -2.5.dp.toPx()), androidx.compose.ui.geometry.Size(5.dp.toPx(), 5.dp.toPx()))
+            BackdropKind.Game -> for (k in -1..1) drawRect(c.content, mid + androidx.compose.ui.geometry.Offset(k * 8.dp.toPx() - 2.5.dp.toPx(), -2.5.dp.toPx()), androidx.compose.ui.geometry.Size(5.dp.toPx(), 5.dp.toPx()))
             BackdropKind.Acid -> {
                 val top = mid - androidx.compose.ui.geometry.Offset(20.dp.toPx(), 3.dp.toPx())
                 val sz = androidx.compose.ui.geometry.Size(40.dp.toPx(), 6.dp.toPx())

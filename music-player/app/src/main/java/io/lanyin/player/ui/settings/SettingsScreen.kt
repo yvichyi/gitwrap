@@ -130,7 +130,7 @@ fun SettingsScreen(
                         Text(
                             when {
                                 settings.theme.darkOnly -> "「${settings.theme.label}」只在夜里亮，始终使用深色。"
-                                settings.theme == io.lanyin.player.ui.theme.AppTheme.GAME -> "「${settings.theme.label}」的屏幕不带背光，始终使用浅色。"
+                                settings.theme == io.lanyin.player.ui.theme.AppTheme.GAME -> "「${settings.theme.label}」只有墨和纸两种颜色，始终使用浅色。"
                                 else -> "「${settings.theme.label}」是印在纸上的，始终使用浅色。"
                             },
                             style = style.type.caption, color = c.muted, modifier = Modifier.padding(top = 10.dp),

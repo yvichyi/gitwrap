@@ -48,6 +48,8 @@ import io.lanyin.player.ui.design.LineIcon
 import io.lanyin.player.ui.design.SurfaceTone
 import io.lanyin.player.ui.design.drawPlayPauseGlyph
 import io.lanyin.player.ui.design.keyColors
+import io.lanyin.player.ui.design.drawPixelButton
+import io.lanyin.player.ui.design.drawSprite
 import io.lanyin.player.ui.design.pressable
 import io.lanyin.player.ui.design.sharedPlayer
 import io.lanyin.player.ui.theme.radioLcdStyle
@@ -124,6 +126,11 @@ fun MiniPlayer(
             Spacer(Modifier.width(10.dp))
             Canvas(Modifier.size(30.dp)) { drawRadioKnob(30f) }
         }
+        return
+    }
+    // 游: a strip of the game: the cover in one bit, the song, two pixel keys.
+    if (style.backdrop == BackdropKind.Game && !onPaper) {
+        BitStrip(state, onExpand, modifier)
         return
     }
     // 机: the cassette deck's strip: the tape in its window, the display, the counter and two keys.
@@ -400,4 +407,67 @@ private fun DeckKey(label: String, onClick: () -> Unit, glyph: @Composable () ->
             .drawBehind { drawKeycap(androidx.compose.foundation.shape.RoundedCornerShape(3.dp), style.keyColors()) },
         contentAlignment = Alignment.Center,
     ) { glyph() }
+}
+
+/**
+ * 游's mini player: the cover in one bit in an ink frame, the song and what's being sung in the
+ * pixel face, and the play and skip keys; the progress as a line of dots along its foot.
+ */
+@Composable
+private fun BitStrip(state: PlayerState, onExpand: () -> Unit, modifier: Modifier) {
+    val c = Lanyin.colors
+    val px = io.lanyin.player.ui.design.BitPx
+    Row(
+        modifier
+            .fillMaxWidth()
+            .height(60.dp)
+            .testTag("miniPlayer")
+            .sharedPlayer("player-container", container = true)
+            .background(c.bg)
+            .drawBehind {
+                // The progress: solid behind, dotted ahead, a marker where the song is.
+                val p = px.toPx()
+                val f = (state.positionMs.toFloat() / state.durationMs).let { if (it.isFinite()) it.coerceIn(0f, 1f) else 0f }
+                val y = size.height - 2 * p
+                val x = ((size.width * f) / p).toInt() * p
+                var dx = 0f
+                while (dx < size.width) {
+                    if (dx < x || (dx / p).toInt() % 2 == 0) drawRect(c.content, Offset(dx, y), Size(p, p))
+                    dx += p
+                }
+                drawRect(c.content, Offset(x - p, y - p), Size(3 * p, 3 * p))
+            }
+            .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onExpand)
+            .padding(horizontal = Lanyin.style.margin - 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(42.dp).background(c.content).padding(px).sharedPlayer("artwork", zIndex = 1f)) {
+            io.lanyin.player.ui.design.DitheredCover(state.coverUrl, state.coverSeed, Modifier.fillMaxSize(), n = 32)
+        }
+        Spacer(Modifier.width(10.dp))
+        SwipeToSkip(state, Modifier.weight(1f)) {
+            Column(Modifier.fillMaxWidth()) {
+                val pixel = androidx.compose.ui.text.TextStyle(fontFamily = io.lanyin.player.ui.theme.PixelFamily)
+                Text(state.title, style = pixel.copy(fontSize = fixedSp(15f)), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.sharedPlayer("title", zIndex = 2f, scaleContent = true))
+                Text(state.currentLine?.text ?: state.artist, style = pixel.copy(fontSize = fixedSp(12f)), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        BitMiniKey(if (state.isPlaying) io.lanyin.player.ui.design.Sprites.Pause else io.lanyin.player.ui.design.Sprites.Play, if (state.isPlaying) "暂停" else "播放", on = true, onClick = state::togglePlay)
+        Spacer(Modifier.width(6.dp))
+        BitMiniKey(io.lanyin.player.ui.design.Sprites.Next, "下一首", on = false, onClick = state::skipNext)
+    }
+}
+
+/** A small pixel key with [glyph] on it. */
+@Composable
+private fun BitMiniKey(glyph: List<String>, label: String, on: Boolean, onClick: () -> Unit) {
+    val c = Lanyin.colors
+    Canvas(Modifier.size(40.dp, 36.dp).pressable(label = label, onClick = onClick)) {
+        val p = io.lanyin.player.ui.design.BitPx.toPx()
+        drawPixelButton(c.content, c.bg, on, p)
+        val w = glyph.maxOf { it.length }
+        val h = glyph.size
+        drawSprite(glyph, ((size.width - w * p) / 2f / p).toInt() * p, ((size.height - 2 * p - h * p) / 2f / p).toInt() * p, p, if (on) c.bg else c.content)
+    }
 }

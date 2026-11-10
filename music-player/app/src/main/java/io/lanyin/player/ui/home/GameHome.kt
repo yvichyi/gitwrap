@@ -2,11 +2,10 @@ package io.lanyin.player.ui.home
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -17,385 +16,265 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.clickable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import io.lanyin.player.core.model.Song
+import io.lanyin.player.data.account.AccountState
 import io.lanyin.player.ui.components.pagePadding
+import io.lanyin.player.ui.design.BitPx
 import io.lanyin.player.ui.design.DitheredCover
-import io.lanyin.player.ui.design.PixelHearts
-import io.lanyin.player.ui.design.SectionTitle
-import io.lanyin.player.ui.design.gameWindow
-import io.lanyin.player.ui.design.SurfaceTone
+import io.lanyin.player.ui.design.GameHud
+import io.lanyin.player.ui.design.GameWindow
+import io.lanyin.player.ui.design.Sprites
+import io.lanyin.player.ui.design.TinyText
+import io.lanyin.player.ui.design.WorldMap
+import io.lanyin.player.ui.design.drawPixelButton
+import io.lanyin.player.ui.design.drawSprite
+import io.lanyin.player.ui.design.formatTime
 import io.lanyin.player.ui.design.pressable
-import io.lanyin.player.ui.design.themedSurface
-import io.lanyin.player.ui.theme.GameLcd
+import io.lanyin.player.ui.design.spriteSize
 import io.lanyin.player.ui.theme.Lanyin
 import io.lanyin.player.ui.theme.PixelFamily
-import java.time.format.TextStyle as JavaTextStyle
-import java.util.Locale
-import kotlinx.coroutines.delay
-
 
 /**
- * 游: the home page as a game. A status line with lives and level; the title screen on the green
- * LCD, PRESS START blinking; the main menu in a role-playing game's window, two columns with a ▶
- * on the choice; the recommended playlists as an inventory of item slots; the first chart as a
- * high-score table; the picks as a quest log. Before signing in there's no save file to load.
+ * 游: the home page is a game's world map. Along the top the HUD (the world is the month, the
+ * coins today's picks); the island with six places on it, each a level and a way in (castle:
+ * today's picks, radio tower: 私人 FM, the house with the heart: 我喜欢, the flag on the
+ * mountain: the charts, the clock tower: recent, the cave: downloads); the cat sits at the one
+ * chosen and the dialogue box below says what it is, with START to go. Then the items (the same
+ * ways in, one tap each), the save files (the recommended playlists), the high scores (charts)
+ * and today's quest (the picks).
  */
 @Composable
 internal fun GameHome(model: HomeModel) {
-    val style = Lanyin.style
-    val m = style.margin
-    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding()) {
+    val m = 12.dp
+    var level by rememberSaveable { mutableIntStateOf(0) }
+    val doors = model.doors
+    io.lanyin.player.ui.design.RevealLazyColumn(Modifier.fillMaxSize(), contentPadding = pagePadding(extraTop = 6.dp)) {
         item { Hud(model, Modifier.padding(horizontal = m)) }
-        item { TitleScreen(model, Modifier.padding(start = m, end = m, top = 16.dp)) }
-        if (!model.signedIn) item { NoSaveData(model.login, Modifier.padding(start = m, end = m, top = 16.dp)) }
-        item { MainMenu(model, Modifier.padding(start = m, end = m, top = 16.dp)) }
         item {
-            Column(Modifier.padding(start = m, end = m, top = 30.dp)) {
-                SectionTitle("道具", trailing = model.recommendedNote)
-                Inventory(model, Modifier.padding(top = 12.dp))
+            GameWindow(Modifier.padding(start = m, end = m, top = 8.dp).fillMaxWidth(), padding = PaddingValues(BitPx * 4)) {
+                WorldMap(level, doors.map { "${it.label}，第 1-${doors.indexOf(it) + 1} 关" }, onSelect = { level = it }, modifier = Modifier.fillMaxWidth().aspectRatio(1.06f))
             }
         }
-        item {
-            Column(Modifier.padding(start = m, end = m, top = 30.dp)) {
-                SectionTitle("排行榜", trailing = "全部 ▶")
-                HighScores(model, Modifier.padding(top = 12.dp))
-            }
-        }
+        item { LevelDialog(model, level, Modifier.padding(start = m, end = m, top = 8.dp)) }
+        item { Items(model, Modifier.padding(start = m, end = m, top = 8.dp)) }
+        if (!model.signedIn) item { NoSave(model.login, Modifier.padding(start = m, end = m, top = 8.dp)) }
+        item { SaveFiles(model, Modifier.padding(start = m, end = m, top = 8.dp)) }
+        item { HighScores(model, Modifier.padding(start = m, end = m, top = 8.dp)) }
         model.picks?.let { picks ->
-            item { SectionTitle("任务 · ${picks.title}", Modifier.padding(start = m, end = m, top = 30.dp), trailing = picks.note) }
-            items(picks.songs.size) { i ->
-                Quest(picks.songs[i], i, picks.songs[i].id == model.player.playingSongId, { model.playPick(i) }, Modifier.padding(horizontal = m))
-            }
+            if (picks.songs.isNotEmpty()) item { Quest(model, picks.title, picks.songs, Modifier.padding(start = m, end = m, top = 8.dp)) }
         }
     }
 }
 
 private val pixel: TextStyle get() = TextStyle(fontFamily = PixelFamily)
 
-/** The greeting, the actions, and the player's status: 1P, three hearts, the day as a level. */
+/**
+ * The HUD: WORLD and the month, three hearts, today's coins and the day; at its end OPT for the
+ * settings and 1P for the account (LOGIN before there is one).
+ */
 @Composable
 private fun Hud(model: HomeModel, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val now = model.now
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(greeting(now.hour), style = style.type.display)
-            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("1P", style = pixel.copy(fontSize = fixedSp(13f)), color = c.content)
-                Spacer(Modifier.width(6.dp))
-                PixelHearts(3, c.accent, Modifier.size(width = 40.dp, height = 11.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    "LV.%02d  %02d/%02d %s".format(now.dayOfMonth, now.monthValue, now.dayOfMonth, now.dayOfWeek.getDisplayName(JavaTextStyle.SHORT, Locale.ENGLISH).uppercase()),
-                    style = pixel.copy(fontSize = fixedSp(13f)),
-                    color = c.muted,
-                    maxLines = 1,
-                )
-            }
-        }
-        HeaderActions(model.account, model.openSettings, model.openAccount)
+    val c = Lanyin.colors
+    val coins = model.pickSongs.size
+    Row(modifier.fillMaxWidth().height(22.dp).background(c.content), verticalAlignment = Alignment.CenterVertically) {
+        GameHud("WORLD ${model.now.monthValue}", 3, "x%02d DAY%02d".format(coins, model.now.dayOfMonth), Modifier.weight(1f).height(22.dp))
+        HudKey("OPT", "设置", model.openSettings)
+        HudKey(if (model.account is AccountState.LoggedIn) "1P" else "LOGIN", if (model.signedIn) "我的账号" else "登录", model.openAccount)
     }
 }
 
-/** A blink at a game's pace, for PRESS START and the ▼ of a waiting window. */
+/** A key in the HUD: its name knocked out of a paper box. */
 @Composable
-private fun rememberBlink(): Boolean {
-    // Mostly on: the eye should catch the words, not chase them.
-    val on by produceState(true) {
-        while (true) {
-            delay(if (value) 820 else 380)
-            value = !value
-        }
-    }
-    return on
-}
-
-/** The title screen, on the green LCD inside its dark bezel. */
-@Composable
-private fun TitleScreen(model: HomeModel, modifier: Modifier) {
-    val blink = rememberBlink()
-    val player = model.player
-    val ink = GameLcd[3]
+private fun HudKey(name: String, label: String, onClick: () -> Unit) {
+    val c = Lanyin.colors
     Box(
-        modifier
-            .fillMaxWidth()
-            .height(204.dp)
-            .themedSurface(onClick = if (player.isEmpty) model.playDaily else model.openPlayer)
-            .background(GameLcd[0])
-            .drawBehind {
-                // The LCD's pixel grid.
-                val pitch = 3.dp.toPx()
-                var x = 0f
-                while (x < size.width) {
-                    drawLine(GameLcd[1].copy(alpha = 0.5f), Offset(x, 0f), Offset(x, size.height), 1f)
-                    x += pitch
-                }
-                var y = 0f
-                while (y < size.height) {
-                    drawLine(GameLcd[1].copy(alpha = 0.5f), Offset(0f, y), Offset(size.width, y), 1f)
-                    y += pitch
-                }
-            },
-    ) {
-        Column(Modifier.align(Alignment.Center).padding(bottom = 56.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("澜音", style = pixel.copy(fontSize = fixedSp(46f), lineHeight = fixedSp(50f), letterSpacing = 0.1.em), color = ink)
-            Text("LANYIN  MUSIC  QUEST", style = pixel.copy(fontSize = fixedSp(12f), letterSpacing = 0.12.em), color = GameLcd[2])
-            Text(
-                "▶ PRESS START",
-                style = pixel.copy(fontSize = fixedSp(15f)),
-                color = ink.copy(alpha = if (blink) 1f else 0f),
-                modifier = Modifier.padding(top = 14.dp),
-            )
-        }
-        // The level's first screen behind the title: clouds drifting over two rows of hills and
-        // the ground, all on the LCD's grid.
-        val clock by io.lanyin.player.ui.design.rememberFrameClock(true)
-        Canvas(Modifier.matchParentSize()) { drawPixelLand(clock) }
-        // A note bobbing in the corner, as title screens have a sprite.
-        Canvas(Modifier.align(Alignment.TopStart).padding(14.dp).size(22.dp)) { drawPixelNote(ink) }
-        Canvas(Modifier.align(Alignment.TopEnd).padding(14.dp).size(22.dp)) { drawPixelNote(GameLcd[2]) }
-        Text(
-            if (player.isEmpty) "© 2026 LANYIN" else "NOW · ${player.title}",
-            style = pixel.copy(fontSize = fixedSp(11f)),
-            color = GameLcd[0],
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-        )
-    }
+        Modifier
+            .padding(end = 4.dp)
+            .height(16.dp)
+            .background(c.bg)
+            .pressable(label = label, onClick = onClick)
+            .padding(horizontal = 4.dp),
+        contentAlignment = Alignment.Center,
+    ) { TinyText(name, c.content) }
 }
 
 /**
- * The title screen's landscape, snapped to the LCD's 3dp grid: two clouds drifting left at
- * different speeds, a far range of hills in the mid green, near hills in the dark one, and the
- * ground along the foot where the credit line sits.
+ * The dialogue box for the chosen level: its number on the tab, the name and what's in it, and
+ * START. Today's picks give their count and running time.
  */
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPixelLand(t: Float) {
-    val px = 3.dp.toPx()
-    fun snap(v: Float) = kotlin.math.floor(v / px) * px
-    val w = size.width
-    val h = size.height
-    // Clouds: blocky, drifting, wrapping round.
-    val cloud = listOf("0011100", "0111110", "1111111")
-    for ((k, speed) in listOf(0 to 9f, 1 to 5f)) {
-        val span = w + 7 * px * 2
-        val x0 = snap(((w * (0.2f + 0.5f * k) - t * speed * px / 3f) % span + span) % span - 7 * px)
-        val y0 = snap(h * (0.1f + 0.08f * k))
-        cloud.forEachIndexed { y, row ->
-            row.forEachIndexed { x, ch -> if (ch == '1') drawRect(GameLcd[1], Offset(x0 + x * px * 2, y0 + y * px), Size(px * 2, px)) }
-        }
-    }
-    // Far hills, then near hills, then the ground.
-    fun hills(base: Float, amp: Float, period: Float, phase: Float, color: Color) {
-        var x = 0f
-        while (x < w) {
-            val top = snap(base - amp * (0.5f + 0.5f * kotlin.math.sin((x / period + phase) * 6.283f)))
-            drawRect(color, Offset(x, top), Size(px, h - top))
-            x += px
-        }
-    }
-    hills(h - 30.dp.toPx(), 30.dp.toPx(), w * 0.55f, 0.15f, GameLcd[1])
-    hills(h - 22.dp.toPx(), 20.dp.toPx(), w * 0.3f, 0.6f, GameLcd[2])
-    drawRect(GameLcd[3], Offset(0f, snap(h - 24.dp.toPx())), Size(w, h))
-}
-
-/** A quaver drawn in pixels. */
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPixelNote(color: Color) {
-    val rows = listOf("00011100", "00011110", "00010011", "00010001", "00010000", "01110000", "11110000", "01100000")
-    val px = size.minDimension / 8f
-    rows.forEachIndexed { y, row ->
-        row.forEachIndexed { x, ch -> if (ch == '1') drawRect(color, Offset(x * px, y * px), Size(px + 0.5f, px + 0.5f)) }
-    }
-}
-
-/** Before signing in: no save to load. */
 @Composable
-private fun NoSaveData(onLogin: () -> Unit, modifier: Modifier) {
+private fun LevelDialog(model: HomeModel, level: Int, modifier: Modifier) {
     val c = Lanyin.colors
-    val blink = rememberBlink()
-    Column(
-        modifier
-            .fillMaxWidth()
-            .gameWindow(c.surface, c.content)
-            .pressable(onClick = onLogin)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
-    ) {
-        Text("NO SAVE DATA", style = pixel.copy(fontSize = fixedSp(13f), letterSpacing = 0.1.em), color = c.accent)
-        Text("还没有存档。扫码登录网易云，读取你的歌单和红心。", style = pixel.copy(fontSize = fixedSp(15f), lineHeight = fixedSp(22f)), color = c.content, modifier = Modifier.padding(top = 6.dp))
-        Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("▶ 读取存档", style = pixel.copy(fontSize = fixedSp(14f)), color = c.content, modifier = Modifier.weight(1f))
-            Text("▼", style = pixel.copy(fontSize = fixedSp(13f)), color = c.content.copy(alpha = if (blink) 1f else 0f))
-        }
+    val door = model.doors[level]
+    val songs = model.pickSongs
+    val detail = when (level) {
+        0 -> if (songs.isEmpty()) model.dailyNote else "${songs.size} 首 · 今晚的关卡"
+        else -> door.note
     }
-}
-
-/** The main menu: the ways in, two columns of three, with a ▶ on the choice. */
-@Composable
-private fun MainMenu(model: HomeModel, modifier: Modifier) {
-    val c = Lanyin.colors
-    val doors = model.doors
-    Column(
-        modifier
-            .fillMaxWidth()
-            .gameWindow(c.surface, c.content)
-            .padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 10.dp),
-    ) {
-        Text("MENU", style = pixel.copy(fontSize = fixedSp(12f), letterSpacing = 0.14.em), color = c.content.copy(alpha = 0.7f), modifier = Modifier.padding(start = 6.dp, bottom = 2.dp))
-        for (row in 0 until 3) {
-            Row {
-                for (col in 0 until 2) {
-                    val i = row * 2 + col
-                    MenuChoice(doors[i], first = i == 0, modifier = Modifier.weight(1f))
-                }
+    val small = when (level) {
+        0 -> if (songs.isEmpty()) "LEVEL 1-1" else "TRK %02d . %s".format(songs.size, hms(songs.sumOf { it.durationMs }))
+        else -> "LEVEL 1-${level + 1}"
+    }
+    GameWindow(modifier.fillMaxWidth(), title = "1-${level + 1}") {
+        Text(door.label, style = pixel.copy(fontSize = fixedSp(20f), lineHeight = fixedSp(26f)), color = c.content, maxLines = 1)
+        Text(detail, style = pixel.copy(fontSize = fixedSp(14f), lineHeight = fixedSp(20f)), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            TinyText(small, c.content, Modifier.weight(1f, fill = false))
+            Spacer(Modifier.weight(1f))
+            Row(
+                Modifier
+                    .background(c.content)
+                    .pressable(label = "开始：${door.label}", onClick = door.onClick)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("开始", style = pixel.copy(fontSize = fixedSp(15f)), color = c.bg)
+                Canvas(Modifier.padding(start = 6.dp).size(8.dp, 10.dp)) { drawSprite(Sprites.Play, 0f, 0f, BitPx.toPx(), c.bg) }
             }
         }
     }
 }
 
-@Composable
-private fun MenuChoice(door: Door, first: Boolean, modifier: Modifier) {
-    val c = Lanyin.colors
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    Row(
-        modifier
-            .heightIn(min = 52.dp)
-            .clickable(interactionSource = interaction, indication = null, onClick = door.onClick)
-            .padding(horizontal = 4.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("▶", style = pixel.copy(fontSize = fixedSp(14f)), color = c.content.copy(alpha = if (pressed || first) 1f else 0f), modifier = Modifier.width(18.dp))
-        Column {
-            Text(door.label, style = pixel.copy(fontSize = fixedSp(17f)), color = c.content, maxLines = 1)
-            Text(door.note, style = pixel.copy(fontSize = fixedSp(11f)), color = c.content.copy(alpha = 0.6f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
+/** h:mm:ss for a running time. */
+private fun hms(ms: Long): String {
+    val s = ms / 1000
+    return "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60)
 }
 
-/** The recommended playlists as an inventory: item slots on the LCD, each with its count. */
+/** The item bar: the five other ways in, an icon and a name each; FM first, held. */
 @Composable
-private fun Inventory(model: HomeModel, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    val lists = model.recommended.slots(6)
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        for (row in 0 until (lists.size + 2) / 3) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                for (k in 0..2) {
-                    val slot = row * 3 + k
-                    if (slot >= lists.size) {
-                        Spacer(Modifier.weight(1f))
-                        continue
-                    }
-                    val p = lists[slot]
-                    Column(Modifier.weight(1f)) {
-                        Box(Modifier.fillMaxWidth().aspectRatio(1f).themedSurface(tone = SurfaceTone.Flat, onClick = { if (p != null) model.openPlaylist(p) })) {
-                            DitheredCover(p?.coverUrl, if (p != null) (p.id % 97).toInt() else 10 + slot, Modifier.fillMaxSize().padding(5.dp), n = 32)
-                            if (p != null) {
-                                Text(
-                                    "×${p.trackCount}",
-                                    style = pixel.copy(fontSize = fixedSp(11f)),
-                                    color = Color.White,
-                                    modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp).background(GameLcd[3]).padding(horizontal = 3.dp),
-                                )
-                            }
+private fun Items(model: HomeModel, modifier: Modifier) {
+    val c = Lanyin.colors
+    val icons = listOf(Sprites.Radio, Sprites.Heart, Sprites.Chart, Sprites.History, Sprites.Download)
+    val names = listOf("FM", "喜欢", "排行", "最近", "下载")
+    GameWindow(modifier.fillMaxWidth(), title = "ITEMS", padding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (k in 0 until 5) {
+                val door = model.doors[k + 1]
+                val on = k == 0
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .heightIn(min = 60.dp)
+                        .drawBehind {
+                            drawRect(c.content)
+                            drawRect(if (on) c.content else c.bg, androidx.compose.ui.geometry.Offset(BitPx.toPx(), BitPx.toPx()), androidx.compose.ui.geometry.Size(size.width - 2 * BitPx.toPx(), size.height - 2 * BitPx.toPx()))
                         }
-                        Text(
-                            p?.name ?: "？？？",
-                            style = pixel.copy(fontSize = fixedSp(12f), lineHeight = fixedSp(16f)),
-                            color = c.content,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 5.dp),
-                        )
-                    }
+                        .pressable(label = door.label, onClick = door.onClick)
+                        .padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    val icon = icons[k]
+                    val (w, h) = spriteSize(icon)
+                    Canvas(Modifier.size(BitPx * (w * 2), BitPx * (h * 2))) { drawSprite(icon, 0f, 0f, BitPx.toPx() * 2, if (on) c.bg else c.content) }
+                    Text(names[k], style = pixel.copy(fontSize = fixedSp(13f)), color = if (on) c.bg else c.content, maxLines = 1, modifier = Modifier.padding(top = 6.dp))
                 }
             }
         }
     }
 }
 
-/** The first chart as an arcade's high-score table; the other charts as choices under it. */
+/** No account yet: the game has no save data, and a key to start one. */
+@Composable
+private fun NoSave(onLogin: () -> Unit, modifier: Modifier) {
+    val c = Lanyin.colors
+    GameWindow(modifier.fillMaxWidth().pressable(label = "登录", onClick = onLogin), title = "SYSTEM") {
+        Text("NO SAVE DATA", style = pixel.copy(fontSize = fixedSp(15f)), color = c.content)
+        Text("登录网易云，开始你的存档 ▶", style = pixel.copy(fontSize = fixedSp(13f)), color = c.content, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+/** The save files: the recommended playlists, each with its cover in one bit, its number and how many tracks. */
+@Composable
+private fun SaveFiles(model: HomeModel, modifier: Modifier) {
+    val c = Lanyin.colors
+    val lists = model.recommended.slots(5)
+    GameWindow(modifier.fillMaxWidth(), title = "SAVE", padding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) {
+        lists.forEachIndexed { i, p ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .pressable(label = p?.name ?: "推荐歌单") { if (p != null) model.openPlaylist(p) }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(36.dp).background(c.content).padding(BitPx)) {
+                    DitheredCover(p?.coverUrl, p?.let { (it.id % 97).toInt() } ?: (10 + i), Modifier.fillMaxSize(), n = 18)
+                }
+                TinyText("FILE ${i + 1}", c.content, Modifier.padding(start = 10.dp))
+                Text(p?.name ?: "- - -", style = pixel.copy(fontSize = fixedSp(14f)), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 10.dp, end = 8.dp))
+                TinyText("%02d TRK".format((p?.trackCount ?: 0).coerceAtMost(99)), c.content)
+            }
+        }
+    }
+}
+
+/** The charts as a high-score table: 1ST to 4TH, the chart and the song at its top. */
 @Composable
 private fun HighScores(model: HomeModel, modifier: Modifier) {
     val c = Lanyin.colors
     val charts = model.charts.slots(4)
-    val first = charts.firstOrNull()
-    val blink = rememberBlink()
-    Column(
-        modifier
-            .fillMaxWidth()
-            .gameWindow(c.surface, c.content)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("HIGH SCORE", style = pixel.copy(fontSize = fixedSp(14f), letterSpacing = 0.12.em), color = c.accent.copy(alpha = if (blink) 1f else 0.7f), modifier = Modifier.weight(1f))
-            Text(first.nameOr(0), style = pixel.copy(fontSize = fixedSp(13f)), color = c.content.copy(alpha = 0.75f))
-        }
-        val top = first?.top.orEmpty()
-        listOf("1ST" to c.accent, "2ND" to c.accentAlt, "3RD" to c.muted).forEachIndexed { i, (rank, color) ->
-            val song: Song? = top.getOrNull(i)
+    val ranks = listOf("1ST", "2ND", "3RD", "4TH")
+    GameWindow(modifier.fillMaxWidth(), title = "HIGH SCORE") {
+        charts.forEachIndexed { i, chart ->
             Row(
-                Modifier.fillMaxWidth().padding(top = 8.dp).pressable(onClick = { if (first != null) model.openPlaylist(first.playlist) else model.openCharts() }),
+                Modifier
+                    .fillMaxWidth()
+                    .pressable(label = chart.nameOr(i)) { if (chart != null) model.openPlaylist(chart.playlist) else model.openCharts() }
+                    .padding(vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(rank, style = pixel.copy(fontSize = fixedSp(15f)), color = color, modifier = Modifier.width(44.dp))
+                TinyText(ranks[i], c.content, Modifier.width(30.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(song?.name ?: "- - - - -", style = pixel.copy(fontSize = fixedSp(15f)), color = c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (song != null) Text(song.artistLine, style = pixel.copy(fontSize = fixedSp(11f)), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(chart.nameOr(i), style = pixel.copy(fontSize = fixedSp(14f)), color = c.content, maxLines = 1)
+                    val top: Song? = chart?.top?.firstOrNull()
+                    Text(if (top != null) "${top.name} — ${top.artistLine}" else "读取中…", style = pixel.copy(fontSize = fixedSp(12f)), color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-            }
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            charts.drop(1).forEachIndexed { k, chart ->
-                Text(
-                    "▶ ${chart.nameOr(k + 1)}",
-                    style = pixel.copy(fontSize = fixedSp(13f)),
-                    color = c.content,
-                    maxLines = 1,
-                    modifier = Modifier.pressable(onClick = { if (chart != null) model.openPlaylist(chart.playlist) else model.openCharts() }).padding(vertical = 6.dp),
-                )
             }
         }
     }
 }
 
-/** A song in the quest log: its cover in a slot, the name, and a mark on the one being played. */
+/** Today's picks as the day's quest: each song a step, the one playing marked with the cursor. */
 @Composable
-private fun Quest(song: Song, index: Int, playing: Boolean, onClick: () -> Unit, modifier: Modifier) {
-    val style = Lanyin.style
-    val c = style.colors
-    Row(modifier.fillMaxWidth().pressable(onClick = onClick).padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(44.dp).themedSurface(tone = SurfaceTone.Flat)) {
-            DitheredCover(song.album.coverUrl, (song.id % 97).toInt(), Modifier.fillMaxSize().padding(3.dp), n = 24)
+private fun Quest(model: HomeModel, title: String, songs: List<Song>, modifier: Modifier) {
+    val c = Lanyin.colors
+    GameWindow(modifier.fillMaxWidth(), title = "QUEST") {
+        Text(title, style = pixel.copy(fontSize = fixedSp(16f)), color = c.content, modifier = Modifier.padding(bottom = 4.dp))
+        songs.forEachIndexed { i, song ->
+            val playing = song.id == model.player.playingSongId
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .then(if (playing) Modifier.background(c.content) else Modifier)
+                    .pressable(label = song.name) { model.playPick(i) }
+                    .padding(horizontal = 4.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val ink = if (playing) c.bg else c.content
+                if (playing) {
+                    Canvas(Modifier.width(26.dp).height(10.dp)) { drawSprite(Sprites.Play, 0f, 0f, BitPx.toPx(), ink) }
+                } else {
+                    TinyText("%02d".format(i + 1), ink, Modifier.width(26.dp))
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(song.name, style = pixel.copy(fontSize = fixedSp(14f)), color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(song.artistLine, style = pixel.copy(fontSize = fixedSp(11f)), color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                TinyText(formatTime(song.durationMs), ink, Modifier.padding(start = 8.dp))
+            }
         }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(song.name, style = style.type.body, color = if (playing) c.accent else c.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(song.artistLine, style = style.type.caption, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Text(if (playing) "♪" else if (index == 0) "!" else "", style = pixel.copy(fontSize = fixedSp(16f)), color = c.accent, modifier = Modifier.padding(start = 8.dp, end = 4.dp))
     }
 }

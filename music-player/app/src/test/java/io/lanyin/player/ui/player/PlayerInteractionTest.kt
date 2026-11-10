@@ -109,7 +109,7 @@ class PlayerInteractionTest {
     fun `in portrait, a tap beside the lyrics on 机's screen brings the cover back`() = lyricsAndBack(AppTheme.DEVICE)
 
     @Test
-    fun `in portrait, a tap beside the lyrics on 游's screen brings the cover back`() = lyricsAndBack(AppTheme.GAME, shown = "封面", hidden = "歌词")
+    fun `in portrait, a tap beside the lyrics on 游's screen brings the cover back`() = lyricsAndBack(AppTheme.GAME)
 
     /** Pulls the top bar down by [by] of the screen's height over [ms]; how many times it closed. */
     private fun pull(by: Float, ms: Long): Int {
